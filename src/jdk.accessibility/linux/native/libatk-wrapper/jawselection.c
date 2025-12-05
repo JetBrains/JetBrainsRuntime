@@ -73,7 +73,7 @@ typedef struct _SelectionData {
 void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -90,7 +90,7 @@ void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
 gpointer jaw_selection_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -106,7 +106,8 @@ gpointer jaw_selection_data_init(jobject ac) {
 
     jclass classSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classSelection) {
+    if (classSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -114,13 +115,15 @@ gpointer jaw_selection_data_init(jobject ac) {
         jniEnv, classSelection, "create_atk_selection",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkSelection;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get create_atk_selection method ID", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jatk_selection =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classSelection, jmid, ac);
-    if (!jatk_selection) {
+    if (jatk_selection == NULL) {
+        g_warning("%s: Failed to call create_atk_selection method and create AtkSelection object", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -136,23 +139,23 @@ gpointer jaw_selection_data_init(jobject ac) {
 void jaw_selection_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning(
             "Null argument passed to function jaw_selection_data_finalize");
         return;
     }
 
     SelectionData *data = (SelectionData *)p;
-    if (!data) {
+    if (data == NULL) {
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
-        if (data->atk_selection) {
+        if (data->atk_selection != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_selection);
             data->atk_selection = NULL;
         }
@@ -174,7 +177,7 @@ void jaw_selection_data_finalize(gpointer p) {
 static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning(
             "Null argument passed to function jaw_selection_add_selection");
         return FALSE;
@@ -194,14 +197,16 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "add_selection", "(I)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get add_selection method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -227,7 +232,7 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning(
             "Null argument passed to function jaw_selection_clear_selection");
         return FALSE;
@@ -247,14 +252,16 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "clear_selection", "()Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get clear_selection method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -283,7 +290,7 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning(
             "Null argument passed to function jaw_selection_ref_selection");
         return NULL;
@@ -303,7 +310,8 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -311,14 +319,16 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkSelection, "ref_selection",
                                "(I)Ljavax/accessibility/AccessibleContext;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get ref_selection method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject child_ac =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, jmid, (jint)i);
-    if (!child_ac) {
+    if (child_ac == NULL) {
+        g_warning("%s: Failed to get child AccessibleContext", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -329,7 +339,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     // From the documentation of the `ref_selection`:
     // "The caller of the method takes ownership of the returned data, and is
     // responsible for freeing it." (transfer full)
-    if (obj) {
+    if (obj != NULL) {
         g_object_ref(G_OBJECT(obj));
     }
 
@@ -351,7 +361,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
@@ -370,14 +380,16 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "get_selection_count", "()I");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get get_selection_count method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -404,7 +416,7 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
                                                 gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning(
             "Null argument passed to function jaw_selection_is_child_selected");
         return FALSE;
@@ -424,14 +436,16 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "is_child_selected", "(I)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get is_child_selected method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -459,7 +473,7 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
                                                gint i) {
     JAW_DEBUG_C("%p, %d", selection, i);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning(
             "Null argument passed to function jaw_selection_remove_selection");
         return FALSE;
@@ -479,14 +493,16 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "remove_selection", "(I)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get remove_selection method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -512,7 +528,7 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
     JAW_DEBUG_C("%p", selection);
 
-    if (!selection) {
+    if (selection == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
@@ -531,14 +547,16 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 
     jclass classAtkSelection =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (!classAtkSelection) {
+    if (classAtkSelection == NULL) {
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
                                             "select_all_selection", "()Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to get select_all_selection method ID", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;

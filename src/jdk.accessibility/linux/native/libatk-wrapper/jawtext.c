@@ -102,7 +102,7 @@ typedef struct _TextData {
 void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -159,12 +159,16 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
 gpointer jaw_text_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    if (jniEnv == NULL) {
+        return NULL;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -173,7 +177,8 @@ gpointer jaw_text_data_init(jobject ac) {
 
     jclass classText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
-    if (!classText) {
+    if (classText == NULL) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -181,13 +186,16 @@ gpointer jaw_text_data_init(jobject ac) {
         jniEnv, classText, "create_atk_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkText;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find create_atk_text method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
     jobject jatk_text =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classText, jmid, ac);
-    if (!jatk_text) {
+    if (jatk_text == NULL) {
+        g_warning("%s: Failed to create jatk_text using create_atk_text method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -203,19 +211,19 @@ gpointer jaw_text_data_init(jobject ac) {
 void jaw_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     TextData *data = (TextData *)p;
-    if (!data) {
+    if (data == NULL) {
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
         if (data->jstrText != NULL) {
@@ -241,8 +249,11 @@ static gchar *private_jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv,
                                                    jstring jstr) {
     JAW_DEBUG_C("%p, %p", jniEnv, jstr);
 
-    if (!jniEnv || !jstr) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL || jstr == NULL) {
+        g_warning("%s: Null argument passed. jniEnv=%p, jstr=%p",
+                  G_STRFUNC,
+                  (void*)jniEnv,
+                  (void*)jstr);
         return NULL;
     }
 
@@ -259,7 +270,11 @@ static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
                                                          gint *start_offset,
                                                          gint *end_offset) {
     if (!jniEnv || !start_offset || !end_offset) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. jniEnv=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC,
+                  (void*)jniEnv,
+                  (void*)start_offset,
+                  (void*)end_offset);
         return NULL;
     }
 
@@ -272,29 +287,34 @@ static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
     jclass classStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
     if (!classStringSeq) {
+        g_warning("%s: Failed to find AtkText$StringSequence class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfidStr = (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "str",
                                              "Ljava/lang/String;");
     if (!jfidStr) {
+        g_warning("%s: Failed to find str field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfidStart =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "start_offset", "I");
     if (!jfidStart) {
+        g_warning("%s: Failed to find start_offset field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfidEnd =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "end_offset", "I");
     if (!jfidEnd) {
+        g_warning("%s: Failed to find end_offset field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, jfidStr);
     if (!jStr) {
+        g_warning("%s: Failed to get jStr field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -327,7 +347,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -345,6 +365,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -352,6 +373,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText, "get_text",
                                             "(II)Ljava/lang/String;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_text method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -359,6 +381,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)start_offset, (jint)end_offset);
     if (!jstr) {
+        g_warning("%s: Failed to create jstr using get_text method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -385,7 +408,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     JAW_DEBUG_C("%p, %d", text, offset);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -403,6 +426,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -410,6 +434,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "get_character_at_offset", "(I)C");
     if (!jmid) {
+        g_warning("%s: Failed to find get_character_at_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -417,6 +442,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     jchar jcharacter =
         (*jniEnv)->CallCharMethod(jniEnv, atk_text, jmid, (jint)offset);
     if (jcharacter == '\0') {
+        g_warning("%s: jcharacter is '\\0'", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -453,7 +479,11 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)start_offset,
+                  (void*)end_offset);
         return NULL;
     }
 
@@ -471,6 +501,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -479,6 +510,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         jniEnv, classAtkText, "get_text_after_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_text_after_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -486,6 +518,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)boundary_type);
     if (!jStrSeq) {
+        g_warning("%s: Failed to create jStrSeq using get_text_after_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -524,7 +557,11 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)start_offset,
+                  (void*)end_offset);
         return NULL;
     }
 
@@ -542,6 +579,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -550,6 +588,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         jniEnv, classAtkText, "get_text_at_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_text_at_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -557,6 +596,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)boundary_type);
     if (!jStrSeq) {
+        g_warning("%s: Failed to create jStrSeq using get_text_at_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -596,7 +636,11 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)start_offset,
+                  (void*)end_offset);
         return NULL;
     }
 
@@ -614,6 +658,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -622,6 +667,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         jniEnv, classAtkText, "get_text_before_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_text_before_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -629,6 +675,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)boundary_type);
     if (!jStrSeq) {
+        g_warning("%s: Failed to create jStrSeq using get_text_before_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -699,7 +746,11 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)start_offset,
+                  (void*)end_offset);
         return NULL;
     }
 
@@ -717,6 +768,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -725,6 +777,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         jniEnv, classAtkText, "get_string_at_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_string_at_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -732,6 +785,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, jmid, (jint)offset, (jint)granularity);
     if (!jStrSeq) {
+        g_warning("%s: Failed to create jStrSeq using get_string_at_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -760,7 +814,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -778,6 +832,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -785,6 +840,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "get_caret_offset", "()I");
     if (!jmid) {
+        g_warning("%s: Failed to find get_caret_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -822,7 +878,13 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
                 coords);
 
     if (!text || !x || !y || !width || !height) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, x=%p, y=%p, width=%p, height=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)x,
+                  (void*)y,
+                  (void*)width,
+                  (void*)height);
         return;
     }
 
@@ -845,6 +907,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -853,6 +916,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "get_character_extents",
                                "(II)Ljava/awt/Rectangle;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_character_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -860,6 +924,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     jobject jrect = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, jmid,
                                                 (jint)offset, (jint)coords);
     if (!jrect) {
+        g_warning("%s: Failed to create jrect using get_character_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -883,7 +948,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -901,6 +966,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -908,6 +974,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "get_character_count", "()I");
     if (!jmid) {
+        g_warning("%s: Failed to find get_character_count method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -940,7 +1007,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     JAW_DEBUG_C("%p, %d, %d, %d", text, x, y, coords);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -958,6 +1025,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -965,6 +1033,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "get_offset_at_point", "(III)I");
     if (!jmid) {
+        g_warning("%s: Failed to find get_offset_at_point method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -1004,7 +1073,10 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
                 coord_type, rect);
 
     if (!text || !rect) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, rect=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)rect);
         return;
     }
 
@@ -1027,6 +1099,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1034,6 +1107,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkText, "get_range_extents", "(III)Ljava/awt/Rectangle;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_range_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1042,6 +1116,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
         (*jniEnv)->CallObjectMethod(jniEnv, atk_text, jmid, (jint)start_offset,
                                     (jint)end_offset, (jint)coord_type);
     if (!jrect) {
+        g_warning("%s: Failed to create jrect using get_range_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1066,7 +1141,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     JAW_DEBUG_C("%p", text);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -1084,6 +1159,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -1091,6 +1167,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "get_n_selections", "()I");
     if (!jmid) {
+        g_warning("%s: Failed to find get_n_selections method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -1127,7 +1204,11 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
                 end_offset);
 
     if (!text || !start_offset || !end_offset) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC,
+                  (void*)text,
+                  (void*)start_offset,
+                  (void*)end_offset);
         return NULL;
     }
 
@@ -1145,6 +1226,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -1153,12 +1235,14 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         jniEnv, classAtkText, "get_selection",
         "()Lorg/GNOME/Accessibility/AtkText$StringSequence;");
     if (!jmid) {
+        g_warning("%s: Failed to find get_selection method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, jmid);
     if (!jStrSeq) {
+        g_warning("%s: Failed to create jStrSeq using get_selection method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -1169,30 +1253,35 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
     jclass classStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
     if (!classStringSeq) {
+        g_warning("%s: Failed to find AtkText$StringSequence class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfidStr = (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "str",
                                              "Ljava/lang/String;");
     if (!jfidStr) {
+        g_warning("%s: Failed to find str field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfidStart =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "start_offset", "I");
     if (!jfidStart) {
+        g_warning("%s: Failed to find start_offset field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfidEnd =
         (*jniEnv)->GetFieldID(jniEnv, classStringSeq, "end_offset", "I");
     if (!jfidEnd) {
+        g_warning("%s: Failed to find end_offset field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
     jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, jfidStr);
     if (!jStr) {
+        g_warning("%s: Failed to get jStr field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -1222,7 +1311,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1240,6 +1329,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1247,6 +1337,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "add_selection", "(II)Z");
     if (!jmid) {
+        g_warning("%s: Failed to find add_selection method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1277,7 +1368,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     JAW_DEBUG_C("%p, %d", text, selection_num);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1295,6 +1386,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1302,6 +1394,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "remove_selection", "(I)Z");
     if (!jmid) {
+        g_warning("%s: Failed to find remove_selection method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1337,7 +1430,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
                 end_offset);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1355,6 +1448,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1362,6 +1456,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkText, "set_selection", "(III)Z");
     if (!jmid) {
+        g_warning("%s: Failed to find set_selection method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1405,7 +1500,7 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     JAW_DEBUG_C("%p, %d", text, offset);
 
     if (!text) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return FALSE;
     }
 
@@ -1423,6 +1518,7 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     jclass classAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if (!classAtkText) {
+        g_warning("%s: Failed to find AtkText class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -1430,6 +1526,7 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkText,
                                             "set_caret_offset", "(I)Z");
     if (!jmid) {
+        g_warning("%s: Failed to find set_caret_offset method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;

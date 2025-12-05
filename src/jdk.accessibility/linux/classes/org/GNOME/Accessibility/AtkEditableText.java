@@ -26,117 +26,187 @@ import javax.swing.text.*;
 import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
 
+/**
+ * The ATK EditableText interface implementation for Java accessibility.
+ *
+ * This class provides a bridge between Java's AccessibleEditableText interface
+ * and the ATK (Accessibility Toolkit) editable text interface.
+ */
 public class AtkEditableText extends AtkText {
 
-    private WeakReference<AccessibleEditableText> _acc_edt_text;
+    private WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
 
     private AtkEditableText(AccessibleContext ac) {
         super(ac);
 
         assert EventQueue.isDispatchThread();
 
-        _acc_edt_text = new WeakReference<AccessibleEditableText>(ac.getAccessibleEditableText());
+        AccessibleEditableText accessibleEditableText = ac.getAccessibleEditableText();
+        if (accessibleEditableText == null) {
+            throw new IllegalArgumentException("AccessibleContext must have AccessibleEditableText");
+        }
+
+        accessibleEditableTextWeakRef = new WeakReference<AccessibleEditableText>(accessibleEditableText);
     }
 
-    // JNI upcalls section
+    /* JNI upcalls section */
 
+    /**
+     * Factory method to create an AtkEditableText instance from an AccessibleContext.
+     * Called from native code via JNI.
+     *
+     * @param ac the AccessibleContext to wrap
+     * @return a new AtkEditableText instance, or null if creation fails
+     */
     private static AtkEditableText create_atk_editable_text(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkEditableText(ac);
         }, null);
     }
 
-    private void set_text_contents(String s) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
+    /**
+     * Sets the text contents to the specified string.
+     * Called from native code via JNI.
+     *
+     * @param textContent the string to set as the text contents
+     */
+    private void set_text_contents(String textContent) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
             return;
-
-        AtkUtil.invokeInSwing(() -> {
-            acc_edt_text.setTextContents(s);
-        });
-    }
-
-    private void insert_text(String s, int position) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
-            return;
-
-        if (position < 0) {
-            position = 0;
         }
-        final int rightPosition = position;
-        AtkUtil.invokeInSwing(() -> {
-            acc_edt_text.insertTextAtIndex(rightPosition, s);
-        });
-    }
-
-    private void copy_text(int start, int end) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
-            return;
-
-        int n = AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_edt_text.getCharCount();
-        }, -1);
-
-        final int rightStart = getRightStart(start);
-        final int rightEnd = getRightEnd(rightStart, end, n);
-        AtkUtil.invokeInSwing(() -> {
-            String s = acc_edt_text.getTextRange(rightStart, rightEnd);
-            if (s != null) {
-                StringSelection stringSel = new StringSelection(s);
-                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSel, stringSel);
-            }
-        });
-    }
-
-    private void cut_text(int start, int end) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
-            return;
 
         AtkUtil.invokeInSwing(() -> {
-            acc_edt_text.cut(start, end);
-        });
-    }
-
-    private void delete_text(int start, int end) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
-            return;
-
-        AtkUtil.invokeInSwing(() -> {
-            acc_edt_text.delete(start, end);
-        });
-    }
-
-    private void paste_text(int position) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
-            return;
-
-        AtkUtil.invokeInSwing(() -> {
-            acc_edt_text.paste(position);
+            accessibleEditableText.setTextContents(textContent);
         });
     }
 
     /**
-     * Sets run attributes for the text between two indices.
+     * Inserts text at the specified position.
+     * Called from native code via JNI.
      *
-     * @param as    the AttributeSet for the text
-     * @param start the start index of the text as an int
-     * @param end   the end index for the text as an int
-     * @return whether set_run_attributes was called
+     * @param textToInsert the string to insert
+     * @param position the position at which to insert the text
      */
-    private boolean set_run_attributes(AttributeSet as, int start, int end) {
-        AccessibleEditableText acc_edt_text = _acc_edt_text.get();
-        if (acc_edt_text == null)
+    private void insert_text(String textToInsert, int position) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
+            return;
+        }
+
+        if (position < 0) {
+            position = 0;
+        }
+
+        final int finalPosition = position;
+        AtkUtil.invokeInSwing(() -> {
+            accessibleEditableText.insertTextAtIndex(finalPosition, textToInsert);
+        });
+    }
+
+    /**
+     * Copies text from the specified start and end positions to the system clipboard.
+     * Called from native code via JNI.
+     *
+     * @param start the start position
+     * @param end the end position
+     */
+    private void copy_text(int start, int end) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
+            return;
+        }
+
+        int charCount = AtkUtil.invokeInSwingAndWait(() -> {
+            return accessibleEditableText.getCharCount();
+        }, -1);
+
+        if (charCount == -1) {
+            return;
+        }
+
+        final int rightStart = getRightStart(start);
+        final int rightEnd = getRightEnd(rightStart, end, charCount);
+        AtkUtil.invokeInSwing(() -> {
+            String textRange = accessibleEditableText.getTextRange(rightStart, rightEnd);
+            if (textRange != null) {
+                StringSelection stringSelection = new StringSelection(textRange);
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, stringSelection);
+            }
+        });
+    }
+
+    /**
+     * Cuts text from the specified start and end positions.
+     * Called from native code via JNI.
+     *
+     * @param start the start position
+     * @param end the end position
+     */
+    private void cut_text(int start, int end) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
+            return;
+        }
+
+        AtkUtil.invokeInSwing(() -> {
+            accessibleEditableText.cut(start, end);
+        });
+    }
+
+    /**
+     * Deletes text from the specified start and end positions.
+     * Called from native code via JNI.
+     *
+     * @param start the start position
+     * @param end the end position
+     */
+    private void delete_text(int start, int end) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
+            return;
+        }
+
+        AtkUtil.invokeInSwing(() -> {
+            accessibleEditableText.delete(start, end);
+        });
+    }
+
+    /**
+     * Pastes text from the system clipboard at the specified position.
+     * Called from native code via JNI.
+     *
+     * @param position the position at which to paste the text
+     */
+    private void paste_text(int position) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
+            return;
+        }
+
+        AtkUtil.invokeInSwing(() -> {
+            accessibleEditableText.paste(position);
+        });
+    }
+
+    /**
+     * Sets attributes for the text between two indices.
+     * Called from native code via JNI.
+     *
+     * @param attributeSet the AttributeSet for the text
+     * @param start the start index of the text
+     * @param end the end index of the text
+     * @return true if attributes were successfully set, false otherwise
+     */
+    private boolean set_run_attributes(AttributeSet attributeSet, int start, int end) {
+        AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
+        if (accessibleEditableText == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            acc_edt_text.setAttributes(start, end, as);
+            accessibleEditableText.setAttributes(start, end, attributeSet);
             return true;
         }, false);
     }
-
 }

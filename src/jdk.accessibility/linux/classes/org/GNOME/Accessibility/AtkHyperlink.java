@@ -20,51 +20,70 @@
 package org.GNOME.Accessibility;
 
 import javax.accessibility.*;
+import java.awt.EventQueue;
 import java.lang.ref.WeakReference;
 
+/**
+ * The ATK Hyperlink implementation for Java accessibility.
+ *
+ * This class provides a bridge between Java's AccessibleHyperlink interface
+ * and the ATK (Accessibility Toolkit) hyperlink interface.
+ */
 public class AtkHyperlink {
 
-    private WeakReference<AccessibleHyperlink> _acc_hyperlink;
+    private WeakReference<AccessibleHyperlink> accessibleHyperlinkWeakRef;
 
-    private AtkHyperlink(AccessibleHyperlink hl) {
-        super();
-        _acc_hyperlink = new WeakReference<AccessibleHyperlink>(hl);
+    private AtkHyperlink(AccessibleHyperlink accessibleHyperlink) {
+        assert EventQueue.isDispatchThread();
+        accessibleHyperlinkWeakRef = new WeakReference<AccessibleHyperlink>(accessibleHyperlink);
     }
 
-    public static AtkHyperlink createAtkHyperlink(AccessibleHyperlink hl) {
+    public static AtkHyperlink createAtkHyperlink(AccessibleHyperlink accessibleHyperlink) {
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return new AtkHyperlink(hl);
+            return new AtkHyperlink(accessibleHyperlink);
         }, null);
     }
 
-    // JNI upcalls section
+    /* JNI upcalls section */
 
-    private static AtkHyperlink create_atk_hyperlink(AccessibleHyperlink hl) {
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            return new AtkHyperlink(hl);
-        }, null);
-    }
-
-    private String get_uri(int i) {
-        AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
-        if (acc_hyperlink == null)
-            return "";
-
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            Object o = acc_hyperlink.getAccessibleActionObject(i);
-            if (o != null)
-                return o.toString();
-            return "";
-        }, "");
-    }
-
-    private AccessibleContext get_object(int i) {
-        AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
-        if (acc_hyperlink == null)
+    /**
+     * Gets the URI associated with the anchor specified by the index.
+     * Called from native code via JNI.
+     *
+     * @param index the zero-based index specifying the desired anchor
+     * @return a string specifying the URI, or null if not available
+     */
+    private String get_uri(int index) {
+        AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
+        if (accessibleHyperlink == null || index < 0) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Object anchor = acc_hyperlink.getAccessibleActionAnchor(i);
+            Object accessibleActionObject = accessibleHyperlink.getAccessibleActionObject(index);
+            if (accessibleActionObject != null) {
+                return accessibleActionObject.toString();
+            }
+            return null;
+        }, null);
+    }
+
+    /**
+     * Returns the accessible object associated with this hyperlink's nth anchor.
+     * Called from native code via JNI.
+     *
+     * @param index the zero-based index specifying the desired anchor
+     * @return the AccessibleContext associated with this hyperlink's index-th anchor,
+     *         or null if not available
+     */
+    private AccessibleContext get_object(int index) {
+        AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
+        if (accessibleHyperlink == null || index < 0) {
+            return null;
+        }
+
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            Object anchor = accessibleHyperlink.getAccessibleActionAnchor(index);
             if (anchor instanceof Accessible accessible) {
                 AccessibleContext accessibleContext = accessible.getAccessibleContext();
                 AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
@@ -74,43 +93,77 @@ public class AtkHyperlink {
         }, null);
     }
 
+    /**
+     * Gets the index with the hypertext document at which this link ends.
+     * Called from native code via JNI.
+     *
+     * @return the index with the hypertext document at which this link ends,
+     *         or 0 if an error happened.
+     */
     private int get_end_index() {
-        AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
-        if (acc_hyperlink == null)
+        AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
+        if (accessibleHyperlink == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_hyperlink.getEndIndex();
+            return accessibleHyperlink.getEndIndex();
         }, 0);
     }
 
+    /**
+     * Gets the index with the hypertext document at which this link begins.
+     * Called from native code via JNI.
+     *
+     * @return the index with the hypertext document at which this link begins,
+     *         or 0 if an error happened
+     */
     private int get_start_index() {
-        AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
-        if (acc_hyperlink == null)
+        AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
+        if (accessibleHyperlink == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_hyperlink.getStartIndex();
+            return accessibleHyperlink.getStartIndex();
         }, 0);
     }
 
+    /**
+     * Determines whether this link is still valid.
+     * Called from native code via JNI.
+     *
+     * Since the document that a link is associated with may have changed,
+     * this method returns true if the link is still valid (with respect to
+     * the document it references) and false otherwise.
+     *
+     * @return true if the link is still valid, false otherwise
+     */
     private boolean is_valid() {
-        AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
-        if (acc_hyperlink == null)
+        AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
+        if (accessibleHyperlink == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_hyperlink.isValid();
+            return accessibleHyperlink.isValid();
         }, false);
     }
 
+    /**
+     * Gets the number of anchors associated with this hyperlink.
+     * Called from native code via JNI (jaw_hyperlink_get_n_anchors in jawhyperlink.c).
+     *
+     * @return the number of anchors associated with this hyperlink
+     */
     private int get_n_anchors() {
-        AccessibleHyperlink acc_hyperlink = _acc_hyperlink.get();
-        if (acc_hyperlink == null)
+        AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
+        if (accessibleHyperlink == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_hyperlink.getAccessibleActionCount();
+            return accessibleHyperlink.getAccessibleActionCount();
         }, 0);
     }
 }

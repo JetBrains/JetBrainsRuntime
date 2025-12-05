@@ -23,64 +23,91 @@ import javax.accessibility.*;
 import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
 
+/**
+ * The ATK TableCell interface implementation for Java accessibility.
+ *
+ * This class provides a bridge between Java's AccessibleTable interface
+ * and the ATK (Accessibility Toolkit) table cell interface, representing
+ * individual cells within an accessible table.
+ */
 public class AtkTableCell {
-
-    private WeakReference<AccessibleContext> _ac;
-    private WeakReference<AccessibleTable> _acc_pt;
-    private int row, rowSpan, column, columnSpan;
+    private WeakReference<AccessibleTable> accessibleTableWeakRef;
+    private int row        = -1; // the row index of this table cell, used by native code
+    private int rowSpan    = 0; // the number of rows occupied by this table cell, used by native code
+    private int column     = -1; // the column index of this table cell, used by native code
+    private int columnSpan = 0; // the number of columns occupied by this table cell, used by native code
 
     private AtkTableCell(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
-        _ac = new WeakReference<AccessibleContext>(ac);
-        _acc_pt = null;
-        row = -1;
-        rowSpan = 0; // number of rows occupied by this table cell
-        column = -1;
-        columnSpan = 0; // number of columns occupied by this table cell
-        Accessible parent = ac.getAccessibleParent();
-        if (parent == null) {
-            return;
+        Accessible accessibleParent = ac.getAccessibleParent();
+        if (accessibleParent == null) {
+            throw new IllegalArgumentException("AccessibleContext must have accessibleParent");
         }
-        AccessibleContext pc = parent.getAccessibleContext();
-        if (pc == null) {
-            return;
+
+        AccessibleContext parentAccessibleContext = accessibleParent.getAccessibleContext();
+        if (parentAccessibleContext == null) {
+            throw new IllegalArgumentException("AccessibleContext must have accessibleParent with AccessibleContext");
         }
-        AccessibleTable pt = pc.getAccessibleTable();
-        if (pt == null) {
-            return;
+
+        AccessibleTable accessibleTable = parentAccessibleContext.getAccessibleTable();
+        if (accessibleTable == null) {
+            throw new IllegalArgumentException("AccessibleContext must have accessibleParent with AccessibleTable");
         }
-        _acc_pt = new WeakReference<AccessibleTable>(pt);
-        int index = ac.getAccessibleIndexInParent();
-        if (!(pt instanceof AccessibleExtendedTable)) {
-            return;
+        accessibleTableWeakRef = new WeakReference<AccessibleTable>(accessibleTable);
+
+        AccessibleExtendedTable accessibleExtendedTable = (AccessibleExtendedTable) accessibleTable;
+        if (accessibleExtendedTable != null) {
+            int index = ac.getAccessibleIndexInParent();
+            row = accessibleExtendedTable.getAccessibleRow(index);
+            column = accessibleExtendedTable.getAccessibleColumn(index);
         }
-        AccessibleExtendedTable aet = (AccessibleExtendedTable) pt;
-        row = aet.getAccessibleRow(index);
-        column = aet.getAccessibleColumn(index);
-        rowSpan = pt.getAccessibleRowExtentAt(row, column);
-        columnSpan = pt.getAccessibleColumnExtentAt(row, column);
+
+        rowSpan = accessibleTable.getAccessibleRowExtentAt(row, column);
+        columnSpan = accessibleTable.getAccessibleColumnExtentAt(row, column);
     }
 
-    // JNI upcalls section
+    /* JNI upcalls section */
 
+    /**
+     * Factory method to create an AtkTableCell instance from an AccessibleContext.
+     * Called from native code via JNI.
+     *
+     * @param ac the AccessibleContext representing a table cell
+     * @return a new AtkTableCell instance, or null if creation fails
+     */
     private static AtkTableCell create_atk_table_cell(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkTableCell(ac);
         }, null);
     }
 
+    /**
+     * Gets the table containing this cell.
+     * Called from native code via JNI.
+     *
+     * @return the AccessibleTable containing this cell, or null if unavailable
+     */
     private AccessibleTable get_table() {
-        if (_acc_pt == null)
+        if (accessibleTableWeakRef == null) {
             return null;
-        return _acc_pt.get();
+        }
+        return accessibleTableWeakRef.get();
     }
 
+    /**
+     * Returns the column headers as an array of AccessibleContext objects.
+     * Called from native code via JNI.
+     *
+     * @return an array of AccessibleContext objects representing the column headers,
+     *         or null if column headers are not available
+     */
     private AccessibleContext[] get_accessible_column_header() {
-        if (_acc_pt == null)
+        if (accessibleTableWeakRef == null) {
             return null;
+        }
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable accessibleTable = _acc_pt.get();
+            AccessibleTable accessibleTable = accessibleTableWeakRef.get();
             if (accessibleTable == null) {
                 return null;
             }
@@ -99,11 +126,19 @@ public class AtkTableCell {
         }, null);
     }
 
+    /**
+     * Returns the row headers as an array of AccessibleContext objects.
+     * Called from native code via JNI.
+     *
+     * @return an array of AccessibleContext objects representing the row headers,
+     *         or null if row headers are not available
+     */
     private AccessibleContext[] get_accessible_row_header() {
-        if (_acc_pt == null)
+        if (accessibleTableWeakRef == null) {
             return null;
+        }
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable accessibleTable = _acc_pt.get();
+            AccessibleTable accessibleTable = accessibleTableWeakRef.get();
             if (accessibleTable == null) {
                 return null;
             }
@@ -121,5 +156,4 @@ public class AtkTableCell {
             return null;
         }, null);
     }
-
 }

@@ -85,7 +85,7 @@ typedef struct _ActionData {
 void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -106,7 +106,7 @@ void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
 gpointer jaw_action_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -121,7 +121,8 @@ gpointer jaw_action_data_init(jobject ac) {
 
     jclass classAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAction) {
+    if (classAction == NULL) {
+        g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -129,13 +130,15 @@ gpointer jaw_action_data_init(jobject ac) {
         jniEnv, classAction, "create_atk_action",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkAction;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find create_atk_action method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jatk_action =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classAction, jmid, ac);
-    if (!jatk_action) {
+    if (jatk_action == NULL) {
+        g_warning("%s: Failed to create jatk_action by calling create_atk_action method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -151,19 +154,20 @@ gpointer jaw_action_data_init(jobject ac) {
 void jaw_action_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     ActionData *data = (ActionData *)p;
-    if (!data) {
+    if (data == NULL) {
+        g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
         if (data->jstrLocalizedName != NULL) {
@@ -213,12 +217,11 @@ void jaw_action_data_finalize(gpointer p) {
  * Perform the specified action on the object.
  *
  * Returns: %TRUE if success, %FALSE otherwise
- *
  **/
 static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
@@ -238,14 +241,16 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     //  so that the lookups wouldn't happen each time.
     jclass classAtkAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
+    if (classAtkAction == NULL) {
+        g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkAction, "do_action", "(I)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find do_action method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -273,7 +278,7 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
 static gint jaw_action_get_n_actions(AtkAction *action) {
     JAW_DEBUG_C("%p", action);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
@@ -291,14 +296,16 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
 
     jclass classAtkAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
+    if (classAtkAction == NULL) {
+        g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkAction, "get_n_actions", "()I");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_n_actions method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -325,7 +332,7 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
 static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -343,21 +350,24 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     jclass classAtkAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
+    if (classAtkAction == NULL) {
+        g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkAction, "get_description", "(I)Ljava/lang/String;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_description method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
-    if (!jstr) {
+    if (jstr == NULL) {
+        g_warning("%s: Failed to call get_description method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -373,11 +383,10 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         data->jstrActionDescription = NULL;
     }
 
-    if (jstr) {
-        data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
-        data->action_description = (gchar *)(*jniEnv)->GetStringUTFChars(
+    data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
+    data->action_description = (gchar *)(*jniEnv)->GetStringUTFChars(
             jniEnv, data->jstrActionDescription, NULL);
-    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
@@ -398,7 +407,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
                                            const gchar *description) {
     JAW_DEBUG_C("%p, %d, %s", action, i, description);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
@@ -416,14 +425,16 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
 
     jclass classAtkAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
+    if (classAtkAction == NULL) {
+        g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkAction, "set_description", "(ILjava/lang/String;)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find set_description method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -450,7 +461,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
 static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -468,21 +479,24 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
 
     jclass classAtkAction =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
+    if (classAtkAction == NULL) {
+        g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkAction, "get_localized_name", "(I)Ljava/lang/String;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_localized_name method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
-    if (!jstr) {
+    if (jstr == NULL) {
+        g_warning("%s: Failed to call get_localized_name method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;

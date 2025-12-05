@@ -63,7 +63,7 @@ typedef struct _HypertextData {
  * @get_link_index:
  **/
 void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -76,7 +76,7 @@ void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
 gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -92,7 +92,8 @@ gpointer jaw_hypertext_data_init(jobject ac) {
 
     jclass classHypertext =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (!classHypertext) {
+    if (classHypertext == NULL) {
+        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -100,13 +101,16 @@ gpointer jaw_hypertext_data_init(jobject ac) {
         jniEnv, classHypertext, "create_atk_hypertext",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkHypertext;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find create_atk_hypertext method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
     jobject jatk_hypertext =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classHypertext, jmid, ac);
-    if (!jatk_hypertext) {
+    if (jatk_hypertext == NULL) {
+        g_warning("%s: Failed to create jatk_hypertext using create_atk_hypertext method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -122,22 +126,23 @@ gpointer jaw_hypertext_data_init(jobject ac) {
 void jaw_hypertext_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     HypertextData *data = (HypertextData *)p;
-    if (!data) {
+    if (data == NULL) {
+        g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
-        if (data->atk_hypertext) {
+        if (data->atk_hypertext != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_hypertext);
             data->atk_hypertext = NULL;
         }
@@ -161,7 +166,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
                                             gint link_index) {
     JAW_DEBUG_C("%p, %d", hypertext, link_index);
 
-    if (!hypertext) {
+    if (hypertext == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -180,7 +185,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
 
     jclass classAtkHypertext =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (!classAtkHypertext) {
+    if (classAtkHypertext == NULL) {
+        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -189,7 +195,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkHypertext, "get_link",
                                "(I)Lorg/GNOME/Accessibility/AtkHyperlink;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_link method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -197,7 +204,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
 
     jobject jhyperlink = (*jniEnv)->CallObjectMethod(jniEnv, atk_hypertext,
                                                      jmid, (jint)link_index);
-    if (!jhyperlink) {
+    if (jhyperlink == NULL) {
+        g_warning("%s: Failed to create jhyperlink using get_link method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -222,7 +230,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
 static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     JAW_DEBUG_C("%p", hypertext);
 
-    if (!hypertext) {
+    if (hypertext == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
@@ -241,14 +249,16 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
 
     jclass classAtkHypertext =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (!classAtkHypertext) {
+    if (classAtkHypertext == NULL) {
+        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkHypertext, "get_n_links", "()I");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_n_links method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -276,7 +286,7 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
                                          gint char_index) {
     JAW_DEBUG_C("%p, %d", hypertext, char_index);
 
-    if (!hypertext) {
+    if (hypertext == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return -1;
     }
@@ -295,14 +305,16 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
 
     jclass classAtkHypertext =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (!classAtkHypertext) {
+    if (classAtkHypertext == NULL) {
+        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHypertext,
                                             "get_link_index", "(I)I");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_link_index method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;

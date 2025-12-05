@@ -44,8 +44,8 @@ typedef struct _ValueData {
 void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
-    if (!iface) {
-        g_warning("%s: Failed to create a new local reference frame",
+    if (iface == NULL) {
+        g_warning("%s: Null argument iface passed to the function",
                   G_STRFUNC);
         return;
     }
@@ -67,8 +67,8 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
 gpointer jaw_value_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (ac == NULL) {
+        g_warning("%s: Null argument ac passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -81,7 +81,8 @@ gpointer jaw_value_data_init(jobject ac) {
 
     jclass classValue =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (!classValue) {
+    if (classValue == NULL) {
+        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -89,13 +90,15 @@ gpointer jaw_value_data_init(jobject ac) {
         jniEnv, classValue, "create_atk_value",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkValue;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find create_atk_value method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jatk_value =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classValue, jmid, ac);
-    if (!jatk_value) {
+    if (jatk_value == NULL) {
+        g_warning("%s: Failed to call create_atk_value method and create jatk_value", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -111,22 +114,23 @@ gpointer jaw_value_data_init(jobject ac) {
 void jaw_value_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (p == NULL) {
+        g_warning("%s: Null argument p passed to the function", G_STRFUNC);
         return;
     }
 
     ValueData *data = (ValueData *)p;
-    if (!data) {
+    if (data == NULL) {
+        g_warning("%s: data is null", G_STRFUNC);
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
-        if (data->atk_value) {
+        if (data->atk_value != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_value);
             data->atk_value = NULL;
         }
@@ -140,8 +144,11 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
                                                  GValue *value) {
     JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
 
-    if (!jniEnv || !value) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL || value == NULL) {
+        g_warning("%s: Null argument passed to the function (jniEnv=%p, value=%p)",
+                  G_STRFUNC,
+                  (void*)jniEnv,
+                  (void*)value);
         return;
     }
 
@@ -152,32 +159,38 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
     }
 
     jclass classByte = (*jniEnv)->FindClass(jniEnv, "java/lang/Byte");
-    if (!classByte) {
+    if (classByte == NULL) {
+        g_warning("%s: Failed to find java/lang/Byte class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
-    if (!classDouble) {
+    if (classDouble == NULL) {
+        g_warning("%s: Failed to find java/lang/Double class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass classFloat = (*jniEnv)->FindClass(jniEnv, "java/lang/Float");
-    if (!classFloat) {
+    if (classFloat == NULL) {
+        g_warning("%s: Failed to find java/lang/Float class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass classInteger = (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
-    if (!classInteger) {
+    if (classInteger == NULL) {
+        g_warning("%s: Failed to find java/lang/Integer class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass classLong = (*jniEnv)->FindClass(jniEnv, "java/lang/Long");
-    if (!classLong) {
+    if (classLong == NULL) {
+        g_warning("%s: Failed to find java/lang/Long class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass classShort = (*jniEnv)->FindClass(jniEnv, "java/lang/Short");
-    if (!classShort) {
+    if (classShort == NULL) {
+        g_warning("%s: Failed to find java/lang/Short class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -186,7 +199,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classByte)) {
         jmid = (*jniEnv)->GetMethodID(jniEnv, classByte, "byteValue", "()B");
-        if (!jmid) {
+        if (jmid == NULL) {
+            g_warning("%s: Failed to find byteValue method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
@@ -200,7 +214,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classDouble)) {
         jmid =
             (*jniEnv)->GetMethodID(jniEnv, classDouble, "doubleValue", "()D");
-        if (!jmid) {
+        if (jmid == NULL) {
+            g_warning("%s: Failed to find doubleValue method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
@@ -213,7 +228,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classFloat)) {
         jmid = (*jniEnv)->GetMethodID(jniEnv, classFloat, "floatValue", "()F");
-        if (!jmid) {
+        if (jmid == NULL) {
+            g_warning("%s: Failed to find floatValue method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
@@ -227,7 +243,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classInteger) ||
         (*jniEnv)->IsInstanceOf(jniEnv, jnumber, classShort)) {
         jmid = (*jniEnv)->GetMethodID(jniEnv, classInteger, "intValue", "()I");
-        if (!jmid) {
+        if (jmid == NULL) {
+            g_warning("%s: Failed to find intValue method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
@@ -240,7 +257,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classLong)) {
         jmid = (*jniEnv)->GetMethodID(jniEnv, classLong, "longValue", "()J");
-        if (!jmid) {
+        if (jmid == NULL) {
+            g_warning("%s: Failed to find longValue method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
@@ -267,8 +285,11 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
 static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
     JAW_DEBUG_C("%p, %p", obj, value);
 
-    if (!obj || !value) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (obj == NULL || value == NULL) {
+        g_warning("%s: Null argument passed to the function (obj=%p, value=%p)",
+                  G_STRFUNC,
+                  (void*)obj,
+                  (void*)value);
         return;
     }
 
@@ -286,20 +307,23 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 
     jclass classAtkValue =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (!classAtkValue) {
+    if (classAtkValue == NULL) {
+        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkValue, "get_current_value", "()Ljava/lang/Number;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_current_value method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject jnumber = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, jmid);
-    if (!jnumber) {
+    if (jnumber == NULL) {
+        g_warning("%s: Failed to get jnumber by calling get_current_value method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -329,8 +353,8 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     JAW_DEBUG_C("%p, %lf", obj, value);
 
-    if (!obj) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (obj == NULL) {
+        g_warning("%s: Null argument obj passed to the function", G_STRFUNC);
         return;
     }
 
@@ -347,14 +371,16 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
 
     jclass classAtkValue =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (!classAtkValue) {
+    if (classAtkValue == NULL) {
+        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "set_value",
                                             "(Ljava/lang/Number;)V");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find set_value method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -363,6 +389,40 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     (*jniEnv)->CallVoidMethod(jniEnv, atk_value, jmid, (jdouble)value);
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+}
+
+/**
+ * jaw_value_convert_double_to_gdouble:
+ * @jniEnv: JNI environment
+ * @jdouble: a Java Double object (jobject)
+ * @result: (out): pointer to store the converted double value
+ *
+ * Converts a Java Double object to a gdouble primitive value.
+ *
+ * Returns: TRUE if conversion was successful, FALSE if jdouble is NULL
+ **/
+static gboolean jaw_value_convert_double_to_gdouble(JNIEnv *jniEnv,
+                                                     jobject jdouble,
+                                                     gdouble *result) {
+    if (jdouble == NULL) {
+        return FALSE;
+    }
+
+    jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
+    if (classDouble == NULL) {
+        g_warning("%s: Failed to find Double class", G_STRFUNC);
+        return FALSE;
+    }
+
+    jmethodID jmid =
+        (*jniEnv)->GetMethodID(jniEnv, classDouble, "doubleValue", "()D");
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find doubleValue method", G_STRFUNC);
+        return FALSE;
+    }
+
+    *result = (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jdouble, jmid);
+    return TRUE;
 }
 
 /**
@@ -380,8 +440,8 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
 static AtkRange *jaw_value_get_range(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
 
-    if (!obj) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (obj == NULL) {
+        g_warning("%s: Null argument obj passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -398,33 +458,47 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 
     jclass classAtkValue =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (!classAtkValue) {
+    if (classAtkValue == NULL) {
+        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jmethodID jmidMin = (*jniEnv)->GetMethodID(jniEnv, classAtkValue,
-                                               "get_minimum_value", "()D");
-    if (!jmidMin) {
+    jmethodID jmidMin =
+        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_minimum_value",
+                               "()Ljava/lang/Double;");
+    if (jmidMin == NULL) {
+        g_warning("%s: Failed to find get_minimum_value method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jmethodID jmidMax = (*jniEnv)->GetMethodID(jniEnv, classAtkValue,
-                                               "get_maximum_value", "()D");
-    if (!jmidMax) {
+    jmethodID jmidMax =
+        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_maximum_value",
+                               "()Ljava/lang/Double;");
+    if (jmidMax == NULL) {
+        g_warning("%s: Failed to find get_maximum_value method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    AtkRange *ret = atk_range_new(
-        (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, atk_value, jmidMin),
-        (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, atk_value, jmidMax),
-        NULL); // NULL description
+
+    jobject jmin = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, jmidMin);
+    jobject jmax = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, jmidMax);
+
+    gdouble min_value, max_value;
+    gboolean has_min = jaw_value_convert_double_to_gdouble(jniEnv, jmin, &min_value);
+    gboolean has_max = jaw_value_convert_double_to_gdouble(jniEnv, jmax, &max_value);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
+    // If either min or max is NULL, we cannot construct a valid range
+    if (!has_min || !has_max) {
+        return NULL;
+    }
+
+    AtkRange *ret = atk_range_new(min_value, max_value, NULL); // NULL description
     return ret;
 }
 
@@ -445,8 +519,8 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 static gdouble jaw_value_get_increment(AtkValue *obj) {
     JAW_DEBUG_C("%p", obj);
 
-    if (!obj) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (obj == NULL) {
+        g_warning("%s: Null argument obj passed to the function", G_STRFUNC);
         return 0;
     }
 
@@ -463,14 +537,16 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
 
     jclass classAtkValue =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (!classAtkValue) {
+    if (classAtkValue == NULL) {
+        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_increment", "()D");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_increment method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;

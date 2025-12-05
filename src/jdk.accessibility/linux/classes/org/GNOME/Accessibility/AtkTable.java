@@ -24,33 +24,60 @@ import javax.accessibility.*;
 import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
 
+/**
+ * The ATK Table interface implementation for Java accessibility.
+ *
+ * This class provides a bridge between Java's AccessibleTable interface
+ * and the ATK (Accessibility Toolkit) table interface.
+ */
 public class AtkTable {
 
-    private WeakReference<AccessibleContext> _ac;
-    private WeakReference<AccessibleTable> _acc_table;
+    private WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private WeakReference<AccessibleTable> accessibleTableWeakRef;
 
     private AtkTable(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
-        this._ac = new WeakReference<AccessibleContext>(ac);
-        this._acc_table = new WeakReference<AccessibleTable>(ac.getAccessibleTable());
+        AccessibleTable accessibleTable = ac.getAccessibleTable();
+        if (accessibleTable == null) {
+            throw new IllegalArgumentException("AccessibleContext must have AccessibleTable");
+        }
+
+        this.accessibleContextWeakRef = new WeakReference<AccessibleContext>(ac);
+        this.accessibleTableWeakRef = new WeakReference<AccessibleTable>(ac.getAccessibleTable());
     }
 
-    // JNI upcalls section
+    /* JNI upcalls section */
 
+    /**
+     * Factory method to create an AtkTable instance from an AccessibleContext.
+     * Called from native code via JNI.
+     *
+     * @param ac the AccessibleContext to wrap
+     * @return a new AtkTable instance, or null if creation fails
+     */
     private static AtkTable create_atk_table(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkTable(ac);
         }, null);
     }
 
+    /**
+     * Gets an accessible context at the specified row and column in the table.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @param column the column index
+     * @return the AccessibleContext of the cell at the specified position, or null if none
+     */
     private AccessibleContext ref_at(int row, int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible accessible = acc_table.getAccessibleAt(row, column);
+            Accessible accessible = accessibleTable.getAccessibleAt(row, column);
             if (accessible == null) {
                 return null;
             }
@@ -60,97 +87,166 @@ public class AtkTable {
         }, null);
     }
 
+    /**
+     * Gets the index of the accessible child at the specified row and column.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @param column the column index
+     * @return the child index, or -1 if no child exists at that position
+     */
     private int get_index_at(int row, int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return -1;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
+            if (accessibleTable instanceof AccessibleExtendedTable accessibleExtendedTable) {
                 return accessibleExtendedTable.getAccessibleIndex(row, column);
-            Accessible child = acc_table.getAccessibleAt(row, column);
-            if (child == null)
+            }
+            Accessible child = accessibleTable.getAccessibleAt(row, column);
+            if (child == null) {
                 return -1;
-            AccessibleContext child_ac = child.getAccessibleContext();
-            if (child_ac == null)
+            }
+            AccessibleContext childAccessibleContext = child.getAccessibleContext();
+            if (childAccessibleContext == null) {
                 return -1;
-            return child_ac.getAccessibleIndexInParent();
+            }
+            return childAccessibleContext.getAccessibleIndexInParent();
         }, -1);
     }
 
+    /**
+     * Gets the column index at the specified child index.
+     * Called from native code via JNI.
+     *
+     * @param index the child index
+     * @return the column index, or -1 if not available
+     */
     private int get_column_at_index(int index) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return -1;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             int column = -1;
-            if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
+            if (accessibleTable instanceof AccessibleExtendedTable accessibleExtendedTable) {
                 column = accessibleExtendedTable.getAccessibleColumn(index);
+            }
             return column;
         }, -1);
     }
 
+    /**
+     * Gets the row index at the specified child index.
+     * Called from native code via JNI.
+     *
+     * @param index the child index
+     * @return the row index, or -1 if not available
+     */
     private int get_row_at_index(int index) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return -1;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             int row = -1;
-            if (acc_table instanceof AccessibleExtendedTable accessibleExtendedTable)
+            if (accessibleTable instanceof AccessibleExtendedTable accessibleExtendedTable) {
                 row = accessibleExtendedTable.getAccessibleRow(index);
+            }
             return row;
         }, -1);
     }
 
+    /**
+     * Gets the number of columns in the table.
+     * Called from native code via JNI.
+     *
+     * @return the number of columns, or 0 if the table is not available
+     */
     private int get_n_columns() {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.getAccessibleColumnCount();
+            return accessibleTable.getAccessibleColumnCount();
         }, 0);
     }
 
+    /**
+     * Gets the number of rows in the table.
+     * Called from native code via JNI.
+     *
+     * @return the number of rows, or 0 if the table is not available
+     */
     private int get_n_rows() {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.getAccessibleRowCount();
+            return accessibleTable.getAccessibleRowCount();
         }, 0);
     }
 
+    /**
+     * Gets the number of columns occupied by the accessible object at the specified row and column.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @param column the column index
+     * @return the column extent (colspan), or 0 if not available
+     */
     private int get_column_extent_at(int row, int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.getAccessibleColumnExtentAt(row, column);
+            return accessibleTable.getAccessibleColumnExtentAt(row, column);
         }, 0);
     }
 
+    /**
+     * Gets the number of rows occupied by the accessible object at the specified row and column.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @param column the column index
+     * @return the row extent (rowspan), or 0 if not available
+     */
     private int get_row_extent_at(int row, int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.getAccessibleRowExtentAt(row, column);
+            return accessibleTable.getAccessibleRowExtentAt(row, column);
         }, 0);
     }
 
+    /**
+     * Gets the caption for the table.
+     * Called from native code via JNI.
+     *
+     * @return the AccessibleContext of the table caption, or null if none
+     */
     private AccessibleContext get_caption() {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible accessible = acc_table.getAccessibleCaption();
+            Accessible accessible = accessibleTable.getAccessibleCaption();
             if (accessible == null) {
                 return null;
             }
@@ -160,44 +256,65 @@ public class AtkTable {
         }, null);
     }
 
+    /**
+     * Sets the caption for the table.
+     * Called from native code via JNI.
+     *
+     * @param a the Accessible to use as the table caption
+     */
     public void set_caption(Accessible a) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return;
+        }
 
         AtkUtil.invokeInSwing(() -> {
-            acc_table.setAccessibleCaption(a);
+            accessibleTable.setAccessibleCaption(a);
         });
     }
 
+    /**
+     * Gets the description text of the specified column in the table.
+     * Called from native code via JNI.
+     *
+     * @param column an int representing a column in the table
+     * @return a String representing the column description, or null if the table doesn't implement
+     *         this interface or if no description is available for the specified column
+     */
     private String get_column_description(int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
-            return "";
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
+            return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible accessible = acc_table.getAccessibleColumnDescription(column);
+            Accessible accessible = accessibleTable.getAccessibleColumnDescription(column);
             if (accessible != null) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                if (ac != null)
+                if (ac != null) {
                     return ac.getAccessibleDescription();
+                }
             }
-            return "";
-        }, "");
+            return null;
+        }, null);
     }
 
     /**
-     * @param column      an int representing a column in table
+     * Sets the description text of the specified column in the table.
+     * Called from native code via JNI.
+     *
+     * @param column an int representing a column in table
      * @param description a String object representing the description text to set for the
      *                    specified column of the table
      */
     private void set_column_description(int column, String description) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return;
+        }
 
         AtkUtil.invokeInSwing(() -> {
-            Accessible accessible = acc_table.getAccessibleColumnDescription(column);
+            Accessible accessible = accessibleTable.getAccessibleColumnDescription(column);
             if (accessible != null) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 if (ac != null) {
@@ -207,34 +324,48 @@ public class AtkTable {
         });
     }
 
+    /**
+     * Gets the description text of the specified row in the table.
+     * Called from native code via JNI.
+     *
+     * @param row an int representing a row in the table
+     * @return a String representing the row description, or null if the table doesn't implement
+     *         this interface or if no description is available for the specified row
+     */
     private String get_row_description(int row) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
-            return "";
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
+            return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible accessible = acc_table.getAccessibleRowDescription(row);
+            Accessible accessible = accessibleTable.getAccessibleRowDescription(row);
             if (accessible != null) {
                 AccessibleContext ac = accessible.getAccessibleContext();
-                if (ac != null)
+                if (ac != null) {
                     return ac.getAccessibleDescription();
+                }
             }
-            return "";
-        }, "");
+            return null;
+        }, null);
     }
 
     /**
-     * @param row         an int representing a row in table
+     * Sets the description text of the specified row in the table.
+     * Called from native code via JNI.
+     *
+     * @param row an int representing a row in table
      * @param description a String object representing the description text to set for the
      *                    specified row of the table
      */
     private void set_row_description(int row, String description) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return;
+        }
 
         AtkUtil.invokeInSwing(() -> {
-            Accessible accessible = acc_table.getAccessibleRowDescription(row);
+            Accessible accessible = accessibleTable.getAccessibleRowDescription(row);
             if (accessible != null) {
                 AccessibleContext ac = accessible.getAccessibleContext();
                 if (ac != null) {
@@ -244,15 +375,23 @@ public class AtkTable {
         });
     }
 
+    /**
+     * Gets the column header at the specified column index.
+     * Called from native code via JNI.
+     *
+     * @param column the column index
+     * @return the AccessibleContext of the column header, or null if none
+     */
     private AccessibleContext get_column_header(int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable accessibleTable = acc_table.getAccessibleColumnHeader();
-            if (accessibleTable != null) {
-                Accessible accessible = accessibleTable.getAccessibleAt(0, column);
+            AccessibleTable accessibleColumnHeader = accessibleTable.getAccessibleColumnHeader();
+            if (accessibleColumnHeader != null) {
+                Accessible accessible = accessibleColumnHeader.getAccessibleAt(0, column);
                 if (accessible == null) {
                     return null;
                 }
@@ -264,15 +403,23 @@ public class AtkTable {
         }, null);
     }
 
+    /**
+     * Gets the row header at the specified row index.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @return the AccessibleContext of the row header, or null if none
+     */
     private AccessibleContext get_row_header(int row) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable accessibleTable = acc_table.getAccessibleRowHeader();
-            if (accessibleTable != null) {
-                Accessible accessible = accessibleTable.getAccessibleAt(row, 0);
+            AccessibleTable accessibleRowHeader = accessibleTable.getAccessibleRowHeader();
+            if (accessibleRowHeader != null) {
+                Accessible accessible = accessibleRowHeader.getAccessibleAt(row, 0);
                 if (accessible == null) {
                     return null;
                 }
@@ -284,79 +431,132 @@ public class AtkTable {
         }, null);
     }
 
+    /**
+     * Gets the summary description of the table.
+     * Called from native code via JNI.
+     *
+     * @return the AccessibleContext of the table summary, or null if none
+     */
     private AccessibleContext get_summary() {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible accessible = acc_table.getAccessibleSummary();
-            if (accessible == null) {
+            Accessible accessibleSummary = accessibleTable.getAccessibleSummary();
+            if (accessibleSummary == null) {
                 return null;
             }
-            AccessibleContext accessibleContext = accessible.getAccessibleContext();
+            AccessibleContext accessibleContext = accessibleSummary.getAccessibleContext();
             AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
             return accessibleContext;
         }, null);
     }
 
+    /**
+     * Sets the summary description of the table.
+     * Called from native code via JNI.
+     *
+     * @param a the Accessible to use as the table summary
+     */
     private void set_summary(Accessible a) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return;
+        }
 
         AtkUtil.invokeInSwing(() -> {
-            acc_table.setAccessibleSummary(a);
+            accessibleTable.setAccessibleSummary(a);
         });
     }
 
+    /**
+     * Gets the selected columns in the table.
+     * Called from native code via JNI.
+     *
+     * @return an array of column indices that are selected, or null if none are selected
+     */
     private int[] get_selected_columns() {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.getSelectedAccessibleColumns();
+            return accessibleTable.getSelectedAccessibleColumns();
         }, null);
     }
 
+    /**
+     * Gets the selected rows in the table.
+     * Called from native code via JNI.
+     *
+     * @return an array of row indices that are selected, or null if none are selected
+     */
     private int[] get_selected_rows() {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.getSelectedAccessibleRows();
+            return accessibleTable.getSelectedAccessibleRows();
         }, null);
     }
 
+    /**
+     * Determines whether the specified column is selected.
+     * Called from native code via JNI.
+     *
+     * @param column the column index
+     * @return true if the column is selected, false otherwise
+     */
     private boolean is_column_selected(int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.isAccessibleColumnSelected(column);
+            return accessibleTable.isAccessibleColumnSelected(column);
         }, false);
     }
 
+    /**
+     * Determines whether the specified row is selected.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @return true if the row is selected, false otherwise
+     */
     private boolean is_row_selected(int row) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.isAccessibleRowSelected(row);
+            return accessibleTable.isAccessibleRowSelected(row);
         }, false);
     }
 
+    /**
+     * Determines whether the accessible object at the specified row and column is selected.
+     * Called from native code via JNI.
+     *
+     * @param row the row index
+     * @param column the column index
+     * @return true if the cell at the specified position is selected, false otherwise
+     */
     private boolean is_selected(int row, int column) {
-        AccessibleTable acc_table = _acc_table.get();
-        if (acc_table == null)
+        AccessibleTable accessibleTable = accessibleTableWeakRef.get();
+        if (accessibleTable == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_table.isAccessibleSelected(row, column);
+            return accessibleTable.isAccessibleSelected(row, column);
         }, false);
     }
 }

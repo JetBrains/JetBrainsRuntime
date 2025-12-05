@@ -103,8 +103,11 @@ static void jaw_util_class_init(JawUtilClass *kclass, void *klass_data) {
 static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     JAW_DEBUG_C("%p, %p, %p", key, value, data);
 
-    if (!value || !data) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (value == NULL || data == NULL) {
+        g_warning("%s: Null argument passed. value=%p, data=%p",
+                  G_STRFUNC,
+                  (void*)value,
+                  (void*)data);
         return FALSE;
     }
 
@@ -134,8 +137,12 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
 static void insert_hf(gpointer key, gpointer value, gpointer data) {
     JAW_DEBUG_C("%p, %p, %p", key, value, data);
 
-    if (!key || !value || !data) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (key == NULL || value == NULL || data == NULL) {
+        g_warning("%s: Null argument passed. key=%p, value=%p, data=%p",
+                  G_STRFUNC,
+                  (void*)key,
+                  (void*)value,
+                  (void*)data);
         return;
     }
 
@@ -147,15 +154,15 @@ static void insert_hf(gpointer key, gpointer value, gpointer data) {
 gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
     JAW_DEBUG_C("%p", event);
 
-    if (!event) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (event == NULL) {
+        g_warning("%s: Null argument event passed to the function", G_STRFUNC);
         return FALSE;
     }
 
     gint consumed = 0;
-    if (key_listener_list) {
+    if (key_listener_list != NULL) {
         GHashTable *new_hash = g_hash_table_new(NULL, NULL);
-        if (new_hash) {
+        if (new_hash != NULL) {
             g_hash_table_foreach(key_listener_list, insert_hf, new_hash);
             consumed = g_hash_table_foreach_steal(new_hash, notify_hf, event);
             g_hash_table_destroy(new_hash);
@@ -182,14 +189,14 @@ static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
                                              gpointer data) {
     JAW_DEBUG_C("%p, %p", listener, data);
 
-    if (!listener) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (listener == NULL) {
+        g_warning("%s: Null argument listener passed to the function", G_STRFUNC);
         return 0;
     }
 
     static guint key = 0;
 
-    if (!key_listener_list) {
+    if (key_listener_list == NULL) {
         key_listener_list = g_hash_table_new(NULL, NULL);
     }
 
@@ -216,8 +223,9 @@ static void jaw_util_remove_key_event_listener(guint remove_listener) {
     JAW_DEBUG_C("%u", remove_listener);
     gpointer *value = g_hash_table_lookup(key_listener_list,
                                           GUINT_TO_POINTER(remove_listener));
-    if (value)
+    if (value) {
         g_free(value);
+    }
 
     g_hash_table_remove(key_listener_list, GUINT_TO_POINTER(remove_listener));
 }
@@ -272,8 +280,8 @@ static const gchar *jaw_util_get_toolkit_version(void) {
 guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     JAW_DEBUG_C("%p, %p", jniEnv, jObj);
 
-    if (!jniEnv) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL) {
+        g_warning("%s: Null argument jniEnv passed to the function", G_STRFUNC);
         return -1;
     }
 
@@ -285,13 +293,15 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
 
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-    if (!atkObject) {
+    if (atkObject == NULL) {
+        g_warning("%s: Failed to find AtkObject class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_tflag_from_obj method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
@@ -328,7 +338,7 @@ JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserve) {
 
 JNIEnv *jaw_util_get_jni_env(void) {
     if (cachedJVM == NULL) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_warning("%s: cachedJVM == NULL", G_STRFUNC);
         return NULL;
     }
 
@@ -374,8 +384,11 @@ void jaw_util_detach(void) {
 
 static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
                                           const gchar *roleName) {
-    if (!jniEnv || !roleName) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL || roleName == NULL) {
+        g_warning("%s: Null argument passed (jniEnv=%p, roleName_ptr=%p)",
+                      G_STRFUNC,
+                      (void*) jniEnv,
+                      (void*) roleName);
         return NULL;
     }
 
@@ -387,14 +400,16 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
-    if (!classAccessibleRole) {
+    if (classAccessibleRole == NULL) {
+        g_warning("%s: Failed to find javax/accessibility/AccessibleRole class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRole, roleName,
                                     "Ljavax/accessibility/AccessibleRole;");
-    if (!jfid) {
+    if (jfid == NULL) {
+        g_warning("%s: Failed to find field %s in AccessibleRole class", G_STRFUNC, roleName);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -406,8 +421,11 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 
 static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
                                           const gchar *roleName) {
-    if (!jniEnv || !roleName) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL || roleName == NULL) {
+        g_warning("%s: Null argument passed (jniEnv=%p, roleName_ptr=%p)",
+                      G_STRFUNC,
+                      (void*) jniEnv,
+                      (void*) roleName);
         return FALSE;
     }
 
@@ -424,25 +442,27 @@ AtkRole
 jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     JAW_DEBUG_C("%p", jAccessibleContext);
 
-    if (!jAccessibleContext) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jAccessibleContext == NULL) {
+        g_warning("%s: Null argument jAccessibleContext passed to the function, return ATK_ROLE_UNKNOWN", G_STRFUNC);
         return ATK_ROLE_UNKNOWN;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is null, return ATK_ROLE_UNKNOWN", G_STRFUNC);
         return ATK_ROLE_UNKNOWN;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("%s: Failed to create a new local reference frame",
+        g_warning("%s: Failed to create a new local reference frame, return ATK_ROLE_UNKNOWN",
                   G_STRFUNC);
         return ATK_ROLE_UNKNOWN;
     }
 
     jclass atkObject =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
-    if (!atkObject) {
+    if (atkObject == NULL) {
+        g_warning("%s: Failed to find AtkObject class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
     }
@@ -450,19 +470,22 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
         jniEnv, atkObject, "get_accessible_role",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
         "AccessibleRole;");
-    if (!jmidgar) {
+    if (jmidgar == NULL) {
+        g_warning("%s: Failed to find get_accessible_role method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
     }
     jobject ac_role = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, atkObject, jmidgar, jAccessibleContext);
-    if (!ac_role) {
+    if (ac_role == NULL) {
+        g_warning("%s: Failed to get accessible role from AccessibleContext", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
     }
     jclass classAccessibleRole =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRole");
-    if (!classAccessibleRole) {
+    if (classAccessibleRole == NULL) {
+        g_warning("%s: Failed to find javax/accessibility/AccessibleRole class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
     }
@@ -508,6 +531,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     }
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "DATE_EDITOR")) {
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_DATE_EDITOR;
     }
 
@@ -682,21 +706,24 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
             jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
-        if (!jmidgap) {
+        if (jmidgap == NULL) {
+            g_warning("%s: Failed to find get_accessible_parent method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_RADIO_BUTTON;
         }
 
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, atkObject, jmidgap, jAccessibleContext); // must be deleted
-        if (!jparent) {
+            jniEnv, atkObject, jmidgap, jAccessibleContext);
+        if (jparent == NULL) {
+            g_warning("%s: Failed to get accessible parent using get_accessible_parent", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_RADIO_BUTTON;
         }
 
         jobject parent_role = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, atkObject, jmidgar, jparent); // must be deleted
-        if (!parent_role) {
+            jniEnv, atkObject, jmidgar, jparent);
+        if (parent_role == NULL) {
+            g_warning("%s: Failed to get parent role using get_accessible_role", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_RADIO_BUTTON;
         }
@@ -799,12 +826,13 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
             jniEnv, atkObject, "get_accessible_parent",
             "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/"
             "AccessibleContext;");
-        if (!jmidgap) {
+        if (jmidgap == NULL) {
+            g_warning("%s: Failed to find get_accessible_parent method", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_UNKNOWN;
         }
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, atkObject, jmidgap, jAccessibleContext); // must be deleted
+            jniEnv, atkObject, jmidgap, jAccessibleContext);
         if (jparent == NULL) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_APPLICATION;
@@ -825,19 +853,6 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
         return ATK_ROLE_WINDOW;
     }
 
-    jmethodID jmideic = (*jniEnv)->GetStaticMethodID(
-        jniEnv, atkObject, "equals_ignore_case_locale_with_role",
-        "(Ljavax/accessibility/AccessibleRole;)Z");
-    if (!jmideic) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return ATK_ROLE_UNKNOWN;
-    }
-    if ((*jniEnv)->CallStaticBooleanMethod(jniEnv, atkObject, jmideic,
-                                           ac_role)) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return ATK_ROLE_PARAGRAPH;
-    }
-
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_ROLE_UNKNOWN; /* ROLE_EXTENDED */
@@ -845,8 +860,11 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 
 static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
                                    const gchar *strState) {
-    if (!jniEnv || !strState) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL || strState == NULL) {
+        g_warning("%s: Null argument passed. jniEnv=%p, strState=%p",
+                  G_STRFUNC,
+                  (void*) jniEnv,
+                  (void*) strState);
         return FALSE;
     }
 
@@ -858,20 +876,23 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
 
     jclass classAccessibleState =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleState");
-    if (!classAccessibleState) {
+    if (classAccessibleState == NULL) {
+        g_warning("%s: Failed to find javax/accessibility/AccessibleState class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jfieldID jfid =
         (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleState, strState,
                                     "Ljavax/accessibility/AccessibleState;");
-    if (!jfid) {
+    if (jfid == NULL) {
+        g_warning("%s: Failed to find field %s in AccessibleState class", G_STRFUNC, strState);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jobject jstate =
         (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleState, jfid);
-    if (!jstate) {
+    if (jstate == NULL) {
+        g_warning("%s: Failed to get static object field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
@@ -887,8 +908,8 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
 
 AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
                                                          jobject jobj) {
-    if (!jniEnv) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL) {
+        g_warning("%s: Null argument jniEnv passed to the function", G_STRFUNC);
         return ATK_STATE_INVALID;
     }
 
@@ -990,8 +1011,16 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
                             gint *width, gint *height) {
     JAW_DEBUG_C("%p, %p, %p, %p, %p, %p", jniEnv, jrect, x, y, width, height);
 
-    if (!jniEnv || !x || !y || !width || !height || !jrect) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jniEnv == NULL || x == NULL || y == NULL || width == NULL || height == NULL || jrect == NULL) {
+        g_warning("%s: Null argument passed "
+                  "(jniEnv=%p, x=%p, y=%p, width=%p, height=%p, jrect=%p)",
+                  G_STRFUNC,
+                  (void*)jniEnv,
+                  (void*)x,
+                  (void*)y,
+                  (void*)width,
+                  (void*)height,
+                  (void*)jrect);
         return;
     }
 
@@ -1002,29 +1031,34 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
     }
 
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
-    if (!classRectangle) {
+    if (classRectangle == NULL) {
+        g_warning("%s: Failed to find java/awt/Rectangle class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
-    if (!jfidX) {
+    if (jfidX == NULL) {
+        g_warning("%s: Failed to find field x in Rectangle class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
-    if (!jfidY) {
+    if (jfidY == NULL) {
+        g_warning("%s: Failed to find field y in Rectangle class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidWidth =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "width", "I");
-    if (!jfidWidth) {
+    if (jfidWidth == NULL) {
+        g_warning("%s: Failed to find field width in Rectangle class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidHeight =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "height", "I");
-    if (!jfidHeight) {
+    if (jfidHeight == NULL) {
+        g_warning("%s: Failed to find field height in Rectangle class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }

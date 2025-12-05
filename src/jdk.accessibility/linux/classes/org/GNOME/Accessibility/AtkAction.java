@@ -20,111 +20,160 @@
 package org.GNOME.Accessibility;
 
 import javax.accessibility.*;
-import javax.swing.*;
 import java.lang.ref.WeakReference;
-
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
 import java.awt.EventQueue;
 
+/**
+ * The ATK Action interface implementation for Java accessibility.
+ *
+ * This class provides a bridge between Java's AccessibleAction interface
+ * and the ATK (Accessibility Toolkit) action interface.
+ */
 public class AtkAction {
 
-    private WeakReference<AccessibleContext> _ac;
-    private WeakReference<AccessibleAction> _acc_action;
-    private WeakReference<AccessibleExtendedComponent> _acc_ext_component;
-    private String[] descriptions;
-    private int nactions;
+    private final WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private final WeakReference<AccessibleAction> accessibleActionWeakRef;
+
+    private final String[] actionDescriptions;
+    private final String[] actionLocalizedNames;
+    private final int actionCount; // the number of accessible actions available on the object
 
     private AtkAction(AccessibleContext ac) {
-        super();
-
         assert EventQueue.isDispatchThread();
 
-        this._ac = new WeakReference<AccessibleContext>(ac);
-        AccessibleAction acc_action = ac.getAccessibleAction();
-        this._acc_action = new WeakReference<AccessibleAction>(acc_action);
-        this.nactions = acc_action.getAccessibleActionCount();
-        this.descriptions = new String[nactions];
-        AccessibleComponent acc_component = ac.getAccessibleComponent();
-        if (acc_component instanceof AccessibleExtendedComponent accessibleExtendedComponent) {
-            this._acc_ext_component = new WeakReference<AccessibleExtendedComponent>(accessibleExtendedComponent);
+        AccessibleAction accessibleAction = ac.getAccessibleAction();
+        if (accessibleAction == null) {
+            throw new IllegalArgumentException("AccessibleContext must have AccessibleAction");
         }
+
+        this.accessibleContextWeakRef = new WeakReference<AccessibleContext>(ac);
+        this.accessibleActionWeakRef = new WeakReference<AccessibleAction>(accessibleAction);
+        this.actionCount = accessibleAction.getAccessibleActionCount();
+        this.actionDescriptions = new String[actionCount];
+        this.actionLocalizedNames = new String[actionCount];
     }
 
-    // JNI upcalls section
+    /* JNI upcalls section */
 
+    /**
+     * Factory method to create an AtkAction instance from an AccessibleContext.
+     * Called from native code via JNI.
+     *
+     * @param ac the AccessibleContext to wrap
+     * @return a new AtkAction instance, or null if creation fails
+     */
     private static AtkAction create_atk_action(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkAction(ac);
         }, null);
     }
 
-    private boolean do_action(int i) {
-        if (i < 0 || i >= nactions) {
+    /**
+     * Performs the specified action on the object.
+     * Called from native code via JNI.
+     *
+     * @param index the action index corresponding to the action to be performed
+     * @return true if the action was successfully performed, false otherwise
+     */
+    private boolean do_action(int index) {
+        if (index < 0 || index >= actionCount) {
             return false;
         }
-        AccessibleAction acc_action = _acc_action.get();
-        if (acc_action == null)
+        AccessibleAction accessibleAction = accessibleActionWeakRef.get();
+        if (accessibleAction == null) {
             return false;
+        }
 
-        AtkUtil.invokeInSwing(() -> {
-            acc_action.doAccessibleAction(i);
-        });
-        return true;
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            return accessibleAction.doAccessibleAction(index);
+        }, false);
     }
 
+    /**
+     * Gets the number of accessible actions available on the object.
+     * If there are more than one, the first one is considered the "default" action.
+     * Called from native code via JNI.
+     *
+     * @return the number of actions, or 0 if this object does not implement actions
+     */
     private int get_n_actions() {
-        return this.nactions;
+        return this.actionCount;
     }
 
-    private String get_description(int i) {
-        if (i < 0 || i >= nactions) {
+    /**
+     * Returns a description of the specified action of the object.
+     * Called from native code via JNI.
+     *
+     * @param index the action index corresponding to the action
+     * @return a description string, or null if the action does not exist
+     */
+    private String get_description(int index) {
+        if (index < 0 || index >= actionCount) {
             return null;
         }
-        AccessibleAction acc_action = _acc_action.get();
-        if (acc_action == null) {
+        AccessibleAction accessibleAction = accessibleActionWeakRef.get();
+        if (accessibleAction == null) {
             return null;
         }
-        if (descriptions[i] != null) {
-            return descriptions[i];
+        if (actionDescriptions[index] != null) {
+            return actionDescriptions[index];
         }
-        descriptions[i] = AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_action.getAccessibleActionDescription(i);
-        }, "");
-        return descriptions[i];
+        actionDescriptions[index] = AtkUtil.invokeInSwingAndWait(() -> {
+            return accessibleAction.getAccessibleActionDescription(index);
+        }, null);
+        return actionDescriptions[index];
     }
 
-    private boolean set_description(int i, String description) {
-        if (i < 0 || i >= nactions) {
+    /**
+     * Sets a description of the specified action of the object.
+     * Called from native code via JNI.
+     *
+     * @param index the action index corresponding to the action
+     * @param description the description to be assigned to this action
+     * @return true if the description was successfully set, false otherwise
+     */
+    private boolean set_description(int index, String description) {
+        if (index < 0 || index >= actionCount) {
             return false;
         }
-        descriptions[i] = description;
+        actionDescriptions[index] = description;
         return true;
     }
 
-    private String get_localized_name(int i) {
-        if (i < 0 || i >= nactions) {
+    /**
+     * Returns the localized name of the specified action of the object.
+     * Called from native code via JNI.
+     *
+     * @param index the action index corresponding to the action
+     * @return a localized name string, or null if the action does not exist
+     */
+    private String get_localized_name(int index) {
+        if (index < 0 || index >= actionCount) {
             return null;
         }
-        AccessibleContext ac = _ac.get();
-        if (ac == null)
-            return null;
-        AccessibleAction acc_action = _acc_action.get();
-        if (acc_action == null) {
+        AccessibleContext accessibleContext = accessibleContextWeakRef.get();
+        if (accessibleContext == null) {
             return null;
         }
-        if (descriptions[i] != null) {
-            return descriptions[i];
+        AccessibleAction accessibleAction = accessibleActionWeakRef.get();
+        if (accessibleAction == null) {
+            return null;
+        }
+        if (actionLocalizedNames[index] != null) {
+            return actionLocalizedNames[index];
         }
         return AtkUtil.invokeInSwingAndWait(() -> {
-            descriptions[i] = acc_action.getAccessibleActionDescription(i);
-            if (descriptions[i] != null)
-                return descriptions[i];
-            String name = ac.getAccessibleName();
-            if (name != null)
-                return name;
-            descriptions[i] = "";
-            return descriptions[i];
+            actionLocalizedNames[index] = accessibleAction.getAccessibleActionDescription(index);
+            if (actionLocalizedNames[index] != null) {
+                return actionLocalizedNames[index];
+            }
+            String name = accessibleContext.getAccessibleName();
+            if (name != null) {
+                actionLocalizedNames[index] = name;
+                return actionLocalizedNames[index];
+            }
+            actionLocalizedNames[index] = "";
+            return actionLocalizedNames[index];
         }, null);
     }
 }
