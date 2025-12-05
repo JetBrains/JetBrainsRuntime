@@ -62,6 +62,7 @@ typedef struct _ImageData {
                       org_GNOME_Accessibility_AtkInterface_INTERFACE_IMAGE,    \
                       ImageData, atk_image, jniEnv, atk_image, def_ret)
 
+
 /**
  * AtkImageIface:
  * @get_image_position:
@@ -73,7 +74,7 @@ typedef struct _ImageData {
 void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -89,7 +90,7 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
 gpointer jaw_image_data_init(jobject ac) {
     JAW_DEBUG_C("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -105,7 +106,8 @@ gpointer jaw_image_data_init(jobject ac) {
 
     jclass classImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
-    if (!classImage) {
+    if (classImage == NULL) {
+        g_warning("%s: Failed to find AtkImage class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -114,14 +116,16 @@ gpointer jaw_image_data_init(jobject ac) {
         jniEnv, classImage, "create_atk_image",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkImage;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find create_atk_image method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
     jobject jatk_image =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classImage, jmid, ac);
-    if (!jatk_image) {
+    if (jatk_image == NULL) {
+        g_warning("%s: Failed to create jatk_image using create_atk_image method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -137,19 +141,20 @@ gpointer jaw_image_data_init(jobject ac) {
 void jaw_image_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     ImageData *data = (ImageData *)p;
-    if (!data) {
+    if (data == NULL) {
+        g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
         if (data->jstrImageDescription != NULL) {
@@ -162,7 +167,7 @@ void jaw_image_data_finalize(gpointer p) {
             data->jstrImageDescription = NULL;
         }
 
-        if (data->atk_image) {
+        if (data->atk_image != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_image);
             data->atk_image = NULL;
         }
@@ -171,11 +176,25 @@ void jaw_image_data_finalize(gpointer p) {
     g_free(data);
 }
 
+/**
+ * jaw_image_get_image_position:
+ * @image: a #GObject instance that implements AtkImageIface
+ * @x: (out) (optional): address of #gint to put x coordinate position; otherwise, -1 if value cannot be obtained.
+ * @y: (out) (optional): address of #gint to put y coordinate position; otherwise, -1 if value cannot be obtained.
+ * @coord_type: specifies whether the coordinates are relative to the screen
+ * or to the components top level window
+ *
+ * Gets the position of the image in the form of a point specifying the
+ * images top-left corner.
+ *
+ * If the position can not be obtained (e.g. missing support), x and y are set
+ * to -1.
+ **/
 static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
                                          AtkCoordType coord_type) {
     JAW_DEBUG_C("%p, %p, %p, %d", image, x, y, coord_type);
 
-    if (!image || !x || !y) {
+    if (image == NULL || x == NULL || y == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -196,39 +215,49 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
 
     jclass classAtkImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
-    if (!classAtkImage) {
+    if (classAtkImage == NULL) {
+        g_warning("%s: Failed to find AtkImage class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkImage, "get_image_position", "(I)Ljava/awt/Point;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_image_position method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     jobject jpoint =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid, (jint)coord_type);
-    if (!jpoint) {
+    if (jpoint == NULL) {
+        g_warning("%s: Failed to create jpoint using get_image_position method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     jclass classPoint = (*jniEnv)->FindClass(jniEnv, "java/awt/Point");
-    if (!classPoint) {
+    if (classPoint == NULL) {
+        g_warning("%s: Failed to find Point class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classPoint, "x", "I");
-    if (!jfidX) {
+    if (jfidX == NULL) {
+        g_warning("%s: Failed to find x field", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classPoint, "y", "I");
-    if (!jfidY) {
+    if (jfidY == NULL) {
+        g_warning("%s: Failed to find y field", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -241,10 +270,18 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_image_get_image_description:
+ * @image: a #GObject instance that implements AtkImageIface
+ *
+ * Get a textual description of this image.
+ *
+ * Returns: a string representing the image description or NULL
+ **/
 static const gchar *jaw_image_get_image_description(AtkImage *image) {
     JAW_DEBUG_C("%p", image);
 
-    if (!image) {
+    if (image == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -262,20 +299,24 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 
     jclass classAtkImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
-    if (!classAtkImage) {
+    if (classAtkImage == NULL) {
+        g_warning("%s: Failed to find AtkImage class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkImage, "get_image_description", "()Ljava/lang/String;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_image_description method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
+
     jstring jstr = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
-    if (!jstr) {
+    if (jstr == NULL) {
+        g_warning("%s: Failed to create jstr using get_image_description method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -301,11 +342,25 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     return data->image_description;
 }
 
+/**
+ * jaw_image_get_image_size:
+ * @image: a #GObject instance that implements AtkImageIface
+ * @width: (out) (optional): filled with the image width, or -1 if the value cannot be obtained.
+ * @height: (out) (optional): filled with the image height, or -1 if the value cannot be obtained.
+ *
+ * Get the width and height in pixels for the specified image.
+ * The values of @width and @height are returned as -1 if the
+ * values cannot be obtained (for instance, if the object is not onscreen).
+ *
+ * If the size can not be obtained (e.g. missing support), x and y are set
+ * to -1.
+ **/
+
 static void jaw_image_get_image_size(AtkImage *image, gint *width,
                                      gint *height) {
     JAW_DEBUG_C("%p, %p, %p", image, width, height);
 
-    if (!image || !width || !height) {
+    if (image == NULL || width == NULL || height == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -326,20 +381,24 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
 
     jclass classAtkImage =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
-    if (!classAtkImage) {
+    if (classAtkImage == NULL) {
+        g_warning("%s: Failed to find AtkImage class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkImage, "get_image_size", "()Ljava/awt/Dimension;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_image_size method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
+
     jobject jdimension = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, jmid);
-    if (!jdimension) {
+    if (jdimension == NULL) {
+        g_warning("%s: Failed to create jdimension using get_image_size method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -348,19 +407,22 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
 
     jclass classDimension = (*jniEnv)->FindClass(jniEnv, "java/awt/Dimension");
-    if (!classDimension) {
+    if (classDimension == NULL) {
+        g_warning("%s: Failed to find Dimension class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidWidth =
         (*jniEnv)->GetFieldID(jniEnv, classDimension, "width", "I");
-    if (!jfidWidth) {
+    if (jfidWidth == NULL) {
+        g_warning("%s: Failed to find width field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidHeight =
         (*jniEnv)->GetFieldID(jniEnv, classDimension, "height", "I");
-    if (!jfidHeight) {
+    if (jfidHeight == NULL) {
+        g_warning("%s: Failed to find height field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }

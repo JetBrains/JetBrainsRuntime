@@ -187,6 +187,7 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
 
     jaw_impl = (JawImpl *)g_object_new(JAW_TYPE_IMPL(tflag), NULL);
     if (jaw_impl == NULL) {
+        g_warning("%s: Failed to create new JawImpl object", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         return NULL;
     }
@@ -224,14 +225,16 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     // Check if there is JawImpl associated with the accessible context
     jclass classAtkWrapper = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkWrapperDisposer");
-    if (!classAtkWrapper) {
+    if (classAtkWrapper == NULL) {
+        g_warning("%s: Failed to find AtkWrapperDisposer class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jmethodID jmid_get_native_resources = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAtkWrapper, "get_resource",
         "(Ljavax/accessibility/AccessibleContext;)J");
-    if (!jmid_get_native_resources) {
+    if (jmid_get_native_resources == NULL) {
+        g_warning("%s: Failed to find get_resource method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -499,19 +502,22 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
 
     jclass classAtkWrapper =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
-    if (!classAtkWrapper) {
+    if (classAtkWrapper == NULL) {
+        g_warning("%s: Failed to find AtkWrapper class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, classAtkWrapper, "register_property_change_listener",
         "(Ljavax/accessibility/AccessibleContext;)V");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find register_property_change_listener method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     };
     jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jaw_obj->acc_context);
-    if (!ac) {
+    if (ac == NULL) {
+        g_warning("%s: Failed to create global reference to acc_context", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -548,14 +554,16 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
 
     jclass classAccessibleRelation =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRelation");
-    if (!classAccessibleRelation) {
+    if (classAccessibleRelation == NULL) {
+        g_warning("%s: Failed to find AccessibleRelation class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
 
     jfieldID jfid = (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRelation,
                                                 strKey, "Ljava/lang/String;");
-    if (!jfid) {
+    if (jfid == NULL) {
+        g_warning("%s: Failed to find static field %s", G_STRFUNC, strKey);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }

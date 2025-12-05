@@ -25,15 +25,12 @@ import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
 
 public class AtkValue {
-
-    private WeakReference<AccessibleValue> _acc_value;
+    private WeakReference<AccessibleValue> accessibleValueWeakRef;
 
     private AtkValue(AccessibleContext ac) {
-        super();
-
         assert EventQueue.isDispatchThread();
 
-        this._acc_value = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
+        this.accessibleValueWeakRef = new WeakReference<AccessibleValue>(ac.getAccessibleValue());
     }
 
     // JNI upcalls section
@@ -44,43 +41,73 @@ public class AtkValue {
         }, null);
     }
 
+    /**
+     * Gets the current value of this object.
+     *
+     * @return a Number representing the current accessible value, or null if the value
+     *         is unavailable or the object doesn't implement this interface
+     */
     private Number get_current_value() {
-        AccessibleValue acc_value = _acc_value.get();
-        if (acc_value == null)
-            return 0.0;
+        AccessibleValue accessibleValue = accessibleValueWeakRef.get();
+        if (accessibleValue == null) {
+            return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_value.getCurrentAccessibleValue();
-        }, 0.0);
+            return accessibleValue.getCurrentAccessibleValue();
+        }, null);
     }
 
-    private double get_maximum_value() {
-        AccessibleValue acc_value = _acc_value.get();
-        if (acc_value == null)
-            return 0.0;
+    /**
+     * Gets the maximum value of this object.
+     *
+     * @return a Double representing the maximum accessible value, or null if the value
+     *         is unavailable or the object doesn't implement this interface
+     */
+    private Double get_maximum_value() {
+        AccessibleValue accessibleValue = accessibleValueWeakRef.get();
+        if (accessibleValue == null) {
+            return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_value.getMaximumAccessibleValue().doubleValue();
-        }, 0.0);
+            Number max = accessibleValue.getMaximumAccessibleValue();
+            if (max == null) {
+                return null;
+            }
+            return Double(max.doubleValue());
+        }, null);
     }
 
-    private double get_minimum_value() {
-        AccessibleValue acc_value = _acc_value.get();
-        if (acc_value == null)
-            return 0.0;
+    /**
+     * Gets the minimum value of this object.
+     *
+     * @return a Double representing the minimum accessible value, or null if the value
+     *         is unavailable or the object doesn't implement this interface
+     */
+    private Double get_minimum_value() {
+        AccessibleValue accessibleValue = accessibleValueWeakRef.get();
+        if (accessibleValue == null) {
+            return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_value.getMinimumAccessibleValue().doubleValue();
-        }, 0.0);
+            Number min = accessibleValue.getMinimumAccessibleValue();
+            if (min == null) {
+                return null;
+            }
+            return Double(min.doubleValue());
+        }, null);
     }
 
     private void set_value(Number n) {
-        AccessibleValue acc_value = _acc_value.get();
-        if (acc_value == null)
+        AccessibleValue accessibleValue = accessibleValueWeakRef.get();
+        if (accessibleValue == null) {
             return;
+        }
 
         AtkUtil.invokeInSwing(() -> {
-            acc_value.setCurrentAccessibleValue(n);
+            accessibleValue.setCurrentAccessibleValue(n);
         });
     }
 

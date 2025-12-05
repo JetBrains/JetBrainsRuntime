@@ -93,7 +93,7 @@ typedef struct _ComponentData {
 void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p,%p", iface, data);
 
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
         return;
     }
@@ -121,7 +121,7 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
 gpointer jaw_component_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
         return NULL;
     }
@@ -137,7 +137,8 @@ gpointer jaw_component_data_init(jobject ac) {
 
     jclass classComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classComponent) {
+    if (classComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -145,13 +146,15 @@ gpointer jaw_component_data_init(jobject ac) {
         jniEnv, classComponent, "create_atk_component",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
         "AtkComponent;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find create_atk_component method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jatk_component =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classComponent, jmid, ac);
-    if (!jatk_component) {
+    if (jatk_component == NULL) {
+        g_warning("%s: Failed to create jatk_component using create_atk_component method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -167,22 +170,23 @@ gpointer jaw_component_data_init(jobject ac) {
 void jaw_component_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
         return;
     }
 
     ComponentData *data = (ComponentData *)p;
-    if (!data) {
+    if (data == NULL) {
+        g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
-        if (data->atk_component) {
+        if (data->atk_component != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_component);
             data->atk_component = NULL;
         }
@@ -212,7 +216,7 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
                                        AtkCoordType coord_type) {
     JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
 
-    if (!component) {
+    if (component == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
         return FALSE;
     }
@@ -230,14 +234,16 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classAtkComponent) {
+    if (classAtkComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "contains", "(III)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find contains method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -270,7 +276,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
                                       AtkCoordType coord_type) {
     JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
 
-    if (!component) {
+    if (component == NULL) {
         g_warning("%s: Null argument passed to function ", G_STRFUNC);
         return NULL;
     }
@@ -289,7 +295,8 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classAtkComponent) {
+    if (classAtkComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -297,14 +304,16 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkComponent, "get_accessible_at_point",
         "(III)Ljavax/accessibility/AccessibleContext;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_accessible_at_point method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, jmid, (jint)x, (jint)y, (jint)coord_type);
-    if (!child_ac) {
+    if (child_ac == NULL) {
+        g_warning("%s: Failed to call get_accessible_at_point method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -316,7 +325,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     // "The caller of the method takes ownership of the returned data, and is
     // responsible for freeing it." (transfer full annotation), so
     // we have to ref the `jaw_impl`
-    if (jaw_impl) {
+    if (jaw_impl != NULL) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
@@ -348,7 +357,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     JAW_DEBUG_C("%p, %p, %p, %p, %p, %d", component, x, y, width, height,
                 coord_type);
 
-    if (!component || !x || !y || !width || !height) {
+    if (component == NULL || x == NULL || y == NULL || width == NULL || height == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
         return;
     }
@@ -372,21 +381,24 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classAtkComponent) {
+    if (classAtkComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(
         jniEnv, classAtkComponent, "get_extents", "(I)Ljava/awt/Rectangle;");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject jrectangle = (*jniEnv)->CallObjectMethod(jniEnv, atk_component,
                                                      jmid, (jint)coord_type);
-    if (!jrectangle) {
+    if (jrectangle == NULL) {
+        g_warning("%s: Failed to create jrectangle using get_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         JAW_DEBUG_I("jrectangle == NULL");
@@ -396,29 +408,34 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
 
     jclass classRectangle = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
-    if (!classRectangle) {
+    if (classRectangle == NULL) {
+        g_warning("%s: Failed to find java/awt/Rectangle class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidX = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "x", "I");
-    if (!jfidX) {
+    if (jfidX == NULL) {
+        g_warning("%s: Failed to find field x in Rectangle", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidY = (*jniEnv)->GetFieldID(jniEnv, classRectangle, "y", "I");
-    if (!jfidY) {
+    if (jfidY == NULL) {
+        g_warning("%s: Failed to find field y in Rectangle", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jfieldID jfidW =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "width", "I");
-    if (!jfidW) {
+    if (jfidW == NULL) {
+        g_warning("%s: Failed to find field width in Rectangle", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
-    };
+    }
     jfieldID jfidH =
         (*jniEnv)->GetFieldID(jniEnv, classRectangle, "height", "I");
-    if (!jfidH) {
+    if (jfidH == NULL) {
+        g_warning("%s: Failed to find field height in Rectangle", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -451,7 +468,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
     JAW_DEBUG_C("%p, %d, %d, %d, %d, %d", component, x, y, width, height,
                 coord_type);
 
-    if (!component) {
+    if (component == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
         return FALSE;
     }
@@ -470,14 +487,16 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classAtkComponent) {
+    if (classAtkComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkComponent,
                                             "set_extents", "(IIIII)Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find set_extents method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -503,7 +522,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
 static gboolean jaw_component_grab_focus(AtkComponent *component) {
     JAW_DEBUG_C("%p", component);
 
-    if (!component) {
+    if (component == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
@@ -522,14 +541,16 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classAtkComponent) {
+    if (classAtkComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "grab_focus", "()Z");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find grab_focus method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -555,7 +576,7 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
 static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     JAW_DEBUG_C("%p", component);
 
-    if (!component) {
+    if (component == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
@@ -574,14 +595,16 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
 
     jclass classAtkComponent =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (!classAtkComponent) {
+    if (classAtkComponent == NULL) {
+        g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     jmethodID jmid =
         (*jniEnv)->GetMethodID(jniEnv, classAtkComponent, "get_layer", "()I");
-    if (!jmid) {
+    if (jmid == NULL) {
+        g_warning("%s: Failed to find get_layer method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;

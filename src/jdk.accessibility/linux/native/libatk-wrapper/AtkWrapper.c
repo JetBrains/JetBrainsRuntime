@@ -92,14 +92,14 @@ static gpointer jni_loop_callback(void *data) {
 JNIEXPORT jboolean JNICALL
 Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
     const gchar *debug_env = g_getenv("JAW_DEBUG");
-    if (debug_env) {
+    if (debug_env != NULL) {
         int val_debug = atoi(debug_env);
         if (val_debug > 4)
             jaw_debug = 4;
         else
             jaw_debug = val_debug;
     }
-    if (jaw_debug) {
+    if (jaw_debug != NULL) {
         jaw_log_file = fopen(JAW_LOG_FILE, "w+");
         if (!jaw_log_file) {
             perror("Error opening log file " JAW_LOG_FILE
@@ -271,7 +271,7 @@ static void free_callback_para(CallbackPara *para) {
         JAW_DEBUG_I("jniEnv == NULL");
     }
 
-    if (jniEnv) {
+    if (jniEnv != NULL) {
         if (para->global_ac != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_ac);
         } else {
@@ -279,18 +279,18 @@ static void free_callback_para(CallbackPara *para) {
         }
     }
 
-    if (para->jaw_impl) {
+    if (para->jaw_impl != NULL) {
         g_object_unref(G_OBJECT(para->jaw_impl));
     } else {
         JAW_DEBUG_I("para->jaw_impl == NULL");
     }
 
-    if (para->child_impl) {
+    if (para->child_impl != NULL) {
         g_object_unref(G_OBJECT(para->child_impl));
     }
 
-    if (jniEnv) {
-        if (para->args) {
+    if (jniEnv != NULL) {
+        if (para->args != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, para->args);
         } else {
             JAW_DEBUG_I("para->args == NULL");
@@ -313,7 +313,7 @@ static void free_callback_para_event(CallbackParaEvent *para) {
         JAW_DEBUG_I("jniEnv == NULL");
     }
 
-    if (jniEnv) {
+    if (jniEnv != NULL) {
         if (para->global_event != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_event);
         } else {
@@ -440,7 +440,7 @@ static gboolean window_open_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    if (is_toplevel) {
+    if (is_toplevel != NULL) {
         gint n = jaw_toplevel_add_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
         if (n != -1) {
             g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
@@ -498,7 +498,7 @@ static gboolean window_close_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    if (is_toplevel) {
+    if (is_toplevel != NULL) {
         gint n =
             jaw_toplevel_remove_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
         if (n != -1) {
@@ -1485,10 +1485,10 @@ static gboolean key_dispatch_handler(gpointer p) {
     // state: shift
     jfieldID jfidShift =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isShiftKeyDown", "Z");
-    if (jfidShift) {
+    if (jfidShift != NULL) {
         jboolean jShiftKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidShift);
-        if (jShiftKeyDown) {
+        if (jShiftKeyDown != NULL) {
             event->state |= GDK_SHIFT_MASK;
         }
     }
@@ -1496,10 +1496,10 @@ static gboolean key_dispatch_handler(gpointer p) {
     // state: ctrl
     jfieldID jfidCtrl =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isCtrlKeyDown", "Z");
-    if (jfidCtrl) {
+    if (jfidCtrl != NULL) {
         jboolean jCtrlKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidCtrl);
-        if (jCtrlKeyDown) {
+        if (jCtrlKeyDown != NULL) {
             event->state |= GDK_CONTROL_MASK;
         }
     }
@@ -1507,10 +1507,10 @@ static gboolean key_dispatch_handler(gpointer p) {
     // state: alt
     jfieldID jfidAlt =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isAltKeyDown", "Z");
-    if (jfidAlt) {
+    if (jfidAlt != NULL) {
         jboolean jAltKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAlt);
-        if (jAltKeyDown) {
+        if (jAltKeyDown != NULL) {
             event->state |= GDK_MOD1_MASK;
         }
     }
@@ -1518,10 +1518,10 @@ static gboolean key_dispatch_handler(gpointer p) {
     // state: meta
     jfieldID jfidMeta =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isMetaKeyDown", "Z");
-    if (jfidMeta) {
+    if (jfidMeta != NULL) {
         jboolean jMetaKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidMeta);
-        if (jMetaKeyDown) {
+        if (jMetaKeyDown != NULL) {
             event->state |= GDK_META_MASK;
         }
     }
@@ -1529,10 +1529,10 @@ static gboolean key_dispatch_handler(gpointer p) {
     // state: alt gr
     jfieldID jfidAltGr =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "isAltGrKeyDown", "Z");
-    if (jfidAltGr) {
+    if (jfidAltGr != NULL) {
         jboolean jAltGrKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAltGr);
-        if (jAltGrKeyDown) {
+        if (jAltGrKeyDown != NULL) {
             event->state |= GDK_MOD5_MASK;
         }
     }
@@ -1540,7 +1540,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     // keyval
     jfieldID jfidKeyval =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keyval", "I");
-    if (jfidKeyval) {
+    if (jfidKeyval != NULL) {
         event->keyval =
             (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeyval);
     }
@@ -1548,10 +1548,10 @@ static gboolean key_dispatch_handler(gpointer p) {
     // string
     jfieldID jfidString = (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent,
                                                 "string", "Ljava/lang/String;");
-    if (jfidString) {
+    if (jfidString != NULL) {
         jstring jstr = (jstring)(*jniEnv)->GetObjectField(jniEnv, jAtkKeyEvent,
                                                           jfidString);
-        if (jstr) {
+        if (jstr != NULL) {
             event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
             const gchar *tmp_string =
                 (const gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
@@ -1563,7 +1563,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     // keycode
     jfieldID jfidKeycode =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keycode", "I");
-    if (jfidKeycode) {
+    if (jfidKeycode != NULL) {
         event->keycode =
             (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeycode);
     }
@@ -1571,7 +1571,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     // timestamp
     jfieldID jfidTimestamp =
         (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "timestamp", "I");
-    if (jfidTimestamp) {
+    if (jfidTimestamp != NULL) {
         event->timestamp = (guint32)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
                                                            jfidTimestamp);
     }

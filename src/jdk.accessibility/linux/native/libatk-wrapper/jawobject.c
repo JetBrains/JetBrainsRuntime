@@ -114,8 +114,8 @@ static guint jaw_window_add_signal(const gchar *name, JawObjectClass *klass) {
 static void jaw_object_class_init(JawObjectClass *klass) {
     JAW_DEBUG_ALL("%p", klass);
 
-    if (!klass) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (klass == NULL) {
+        g_warning("%s: Null argument klass passed to the function", G_STRFUNC);
         return;
     }
 
@@ -162,8 +162,8 @@ static void jaw_object_class_init(JawObjectClass *klass) {
 static void jaw_object_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", atk_obj, data);
 
-    if (!atk_obj) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (atk_obj == NULL) {
+        g_warning("%s: Null argument atk_obj passed to the function", G_STRFUNC);
         return;
     }
 
@@ -173,8 +173,8 @@ static void jaw_object_initialize(AtkObject *atk_obj, gpointer data) {
 gpointer jaw_object_get_interface_data(JawObject *jaw_obj, guint iface) {
     JAW_DEBUG_C("%p, %u", jaw_obj, iface);
 
-    if (!jaw_obj) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (jaw_obj == NULL) {
+        g_warning("%s: Null argument jaw_obj passed to the function", G_STRFUNC);
         return NULL;
     }
 
@@ -189,8 +189,8 @@ gpointer jaw_object_get_interface_data(JawObject *jaw_obj, guint iface) {
 static void jaw_object_init(JawObject *object) {
     JAW_DEBUG_ALL("%p", object);
 
-    if (!object) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (object == NULL) {
+        g_warning("%s: Null argument object passed to the function", G_STRFUNC);
         return;
     }
 
@@ -204,8 +204,8 @@ static void jaw_object_init(JawObject *object) {
 static void jaw_object_dispose(GObject *gobject) {
     JAW_DEBUG_C("%p", gobject);
 
-    if (!gobject) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (gobject == NULL) {
+        g_warning("%s: Null argument gobject passed to the function", G_STRFUNC);
         return;
     }
 
@@ -216,8 +216,8 @@ static void jaw_object_dispose(GObject *gobject) {
 static void jaw_object_finalize(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 
-    if (!gobject) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+    if (gobject == NULL) {
+        g_warning("%s: Null argument gobject passed to the function", G_STRFUNC);
         return;
     }
 
@@ -490,7 +490,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
             jniEnv, jaw_obj->jstrName, NULL);
     }
 
-    if (atk_obj->name) {
+    if (atk_obj->name != NULL) {
         JAW_DEBUG_C("-> %s", atk_obj->name);
     }
 
@@ -530,7 +530,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
     }
 
     jstring jstr = NULL;
-    if (name) {
+    if (name != NULL) {
         jstr = (*jniEnv)->NewStringUTF(jniEnv, name);
     }
 
@@ -658,7 +658,7 @@ static void jaw_object_set_description(AtkObject *atk_obj,
     }
 
     jstring jstr = NULL;
-    if (description) {
+    if (description != NULL) {
         jstr = (*jniEnv)->NewStringUTF(jniEnv, description);
     }
 
@@ -1062,7 +1062,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if (atk_obj->relation_set) {
+    if (atk_obj->relation_set != NULL) {
         g_object_unref(G_OBJECT(atk_obj->relation_set));
     }
     atk_obj->relation_set = atk_relation_set_new();
@@ -1251,7 +1251,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     // caller takes ownership of the returned data and is responsible for
     // freeing it. `atk_object_ref_accessible_child` does not reference the
     // object. Therefore, I assume that `ref_child` should reference the object.
-    if (obj) {
+    if (obj != NULL) {
         g_object_ref(G_OBJECT(obj));
     }
 

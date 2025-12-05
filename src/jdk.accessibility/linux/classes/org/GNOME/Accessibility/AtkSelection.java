@@ -25,16 +25,14 @@ import java.awt.EventQueue;
 
 public class AtkSelection {
 
-    private WeakReference<AccessibleContext> _ac;
-    private WeakReference<AccessibleSelection> _acc_selection;
+    private WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private WeakReference<AccessibleSelection> accessibleSelectionWeakRef;
 
     private AtkSelection(AccessibleContext ac) {
-        super();
-
         assert EventQueue.isDispatchThread();
 
-        this._ac = new WeakReference<AccessibleContext>(ac);
-        this._acc_selection = new WeakReference<AccessibleSelection>(ac.getAccessibleSelection());
+        this.accessibleContextWeakRef = new WeakReference<AccessibleContext>(ac);
+        this.accessibleSelectionWeakRef = new WeakReference<AccessibleSelection>(ac.getAccessibleSelection());
     }
 
     // JNI upcalls section
@@ -46,34 +44,37 @@ public class AtkSelection {
     }
 
     private boolean add_selection(int i) {
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            acc_selection.addAccessibleSelection(i);
+            accessibleSelection.addAccessibleSelection(i);
             return is_child_selected(i);
         }, false);
     }
 
     private boolean clear_selection() {
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return false;
+        }
 
         AtkUtil.invokeInSwing(() -> {
-            acc_selection.clearAccessibleSelection();
+            accessibleSelection.clearAccessibleSelection();
         });
         return true;
     }
 
     private AccessibleContext ref_selection(int i) {
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return null;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible selection = acc_selection.getAccessibleSelection(i);
+            Accessible selection = accessibleSelection.getAccessibleSelection(i);
             if (selection == null) {
                 return null;
             }
@@ -84,17 +85,19 @@ public class AtkSelection {
     }
 
     private int get_selection_count() {
-        AccessibleContext ac = _ac.get();
-        if (ac == null)
+        AccessibleContext ac = accessibleContextWeakRef.get();
+        if (ac == null) {
             return 0;
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        }
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return 0;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             int count = 0;
             for (int i = 0; i < ac.getAccessibleChildrenCount(); i++) {
-                if (acc_selection.isAccessibleChildSelected(i))
+                if (accessibleSelection.isAccessibleChildSelected(i))
                     count++;
             }
             return count;
@@ -104,38 +107,42 @@ public class AtkSelection {
     }
 
     private boolean is_child_selected(int i) {
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            return acc_selection.isAccessibleChildSelected(i);
+            return accessibleSelection.isAccessibleChildSelected(i);
         }, false);
     }
 
     private boolean remove_selection(int i) {
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            acc_selection.removeAccessibleSelection(i);
+            accessibleSelection.removeAccessibleSelection(i);
             return !is_child_selected(i);
         }, false);
     }
 
     private boolean select_all_selection() {
-        AccessibleContext ac = _ac.get();
-        if (ac == null)
+        AccessibleContext accessibleContext = accessibleContextWeakRef.get();
+        if (accessibleContext == null) {
             return false;
-        AccessibleSelection acc_selection = _acc_selection.get();
-        if (acc_selection == null)
+        }
+        AccessibleSelection accessibleSelection = accessibleSelectionWeakRef.get();
+        if (accessibleSelection == null) {
             return false;
+        }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleStateSet stateSet = ac.getAccessibleStateSet();
+            AccessibleStateSet stateSet = accessibleContext.getAccessibleStateSet();
             if (stateSet.contains(AccessibleState.MULTISELECTABLE)) {
-                acc_selection.selectAllAccessibleSelection();
+                accessibleSelection.selectAllAccessibleSelection();
                 return true;
             }
             return false;

@@ -119,7 +119,7 @@ public class AtkObject {
                 AccessibleContext pc = parent.getAccessibleContext();
                 if (pc != null) {
                     table = pc.getAccessibleTable();
-                    // Unfortunately without the AccessibleExtendedTable interface
+                    // Without the AccessibleExtendedTable interface
                     // we can't determine the column/row of this accessible in the
                     // table
                     if (table != null && table instanceof AccessibleExtendedTable) {
@@ -142,7 +142,6 @@ public class AtkObject {
             AccessibleContext accessibleContext = parent.getAccessibleContext();
             AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
             return accessibleContext;
-
         }, null);
     }
 
@@ -212,10 +211,11 @@ public class AtkObject {
     private static AccessibleState[] get_array_accessible_state(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleStateSet stateSet = ac.getAccessibleStateSet();
-            if (stateSet == null)
+            if (stateSet == null) {
                 return null;
-            else
+            } else {
                 return stateSet.toArray();
+            }
         }, null);
     }
 
@@ -246,9 +246,9 @@ public class AtkObject {
         WrapKeyAndTarget[] d = new WrapKeyAndTarget[0];
         return AtkUtil.invokeInSwingAndWait(() -> {
             AccessibleRelationSet relationSet = ac.getAccessibleRelationSet();
-            if (relationSet == null)
+            if (relationSet == null) {
                 return d;
-            else {
+            } else {
                 AccessibleRelation[] array = relationSet.toArray();
                 WrapKeyAndTarget[] result = new WrapKeyAndTarget[array.length];
                 for (int i = 0; i < array.length; i++) {
@@ -256,10 +256,11 @@ public class AtkObject {
                     Object[] objs = array[i].getTarget();
                     AccessibleContext[] contexts = new AccessibleContext[objs.length];
                     for (int j = 0; j < objs.length; j++) {
-                        if (objs[j] instanceof Accessible accessible)
+                        if (objs[j] instanceof Accessible accessible) {
                             contexts[j] = accessible.getAccessibleContext();
-                        else
+                        } else {
                             contexts[j] = null;
+                        }
                     }
                     result[i] = new WrapKeyAndTarget(key, contexts);
                 }
@@ -285,5 +286,4 @@ public class AtkObject {
             return ac.hashCode();
         }, 0);
     }
-
 }
