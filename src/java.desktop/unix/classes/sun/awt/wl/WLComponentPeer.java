@@ -370,70 +370,70 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         synchronized (getStateLock()) {
             if (this.visible == v) return;
 
+            if (v) {
+                String title = getTitle();
+                boolean isWlPopup = targetIsWlPopup();
+                int thisWidth = javaUnitsToSurfaceSize(getWidth());
+                int thisHeight = javaUnitsToSurfaceSize(getHeight());
+                boolean isModal = targetIsModal();
+
+                int state = (target instanceof Frame frame)
+                        ? frame.getExtendedState()
+                        : Frame.NORMAL;
+                boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
+                boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
+                boolean isUnconstrained = isPopupPositionUnconstrained();
+
+                performLocked(() -> {
+                    assert wlSurface == null : "Invisible window already has a Wayland surface attached";
+                    WLMainSurface mainSurface = new WLMainSurface((WLWindowPeer) this);
+                    long wlSurfacePtr = mainSurface.getWlSurfacePtr();
+                    if (isWlPopup) {
+                        Window popup = (Window) target;
+                        Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+                        Window toplevel = getToplevelFor(popupParent);
+                        Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
+                        nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
+                                thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
+                    } else {
+                        nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
+                                isModal, isMaximized, isMinimized, title, WLToolkit.getApplicationID());
+                        int xNative = javaUnitsToSurfaceUnits(target.getX());
+                        int yNative = javaUnitsToSurfaceUnits(target.getY());
+                        WLRobotPeer.setLocationOfWLSurface(mainSurface, xNative, yNative);
+                    }
+
+                    notifyNativeWindowCreated(nativePtr);
+
+                    shadow.createSurface(mainSurface);
+
+                    // From xdg-shell.xml: "After creating a role-specific object and
+                    // setting it up, the client must perform an initial commit
+                    // without any buffer attached"
+                    shadow.commitSurface();
+                    mainSurface.commit();
+                    if (!isWlPopup && target.getParent() != null) activate();
+
+                    ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
+
+                    wlSurface = mainSurface;
+                });
+                configureWLSurface();
+                // Now wait for the sequence of configure events and the window
+                // will finally appear on screen after we post a PaintEvent
+                // from notifyConfigured()
+            } else {
+                performLocked(() -> {
+                    if (wlSurface != null) { // may get a "hide" request even though we were never shown
+                        notifyNativeWindowToBeHidden(nativePtr);
+                        nativeHideFrame(nativePtr);
+                        shadow.hide();
+                        wlSurface.dispose();
+                        wlSurface = null;
+                    }
+                });
+            }
             this.visible = v;
-        }
-        if (v) {
-            String title = getTitle();
-            boolean isWlPopup = targetIsWlPopup();
-            int thisWidth = javaUnitsToSurfaceSize(getWidth());
-            int thisHeight = javaUnitsToSurfaceSize(getHeight());
-            boolean isModal = targetIsModal();
-
-            int state = (target instanceof Frame frame)
-                    ? frame.getExtendedState()
-                    : Frame.NORMAL;
-            boolean isMaximized = (state & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
-            boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
-            boolean isUnconstrained = isPopupPositionUnconstrained();
-
-            performLocked(() -> {
-                assert wlSurface == null : "Invisible window already has a Wayland surface attached";
-                wlSurface = new WLMainSurface((WLWindowPeer) this);
-                long wlSurfacePtr = wlSurface.getWlSurfacePtr();
-                if (isWlPopup) {
-                    Window popup = (Window) target;
-                    Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-                    Window toplevel = getToplevelFor(popupParent);
-                    Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
-                    nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
-                            thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
-                } else {
-                    nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
-                            isModal, isMaximized, isMinimized, title, WLToolkit.getApplicationID());
-                    int xNative = javaUnitsToSurfaceUnits(target.getX());
-                    int yNative = javaUnitsToSurfaceUnits(target.getY());
-                    WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
-                }
-
-                notifyNativeWindowCreated(nativePtr);
-
-                shadow.createSurface();
-
-                // From xdg-shell.xml: "After creating a role-specific object and
-                // setting it up, the client must perform an initial commit
-                // without any buffer attached"
-                shadow.commitSurface();
-                wlSurface.commit();
-                if (!isWlPopup && target.getParent() != null) activate();
-
-                ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
-            });
-            configureWLSurface();
-            // Now wait for the sequence of configure events and the window
-            // will finally appear on screen after we post a PaintEvent
-            // from notifyConfigured()
-        } else {
-            performLocked(() -> {
-                if (wlSurface != null) { // may get a "hide" request even though we were never shown
-                    notifyNativeWindowToBeHidden(nativePtr);
-
-                    nativeHideFrame(nativePtr);
-
-                    shadow.hide();
-                    wlSurface.dispose();
-                    wlSurface = null;
-                }
-            });
         }
     }
 
@@ -1891,7 +1891,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         int getSize();
         void updateSurfaceSize();
         void resizeToParentWindow();
-        void createSurface();
+        void createSurface(WLMainSurface mainSurface);
         void commitSurface();
         void dispose();
         void hide();
@@ -2036,12 +2036,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             }
         }
 
-        public void createSurface() {
+        public void createSurface(WLMainSurface mainSurface) {
             assert shadowSurface == null : "The shadow surface must not be created twice";
             assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             int shadowOffset = -javaUnitsToSurfaceUnits(shadowSize);
-            shadowSurface = new WLSubSurface(wlSurface, shadowOffset, shadowOffset);
+            shadowSurface = new WLSubSurface(mainSurface, shadowOffset, shadowOffset);
         }
 
         public void commitSurface() {
@@ -2132,7 +2132,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         @Override public int getSize() { return 0; }
         @Override public void updateSurfaceSize() { }
         @Override public void resizeToParentWindow() { }
-        @Override public void createSurface() { }
+        @Override public void createSurface(WLMainSurface mainSurface) { }
         @Override public void commitSurface() { }
         @Override public void dispose() { }
         @Override public void hide() { }
