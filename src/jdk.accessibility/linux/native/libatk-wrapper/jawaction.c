@@ -50,13 +50,6 @@
  *
  */
 
-static gboolean jaw_action_do_action(AtkAction *action, gint i);
-static gint jaw_action_get_n_actions(AtkAction *action);
-static const gchar *jaw_action_get_description(AtkAction *action, gint i);
-static gboolean jaw_action_set_description(AtkAction *action, gint i,
-                                           const gchar *description);
-static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i);
-
 typedef struct _ActionData {
     jobject atk_action;
     gchar *localized_name;
@@ -72,6 +65,32 @@ typedef struct _ActionData {
                       org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION,   \
                       ActionData, atk_action, jniEnv, atk_action, def_ret)
 
+/* AtkAction method declarations */
+static gboolean jaw_action_do_action(AtkAction *action, gint i);
+static gint jaw_action_get_n_actions(AtkAction *action);
+static const gchar *jaw_action_get_description(AtkAction *action, gint i);
+static gboolean jaw_action_set_description(AtkAction *action, gint i,
+                                           const gchar *description);
+static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i);
+
+/* JNI reference resolution function declarations */
+static jclass jaw_AtkAction_resolve_class(JNIEnv *jniEnv);
+static jmethodID jaw_AtkAction_resolve_m_create_atk_action(JNIEnv *jniEnv);
+static jmethodID jaw_AtkAction_resolve_m_do_action(JNIEnv *jniEnv);
+static jmethodID jaw_AtkAction_resolve_m_get_n_actions(JNIEnv *jniEnv);
+static jmethodID jaw_AtkAction_resolve_m_get_description(JNIEnv *jniEnv);
+static jmethodID jaw_AtkAction_resolve_m_set_description(JNIEnv *jniEnv);
+static jmethodID jaw_AtkAction_resolve_m_get_localized_name(JNIEnv *jniEnv);
+
+/* Cached JNI references */
+static jclass jaw_AtkAction_class = NULL;
+static jmethodID jaw_AtkAction_m_create_atk_action = NULL;
+static jmethodID jaw_AtkAction_m_do_action = NULL;
+static jmethodID jaw_AtkAction_m_get_n_actions = NULL;
+static jmethodID jaw_AtkAction_m_get_description = NULL;
+static jmethodID jaw_AtkAction_m_set_description = NULL;
+static jmethodID jaw_AtkAction_m_get_localized_name = NULL;
+
 /**
  * AtkActionIface:
  * @do_action:
@@ -85,7 +104,7 @@ typedef struct _ActionData {
 void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
-    if (!iface) {
+    if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -106,7 +125,7 @@ void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
 gpointer jaw_action_data_init(jobject ac) {
     JAW_DEBUG_ALL("%p", ac);
 
-    if (!ac) {
+    if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -119,23 +138,19 @@ gpointer jaw_action_data_init(jobject ac) {
         return NULL;
     }
 
-    jclass classAction =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAction) {
+    jclass classAction = jaw_AtkAction_resolve_class(jniEnv);
+    if (classAction == NULL) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAction, "create_atk_action",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
-        "AtkAction;");
-    if (!jmid) {
+    jmethodID jmid = jaw_AtkAction_resolve_m_create_atk_action(jniEnv);
+    if (jmid == NULL) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jobject jatk_action =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, classAction, jmid, ac);
-    if (!jatk_action) {
+    if (jatk_action == NULL) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -151,19 +166,19 @@ gpointer jaw_action_data_init(jobject ac) {
 void jaw_action_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
-    if (!p) {
+    if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     ActionData *data = (ActionData *)p;
-    if (!data) {
+    if (data == NULL) {
         return;
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
-    if (!jniEnv) {
+    if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
         if (data->jstrLocalizedName != NULL) {
@@ -213,12 +228,11 @@ void jaw_action_data_finalize(gpointer p) {
  * Perform the specified action on the object.
  *
  * Returns: %TRUE if success, %FALSE otherwise
- *
  **/
 static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
@@ -234,18 +248,8 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
         return FALSE;
     }
 
-    // FIXME: it would be an improvement to cache the class and method references we use in the native code,
-    //  so that the lookups wouldn't happen each time.
-    jclass classAtkAction =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkAction, "do_action", "(I)Z");
-    if (!jmid) {
+    jmethodID jmid = jaw_AtkAction_resolve_m_do_action(jniEnv);
+    if (jmid == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -273,7 +277,7 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
 static gint jaw_action_get_n_actions(AtkAction *action) {
     JAW_DEBUG_C("%p", action);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return 0;
     }
@@ -289,16 +293,8 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
         return 0;
     }
 
-    jclass classAtkAction =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkAction, "get_n_actions", "()I");
-    if (!jmid) {
+    jmethodID jmid = jaw_AtkAction_resolve_m_get_n_actions(jniEnv);
+    if (jmid == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -325,7 +321,7 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
 static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -341,23 +337,15 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         return NULL;
     }
 
-    jclass classAtkAction =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkAction, "get_description", "(I)Ljava/lang/String;");
-    if (!jmid) {
+    jmethodID jmid = jaw_AtkAction_resolve_m_get_description(jniEnv);
+    if (jmid == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
-    if (!jstr) {
+    if (jstr == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -373,11 +361,10 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         data->jstrActionDescription = NULL;
     }
 
-    if (jstr) {
-        data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
-        data->action_description = (gchar *)(*jniEnv)->GetStringUTFChars(
+    data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
+    data->action_description = (gchar *)(*jniEnv)->GetStringUTFChars(
             jniEnv, data->jstrActionDescription, NULL);
-    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
@@ -398,7 +385,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
                                            const gchar *description) {
     JAW_DEBUG_C("%p, %d, %s", action, i, description);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
@@ -414,16 +401,8 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         return FALSE;
     }
 
-    jclass classAtkAction =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkAction, "set_description", "(ILjava/lang/String;)Z");
-    if (!jmid) {
+    jmethodID jmid = jaw_AtkAction_resolve_m_set_description(jniEnv);
+    if (jmid == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
@@ -450,7 +429,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
 static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     JAW_DEBUG_C("%p, %d", action, i);
 
-    if (!action) {
+    if (action == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -466,23 +445,15 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
-    jclass classAtkAction =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
-    if (!classAtkAction) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkAction, "get_localized_name", "(I)Ljava/lang/String;");
-    if (!jmid) {
+    jmethodID jmid = jaw_AtkAction_resolve_m_get_localized_name(jniEnv);
+    if (jmid == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_action, jmid, (jint)i);
-    if (!jstr) {
+    if (jstr == NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -505,4 +476,134 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->localized_name;
+}
+
+/* JNI reference resolution functions */
+static jclass jaw_AtkAction_resolve_class(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_class == NULL) {
+        jclass classLocal = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
+        if (classLocal != NULL) {
+            jaw_AtkAction_class = (*jniEnv)->NewGlobalRef(jniEnv, classLocal);
+            (*jniEnv)->DeleteLocalRef(jniEnv, classLocal);
+        } else {
+            g_warning("%s: Failed to find class org/GNOME/Accessibility/AtkAction", G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_class;
+}
+
+static jmethodID jaw_AtkAction_resolve_m_create_atk_action(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_m_create_atk_action == NULL) {
+        jclass cls = jaw_AtkAction_resolve_class(jniEnv);
+        if (cls != NULL) {
+            jaw_AtkAction_m_create_atk_action =
+                (*jniEnv)->GetStaticMethodID(
+                    jniEnv,
+                    cls,
+                    "create_atk_action",
+                    "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkAction;");
+            if (jaw_AtkAction_m_create_atk_action == NULL) {
+                g_warning("%s: Failed to resolve method create_atk_action(...)",
+                          G_STRFUNC);
+            }
+        } else {
+            g_warning("%s: Failed to resolve class, cannot resolve method create_atk_action",
+                      G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_m_create_atk_action;
+}
+
+static jmethodID jaw_AtkAction_resolve_m_do_action(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_m_do_action == NULL) {
+        jclass cls = jaw_AtkAction_resolve_class(jniEnv);
+        if (cls != NULL) {
+            jaw_AtkAction_m_do_action =
+                (*jniEnv)->GetMethodID(jniEnv, cls, "do_action", "(I)Z");
+            if (jaw_AtkAction_m_do_action == NULL) {
+                g_warning("%s: Failed to resolve method do_action(I)Z",
+                          G_STRFUNC);
+            }
+        } else {
+            g_warning("%s: Failed to resolve class, cannot resolve method do_action",
+                      G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_m_do_action;
+}
+
+static jmethodID jaw_AtkAction_resolve_m_get_n_actions(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_m_get_n_actions == NULL) {
+        jclass cls = jaw_AtkAction_resolve_class(jniEnv);
+        if (cls != NULL) {
+            jaw_AtkAction_m_get_n_actions =
+                (*jniEnv)->GetMethodID(jniEnv, cls, "get_n_actions", "()I");
+            if (jaw_AtkAction_m_get_n_actions == NULL) {
+                g_warning("%s: Failed to resolve method get_n_actions()I",
+                          G_STRFUNC);
+            }
+        } else {
+            g_warning("%s: Failed to resolve class, cannot resolve method get_n_actions",
+                      G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_m_get_n_actions;
+}
+
+static jmethodID jaw_AtkAction_resolve_m_get_description(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_m_get_description == NULL) {
+        jclass cls = jaw_AtkAction_resolve_class(jniEnv);
+        if (cls != NULL) {
+            jaw_AtkAction_m_get_description =
+                (*jniEnv)->GetMethodID(
+                    jniEnv, cls, "get_description", "(I)Ljava/lang/String;");
+            if (jaw_AtkAction_m_get_description == NULL) {
+                g_warning("%s: Failed to resolve method get_description(I)",
+                          G_STRFUNC);
+            }
+        } else {
+            g_warning("%s: Failed to resolve class, cannot resolve method get_description",
+                      G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_m_get_description;
+}
+
+static jmethodID jaw_AtkAction_resolve_m_set_description(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_m_set_description == NULL) {
+        jclass cls = jaw_AtkAction_resolve_class(jniEnv);
+        if (cls != NULL) {
+            jaw_AtkAction_m_set_description =
+                (*jniEnv)->GetMethodID(
+                    jniEnv, cls, "set_description",
+                    "(ILjava/lang/String;)Z");
+            if (jaw_AtkAction_m_set_description == NULL) {
+                g_warning("%s: Failed to resolve method set_description(I, String)",
+                          G_STRFUNC);
+            }
+        } else {
+            g_warning("%s: Failed to resolve class, cannot resolve method set_description",
+                      G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_m_set_description;
+}
+
+static jmethodID jaw_AtkAction_resolve_m_get_localized_name(JNIEnv *jniEnv) {
+    if (jaw_AtkAction_m_get_localized_name == NULL) {
+        jclass cls = jaw_AtkAction_resolve_class(jniEnv);
+        if (cls != NULL) {
+            jaw_AtkAction_m_get_localized_name =
+                (*jniEnv)->GetMethodID(
+                    jniEnv, cls, "get_localized_name", "(I)Ljava/lang/String;");
+            if (jaw_AtkAction_m_get_localized_name == NULL) {
+                g_warning("%s: Failed to resolve method get_localized_name(I)",
+                          G_STRFUNC);
+            }
+        } else {
+            g_warning("%s: Failed to resolve class, cannot resolve method get_localized_name",
+                      G_STRFUNC);
+        }
+    }
+    return jaw_AtkAction_m_get_localized_name;
 }
