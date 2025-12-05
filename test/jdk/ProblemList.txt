@@ -596,8 +596,6 @@ java/net/Socket/asyncClose/Race.java                            8317801 aix-ppc6
 
 # jdk_nio
 
-java/nio/channels/Channels/SocketChannelStreams.java            8317838 aix-ppc64
-
 java/nio/channels/DatagramChannel/AdaptorMulticasting.java      8144003,8308807 macosx-all,aix-ppc64
 java/nio/channels/DatagramChannel/AfterDisconnect.java          8308807 aix-ppc64
 java/nio/channels/DatagramChannel/BasicMulticastTests.java      8144003 macosx-all
