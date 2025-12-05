@@ -309,16 +309,16 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     static void moveToOverlap(Rectangle what, Rectangle where) {
         if (what.getMaxX() <= where.getMinX()) {
-            what.x += where.getMaxX() - what.getMaxX() + 1;
+            what.x += where.getMaxX() - what.getMaxX();
         }
         if (what.getMinX() >= where.getMaxX()) {
-            what.x -= what.getMinX() - where.getMaxX() + 1;
+            what.x -= what.getMinX() - where.getMaxX();
         }
         if (what.getMaxY() <= where.getMinY()) {
-            what.y += where.getMaxY() - what.getMaxY() + 1;
+            what.y += where.getMaxY() - what.getMaxY();
         }
         if (what.getMinY() >= where.getMaxY()) {
-            what.y -= what.getMinY() - where.getMaxY() + 1;
+            what.y -= what.getMinY() - where.getMaxY();
         }
         assert what.intersects(where) : String.format("Failed to move %s to overlap %s", what, where);
     }
