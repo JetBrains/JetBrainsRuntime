@@ -66,9 +66,11 @@ public final class ScreencastHelper {
     private static final int DELAY_BEFORE_SESSION_CLOSE = 2000;
 
     private static volatile TimerTask timerTask = null;
-    private static final Timer timerCloseSession
-            = new Timer("auto-close screencast session", true);
 
+    private static class TimerHolder {
+        private static final Timer timerCloseSession =
+                new Timer("auto-close screencast session", true);
+    }
 
     private ScreencastHelper() {}
 
@@ -154,7 +156,7 @@ public final class ScreencastHelper {
             }
         };
 
-        timerCloseSession.schedule(timerTask, DELAY_BEFORE_SESSION_CLOSE);
+        TimerHolder.timerCloseSession.schedule(timerTask, DELAY_BEFORE_SESSION_CLOSE);
     }
 
     public static synchronized void getRGBPixels(
