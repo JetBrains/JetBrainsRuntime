@@ -733,6 +733,11 @@ public final class AWTAccessor {
         void setRawCode(KeyEvent ev, long rawCode);
 
         /**
+         * Gets rawCode field for KeyEvent
+         */
+        long getRawCode(KeyEvent ev);
+
+        /**
          * Sets primaryLevelUnicode field for KeyEvent
          */
         void setPrimaryLevelUnicode(KeyEvent ev, long primaryLevelUnicode);
