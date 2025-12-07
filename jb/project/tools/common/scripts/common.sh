@@ -132,6 +132,20 @@ function zip_native_debug_symbols() {
     tar --no-recursion --null -T - -czf ../"$jbr_diz_name".tar.gz) || do_exit $?
 }
 
+function zip_native_debug_symbols_win() {
+  image_bundle_path=$(echo $1 | cut -d"/" -f-4)
+  jdk_name=$(echo $1 | cut -d"/" -f5)
+  jbr_pdb_name=$2
+
+  [ -d "$jbr_pdb_name" ] && rm -rf $jbr_pdb_name
+  mkdir $jbr_pdb_name
+
+  rsync_target="../../../../"$jbr_pdb_name
+  (cd $image_bundle_path && find . -name '*' -exec rsync -R {} $rsync_target \;)
+
+  (/usr/bin/zip -r $jbr_pdb_name.zip $jbr_pdb_name) || do_exit $?
+}
+
 function do_exit() {
   exit_code=$1
   [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
