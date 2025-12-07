@@ -371,7 +371,24 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     int ref_kind =       (flags >> REFERENCE_KIND_SHIFT) & REFERENCE_KIND_MASK;
     if (MethodHandles::ref_kind_is_method(ref_kind)) {
       Method* m = (Method*) java_lang_invoke_MemberName::vmtarget(obj);
-      if (m != nullptr && m->method_holder()->is_redefining()) {
+      if (m == Universe::throw_no_such_method_error()) {
+        // ResolvedMethodTable patches ResolvedMethodName.vmtarget to throw_no_such_method_error() when a method is deleted
+        oop clazz = java_lang_invoke_MemberName::clazz(obj);
+        if (clazz != nullptr) {
+          Klass* k = java_lang_Class::as_Klass(clazz);
+          if (k != nullptr && (k->is_redefining() || k->new_version() != nullptr)
+              && (k->newest_version() != vmClasses::internal_Unsafe_klass()->newest_version())) {
+            // vmtarget is a throw-sentinel
+            intptr_t vmindex = java_lang_invoke_MemberName::vmindex(obj);
+            if (vmindex >= 0) {
+              // A vtable/itable vmindex can still be cached for invokeVirtual/invokeInterface handles.
+              // After class redefinition the vtable/itable layout may change and the deleted method is
+              // no longer at this slot, so we must clear the oop.
+              return false;
+            }
+          }
+        }
+      } else if (m != nullptr && m->method_holder()->is_redefining()) {
         // Let's try to re-resolve method
         InstanceKlass* newest = InstanceKlass::cast(m->method_holder()->newest_version());
         Method* new_method = newest->find_method(m->name(), m->signature());
