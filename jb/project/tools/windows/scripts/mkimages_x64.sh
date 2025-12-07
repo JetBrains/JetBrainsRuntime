@@ -73,6 +73,7 @@ function create_image_bundle {
       rsync -amv --include="*/" --include="*.pdb" --exclude="*" $dir $__root_dir
     done
     copy_jmods "$__modules" "$__modules_path" "$__root_dir"/jmods
+    zip_native_debug_symbols_win $IMAGES_DIR/symbols "${__root_dir}_pdb"
   fi
 }
 
