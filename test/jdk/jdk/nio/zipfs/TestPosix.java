@@ -66,7 +66,7 @@ import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
 
-/**
+/*
  * @test
  * @bug 8213031 8273935
  * @summary Test POSIX ZIP file operations.
@@ -697,7 +697,7 @@ public class TestPosix {
         delTree(UNZIP_DIR);
         Files.createDirectory(UNZIP_DIR);
         File targetDir = UNZIP_DIR.toFile();
-        try (JarFile jf = new JarFile(ZIP_FILE.toFile())) {
+        try (JarFile jf = new JarFile(JAR_FILE.toFile())) {
             Enumeration<? extends JarEntry> zenum = jf.entries();
             while (zenum.hasMoreElements()) {
                 JarEntry ze = zenum.nextElement();
