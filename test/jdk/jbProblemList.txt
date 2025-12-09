@@ -318,6 +318,7 @@ java/awt/image/multiresolution/MultiresolutionIconTest.java 8252812 windows-all,
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java 8253184 windows-all
 java/awt/print/Headless/HeadlessPrinterJob.java 8196088 windows-all
 sun/awt/datatransfer/SuplementaryCharactersTransferTest.java 8011371 generic-all
+sun/awt/image/bug8038000.java 8373065 generic-all
 sun/awt/shell/ShellFolderMemoryLeak.java 8197794 windows-all
 sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 8301177 generic-all
 sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.java JBR-5393 windows-aarch64
@@ -359,7 +360,7 @@ java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
 java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,linux-all
-java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
+java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210,JBR-9770 windows-all,linux-aarch64
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
 java/awt/Robot/InfiniteLoopException.java 8342638 windows-all,linux-all
@@ -1211,7 +1212,7 @@ java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880 windo
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880,JBR-5706 windows-all,linux-all
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
-java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
+java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880,JBR-9783 windows-all,linux-aarch64
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/mlib/MlibOpsTest.java JBR-5225 windows-all
