@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.security.Security;
 import java.security.cert.CertPath;
 import java.security.cert.CertPathValidator;
 import java.security.cert.CertPathValidatorException;
@@ -49,7 +50,6 @@ import java.security.cert.PKIXParameters;
 import java.security.cert.TrustAnchor;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -108,6 +108,7 @@ public class ExtensionsWithLDAP {
      *       Authority Information Access:
      *           CA Issuers - URI:ldap://ldap.host.for.aia/dc=Root?cACertificate
      */
+
     private static final String EE_CERT = ""
         + "-----BEGIN CERTIFICATE-----\n"
         + "MIIDHTCCAgWgAwIBAgIBBzANBgkqhkiG9w0BAQ0FADAPMQ0wCwYDVQQDDARSb290\n"
@@ -132,15 +133,16 @@ public class ExtensionsWithLDAP {
     public static void main(String[] args) throws Exception {
         String extension = args[0];
         String targetHost = args[1];
-
+        Security.setProperty("com.sun.security.allowedAIALocations",
+                "ldap://" + targetHost + "/dc=Root");
         X509Certificate trustedCert = loadCertificate(CA_CERT);
         X509Certificate eeCert = loadCertificate(EE_CERT);
 
         Set<TrustAnchor> trustedCertsSet = new HashSet<>();
         trustedCertsSet.add(new TrustAnchor(trustedCert, null));
 
-        CertPath cp = (CertPath) CertificateFactory.getInstance("X509")
-                .generateCertPath(Arrays.asList(eeCert));
+        CertPath cp = CertificateFactory.getInstance("X509")
+                .generateCertPath(List.of(eeCert));
 
         // CertPath validator should try to parse CRLDP and AIA extensions,
         // and load CRLs/certs which they point to.
