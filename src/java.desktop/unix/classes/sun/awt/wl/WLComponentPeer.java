@@ -1782,6 +1782,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
+        // May have been hidden on another thread. If performUnlocked() was called earlier in this method,
+        // the state protected by the AWT lock may have changed since the start of the method.
+        if (!isVisible()) return;
+
         if (!wlSurface.hasSurfaceData()) {
             wlSurface.associateWithSurfaceData(surfaceData);
         }
