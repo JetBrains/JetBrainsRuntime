@@ -442,7 +442,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     jchar jcharacter =
         (*jniEnv)->CallCharMethod(jniEnv, atk_text, jmid, (jint)offset);
     if (jcharacter == '\0') {
-        g_warning("%s: jcharacter is '\0'", G_STRFUNC);
+        g_warning("%s: jcharacter is '\\0'", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;

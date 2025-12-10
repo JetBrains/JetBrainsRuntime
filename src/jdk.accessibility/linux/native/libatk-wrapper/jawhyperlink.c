@@ -102,6 +102,10 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
               // atk_hyperlink_class->is_selected_link
 }
 
+static void jaw_hyperlink_init(JawHyperlink *link) {
+    JAW_DEBUG_ALL("%p", link);
+}
+
 static void jaw_hyperlink_dispose(GObject *gobject) {
     JAW_DEBUG_ALL("%p", gobject);
 

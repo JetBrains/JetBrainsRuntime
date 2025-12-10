@@ -23,6 +23,7 @@ package org.GNOME.Accessibility;
 import javax.accessibility.*;
 import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
+import java.lang.Double;
 
 public class AtkValue {
     private WeakReference<AccessibleValue> accessibleValueWeakRef;
@@ -75,7 +76,7 @@ public class AtkValue {
             if (max == null) {
                 return null;
             }
-            return Double(max.doubleValue());
+            return Double.valueOf(max.doubleValue());
         }, null);
     }
 
@@ -96,7 +97,7 @@ public class AtkValue {
             if (min == null) {
                 return null;
             }
-            return Double(min.doubleValue());
+            return Double.valueOf(min.doubleValue());
         }, null);
     }
 

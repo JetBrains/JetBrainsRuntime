@@ -94,8 +94,9 @@ public class AtkEditableText extends AtkText {
             position = 0;
         }
 
+        final int finalPosition = position;
         AtkUtil.invokeInSwing(() -> {
-            accessibleEditableText.insertTextAtIndex(position, textToInsert);
+            accessibleEditableText.insertTextAtIndex(finalPosition, textToInsert);
         });
     }
 

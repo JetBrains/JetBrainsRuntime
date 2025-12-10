@@ -99,7 +99,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
         else
             jaw_debug = val_debug;
     }
-    if (jaw_debug != NULL) {
+    if (jaw_debug != 0) {
         jaw_log_file = fopen(JAW_LOG_FILE, "w+");
         if (!jaw_log_file) {
             perror("Error opening log file " JAW_LOG_FILE
@@ -440,7 +440,7 @@ static gboolean window_open_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    if (is_toplevel != NULL) {
+    if (is_toplevel != FALSE) {
         gint n = jaw_toplevel_add_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
         if (n != -1) {
             g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
@@ -498,7 +498,7 @@ static gboolean window_close_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    if (is_toplevel != NULL) {
+    if (is_toplevel != FALSE) {
         gint n =
             jaw_toplevel_remove_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
         if (n != -1) {
@@ -1488,7 +1488,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     if (jfidShift != NULL) {
         jboolean jShiftKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidShift);
-        if (jShiftKeyDown != NULL) {
+        if (jShiftKeyDown != FALSE) {
             event->state |= GDK_SHIFT_MASK;
         }
     }
@@ -1499,7 +1499,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     if (jfidCtrl != NULL) {
         jboolean jCtrlKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidCtrl);
-        if (jCtrlKeyDown != NULL) {
+        if (jCtrlKeyDown != FALSE) {
             event->state |= GDK_CONTROL_MASK;
         }
     }
@@ -1510,7 +1510,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     if (jfidAlt != NULL) {
         jboolean jAltKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAlt);
-        if (jAltKeyDown != NULL) {
+        if (jAltKeyDown != FALSE) {
             event->state |= GDK_MOD1_MASK;
         }
     }
@@ -1521,7 +1521,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     if (jfidMeta != NULL) {
         jboolean jMetaKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidMeta);
-        if (jMetaKeyDown != NULL) {
+        if (jMetaKeyDown != FALSE) {
             event->state |= GDK_META_MASK;
         }
     }
@@ -1532,7 +1532,7 @@ static gboolean key_dispatch_handler(gpointer p) {
     if (jfidAltGr != NULL) {
         jboolean jAltGrKeyDown =
             (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, jfidAltGr);
-        if (jAltGrKeyDown != NULL) {
+        if (jAltGrKeyDown != FALSE) {
             event->state |= GDK_MOD5_MASK;
         }
     }

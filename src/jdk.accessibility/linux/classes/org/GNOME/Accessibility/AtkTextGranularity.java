@@ -19,10 +19,10 @@
 
 package org.GNOME.Accessibility;
 
-public enum AtkTextGranularity {
-    CHAR,
-    WORD,
-    SENTENCE,
-    LINE,
-    PARAGRAPH;
+public interface AtkTextGranularity {
+    int CHAR = 0;
+    int WORD = 1;
+    int SENTENCE = 2;
+    int LINE = 3;
+    int PARAGRAPH = 4;
 }

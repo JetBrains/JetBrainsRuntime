@@ -286,9 +286,9 @@ public class AtkTable {
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable accessibleTable = accessibleTable.getAccessibleColumnHeader();
-            if (accessibleTable != null) {
-                Accessible accessible = accessibleTable.getAccessibleAt(0, column);
+            AccessibleTable accessibleColumnHeader = accessibleTable.getAccessibleColumnHeader();
+            if (accessibleColumnHeader != null) {
+                Accessible accessible = accessibleColumnHeader.getAccessibleAt(0, column);
                 if (accessible == null) {
                     return null;
                 }
@@ -307,9 +307,9 @@ public class AtkTable {
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            AccessibleTable accessibleTable = accessibleTable.getAccessibleRowHeader();
-            if (accessibleTable != null) {
-                Accessible accessible = accessibleTable.getAccessibleAt(row, 0);
+            AccessibleTable accessibleRowHeader = accessibleTable.getAccessibleRowHeader();
+            if (accessibleRowHeader != null) {
+                Accessible accessible = accessibleRowHeader.getAccessibleAt(row, 0);
                 if (accessible == null) {
                     return null;
                 }
@@ -328,11 +328,11 @@ public class AtkTable {
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            Accessible accessible = accessibleTable.getAccessibleSummary();
-            if (accessible == null) {
+            Accessible accessibleSummary = accessibleTable.getAccessibleSummary();
+            if (accessibleSummary == null) {
                 return null;
             }
-            AccessibleContext accessibleContext = accessible.getAccessibleContext();
+            AccessibleContext accessibleContext = accessibleSummary.getAccessibleContext();
             AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
             return accessibleContext;
         }, null);
