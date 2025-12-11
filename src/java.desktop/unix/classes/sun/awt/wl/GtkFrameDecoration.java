@@ -51,7 +51,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private static final int CLOSE_BUTTON_STATE_HOVERED = 1 << 4;
     private static final int CLOSE_BUTTON_STATE_PRESSED = 1 << 5;
 
-    private long nativePtr;
+    private long nativePtr; // accessed under AWT lock
     private Rectangle minimizeButtonBounds; // set by the native code
     private Rectangle maximizeButtonBounds; // set by the native code
     private Rectangle closeButtonBounds; // set by the native code
@@ -75,8 +75,16 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void paint(Graphics g) {
-        // Determine buttons' bounds, etc.
-        nativePrePaint(nativePtr, peer.getWidth(), peer.getHeight());
+        WLToolkit.awtLock();
+        try {
+            if (nativePtr == 0) return;
+
+            // Determine buttons' bounds, etc.
+            nativePrePaint(nativePtr, peer.getWidth(), peer.getHeight());
+        } finally {
+            WLToolkit.awtUnlock();
+        }
+
         if (peer.getWidth() >= titleBarMinWidth && peer.getHeight() >= titleBarHeight) {
             super.paint(g);
         }
@@ -96,10 +104,16 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         int nativeW = (int) Math.ceil(width * scale);
         int nativeH = (int) Math.ceil(height * scale);
         DataBufferInt dataBuffer = new DataBufferInt(nativeW * nativeH);
-        nativePaintTitleBar(
-                nativePtr,
-                SunWritableRaster.stealData(dataBuffer, 0),
-                width, height, scale, peer.getTitle(), getButtonsState());
+        WLToolkit.awtLock();
+        try {
+            if (nativePtr == 0 ) return;
+            nativePaintTitleBar(
+                    nativePtr,
+                    SunWritableRaster.stealData(dataBuffer, 0),
+                    width, height, scale, peer.getTitle(), getButtonsState());
+        } finally {
+            WLToolkit.awtUnlock();
+        }
         SunWritableRaster.markDirty(dataBuffer);
         int[] bands = {0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000};
         WritableRaster raster = Raster.createPackedRaster(dataBuffer, nativeW, nativeH, nativeW, bands, null);
@@ -120,8 +134,15 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void dispose() {
-        nativeDestroyDecoration(nativePtr);
-        nativePtr = 0;
+        WLToolkit.awtLock();
+        try {
+            if (nativePtr != 0) {
+                nativeDestroyDecoration(nativePtr);
+                nativePtr = 0;
+            }
+        } finally {
+            WLToolkit.awtUnlock();
+        }
         super.dispose();
     }
 
@@ -168,8 +189,12 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
-        nativeNotifyConfigured(nativePtr, active, maximized, fullscreen);
-        super.notifyConfigured(active, maximized, fullscreen);
+        assert WLToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        // The frame may have been hidden by the time the "configured" event has reached us here
+        if (nativePtr != 0) {
+            nativeNotifyConfigured(nativePtr, active, maximized, fullscreen);
+            super.notifyConfigured(active, maximized, fullscreen);
+        }
     }
 
     @Override
