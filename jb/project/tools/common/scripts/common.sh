@@ -40,7 +40,6 @@ architecture=${3:-x64} # aarch64 or x64
 
 check_bundle_type_maketest
 
-tag_prefix="jdk-"
 VERSION_FEATURE=$(getVersionProp "DEFAULT_VERSION_FEATURE")
 VERSION_INTERIM=$(getVersionProp "DEFAULT_VERSION_INTERIM")
 VERSION_UPDATE=$(getVersionProp "DEFAULT_VERSION_UPDATE")
@@ -48,8 +47,9 @@ VERSION_PATCH=$(getVersionProp "DEFAULT_VERSION_PATCH")
 [[ $VERSION_UPDATE = 0 ]] && JBSDK_VERSION="$VERSION_FEATURE" || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}"
 [[ $VERSION_PATCH = 0 ]] || JBSDK_VERSION="${VERSION_FEATURE}.${VERSION_INTERIM}.${VERSION_UPDATE}.${VERSION_PATCH}"
 echo "##teamcity[setParameter name='env.JBSDK_VERSION' value='${JBSDK_VERSION}']"
-OPENJDK_TAG=$(git tag -l | grep "$tag_prefix$JBSDK_VERSION" | grep -v ga | sort -t "-" -k 2 -g | tail -n 1)
-JDK_BUILD_NUMBER=${JDK_BUILD_NUMBER:=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $3}')}
+tag_prefix="jdk-"
+OPENJDK_TAG=$(git tag -l | grep "$tag_prefix$JBSDK_VERSION" | grep -v ga | sort -t "-" -k 2 -V -f | tail -n 1) || OPENJDK_TAG="$tag_prefix$JBSDK_VERSION"
+JDK_BUILD_NUMBER=$(echo $OPENJDK_TAG | awk -F "-|[+]" '{print $3}')
 [ -z $JDK_BUILD_NUMBER ] && JDK_BUILD_NUMBER=1
 re='^[0-9]+$'
 if ! [[ $JDK_BUILD_NUMBER =~ $re ]] ; then
@@ -134,7 +134,6 @@ function zip_native_debug_symbols() {
 
 function do_exit() {
   exit_code=$1
-  echo "do_reset_changes=$do_reset_changes"
   [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
   if [ $do_reset_dcevm -eq 1 ]; then
     [ ! -z $HEAD_REVISION ] && git reset --hard $HEAD_REVISION
