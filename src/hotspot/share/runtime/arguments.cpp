@@ -3853,7 +3853,7 @@ static const char * get_toolkit_name() {
     wl_display_disconnect_t fp_wl_display_disconnect = (wl_display_disconnect_t) dlsym(libwayland, "wl_display_disconnect");
 
     if (fp_wl_display_connect && fp_wl_display_disconnect) {
-      void* display = fp_wl_display_connect(NULL);
+      void* display = fp_wl_display_connect(nullptr);
       if (display) {
         toolkit_name = "WLToolkit";
         fp_wl_display_disconnect(display);
