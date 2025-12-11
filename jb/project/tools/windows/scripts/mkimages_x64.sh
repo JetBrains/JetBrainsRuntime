@@ -60,8 +60,8 @@ function create_image_bundle {
     --module-path $__modules_path --no-man-pages --compress=2 \
     --add-modules $__modules --output $__root_dir || do_exit $?
 
-    grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
-    if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
+  grep -v "^JAVA_VERSION" "$JSDK"/release | grep -v "^MODULES" >> $__root_dir/release
+  if [ "$__arch_name" == "$JBRSDK_BUNDLE" ]; then
     sed 's/JBR/JBRSDK/g' $__root_dir/release > release
     mv release $__root_dir/release
     cp $IMAGES_DIR/jdk/lib/src.zip $__root_dir/lib
