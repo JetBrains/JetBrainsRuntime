@@ -24,6 +24,8 @@
  */
 package sun.awt.wl;
 
+import sun.awt.SunToolkit;
+
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -185,6 +187,8 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+
         boolean wasFullscreen = isFullscreen();
 
         super.notifyConfigured(newSurfaceX, newSurfaceY, newSurfaceWidth, newSurfaceHeight,
