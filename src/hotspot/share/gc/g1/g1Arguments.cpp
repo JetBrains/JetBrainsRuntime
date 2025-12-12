@@ -69,6 +69,9 @@ void G1Arguments::initialize_alignments() {
 }
 
 size_t G1Arguments::conservative_max_heap_alignment() {
+  if (FLAG_IS_DEFAULT(G1HeapRegionSize)) {
+    return HeapRegion::max_ergonomics_size();
+  }
   return HeapRegion::max_region_size();
 }
 
