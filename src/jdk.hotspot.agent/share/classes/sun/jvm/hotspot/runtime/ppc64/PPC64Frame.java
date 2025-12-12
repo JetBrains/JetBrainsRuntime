@@ -279,7 +279,13 @@ public class PPC64Frame extends Frame {
     }
 
     if (cb != null) {
-      return cb.isUpcallStub() ? senderForUpcallStub(map, (UpcallStub)cb) : senderForCompiledFrame(map, cb);
+      if (cb.isUpcallStub()) {
+        return senderForUpcallStub(map, (UpcallStub)cb);
+      } else if (cb.isContinuationStub()) {
+        return senderForContinuationStub(map, cb);
+      } else {
+        return senderForCompiledFrame(map, cb);
+      }
     }
 
     // Must be native-compiled frame, i.e. the marshaling code for native
@@ -358,6 +364,15 @@ public class PPC64Frame extends Frame {
     return new PPC64Frame(sp, unextendedSP, getLink(), getSenderPC());
   }
 
+  private Frame senderForContinuationStub(PPC64RegisterMap map, CodeBlob cb) {
+    var contEntry = map.getThread().getContEntry();
+
+    Address sp = contEntry.getEntrySP();
+    Address pc = contEntry.getEntryPC();
+    Address fp = contEntry.getEntryFP();
+
+    return new PPC64Frame(sp, fp, pc);
+  }
 
   private Frame senderForCompiledFrame(PPC64RegisterMap map, CodeBlob cb) {
     if (DEBUG) {
