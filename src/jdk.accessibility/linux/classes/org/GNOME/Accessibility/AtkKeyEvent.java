@@ -155,7 +155,7 @@ public class AtkKeyEvent {
             }
         }
 
-        keycode = AWTAccessor.getKeyEventAccessor().getRawCode(e);
+        keycode = keyInfo != null ? keyInfo.gdkKeyCode() : e.getKeyCode();
         timestamp = e.getWhen();
 
         String nonAlphaNumericString = nonAlphaNumericMap.get(string);

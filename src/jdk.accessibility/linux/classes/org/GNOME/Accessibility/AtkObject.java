@@ -164,7 +164,7 @@ public class AtkObject {
                 return accessibleName + " " + acceleratorText;
             }
             return accessibleName;
-        }, "");
+        }, null);
     }
 
     private static void set_accessible_name(AccessibleContext ac, String name) {

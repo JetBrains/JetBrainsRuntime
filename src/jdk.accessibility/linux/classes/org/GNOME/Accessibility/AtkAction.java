@@ -125,7 +125,7 @@ public class AtkAction {
         }
         actionDescriptions[index] = AtkUtil.invokeInSwingAndWait(() -> {
             return accessibleAction.getAccessibleActionDescription(index);
-        }, "");
+        }, null);
         return actionDescriptions[index];
     }
 
