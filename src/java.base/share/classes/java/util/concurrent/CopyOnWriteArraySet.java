@@ -35,6 +35,12 @@
 
 package java.util.concurrent;
 
+import jdk.internal.misc.Unsafe;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectStreamException;
+import java.io.StreamCorruptedException;
 import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.Iterator;
@@ -443,5 +449,37 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E>
     public Spliterator<E> spliterator() {
         return Spliterators.spliterator
             (al.getArray(), Spliterator.IMMUTABLE | Spliterator.DISTINCT);
+    }
+
+    /**
+     * De-serialization without data not supported for this class.
+     */
+    private void readObjectNoData() throws ObjectStreamException {
+        throw new StreamCorruptedException("Deserialized CopyOnWriteArraySet requires data");
+    }
+
+    /**
+     * Reconstitutes the {@code CopyOnWriteArraySet} instance from a stream
+     * (that is, deserializes it).
+     * @throws StreamCorruptedException if the object read from the stream is invalid.
+     */
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        CopyOnWriteArrayList<E> newAl; // Set during the duplicate check
+
+        @SuppressWarnings("unchecked")
+        CopyOnWriteArrayList<E> inAl = (CopyOnWriteArrayList<E>) in.readFields().get("al", null);
+
+        if (inAl == null
+                || inAl.getClass() != CopyOnWriteArrayList.class
+                || (newAl = new CopyOnWriteArrayList<>()).addAllAbsent(inAl) != inAl.size()) {
+            throw new StreamCorruptedException("Content is invalid");
+        }
+
+        final Unsafe U = Unsafe.getUnsafe();
+        U.putObject(
+                this,
+                U.objectFieldOffset(CopyOnWriteArraySet.class, "al"),
+                newAl
+        );
     }
 }
