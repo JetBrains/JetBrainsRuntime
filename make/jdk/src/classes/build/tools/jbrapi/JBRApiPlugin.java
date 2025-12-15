@@ -198,34 +198,35 @@ public class JBRApiPlugin implements Plugin {
             return unresolvedErrors;
         }
 
-        void read(RandomAccessFile file) throws IOException {
+        void read(RandomAccessFile file, boolean internal) throws IOException {
             String s;
             while ((s = file.readLine()) != null) {
                 String[] tokens = s.split(" ");
                 switch (tokens[0]) {
-                    case "TYPE" -> {
-                        types.put(tokens[1], new Type(tokens[2], Binding.valueOf(tokens[3])));
-                        if (tokens.length > 4 && tokens[4].equals("INTERNAL")) internal.add(tokens[1]);
-                    }
+                    case "VERSION" -> {}
                     case "STATIC" -> {
                         StaticDescriptor descriptor = new StaticDescriptor(new StaticMethod(
                                 tokens[1], tokens[2]), tokens[3]);
                         methods.put(descriptor, new StaticMethod(tokens[4], tokens[5]));
-                        if (tokens.length > 6 && tokens[6].equals("INTERNAL")) internal.add(descriptor);
+                        if (internal) this.internal.add(descriptor);
+                    }
+                    default -> {
+                        types.put(tokens[1], new Type(tokens[2], Binding.valueOf(tokens[0])));
+                        if (internal) this.internal.add(tokens[1]);
                     }
                 }
             }
         }
 
-        void write(RandomAccessFile file) throws IOException {
+        void write(RandomAccessFile pub, RandomAccessFile priv) throws IOException {
             for (var t : types.entrySet()) {
-                file.writeBytes("TYPE " + t.getKey() + " " + t.getValue().type + " " + t.getValue().binding +
-                        (internal.contains(t.getKey()) ? " INTERNAL\n" : "\n"));
+                (internal.contains(t.getKey()) ? priv : pub).writeBytes(
+                        t.getValue().binding + " " + t.getKey() + " " + t.getValue().type + "\n");
             }
             for (var t : methods.entrySet()) {
-                file.writeBytes("STATIC " + t.getKey().method.type + " " + t.getKey().method.name + " " +
-                        t.getKey().descriptor + " " + t.getValue().type + " " + t.getValue().name +
-                        (internal.contains(t.getKey()) ? " INTERNAL\n" : "\n"));
+                (internal.contains(t.getKey()) ? priv : pub).writeBytes(
+                        "STATIC " + t.getKey().method.type + " " + t.getKey().method.name + " " +
+                        t.getKey().descriptor + " " + t.getValue().type + " " + t.getValue().name + "\n");
             }
         }
     }
@@ -399,7 +400,7 @@ public class JBRApiPlugin implements Plugin {
 
     @Override
     public void init(JavacTask jt, String... args) {
-        Path output = Path.of(args[0]);
+        Path pubPath = Path.of(args[0] + ".public"), privPath = Path.of(args[0] + ".private");
         String implVersion;
         try {
             implVersion = Files.readString(Path.of(args[1])).strip();
@@ -426,18 +427,21 @@ public class JBRApiPlugin implements Plugin {
                         }
                     }.scan(te.getTypeElement(), te.getCompilationUnit());
                 } else if (te.getKind() == TaskEvent.Kind.COMPILATION) {
-                    try (RandomAccessFile file = new RandomAccessFile(output.toFile(), "rw");
-                         FileChannel channel = file.getChannel()) {
+                    try (RandomAccessFile pub = new RandomAccessFile(pubPath.toFile(), "rw");
+                         RandomAccessFile priv = new RandomAccessFile(privPath.toFile(), "rw");
+                         FileChannel channel = pub.getChannel()) {
                         for (;;) {
                             try { if (channel.lock() != null) break; } catch (OverlappingFileLockException ignore) {}
                             LockSupport.parkNanos(10_000000);
                         }
                         Registry r = new Registry();
-                        r.read(file);
+                        r.read(pub, false);
+                        r.read(priv, true);
                         var unresolvedErrors = r.addBindings();
-                        file.setLength(0);
-                        file.writeBytes("VERSION " + implVersion + "\n");
-                        r.write(file);
+                        priv.setLength(0);
+                        pub.setLength(0);
+                        pub.writeBytes("VERSION " + implVersion + "\n");
+                        r.write(pub, priv);
                         if (!unresolvedErrors.isEmpty()) {
                             throw new RuntimeException(String.join("\n", unresolvedErrors));
                         }
