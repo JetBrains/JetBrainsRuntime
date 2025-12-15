@@ -38,6 +38,9 @@ public class AtkAction {
     private final String[] actionLocalizedNames;
     private final int actionCount; // the number of accessible actions available on the object
 
+    private final Object actionDescriptionsLock = new Object();
+    private final Object actionLocalizedNamesLock = new Object();
+
     private AtkAction(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
@@ -91,7 +94,6 @@ public class AtkAction {
 
     /**
      * Gets the number of accessible actions available on the object.
-     * If there are more than one, the first one is considered the "default" action.
      * Called from native code via JNI.
      *
      * @return the number of actions, or 0 if this object does not implement actions
@@ -115,13 +117,29 @@ public class AtkAction {
         if (accessibleAction == null) {
             return null;
         }
-        if (actionDescriptions[index] != null) {
-            return actionDescriptions[index];
+
+        String desc;
+
+        synchronized (actionDescriptionsLock) {
+            desc = actionDescriptions[index];
+            if (desc != null) {
+                return desc;
+            }
         }
-        actionDescriptions[index] = AtkUtil.invokeInSwingAndWait(() -> {
+
+        String computedActionDesc = AtkUtil.invokeInSwingAndWait(() -> {
             return accessibleAction.getAccessibleActionDescription(index);
         }, null);
-        return actionDescriptions[index];
+
+        synchronized (actionDescriptionsLock) {
+            desc = actionDescriptions[index];
+            if (desc == null) {
+                actionDescriptions[index] = computedActionDesc;
+                desc = computedActionDesc;
+            }
+        }
+
+        return desc;
     }
 
     /**
@@ -136,7 +154,9 @@ public class AtkAction {
         if (index < 0 || index >= actionCount) {
             return false;
         }
-        actionDescriptions[index] = description;
+        synchronized (actionDescriptionsLock) {
+            actionDescriptions[index] = description;
+        }
         return true;
     }
 
@@ -159,21 +179,36 @@ public class AtkAction {
         if (accessibleAction == null) {
             return null;
         }
-        if (actionLocalizedNames[index] != null) {
-            return actionLocalizedNames[index];
+
+        String localizedName;
+
+        synchronized (actionLocalizedNamesLock) {
+            localizedName = actionLocalizedNames[index];
+            if (localizedName != null) {
+                return localizedName;
+            }
         }
-        return AtkUtil.invokeInSwingAndWait(() -> {
-            actionLocalizedNames[index] = accessibleAction.getAccessibleActionDescription(index);
-            if (actionLocalizedNames[index] != null) {
-                return actionLocalizedNames[index];
+
+        String computedLocalizedName = AtkUtil.invokeInSwingAndWait(() -> {
+            String description = accessibleAction.getAccessibleActionDescription(index);
+            if (description != null) {
+                return description;
             }
             String name = accessibleContext.getAccessibleName();
             if (name != null) {
-                actionLocalizedNames[index] = name;
-                return actionLocalizedNames[index];
+                return name;
             }
-            actionLocalizedNames[index] = "";
-            return actionLocalizedNames[index];
+            return "";
         }, null);
+
+        synchronized (actionLocalizedNamesLock) {
+            localizedName = actionLocalizedNames[index];
+            if (localizedName == null) {
+                actionLocalizedNames[index] = computedLocalizedName;
+                localizedName = computedLocalizedName;
+            }
+        }
+
+        return localizedName;
     }
 }
