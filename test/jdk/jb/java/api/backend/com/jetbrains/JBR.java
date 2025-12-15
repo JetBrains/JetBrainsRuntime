@@ -28,5 +28,7 @@ package com.jetbrains;
  */
 public class JBR {
 
+    @Service
+    @Provided
     public interface ServiceApi {}
 }
