@@ -75,6 +75,7 @@ class ProxyGenerator {
         return (method.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) == 0;
     }
 
+    private final ProxyRepository proxyRepository;
     private final Proxy.Info info;
     private final Class<?> interFace;
     private final Lookup proxyGenLookup;
@@ -98,6 +99,7 @@ class ProxyGenerator {
      * Creates new proxy generator from given {@link Proxy.Info},
      */
     ProxyGenerator(ProxyRepository proxyRepository, Proxy.Info info, Mapping[] specialization) {
+        this.proxyRepository = proxyRepository;
         this.info = info;
         this.interFace = info.interfaceLookup.lookupClass();
         this.specialization = specialization;
@@ -193,10 +195,10 @@ class ProxyGenerator {
         if (JBRApi.VERBOSE) {
             System.out.println("Initializing proxy " + interFace.getName());
         }
-        for (var t : accessContext.dynamicCallTargets) {
-            JBRApi.dynamicCallTargets.put(new JBRApi.DynamicCallTargetKey(
-                    generatedProxy.lookupClass(), t.name(), t.descriptor().descriptorString()
-            ), t.futureHandle());
+        if (!accessContext.dynamicCallTargets.isEmpty()) {
+            var table = AccessContext.getDynamicCallTargets(generatedProxy);
+            for (int i = 0; i < table.length; i++) table[i] = accessContext.dynamicCallTargets.get(i);
+
         }
     }
 
@@ -208,7 +210,7 @@ class ProxyGenerator {
         try {
             Object sericeTarget = service && info.targetLookup != null ? createServiceTarget() : null;
             generatedProxy = proxyGenLookup.defineHiddenClass(
-                    bytecode, false, Lookup.ClassOption.STRONG, Lookup.ClassOption.NESTMATE);
+                    bytecode, false, Lookup.ClassOption.NESTMATE);
             MethodHandle constructor = findConstructor();
             if (sericeTarget != null) constructor = MethodHandles.insertArguments(constructor, 0, sericeTarget);
             return constructor;
@@ -242,10 +244,10 @@ class ProxyGenerator {
             cb.withFlags(ACC_SUPER | ACC_FINAL | ACC_SYNTHETIC)
               .withSuperclass(superclassDesc)
               .withInterfaceSymbols(superinterfaceDescs);
-            generateFields(cb);
             generateConstructor(cb);
             generateTargetGetter(cb);
             generateMethods(cb);
+            generateFields(cb);
         });
         if (JBRApi.VERIFY_BYTECODE) {
             List<VerifyError> errors = ClassFile.of().verify(bytecode);
@@ -264,6 +266,14 @@ class ProxyGenerator {
         }
         if (EXTENSIONS_ENABLED) {
             cb.withField("extensions", EXTENSION_ARRAY_DESC, ACC_PRIVATE | ACC_FINAL);
+        }
+        if (!accessContext.dynamicCallTargets.isEmpty()) {
+            cb.withField("dynamicCallTargets", SUPPLIER_ARRAY_DESC, ACC_PRIVATE | ACC_FINAL | ACC_STATIC);
+            cb.withMethodBody("<clinit>", MethodTypeDesc.of(VOID_DESC), ACC_PRIVATE | ACC_STATIC, m -> m
+                    .loadConstant(accessContext.dynamicCallTargets.size())
+                    .anewarray(SUPPLIER_DESC)
+                    .putstatic(proxyDesc, "dynamicCallTargets", SUPPLIER_ARRAY_DESC)
+                    .return_());
         }
     }
 
@@ -325,8 +335,8 @@ class ProxyGenerator {
 
     private void generateMethod(ClassBuilder cb, Method method) {
         Exception exception = null;
-        Enum<?> extension = EXTENSIONS_ENABLED && JBRApi.extensionExtractor != null ?
-                JBRApi.extensionExtractor.apply(method) : null;
+        Enum<?> extension = EXTENSIONS_ENABLED && proxyRepository.extensionExtractor != null ?
+                proxyRepository.extensionExtractor.apply(method) : null;
         Mapping.Method methodMapping = mappingContext.getMapping(method);
         MethodHandle handle;
         boolean passInstance;
