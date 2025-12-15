@@ -35,8 +35,10 @@ import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.lang.invoke.MethodHandles.Lookup;
@@ -48,15 +50,26 @@ import static java.lang.invoke.MethodHandles.Lookup;
 class ProxyRepository {
     private static final Proxy NONE = Proxy.empty(null), INVALID = Proxy.empty(false);
 
-    private final Registry registry = new Registry();
     private final Map<Key, Proxy> proxies = new HashMap<>();
+    private final Registry registry;
+    private final ClassLoader classLoader;
+    private final Class<? extends Annotation> serviceAnnotation, providedAnnotation, providesAnnotation;
+    private final Module annotationsModule;
+    final Function<Method, Enum<?>> extensionExtractor;
 
-    void init(InputStream extendedRegistryStream,
-              Class<? extends Annotation> serviceAnnotation,
-              Class<? extends Annotation> providedAnnotation,
-              Class<? extends Annotation> providesAnnotation) {
-        registry.initAnnotations(serviceAnnotation, providedAnnotation, providesAnnotation);
-        if (extendedRegistryStream != null) registry.readEntries(extendedRegistryStream);
+    ProxyRepository(Registry registry,
+                    ClassLoader classLoader,
+                    Class<? extends Annotation> serviceAnnotation,
+                    Class<? extends Annotation> providedAnnotation,
+                    Class<? extends Annotation> providesAnnotation,
+                    Function<Method, Enum<?>> extensionExtractor) {
+        this.registry = registry;
+        this.classLoader = classLoader;
+        this.serviceAnnotation = serviceAnnotation;
+        this.providedAnnotation = providedAnnotation;
+        this.providesAnnotation = providesAnnotation;
+        this.extensionExtractor = extensionExtractor;
+        annotationsModule = serviceAnnotation == null ? null : serviceAnnotation.getModule();
     }
 
     String getVersion() {
@@ -67,15 +80,14 @@ class ProxyRepository {
         Key key = new Key(clazz, specialization);
         Proxy p = proxies.get(key);
         if (p == null) {
-            registry.updateClassLoader(clazz.getClassLoader());
             Mapping[] inverseSpecialization = specialization == null ? null :
                     Stream.of(specialization).map(m -> m == null ? null : m.inverse()).toArray(Mapping[]::new);
             Key inverseKey = null;
 
             Registry.Entry entry = registry.entries.get(key.clazz().getCanonicalName());
             if (entry != null) { // This is a registered proxy
-                Proxy.Info infoByInterface = entry.resolve(),
-                        infoByTarget = entry.inverse != null ? entry.inverse.resolve() : null;
+                Proxy.Info infoByInterface = entry.resolve(this),
+                        infoByTarget = entry.inverse != null ? entry.inverse.resolve(this) : null;
                 inverseKey = infoByTarget != null && infoByTarget.interfaceLookup != null ?
                         new Key(infoByTarget.interfaceLookup.lookupClass(), inverseSpecialization) : null;
                 if ((infoByInterface == null && infoByTarget == null) ||
@@ -123,9 +135,9 @@ class ProxyRepository {
 
     /**
      * Registry contains all information about mapping between JBR API interfaces and implementation.
-     * This mapping information can be {@linkplain Entry#resolve() resolved} into {@link Proxy.Info}.
+     * This mapping information can be {@linkplain Entry#resolve(ProxyRepository) resolved} into {@link Proxy.Info}.
      */
-    private static class Registry {
+    static class Registry {
 
         private record StaticKey(String methodName, String targetMethodDescriptor) {}
         private record StaticValue(String targetType, String targetMethodName) {}
@@ -140,12 +152,12 @@ class ProxyRepository {
 
             private Entry(String type) { this.type = type; }
 
-            private Proxy.Info resolve() {
+            private Proxy.Info resolve(ProxyRepository repository) {
                 if (type == null) return null;
                 Lookup l, t;
                 try {
-                    l = resolveType(type, classLoader);
-                    t = target != null ? resolveType(target, classLoader) : null;
+                    l = resolveType(type, repository.classLoader);
+                    t = target != null ? resolveType(target, repository.classLoader) : null;
                 } catch (ClassNotFoundException e) {
                     if (JBRApi.VERBOSE) {
                         System.err.println(type + " not eligible");
@@ -166,18 +178,18 @@ class ProxyRepository {
                     return INVALID;
                 }
                 if (target == null) flags |= Proxy.SERVICE;
-                if (needsAnnotation(l.lookupClass())) {
-                    if (!hasAnnotation(l.lookupClass(), providedAnnotation)) {
+                if (needsAnnotation(repository, l.lookupClass())) {
+                    if (!hasAnnotation(l.lookupClass(), repository.providedAnnotation)) {
                         if (JBRApi.VERBOSE) {
                             System.err.println(type + " not eligible: no @Provided annotation");
                         }
                         return INVALID;
                     }
-                    if (!hasAnnotation(l.lookupClass(), serviceAnnotation)) flags &= ~Proxy.SERVICE;
+                    if (!hasAnnotation(l.lookupClass(), repository.serviceAnnotation)) flags &= ~Proxy.SERVICE;
                 }
                 Proxy.Info info;
                 if (t != null) {
-                    if (needsAnnotation(t.lookupClass()) && !hasAnnotation(t.lookupClass(), providesAnnotation)) {
+                    if (needsAnnotation(repository, t.lookupClass()) && !hasAnnotation(t.lookupClass(), repository.providesAnnotation)) {
                         if (JBRApi.VERBOSE) {
                             System.err.println(target + " not eligible: no @Provides annotation");
                         }
@@ -191,8 +203,8 @@ class ProxyRepository {
                     String targetType = method.getValue().targetType;
                     String targetMethodName = method.getValue().targetMethodName;
                     try {
-                        Lookup lookup = resolveType(targetType, classLoader);
-                        MethodType mt = MethodType.fromMethodDescriptorString(targetMethodDescriptor, classLoader);
+                        Lookup lookup = resolveType(targetType, repository.classLoader);
+                        MethodType mt = MethodType.fromMethodDescriptorString(targetMethodDescriptor, repository.classLoader);
                         MethodHandle handle = lookup.findStatic(lookup.lookupClass(), targetMethodName, mt);
                         info.addStaticMethod(methodName, handle);
                     } catch (ClassNotFoundException | IllegalArgumentException | TypeNotPresentException |
@@ -230,38 +242,41 @@ class ProxyRepository {
             public String toString() { return type; }
         }
 
-        private Class<? extends Annotation> serviceAnnotation, providedAnnotation, providesAnnotation;
-        private Module annotationsModule;
-        private ClassLoader classLoader;
-        private final Map<String, Entry> entries = new HashMap<>();
-        private final String version;
-
-        private Registry() {
-            try (InputStream registryStream = BootLoader.findResourceAsStream("java.base", "META-INF/jbrapi.registry")) {
-                version = readEntries(registryStream);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        static class Builtin {
+            static final Registry PRIVATE, PUBLIC;
+            static {
+                try {
+                    PRIVATE = new Registry(BootLoader.findResourceAsStream("java.base", "META-INF/jbrapi.private"));
+                    PUBLIC = new Registry(BootLoader.findResourceAsStream("java.base", "META-INF/jbrapi.public"));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
 
-        private void initAnnotations(Class<? extends Annotation> serviceAnnotation,
-                         Class<? extends Annotation> providedAnnotation,
-                         Class<? extends Annotation> providesAnnotation) {
-            this.serviceAnnotation = serviceAnnotation;
-            this.providedAnnotation = providedAnnotation;
-            this.providesAnnotation = providesAnnotation;
-            annotationsModule = serviceAnnotation == null ? null : serviceAnnotation.getModule();
-            if (annotationsModule != null) classLoader = annotationsModule.getClassLoader();
-        }
+        private final Map<String, Entry> entries = new HashMap<>();
+        private final String version;
 
-        private String readEntries(InputStream inputStream) {
+        Registry(InputStream inputStream) {
             String version = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                 String s;
                 while ((s = reader.readLine()) != null) {
                     String[] tokens = s.split(" ");
                     switch (tokens[0]) {
-                        case "TYPE" -> {
+                        case "VERSION" -> version = tokens[1];
+                        case "STATIC" -> {
+                            Entry entry = entries.computeIfAbsent(tokens[4], Entry::new);
+                            StaticValue target = new StaticValue(tokens[1], tokens[2]);
+                            StaticValue prev = entry.staticMethods.put(new StaticKey(tokens[5], tokens[3]), target);
+                            if (prev != null && !prev.equals(target)) {
+                                throw new RuntimeException("Conflicting mapping: " +
+                                        target.targetType + "#" + target.targetMethodName + " <- " +
+                                        tokens[4] + "#" + tokens[5] + " -> " +
+                                        prev.targetType + "#" + prev.targetMethodName);
+                            }
+                        }
+                        default -> {
                             Entry a = entries.computeIfAbsent(tokens[1], Entry::new);
                             Entry b = entries.computeIfAbsent(tokens[2], Entry::new);
                             if ((a.inverse != null || b.inverse != null) && (a.inverse != b || b.inverse != a)) {
@@ -274,7 +289,7 @@ class ProxyRepository {
                             b.inverse = a;
                             a.target = tokens[2];
                             b.target = tokens[1];
-                            switch (tokens[3]) {
+                            switch (tokens[0]) {
                                 case "SERVICE" -> {
                                     a.type = null;
                                     b.flags |= Proxy.SERVICE;
@@ -282,56 +297,17 @@ class ProxyRepository {
                                 case "PROVIDES" -> a.type = null;
                                 case "PROVIDED" -> b.type = null;
                             }
-                            if (tokens.length > 4 && tokens[4].equals("INTERNAL")) {
-                                a.flags |= Proxy.INTERNAL;
-                                b.flags |= Proxy.INTERNAL;
-                            }
                         }
-                        case "STATIC" -> {
-                            Entry entry = entries.computeIfAbsent(tokens[4], Entry::new);
-                            StaticValue target = new StaticValue(tokens[1], tokens[2]);
-                            StaticValue prev = entry.staticMethods.put(new StaticKey(tokens[5], tokens[3]), target);
-                            if (prev != null && !prev.equals(target)) {
-                                throw new RuntimeException("Conflicting mapping: " +
-                                        target.targetType + "#" + target.targetMethodName + " <- " +
-                                        tokens[4] + "#" + tokens[5] + " -> " +
-                                        prev.targetType + "#" + prev.targetMethodName);
-                            }
-                            if (tokens.length > 6 && tokens[6].equals("INTERNAL")) entry.flags |= Proxy.INTERNAL;
-                        }
-                        case "VERSION" -> version = tokens[1];
                     }
                 }
             } catch (IOException e) {
-                entries.clear();
                 throw new RuntimeException(e);
-            } catch (RuntimeException | Error e) {
-                entries.clear();
-                throw e;
             }
-            return version;
+            this.version = version;
         }
 
-        private synchronized void updateClassLoader(ClassLoader newLoader) {
-            // New loader is descendant of current one -> update
-            for (ClassLoader cl = newLoader;; cl = cl.getParent()) {
-                if (cl == classLoader) {
-                    classLoader = newLoader;
-                    return;
-                }
-                if (cl == null) break;
-            }
-            // Current loader is descendant of the new one -> leave
-            for (ClassLoader cl = classLoader;; cl = cl.getParent()) {
-                if (cl == newLoader) return;
-                if (cl == null) break;
-            }
-            // Independent classloaders -> error? Or maybe reset cache and start fresh?
-            throw new RuntimeException("Incompatible classloader");
-        }
-
-        private boolean needsAnnotation(Class<?> c) {
-            return annotationsModule != null && annotationsModule.equals(c.getModule());
+        private boolean needsAnnotation(ProxyRepository repository, Class<?> c) {
+            return repository.annotationsModule != null && repository.annotationsModule.equals(c.getModule());
         }
 
         private static boolean hasAnnotation(Class<?> c, Class<? extends Annotation> a) {
