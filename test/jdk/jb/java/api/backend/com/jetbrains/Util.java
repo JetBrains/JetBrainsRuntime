@@ -32,31 +32,40 @@ import java.util.Map;
 
 public class Util {
 
+    public static JBRApi api;
+    private static Object proxyRepository;
+    private static Method getProxy, inverse, generate;
+
     /**
      * Invoke internal {@link JBRApi#init} bypassing {@link com.jetbrains.exported.JBRApiSupport#bootstrap}.
      */
-    public static void init(String registryName, Map<Enum<?>, Class[]> extensionClasses) {
-        try (InputStream in = new FileInputStream(new File(System.getProperty("test.src", "."), registryName + ".registry"))) {
-            JBRApi.init(in, Service.class, Provided.class, Provides.class, extensionClasses, m -> {
+    public static void init(String registryName, Map<Enum<?>, Class<?>[]> extensionClasses) {
+        try (InputStream in = new SequenceInputStream(
+                new ByteArrayInputStream("PROVIDES com.jetbrains.internal.jbrapi.JBRApi com.jetbrains.JBR.ServiceApi\n".getBytes()),
+                new FileInputStream(new File(System.getProperty("test.src", "."), registryName + ".registry")))) {
+            Object api = JBRApi.init(in, JBR.ServiceApi.class, Service.class, Provided.class, Provides.class, extensionClasses, m -> {
                 Extension e = m.getAnnotation(Extension.class);
                 return e == null ? null : e.value();
             });
-        } catch (IOException e) {
+            Field f = api.getClass().getDeclaredField("target");
+            f.setAccessible(true);
+            Util.api = (JBRApi) f.get(api);
+            proxyRepository = null;
+            getProxy = inverse = generate = null;
+        } catch (IOException | NoSuchFieldException | IllegalAccessException e) {
             throw new Error(e);
         }
     }
 
-    private static Object proxyRepository;
     public static Object getProxyRepository() throws Throwable {
         if (proxyRepository == null) {
             Field f = JBRApi.class.getDeclaredField("proxyRepository");
             f.setAccessible(true);
-            proxyRepository = f.get(null);
+            proxyRepository = f.get(api);
         }
         return proxyRepository;
     }
 
-    private static Method getProxy;
     public static Object getProxy(Class<?> interFace) throws Throwable {
         var repo = getProxyRepository();
         if (getProxy == null) {
@@ -67,7 +76,6 @@ public class Util {
         return getProxy.invoke(repo, interFace, null);
     }
 
-    private static Method inverse;
     public static Object inverse(Object proxy) throws Throwable {
         if (inverse == null) {
             inverse = proxy.getClass().getDeclaredMethod("inverse");
@@ -76,7 +84,6 @@ public class Util {
         return inverse.invoke(proxy);
     }
 
-    private static Method generate;
     public static boolean isSupported(Object proxy) throws Throwable {
         if (generate == null) {
             generate = proxy.getClass().getDeclaredMethod("generate");
