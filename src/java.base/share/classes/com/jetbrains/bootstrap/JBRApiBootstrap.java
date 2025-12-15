@@ -45,10 +45,7 @@ public class JBRApiBootstrap {
      * @return implementation for {@link com.jetbrains.JBR.ServiceApi} interface
      */
     public static synchronized Object bootstrap(MethodHandles.Lookup outerLookup) {
-        if (!JBRApi.ENABLED) return null;
-        if (JBRApi.VERBOSE) {
-            System.out.println("JBR API bootstrap in compatibility mode: Object bootstrap(MethodHandles.Lookup)");
-        }
+        System.out.println("JBR API bootstrap in compatibility mode: Object bootstrap(MethodHandles.Lookup)");
         Class<?> apiInterface;
         try {
             apiInterface = outerLookup.findClass("com.jetbrains.JBR$ServiceApi");

@@ -96,9 +96,7 @@ class Proxy {
     /**
      * @see Proxy.Info#flags
      */
-    static final int
-            INTERNAL = 1,
-            SERVICE = 2;
+    static final int SERVICE = 1;
 
     private final Proxy inverse;
     private final Class<?> interFace, target;
