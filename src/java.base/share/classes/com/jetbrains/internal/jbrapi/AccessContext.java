@@ -46,20 +46,28 @@ import static com.jetbrains.internal.jbrapi.BytecodeUtils.*;
  */
 class AccessContext {
 
+    static final int DYNAMIC_CALL_TARGET_NAME_OFFSET = 128;
+    @SuppressWarnings("unchecked")
+    static Supplier<MethodHandle>[] getDynamicCallTargets(Lookup target) {
+        try {
+            return (Supplier<MethodHandle>[]) target.findStaticVarHandle(
+                    target.lookupClass(), "dynamicCallTargets", Supplier[].class).get();
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
     private static final DirectMethodHandleDesc BOOTSTRAP_DYNAMIC_DESC = MethodHandleDesc.ofMethod(
             DirectMethodHandleDesc.Kind.STATIC, desc(JBRApiSupport.class), "bootstrapDynamic",
             desc(CallSite.class, Lookup.class, String.class, MethodType.class));
 
     private final Map<Class<?>, Boolean> accessibleClasses = new HashMap<>();
     final Map<Proxy, Boolean> dependencies = new HashMap<>(); // true for required, false for optional
-    final List<DynamicCallTarget> dynamicCallTargets = new ArrayList<>();
+    final List<Supplier<MethodHandle>> dynamicCallTargets = new ArrayList<>();
     final Lookup caller;
 
     AccessContext(Lookup caller) {
         this.caller = caller;
     }
-
-    record DynamicCallTarget(String name, MethodTypeDesc descriptor, Supplier<MethodHandle> futureHandle) {}
 
     class Method {
         final CodeBuilder writer;
@@ -84,10 +92,9 @@ class AccessContext {
         }
 
         void invokeDynamic(MethodType type, Supplier<MethodHandle> futureHandle) {
-            MethodTypeDesc desc = desc(erase(type));
-            DynamicCallTarget t = new DynamicCallTarget("dynamic" + dynamicCallTargets.size(), desc, futureHandle);
-            dynamicCallTargets.add(t);
-            writer.invokedynamic(DynamicCallSiteDesc.of(BOOTSTRAP_DYNAMIC_DESC, t.name, desc));
+            String name = String.valueOf((char) (dynamicCallTargets.size() + DYNAMIC_CALL_TARGET_NAME_OFFSET));
+            dynamicCallTargets.add(futureHandle);
+            writer.invokedynamic(DynamicCallSiteDesc.of(BOOTSTRAP_DYNAMIC_DESC, name, desc(erase(type))));
         }
 
         void invokeDirect(MethodHandleInfo handleInfo) {
