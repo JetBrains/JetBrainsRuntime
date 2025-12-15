@@ -25,6 +25,9 @@
 #include "gc/x/xAddress.inline.hpp"
 #include "gc/x/xVirtualMemory.hpp"
 #include "logging/log.hpp"
+#ifdef LINUX
+#include "gc/x/xSyscall_linux.hpp"
+#endif
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -38,7 +41,9 @@ void XVirtualMemoryManager::pd_initialize_after_reserve() {
 }
 
 bool XVirtualMemoryManager::pd_reserve(uintptr_t addr, size_t size) {
-  const uintptr_t res = (uintptr_t)mmap((void*)addr, size, PROT_NONE, MAP_ANONYMOUS|MAP_PRIVATE|MAP_NORESERVE, -1, 0);
+  const int flags = MAP_ANONYMOUS|MAP_PRIVATE|MAP_NORESERVE LINUX_ONLY(|MAP_FIXED_NOREPLACE);
+
+  const uintptr_t res = (uintptr_t)mmap((void*)addr, size, PROT_NONE, flags, -1, 0);
   if (res == (uintptr_t)MAP_FAILED) {
     // Failed to reserve memory
     return false;
