@@ -31,6 +31,8 @@
 import com.jetbrains.Extensions;
 import com.jetbrains.internal.jbrapi.JBRApi;
 
+import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -41,11 +43,25 @@ import static com.jetbrains.test.api.Real.*;
 
 public class RealTest {
 
-    public static void main(String[] args) {
-        init("RealTest", Map.of(Extensions.FOO, new Class[] {Proxy.class}, Extensions.BAR, new Class[] {Proxy.class}));
+    public static void main(String[] args) throws Throwable {
+        // Plain run.
+        run();
+
+        // Run in an isolated classloader at least 2 times until the proxy gets GC'ed.
+        WeakReference<?> weak = null;
+        for (int i = 0; i < 2 || weak.get() != null; i++) {
+            System.gc();
+            new IsolatedLoader().loadClass(RealTest.class.getName()).getMethod("run").invoke(null);
+            if (weak == null) weak = new WeakReference<>(getProxy(Proxy.class));
+            if (i > 300) throw new Error("Proxy was not collected after 300 iterations");
+        }
+    }
+
+    public static void run() {
+        init("RealTest", Map.of(Extensions.FOO, new Class<?>[] {Proxy.class}, Extensions.BAR, new Class<?>[] {Proxy.class}));
 
         // Get service
-        Service service = Objects.requireNonNull(JBRApi.getService(Service.class));
+        Service service = Objects.requireNonNull(api.getService(Service.class));
 
         // Proxy passthrough
         Proxy p = Objects.requireNonNull(service.getProxy());
@@ -86,10 +102,10 @@ public class RealTest {
         }
 
         // Check extensions
-        if (!JBRApi.isExtensionSupported(Extensions.FOO)) {
+        if (!api.isExtensionSupported(Extensions.FOO)) {
             throw new Error("FOO extension must be supported");
         }
-        if (JBRApi.isExtensionSupported(Extensions.BAR)) {
+        if (api.isExtensionSupported(Extensions.BAR)) {
             throw new Error("BAR extension must not be supported");
         }
         try {
@@ -101,10 +117,10 @@ public class RealTest {
             throw new Error("BAR extension was disabled but call succeeded");
         } catch (UnsupportedOperationException ignore) {}
         // foo() must succeed when enabled
-        JBRApi.getService(Service.class, Extensions.FOO).getProxy().foo();
+        api.getService(Service.class, Extensions.FOO).getProxy().foo();
         // Asking for BAR must return null, as it is not supported
-        requireNull(JBRApi.getService(Service.class, Extensions.FOO, Extensions.BAR));
-        requireNull(JBRApi.getService(Service.class, Extensions.BAR));
+        requireNull(api.getService(Service.class, Extensions.FOO, Extensions.BAR));
+        requireNull(api.getService(Service.class, Extensions.BAR));
 
         // Test specialized (implicit) List proxy
         List<Api2Way> list = Objects.requireNonNull(service.testList(null));
@@ -131,6 +147,27 @@ public class RealTest {
         @Override
         public void accept(Object o) {
             value = o;
+        }
+    }
+
+    private static class IsolatedLoader extends ClassLoader {
+        @Override
+        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            if (name.equals("RealClassloadersTest") ||
+                    (name.startsWith("com.jetbrains.") && !name.startsWith("com.jetbrains.test.jbr.") &&
+                            !name.startsWith("com.jetbrains.exported.") && !name.startsWith("com.jetbrains.internal."))) {
+                Class<?> c = findLoadedClass(name);
+                if (c != null) return c;
+                String path = name.replace('.', '/').concat(".class");
+                try (var stream = getResourceAsStream(path)) {
+                    if (stream == null) throw new ClassNotFoundException(name);
+                    byte[] b = stream.readAllBytes();
+                    return defineClass(name, b, 0, b.length);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return super.loadClass(name, resolve);
         }
     }
 }
