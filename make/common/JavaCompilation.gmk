@@ -304,7 +304,7 @@ define SetupJavaCompilationBody
 
   ifeq ($$($1_PROCESS_JBR_API), true)
     # Automatic path conversion doesn't work for two arguments, so call fixpath manually
-    $1_JBR_API_FLAGS := -Xplugin:"jbr-api $$(call FixPath, $$($1_BIN)/java.base/META-INF/jbrapi.registry) $$(call FixPath, $(TOPDIR)/jb/jbr-api.version)"
+    $1_JBR_API_FLAGS := -Xplugin:"jbr-api $$(call FixPath, $$($1_BIN)/java.base/META-INF/jbrapi) $$(call FixPath, $(TOPDIR)/jb/jbr-api.version)"
     $1_EXTRA_DEPS := $$($1_EXTRA_DEPS) $$(BUILDTOOLS_OUTPUTDIR)/plugins/_the.COMPILE_JBR_API_PLUGIN_batch
   endif
 
