@@ -34,8 +34,8 @@ import java.awt.EventQueue;
  */
 public class AtkComponent {
 
-    private WeakReference<AccessibleContext> accessibleContextWeakRef;
-    private WeakReference<AccessibleComponent> accessibleComponentWeakRef;
+    private final WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private final WeakReference<AccessibleComponent> accessibleComponentWeakRef;
 
     private AtkComponent(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
@@ -194,13 +194,13 @@ public class AtkComponent {
                     return null;
                 }
 
-                Accessible accessible = accessibleComponent.getAccessibleAt(new Point(x - componentLocation.x, y - componentLocation.y));
-                if (accessible == null) {
+                Accessible accessibleAt = accessibleComponent.getAccessibleAt(new Point(x - componentLocation.x, y - componentLocation.y));
+                if (accessibleAt == null) {
                     return null;
                 }
-                AccessibleContext accessibleContext = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
-                return accessibleContext;
+                AccessibleContext accessibleContextAt = accessibleAt.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContextAt);
+                return accessibleContextAt;
             }
             return null;
         }, null);
