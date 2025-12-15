@@ -25,6 +25,9 @@
 #include "gc/z/zAddress.inline.hpp"
 #include "gc/z/zVirtualMemory.hpp"
 #include "logging/log.hpp"
+#ifdef LINUX
+#include "gc/z/zSyscall_linux.hpp"
+#endif
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -38,7 +41,9 @@ void ZVirtualMemoryManager::pd_initialize_after_reserve() {
 }
 
 bool ZVirtualMemoryManager::pd_reserve(zaddress_unsafe addr, size_t size) {
-  void* const res = mmap((void*)untype(addr), size, PROT_NONE, MAP_ANONYMOUS|MAP_PRIVATE|MAP_NORESERVE, -1, 0);
+  const int flags = MAP_ANONYMOUS|MAP_PRIVATE|MAP_NORESERVE LINUX_ONLY(|MAP_FIXED_NOREPLACE);
+
+  void* const res = mmap((void*)untype(addr), size, PROT_NONE, flags, -1, 0);
   if (res == MAP_FAILED) {
     // Failed to reserve memory
     return false;
