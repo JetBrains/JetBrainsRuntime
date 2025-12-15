@@ -1,5 +1,5 @@
-TYPE com.jetbrains.test.jbr.Real.ServiceImpl com.jetbrains.test.api.Real.Service SERVICE
-TYPE com.jetbrains.test.jbr.Real.ProxyImpl com.jetbrains.test.api.Real.Proxy PROVIDES
-TYPE com.jetbrains.test.jbr.Real.Client com.jetbrains.test.api.Real.ClientImpl PROVIDED
-TYPE com.jetbrains.test.jbr.Real.JBR2Way com.jetbrains.test.api.Real.Api2Way TWO_WAY
-TYPE com.jetbrains.test.jbr.Real.JBRLazyNumber com.jetbrains.test.api.Real.ApiLazyNumber TWO_WAY
+SERVICE com.jetbrains.test.jbr.Real.ServiceImpl com.jetbrains.test.api.Real.Service
+PROVIDES com.jetbrains.test.jbr.Real.ProxyImpl com.jetbrains.test.api.Real.Proxy
+PROVIDED com.jetbrains.test.jbr.Real.Client com.jetbrains.test.api.Real.ClientImpl
+TWO_WAY com.jetbrains.test.jbr.Real.JBR2Way com.jetbrains.test.api.Real.Api2Way
+TWO_WAY com.jetbrains.test.jbr.Real.JBRLazyNumber com.jetbrains.test.api.Real.ApiLazyNumber
