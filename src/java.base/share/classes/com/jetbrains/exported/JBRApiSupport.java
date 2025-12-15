@@ -52,22 +52,20 @@ public class JBRApiSupport {
      * @param extensionExtractor receives method, returns its extension enum, or null
      * @return implementation for {@code JBR.ServiceApi} interface
      */
-    @SuppressWarnings("rawtypes")
     public static synchronized Object bootstrap(Class<?> apiInterface,
                                                 Class<? extends Annotation> serviceAnnotation,
                                                 Class<? extends Annotation> providedAnnotation,
                                                 Class<? extends Annotation> providesAnnotation,
-                                                Map<Enum<?>, Class[]> knownExtensions,
+                                                Map<Enum<?>, Class<?>[]> knownExtensions,
                                                 Function<Method, Enum<?>> extensionExtractor) {
-        if (!JBRApi.ENABLED) return null;
-        JBRApi.init(
+        return JBRApi.init(
                 null,
+                apiInterface,
                 serviceAnnotation,
                 providedAnnotation,
                 providesAnnotation,
                 knownExtensions,
                 extensionExtractor);
-        return JBRApi.getService(apiInterface);
     }
 
     /**
