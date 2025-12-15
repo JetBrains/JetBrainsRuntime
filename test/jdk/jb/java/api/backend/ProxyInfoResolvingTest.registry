@@ -1,7 +1,7 @@
-TYPE absentImpl com.jetbrains.test.api.ProxyInfoResolving.InterfaceWithoutImplementation PROVIDES
+PROVIDES absentImpl com.jetbrains.test.api.ProxyInfoResolving.InterfaceWithoutImplementation
 STATIC NoClass foo ()V com.jetbrains.test.api.ProxyInfoResolving.ServiceWithoutImplementation foo
-TYPE com.jetbrains.test.jbr.ProxyInfoResolving.ValidApiImpl com.jetbrains.test.api.ProxyInfoResolving.ValidApi PROVIDES
-TYPE com.jetbrains.test.jbr.ProxyInfoResolving.ProxyClassImpl com.jetbrains.test.api.ProxyInfoResolving.ProxyClass PROVIDES
-TYPE com.jetbrains.test.jbr.ProxyInfoResolving.ClientProxyClass com.jetbrains.test.api.ProxyInfoResolving.ClientProxyClassImpl PROVIDED
-TYPE com.jetbrains.test.jbr.ProxyInfoResolving.ServiceWithoutAnnotationImpl com.jetbrains.test.api.ProxyInfoResolving.ServiceWithoutAnnotation SERVICE
+PROVIDES com.jetbrains.test.jbr.ProxyInfoResolving.ValidApiImpl com.jetbrains.test.api.ProxyInfoResolving.ValidApi
+PROVIDES com.jetbrains.test.jbr.ProxyInfoResolving.ProxyClassImpl com.jetbrains.test.api.ProxyInfoResolving.ProxyClass
+PROVIDED com.jetbrains.test.jbr.ProxyInfoResolving.ClientProxyClass com.jetbrains.test.api.ProxyInfoResolving.ClientProxyClassImpl
+SERVICE com.jetbrains.test.jbr.ProxyInfoResolving.ServiceWithoutAnnotationImpl com.jetbrains.test.api.ProxyInfoResolving.ServiceWithoutAnnotation
 STATIC NoClass foo ()V com.jetbrains.test.api.ProxyInfoResolving.ServiceWithExtension foo

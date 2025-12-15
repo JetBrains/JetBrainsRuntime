@@ -75,6 +75,7 @@ class ProxyGenerator {
         return (method.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) == 0;
     }
 
+    private final ProxyRepository proxyRepository;
     private final Proxy.Info info;
     private final Class<?> interFace;
     private final Lookup proxyGenLookup;
@@ -98,6 +99,7 @@ class ProxyGenerator {
      * Creates new proxy generator from given {@link Proxy.Info},
      */
     ProxyGenerator(ProxyRepository proxyRepository, Proxy.Info info, Mapping[] specialization) {
+        this.proxyRepository = proxyRepository;
         this.info = info;
         this.interFace = info.interfaceLookup.lookupClass();
         this.specialization = specialization;
@@ -325,8 +327,8 @@ class ProxyGenerator {
 
     private void generateMethod(ClassBuilder cb, Method method) {
         Exception exception = null;
-        Enum<?> extension = EXTENSIONS_ENABLED && JBRApi.extensionExtractor != null ?
-                JBRApi.extensionExtractor.apply(method) : null;
+        Enum<?> extension = EXTENSIONS_ENABLED && proxyRepository.extensionExtractor != null ?
+                proxyRepository.extensionExtractor.apply(method) : null;
         Mapping.Method methodMapping = mappingContext.getMapping(method);
         MethodHandle handle;
         boolean passInstance;
