@@ -45,16 +45,25 @@ import static jdk.internal.org.objectweb.asm.Type.getInternalName;
  */
 class AccessContext {
 
+    static final int DYNAMIC_CALL_TARGET_NAME_OFFSET = 128;
+    @SuppressWarnings("unchecked")
+    static Supplier<MethodHandle>[] getDynamicCallTargets(Lookup target) {
+        try {
+            return (Supplier<MethodHandle>[]) target.findStaticVarHandle(
+                    target.lookupClass(), "dynamicCallTargets", Supplier[].class).get();
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private final Map<Class<?>, Boolean> accessibleClasses = new HashMap<>();
     final Map<Proxy, Boolean> dependencies = new HashMap<>(); // true for required, false for optional
-    final List<DynamicCallTarget> dynamicCallTargets = new ArrayList<>();
+    final List<Supplier<MethodHandle>> dynamicCallTargets = new ArrayList<>();
     final Lookup caller;
 
     AccessContext(Lookup caller) {
         this.caller = caller;
     }
-
-    record DynamicCallTarget(String name, String descriptor, Supplier<MethodHandle> futureHandle) {}
 
     class Method {
         final MethodVisitor writer;
@@ -79,10 +88,10 @@ class AccessContext {
         }
 
         void invokeDynamic(MethodType type, Supplier<MethodHandle> futureHandle) {
+            String name = String.valueOf((char) (dynamicCallTargets.size() + DYNAMIC_CALL_TARGET_NAME_OFFSET));
             String descriptor = erase(type).descriptorString();
-            DynamicCallTarget t = new DynamicCallTarget("dynamic" + dynamicCallTargets.size(), descriptor, futureHandle);
-            dynamicCallTargets.add(t);
-            writer.visitInvokeDynamicInsn(t.name, descriptor,
+            dynamicCallTargets.add(futureHandle);
+            writer.visitInvokeDynamicInsn(name, descriptor,
                     new Handle(H_INVOKESTATIC, "com/jetbrains/exported/JBRApiSupport", "bootstrapDynamic",
                             "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite;", false));
         }

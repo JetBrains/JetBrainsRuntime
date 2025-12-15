@@ -33,10 +33,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static java.lang.invoke.MethodHandles.Lookup;
 
@@ -50,11 +47,13 @@ import static java.lang.invoke.MethodHandles.Lookup;
  * This class is an entry point into JBR API backend.
  * @see Proxy
  */
+// Root is not considered a service for proxy generation purposes, as its instantiation follows custom rules.
+@Provides("JBR.ServiceApi")
 public class JBRApi {
     /**
      * Enable JBR API, it wouldn't init when disabled. Enabled by default.
      */
-    public static final boolean ENABLED = Utils.property("jetbrains.runtime.api.enabled", true);
+    private static final boolean ENABLED = Utils.property("jetbrains.runtime.api.enabled", true);
     /**
      * Enable API extensions. When disabled, extension methods are treated like any other method,
      * {@link JBRApi#isExtensionSupported} always returns false, {@link JBRApi#getService(Class, Enum[])}
@@ -64,7 +63,7 @@ public class JBRApi {
     /**
      * Enable extensive debugging logging. Disabled by default.
      */
-    public static final boolean VERBOSE = Utils.property("jetbrains.runtime.api.verbose", false);
+    static final boolean VERBOSE = Utils.property("jetbrains.runtime.api.verbose", false);
     /**
      * Print warnings about usage of deprecated interfaces and methods to {@link System#err}. Enabled by default.
      */
@@ -78,54 +77,68 @@ public class JBRApi {
      */
     private static final boolean EXTEND_REGISTRY = Utils.property("jetbrains.runtime.api.extendRegistry", false);
 
-    record DynamicCallTargetKey(Class<?> proxy, String name, String descriptor) {}
-    static final ConcurrentMap<DynamicCallTargetKey, Supplier<MethodHandle>> dynamicCallTargets = new ConcurrentHashMap<>();
-    private static final ProxyRepository proxyRepository = new ProxyRepository();
+    private final ProxyRepository proxyRepository;
+    private final Boolean[] supportedExtensions;
+    private final long[] emptyExtensionsBitfield;
+    private final Map<Enum<?>, Class<?>[]> knownExtensions;
 
-    private static Boolean[] supportedExtensions;
-    private static long[] emptyExtensionsBitfield;
-    @SuppressWarnings("rawtypes")
-    private static Map<Enum<?>, Class[]> knownExtensions;
-    static Function<Method, Enum<?>> extensionExtractor;
-
-    @SuppressWarnings("rawtypes")
-    public static void init(InputStream extendedRegistryStream,
-                            Class<? extends Annotation> serviceAnnotation,
-                            Class<? extends Annotation> providedAnnotation,
-                            Class<? extends Annotation> providesAnnotation,
-                            Map<Enum<?>, Class[]> knownExtensions,
-                            Function<Method, Enum<?>> extensionExtractor) {
-        if (extendedRegistryStream != null && !EXTEND_REGISTRY) {
-            throw new Error("Extending JBR API registry is not supported");
-        }
-        proxyRepository.init(extendedRegistryStream, serviceAnnotation, providedAnnotation, providesAnnotation);
-
+    private JBRApi(ProxyRepository proxyRepository, Map<Enum<?>, Class<?>[]> knownExtensions) {
+        this.proxyRepository = proxyRepository;
         if (EXTENSIONS_ENABLED) {
-            JBRApi.knownExtensions = knownExtensions;
-            JBRApi.extensionExtractor = extensionExtractor;
+            this.knownExtensions = knownExtensions;
             supportedExtensions = new Boolean[
                     knownExtensions.keySet().stream().mapToInt(Enum::ordinal).max().orElse(-1) + 1];
             emptyExtensionsBitfield = new long[(supportedExtensions.length + 63) / 64];
-        }
-
-        if (VERBOSE) {
-            System.out.println("JBR API init\n  knownExtensions = " + (EXTENSIONS_ENABLED ? knownExtensions.keySet() : "DISABLED"));
+        } else {
+            this.knownExtensions = null;
+            supportedExtensions = null;
+            emptyExtensionsBitfield = null;
         }
     }
 
-    public static MethodHandle bindDynamic(Lookup caller, String name, MethodType type) {
+    public static Object init(InputStream extendedRegistryStream,
+                              Class<?> apiInterface,
+                              Class<? extends Annotation> serviceAnnotation,
+                              Class<? extends Annotation> providedAnnotation,
+                              Class<? extends Annotation> providesAnnotation,
+                              Map<Enum<?>, Class<?>[]> knownExtensions,
+                              Function<Method, Enum<?>> extensionExtractor) {
+        if (!ENABLED) return null;
         if (VERBOSE) {
-            System.out.println("Binding call site " + caller.lookupClass().getName() + "#" + name + ": " + type);
+            System.out.println("JBR API init\n  knownExtensions = " + (EXTENSIONS_ENABLED ? knownExtensions.keySet() : "DISABLED"));
         }
-        if (!caller.hasFullPrivilegeAccess()) throw new Error("Caller lookup must have full privilege access"); // Authenticity check.
-        return dynamicCallTargets.get(new DynamicCallTargetKey(caller.lookupClass(), name, type.descriptorString())).get().asType(type);
+
+        ProxyRepository.Registry registry;
+        if (extendedRegistryStream != null) {
+            if (!EXTEND_REGISTRY) throw new Error("Extending JBR API registry is not supported");
+            registry = new ProxyRepository.Registry(extendedRegistryStream);
+        } else registry = ProxyRepository.Registry.Builtin.PUBLIC;
+
+        ProxyRepository proxyRepository = new ProxyRepository(registry, apiInterface.getClassLoader(),
+                serviceAnnotation, providedAnnotation, providesAnnotation, extensionExtractor);
+        JBRApi api = new JBRApi(proxyRepository, knownExtensions);
+
+        try {
+            Proxy p = proxyRepository.getProxy(apiInterface, null);
+            if (!p.init()) throw new Error("Proxy initialization failed");
+            MethodHandle constructor = p.getConstructor();
+            return EXTENSIONS_ENABLED ? constructor.invoke(api, api.emptyExtensionsBitfield) : constructor.invoke(api);
+        } catch (Throwable e) {
+            if (VERBOSE) {
+                synchronized (System.err) {
+                    Utils.log(Utils.BEFORE_JBR, System.err, "Warning: JBR API is not supported");
+                    System.err.print("Caused by: ");
+                    e.printStackTrace(System.err);
+                }
+            }
+            return null;
+        }
     }
 
     /**
      * @return JBR API version supported by current implementation.
      */
-    @Provides("JBR.ServiceApi")
-    public static String getImplVersion() {
+    public String getImplVersion() {
         return proxyRepository.getVersion();
     }
 
@@ -135,8 +148,7 @@ public class JBRApi {
      * @apiNote this method is a part of internal {@link com.jetbrains.JBR.ServiceApi}
      * service, but is not directly exposed to user.
      */
-    @Provides("JBR.ServiceApi")
-    public static boolean isExtensionSupported(Enum<?> extension) {
+    public boolean isExtensionSupported(Enum<?> extension) {
         if (!EXTENSIONS_ENABLED) return false;
         int i = extension.ordinal();
         if (supportedExtensions[i] == null) {
@@ -153,30 +165,13 @@ public class JBRApi {
         return supportedExtensions[i];
     }
 
-    /**
-     * @return fully supported service implementation for the given interface with specified extensions, or null
-     * @apiNote this method is a part of internal {@link com.jetbrains.JBR.ServiceApi}
-     * service, but is not directly exposed to user.
-     */
-    @Provides("JBR.ServiceApi")
-    public static <T> T getService(Class<T> interFace, Enum<?>... extensions) {
-        if (!EXTENSIONS_ENABLED) return getService(interFace);
-
-        long[] bitfield = new long[emptyExtensionsBitfield.length];
-        for (Enum<?> e : extensions) {
-            if (isExtensionSupported(e)) {
-                int i = e.ordinal() / 64;
-                int j = e.ordinal() % 64;
-                bitfield[i] |= 1L << j;
-            } else {
-                if (VERBOSE) {
-                    Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Extension not supported: " + e.name());
-                }
-                return null;
-            }
+    public static <T> T getInternalService(Class<T> interFace) {
+        class Holder {
+            private static final JBRApi INSTANCE = new JBRApi(
+                    new ProxyRepository(ProxyRepository.Registry.Builtin.PRIVATE, JBRApi.class.getClassLoader(),
+                            null, null, null, null), Map.of());
         }
-
-        return getService(interFace, bitfield, true);
+        return Holder.INSTANCE.getService(interFace);
     }
 
     /**
@@ -184,19 +179,36 @@ public class JBRApi {
      * @apiNote this method is a part of internal {@link com.jetbrains.JBR.ServiceApi}
      * service, but is not directly exposed to user.
      */
-    @Provides("JBR.ServiceApi")
-    public static <T> T getService(Class<T> interFace) {
-        return getService(interFace, emptyExtensionsBitfield, true);
+    public <T> T getService(Class<T> interFace) {
+        return getService(interFace, new Enum<?>[0]);
     }
 
-    public static <T> T getInternalService(Class<T> interFace) {
-        return getService(interFace, emptyExtensionsBitfield, false);
-    }
-
+    /**
+     * @return fully supported service implementation for the given interface with specified extensions, or null
+     * @apiNote this method is a part of internal {@link com.jetbrains.JBR.ServiceApi}
+     * service, but is not directly exposed to user.
+     */
     @SuppressWarnings("unchecked")
-    private static <T> T getService(Class<T> interFace, long[] extensions, boolean publicService) {
+    public <T> T getService(Class<T> interFace, Enum<?>... extensions) {
+        long[] bitfield;
+        if (extensions.length > 0 && EXTENSIONS_ENABLED) {
+            bitfield = new long[emptyExtensionsBitfield.length];
+            for (Enum<?> e : extensions) {
+                if (isExtensionSupported(e)) {
+                    int i = e.ordinal() / 64;
+                    int j = e.ordinal() % 64;
+                    bitfield[i] |= 1L << j;
+                } else {
+                    if (VERBOSE) {
+                        Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Extension not supported: " + e.name());
+                    }
+                    return null;
+                }
+            }
+        } else bitfield = emptyExtensionsBitfield;
+
         Proxy p = proxyRepository.getProxy(interFace, null);
-        if ((p.getFlags() & Proxy.SERVICE) == 0 || (publicService && (p.getFlags() & Proxy.INTERNAL) != 0)) {
+        if ((p.getFlags() & Proxy.SERVICE) == 0) {
             if (VERBOSE) {
                 Utils.log(Utils.BEFORE_JBR, System.err, "Warning: Not allowed as a service: " + interFace.getCanonicalName());
             }
@@ -210,7 +222,7 @@ public class JBRApi {
         }
         try {
             MethodHandle constructor = p.getConstructor();
-            return (T) (EXTENSIONS_ENABLED ? constructor.invoke(extensions) : constructor.invoke());
+            return (T) (EXTENSIONS_ENABLED ? constructor.invoke(bitfield) : constructor.invoke());
         } catch (com.jetbrains.exported.JBRApi.ServiceNotAvailableException | NullPointerException e) {
             if (VERBOSE) {
                 synchronized (System.err) {
@@ -223,5 +235,16 @@ public class JBRApi {
             throw new RuntimeException(e);
         }
         return null;
+    }
+
+    public static MethodHandle bindDynamic(Lookup caller, String name, MethodType type) {
+        int index = name.charAt(0) - AccessContext.DYNAMIC_CALL_TARGET_NAME_OFFSET;
+        if (VERBOSE) {
+            System.out.println("Binding call site " + caller.lookupClass().getName() + " #" + index);
+        }
+        if (!caller.hasFullPrivilegeAccess()) {
+            throw new Error("Caller lookup must have full privilege access"); // Authenticity check.
+        }
+        return AccessContext.getDynamicCallTargets(caller)[index].get().asType(type);
     }
 }
