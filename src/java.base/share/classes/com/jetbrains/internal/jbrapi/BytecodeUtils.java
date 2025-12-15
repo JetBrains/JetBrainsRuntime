@@ -37,6 +37,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static java.lang.classfile.ClassFile.ACC_FINAL;
 import static java.lang.classfile.ClassFile.ACC_PUBLIC;
@@ -49,6 +50,8 @@ class BytecodeUtils {
     public static final ClassDesc VOID_DESC = desc(void.class);
     public static final ClassDesc OBJECT_DESC = desc(Object.class);
     public static final ClassDesc OBJECT_ARRAY_DESC = OBJECT_DESC.arrayType();
+    public static final ClassDesc SUPPLIER_DESC = desc(Supplier.class);
+    public static final ClassDesc SUPPLIER_ARRAY_DESC = SUPPLIER_DESC.arrayType();
     public static final ClassDesc EXTENSION_ARRAY_DESC = desc(long[].class);
     public static final ClassDesc PROXY_INTERFACE_DESC = desc(com.jetbrains.exported.JBRApiSupport.Proxy.class);
     public static final MethodTypeDesc GET_PROXY_TARGET_DESC = MethodTypeDesc.of(OBJECT_DESC);
