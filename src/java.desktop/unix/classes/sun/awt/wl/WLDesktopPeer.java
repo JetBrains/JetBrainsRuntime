@@ -48,18 +48,16 @@ public class WLDesktopPeer implements DesktopPeer {
 
     private static boolean nativeLibraryLoaded = false;
     private static boolean initExecuted = false;
+    private static final Object gtkLock = new Object();
 
     private static void initWithLock(){
-        SunToolkit.awtLock();
-        try {
+        synchronized (gtkLock) {
             if (!initExecuted) {
                 nativeLibraryLoaded = init(
                         UNIXToolkit.getEnabledGtkVersion().getNumber(),
                         UNIXToolkit.isGtkVerbose());
             }
-        } finally {
             initExecuted = true;
-            SunToolkit.awtUnlock();
         }
     }
 
@@ -104,18 +102,14 @@ public class WLDesktopPeer implements DesktopPeer {
 
     private void launch(URI uri) throws IOException {
         byte[] uriByteArray = ( uri.toString() + '\0' ).getBytes();
-        boolean result = false;
-        SunToolkit.awtLock();
-        try {
+        synchronized (gtkLock) {
             if (!nativeLibraryLoaded) {
                 throw new IOException("Failed to load native libraries.");
             }
-            result = gnome_url_show(uriByteArray);
-        } finally {
-            SunToolkit.awtUnlock();
-        }
-        if (!result) {
-            throw new IOException("Failed to show URI:" + uri);
+            boolean result = gnome_url_show(uriByteArray);
+            if (!result) {
+                throw new IOException("Failed to show URI:" + uri);
+            }
         }
     }
 

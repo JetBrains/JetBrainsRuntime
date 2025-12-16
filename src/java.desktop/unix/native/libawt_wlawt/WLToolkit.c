@@ -24,6 +24,7 @@
  * questions.
  */
 
+#include "jni_util.h"
 #include "relative-pointer-unstable-v1.h"
 #include "xdg-decoration-unstable-v1.h"
 #ifdef HEADLESS
@@ -45,6 +46,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <dlfcn.h>
+#include <pthread.h>
 
 #include "jvm_md.h"
 #include "JNIUtilities.h"
@@ -68,6 +70,8 @@
 #define CHECK_WL_INTERFACE(var, name) if (!(var)) { JNU_ThrowByName(env, "java/awt/AWTError", "Can't bind to the " name " interface"); }
 
 extern JavaVM *jvm;
+
+static pthread_t wl_thread_id;
 
 struct wl_display *wl_display = NULL;
 struct wl_shm *wl_shm = NULL;
@@ -144,6 +148,26 @@ JNIEnv *getEnv() {
     // assuming we're always called from a Java thread
     (*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_2);
     return env;
+}
+
+void
+assert_on_wl_thread(JNIEnv* env)
+{
+    if (wl_thread_id == (pthread_t)0) {
+        // The thread ID has not been initialized yet (shouldn't happen in reality, but just in case)
+        return;
+    }
+
+    if (pthread_equal(wl_thread_id, pthread_self()) == 0) {
+        // A different dispatch thread may have been started, check for real
+        jboolean hasException = JNI_FALSE;
+        jvalue ok = JNU_CallStaticMethodByName(env, &hasException, "sun/awt/wl/WLToolkit", "isDispatchThread", "()Z");
+        if (!ok.z) {
+            JNU_ThrowByName(env, "java/lang/AssertionError", "This function must be executed on EDT");
+        } else {
+            wl_thread_id = pthread_self();
+        }
+    }
 }
 
 static void xdg_wm_base_ping(void *data, struct xdg_wm_base *xdg_wm_base, uint32_t serial) {
@@ -963,6 +987,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLToolkit_dispatchEventsOnEDT
   (JNIEnv *env, jobject obj)
 {
+    wl_thread_id = pthread_self();
     // Dispatch all the events on the display's default event queue.
     // The handlers of those events will be called from here, i.e. on EDT,
     // and therefore must not block indefinitely.

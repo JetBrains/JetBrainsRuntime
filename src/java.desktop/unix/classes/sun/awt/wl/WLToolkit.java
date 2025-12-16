@@ -92,6 +92,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -188,6 +190,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     private void registerShutdownHook() {
+        // Can't access Wayland from the shutdown hook because at the time it is executing,
+        // the EDT can be blocked in java.lang.Shutdown.runHooks()
+        /*
         Runnable r = () -> {
             ArrayList<WLWindowPeer> livePeers;
             synchronized (wlSurfaceToPeerMap) {
@@ -203,6 +208,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         Thread shutdownThread = InnocuousThread.newSystemThread("WLToolkit-Shutdown-Thread", r);
         shutdownThread.setDaemon(true);
         Runtime.getRuntime().addShutdownHook(shutdownThread);
+         */
     }
 
     public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
@@ -279,7 +285,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                 SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
-                    WLToolkit.awtLock();
                     try {
                         dispatchEventsOnEDT();
                         if (dataDevice != null) {
@@ -287,7 +292,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                         }
                     } finally {
                         eventsQueued.release();
-                        WLToolkit.awtUnlock();
                     }
                 }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
                 try {
@@ -311,6 +315,51 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             // no longer available, so let's exit forcibly.
             System.exit(0);
         });
+    }
+
+    /*
+    public static void invokeAndWait(Runnable r) {
+        if (EventQueue.isDispatchThread()) {
+            r.run();
+        } else {
+            try {
+                EventQueue.invokeAndWait(r);
+            } catch (Exception e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof RuntimeException rec) {
+                    rec.addSuppressed(e);
+                    throw rec;
+                } else {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+*/
+    /*
+    public static <T> T invokeAndWait(Supplier<T> task) {
+        if (EventQueue.isDispatchThread()) {
+            return task.get();
+        } else {
+            AtomicReference<T> result = new AtomicReference<>();
+            invokeAndWait(() -> {
+                    result.set(task.get());
+            });
+            return result.get();
+        }
+    }
+*/
+
+    public static void invokeLater(Runnable r) {
+        if (EventQueue.isDispatchThread()) {
+            r.run();
+        } else {
+            EventQueue.invokeLater(r);
+        }
+    }
+
+    public static boolean isDispatchThread() {
+        return EventQueue.isDispatchThread();
     }
 
     /**
