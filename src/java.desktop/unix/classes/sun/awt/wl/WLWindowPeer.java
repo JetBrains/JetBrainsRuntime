@@ -129,6 +129,8 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     protected void wlSetVisible(boolean v) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (!v) ungrab(true);
 
         if (v && targetIsWlPopup() && shouldBeFocusedOnShowing()) {

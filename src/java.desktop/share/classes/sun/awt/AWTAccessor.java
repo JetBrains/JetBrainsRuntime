@@ -259,6 +259,8 @@ public final class AWTAccessor {
          * returns the buffer strategy used by this component.
          */
         BufferStrategy getBufferStrategy(Component comp);
+
+        Object getTreeLock();
     }
 
     /*

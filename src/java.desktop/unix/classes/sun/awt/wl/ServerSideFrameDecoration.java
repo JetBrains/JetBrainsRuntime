@@ -38,7 +38,7 @@ import java.awt.Rectangle;
  * repainting is done, etc.
  */
 public class ServerSideFrameDecoration extends FrameDecoration {
-    private long nativeDecorPtr;
+    private long nativeDecorPtr; // only accessed on EDT
 
     public ServerSideFrameDecoration(WLDecoratedPeer peer) {
         super(peer);
@@ -80,6 +80,8 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowCreated(long nativePtr) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (!peer.targetIsWlPopup()) {
             nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
         }
@@ -87,6 +89,8 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowToBeHidden(long nativePtr) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (nativeDecorPtr != 0) {
             disposeImpl(nativeDecorPtr);
             nativeDecorPtr = 0;
@@ -95,10 +99,13 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void dispose() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         // Native resources must have been already disposed when the window was hidden
         assert nativeDecorPtr == 0 : "Native resources must have been already disposed";
     }
 
     private native long createToplevelDecorationImpl(long nativeFramePtr);
+
     private native void disposeImpl(long nativeDecorPtr);
 }

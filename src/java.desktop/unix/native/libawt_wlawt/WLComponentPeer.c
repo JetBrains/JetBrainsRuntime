@@ -274,6 +274,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeSetTitle
         (JNIEnv *env, jobject obj, jlong ptr, jstring title)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     FrameSetTitle(env, frame, title);
 }
@@ -282,6 +283,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestMinimized
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_minimized(frame->xdg_toplevel);
@@ -304,6 +306,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_maximized(frame->xdg_toplevel);
@@ -315,6 +318,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestFullScreen
         (JNIEnv *env, jobject obj, jlong ptr, jint wlID)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         struct wl_output *wl_output = WLOutputByID((uint32_t)wlID);
@@ -327,6 +331,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_fullscreen(frame->xdg_toplevel);
@@ -340,6 +345,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
        jboolean isModal, jboolean isMaximized, jboolean isMinimized,
        jstring title, jstring appid)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
     struct wl_surface *wl_surface = jlong_to_ptr(wlSurfacePtr);
@@ -414,6 +420,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
          jint offsetX, jint offsetY,
          jboolean isUnconstrained)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
     struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
@@ -440,6 +447,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
          jint offsetX, jint offsetY,
          jboolean isUnconstrained)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     assert (!frame->toplevel);
 
@@ -479,6 +487,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeHideFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     DoHide(env, frame);
 }
@@ -487,6 +496,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     (*env)->DeleteWeakGlobalRef(env, frame->nativeFramePeer);
     free(frame);
@@ -495,6 +505,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
         (JNIEnv *env, jobject obj, jlong serial, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
         xdg_toplevel_move(frame->xdg_toplevel, wl_seat, serial);
@@ -505,6 +516,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
         (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jint edges)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat && frame->xdg_toplevel != NULL) {
         xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, serial, edges);
@@ -515,6 +527,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_surface) {
         xdg_surface_set_window_geometry(frame->xdg_surface, x, y, width, height);
@@ -526,6 +539,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
         (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_min_size(frame->xdg_toplevel, width, height);
@@ -537,6 +551,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
         (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
@@ -548,6 +563,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
         (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jint x, jint y)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, serial, x, y);
@@ -558,6 +574,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_createToplevelDecorationImpl
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         struct zxdg_toplevel_decoration_v1 * decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
@@ -572,6 +589,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_createToplevel
 JNIEXPORT void JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_disposeImpl
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct zxdg_toplevel_decoration_v1 * decor = jlong_to_ptr(ptr);
     if (decor) {
         zxdg_toplevel_decoration_v1_destroy(decor);
@@ -581,6 +599,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_disposeImpl
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetIcon
         (JNIEnv *env, jobject obj, jlong ptr, jint size, jobject pixelArray)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame == NULL || !frame->toplevel || xdg_toplevel_icon_manager == NULL) {
         return;

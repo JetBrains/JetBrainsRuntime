@@ -53,6 +53,8 @@
         }                                       \
     } while(0)                                  \
 
+#define ASSERT_ON_WL_THREAD(env) assert_on_wl_thread(env)
+
 struct gtk_shell1;
 
 extern struct wl_seat *wl_seat;
@@ -81,3 +83,5 @@ int wlFlushToServer(JNIEnv* env);
 struct wl_cursor_theme *getCursorTheme(int scale);
 
 struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data, int* poolFDPtr);
+
+extern void assert_on_wl_thread(JNIEnv* env);

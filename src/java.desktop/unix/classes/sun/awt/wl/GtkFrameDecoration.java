@@ -51,7 +51,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     private static final int CLOSE_BUTTON_STATE_HOVERED = 1 << 4;
     private static final int CLOSE_BUTTON_STATE_PRESSED = 1 << 5;
 
-    private long nativePtr; // accessed under AWT lock
+    private long nativePtr; // accessed under getStateLock()
     private Rectangle minimizeButtonBounds; // set by the native code
     private Rectangle maximizeButtonBounds; // set by the native code
     private Rectangle closeButtonBounds; // set by the native code
@@ -75,14 +75,10 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void paint(Graphics g) {
-        WLToolkit.awtLock();
-        try {
+        synchronized (getStateLock()) {
             if (nativePtr == 0) return;
-
             // Determine buttons' bounds, etc.
             nativePrePaint(nativePtr, peer.getWidth(), peer.getHeight());
-        } finally {
-            WLToolkit.awtUnlock();
         }
 
         if (peer.getWidth() >= titleBarMinWidth && peer.getHeight() >= titleBarHeight) {
@@ -92,6 +88,9 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     protected void paintTitleBar(Graphics2D g2d) {
+        assert Thread.holdsLock(getStateLock()) : "Method must be called while holding getStateLock()";
+
+        if (nativePtr == 0) return;
         int width = peer.getWidth();
         int height = titleBarHeight;
 
@@ -104,16 +103,10 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
         int nativeW = (int) Math.ceil(width * scale);
         int nativeH = (int) Math.ceil(height * scale);
         DataBufferInt dataBuffer = new DataBufferInt(nativeW * nativeH);
-        WLToolkit.awtLock();
-        try {
-            if (nativePtr == 0 ) return;
-            nativePaintTitleBar(
-                    nativePtr,
-                    SunWritableRaster.stealData(dataBuffer, 0),
-                    width, height, scale, peer.getTitle(), getButtonsState());
-        } finally {
-            WLToolkit.awtUnlock();
-        }
+        nativePaintTitleBar(
+                nativePtr,
+                SunWritableRaster.stealData(dataBuffer, 0),
+                width, height, scale, peer.getTitle(), getButtonsState());
         SunWritableRaster.markDirty(dataBuffer);
         int[] bands = {0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000};
         WritableRaster raster = Raster.createPackedRaster(dataBuffer, nativeW, nativeH, nativeW, bands, null);
@@ -125,6 +118,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
             sg2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
         }
         g2d.drawImage(img, 0, 0, width, height, 0, 0, nativeW, nativeH, null);
+
     }
 
     @Override
@@ -134,14 +128,11 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void dispose() {
-        WLToolkit.awtLock();
-        try {
+        synchronized (getStateLock()) {
             if (nativePtr != 0) {
                 nativeDestroyDecoration(nativePtr);
                 nativePtr = 0;
             }
-        } finally {
-            WLToolkit.awtUnlock();
         }
         super.dispose();
     }
@@ -189,52 +180,60 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
-        assert WLToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        // The frame may have been hidden by the time the "configured" event has reached us here
-        if (nativePtr != 0) {
-            nativeNotifyConfigured(nativePtr, active, maximized, fullscreen);
-            super.notifyConfigured(active, maximized, fullscreen);
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        synchronized (getStateLock()) {
+            if (nativePtr != 0) {
+                nativeNotifyConfigured(nativePtr, active, maximized, fullscreen);
+                super.notifyConfigured(active, maximized, fullscreen);
+            }
         }
     }
 
     @Override
     protected Rectangle getMinimizeButtonBounds() {
-        if (!hasMinimizeButton()) return null;
-        return minimizeButtonBounds;
+        synchronized (getStateLock()) {
+            if (!hasMinimizeButton()) return null;
+            return minimizeButtonBounds;
+        }
     }
 
     @Override
     protected Rectangle getMaximizeButtonBounds() {
-        if (!hasMaximizeButton()) return null;
-        return maximizeButtonBounds;
+        synchronized (getStateLock()) {
+            if (!hasMaximizeButton()) return null;
+            return maximizeButtonBounds;
+        }
     }
 
     @Override
     protected Rectangle getCloseButtonBounds() {
-        return closeButtonBounds;
+        synchronized (getStateLock()) {
+            return closeButtonBounds;
+        }
     }
 
     @Override
     public void notifyThemeChanged() {
-        nativeSwitchTheme(isDarkTheme());
+         nativeSwitchTheme(isDarkTheme());
     }
 
     private int getButtonsState() {
-        int state = 0;
-        if (closeButton.hovered) state |= CLOSE_BUTTON_STATE_HOVERED;
-        if (closeButton.pressed) state |= CLOSE_BUTTON_STATE_PRESSED;
+        synchronized (getStateLock()) {
+            int state = 0;
+            if (closeButton.hovered) state |= CLOSE_BUTTON_STATE_HOVERED;
+            if (closeButton.pressed) state |= CLOSE_BUTTON_STATE_PRESSED;
 
-        if (hasMinimizeButton()) {
-            if (minimizeButton.hovered) state |= MIN_BUTTON_STATE_HOVERED;
-            if (minimizeButton.pressed) state |= MIN_BUTTON_STATE_PRESSED;
+            if (hasMinimizeButton()) {
+                if (minimizeButton.hovered) state |= MIN_BUTTON_STATE_HOVERED;
+                if (minimizeButton.pressed) state |= MIN_BUTTON_STATE_PRESSED;
+            }
+
+            if (hasMaximizeButton()) {
+                if (maximizeButton.hovered) state |= MAX_BUTTON_STATE_HOVERED;
+                if (maximizeButton.pressed) state |= MAX_BUTTON_STATE_PRESSED;
+            }
+            return state;
         }
-
-        if (hasMaximizeButton()) {
-            if (maximizeButton.hovered) state |= MAX_BUTTON_STATE_HOVERED;
-            if (maximizeButton.pressed) state |= MAX_BUTTON_STATE_PRESSED;
-        }
-
-        return state;
     }
 
     private static native void initIDs();
@@ -247,5 +246,5 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
                                             String title, int buttonsState);
     private native int nativeGetIntProperty(long nativePtr, String name);
     private native void nativeNotifyConfigured(long nativePtr, boolean active, boolean maximized, boolean fullscreen);
-    private native void nativePrePaint(long nativePtr, int width, int height);
+    private native void nativePrePaint(long nativePtr, int width, int height); // must be called under getStateLock()
 }

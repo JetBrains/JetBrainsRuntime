@@ -152,6 +152,7 @@ JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLSurface_nativeCreateWlSurface
         (JNIEnv *env, jobject obj)
 {
+    ASSERT_ON_WL_THREAD(env);
     jobject javaObjRef = (*env)->NewGlobalRef(env, obj);
     CHECK_NULL_THROW_OOME_RETURN(env, javaObjRef, "Couldn't create a global reference to WLSurface", 0);
 
@@ -188,6 +189,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
@@ -205,6 +207,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSurface_nativeHideWlSurface
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
@@ -215,6 +218,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSurface_nativeCommitWlSurface
         (JNIEnv *env, jobject obj, jlong ptr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
@@ -229,6 +233,7 @@ Java_sun_awt_wl_WLSurface_nativeCommitWlSurface
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetSize
         (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
@@ -241,6 +246,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetSize
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetOpaqueRegion
         (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y, jint width, jint height)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
@@ -274,6 +280,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLMainSurface_nativeActivate
         (JNIEnv *env, jobject obj, jlong ptr, jlong serial, jlong activatingSurfacePtr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
@@ -296,6 +303,7 @@ JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLSubSurface_nativeCreateWlSubSurface
         (JNIEnv *env, jobject obj, jlong surfacePtr, jlong parentSurfacePtr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct wl_surface* parentSurface = jlong_to_ptr(parentSurfacePtr);
     struct wl_surface* surface = jlong_to_ptr(surfacePtr);
     struct wl_subsurface* subSurface = wl_subcompositor_get_subsurface(wl_subcompositor, surface, parentSurface);
@@ -313,6 +321,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSubSurface_nativeDestroyWlSubSurface
         (JNIEnv *env, jobject obj, jlong subSurfacePtr)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct wl_subsurface* subSurface = jlong_to_ptr(subSurfacePtr);
     wl_subsurface_destroy(subSurface);
     wlFlushToServer(env);
@@ -322,7 +331,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSubSurface_nativeSetPosition
         (JNIEnv *env, jobject obj, jlong subSurfacePtr, jint x, jint y)
 {
-
+    ASSERT_ON_WL_THREAD(env);
     struct wl_subsurface* subSurface = jlong_to_ptr(subSurfacePtr);
 
     wl_subsurface_set_position(subSurface, x, y);
