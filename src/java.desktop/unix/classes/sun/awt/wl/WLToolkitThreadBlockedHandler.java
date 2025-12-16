@@ -25,27 +25,17 @@
 
 package sun.awt.wl;
 
+import sun.awt.Mutex;
 import sun.awt.datatransfer.ToolkitThreadBlockedHandler;
 
-// TODO: this class is essentially unused; not sure if it even has to be here
-final class WLToolkitThreadBlockedHandler implements
-        ToolkitThreadBlockedHandler {
+final class WLToolkitThreadBlockedHandler extends Mutex implements ToolkitThreadBlockedHandler {
     private static final ToolkitThreadBlockedHandler privilegedLock = new WLToolkitThreadBlockedHandler();
-    private static final WLToolkit tk = (WLToolkit) java.awt.Toolkit.getDefaultToolkit();
 
     private WLToolkitThreadBlockedHandler() {
     }
 
     static ToolkitThreadBlockedHandler getToolkitThreadBlockedHandler() {
         return privilegedLock;
-    }
-
-    public void lock() {
-        WLToolkit.awtLock();
-    }
-
-    public void unlock() {
-        WLToolkit.awtUnlock();
     }
 
     public void enter() {
