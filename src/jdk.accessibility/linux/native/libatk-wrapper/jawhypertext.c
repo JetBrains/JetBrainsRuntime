@@ -41,6 +41,17 @@
  * as well, and Hyperlinks need not have non-zero text offsets.
  */
 
+static jclass cachedAtkHypertextClass = NULL;
+static jmethodID cachedCreateAtkHypertextMethod = NULL;
+static jmethodID cachedGetLinkMethod = NULL;
+static jmethodID cachedGetNLinksMethod = NULL;
+static jmethodID cachedGetLinkIndexMethod = NULL;
+
+static GMutex cache_init_mutex;
+static gboolean cache_initialized = FALSE;
+
+static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv);
+
 static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
                                             gint link_index);
 static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext);
@@ -84,32 +95,24 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
+    if (!jaw_hypertext_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
     }
 
-    jclass classHypertext =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (classHypertext == NULL) {
-        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classHypertext, "create_atk_hypertext",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
-        "AtkHypertext;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find create_atk_hypertext method", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-
     jobject jatk_hypertext =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, classHypertext, jmid, ac);
-    if (jatk_hypertext == NULL) {
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkHypertextClass, cachedCreateAtkHypertextMethod, ac);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_hypertext == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+           (*jniEnv)->ExceptionDescribe(jniEnv);
+           (*jniEnv)->ExceptionClear(jniEnv);
+        }
         g_warning("%s: Failed to create jatk_hypertext using create_atk_hypertext method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -183,28 +186,13 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
         return NULL;
     }
 
-    jclass classAtkHypertext =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (classAtkHypertext == NULL) {
-        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkHypertext, "get_link",
-                               "(I)Lorg/GNOME/Accessibility/AtkHyperlink;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find get_link method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-
     jobject jhyperlink = (*jniEnv)->CallObjectMethod(jniEnv, atk_hypertext,
-                                                     jmid, (jint)link_index);
-    if (jhyperlink == NULL) {
+                                                     cachedGetLinkMethod, (jint)link_index);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jhyperlink == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+           (*jniEnv)->ExceptionDescribe(jniEnv);
+           (*jniEnv)->ExceptionClear(jniEnv);
+        }
         g_warning("%s: Failed to create jhyperlink using get_link method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -237,36 +225,15 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
 
     JAW_GET_HYPERTEXT(hypertext, 0); // create global JNI reference `jobject atk_hypertext`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_hypertext); // deleting ref that was created in
-                            // JAW_GET_HYPERTEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return 0;
-    }
-
-    jclass classAtkHypertext =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (classAtkHypertext == NULL) {
-        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
+    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, cachedGetNLinksMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkHypertext, "get_n_links", "()I");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find get_n_links method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
-    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ret;
 }
@@ -293,37 +260,94 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
 
     JAW_GET_HYPERTEXT(hypertext, -1); // create global JNI reference `jobject atk_hypertext`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_hypertext); // deleting ref that was created in
-                            // JAW_GET_HYPERTEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return -1;
-    }
-
-    jclass classAtkHypertext =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
-    if (classAtkHypertext == NULL) {
-        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkHypertext,
-                                            "get_link_index", "(I)I");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find get_link_index method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
-    }
-    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, jmid,
+    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, cachedGetLinkIndexMethod,
                                               (jint)char_index);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        return -1;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ret;
+}
+
+static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
+    JAW_CHECK_NULL(jniEnv, FALSE);
+
+    g_mutex_lock(&cache_init_mutex);
+
+    if (cache_initialized) {
+        g_mutex_unlock(&cache_init_mutex);
+        return TRUE;
+    }
+
+    jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedAtkHypertextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkHypertextClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create global reference for AtkHypertext class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedCreateAtkHypertextMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedAtkHypertextClass, "create_atk_hypertext",
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkHypertext;");
+
+    cachedGetLinkMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkHypertextClass, "get_link",
+        "(I)Lorg/GNOME/Accessibility/AtkHyperlink;");
+
+    cachedGetNLinksMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkHypertextClass, "get_n_links", "()I");
+
+    cachedGetLinkIndexMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkHypertextClass, "get_link_index", "(I)I");
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        cachedCreateAtkHypertextMethod == NULL ||
+        cachedGetLinkMethod == NULL ||
+        cachedGetNLinksMethod == NULL ||
+        cachedGetLinkIndexMethod == NULL) {
+
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+
+        g_warning("%s: Failed to cache one or more AtkHypertext method IDs",
+                  G_STRFUNC);
+
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkHypertextClass);
+        cachedAtkHypertextClass = NULL;
+        cachedCreateAtkHypertextMethod = NULL;
+        cachedGetLinkMethod = NULL;
+        cachedGetNLinksMethod = NULL;
+        cachedGetLinkIndexMethod = NULL;
+
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cache_initialized = TRUE;
+    g_mutex_unlock(&cache_init_mutex);
+    return TRUE;
 }
