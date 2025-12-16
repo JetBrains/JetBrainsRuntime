@@ -1016,6 +1016,7 @@ Java_sun_awt_wl_WLDataDevice_startDragImpl(JNIEnv *env, jclass clazz, jlong data
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLDataDevice_performDeletionsOnEDTImpl(JNIEnv *env, jclass clazz, jlong dataDeviceNativePtr) {
+    ASSERT_ON_WL_THREAD(env);
     struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
     assert(dataDevice != NULL);
     DataDevice_drainOfferDeletionQueue(dataDevice, env);
