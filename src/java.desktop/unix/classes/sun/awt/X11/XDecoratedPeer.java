@@ -46,6 +46,8 @@ abstract class XDecoratedPeer extends XWindowPeer {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.X11.focus.XDecoratedPeer");
     private static final PlatformLogger iconLog = PlatformLogger.getLogger("sun.awt.X11.icon.XDecoratedPeer");
 
+    private static final String INSETS_PROP_NAME = "XDecoratedPeer.insets.changed";
+
     // Set to true when we get the first ConfigureNotify after being
     // reparented - indicates that WM has adopted the top-level.
     boolean configure_seen;
@@ -327,6 +329,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
     private void resetWMSetInsets() {
         if (XWM.getWMID() != XWM.UNITY_COMPIZ_WM) {
             currentInsets = new Insets(0, 0, 0, 0);
+            target.firePropertyChange(INSETS_PROP_NAME, 0, 1);
             wm_set_insets = null;
         } else {
             insets_corrected = false;
@@ -376,6 +379,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
                 if (!copyAndScaleDown(in).equals(dimensions.getInsets())) {
                     if (insets_corrected || isMaximized()) {
                         currentInsets = in;
+                        target.firePropertyChange(INSETS_PROP_NAME, 0, 1);
                         insets_corrected = true;
                         // insets were changed by WM. To handle this situation
                         // re-request window bounds because the current
@@ -495,6 +499,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
         }
         if (!isNull(correction)) {
             currentInsets = copy(correctWM);
+            target.firePropertyChange(INSETS_PROP_NAME, 0, 1);
             applyGuessedInsets();
 
             //Fix for 6318109: PIT: Min Size is not honored properly when a
@@ -555,6 +560,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
     private void applyGuessedInsets() {
         Insets guessed = guessInsets();
         currentInsets = copy(guessed);
+        target.firePropertyChange(INSETS_PROP_NAME, 0, 1);
     }
 
     @Override
