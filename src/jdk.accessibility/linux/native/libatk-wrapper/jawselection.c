@@ -42,6 +42,21 @@
  * to the selection/deselection of children.
  */
 
+static jclass cachedAtkSelectionClass = NULL;
+static jmethodID cachedCreateAtkSelectionMethod = NULL;
+static jmethodID cachedAddSelectionMethod = NULL;
+static jmethodID cachedClearSelectionMethod = NULL;
+static jmethodID cachedRefSelectionMethod = NULL;
+static jmethodID cachedGetSelectionCountMethod = NULL;
+static jmethodID cachedIsChildSelectedMethod = NULL;
+static jmethodID cachedRemoveSelectionMethod = NULL;
+static jmethodID cachedSelectAllSelectionMethod = NULL;
+
+static GMutex cache_init_mutex;
+static gboolean cache_initialized = FALSE;
+
+static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv);
+
 static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i);
 static gboolean jaw_selection_clear_selection(AtkSelection *selection);
 static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i);
@@ -98,32 +113,25 @@ gpointer jaw_selection_data_init(jobject ac) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
     }
 
-    jclass classSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classSelection, "create_atk_selection",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
-        "AtkSelection;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get create_atk_selection method ID", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jobject jatk_selection =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, classSelection, jmid, ac);
-    if (jatk_selection == NULL) {
-        g_warning("%s: Failed to call create_atk_selection method and create AtkSelection object", G_STRFUNC);
+    jobject jatk_selection = (*jniEnv)->CallStaticObjectMethod(
+        jniEnv, cachedAtkSelectionClass, cachedCreateAtkSelectionMethod, ac);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_selection == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create jatk_selection using create_atk_selection method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -185,37 +193,15 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedAddSelectionMethod, (jint)i);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
-                                            "add_selection", "(I)Z");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get add_selection method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jboolean jbool =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -240,36 +226,15 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedClearSelectionMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
-                                            "clear_selection", "()Z");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get clear_selection method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -308,27 +273,12 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         return NULL;
     }
 
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkSelection, "ref_selection",
-                               "(I)Ljavax/accessibility/AccessibleContext;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get ref_selection method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jobject child_ac =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, jmid, (jint)i);
-    if (child_ac == NULL) {
-        g_warning("%s: Failed to get child AccessibleContext", G_STRFUNC);
+    jobject child_ac = (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, cachedRefSelectionMethod, (jint)i);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -368,36 +318,15 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, 0); // create global JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return 0;
-    }
-
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+    jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, cachedGetSelectionCountMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
-                                            "get_selection_count", "()I");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get get_selection_count method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
-    jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, jmid);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)jcount;
 }
@@ -424,37 +353,15 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedIsChildSelectedMethod, (jint)i);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
-                                            "is_child_selected", "(I)Z");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get is_child_selected method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jboolean jbool =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -481,37 +388,15 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedRemoveSelectionMethod, (jint)i);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
-                                            "remove_selection", "(I)Z");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get remove_selection method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jboolean jbool =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid, (jint)i);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
 }
@@ -535,36 +420,113 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
-    jclass classAtkSelection =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
-    if (classAtkSelection == NULL) {
-        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectAllSelectionMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkSelection,
-                                            "select_all_selection", "()Z");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to get select_all_selection method ID", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, jmid);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jbool;
+}
+
+static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
+    JAW_CHECK_NULL(jniEnv, FALSE);
+
+    g_mutex_lock(&cache_init_mutex);
+
+    if (cache_initialized) {
+        g_mutex_unlock(&cache_init_mutex);
+        return TRUE;
+    }
+
+    jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedAtkSelectionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkSelectionClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create global reference for AtkSelection class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedCreateAtkSelectionMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedAtkSelectionClass, "create_atk_selection",
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkSelection;");
+
+    cachedAddSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "add_selection", "(I)Z");
+
+    cachedClearSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "clear_selection", "()Z");
+
+    cachedRefSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "ref_selection",
+        "(I)Ljavax/accessibility/AccessibleContext;");
+
+    cachedGetSelectionCountMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "get_selection_count", "()I");
+
+    cachedIsChildSelectedMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "is_child_selected", "(I)Z");
+
+    cachedRemoveSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "remove_selection", "(I)Z");
+
+    cachedSelectAllSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkSelectionClass, "select_all_selection", "()Z");
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        cachedCreateAtkSelectionMethod == NULL ||
+        cachedAddSelectionMethod == NULL ||
+        cachedClearSelectionMethod == NULL ||
+        cachedRefSelectionMethod == NULL ||
+        cachedGetSelectionCountMethod == NULL ||
+        cachedIsChildSelectedMethod == NULL ||
+        cachedRemoveSelectionMethod == NULL ||
+        cachedSelectAllSelectionMethod == NULL) {
+
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+
+        g_warning("%s: Failed to cache one or more AtkSelection method IDs",
+                  G_STRFUNC);
+
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkSelectionClass);
+        cachedAtkSelectionClass = NULL;
+        cachedCreateAtkSelectionMethod = NULL;
+        cachedAddSelectionMethod = NULL;
+        cachedClearSelectionMethod = NULL;
+        cachedRefSelectionMethod = NULL;
+        cachedGetSelectionCountMethod = NULL;
+        cachedIsChildSelectedMethod = NULL;
+        cachedRemoveSelectionMethod = NULL;
+        cachedSelectAllSelectionMethod = NULL;
+
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cache_initialized = TRUE;
+    g_mutex_unlock(&cache_init_mutex);
+    return TRUE;
 }
