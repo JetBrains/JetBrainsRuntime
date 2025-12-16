@@ -38,19 +38,18 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public abstract class FullFrameDecorationHelper extends FrameDecoration {
-    private final Object stateLock = new Object();
+    private boolean active; // protected by getStateLock()
+    private boolean maximized; // protected by getStateLock()
+    private boolean fullscreen; // protected by getStateLock()
+    private boolean isDarkTheme; // protected by getStateLock()
 
-    private boolean active; // protected by stateLock
-    private boolean maximized; // protected by stateLock
-    private boolean fullscreen; // protected by stateLock
-    private boolean needRepaint = true; // protected by stateLock
-    private boolean isDarkTheme; // protected by stateLock
+    private volatile boolean needRepaint = true;
 
     private PropertyChangeListener pcl;
 
-    protected final ButtonState closeButton;
-    protected final ButtonState maximizeButton;
-    protected final ButtonState minimizeButton;
+    protected final ButtonState closeButton; // protected by getStateLock()
+    protected final ButtonState maximizeButton; // protected by getStateLock()
+    protected final ButtonState minimizeButton; // protected by getStateLock()
 
     private boolean pointerInside; // only accessed on EDT
     private boolean pressedInside; // only accessed on EDT
@@ -73,10 +72,10 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
                 if ("awt.os.theme.isDark".equals(evt.getPropertyName())) {
                     Object newValue = evt.getNewValue();
                     if (newValue != null) {
-                        synchronized (stateLock) {
+                        synchronized (getStateLock()) {
                             isDarkTheme = (Boolean) newValue;
+                            notifyThemeChanged();
                         }
-                        notifyThemeChanged();
                         peer.notifyClientDecorationsChanged();
                     }
                 }
@@ -88,11 +87,15 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     public abstract void notifyThemeChanged();
 
     protected final boolean hasMinimizeButton() {
-        return minimizeButton != null;
+        synchronized (getStateLock()) {
+            return minimizeButton != null;
+        }
     }
 
     protected final boolean hasMaximizeButton() {
-        return maximizeButton != null && peer.isResizable();
+        synchronized (getStateLock()) {
+            return maximizeButton != null && peer.isResizable();
+        }
     }
 
     protected abstract Rectangle getCloseButtonBounds();
@@ -102,7 +105,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     protected abstract Rectangle getMinimizeButtonBounds();
 
     public final boolean isDarkTheme() {
-        synchronized (stateLock) {
+        synchronized (getStateLock()) {
             return isDarkTheme;
         }
     }
@@ -110,7 +113,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
         boolean decorationsChanged = false;
-        synchronized (stateLock) {
+        synchronized (getStateLock()) {
             if (active != this.active) {
                 this.active = active;
                 decorationsChanged = true;
@@ -131,48 +134,46 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     }
 
     public final boolean isActive() {
-        synchronized (stateLock) {
+        synchronized (getStateLock()) {
             return active;
         }
     }
 
     public final boolean isMaximized() {
-        synchronized (stateLock) {
+        synchronized (getStateLock()) {
             return maximized;
         }
     }
 
     public final boolean isFullscreen() {
-        synchronized (stateLock) {
+        synchronized (getStateLock()) {
             return fullscreen;
         }
     }
 
     @Override
     public final boolean isRepaintNeeded() {
-        synchronized (stateLock) {
-            return needRepaint;
-        }
+        return needRepaint;
     }
 
     @Override
     public final void markRepaintNeeded(boolean value) {
-        synchronized (stateLock) {
-            needRepaint = value;
-        }
+        needRepaint = value;
     }
 
     @Override
     public void paint(Graphics g) {
         assert isRepaintNeeded() : "paint() called when no repaint needed";
 
-        int width = peer.getWidth();
-        int height = peer.getHeight();
-        if (width <= 0 || height <= 0) return;
+        synchronized (getStateLock()) {
+            int width = peer.getWidth();
+            int height = peer.getHeight();
+            if (width <= 0 || height <= 0) return;
 
-        Graphics2D g2d = (Graphics2D) g;
-        paintBorder(g2d);
-        paintTitleBar(g2d);
+            Graphics2D g2d = (Graphics2D) g;
+            paintBorder(g2d);
+            paintTitleBar(g2d);
+        }
 
         markRepaintNeeded(false);
     }
@@ -260,14 +261,16 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     private void startDrag() {
         pressedLocation = null;
         boolean changed = false;
-        if (closeButton != null) {
-            changed |= closeButton.reset();
-        }
-        if (maximizeButton != null) {
-            changed |= maximizeButton.reset();
-        }
-        if (minimizeButton != null) {
-            changed |= minimizeButton.reset();
+        synchronized (getStateLock()) {
+            if (closeButton != null) {
+                changed |= closeButton.reset();
+            }
+            if (maximizeButton != null) {
+                changed |= maximizeButton.reset();
+            }
+            if (minimizeButton != null) {
+                changed |= minimizeButton.reset();
+            }
         }
         if (changed) peer.notifyClientDecorationsChanged();
 

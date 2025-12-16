@@ -52,6 +52,7 @@ JNIEXPORT void JNICALL
 Java_java_awt_Cursor_finalizeImpl
   (JNIEnv *env, jclass clazz, jlong pData)
 {
+    ASSERT_ON_WL_THREAD(env);
     if (pData != -1) {
         struct WLCursor *cursor = jlong_to_ptr(pData);
         if (cursor->managed && cursor->buffer)
@@ -63,6 +64,7 @@ Java_java_awt_Cursor_finalizeImpl
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetPredefinedCursor
   (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
 
     if (!cursor_theme)
@@ -103,6 +105,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeDestroyPredefinedCu
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
   (JNIEnv *env, jclass cls, jintArray pixels, jint width, jint height, jint xHotSpot, jint yHotSpot)
 {
+    ASSERT_ON_WL_THREAD(env);
     int pixelCount = (*env)->GetArrayLength(env, pixels);
     if (pixelCount == 0 || pixelCount >= 0x20000000 /* byte size won't fit into int32_t */)
         return 0;
@@ -146,6 +149,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeSetCursor
   (JNIEnv *env, jclass cls, jlong pData, jint scale, jlong pointerEnterSerial)
 {
+    ASSERT_ON_WL_THREAD(env);
     struct wl_buffer *buffer = NULL;
     int32_t width = 0;
     int32_t height = 0;

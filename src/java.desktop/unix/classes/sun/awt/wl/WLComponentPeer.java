@@ -51,6 +51,7 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
@@ -189,11 +190,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     boolean isVisible() {
-        WLToolkit.awtLock();
-        try {
+        synchronized (getStateLock()) {
             return wlSurface != null && visible;
-        } finally {
-            WLToolkit.awtUnlock();
         }
     }
 
@@ -369,44 +367,44 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     protected void wlSetVisible(boolean v) {
         // TODO: this whole method should be moved to WLWindowPeer
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
+        // TODO: why need state lock?
         synchronized (getStateLock()) {
-            // TODO: make sure visibility state cannot be changed midway through this method
             if (visible == v) return;
-        }
-        if (v) {
-            show();
-            synchronized (getStateLock()) {
+            if (v) {
+                show();
                 // Consider the window visible only if show() fully succeeds.
                 visible = true;
-            }
-        } else {
-            synchronized (getStateLock()) {
+            } else {
                 // Hiding is presumed to succeed even if an error occurs in the process
                 // in the sense that a subsequent request to hide() will not do anything useful.
                 visible = false;
+                hide();
             }
-            hide();
         }
     }
 
     private void hide() {
-        performLocked(() -> {
-            if (wlSurface != null) { // may get a "hide" request even though we were never shown
-                try {
-                    notifyNativeWindowToBeHidden(nativePtr);
-                    nativeHideFrame(nativePtr);
-                    shadow.hide();
-                } finally {
-                    WLMainSurface s = wlSurface;
-                    // A null surface is the primary tell that the window is not being shown
-                    wlSurface = null;
-                    s.dispose();
-                }
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
+        if (wlSurface != null) { // may get a "hide" request even though we were never shown
+            try {
+                notifyNativeWindowToBeHidden(nativePtr);
+                nativeHideFrame(nativePtr);
+                shadow.hide();
+            } finally {
+                WLMainSurface s = wlSurface;
+                // A null surface is the primary tell that the window is not being shown
+                wlSurface = null;
+                s.dispose();
             }
-        });
+        }
     }
 
     private void show() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         String title = getTitle();
         boolean isWlPopup = targetIsWlPopup();
         int thisWidth = javaUnitsToSurfaceSize(getWidth());
@@ -420,11 +418,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         boolean isMinimized = (state & Frame.ICONIFIED) == Frame.ICONIFIED;
         boolean isUnconstrained = isPopupPositionUnconstrained();
 
-        performLocked(() -> {
-            assert wlSurface == null : "Invisible window already has a Wayland surface attached";
+        assert wlSurface == null : "Invisible window already has a Wayland surface attached";
 
-            wlSurface = new WLMainSurface((WLWindowPeer) this);
+        wlSurface = new WLMainSurface((WLWindowPeer) this);
 
+        WLToolkit.invokeLater(() -> {
             // Need to keep track of the construction stage in order to release resources
             // properly in case of an error during the construction.
             int stage = 0;
@@ -481,8 +479,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 }
                 throw t;
             }
+            configureWLSurface();
         });
-        configureWLSurface();
         // Now wait for the sequence of configure events and the window
         // will finally appear on screen after we post a PaintEvent
         // from notifyConfigured()
@@ -517,12 +515,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void updateSurfaceData() {
-        performLocked(() -> {
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                    getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
-            shadow.updateSurfaceData();
-        });
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
+                getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
+
+        shadow.updateSurfaceData();
     }
 
     public boolean isResizable() {
@@ -531,7 +529,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void updateSurfaceSize() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         // Note: must be called after a buffer of proper size has been attached to the surface,
         // but the surface has not yet been committed. Otherwise, the sizes will get out of sync,
         // which may result in visual artifacts.
@@ -583,7 +582,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void setVisible(boolean v) {
-        wlSetVisible(v);
+        // TODO: can't do invokeAndWait since setSivible is called under Component.LOCK and
+        // java.awt.Window.dispatchEventImpl needs the same lock to implement invokeAndWait
+        WLToolkit.invokeLater(() -> {
+            wlSetVisible(v);
+        });
     }
 
     /**
@@ -637,14 +640,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * later when the server notifies us (through an event on EDT) that
      * the displaying buffer is ready to accept new data.
      */
-    public void commitToServer() {
-        performLocked(() -> {
-            if (wlSurface != null) {
-                shadow.paint();
-                shadow.commitSurfaceData();
-                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
-            }
-        });
+    final void commitToServer() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
+        if (wlSurface != null) {
+            shadow.paint();
+            shadow.commitSurfaceData();
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
+        }
+
         ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
     }
 
@@ -710,7 +714,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // but not top-level windows. So we can only ask robot to do that.
             int newXNative = javaUnitsToSurfaceUnits(newX);
             int newYNative = javaUnitsToSurfaceUnits(newY);
-            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(wlSurface, newXNative, newYNative));
+            WLToolkit.invokeLater(() -> WLRobotPeer.setLocationOfWLSurface(wlSurface, newXNative, newYNative));
         }
 
         if ((positionChanged || sizeChanged) && isPopup && visible) {
@@ -733,7 +737,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 log.fine(String.format("%s is resizing its buffer to %dx%d pixels",
                         this, getBufferWidth(), getBufferHeight()));
             }
-            updateSurfaceData();
+            WLToolkit.invokeLater(this::updateSurfaceData);
             layout();
 
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
@@ -960,6 +964,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void showWindowMenu(long serial, int x, int y) {
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
         // "This request must be used in response to some sort of user action like
         //  a button press, key press, or touch down event."
         // So 'serial' must appertain to such an event.
@@ -968,11 +974,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         int xNative = javaUnitsToSurfaceUnits(x);
         int yNative = javaUnitsToSurfaceUnits(y);
-        performLocked(() -> nativeShowWindowMenu(serial, nativePtr, xNative, yNative));
+        nativeShowWindowMenu(serial, nativePtr, xNative, yNative);
     }
 
     void setIcon(int size, int[] pixels) {
-        performLocked(() -> nativeSetIcon(nativePtr, size, pixels));
+        WLToolkit.invokeLater(() -> nativeSetIcon(nativePtr, size, pixels));
     }
 
     @Override
@@ -1023,7 +1029,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     public void dispose() {
         WLToolkit.targetDisposedPeer(target, this);
 
-        performLocked(() -> {
+        // TODO: make sure we've been hidden already as "hide" is being done on EDT
+        WLToolkit.invokeLater(() -> {
             assert !isVisible() : "Disposed window must have been already hidden";
 
             nativeDisposeFrame(nativePtr);
@@ -1150,7 +1157,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     final void setFrameTitle(String title) {
         Objects.requireNonNull(title);
-        performLocked(() -> nativeSetTitle(nativePtr, title));
+        WLToolkit.invokeLater(() -> nativeSetTitle(nativePtr, title));
     }
 
     public String getTitle() {
@@ -1158,38 +1165,37 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     final void requestMinimized() {
-        performLocked(() -> nativeRequestMinimized(nativePtr));
+        WLToolkit.invokeLater(() -> nativeRequestMinimized(nativePtr));
     }
 
     final void requestMaximized() {
-        performLocked(() -> nativeRequestMaximized(nativePtr));
+        WLToolkit.invokeLater(() -> nativeRequestMaximized(nativePtr));
     }
 
     final void requestUnmaximized() {
-        performLocked(() -> nativeRequestUnmaximized(nativePtr));
+        WLToolkit.invokeLater(() -> nativeRequestUnmaximized(nativePtr));
     }
 
     final void requestFullScreen(int wlID) {
-        performLocked(() -> nativeRequestFullScreen(nativePtr, wlID));
+        WLToolkit.invokeLater(() -> nativeRequestFullScreen(nativePtr, wlID));
     }
 
     final void requestUnsetFullScreen() {
-        performLocked(() -> nativeRequestUnsetFullScreen(nativePtr));
+        WLToolkit.invokeLater(() -> nativeRequestUnsetFullScreen(nativePtr));
     }
 
     final void activate() {
-        // "The serial can come from an input or focus event."
-        long serial = getSerialForActivation();
-        if (serial != 0) {
-            performLocked(() -> {
+        WLToolkit.invokeLater(() -> {
+            long serial = getSerialForActivation();
+            if (serial != 0) {
                 long surface = WLToolkit.getInputState().surfaceForKeyboardInput();
                 // The surface pointer may be out of date, which will cause a protocol error.
                 // So make sure it is valid and do that under AWT lock.
                 if (wlSurface != null && surface != 0 && WLToolkit.peerFromSurface(surface) != null) {
                     wlSurface.activateByAnotherSurface(serial, surface);
                 }
-            });
-        }
+            }
+        });
     }
 
     private static long getSerialForActivation() {
@@ -1269,7 +1275,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * by two threads.
      */
     Object getStateLock() {
-        return stateLock;
+        // TODO: Use Component.LOCK as AWTAccessor.getComponentAccessor().getTreeLock() ?
+        // return stateLock;
+        return AWTAccessor.getComponentAccessor().getTreeLock();
     }
 
     void postMouseEvent(MouseEvent e) {
@@ -1661,7 +1669,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         //  of interactive move (touch, pointer, etc)."
         assert serial != 0 : "The serial number of the event requesting the drag must be non-zero";
 
-        performLocked(() -> nativeStartDrag(serial, nativePtr));
+        WLToolkit.invokeLater(() -> nativeStartDrag(serial, nativePtr));
     }
 
     void startResize(long serial, int edges) {
@@ -1670,7 +1678,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         //  of interactive resize (touch, pointer, etc)."
         assert serial != 0 : "The serial number of the event requesting the resize must be non-zero";
 
-        performLocked(() -> nativeStartResize(serial, nativePtr, edges));
+        WLToolkit.invokeLater(() -> nativeStartResize(serial, nativePtr, edges));
     }
 
     /**
@@ -1748,7 +1756,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert isVisible() : "Received a configure event from an invisible window";
 
         // NB: The width and height, as well as X and Y arguments, specify the size and the location
         //     of the window in surface-local coordinates.
@@ -1787,10 +1796,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
-        // May have been hidden on another thread. If performUnlocked() was called earlier in this method,
-        // the state protected by the AWT lock may have changed since the start of the method.
-        if (!isVisible()) return;
-
         if (!wlSurface.hasSurfaceData()) {
             wlSurface.associateWithSurfaceData(surfaceData);
         }
@@ -1818,27 +1823,19 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         int newHeight = wlSize.getJavaHeight();
         try {
             setSizeIsBeingConfigured(true);
-            performUnlocked(() -> target.setSize(newWidth, newHeight));
+            target.setSize(newWidth, newHeight);
         } finally {
             setSizeIsBeingConfigured(false);
         }
     }
 
-    void notifyEnteredOutput(int wlOutputID) {
-        performLocked(() -> {
-            if (wlSurface != null) {
-                wlSurface.notifyEnteredOutput(wlOutputID);
-            }
-        });
-    }
-
-    void notifyPopupDone() {
+    final void notifyPopupDone() {
         assert targetIsWlPopup() : "This method must be invoked only for popups";
         target.setVisible(false);
     }
 
     void checkIfOnNewScreen() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (wlSurface == null) return;
         final WLGraphicsDevice newDevice = wlSurface.getGraphicsDevice();
@@ -1852,10 +1849,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 oldDevice.removeWindow(this);
                 newDevice.addWindow(this);
             }
-            performUnlocked(() -> {
+
+            //WLToolkit.invokeLater(() -> {
                 var acc = AWTAccessor.getComponentAccessor();
                 acc.setGraphicsConfiguration(target, gc);
-            });
+//            });
         }
     }
 
@@ -1883,26 +1881,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         return constrainSize(bounds.width, bounds.height);
     }
 
-    // The following methods exist to prevent native code from using stale pointers (pointing to memory already
-    // deallocated). This includes pointers to object allocated by the toolkit directly, as well as those allocated by
-    // Wayland client API.
-    // An example case when a stale pointer can be accessed is performing some operation on a window/surface, while it's
-    // being destroyed/hidden in another thread.
-    // All accesses to native data, associated with the peer object (e.g. wl_surface proxy object), are expected to be
-    // done using these methods. Then one can be sure that native data is not changed concurrently in any way while the
-    // specified task is executed.
-
-    void performLocked(Runnable task) {
-        WLToolkit.awtLock();
-        try {
-            if (nativePtr != 0) {
-                task.run();
-            }
-        } finally {
-            WLToolkit.awtUnlock();
-        }
-    }
-
     <T> T performLocked(Supplier<T> task, Supplier<T> defaultValue) {
         WLToolkit.awtLock();
         try {
@@ -1913,28 +1891,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             WLToolkit.awtUnlock();
         }
         return defaultValue.get();
-    }
-
-    // It's important not to take some other locks in AWT code (e.g. java.awt.Component.getTreeLock()) while holding the
-    // lock protecting native data. If the locks can be taken also in a different order, a deadlock might occur. If some
-    // code is known to be executed under native-data protection lock (e.g. Wayland event processing code), it can use
-    // this method to give up the lock temporarily, to be able to call the code employing other locks.
-    static void performUnlocked(Runnable task) {
-        WLToolkit.awtUnlock();
-        try {
-            task.run();
-        } finally {
-            WLToolkit.awtLock();
-        }
-    }
-
-    static <T> T performUnlocked(Supplier<T> task) {
-        WLToolkit.awtUnlock();
-        try {
-            return task.get();
-        } finally {
-            WLToolkit.awtLock();
-        }
     }
 
     static Window getNativelyFocusableOwnerOrSelf(Component component) {
@@ -2083,7 +2039,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         @Override
         public void updateSurfaceSize() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             shadowSurface.updateSurfaceSize(shadowWlSize.getSurfaceWidth(), shadowWlSize.getSurfaceHeight());
         }
@@ -2096,7 +2052,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         public void createSurface() {
             assert shadowSurface == null : "The shadow surface must not be created twice";
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             int shadowOffset = -javaUnitsToSurfaceUnits(shadowSize);
             shadowSurface = new WLSubSurface(wlSurface, shadowOffset, shadowOffset);
@@ -2104,13 +2060,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         public void commitSurface() {
             assert shadowSurface != null;
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             shadowSurface.commit();
         }
 
         public void dispose() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             if (shadowSurface != null) {
                 shadowSurface.dispose();
@@ -2125,7 +2081,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void hide() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             if (shadowSurface != null) {
                 shadowSurface.dispose();
@@ -2134,7 +2090,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void updateSurfaceData() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             needsRepaint = true;
             SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).revalidate(
@@ -2142,7 +2098,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void paint() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             if (!needsRepaint) {
                 return;
@@ -2163,12 +2119,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void commitSurfaceData() {
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
             SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).commit();
         }
 
         public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
             assert shadowSurface != null;
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
             needsRepaint |= active ^ isActive;
 
