@@ -108,8 +108,7 @@ final class GtkFileDialogPeer extends WLDialogPeer implements FileDialogPeer {
 
     @Override
     public void setVisible(boolean b) {
-        SunToolkit.awtLock();
-        try {
+        synchronized (this) {
             quit = !b;
             if (b) {
                 InnocuousThread.newThread("ShowGtkFileDialog", this::showNativeDialog).start();
@@ -118,20 +117,14 @@ final class GtkFileDialogPeer extends WLDialogPeer implements FileDialogPeer {
                 FileDialog fd = (FileDialog) target;
                 fd.setVisible(false);
             }
-        } finally {
-            SunToolkit.awtUnlock();
         }
     }
 
     @Override
     public void dispose() {
-        SunToolkit.awtLock();
-        try {
+        synchronized (this) {
             quit = true;
             quit();
-        }
-        finally {
-            SunToolkit.awtUnlock();
         }
         super.dispose();
     }
