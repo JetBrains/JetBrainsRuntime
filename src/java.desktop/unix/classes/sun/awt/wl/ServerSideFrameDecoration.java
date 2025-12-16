@@ -38,7 +38,7 @@ import java.awt.Rectangle;
  * repainting is done, etc.
  */
 public class ServerSideFrameDecoration extends FrameDecoration {
-    private long nativeDecorPtr;
+    private long nativeDecorPtr; // protected by getStateLock()
 
     public ServerSideFrameDecoration(WLDecoratedPeer peer) {
         super(peer);
@@ -81,22 +81,28 @@ public class ServerSideFrameDecoration extends FrameDecoration {
     @Override
     public void notifyNativeWindowCreated(long nativePtr) {
         if (!peer.targetIsWlPopup()) {
-            nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
+            synchronized (getStateLock()) {
+                nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
+            }
         }
     }
 
     @Override
     public void notifyNativeWindowToBeHidden(long nativePtr) {
-        if (nativeDecorPtr != 0) {
-            disposeImpl(nativeDecorPtr);
-            nativeDecorPtr = 0;
+        synchronized (getStateLock()) {
+            if (nativeDecorPtr != 0) {
+                disposeImpl(nativeDecorPtr);
+                nativeDecorPtr = 0;
+            }
         }
     }
 
     @Override
     public void dispose() {
+        synchronized (getStateLock()) {
         // Native resources must have been already disposed when the window was hidden
         assert nativeDecorPtr == 0 : "Native resources must have been already disposed";
+        }
     }
 
     private native long createToplevelDecorationImpl(long nativeFramePtr);

@@ -61,6 +61,15 @@ public abstract class FrameDecoration {
     }
 
     /**
+     * The lock that protects this object's state from simultaneous access by multiple threads.
+     * Use synchronized(getStateLock()) to synchronize access and
+     * Thread.holdsLock(getStateLock()) to verify.
+     */
+    public Object getStateLock() {
+        return peer.getStateLock();
+    }
+
+    /**
      * Returns the insets of the frame's content, i.e., the area of the window minus the decorations.
      */
     public abstract Insets getContentInsets();
