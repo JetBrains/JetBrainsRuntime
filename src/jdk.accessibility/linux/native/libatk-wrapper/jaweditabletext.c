@@ -42,6 +42,21 @@
  * See [iface@AtkText]
  */
 
+static jclass cachedAtkEditableTextClass = NULL;
+static jmethodID cachedCreateAtkEditableTextMethod = NULL;
+static jmethodID cachedSetTextContentsMethod = NULL;
+static jmethodID cachedInsertTextMethod = NULL;
+static jmethodID cachedCopyTextMethod = NULL;
+static jmethodID cachedCutTextMethod = NULL;
+static jmethodID cachedDeleteTextMethod = NULL;
+static jmethodID cachedPasteTextMethod = NULL;
+static jmethodID cachedSetRunAttributesMethod = NULL;
+
+static GMutex cache_init_mutex;
+static gboolean cache_initialized = FALSE;
+
+static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv);
+
 static void jaw_editable_text_set_text_contents(AtkEditableText *text,
                                                 const gchar *string);
 static void jaw_editable_text_insert_text(AtkEditableText *text,
@@ -107,6 +122,10 @@ gpointer jaw_editable_text_data_init(jobject ac) {
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
@@ -114,25 +133,13 @@ gpointer jaw_editable_text_data_init(jobject ac) {
         return NULL;
     }
 
-    jclass classEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classEditableText, "create_atk_editable_text",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
-        "AtkEditableText;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find create_atk_editable_text method", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
     jobject jatk_editable_text =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, classEditableText, jmid, ac);
-    if (jatk_editable_text == NULL) {
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkEditableTextClass, cachedCreateAtkEditableTextMethod, ac);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_editable_text == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
         g_warning("%s: Failed to create jatk_editable_text using create_atk_editable_text method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -196,32 +203,26 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
         return;
     }
 
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
-                               "set_text_contents", "(Ljava/lang/String;)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find set_text_contents method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
-    if (jstr == NULL) {
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+           (*jniEnv)->ExceptionDescribe(jniEnv);
+           (*jniEnv)->ExceptionClear(jniEnv);
+        }
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedSetTextContentsMethod, jstr);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+       return;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -248,31 +249,26 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
         return;
     }
 
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkEditableText, "insert_text", "(Ljava/lang/String;I)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find insert_text method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
-    if (jstr == NULL) {
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+           (*jniEnv)->ExceptionDescribe(jniEnv);
+           (*jniEnv)->ExceptionClear(jniEnv);
+        }
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, jstr,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedInsertTextMethod, jstr,
                               (jint)*position);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+       return;
+    }
 
     *position = *position + length;
     atk_text_set_caret_offset(ATK_TEXT(text), *position);
@@ -292,38 +288,16 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
-                                            "copy_text", "(II)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find copy_text method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedCopyTextMethod, (jint)start_pos,
                               (jint)end_pos);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       return;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
@@ -337,38 +311,16 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
-                                            "cut_text", "(II)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find cut_text method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedCutTextMethod, (jint)start_pos,
                               (jint)end_pos);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       return;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
@@ -382,38 +334,16 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
-                                            "delete_text", "(II)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find delete_text method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)start_pos,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedDeleteTextMethod, (jint)start_pos,
                               (jint)end_pos);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       return;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
@@ -426,37 +356,15 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedPasteTextMethod, (jint)position);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       return;
     }
-
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkEditableText,
-                                            "paste_text", "(I)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find paste_text method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, jmid, (jint)position);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -482,39 +390,115 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 
     JAW_GET_EDITABLETEXT(text, FALSE); // create global JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
-    jclass classAtkEditableText =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
-    if (classAtkEditableText == NULL) {
-        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkEditableText, "set_run_attributes",
-        "(Ljavax/swing/text/AttributeSet;II)Z");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find set_run_attributes method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
-        jniEnv, atk_editable_text, jmid, (jobject)attrib_set,
+        jniEnv, atk_editable_text, cachedSetRunAttributesMethod, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+       (*jniEnv)->ExceptionDescribe(jniEnv);
+       (*jniEnv)->ExceptionClear(jniEnv);
+       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+       return FALSE;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jresult;
+}
+
+static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
+    JAW_CHECK_NULL(jniEnv, FALSE);
+
+    g_mutex_lock(&cache_init_mutex);
+
+    if (cache_initialized) {
+        g_mutex_unlock(&cache_init_mutex);
+        return TRUE;
+    }
+
+    jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedAtkEditableTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkEditableTextClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create global reference for AtkEditableText class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedCreateAtkEditableTextMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedAtkEditableTextClass, "create_atk_editable_text",
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkEditableText;");
+
+    cachedSetTextContentsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "set_text_contents", "(Ljava/lang/String;)V");
+
+    cachedInsertTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "insert_text", "(Ljava/lang/String;I)V");
+
+    cachedCopyTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "copy_text", "(II)V");
+
+    cachedCutTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "cut_text", "(II)V");
+
+    cachedDeleteTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "delete_text", "(II)V");
+
+    cachedPasteTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "paste_text", "(I)V");
+
+    cachedSetRunAttributesMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkEditableTextClass, "set_run_attributes",
+        "(Ljavax/swing/text/AttributeSet;II)Z");
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        cachedCreateAtkEditableTextMethod == NULL ||
+        cachedSetTextContentsMethod == NULL ||
+        cachedInsertTextMethod == NULL ||
+        cachedCopyTextMethod == NULL ||
+        cachedCutTextMethod == NULL ||
+        cachedDeleteTextMethod == NULL ||
+        cachedPasteTextMethod == NULL ||
+        cachedSetRunAttributesMethod == NULL) {
+
+         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+         }
+
+        g_warning("%s: Failed to cache one or more AtkEditableText method IDs",
+                  G_STRFUNC);
+
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkEditableTextClass);
+        cachedAtkEditableTextClass = NULL;
+        cachedCreateAtkEditableTextMethod = NULL;
+        cachedSetTextContentsMethod = NULL;
+        cachedInsertTextMethod = NULL;
+        cachedCopyTextMethod = NULL;
+        cachedCutTextMethod = NULL;
+        cachedDeleteTextMethod = NULL;
+        cachedPasteTextMethod = NULL;
+        cachedSetRunAttributesMethod = NULL;
+
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cache_initialized = TRUE;
+    g_mutex_unlock(&cache_init_mutex);
+    return TRUE;
 }
