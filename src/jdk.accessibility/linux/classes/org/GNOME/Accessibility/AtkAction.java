@@ -25,7 +25,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Action interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleAction interface
  * and the ATK (Accessibility Toolkit) action interface.
  */
@@ -146,7 +146,7 @@ public class AtkAction {
      * Sets a description of the specified action of the object.
      * Called from native code via JNI.
      *
-     * @param index the action index corresponding to the action
+     * @param index       the action index corresponding to the action
      * @param description the description to be assigned to this action
      * @return true if the description was successfully set, false otherwise
      */

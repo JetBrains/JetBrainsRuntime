@@ -28,7 +28,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK EditableText interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleEditableText interface
  * and the ATK (Accessibility Toolkit) editable text interface.
  */
@@ -86,7 +86,7 @@ public class AtkEditableText extends AtkText {
      * Called from native code via JNI.
      *
      * @param textToInsert the string to insert
-     * @param position the position at which to insert the text
+     * @param position     the position at which to insert the text
      */
     private void insert_text(String textToInsert, int position) {
         AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
@@ -109,7 +109,7 @@ public class AtkEditableText extends AtkText {
      * Called from native code via JNI.
      *
      * @param start the start position
-     * @param end the end position
+     * @param end   the end position
      */
     private void copy_text(int start, int end) {
         AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
@@ -141,7 +141,7 @@ public class AtkEditableText extends AtkText {
      * Called from native code via JNI.
      *
      * @param start the start position
-     * @param end the end position
+     * @param end   the end position
      */
     private void cut_text(int start, int end) {
         AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
@@ -159,7 +159,7 @@ public class AtkEditableText extends AtkText {
      * Called from native code via JNI.
      *
      * @param start the start position
-     * @param end the end position
+     * @param end   the end position
      */
     private void delete_text(int start, int end) {
         AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
@@ -194,8 +194,8 @@ public class AtkEditableText extends AtkText {
      * Called from native code via JNI.
      *
      * @param attributeSet the AttributeSet for the text
-     * @param start the start index of the text
-     * @param end the end index of the text
+     * @param start        the start index of the text
+     * @param end          the end index of the text
      * @return true if attributes were successfully set, false otherwise
      */
     private boolean set_run_attributes(AttributeSet attributeSet, int start, int end) {

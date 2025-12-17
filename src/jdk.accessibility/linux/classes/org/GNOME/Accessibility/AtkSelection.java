@@ -25,7 +25,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Selection interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleSelection interface
  * and the ATK (Accessibility Toolkit) selection interface.
  */

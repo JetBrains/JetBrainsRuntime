@@ -25,7 +25,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Hypertext interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleHypertext interface
  * and the ATK (Accessibility Toolkit) hypertext interface.
  * Hypertext allows navigation through documents containing
@@ -115,7 +115,7 @@ public class AtkHypertext extends AtkText {
      *
      * @param charIndex a character index
      * @return an index into the array of hyperlinks in this hypertext,
-     *         or -1 if there is no hyperlink associated with this character
+     * or -1 if there is no hyperlink associated with this character
      */
     private int get_link_index(int charIndex) {
         if (accessibleHypertextRef == null) {

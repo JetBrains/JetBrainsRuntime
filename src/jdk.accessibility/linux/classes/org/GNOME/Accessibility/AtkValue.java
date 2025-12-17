@@ -27,7 +27,7 @@ import java.lang.Double;
 
 /**
  * The ATK Value interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleValue interface
  * and the ATK (Accessibility Toolkit) value interface, enabling access to
  * numeric values and their ranges for accessible objects.
@@ -66,7 +66,7 @@ public class AtkValue {
      * Called from native code via JNI.
      *
      * @return a Number representing the current accessible value, or null if the value
-     *         is unavailable or the object doesn't implement this interface
+     * is unavailable or the object doesn't implement this interface
      */
     private Number get_current_value() {
         AccessibleValue accessibleValue = accessibleValueWeakRef.get();
@@ -84,7 +84,7 @@ public class AtkValue {
      * Called from native code via JNI.
      *
      * @return a Double representing the maximum accessible value, or null if the value
-     *         is unavailable or the object doesn't implement this interface
+     * is unavailable or the object doesn't implement this interface
      */
     private Double get_maximum_value() {
         AccessibleValue accessibleValue = accessibleValueWeakRef.get();
@@ -106,7 +106,7 @@ public class AtkValue {
      * Called from native code via JNI.
      *
      * @return a Double representing the minimum accessible value, or null if the value
-     *         is unavailable or the object doesn't implement this interface
+     * is unavailable or the object doesn't implement this interface
      */
     private Double get_minimum_value() {
         AccessibleValue accessibleValue = accessibleValueWeakRef.get();

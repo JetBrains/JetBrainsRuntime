@@ -26,7 +26,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Table interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleTable interface
  * and the ATK (Accessibility Toolkit) table interface.
  */
@@ -66,7 +66,7 @@ public class AtkTable {
      * Gets an accessible context at the specified row and column in the table.
      * Called from native code via JNI.
      *
-     * @param row the row index
+     * @param row    the row index
      * @param column the column index
      * @return the AccessibleContext of the cell at the specified position, or null if none
      */
@@ -91,7 +91,7 @@ public class AtkTable {
      * Gets the index of the accessible child at the specified row and column.
      * Called from native code via JNI.
      *
-     * @param row the row index
+     * @param row    the row index
      * @param column the column index
      * @return the child index, or -1 if no child exists at that position
      */
@@ -199,7 +199,7 @@ public class AtkTable {
      * Gets the number of columns occupied by the accessible object at the specified row and column.
      * Called from native code via JNI.
      *
-     * @param row the row index
+     * @param row    the row index
      * @param column the column index
      * @return the column extent (colspan), or 0 if not available
      */
@@ -218,7 +218,7 @@ public class AtkTable {
      * Gets the number of rows occupied by the accessible object at the specified row and column.
      * Called from native code via JNI.
      *
-     * @param row the row index
+     * @param row    the row index
      * @param column the column index
      * @return the row extent (rowspan), or 0 if not available
      */
@@ -279,7 +279,7 @@ public class AtkTable {
      *
      * @param column an int representing a column in the table
      * @return a String representing the column description, or null if the table doesn't implement
-     *         this interface or if no description is available for the specified column
+     * this interface or if no description is available for the specified column
      */
     private String get_column_description(int column) {
         AccessibleTable accessibleTable = accessibleTableWeakRef.get();
@@ -303,7 +303,7 @@ public class AtkTable {
      * Sets the description text of the specified column in the table.
      * Called from native code via JNI.
      *
-     * @param column an int representing a column in table
+     * @param column      an int representing a column in table
      * @param description a String object representing the description text to set for the
      *                    specified column of the table
      */
@@ -330,7 +330,7 @@ public class AtkTable {
      *
      * @param row an int representing a row in the table
      * @return a String representing the row description, or null if the table doesn't implement
-     *         this interface or if no description is available for the specified row
+     * this interface or if no description is available for the specified row
      */
     private String get_row_description(int row) {
         AccessibleTable accessibleTable = accessibleTableWeakRef.get();
@@ -354,7 +354,7 @@ public class AtkTable {
      * Sets the description text of the specified row in the table.
      * Called from native code via JNI.
      *
-     * @param row an int representing a row in table
+     * @param row         an int representing a row in table
      * @param description a String object representing the description text to set for the
      *                    specified row of the table
      */
@@ -545,7 +545,7 @@ public class AtkTable {
      * Determines whether the accessible object at the specified row and column is selected.
      * Called from native code via JNI.
      *
-     * @param row the row index
+     * @param row    the row index
      * @param column the column index
      * @return true if the cell at the specified position is selected, false otherwise
      */

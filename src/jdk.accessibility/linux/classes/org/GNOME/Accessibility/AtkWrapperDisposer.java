@@ -60,8 +60,8 @@ public class AtkWrapperDisposer implements Runnable {
     private static final WeakHashMap<AccessibleContext, Long> weakHashMap = new WeakHashMap<>();
 
     private static final Object lock = new Object();
-    private static volatile AtkWrapperDisposer INSTANCE = null;
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapperDisposer");
+    private static volatile AtkWrapperDisposer INSTANCE = null;
 
     private AtkWrapperDisposer() {
     }

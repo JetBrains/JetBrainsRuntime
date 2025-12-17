@@ -36,9 +36,9 @@ import java.awt.EventQueue;
 
 /**
  * AtkObject:
- *
+ * <p>
  * Java-side utility class used by the GNOME Accessibility Bridge.
- *
+ * <p>
  * That class is used to wrap AccessibleContext Java object
  * to avoid the concurrency of AWT objects.
  *
@@ -168,7 +168,7 @@ public class AtkObject {
      * Sets the parent of the given accessible context.
      * Called from native code via JNI.
      *
-     * @param ac the accessible context whose parent should be set
+     * @param ac                      the accessible context whose parent should be set
      * @param parentAccessibleContext the new parent accessible context (must be Accessible)
      */
     private static void set_accessible_parent(AccessibleContext ac, AccessibleContext parentAccessibleContext) {
@@ -204,7 +204,7 @@ public class AtkObject {
      * Sets the accessible name of the given accessible context.
      * Called from native code via JNI.
      *
-     * @param ac the accessible context
+     * @param ac   the accessible context
      * @param name the new accessible name
      */
     private static void set_accessible_name(AccessibleContext ac, String name) {
@@ -230,7 +230,7 @@ public class AtkObject {
      * Sets the accessible description of the given accessible context.
      * Called from native code via JNI.
      *
-     * @param ac the accessible context
+     * @param ac          the accessible context
      * @param description the new accessible description
      */
     private static void set_accessible_description(AccessibleContext ac, String description) {
@@ -324,19 +324,12 @@ public class AtkObject {
     }
 
     /**
-     * A record that wraps an accessible relation key with its target accessible contexts.
-     * Used to pass relation information from Java to native code.
-     */
-    private record WrapKeyAndTarget(String key, AccessibleContext[] relations) {
-    }
-
-    /**
      * Gets an array of accessible relations for the given accessible context.
      * Called from native code via JNI.
      *
      * @param ac the accessible context
      * @return an array of WrapKeyAndTarget records containing relation keys and targets,
-     *         or an empty array if no relations exist
+     * or an empty array if no relations exist
      */
     private static WrapKeyAndTarget[] get_array_accessible_relation(AccessibleContext ac) {
         WrapKeyAndTarget[] d = new WrapKeyAndTarget[0];
@@ -369,7 +362,7 @@ public class AtkObject {
      * Gets the accessible child at the specified index.
      * Called from native code via JNI.
      *
-     * @param ac the parent accessible context
+     * @param ac    the parent accessible context
      * @param index the zero-based index of the child
      * @return the child accessible context at the given index, or null if no child exists at that index
      */
@@ -383,5 +376,12 @@ public class AtkObject {
             AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
             return accessibleContext;
         }, null);
+    }
+
+    /**
+     * A record that wraps an accessible relation key with its target accessible contexts.
+     * Used to pass relation information from Java to native code.
+     */
+    private record WrapKeyAndTarget(String key, AccessibleContext[] relations) {
     }
 }

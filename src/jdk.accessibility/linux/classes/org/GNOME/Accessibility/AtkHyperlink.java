@@ -25,7 +25,7 @@ import java.lang.ref.WeakReference;
 
 /**
  * The ATK Hyperlink implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleHyperlink interface
  * and the ATK (Accessibility Toolkit) hyperlink interface.
  */
@@ -74,7 +74,7 @@ public class AtkHyperlink {
      *
      * @param index the zero-based index specifying the desired anchor
      * @return the AccessibleContext associated with this hyperlink's index-th anchor,
-     *         or null if not available
+     * or null if not available
      */
     private AccessibleContext get_object(int index) {
         AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
@@ -98,7 +98,7 @@ public class AtkHyperlink {
      * Called from native code via JNI.
      *
      * @return the index with the hypertext document at which this link ends,
-     *         or 0 if an error happened.
+     * or 0 if an error happened.
      */
     private int get_end_index() {
         AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
@@ -116,7 +116,7 @@ public class AtkHyperlink {
      * Called from native code via JNI.
      *
      * @return the index with the hypertext document at which this link begins,
-     *         or 0 if an error happened
+     * or 0 if an error happened
      */
     private int get_start_index() {
         AccessibleHyperlink accessibleHyperlink = accessibleHyperlinkWeakRef.get();
@@ -132,7 +132,7 @@ public class AtkHyperlink {
     /**
      * Determines whether this link is still valid.
      * Called from native code via JNI.
-     *
+     * <p>
      * Since the document that a link is associated with may have changed,
      * this method returns true if the link is still valid (with respect to
      * the document it references) and false otherwise.

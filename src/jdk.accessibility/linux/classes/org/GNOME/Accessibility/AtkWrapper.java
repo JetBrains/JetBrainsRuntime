@@ -35,181 +35,12 @@ public class AtkWrapper {
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapper");
     private static boolean accessibilityEnabled = false;
     private static boolean nativeLibraryInited = false;
-
-    private final WindowAdapter windowAdapter = new WindowAdapter() {
-        public void windowActivated(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowActivate(ac);
-            }
-        }
-
-        public void windowDeactivated(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowDeactivate(ac);
-            }
-        }
-
-        public void windowStateChanged(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowStateChange(ac);
-                if ((e.getNewState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH) {
-                    AtkWrapper.windowMaximize(ac);
-                }
-            }
-        }
-
-        public void windowDeiconified(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowRestore(ac);
-            }
-        }
-
-        public void windowIconified(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowMinimize(ac);
-            }
-        }
-
-        public void windowOpened(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                boolean isToplevel = isToplevel(o);
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowOpen(ac, isToplevel);
-            }
-        }
-
-        public void windowClosed(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                boolean isToplevel = isToplevel(o);
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowClose(ac, isToplevel);
-            }
-        }
-
-        public void windowClosing(WindowEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                boolean isToplevel = isToplevel(o);
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.windowClose(ac, isToplevel);
-            }
-        }
-
-        public void windowGainedFocus(WindowEvent e) {
-        }
-
-        public void windowLostFocus(WindowEvent e) {
-        }
-    };
-
-
-    private final ComponentAdapter componentAdapter = new ComponentAdapter() {
-        public void componentResized(ComponentEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.boundsChanged(ac);
-            }
-        }
-
-        public void componentMoved(ComponentEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.boundsChanged(ac);
-            }
-        }
-
-        public void componentShown(ComponentEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.componentAdded(ac);
-            }
-        }
-
-        public void componentHidden(ComponentEvent e) {
-            Object o = e.getSource();
-            if (o instanceof Accessible accessible) {
-                AccessibleContext ac = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-                AtkWrapper.componentRemoved(ac);
-            }
-        }
-    };
-
-    private final AWTEventListener globalListener = new AWTEventListener() {
-        private boolean firstEvent = true;
-
-        public void eventDispatched(AWTEvent e) {
-            if (e instanceof WindowEvent windowEvent) {
-                switch (e.getID()) {
-                    case WindowEvent.WINDOW_OPENED:
-                        Window win = windowEvent.getWindow();
-                        win.addWindowListener(windowAdapter);
-                        win.addWindowStateListener(windowAdapter);
-                        win.addWindowFocusListener(windowAdapter);
-                        break;
-                    case WindowEvent.WINDOW_LOST_FOCUS:
-                        AtkWrapper.dispatchFocusEvent(null);
-                        break;
-                    default:
-                        break;
-                }
-            } else if (e instanceof ContainerEvent containerEvent) {
-                switch (e.getID()) {
-                    case ContainerEvent.COMPONENT_ADDED: {
-                        Component c = containerEvent.getChild();
-                        c.addComponentListener(componentAdapter);
-                        break;
-                    }
-                    case ContainerEvent.COMPONENT_REMOVED: {
-                        Component c = containerEvent.getChild();
-                        c.removeComponentListener(componentAdapter);
-                        break;
-                    }
-
-                    default:
-                        break;
-                }
-            } else if (e instanceof FocusEvent) {
-                switch (e.getID()) {
-                    case FocusEvent.FOCUS_GAINED:
-                        AtkWrapper.dispatchFocusEvent(e.getSource());
-                        break;
-                    default:
-                        break;
-                }
-            } else if (e instanceof KeyEvent keyEvent) {
-                AtkWrapper.dispatchKeyEvent(new AtkKeyEvent(keyEvent));
-            }
-        }
-    };
-
-    private final Toolkit toolkit = Toolkit.getDefaultToolkit();
+    // Previously focused accessible context
+    private static AccessibleContext oldSourceContext = null;
+    // Last saved focused accessible context (excluding JRootPane)
+    private static AccessibleContext savedSourceContext = null;
+    // Previously focused JRootPane's AccessibleContext
+    private static AccessibleContext oldPaneContext = null;
 
     private static final PropertyChangeListener propertyChangeListener = new PropertyChangeListener() {
 
@@ -455,22 +286,6 @@ public class AtkWrapper {
         }
     };
 
-    public AtkWrapper() {
-        if (!accessibilityEnabled) {
-            throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
-        }
-
-        toolkit.addAWTEventListener(globalListener,
-                AWTEvent.WINDOW_EVENT_MASK |
-                        AWTEvent.FOCUS_EVENT_MASK |
-                        AWTEvent.CONTAINER_EVENT_MASK |
-                        AWTEvent.KEY_EVENT_MASK);
-    }
-
-    public static void main(String args[]) {
-        new AtkWrapper();
-    }
-
     static {
         try {
             String xpropPath = findXPropPath();
@@ -521,6 +336,193 @@ public class AtkWrapper {
         }
     }
 
+    private final WindowAdapter windowAdapter = new WindowAdapter() {
+        public void windowActivated(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowActivate(ac);
+            }
+        }
+
+        public void windowDeactivated(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowDeactivate(ac);
+            }
+        }
+
+        public void windowStateChanged(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowStateChange(ac);
+                if ((e.getNewState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH) {
+                    AtkWrapper.windowMaximize(ac);
+                }
+            }
+        }
+
+        public void windowDeiconified(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowRestore(ac);
+            }
+        }
+
+        public void windowIconified(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowMinimize(ac);
+            }
+        }
+
+        public void windowOpened(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                boolean isToplevel = isToplevel(o);
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowOpen(ac, isToplevel);
+            }
+        }
+
+        public void windowClosed(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                boolean isToplevel = isToplevel(o);
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowClose(ac, isToplevel);
+            }
+        }
+
+        public void windowClosing(WindowEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                boolean isToplevel = isToplevel(o);
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.windowClose(ac, isToplevel);
+            }
+        }
+
+        public void windowGainedFocus(WindowEvent e) {
+        }
+
+        public void windowLostFocus(WindowEvent e) {
+        }
+    };
+    private final ComponentAdapter componentAdapter = new ComponentAdapter() {
+        public void componentResized(ComponentEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.boundsChanged(ac);
+            }
+        }
+
+        public void componentMoved(ComponentEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.boundsChanged(ac);
+            }
+        }
+
+        public void componentShown(ComponentEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.componentAdded(ac);
+            }
+        }
+
+        public void componentHidden(ComponentEvent e) {
+            Object o = e.getSource();
+            if (o instanceof Accessible accessible) {
+                AccessibleContext ac = accessible.getAccessibleContext();
+                AtkWrapperDisposer.getInstance().addRecord(ac);
+                AtkWrapper.componentRemoved(ac);
+            }
+        }
+    };
+    private final AWTEventListener globalListener = new AWTEventListener() {
+        private boolean firstEvent = true;
+
+        public void eventDispatched(AWTEvent e) {
+            if (e instanceof WindowEvent windowEvent) {
+                switch (e.getID()) {
+                    case WindowEvent.WINDOW_OPENED:
+                        Window win = windowEvent.getWindow();
+                        win.addWindowListener(windowAdapter);
+                        win.addWindowStateListener(windowAdapter);
+                        win.addWindowFocusListener(windowAdapter);
+                        break;
+                    case WindowEvent.WINDOW_LOST_FOCUS:
+                        AtkWrapper.dispatchFocusEvent(null);
+                        break;
+                    default:
+                        break;
+                }
+            } else if (e instanceof ContainerEvent containerEvent) {
+                switch (e.getID()) {
+                    case ContainerEvent.COMPONENT_ADDED: {
+                        Component c = containerEvent.getChild();
+                        c.addComponentListener(componentAdapter);
+                        break;
+                    }
+                    case ContainerEvent.COMPONENT_REMOVED: {
+                        Component c = containerEvent.getChild();
+                        c.removeComponentListener(componentAdapter);
+                        break;
+                    }
+
+                    default:
+                        break;
+                }
+            } else if (e instanceof FocusEvent) {
+                switch (e.getID()) {
+                    case FocusEvent.FOCUS_GAINED:
+                        AtkWrapper.dispatchFocusEvent(e.getSource());
+                        break;
+                    default:
+                        break;
+                }
+            } else if (e instanceof KeyEvent keyEvent) {
+                AtkWrapper.dispatchKeyEvent(new AtkKeyEvent(keyEvent));
+            }
+        }
+    };
+    private final Toolkit toolkit = Toolkit.getDefaultToolkit();
+
+    public AtkWrapper() {
+        if (!accessibilityEnabled) {
+            throw new IllegalStateException("AtkWrapper not initialized due to disabled accessibility.");
+        }
+
+        toolkit.addAWTEventListener(globalListener,
+                AWTEvent.WINDOW_EVENT_MASK |
+                        AWTEvent.FOCUS_EVENT_MASK |
+                        AWTEvent.CONTAINER_EVENT_MASK |
+                        AWTEvent.KEY_EVENT_MASK);
+    }
+
+    public static void main(String args[]) {
+        new AtkWrapper();
+    }
+
     private static String findXPropPath() {
         String pathEnv = System.getenv().get("PATH");
         if (pathEnv != null) {
@@ -545,15 +547,6 @@ public class AtkWrapper {
         }
         return isToplevel;
     }
-
-    // Previously focused accessible context
-    private static AccessibleContext oldSourceContext = null;
-
-    // Last saved focused accessible context (excluding JRootPane)
-    private static AccessibleContext savedSourceContext = null;
-
-    // Previously focused JRootPane's AccessibleContext
-    private static AccessibleContext oldPaneContext = null;
 
     private static void dispatchFocusEvent(Object eventSource) {
         if (eventSource == null) {

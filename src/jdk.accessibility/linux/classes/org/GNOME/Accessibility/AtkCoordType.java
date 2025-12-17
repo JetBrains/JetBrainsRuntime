@@ -35,5 +35,6 @@ public final class AtkCoordType {
      */
     public static final int PARENT = 2;
 
-    private AtkCoordType() {}
+    private AtkCoordType() {
+    }
 }

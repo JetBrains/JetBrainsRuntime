@@ -26,5 +26,6 @@ public final class AtkTextGranularity {
     public static final int LINE = 3;
     public static final int PARAGRAPH = 4;
 
-    private AtkTextGranularity() {}
+    private AtkTextGranularity() {
+    }
 }

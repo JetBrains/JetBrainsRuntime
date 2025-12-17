@@ -28,13 +28,13 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Image interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleIcon interface
  * and the ATK (Accessibility Toolkit) image interface.
  * AtkImage should be implemented by components which display
  * image/pixmap content on-screen, such as icons, buttons with icons,
  * toolbar elements, and image viewing panes.
- *
+ * <p>
  * This interface provides two types of information: coordinate information
  * (useful for screen review mode and onscreen magnifiers) and descriptive
  * information (for alternative text-only presentation).
@@ -74,7 +74,7 @@ public class AtkImage {
      * @param coordType specifies whether the coordinates are relative to the screen
      *                  or to the component's top level window
      * @return a Point representing the image position (x, y coordinates), or null
-     *         if the position cannot be obtained (e.g., missing support).
+     * if the position cannot be obtained (e.g., missing support).
      */
     private Point get_image_position(int coordType) {
         AccessibleContext ac = accessibleContextWeakRef.get();
@@ -92,7 +92,7 @@ public class AtkImage {
      * Called from native code via JNI.
      *
      * @return a string representing the image description, or null if there is
-     *         no description available or an error occurs
+     * no description available or an error occurs
      */
     private String get_image_description() {
         AccessibleIcon[] accessibleIcons = this.accessibleIcons.get();
@@ -114,10 +114,10 @@ public class AtkImage {
      * Called from native code via JNI.
      *
      * @return a Dimension containing the width and height of the image.
-     *         Returns a Dimension with width and height set to -1 if the values
-     *         cannot be obtained (for instance, if the object is not onscreen).
-     *         If AccessibleIcon information is available, uses that; otherwise,
-     *         falls back to the component's bounds.
+     * Returns a Dimension with width and height set to -1 if the values
+     * cannot be obtained (for instance, if the object is not onscreen).
+     * If AccessibleIcon information is available, uses that; otherwise,
+     * falls back to the component's bounds.
      */
     private Dimension get_image_size() {
         Dimension dimension = new Dimension(-1, -1);

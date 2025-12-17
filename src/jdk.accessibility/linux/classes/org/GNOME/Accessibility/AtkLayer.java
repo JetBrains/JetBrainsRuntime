@@ -29,5 +29,6 @@ public final class AtkLayer {
     public static final int OVERLAY = 6;
     public static final int WINDOW = 7;
 
-    private AtkLayer() {}
+    private AtkLayer() {
+    }
 }

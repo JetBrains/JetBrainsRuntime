@@ -25,7 +25,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK TableCell interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleTable interface
  * and the ATK (Accessibility Toolkit) table cell interface, representing
  * individual cells within an accessible table.
@@ -103,7 +103,7 @@ public class AtkTableCell {
      * Called from native code via JNI.
      *
      * @return an array of AccessibleContext objects representing the column headers,
-     *         or null if column headers are not available
+     * or null if column headers are not available
      */
     private AccessibleContext[] get_accessible_column_header() {
         if (accessibleTableWeakRef == null) {
@@ -134,7 +134,7 @@ public class AtkTableCell {
      * Called from native code via JNI.
      *
      * @return an array of AccessibleContext objects representing the row headers,
-     *         or null if row headers are not available
+     * or null if row headers are not available
      */
     private AccessibleContext[] get_accessible_row_header() {
         if (accessibleTableWeakRef == null) {

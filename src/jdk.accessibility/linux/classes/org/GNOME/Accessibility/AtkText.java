@@ -28,7 +28,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Text interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleText interface
  * and the ATK (Accessibility Toolkit) text interface used by assistive
  * technologies.
@@ -38,9 +38,6 @@ public class AtkText {
     private final WeakReference<AccessibleContext> accessibleContextWeakRef;
     private final WeakReference<AccessibleText> accessibleTextWeakRef;
     private final WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
-
-    private record StringSequence(String str, int start_offset, int end_offset) {
-    }
 
     protected AtkText(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
@@ -187,7 +184,7 @@ public class AtkText {
      * Gets the start position of the sentence that contains the given offset.
      *
      * @param offset The character offset within the text
-     * @param text The full text to search within
+     * @param text   The full text to search within
      * @return The start position of the current sentence, or BreakIterator.DONE if not found
      */
     private int getCurrentSentenceStart(int offset, String text) {
@@ -213,7 +210,7 @@ public class AtkText {
      * Gets the start position of the next sentence after the given offset.
      *
      * @param offset The character offset within the text
-     * @param text The full text to search within
+     * @param text   The full text to search within
      * @return The start position of the next sentence, or BreakIterator.DONE if not found
      */
     private int getNextSentenceStart(int offset, String text) {
@@ -231,7 +228,7 @@ public class AtkText {
      * Gets the start position of the previous sentence before the given offset.
      *
      * @param offset The character offset within the text
-     * @param text The full text to search within
+     * @param text   The full text to search within
      * @return The start position of the previous sentence, or BreakIterator.DONE if not found
      */
     private int getPreviousSentenceStart(int offset, String text) {
@@ -249,7 +246,7 @@ public class AtkText {
      * Gets the end position of a sentence given its start position.
      *
      * @param start The start position of the sentence
-     * @param text The full text to search within
+     * @param text  The full text to search within
      * @return The end position of the sentence, or BreakIterator.DONE if not found
      */
     private int getSentenceEndFromStart(int start, String text) {
@@ -268,7 +265,7 @@ public class AtkText {
      * Gets the start position of the line that contains the given offset.
      *
      * @param offset The character offset within the text
-     * @param text The full text to search within
+     * @param text   The full text to search within
      * @return The start position of the current line
      */
     private int getCurrentLineStart(int offset, String text) {
@@ -314,7 +311,7 @@ public class AtkText {
      * Gets the end position of a line given its start position.
      *
      * @param start The start position of the line
-     * @param text The full text to search within
+     * @param text  The full text to search within
      * @return The end position of the line (position of newline or end of text)
      */
     private int getLineEndFromStart(int start, String text) {
@@ -362,7 +359,7 @@ public class AtkText {
      * Paragraphs are defined as text blocks separated by newlines.
      *
      * @param offset The character offset within the text
-     * @param text The full text to search within
+     * @param text   The full text to search within
      * @return The start position of the current paragraph
      */
     private int getCurrentParagraphStart(int offset, String text) {
@@ -412,7 +409,7 @@ public class AtkText {
      * Paragraphs are defined as text blocks separated by newlines.
      *
      * @param start The start position of the paragraph
-     * @param text The full text to search within
+     * @param text  The full text to search within
      * @return The end position of the paragraph (position of newline or end of text)
      */
     private int getParagraphEndFromStart(int start, String text) {
@@ -535,7 +532,7 @@ public class AtkText {
      * Called from native code via JNI.
      *
      * @param start a starting character offset within the text
-     * @param end an ending character offset within the text, or -1 for the end of the string
+     * @param end   an ending character offset within the text, or -1 for the end of the string
      * @return a string containing the text from start up to, but not including end, or null if retrieval fails
      */
     private String get_text(int start, int end) {
@@ -587,7 +584,7 @@ public class AtkText {
      * Called from native code via JNI.
      *
      * @return the character offset of the position of the caret, or -1 if the caret is not located
-     *         inside the element or in the case of any other failure
+     * inside the element or in the case of any other failure
      */
     private int get_caret_offset() {
         AccessibleText accessibleText = accessibleTextWeakRef.get();
@@ -604,10 +601,10 @@ public class AtkText {
      * Gets the bounding box containing the glyph representing the character at a particular text offset.
      * Called from native code via JNI.
      *
-     * @param offset the offset of the text character for which bounding information is required
+     * @param offset    the offset of the text character for which bounding information is required
      * @param coordType specifies whether coordinates are relative to the screen or widget window
      * @return a Rectangle containing the bounding box (x, y, width, height), or null if the extent
-     *         cannot be obtained. Returns null if all coordinates are set to -1.
+     * cannot be obtained. Returns null if all coordinates are set to -1.
      */
     private Rectangle get_character_extents(int offset, int coordType) {
         AccessibleContext ac = accessibleContextWeakRef.get();
@@ -657,13 +654,12 @@ public class AtkText {
      * are interpreted as being relative to the screen or this widget's window
      * depending on @coords.
      *
-     * @param x int screen x-position of character
-     * @param y int screen y-position of character
+     * @param x          int screen x-position of character
+     * @param y          int screen y-position of character
      * @param coord_type int specify whether coordinates are relative to the screen or
      *                   widget window
-     *
      * @return the offset to the character which is located at the specified
-     *         @x and @y coordinates or -1 in case of failure.
+     * @x and @y coordinates or -1 in case of failure.
      */
     private int get_offset_at_point(int x, int y, int coord_type) {
         AccessibleContext ac = accessibleContextWeakRef.get();
@@ -688,11 +684,11 @@ public class AtkText {
      * Gets the bounding box for text within the specified range.
      * Called from native code via JNI.
      *
-     * @param start the offset of the first text character for which boundary information is required
-     * @param end the offset of the text character after the last character for which boundary information is required
+     * @param start     the offset of the first text character for which boundary information is required
+     * @param end       the offset of the text character after the last character for which boundary information is required
      * @param coordType specifies whether coordinates are relative to the screen or widget window
      * @return a Rectangle filled in with the bounding box, or null if the extents cannot be obtained.
-     *         Returns null if all rectangle fields are set to -1.
+     * Returns null if all rectangle fields are set to -1.
      */
     private Rectangle get_range_extents(int start, int end, int coordType) {
         AccessibleContext ac = accessibleContextWeakRef.get();
@@ -729,7 +725,6 @@ public class AtkText {
      * Gets the number of selected regions.
      *
      * @param text an #AtkText
-     *
      * @return The number of selected regions, or -1 in the case of failure.
      */
     private int get_n_selections() {
@@ -752,7 +747,7 @@ public class AtkText {
      * Called from native code via JNI.
      *
      * @return a StringSequence containing the selected text and its start and end offsets,
-     *         or null if there is no selection or retrieval fails
+     * or null if there is no selection or retrieval fails
      */
     private StringSequence get_selection() {
         AccessibleText accessibleText = accessibleTextWeakRef.get();
@@ -776,9 +771,9 @@ public class AtkText {
      * Called from native code via JNI.
      *
      * @param start the starting character offset of the selected region
-     * @param end the offset of the first character after the selected region
+     * @param end   the offset of the first character after the selected region
      * @return true if successful, false otherwise. Note that Java AccessibleText only supports
-     *         a single selection, so this will return false if a selection already exists.
+     * a single selection, so this will return false if a selection already exists.
      */
     private boolean add_selection(int start, int end) {
         AccessibleText accessibleText = accessibleTextWeakRef.get();
@@ -828,8 +823,8 @@ public class AtkText {
      * @param selectionNum the selection number. The selected regions are assigned numbers
      *                     that correspond to how far the region is from the start of the text.
      *                     Since Java only supports a single selection, only 0 is valid.
-     * @param start the new starting character offset of the selection
-     * @param end the new end position (offset immediately past) of the selection
+     * @param start        the new starting character offset of the selection
+     * @param end          the new end position (offset immediately past) of the selection
      * @return true if successful, false otherwise
      */
     private boolean set_selection(int selectionNum, int start, int end) {
@@ -876,7 +871,7 @@ public class AtkText {
     }
 
     /**
-     * @param offset        Position.
+     * @param offset       Position.
      * @param boundaryType An AtkTextBoundary.
      * @return A newly allocated string containing the text at offset bounded by the specified boundary_type.
      * @deprecated Please use get_string_at_offset() instead.
@@ -889,7 +884,7 @@ public class AtkText {
     }
 
     /**
-     * @param offset        Position.
+     * @param offset       Position.
      * @param boundaryType An AtkTextBoundary.
      * @return A newly allocated string containing the text before offset bounded by the specified boundary_type
      * @deprecated Please use get_string_at_offset() instead.
@@ -903,7 +898,7 @@ public class AtkText {
     }
 
     /**
-     * @param offset        Position.
+     * @param offset       Position.
      * @param boundaryType An AtkTextBoundary.
      * @return A newly allocated string containing the text after offset bounded by the specified boundary_type.
      * @deprecated Please use get_string_at_offset() instead.
@@ -921,20 +916,18 @@ public class AtkText {
      * offset and a specific granularity, along with the start and end offsets defining the
      * boundaries of such a portion of text.
      *
-     * @param offset The position in the text where the extraction starts.
-     * @param granularity The granularity of the text to extract, which can be one of the following:
-     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_CHAR}: returns the character at the offset.
-     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_WORD}: returns the word that contains the offset.
-     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_SENTENCE}: returns the sentence that contains the offset.
-     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_LINE}: returns the line that contains the offset.
-     *                    - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_PARAGRAPH}: returns the paragraph that contains the offset.
+     * @param offset       The position in the text where the extraction starts.
+     * @param granularity  The granularity of the text to extract, which can be one of the following:
+     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_CHAR}: returns the character at the offset.
+     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_WORD}: returns the word that contains the offset.
+     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_SENTENCE}: returns the sentence that contains the offset.
+     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_LINE}: returns the line that contains the offset.
+     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_PARAGRAPH}: returns the paragraph that contains the offset.
      * @param start_offset (out) The starting character offset of the returned string, or -1 if there is an error (e.g., invalid offset, not implemented).
-     * @param end_offset (out) The offset of the first character after the returned string, or -1 in the case of an error (e.g., invalid offset, not implemented).
-     *
+     * @param end_offset   (out) The offset of the first character after the returned string, or -1 in the case of an error (e.g., invalid offset, not implemented).
      * @return A newly allocated string containing the text at the specified offset, bounded by the specified granularity.
-     *         The caller is responsible for freeing the returned string using {@code g_free()}.
-     *         Returns {@code null} if the offset is invalid or no implementation is available.
-     *
+     * The caller is responsible for freeing the returned string using {@code g_free()}.
+     * Returns {@code null} if the offset is invalid or no implementation is available.
      * @since 2.10 (in atk)
      */
     private StringSequence get_string_at_offset(int offset, int granularity) {
@@ -980,7 +973,7 @@ public class AtkText {
             }
             case AtkTextGranularity.LINE: {
                 // Granularity is defined by the boundaries of a line,
-                // starting at the beginning of the current line and finishing 
+                // starting at the beginning of the current line and finishing
                 // at the beginning of the following one, if present.
                 String fullText = get_text(0, characterCount);
 
@@ -1006,5 +999,8 @@ public class AtkText {
                 return null;
             }
         }
+    }
+
+    private record StringSequence(String str, int start_offset, int end_offset) {
     }
 }

@@ -46,31 +46,6 @@ public class AtkKeyEvent {
     private static final int ATK_KEY_EVENT_PRESSED = 0;
     private static final int ATK_KEY_EVENT_RELEASED = 1;
 
-    private final int type;
-    private final boolean isShiftKeyDown;
-    private final boolean isCtrlKeyDown;
-    private final boolean isAltKeyDown;
-    private final boolean isMetaKeyDown;
-    private final boolean isAltGrKeyDown;
-
-    /* A keysym value corresponding to those used by GDK and X11. see /usr/X11/include/keysymdef.h.
-     * FIXME: in current implementation we get this value from GNOMEKeyInfo.gdkKeyCode that are defined manually GNOMEKeyMapping.initializeMap,
-     *  doesn't look good.
-     */
-    private final int keyval;
-
-    /*
-     * Either a string approximating the text that would result
-     * from this keypress, or a symbolic name for this keypress.
-     */
-    private final String string;
-
-    // The raw hardware code that generated the key event.
-    private final long keycode;
-
-    // A timestamp in milliseconds indicating when the event occurred.
-    private final long timestamp;
-
     static {
         // Non-alphanumeric symbols that need to be mapped to X11 keysym names
         nonAlphaNumericMap = new HashMap<>(40);
@@ -107,6 +82,27 @@ public class AtkKeyEvent {
         nonAlphaNumericMap.put("/", "slash");
         nonAlphaNumericMap.put("?", "question");
     }
+
+    private final int type;
+    private final boolean isShiftKeyDown;
+    private final boolean isCtrlKeyDown;
+    private final boolean isAltKeyDown;
+    private final boolean isMetaKeyDown;
+    private final boolean isAltGrKeyDown;
+    /* A keysym value corresponding to those used by GDK and X11. see /usr/X11/include/keysymdef.h.
+     * FIXME: in current implementation we get this value from GNOMEKeyInfo.gdkKeyCode that are defined manually GNOMEKeyMapping.initializeMap,
+     *  doesn't look good.
+     */
+    private final int keyval;
+    /*
+     * Either a string approximating the text that would result
+     * from this keypress, or a symbolic name for this keypress.
+     */
+    private final String string;
+    // The raw hardware code that generated the key event.
+    private final long keycode;
+    // A timestamp in milliseconds indicating when the event occurred.
+    private final long timestamp;
 
     public AtkKeyEvent(KeyEvent e) {
         //type
@@ -164,9 +160,6 @@ public class AtkKeyEvent {
 class GNOMEKeyMapping {
 
     private static final HashMap<Integer, GNOMEKeyInfo> keyMap;
-
-    record GNOMEKeyInfo(int gdkKeyCode, String gdkKeyString) {}
-
     /* Used to offset VK for NUMPAD keys that don't have a VK_KP_* equivalent.
      * At present max VK_* value is 0x0000FFFF
      * Also need to support Left/Right variations.
@@ -177,6 +170,9 @@ class GNOMEKeyMapping {
 
     static {
         initializeMap();
+    }
+
+    private GNOMEKeyMapping() {
     }
 
     public static GNOMEKeyInfo getKey(KeyEvent e) {
@@ -196,9 +192,6 @@ class GNOMEKeyMapping {
         } else {
             return null;
         }
-    }
-
-    private GNOMEKeyMapping() {
     }
 
     private static void initializeMap() {
@@ -327,6 +320,9 @@ class GNOMEKeyMapping {
         keyMap.put(RIGHT_OFFSET + KeyEvent.VK_META, new GNOMEKeyInfo(0xFFE8, "Meta_R")); // GDK_Meta_R
         keyMap.put(LEFT_OFFSET + KeyEvent.VK_ALT, new GNOMEKeyInfo(0xFFE9, "Alt_L")); // GDK_Alt_L
         keyMap.put(RIGHT_OFFSET + KeyEvent.VK_ALT, new GNOMEKeyInfo(0xFFEA, "Alt_R")); // GDK_Alt_R
+    }
+
+    record GNOMEKeyInfo(int gdkKeyCode, String gdkKeyString) {
     }
 }
 

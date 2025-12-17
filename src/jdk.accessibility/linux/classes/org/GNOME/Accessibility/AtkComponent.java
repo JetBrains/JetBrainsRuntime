@@ -28,7 +28,7 @@ import java.awt.EventQueue;
 
 /**
  * The ATK Component interface implementation for Java accessibility.
- *
+ * <p>
  * This class provides a bridge between Java's AccessibleComponent interface
  * and the ATK (Accessibility Toolkit) component interface.
  */
@@ -137,10 +137,10 @@ public class AtkComponent {
      * Checks whether the specified point is within the extent of the component.
      * Called from native code via JNI.
      *
-     * @param x x coordinate
-     * @param y y coordinate
+     * @param x         x coordinate
+     * @param y         y coordinate
      * @param coordType specifies whether the coordinates are relative to the screen,
-     *                   the component's toplevel window, or the component's parent
+     *                  the component's toplevel window, or the component's parent
      * @return true if the specified point is within the extent of the component
      */
     private boolean contains(int x, int y, int coordType) {
@@ -171,10 +171,10 @@ public class AtkComponent {
      * specified by x and y.
      * Called from native code via JNI.
      *
-     * @param x x coordinate
-     * @param y y coordinate
+     * @param x         x coordinate
+     * @param y         y coordinate
      * @param coordType specifies whether the coordinates are relative to the screen,
-     *                   the component's toplevel window, or the component's parent
+     *                  the component's toplevel window, or the component's parent
      * @return the AccessibleContext of the child at the specified point, or null if none exists
      */
     private AccessibleContext get_accessible_at_point(int x, int y, int coordType) {
@@ -229,16 +229,16 @@ public class AtkComponent {
 
     /**
      * TODO: check logic
-     *
+     * <p>
      * Sets the extents of the component.
      * Called from native code via JNI.
      *
-     * @param x x coordinate
-     * @param y y coordinate
-     * @param width width to set for the component
-     * @param height height to set for the component
+     * @param x         x coordinate
+     * @param y         y coordinate
+     * @param width     width to set for the component
+     * @param height    height to set for the component
      * @param coordType specifies whether the coordinates are relative to the screen,
-     *                   the component's toplevel window, or the component's parent
+     *                  the component's toplevel window, or the component's parent
      * @return true if the extents were set successfully, false otherwise
      */
     private boolean set_extents(int x, int y, int width, int height, int coordType) {
@@ -270,7 +270,7 @@ public class AtkComponent {
      * Called from native code via JNI.
      *
      * @param coordType specifies whether the coordinates are relative to the screen,
-     *                   the component's toplevel window, or the component's parent
+     *                  the component's toplevel window, or the component's parent
      * @return the Rectangle representing the component's extent, or null if it cannot be obtained
      */
     private Rectangle get_extents(int coordType) {

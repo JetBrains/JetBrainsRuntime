@@ -28,6 +28,7 @@ public final class AtkTextBoundary {
     public static final int LINE_START = 5;
     public static final int LINE_END = 6;
 
-    private AtkTextBoundary() {}
+    private AtkTextBoundary() {
+    }
 }
 
