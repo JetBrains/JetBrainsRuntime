@@ -166,7 +166,6 @@ gpointer jaw_component_data_init(jobject ac) {
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
            (*jniEnv)->ExceptionDescribe(jniEnv);
            (*jniEnv)->ExceptionClear(jniEnv);
-           (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         }
         g_warning("%s: Failed to create jatk_component using create_atk_component method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
