@@ -282,13 +282,13 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
 
     if (jniEnv == NULL) {
         g_warning("%s: Null argument jniEnv passed to the function", G_STRFUNC);
-        return -1;
+        return 0;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
-        return -1;
+        return 0;
     }
 
     jclass atkObject =
@@ -296,14 +296,14 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     if (atkObject == NULL) {
         g_warning("%s: Failed to find AtkObject class", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
+        return 0;
     }
     jmethodID jmid = (*jniEnv)->GetStaticMethodID(
         jniEnv, atkObject, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
     if (jmid == NULL) {
         g_warning("%s: Failed to find get_tflag_from_obj method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return -1;
+        return 0;
     }
     guint result =
         (guint)(*jniEnv)->CallStaticIntMethod(jniEnv, atkObject, jmid, jObj);
