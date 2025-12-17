@@ -68,6 +68,8 @@ static jmethodID cachedGetLocalizedNameMethod = NULL;
 static GMutex cache_init_mutex;
 static gboolean cache_initialized = FALSE;
 
+// TODO: introduce JAW_ACTION_DEFAULT_LOCAL_FRAME_SIZE 10
+
 /**
  * jaw_action_init_jni_cache:
  * @jniEnv: JNI environment
