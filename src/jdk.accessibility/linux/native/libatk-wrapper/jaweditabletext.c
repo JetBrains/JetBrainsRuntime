@@ -164,13 +164,13 @@ void jaw_editable_text_data_finalize(gpointer p) {
     JAW_DEBUG_ALL("%p", p);
 
     if (p == NULL) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        g_debug("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
     EditableTextData *data = (EditableTextData *)p;
     if (data == NULL) {
-        g_warning("%s: data is null after cast", G_STRFUNC);
+        g_debug("%s: data is null after cast", G_STRFUNC);
         return;
     }
 
