@@ -127,28 +127,22 @@ public class WLRobotPeer implements RobotPeer {
     }
 
     private int getRGBPixelOfSingularWindow(int x, int y) {
-        WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
-        Point loc = peer.convertPontFromDeviceSpace(x, y);
-        WLToolkit.awtLock();
-        try {
+        return WLToolkit.invokeAndWait(() -> {
+            WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+            Point loc = peer.convertPontFromDeviceSpace(x, y);
             checkPeerForPixelGrab(peer);
             return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(loc.x, loc.y);
-        } finally {
-            WLToolkit.awtUnlock();
-        }
+        });
     }
 
     private int [] getRGBPixelsOfSingularWindow(Rectangle bounds) {
-        WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
-        Point loc = peer.convertPontFromDeviceSpace(bounds.x, bounds.y);
-        Rectangle adjustedBounds = new Rectangle(loc, bounds.getSize());
-        WLToolkit.awtLock();
-        try {
+        return WLToolkit.invokeAndWait(() -> {
+            WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+            Point loc = peer.convertPontFromDeviceSpace(bounds.x, bounds.y);
+            Rectangle adjustedBounds = new Rectangle(loc, bounds.getSize());
             checkPeerForPixelGrab(peer);
             return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(adjustedBounds);
-        } finally {
-            WLToolkit.awtUnlock();
-        }
+        });
     }
 
     private static void checkPeerForPixelGrab(WLComponentPeer peer) {
@@ -171,7 +165,7 @@ public class WLRobotPeer implements RobotPeer {
     static Point getLocationOfWLSurface(WLSurface wlSurface) {
         checkExtensionPresent();
 
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         final long wlSurfacePtr = wlSurface.getWlSurfacePtr();
         // The native implementation allows for just one such request at a time

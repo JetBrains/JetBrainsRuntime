@@ -92,6 +92,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -283,7 +285,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                 SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
-                    WLToolkit.awtLock();
                     try {
                         dispatchEventsOnEDT();
                         if (dataDevice != null) {
@@ -291,7 +292,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                         }
                     } finally {
                         eventsQueued.release();
-                        WLToolkit.awtUnlock();
                     }
                 }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
                 try {
@@ -305,7 +305,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     private static void shutDownAfterServerError() {
-        WLToolkit.invokeLater(() -> {
+        EventQueue.invokeLater(() -> {
             var frames = Arrays.asList(Frame.getFrames());
             Collections.reverse(frames);
             frames.forEach(frame -> frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING)));
@@ -332,6 +332,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     throw new RuntimeException(e);
                 }
             }
+        }
+    }
+
+    public static <T> T invokeAndWait(Supplier<T> task) {
+        if (EventQueue.isDispatchThread()) {
+            return task.get();
+        } else {
+            AtomicReference<T> result = new AtomicReference<>();
+            invokeAndWait(() -> {
+                    result.set(task.get());
+            });
+            return result.get();
         }
     }
 

@@ -188,11 +188,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     boolean isVisible() {
-        WLToolkit.awtLock();
-        try {
+        synchronized (getStateLock()) {
             return wlSurface != null && visible;
-        } finally {
-            WLToolkit.awtUnlock();
         }
     }
 
@@ -1744,7 +1741,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert isVisible() : "Received a configure event from an invisible window";
 
         // NB: The width and height, as well as X and Y arguments, specify the size and the location
         //     of the window in surface-local coordinates.
@@ -1783,10 +1781,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
-        // May have been hidden on another thread. If performUnlocked() was called earlier in this method,
-        // the state protected by the AWT lock may have changed since the start of the method.
-        if (!isVisible()) return;
-
         if (!wlSurface.hasSurfaceData()) {
             wlSurface.associateWithSurfaceData(surfaceData);
         }
@@ -1814,27 +1808,19 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         int newHeight = wlSize.getJavaHeight();
         try {
             setSizeIsBeingConfigured(true);
-            performUnlocked(() -> target.setSize(newWidth, newHeight));
+            target.setSize(newWidth, newHeight);
         } finally {
             setSizeIsBeingConfigured(false);
         }
     }
 
-    void notifyEnteredOutput(int wlOutputID) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-
-        if (wlSurface != null) {
-            wlSurface.notifyEnteredOutput(wlOutputID);
-        }
-    }
-
-    void notifyPopupDone() {
+    final void notifyPopupDone() {
         assert targetIsWlPopup() : "This method must be invoked only for popups";
         target.setVisible(false);
     }
 
     void checkIfOnNewScreen() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (wlSurface == null) return;
         final WLGraphicsDevice newDevice = wlSurface.getGraphicsDevice();
@@ -1848,10 +1834,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 oldDevice.removeWindow(this);
                 newDevice.addWindow(this);
             }
-            performUnlocked(() -> {
-                var acc = AWTAccessor.getComponentAccessor();
-                acc.setGraphicsConfiguration(target, gc);
-            });
+            var acc = AWTAccessor.getComponentAccessor();
+            acc.setGraphicsConfiguration(target, gc);
         }
     }
 
@@ -1889,19 +1873,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             WLToolkit.awtUnlock();
         }
         return defaultValue.get();
-    }
-
-    // It's important not to take some other locks in AWT code (e.g. java.awt.Component.getTreeLock()) while holding the
-    // lock protecting native data. If the locks can be taken also in a different order, a deadlock might occur. If some
-    // code is known to be executed under native-data protection lock (e.g. Wayland event processing code), it can use
-    // this method to give up the lock temporarily, to be able to call the code employing other locks.
-    static void performUnlocked(Runnable task) {
-        WLToolkit.awtUnlock();
-        try {
-            task.run();
-        } finally {
-            WLToolkit.awtLock();
-        }
     }
 
     static Window getNativelyFocusableOwnerOrSelf(Component component) {
