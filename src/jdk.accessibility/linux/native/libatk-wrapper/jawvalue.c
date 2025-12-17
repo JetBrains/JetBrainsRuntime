@@ -27,6 +27,19 @@
 extern "C" {
 #endif
 
+static jclass cachedAtkValueClass = NULL;
+static jmethodID cachedCreateAtkValueMethod = NULL;
+static jmethodID cachedGetCurrentValueMethod = NULL;
+static jmethodID cachedSetValueMethod = NULL;
+static jmethodID cachedGetMinimumValueMethod = NULL;
+static jmethodID cachedGetMaximumValueMethod = NULL;
+static jmethodID cachedGetIncrementMethod = NULL;
+
+static GMutex cache_init_mutex;
+static gboolean cache_initialized = FALSE;
+
+static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv);
+
 static void jaw_value_get_current_value(AtkValue *obj, GValue *value);
 static void jaw_value_set_value(AtkValue *obj, const gdouble value);
 static gdouble jaw_value_get_increment(AtkValue *obj);
@@ -73,32 +86,27 @@ gpointer jaw_value_data_init(jobject ac) {
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    JAW_CHECK_NULL(jniEnv, NULL);
+
+    if (!jaw_value_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
     }
 
-    jclass classValue =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (classValue == NULL) {
-        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classValue, "create_atk_value",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
-        "AtkValue;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find create_atk_value method", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jobject jatk_value =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, classValue, jmid, ac);
-    if (jatk_value == NULL) {
-        g_warning("%s: Failed to call create_atk_value method and create jatk_value", G_STRFUNC);
+    jobject jatk_value = (*jniEnv)->CallStaticObjectMethod(
+        jniEnv, cachedAtkValueClass, cachedCreateAtkValueMethod, ac);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_value == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create jatk_value using create_atk_value method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -311,23 +319,16 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         return;
     }
 
-    jclass classAtkValue =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (classAtkValue == NULL) {
-        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
+    jobject jnumber = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, cachedGetCurrentValueMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        g_warning("%s: Exception occurred while calling get_current_value", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-    jmethodID jmid = (*jniEnv)->GetMethodID(
-        jniEnv, classAtkValue, "get_current_value", "()Ljava/lang/Number;");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find get_current_value method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jobject jnumber = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, jmid);
+
     if (jnumber == NULL) {
         g_warning("%s: Failed to get jnumber by calling get_current_value method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
@@ -375,24 +376,52 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
 
-    jclass classAtkValue =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (classAtkValue == NULL) {
-        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "set_value",
-                                            "(Ljava/lang/Number;)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find set_value method", G_STRFUNC);
+    jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || classDouble == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Double class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_value, jmid, (jdouble)value);
+    jmethodID doubleConstructor = (*jniEnv)->GetMethodID(jniEnv, classDouble, "<init>", "(D)V");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || doubleConstructor == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Double constructor", G_STRFUNC);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
+
+    jobject jdoubleValue = (*jniEnv)->NewObject(jniEnv, classDouble, doubleConstructor, (jdouble)value);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jdoubleValue == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create Double object", G_STRFUNC);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
+
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_value, cachedSetValueMethod, jdoubleValue);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        g_warning("%s: Exception occurred while calling set_value", G_STRFUNC);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
+
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
@@ -462,35 +491,25 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         return NULL;
     }
 
-    jclass classAtkValue =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (classAtkValue == NULL) {
-        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmidMin =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_minimum_value",
-                               "()Ljava/lang/Double;");
-    if (jmidMin == NULL) {
-        g_warning("%s: Failed to find get_minimum_value method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmidMax =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_maximum_value",
-                               "()Ljava/lang/Double;");
-    if (jmidMax == NULL) {
-        g_warning("%s: Failed to find get_maximum_value method", G_STRFUNC);
+    jobject jmin = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, cachedGetMinimumValueMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        g_warning("%s: Exception occurred while calling get_minimum_value", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    jobject jmin = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, jmidMin);
-    jobject jmax = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, jmidMax);
+    jobject jmax = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, cachedGetMaximumValueMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        g_warning("%s: Exception occurred while calling get_maximum_value", G_STRFUNC);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     gdouble min_value, max_value;
     gboolean has_min = jaw_value_convert_double_to_gdouble(jniEnv, jmin, &min_value);
@@ -530,39 +549,106 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
         return 0;
     }
 
-    JAW_GET_VALUE(obj, 0.);
+    JAW_GET_VALUE(obj, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_value); // deleting ref that was created in JAW_GET_VALUE
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return 0;
-    }
-
-    jclass classAtkValue =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
-    if (classAtkValue == NULL) {
-        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
+    gdouble ret = (*jniEnv)->CallDoubleMethod(jniEnv, atk_value, cachedGetIncrementMethod);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        g_warning("%s: Exception occurred while calling get_increment", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classAtkValue, "get_increment", "()D");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find get_increment method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return 0;
-    }
-    gdouble ret = (*jniEnv)->CallDoubleMethod(jniEnv, atk_value, jmid);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ret;
+}
+
+static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
+    JAW_CHECK_NULL(jniEnv, FALSE);
+
+    g_mutex_lock(&cache_init_mutex);
+
+    if (cache_initialized) {
+        g_mutex_unlock(&cache_init_mutex);
+        return TRUE;
+    }
+
+    jclass localClassAtkValue = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassAtkValue == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedAtkValueClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkValue);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localClassAtkValue);
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkValueClass == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create global reference for AtkValue class", G_STRFUNC);
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cachedCreateAtkValueMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedAtkValueClass, "create_atk_value",
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkValue;");
+
+    cachedGetCurrentValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkValueClass, "get_current_value", "()Ljava/lang/Number;");
+
+    cachedSetValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkValueClass, "set_value", "(Ljava/lang/Number;)V");
+
+    cachedGetMinimumValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkValueClass, "get_minimum_value", "()Ljava/lang/Double;");
+
+    cachedGetMaximumValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkValueClass, "get_maximum_value", "()Ljava/lang/Double;");
+
+    cachedGetIncrementMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedAtkValueClass, "get_increment", "()D");
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        cachedCreateAtkValueMethod == NULL ||
+        cachedGetCurrentValueMethod == NULL ||
+        cachedSetValueMethod == NULL ||
+        cachedGetMinimumValueMethod == NULL ||
+        cachedGetMaximumValueMethod == NULL ||
+        cachedGetIncrementMethod == NULL) {
+
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+
+        g_warning("%s: Failed to cache one or more AtkValue method IDs", G_STRFUNC);
+
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkValueClass);
+        cachedAtkValueClass = NULL;
+        cachedCreateAtkValueMethod = NULL;
+        cachedGetCurrentValueMethod = NULL;
+        cachedSetValueMethod = NULL;
+        cachedGetMinimumValueMethod = NULL;
+        cachedGetMaximumValueMethod = NULL;
+        cachedGetIncrementMethod = NULL;
+
+        g_mutex_unlock(&cache_init_mutex);
+        return FALSE;
+    }
+
+    cache_initialized = TRUE;
+    g_mutex_unlock(&cache_init_mutex);
+    return TRUE;
 }
 
 #ifdef __cplusplus
