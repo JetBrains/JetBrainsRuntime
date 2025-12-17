@@ -24,11 +24,14 @@
 /* @test
  * @summary java.io.RandomAccessFileTest uses java.nio.file inside.
  * @library testNio
+ * @compile --enable-preview --source 25 RandomAccessFileTest.java
  * @run junit/othervm
- *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvider
+ *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvidera
  *      -Djbr.java.io.use.nio=true
  *      --add-opens jdk.unsupported/com.sun.nio.file=ALL-UNNAMED
  *      --add-opens java.base/java.io=ALL-UNNAMED
+ *      --enable-native-access=ALL-UNNAMED
+ *      --enable-preview
  *      RandomAccessFileTest
  */
 
@@ -45,6 +48,9 @@ import testNio.ManglingFileSystemProvider;
 import java.io.EOFException;
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.lang.foreign.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -55,6 +61,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -291,6 +298,124 @@ public class RandomAccessFileTest {
             field.setAccessible(true);
             OpenOption option = (OpenOption) field.get(null);
             FileSystems.getDefault().provider().newFileChannel(file.toPath(), Collections.singleton(option)).close();
+        }
+    }
+
+    /**
+     * JBR-9779
+     */
+    @Test
+    public void testWindowsPipe() throws Throwable {
+        Assume.assumeTrue("Windows-only test", System.getProperty("os.name").toLowerCase().startsWith("win"));
+
+        // Creating a pipe.
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup loader = SymbolLookup.libraryLookup("kernel32", Arena.global());
+
+        StructLayout captureLayout = Linker.Option.captureStateLayout();
+        VarHandle GetLastError = captureLayout.varHandle(MemoryLayout.PathElement.groupElement("GetLastError"));
+
+        MethodHandle CreateNamedPipeW = linker.downcallHandle(
+                loader.find("CreateNamedPipeW").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_LONG,
+                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS),
+                Linker.Option.captureCallState("GetLastError")
+        );
+
+        MethodHandle ConnectNamedPipe = linker.downcallHandle(
+                loader.find("ConnectNamedPipe").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
+                Linker.Option.captureCallState("GetLastError")
+        );
+
+        MethodHandle DisconnectNamedPipe = linker.downcallHandle(
+                loader.find("DisconnectNamedPipe").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG)
+        );
+
+        MethodHandle PeekNamedPipe = linker.downcallHandle(
+                loader.find("PeekNamedPipe").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG,
+                        ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS,
+                        ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+        );
+
+        MethodHandle CloseHandle = linker.downcallHandle(
+                loader.find("CloseHandle").get(),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG)
+        );
+
+        String pipeName = "\\\\.\\pipe\\jbr-test-pipe-" + System.nanoTime();
+        Arena arena = Arena.ofAuto();
+        char[] nameChars = (pipeName + "\0").toCharArray();  // `char` on Windows is UTF-16, as WinAPI expects.
+        MemorySegment pipeWinPath = arena.allocateFrom(ValueLayout.JAVA_CHAR, nameChars);
+        MemorySegment capturedState = arena.allocate(captureLayout);
+
+        final long INVALID_HANDLE_VALUE = -1L;
+
+        long hPipe = (long) CreateNamedPipeW.invokeExact(
+                capturedState,
+                pipeWinPath,
+                0x00000003, // dwOpenMode = PIPE_ACCESS_DUPLEX
+                0x00000000, // dwPipeMode = PIPE_TYPE_BYTE
+                1, // nMaxInstances. Limit to 1 to force ERROR_PIPE_BUSY.
+                1024, // nOutBufferSize
+                1024, // nInBufferSize
+                0, // nDefaultTimeOut
+                MemorySegment.NULL // lpSecurityAttributes
+        );
+
+        if (hPipe == INVALID_HANDLE_VALUE) {
+            int errorCode = (int) GetLastError.get(capturedState);
+            throw new Exception("CreateNamedPipeW failed: " + errorCode);
+        }
+
+        AtomicBoolean keepRunning = new AtomicBoolean(true);
+        Thread serverThread = new Thread(() -> {
+            // This server accepts a connection and does nothing until the client disconnects explicitly.
+            try {
+                int i = 0;
+                while (keepRunning.get()) {
+                    int connected = (int) ConnectNamedPipe.invokeExact(capturedState, hPipe, MemorySegment.NULL);
+                    if (connected == 0) {
+                        int errorCode = (int) GetLastError.get(capturedState);
+                        // https://learn.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
+                        if (errorCode == 6 && !keepRunning.get()) { // ERROR_INVALID_HANDLE
+                            break;
+                        }
+                        throw new Exception("ConnectNamedPipe failed: " + errorCode);
+                    }
+                    try {
+                        int peekResult;
+                        do {
+                            // Random timeout. The timeout must be big enough to reveal possible consequent
+                            // attempts to connect to the pipe.
+                            Thread.sleep(1000);
+
+                            // Check if the pipe is still connected by peeking at it.
+                            peekResult = (int) PeekNamedPipe.invokeExact(hPipe, MemorySegment.NULL, 0,
+                                    MemorySegment.NULL, MemorySegment.NULL, MemorySegment.NULL);
+                        }
+                        while (keepRunning.get() && peekResult != 0);
+                    } finally {
+                        int disconnected = (int) DisconnectNamedPipe.invokeExact(hPipe);
+                    }
+                }
+            } catch (Throwable e) {
+                e.printStackTrace();
+            }
+        });
+
+        serverThread.setDaemon(true);
+        serverThread.start();
+
+        try {
+            new RandomAccessFile(pipeName, "rw").close();
+        } finally {
+            keepRunning.set(false);
+            int closed = (int) CloseHandle.invokeExact(hPipe);
         }
     }
 }
