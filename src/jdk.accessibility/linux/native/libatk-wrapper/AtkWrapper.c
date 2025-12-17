@@ -66,6 +66,24 @@ static GMainContext *jni_main_context;
 
 static gboolean jaw_initialized = FALSE;
 
+/*
+ * OpenJDK seems to be sending flurries of visible data changed events, which
+ * overloads us. They are however usually just for the same object, so we can
+ * compact them: there is no need to queue another one if the previous hasn't
+ * even been sent!
+ */
+static pthread_mutex_t jaw_vdc_dup_mutex = PTHREAD_MUTEX_INITIALIZER;
+static jobject jaw_vdc_last_ac = NULL;
+
+static void
+jaw_vdc_clear_last_ac(JNIEnv *jniEnv)
+{
+    if (jaw_vdc_last_ac != NULL && jniEnv != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_vdc_last_ac);
+    }
+    jaw_vdc_last_ac = NULL;
+}
+
 gboolean jaw_accessibility_init(void) {
     JAW_DEBUG_ALL("");
     if (atk_bridge_adaptor_init(NULL, NULL) < 0) {
@@ -78,6 +96,12 @@ gboolean jaw_accessibility_init(void) {
 
 void jaw_accessibility_shutdown(void) {
     JAW_DEBUG_ALL("");
+
+    pthread_mutex_lock(&jaw_vdc_dup_mutex);
+    JNIEnv *jniEnv = jaw_util_get_jni_env();
+    jaw_vdc_clear_last_ac(jniEnv);
+    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+
     atk_bridge_adaptor_cleanup();
 }
 
@@ -842,15 +866,6 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     return result;
 }
 
-/*
- * OpenJDK seems to be sending flurries of visible data changed events, which
- * overloads us. They are however usually just for the same object, so we can
- * compact them: there is no need to queue another one if the previous hasn't
- * even been sent!
- */
-static pthread_mutex_t jaw_vdc_dup_mutex = PTHREAD_MUTEX_INITIALIZER;
-static jobject jaw_vdc_last_ac = NULL;
-
 static gboolean signal_emit_handler(gpointer p) {
     JAW_DEBUG_C("%p", p);
     CallbackPara *para = (CallbackPara *)p;
@@ -878,8 +893,7 @@ static gboolean signal_emit_handler(gpointer p) {
         if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, para->global_ac)) {
             /* So we will be sending the visible data changed event. If any
              * other comes, we will want to send it  */
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_vdc_last_ac);
-            jaw_vdc_last_ac = NULL;
+            jaw_vdc_clear_last_ac(jniEnv);
         }
         pthread_mutex_unlock(&jaw_vdc_dup_mutex);
     }
@@ -1154,8 +1168,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     if (id != org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         /* Something may have happened since the last visible data changed
          * event, so we want to sent it again */
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_vdc_last_ac);
-        jaw_vdc_last_ac = NULL;
+        jaw_vdc_clear_last_ac(jniEnv);
     } else {
         if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, jAccContext)) {
             /* We have already queued to send one and nothing happened in
@@ -1165,9 +1178,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             return;
         }
 
-        if (jaw_vdc_last_ac != NULL) {
-            (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_vdc_last_ac);
-        }
+        jaw_vdc_clear_last_ac(jniEnv);
         jaw_vdc_last_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
     }
     pthread_mutex_unlock(&jaw_vdc_dup_mutex);
