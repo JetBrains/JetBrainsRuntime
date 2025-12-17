@@ -41,35 +41,35 @@ import sun.awt.AWTAccessor;
 public class AtkKeyEvent {
 
     // Symbols mapped to X11 keysym names
-    private static HashMap<String, String> nonAlphaNumericMap = null;
+    private static final HashMap<String, String> nonAlphaNumericMap;
 
     private static final int ATK_KEY_EVENT_PRESSED = 0;
     private static final int ATK_KEY_EVENT_RELEASED = 1;
 
-    private int type = -1;
-    private boolean isShiftKeyDown = false;
-    private boolean isCtrlKeyDown = false;
-    private boolean isAltKeyDown = false;
-    private boolean isMetaKeyDown = false;
-    private boolean isAltGrKeyDown = false;
+    private final int type;
+    private final boolean isShiftKeyDown;
+    private final boolean isCtrlKeyDown;
+    private final boolean isAltKeyDown;
+    private final boolean isMetaKeyDown;
+    private final boolean isAltGrKeyDown;
 
     /* A keysym value corresponding to those used by GDK and X11. see /usr/X11/include/keysymdef.h.
      * FIXME: in current implementation we get this value from GNOMEKeyInfo.gdkKeyCode that are defined manually GNOMEKeyMapping.initializeMap,
      *  doesn't look good.
      */
-    private int keyval = 0;
+    private final int keyval;
 
     /*
      * Either a string approximating the text that would result
      * from this keypress, or a symbolic name for this keypress.
      */
-    private String string;
+    private final String string;
 
     // The raw hardware code that generated the key event.
-    private long keycode;
+    private final long keycode;
 
     // A timestamp in milliseconds indicating when the event occurred.
-    private long timestamp;
+    private final long timestamp;
 
     static {
         // Non-alphanumeric symbols that need to be mapped to X11 keysym names
@@ -124,49 +124,46 @@ public class AtkKeyEvent {
 
         //modifiers
         int modifierMask = e.getModifiersEx();
-        if ((modifierMask & InputEvent.SHIFT_DOWN_MASK) != 0) {
-            isShiftKeyDown = true;
-        }
-        if ((modifierMask & InputEvent.CTRL_DOWN_MASK) != 0) {
-            isCtrlKeyDown = true;
-        }
-        if ((modifierMask & InputEvent.ALT_DOWN_MASK) != 0) {
-            isAltKeyDown = true;
-        }
-        if ((modifierMask & InputEvent.META_DOWN_MASK) != 0) {
-            isMetaKeyDown = true;
-        }
-        if ((modifierMask & InputEvent.ALT_GRAPH_DOWN_MASK) != 0) {
-            isAltGrKeyDown = true;
-        }
+        isShiftKeyDown = (modifierMask & InputEvent.SHIFT_DOWN_MASK) != 0;
+        isCtrlKeyDown = (modifierMask & InputEvent.CTRL_DOWN_MASK) != 0;
+        isAltKeyDown = (modifierMask & InputEvent.ALT_DOWN_MASK) != 0;
+        isMetaKeyDown = (modifierMask & InputEvent.META_DOWN_MASK) != 0;
+        isAltGrKeyDown = (modifierMask & InputEvent.ALT_GRAPH_DOWN_MASK) != 0;
 
         GNOMEKeyMapping.GNOMEKeyInfo keyInfo = GNOMEKeyMapping.getKey(e);
 
+        int tempKeyval;
+        String tempString;
         if (keyInfo != null) {
-            keyval = keyInfo.gdkKeyCode();
-            string = keyInfo.gdkKeyString();
+            tempKeyval = keyInfo.gdkKeyCode();
+            tempString = keyInfo.gdkKeyString();
         } else {
             if (e.getKeyChar() == KeyEvent.CHAR_UNDEFINED) {
-                string = KeyEvent.getKeyText(e.getKeyCode());
-                if (string == null) string = "";
+                tempKeyval = 0;
+                tempString = KeyEvent.getKeyText(e.getKeyCode());
+                if (tempString == null) tempString = "";
             } else {
-                keyval = e.getKeyChar();
-                string = String.valueOf(keyval);
+                tempKeyval = e.getKeyChar();
+                tempString = String.valueOf(tempKeyval);
             }
         }
 
         keycode = keyInfo != null ? keyInfo.gdkKeyCode() : e.getKeyCode();
         timestamp = e.getWhen();
 
-        String nonAlphaNumericString = nonAlphaNumericMap.get(string);
-        if (nonAlphaNumericString != null)
-            string = nonAlphaNumericString;
+        String nonAlphaNumericString = nonAlphaNumericMap.get(tempString);
+        if (nonAlphaNumericString != null) {
+            tempString = nonAlphaNumericString;
+        }
+
+        keyval = tempKeyval;
+        string = tempString;
     }
 }
 
 class GNOMEKeyMapping {
 
-    private static HashMap<Integer, GNOMEKeyInfo> keyMap = null;
+    private static final HashMap<Integer, GNOMEKeyInfo> keyMap;
 
     record GNOMEKeyInfo(int gdkKeyCode, String gdkKeyString) {}
 
@@ -174,9 +171,9 @@ class GNOMEKeyMapping {
      * At present max VK_* value is 0x0000FFFF
      * Also need to support Left/Right variations.
      */
-    private final static int NUMPAD_OFFSET = 0xFEFE0000;
-    private final static int LEFT_OFFSET = 0xFEFD0000;
-    private final static int RIGHT_OFFSET = 0xFEFC0000;
+    private static final int NUMPAD_OFFSET = 0xFEFE0000;
+    private static final int LEFT_OFFSET = 0xFEFD0000;
+    private static final int RIGHT_OFFSET = 0xFEFC0000;
 
     static {
         initializeMap();

@@ -186,7 +186,7 @@ public class AtkObject {
      * @param ac the accessible context
      * @return the accessible name, with accelerator text appended, or null if no name is set
      */
-    public static String get_accessible_name(AccessibleContext ac) {
+    private static String get_accessible_name(AccessibleContext ac) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             String accessibleName = ac.getAccessibleName();
             if (accessibleName == null) {

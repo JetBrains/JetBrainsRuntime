@@ -211,7 +211,7 @@ public class AtkWrapper {
 
     private final Toolkit toolkit = Toolkit.getDefaultToolkit();
 
-    private static PropertyChangeListener propertyChangeListener = new PropertyChangeListener() {
+    private static final PropertyChangeListener propertyChangeListener = new PropertyChangeListener() {
 
         public void propertyChange(PropertyChangeEvent e) {
             Object o = e.getSource();

@@ -33,7 +33,7 @@ import java.awt.EventQueue;
  */
 public class AtkHypertext extends AtkText {
 
-    private WeakReference<AccessibleHypertext> accessibleHypertextRef;
+    private final WeakReference<AccessibleHypertext> accessibleHypertextRef;
 
     private AtkHypertext(AccessibleContext ac) {
         super(ac);

@@ -31,11 +31,11 @@ import java.awt.EventQueue;
  * individual cells within an accessible table.
  */
 public class AtkTableCell {
-    private WeakReference<AccessibleTable> accessibleTableWeakRef;
-    private int row        = -1; // the row index of this table cell, used by native code
-    private int rowSpan    = 0; // the number of rows occupied by this table cell, used by native code
-    private int column     = -1; // the column index of this table cell, used by native code
-    private int columnSpan = 0; // the number of columns occupied by this table cell, used by native code
+    private final WeakReference<AccessibleTable> accessibleTableWeakRef;
+    private final int row; // the row index of this table cell, used by native code
+    private final int rowSpan; // the number of rows occupied by this table cell, used by native code
+    private final int column; // the column index of this table cell, used by native code
+    private final int columnSpan; // the number of columns occupied by this table cell, used by native code
 
     private AtkTableCell(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
@@ -61,6 +61,9 @@ public class AtkTableCell {
             int index = ac.getAccessibleIndexInParent();
             row = accessibleExtendedTable.getAccessibleRow(index);
             column = accessibleExtendedTable.getAccessibleColumn(index);
+        } else {
+            row = -1;
+            column = -1;
         }
 
         rowSpan = accessibleTable.getAccessibleRowExtentAt(row, column);

@@ -31,8 +31,8 @@ import java.awt.EventQueue;
  */
 public class AtkSelection {
 
-    private WeakReference<AccessibleContext> accessibleContextWeakRef;
-    private WeakReference<AccessibleSelection> accessibleSelectionWeakRef;
+    private final WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private final WeakReference<AccessibleSelection> accessibleSelectionWeakRef;
 
     private AtkSelection(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();

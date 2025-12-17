@@ -41,8 +41,8 @@ import java.awt.EventQueue;
  */
 public class AtkImage {
 
-    private WeakReference<AccessibleContext> accessibleContextWeakRef;
-    private WeakReference<AccessibleIcon[]> accessibleIcons;
+    private final WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private final WeakReference<AccessibleIcon[]> accessibleIcons;
 
     private AtkImage(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();

@@ -35,9 +35,9 @@ import java.awt.EventQueue;
  */
 public class AtkText {
 
-    private WeakReference<AccessibleContext> accessibleContextWeakRef;
-    private WeakReference<AccessibleText> accessibleTextWeakRef;
-    private WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
+    private final WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private final WeakReference<AccessibleText> accessibleTextWeakRef;
+    private final WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
 
     private record StringSequence(String str, int start_offset, int end_offset) {
     }

@@ -34,7 +34,7 @@ import java.awt.EventQueue;
  */
 public class AtkEditableText extends AtkText {
 
-    private WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
+    private final WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
 
     private AtkEditableText(AccessibleContext ac) {
         super(ac);

@@ -32,8 +32,8 @@ import java.awt.EventQueue;
  */
 public class AtkTable {
 
-    private WeakReference<AccessibleContext> accessibleContextWeakRef;
-    private WeakReference<AccessibleTable> accessibleTableWeakRef;
+    private final WeakReference<AccessibleContext> accessibleContextWeakRef;
+    private final WeakReference<AccessibleTable> accessibleTableWeakRef;
 
     private AtkTable(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
@@ -262,7 +262,7 @@ public class AtkTable {
      *
      * @param a the Accessible to use as the table caption
      */
-    public void set_caption(Accessible a) {
+    private void set_caption(Accessible a) {
         AccessibleTable accessibleTable = accessibleTableWeakRef.get();
         if (accessibleTable == null) {
             return;

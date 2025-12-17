@@ -19,13 +19,15 @@
 
 package org.GNOME.Accessibility;
 
-public interface AtkTextBoundary {
-    int CHAR = 0;
-    int WORD_START = 1;
-    int WORD_END = 2;
-    int SENTENCE_START = 3;
-    int SENTENCE_END = 4;
-    int LINE_START = 5;
-    int LINE_END = 6;
+public final class AtkTextBoundary {
+    public static final int CHAR = 0;
+    public static final int WORD_START = 1;
+    public static final int WORD_END = 2;
+    public static final int SENTENCE_START = 3;
+    public static final int SENTENCE_END = 4;
+    public static final int LINE_START = 5;
+    public static final int LINE_END = 6;
+
+    private AtkTextBoundary() {}
 }
 

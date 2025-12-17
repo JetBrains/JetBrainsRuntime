@@ -31,14 +31,14 @@ import java.lang.ref.WeakReference;
  */
 public class AtkHyperlink {
 
-    private WeakReference<AccessibleHyperlink> accessibleHyperlinkWeakRef;
+    private final WeakReference<AccessibleHyperlink> accessibleHyperlinkWeakRef;
 
     private AtkHyperlink(AccessibleHyperlink accessibleHyperlink) {
         assert EventQueue.isDispatchThread();
         accessibleHyperlinkWeakRef = new WeakReference<AccessibleHyperlink>(accessibleHyperlink);
     }
 
-    public static AtkHyperlink createAtkHyperlink(AccessibleHyperlink accessibleHyperlink) {
+    static AtkHyperlink createAtkHyperlink(AccessibleHyperlink accessibleHyperlink) {
         return AtkUtil.invokeInSwingAndWait(() -> {
             return new AtkHyperlink(accessibleHyperlink);
         }, null);

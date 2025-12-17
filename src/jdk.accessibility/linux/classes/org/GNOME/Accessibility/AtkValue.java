@@ -33,7 +33,7 @@ import java.lang.Double;
  * numeric values and their ranges for accessible objects.
  */
 public class AtkValue {
-    private WeakReference<AccessibleValue> accessibleValueWeakRef;
+    private final WeakReference<AccessibleValue> accessibleValueWeakRef;
 
     private AtkValue(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
