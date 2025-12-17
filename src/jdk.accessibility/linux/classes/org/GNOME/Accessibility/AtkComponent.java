@@ -228,6 +228,8 @@ public class AtkComponent {
     }
 
     /**
+     * TODO: check logic
+     *
      * Sets the extents of the component.
      * Called from native code via JNI.
      *
