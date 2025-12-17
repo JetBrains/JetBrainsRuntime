@@ -1606,7 +1606,7 @@ static gboolean key_dispatch_handler(gpointer p) {
 
     // keycode
     jfieldID jfidKeycode =
-        (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keycode", "I");
+        (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "keycode", "J");
     if (jfidKeycode != NULL) {
         event->keycode =
             (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidKeycode);
@@ -1614,7 +1614,7 @@ static gboolean key_dispatch_handler(gpointer p) {
 
     // timestamp
     jfieldID jfidTimestamp =
-        (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "timestamp", "I");
+        (*jniEnv)->GetFieldID(jniEnv, classAtkKeyEvent, "timestamp", "J");
     if (jfidTimestamp != NULL) {
         event->timestamp = (guint32)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
                                                            jfidTimestamp);
