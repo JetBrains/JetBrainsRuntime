@@ -307,6 +307,9 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         return NULL;
     }
     AtkObject *obj = (AtkObject *)jaw_impl_find_instance(jniEnv, ac);
+    if (obj == NULL) {
+        g_warning("%s: No AtkObject found for AccessibleContext", G_STRFUNC);
+    }
 
     // From documentation of the `atk_hyperlink_get_object`:
     // The returned data is owned by the instance (transfer none annotation), so
