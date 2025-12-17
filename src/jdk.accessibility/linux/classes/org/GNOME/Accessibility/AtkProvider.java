@@ -40,6 +40,6 @@ public final class AtkProvider extends AccessibilityProvider {
     }
 
     private boolean isEnabled() {
-        return !java.lang.Boolean.parseBoolean(System.getProperty("linux.jdk.accessibility.atkwrapper.block", "true"));
+        return !java.lang.Boolean.parseBoolean(System.getProperty("linux.jdk.accessibility.atkwrapper.block", "false"));
     }
 }
