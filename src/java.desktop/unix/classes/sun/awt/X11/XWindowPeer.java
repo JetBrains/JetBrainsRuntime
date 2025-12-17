@@ -1176,9 +1176,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 suppressWmTakeFocus(true);
             }
         }
-        updateFocusability();
-        promoteDefaultPosition();
         boolean refreshChildsTransientFor = isVisible() != vis;
+        if (refreshChildsTransientFor) {
+            updateFocusability();
+        }
+        promoteDefaultPosition();
         // To enable type-ahead for 'simple' windows, we initiate internal focus transfer to such a window even before
         // it's mapped by a window manager. 'Simple' windows aren't natively focusable, so for this to work as expected
         // we only need to be sure that the window will be mapped soon after we request it. There are known cases when
