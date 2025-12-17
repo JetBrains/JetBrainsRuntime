@@ -34,23 +34,10 @@ import sun.nio.ch.FileChannelImpl;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Objects;
 
 import java.nio.channels.NonWritableChannelException;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.InvalidPathException;
-import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -305,35 +292,11 @@ public class RandomAccessFile implements DataOutput, DataInput, Closeable {
 
         try (var guard = IoOverNio.RecursionGuard.create(RandomAccessFile.class)) {
             IoOverNio.blackhole(guard);
-            FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-            Path nioPath = null;
-            if (nioFs != null) {
-                try {
-                    nioPath = nioFs.getPath(path);
-                } catch (InvalidPathException ignored) {
-                    // Nothing.
-                }
-            }
-
-            // Two significant differences between the legacy java.io and java.nio.files:
-            // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
-            // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
-            boolean isRegularFile;
-            try {
-                isRegularFile = nioPath != null &&
-                        Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile();
-            }
-            catch (NoSuchFileException ignored) {
-                isRegularFile = true;
-            }
-            catch (IOException ignored) {
-                isRegularFile = false;
-            }
-
-            useNio = nioPath != null && isRegularFile;
+            Path nioPath = IoOverNioFileSystem.getNioPath(file, true);
+            useNio = nioPath != null;
             if (useNio) {
                 var bundle = IoOverNioFileSystem.initializeStreamUsingNio(
-                        this, nioFs, file, nioPath, optionsForChannel(imode), channelCleanable);
+                        this, nioPath.getFileSystem(), file, nioPath, optionsForChannel(imode), channelCleanable);
                 channel = bundle.channel();
                 fd = bundle.fd();
                 externalChannelHolder = bundle.externalChannelHolder();
