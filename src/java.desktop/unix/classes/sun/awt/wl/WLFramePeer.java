@@ -156,6 +156,8 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     @Override
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         int widthBefore = getWidth();
         int heightBefore = getHeight();
         boolean notifyOfDecorationChange = isFullscreen() ^ fullscreen;
@@ -174,7 +176,8 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
                     widthBeforeMaximized = widthBefore;
                     heightBeforeMaximized = heightBefore;
                 } else if (clientDecidesDimension && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
-                    performUnlocked(() -> target.setSize(widthBeforeMaximized, heightBeforeMaximized));
+                    // TODO: don't need to do this while holding the lock
+                    target.setSize(widthBeforeMaximized, heightBeforeMaximized);
                 }
                 WLToolkit.postEvent(new WindowEvent(getFrame(), WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
                 notifyOfDecorationChange = true;

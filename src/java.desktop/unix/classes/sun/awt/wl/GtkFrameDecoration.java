@@ -180,7 +180,7 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
 
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
-        assert WLToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         synchronized (getStateLock()) {
             if (nativePtr != 0) {
                 nativeNotifyConfigured(nativePtr, active, maximized, fullscreen);
