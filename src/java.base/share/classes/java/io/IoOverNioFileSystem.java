@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -142,6 +143,22 @@ class IoOverNioFileSystem extends FileSystem {
             return nioPath;
         }
 
+        if (isWindowsPipe(nioPath)) {
+            // https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createnamedpipea see nMaxInstances:
+            //
+            // Getting file attributes in this case is dangerous.
+            // GetFileAttributesW acquires a connection to the pipe internally,
+            // occupying a place on the server side.
+            // The server and the client are very likely two different processes, and it takes time to deliver
+            // the connection closing message to the server.
+            // If the caller invokes CreateFileW fast enough after GetFileAttributesW and nMaxInstances = 1,
+            // CreateFileW is called before the server closes the previous connection created by GetFileAttributesW
+            // and ERROR_PIPE_BUSY is returned.
+            //
+            // Anyway, `readAttributes(nioPath).isRegularFile()` returns true for pipes, so it's safe to return here.
+            return nioPath;
+        }
+
         // Two significant differences between the legacy java.io and java.nio.files:
         // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
         // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
@@ -156,6 +173,19 @@ class IoOverNioFileSystem extends FileSystem {
         }
 
         return null;
+    }
+
+    /**
+     * <a href="https://learn.microsoft.com/en-us/windows/win32/ipc/pipe-names">
+     * The pipe path format: {@code ^\\(\w+|\.)\pipe\.*}
+     * </a>
+     */
+    private static boolean isWindowsPipe(Path path) {
+        // A small JMH benchmark shows that this code takes less than a microsecond,
+        // and the JIT compiler does its job very well here.
+        return path.isAbsolute() &&
+                path.getRoot().toString().startsWith("\\\\") &&
+                path.getRoot().toString().toLowerCase(Locale.getDefault()).endsWith("\\pipe\\");
     }
 
     private static boolean setPermission0(java.nio.file.FileSystem nioFs, File f, int access, boolean enable, boolean owneronly) {
