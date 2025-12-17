@@ -249,7 +249,7 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
        (*jniEnv)->ExceptionDescribe(jniEnv);
        (*jniEnv)->ExceptionClear(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-       return NULL;
+       return FALSE;
     }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
@@ -493,7 +493,7 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
        (*jniEnv)->ExceptionDescribe(jniEnv);
        (*jniEnv)->ExceptionClear(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
-       return FALSE;
+       return 0;
     }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
