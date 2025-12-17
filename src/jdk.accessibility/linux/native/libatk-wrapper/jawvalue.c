@@ -105,6 +105,12 @@ gpointer jaw_value_data_init(jobject ac) {
 
     ValueData *data = g_new0(ValueData, 1);
     data->atk_value = (*jniEnv)->NewGlobalRef(jniEnv, jatk_value);
+    if (data->atk_value == NULL) {
+        g_warning("%s: Failed to create global ref for atk_value", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

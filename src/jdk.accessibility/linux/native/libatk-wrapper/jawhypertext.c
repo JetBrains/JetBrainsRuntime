@@ -120,6 +120,12 @@ gpointer jaw_hypertext_data_init(jobject ac) {
 
     HypertextData *data = g_new0(HypertextData, 1);
     data->atk_hypertext = (*jniEnv)->NewGlobalRef(jniEnv, jatk_hypertext);
+    if (data->atk_hypertext == NULL) {
+        g_warning("%s: Failed to create global ref for atk_hypertext", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

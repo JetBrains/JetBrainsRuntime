@@ -141,6 +141,12 @@ gpointer jaw_image_data_init(jobject ac) {
 
     ImageData *data = g_new0(ImageData, 1);
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
+    if (data->atk_image == NULL) {
+        g_warning("%s: Failed to create global ref for atk_image", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

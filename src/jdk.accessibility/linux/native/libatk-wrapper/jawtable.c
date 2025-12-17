@@ -188,6 +188,12 @@ gpointer jaw_table_data_init(jobject ac) {
 
     TableData *data = g_new0(TableData, 1);
     data->atk_table = (*jniEnv)->NewGlobalRef(jniEnv, jatk_table);
+    if (data->atk_table == NULL) {
+        g_warning("%s: Failed to create global ref for atk_table", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

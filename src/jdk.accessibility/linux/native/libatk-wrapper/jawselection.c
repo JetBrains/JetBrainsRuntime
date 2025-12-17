@@ -138,6 +138,12 @@ gpointer jaw_selection_data_init(jobject ac) {
 
     SelectionData *data = g_new0(SelectionData, 1);
     data->atk_selection = (*jniEnv)->NewGlobalRef(jniEnv, jatk_selection);
+    if (data->atk_selection == NULL) {
+        g_warning("%s: Failed to create global ref for atk_selection", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

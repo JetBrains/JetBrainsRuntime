@@ -148,6 +148,12 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     EditableTextData *data = g_new0(EditableTextData, 1);
     data->atk_editable_text =
         (*jniEnv)->NewGlobalRef(jniEnv, jatk_editable_text);
+    if (data->atk_editable_text == NULL) {
+        g_warning("%s: Failed to create global ref for atk_editable_text", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

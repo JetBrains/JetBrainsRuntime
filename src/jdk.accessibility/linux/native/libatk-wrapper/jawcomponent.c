@@ -175,6 +175,12 @@ gpointer jaw_component_data_init(jobject ac) {
 
     ComponentData *data = g_new0(ComponentData, 1);
     data->atk_component = (*jniEnv)->NewGlobalRef(jniEnv, jatk_component);
+    if (data->atk_component == NULL) {
+        g_warning("%s: Failed to create global ref for atk_component", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 

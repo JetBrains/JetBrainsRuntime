@@ -202,6 +202,12 @@ gpointer jaw_text_data_init(jobject ac) {
 
     TextData *data = g_new0(TextData, 1);
     data->atk_text = (*jniEnv)->NewGlobalRef(jniEnv, jatk_text);
+    if (data->atk_text == NULL) {
+        g_warning("%s: Failed to create global ref for atk_text", G_STRFUNC);
+        g_free(data);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
