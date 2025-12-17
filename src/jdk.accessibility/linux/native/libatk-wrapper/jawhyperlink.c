@@ -69,9 +69,34 @@ G_DEFINE_TYPE(JawHyperlink, jaw_hyperlink, ATK_TYPE_HYPERLINK)
 
 JawHyperlink *jaw_hyperlink_new(jobject jhyperlink) {
     JAW_DEBUG_ALL("%p", jhyperlink);
-    JawHyperlink *jaw_hyperlink = g_object_new(JAW_TYPE_HYPERLINK, NULL);
+
+    if (jhyperlink == NULL) {
+        g_warning("%s: NULL jhyperlink parameter", G_STRFUNC);
+        return NULL;
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
+    if (jniEnv == NULL) {
+        g_warning("%s: Failed to get JNI environment", G_STRFUNC);
+        return NULL;
+    }
+
+    JawHyperlink *jaw_hyperlink = g_object_new(JAW_TYPE_HYPERLINK, NULL);
+    if (jaw_hyperlink == NULL) {
+        g_warning("%s: Failed to create JawHyperlink object", G_STRFUNC);
+        return NULL;
+    }
+
     jaw_hyperlink->jhyperlink = (*jniEnv)->NewGlobalRef(jniEnv, jhyperlink);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_hyperlink->jhyperlink == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to create global reference", G_STRFUNC);
+        g_object_unref(jaw_hyperlink);
+        return NULL;
+    }
 
     return jaw_hyperlink;
 }
