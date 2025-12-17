@@ -227,11 +227,10 @@ public class FileOutputStream extends OutputStream
 
         try (var guard = IoOverNio.RecursionGuard.create(FileOutputStream.class)) {
             IoOverNio.blackhole(guard);
-            java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
-            useNio = path != null && nioFs != null;
+            Path nioPath = IoOverNioFileSystem.getNioPath(file, false);
+            useNio = nioPath != null;
             if (useNio) {
-                Path nioPath = nioFs.getPath(path);
-
+                java.nio.file.FileSystem nioFs = nioPath.getFileSystem();
                 // java.io backend doesn't open DOS hidden files for writing, but java.nio.file opens.
                 // This code mimics the old behavior.
                 if (nioFs.getSeparator().equals("\\")) {
