@@ -38,7 +38,7 @@ import java.awt.Rectangle;
  * repainting is done, etc.
  */
 public class ServerSideFrameDecoration extends FrameDecoration {
-    private long nativeDecorPtr; // protected by getStateLock()
+    private long nativeDecorPtr; // only accessed on EDT
 
     public ServerSideFrameDecoration(WLDecoratedPeer peer) {
         super(peer);
@@ -80,31 +80,32 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowCreated(long nativePtr) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (!peer.targetIsWlPopup()) {
-            synchronized (getStateLock()) {
-                nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
-            }
+            nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
         }
     }
 
     @Override
     public void notifyNativeWindowToBeHidden(long nativePtr) {
-        synchronized (getStateLock()) {
-            if (nativeDecorPtr != 0) {
-                disposeImpl(nativeDecorPtr);
-                nativeDecorPtr = 0;
-            }
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
+        if (nativeDecorPtr != 0) {
+            disposeImpl(nativeDecorPtr);
+            nativeDecorPtr = 0;
         }
     }
 
     @Override
     public void dispose() {
-        synchronized (getStateLock()) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         // Native resources must have been already disposed when the window was hidden
         assert nativeDecorPtr == 0 : "Native resources must have been already disposed";
-        }
     }
 
     private native long createToplevelDecorationImpl(long nativeFramePtr);
+
     private native void disposeImpl(long nativeDecorPtr);
 }

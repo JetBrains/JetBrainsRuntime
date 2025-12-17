@@ -48,6 +48,8 @@ public class WLSurface {
     }
 
     protected WLSurface() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         nativePtr = nativeCreateWlSurface();
         if (nativePtr == 0) {
             throw new RuntimeException("Failed to create WLSurface");
@@ -57,7 +59,7 @@ public class WLSurface {
     }
 
     public void dispose() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (isValid) {
             hide();
@@ -67,7 +69,7 @@ public class WLSurface {
     }
 
     public void hide() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         if (surfaceData == null) return;
@@ -85,14 +87,14 @@ public class WLSurface {
     }
 
     public boolean hasSurfaceData() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         return surfaceData != null;
     }
 
     public void associateWithSurfaceData(SurfaceData data) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         Objects.requireNonNull(data);
         assertIsValid();
 
@@ -103,7 +105,7 @@ public class WLSurface {
     }
 
     public void commit() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeCommitWlSurface(nativePtr);
@@ -115,28 +117,28 @@ public class WLSurface {
      * @return a pointer to wl_surface native object
      */
     public long getWlSurfacePtr() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         return wlSurfacePtr;
     }
 
     protected long getNativePtr() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         return nativePtr;
     }
 
     public void setSize(int width, int height) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeSetSize(nativePtr, width, height);
     }
 
     public void setOpaqueRegion(int x, int y, int width, int height) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
@@ -151,7 +153,7 @@ public class WLSurface {
     }
 
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         setSize(surfaceWidth, surfaceHeight);

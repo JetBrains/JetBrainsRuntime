@@ -188,6 +188,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     private void registerShutdownHook() {
+        // Can't access Wayland from the shutdown hook because at the time it is executing,
+        // the EDT can be blocked in java.lang.Shutdown.runHooks()
+        /*
         Runnable r = () -> {
             ArrayList<WLWindowPeer> livePeers;
             synchronized (wlSurfaceToPeerMap) {
@@ -203,6 +206,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         Thread shutdownThread = InnocuousThread.newSystemThread("WLToolkit-Shutdown-Thread", r);
         shutdownThread.setDaemon(true);
         Runtime.getRuntime().addShutdownHook(shutdownThread);
+         */
     }
 
     public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
@@ -301,7 +305,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     private static void shutDownAfterServerError() {
-        EventQueue.invokeLater(() -> {
+        WLToolkit.invokeLater(() -> {
             var frames = Arrays.asList(Frame.getFrames());
             Collections.reverse(frames);
             frames.forEach(frame -> frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING)));
@@ -311,6 +315,36 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             // no longer available, so let's exit forcibly.
             System.exit(0);
         });
+    }
+
+    public static void invokeAndWait(Runnable r) {
+        if (EventQueue.isDispatchThread()) {
+            r.run();
+        } else {
+            try {
+                EventQueue.invokeAndWait(r);
+            } catch (Exception e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof RuntimeException rec) {
+                    rec.addSuppressed(e);
+                    throw rec;
+                } else {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    public static void invokeLater(Runnable r) {
+        if (EventQueue.isDispatchThread()) {
+            r.run();
+        } else {
+            EventQueue.invokeLater(r);
+        }
+    }
+
+    public static boolean isDispatchThread() {
+        return EventQueue.isDispatchThread();
     }
 
     /**

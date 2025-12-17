@@ -91,7 +91,7 @@ public class WLMainSurface extends WLSurface {
     }
 
     public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeActivate(getNativePtr(), serial, activatingSurfacePtr);
@@ -105,6 +105,8 @@ public class WLMainSurface extends WLSurface {
 
     @Override
     public void dispose() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (isValid) {
             WLToolkit.unregisterWLSurface(getWlSurfacePtr());
             super.dispose();
