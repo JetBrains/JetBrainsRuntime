@@ -206,6 +206,12 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     }
 
     JawHyperlink *jaw_hyperlink = jaw_hyperlink_new(jhyperlink);
+    if (jaw_hyperlink == NULL) {
+        g_warning("%s: Failed to create JawHyperlink object for link_index %d", G_STRFUNC, link_index);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
