@@ -41,6 +41,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -121,6 +122,40 @@ class IoOverNioFileSystem extends FileSystem {
         FileNotFoundException result = new FileNotFoundException(message);
         result.initCause(source);
         return result;
+    }
+
+    static Path getNioPath(File file, boolean mustBeRegularFile) {
+        String path = file.getPath();
+        java.nio.file.FileSystem nioFs = IoOverNioFileSystem.acquireNioFs(path);
+        if (nioFs == null) {
+            return null;
+        }
+
+        Path nioPath;
+        try {
+            nioPath = nioFs.getPath(path);
+        } catch (InvalidPathException _) {
+            return null;
+        }
+
+        if (!mustBeRegularFile) {
+            return nioPath;
+        }
+
+        // Two significant differences between the legacy java.io and java.nio.files:
+        // * java.nio.file allows to open directories as streams, java.io.FileInputStream doesn't.
+        // * java.nio.file doesn't work well with pseudo devices, i.e., `seek()` fails, while java.io works well.
+        try {
+            if (Files.readAttributes(nioPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile()) {
+                return nioPath;
+            }
+        } catch (NoSuchFileException _) {
+            return nioPath;
+        } catch (IOException _) {
+            // Ignored.
+        }
+
+        return null;
     }
 
     private static boolean setPermission0(java.nio.file.FileSystem nioFs, File f, int access, boolean enable, boolean owneronly) {
