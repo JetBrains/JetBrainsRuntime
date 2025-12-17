@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -356,8 +356,12 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
      */
     @Override
     public char charAt(int index) {
+        byte coder = this.coder;
+        byte[] value = this.value;
+        // Ensure count is less than or equal to capacity (racy reads and writes can produce inconsistent values)
+        int count = Math.min(this.count, value.length >> coder);
         checkIndex(index, count);
-        if (isLatin1()) {
+        if (coder == LATIN1) {
             return (char)(value[index] & 0xff);
         }
         return StringUTF16.getChar(value, index);
@@ -416,6 +420,7 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
      *            of this sequence.
      */
     public int codePointBefore(int index) {
+        byte[] value = this.value;
         int i = index - 1;
         checkIndex(i, count);
         if (isLatin1()) {
@@ -1720,7 +1725,7 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
                 } else {
                     inflate();
                     // store c to make sure it has a UTF16 char
-                    StringUTF16.putChar(this.value, j++, c);
+                    StringUTF16.putCharSB(this.value, j++, c);
                     i++;
                     StringUTF16.putCharsSB(this.value, j, s, i, end);
                     return;
@@ -1810,7 +1815,7 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
                     count = j;
                     inflate();
                     // Store c to make sure sb has a UTF16 char
-                    StringUTF16.putChar(this.value, j++, c);
+                    StringUTF16.putCharSB(this.value, j++, c);
                     count = j;
                     i++;
                     StringUTF16.putCharsSB(this.value, j, s, i, end);
