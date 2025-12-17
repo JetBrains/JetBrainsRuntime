@@ -346,15 +346,16 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     JAW_DEBUG_C("%p, %p, %p, %p, %p, %d", component, x, y, width, height,
                 coord_type);
 
-    if (component == NULL || x == NULL || y == NULL || width == NULL || height == NULL) {
-        g_warning("%s: Null argument passed to function", G_STRFUNC);
+    if (component == NULL) {
+        g_warning("%s: Null component passed to function", G_STRFUNC);
         return;
     }
 
-    (*x) = -1;
-    (*y) = -1;
-    (*width) = -1;
-    (*height) = -1;
+    // Initialize output parameters to -1 (optional parameters may be NULL)
+    if (x != NULL) (*x) = -1;
+    if (y != NULL) (*y) = -1;
+    if (width != NULL) (*width) = -1;
+    if (height != NULL) (*height) = -1;
 
     JAW_GET_COMPONENT(component, ); // create global JNI reference `jobject atk_component`
 
@@ -386,10 +387,25 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
 
-    (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleXField);
-    (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleYField);
-    (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleWidthField);
-    (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleHeightField);
+    if (x != NULL) {
+        (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleXField);
+    }
+    if (y != NULL) {
+        (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleYField);
+    }
+    if (width != NULL) {
+        (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleWidthField);
+    }
+    if (height != NULL) {
+        (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle, cachedRectangleHeightField);
+    }
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        (*jniEnv)->ExceptionDescribe(jniEnv);
+        (*jniEnv)->ExceptionClear(jniEnv);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return;
+    }
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
