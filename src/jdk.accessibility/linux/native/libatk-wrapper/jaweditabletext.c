@@ -396,6 +396,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 
     JAW_GET_EDITABLETEXT(text, FALSE); // create global JNI reference `jobject atk_editable_text`
 
+    // TODO: make a proper conversion between attrib_set and swing AttributeSet, current implementation is incorrect
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_editable_text, cachedSetRunAttributesMethod, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
