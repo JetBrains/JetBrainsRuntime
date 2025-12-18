@@ -254,18 +254,45 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
         return;
     }
 
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classInteger) ||
-        (*jniEnv)->IsInstanceOf(jniEnv, jnumber, classShort)) {
-        jmid = (*jniEnv)->GetMethodID(jniEnv, classInteger, "intValue", "()I");
-        if (jmid == NULL) {
-            g_warning("%s: Failed to find intValue method", G_STRFUNC);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classInteger)) {
+        jmethodID mid = (*jniEnv)->GetMethodID(jniEnv, classInteger,
+                                               "intValue", "()I");
+        if (mid == NULL) {
+            g_warning("%s: Failed to find Integer.intValue()", G_STRFUNC);
             return;
         }
+
+        jint v = (*jniEnv)->CallIntMethod(jniEnv, jnumber, mid);
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+            g_warning("%s: Exception in Integer.intValue()", G_STRFUNC);
+            return;
+        }
+
         g_value_init(value, G_TYPE_INT);
-        g_value_set_int(value,
-                        (gint)(*jniEnv)->CallIntMethod(jniEnv, jnumber, jmid));
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_value_set_int(value, (gint)v);
+        return;
+    }
+
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classShort)) {
+        jmethodID mid = (*jniEnv)->GetMethodID(jniEnv, classShort,
+                                               "shortValue", "()S");
+        if (mid == NULL) {
+            g_warning("%s: Failed to find Short.shortValue()", G_STRFUNC);
+            return;
+        }
+
+        jshort v = (*jniEnv)->CallShortMethod(jniEnv, jnumber, mid);
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+            g_warning("%s: Exception in Short.shortValue()", G_STRFUNC);
+            return;
+        }
+
+        g_value_init(value, G_TYPE_INT);
+        g_value_set_int(value, (gint)v);
         return;
     }
 
