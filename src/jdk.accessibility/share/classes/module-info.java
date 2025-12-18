@@ -33,6 +33,5 @@ module jdk.accessibility {
     requires transitive java.desktop;
 
     exports com.sun.java.accessibility.util;
-    exports org.GNOME.Accessibility;
 }
 
