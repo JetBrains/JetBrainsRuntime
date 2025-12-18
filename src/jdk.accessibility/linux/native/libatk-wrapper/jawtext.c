@@ -120,8 +120,6 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset);
 
 typedef struct _TextData {
     jobject atk_text;
-    gchar *text;
-    jstring jstrText;
 } TextData;
 
 #define JAW_GET_TEXT(text, def_ret)                                            \
@@ -252,16 +250,6 @@ void jaw_text_data_finalize(gpointer p) {
     if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
-        if (data->jstrText != NULL) {
-            if (data->text != NULL) {
-                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrText,
-                                                 data->text);
-                data->text = NULL;
-            }
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrText);
-            data->jstrText = NULL;
-        }
-
         if (data->atk_text != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_text);
             data->atk_text = NULL;
