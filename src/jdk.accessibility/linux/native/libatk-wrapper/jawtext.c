@@ -770,21 +770,15 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     JAW_DEBUG_C("%p, %d, %p, %p, %p, %p, %d", text, offset, x, y, width, height,
                 coords);
 
-    if (text == NULL || x == NULL || y == NULL || width == NULL || height == NULL) {
-        g_warning("%s: Null argument. text=%p, x=%p, y=%p, width=%p, height=%p",
-                  G_STRFUNC,
-                  (void*)text,
-                  (void*)x,
-                  (void*)y,
-                  (void*)width,
-                  (void*)height);
+    if (text == NULL) {
+        g_warning("%s: Null argument text passed to the function", G_STRFUNC);
         return;
     }
 
-    *x = -1;
-    *y = -1;
-    *width = -1;
-    *height = -1;
+    if (x != NULL) *x = -1;
+    if (y != NULL) *y = -1;
+    if (width != NULL) *width = -1;
+    if (height != NULL) *height = -1;
 
     JAW_GET_TEXT(text, );
 
@@ -810,7 +804,13 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         return;
     }
 
-    jaw_util_get_rect_info(jniEnv, jrect, x, y, width, height);
+    gint temp_x, temp_y, temp_width, temp_height;
+    jaw_util_get_rect_info(jniEnv, jrect, &temp_x, &temp_y, &temp_width, &temp_height);
+
+    if (x != NULL) *x = temp_x;
+    if (y != NULL) *y = temp_y;
+    if (width != NULL) *width = temp_width;
+    if (height != NULL) *height = temp_height;
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1030,6 +1030,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         return NULL;
     }
 
+    // Java AccessibleText only supports a single selection, so selection_num is not used.
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedGetSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
