@@ -569,18 +569,11 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         return NULL;
     }
 
-    for (int i = 0; i < length; i++) {
+    for (jsize i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, columnHeaders, i);
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
         if (jaw_impl != NULL) {
-            g_ptr_array_add(result, jaw_impl);
-
-            // FIXME: is it true that the caller is responsible for freeing not
-            //  only GPtrArray but all its elements? From the documentation of
-            //  the `atk_table_cell_get_column_header_cells`: "The caller of the
-            //  method takes ownership of the returned data, and is responsible
-            //  for freeing it." (transfer full)
-            g_object_ref(G_OBJECT(jaw_impl));
+            g_ptr_array_add(result, g_object_ref(G_OBJECT(jaw_impl)));
         }
 
         (*jniEnv)->DeleteLocalRef(jniEnv, jac);
@@ -643,18 +636,11 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         return NULL;
     }
 
-    for (int i = 0; i < length; i++) {
+    for (jsize i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, rowHeaders, i);
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
         if (jaw_impl != NULL) {
-            g_ptr_array_add(result, jaw_impl);
-
-            // FIXME: is it true that the caller is responsible for freeing not
-            //  only GPtrArray but all its elements? From the documentation of
-            //  the `atk_table_cell_get_row_header_cells`: "The caller of the
-            //  method takes ownership of the returned data, and is responsible
-            //  for freeing it." (transfer full)
-            g_object_ref(G_OBJECT(jaw_impl));
+            g_ptr_array_add(result, g_object_ref(G_OBJECT(jaw_impl)));
         }
 
         (*jniEnv)->DeleteLocalRef(jniEnv, jac);
