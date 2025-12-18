@@ -512,13 +512,15 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         jniEnv, classAtkWrapper, "register_property_change_listener",
         "(Ljavax/accessibility/AccessibleContext;)V");
     if (jmid == NULL) {
-        g_warning("%s: Failed to find register_property_change_listener method", G_STRFUNC);
+        g_warning("%s: Failed to find register_property_change_listener method",
+                  G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     };
     jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jaw_obj->acc_context);
     if (ac == NULL) {
-        g_warning("%s: Failed to create global reference to acc_context", G_STRFUNC);
+        g_warning("%s: Failed to create global reference to acc_context",
+                  G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -536,7 +538,8 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
  * @param jniEnv JNI environment pointer
  * @param jKey   key of AccessibleRelation, the name of the relation
  * @param strKey name of the static AccessibleRelation field
- * @return       TRUE if jKey equals the corresponding static field, FALSE otherwise
+ * @return       TRUE if jKey equals the corresponding static field, FALSE
+ * otherwise
  */
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
                                      const gchar *strKey) {

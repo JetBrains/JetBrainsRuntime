@@ -64,7 +64,8 @@ static void jaw_toplevel_init(JawToplevel *toplevel) {
     JAW_DEBUG_ALL("%p", toplevel);
 
     if (toplevel == NULL) {
-        g_warning("%s: Null argument toplevel passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument toplevel passed to the function",
+                  G_STRFUNC);
         return;
     }
 
@@ -75,7 +76,8 @@ static void jaw_toplevel_initialize(AtkObject *accessible, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", accessible, data);
 
     if (accessible == NULL) {
-        g_warning("%s: Null argument accessible passed to the function", G_STRFUNC);
+        g_warning("%s: Null argument accessible passed to the function",
+                  G_STRFUNC);
         return;
     }
 
@@ -283,7 +285,8 @@ gint jaw_toplevel_add_window(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
 
     if (toplevel == NULL || child == NULL) {
-        g_warning("%s: invalid argument(s) : toplevel=%p, child=%p", G_STRFUNC, toplevel, child);
+        g_warning("%s: invalid argument(s) : toplevel=%p, child=%p", G_STRFUNC,
+                  toplevel, child);
         return -1;
     }
 
@@ -301,22 +304,24 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
 
     if (toplevel == NULL || child == NULL) {
-        g_warning("%s: invalid argument(s) : toplevel=%p, child=%p", G_STRFUNC, toplevel, child);
+        g_warning("%s: invalid argument(s) : toplevel=%p, child=%p", G_STRFUNC,
+                  toplevel, child);
         return -1;
     }
 
     if (toplevel->windows == NULL) {
-        g_warning("%s: Cannot remove window %p: the toplevel window list is NULL "
-                          "(not initialized or already cleared)",
-                          G_STRFUNC, child);
+        g_warning(
+            "%s: Cannot remove window %p: the toplevel window list is NULL "
+            "(not initialized or already cleared)",
+            G_STRFUNC, child);
         return -1;
     }
 
     gint index = (g_list_index(toplevel->windows, child));
     if (index == -1) {
         g_warning("%s: Cannot remove window %p: it is not present in the "
-                          "toplevel window list",
-                          G_STRFUNC, child);
+                  "toplevel window list",
+                  G_STRFUNC, child);
         return -1;
     }
 
@@ -329,7 +334,8 @@ gint jaw_toplevel_get_child_index(JawToplevel *toplevel, AtkObject *child) {
     JAW_DEBUG_C("%p, %p", toplevel, child);
 
     if (toplevel == NULL || child == NULL) {
-        g_warning("%s: invalid argument(s) : toplevel=%p, child=%p", G_STRFUNC, toplevel, child);
+        g_warning("%s: invalid argument(s) : toplevel=%p, child=%p", G_STRFUNC,
+                  toplevel, child);
         return -1;
     }
 

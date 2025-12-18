@@ -17,9 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "jawcache.h"
 #include "jawimpl.h"
 #include "jawutil.h"
-#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -148,12 +148,14 @@ gpointer jaw_action_data_init(jobject ac) {
         return NULL;
     }
 
-    jobject jatk_action =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedActionAtkActionClass,
-                                          cachedActionCreateAtkActionMethod, ac);
+    jobject jatk_action = (*jniEnv)->CallStaticObjectMethod(
+        jniEnv, cachedActionAtkActionClass, cachedActionCreateAtkActionMethod,
+        ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_action == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create AtkAction Java object via create_atk_action()", G_STRFUNC);
+        g_warning("%s: Failed to create AtkAction Java object via "
+                  "create_atk_action()",
+                  G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -193,8 +195,8 @@ void jaw_action_data_finalize(gpointer p) {
     } else {
         if (data->jstrLocalizedName != NULL) {
             if (data->localized_name != NULL) {
-                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
-                                                 data->localized_name);
+                (*jniEnv)->ReleaseStringUTFChars(
+                    jniEnv, data->jstrLocalizedName, data->localized_name);
                 data->localized_name = NULL;
             }
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
@@ -203,8 +205,9 @@ void jaw_action_data_finalize(gpointer p) {
 
         if (data->jstrActionDescription != NULL) {
             if (data->action_description != NULL) {
-                (*jniEnv)->ReleaseStringUTFChars(
-                    jniEnv, data->jstrActionDescription, data->action_description);
+                (*jniEnv)->ReleaseStringUTFChars(jniEnv,
+                                                 data->jstrActionDescription,
+                                                 data->action_description);
                 data->action_description = NULL;
             }
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
@@ -237,10 +240,11 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
         return FALSE;
     }
 
-    JAW_GET_ACTION(action, FALSE); // create global JNI reference `jobject atk_action`
+    JAW_GET_ACTION(action,
+                   FALSE); // create global JNI reference `jobject atk_action`
 
-    jboolean jresult =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_action, cachedActionDoActionMethod, (jint)i);
+    jboolean jresult = (*jniEnv)->CallBooleanMethod(
+        jniEnv, atk_action, cachedActionDoActionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -271,9 +275,11 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
         return 0;
     }
 
-    JAW_GET_ACTION(action, 0); // create global JNI reference `jobject atk_action`
+    JAW_GET_ACTION(action,
+                   0); // create global JNI reference `jobject atk_action`
 
-    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action, cachedActionGetNActionsMethod);
+    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action,
+                                              cachedActionGetNActionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -303,7 +309,8 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         return NULL;
     }
 
-    JAW_GET_ACTION(action, NULL); // create global JNI reference `jobject atk_action`
+    JAW_GET_ACTION(action,
+                   NULL); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -312,12 +319,12 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         return NULL;
     }
 
-    jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_action, cachedActionGetDescriptionMethod, (jint)i);
+    jstring jstr = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_action, cachedActionGetDescriptionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_debug("%s: No description available for action (index=%d, action=%p)",
-                    G_STRFUNC, i, action);
+                G_STRFUNC, i, action);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -335,13 +342,13 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrActionDescription == NULL) {
-       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-       (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-       return NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
     }
 
-    data->action_description = (*jniEnv)->GetStringUTFChars(
-            jniEnv, data->jstrActionDescription, NULL);
+    data->action_description =
+        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrActionDescription, NULL);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->action_description == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -383,7 +390,8 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         return FALSE;
     }
 
-    JAW_GET_ACTION(action, FALSE); // create global JNI reference `jobject atk_action`
+    JAW_GET_ACTION(action,
+                   FALSE); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -395,14 +403,16 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     jstring jdescription = (*jniEnv)->NewStringUTF(jniEnv, description);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdescription == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create Java string for description", G_STRFUNC);
+        g_warning("%s: Failed to create Java string for description",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
 
     jboolean jisset = (*jniEnv)->CallBooleanMethod(
-        jniEnv, atk_action, cachedActionSetDescriptionMethod, (jint)i, (jstring)jdescription);
+        jniEnv, atk_action, cachedActionSetDescriptionMethod, (jint)i,
+        (jstring)jdescription);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -432,7 +442,8 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
-    JAW_GET_ACTION(action, NULL); // create global JNI reference `jobject atk_action`
+    JAW_GET_ACTION(action,
+                   NULL); // create global JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -441,12 +452,13 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
-    jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_action, cachedActionGetLocalizedNameMethod, (jint)i);
+    jstring jstr = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_action, cachedActionGetLocalizedNameMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_debug("%s: No localized name available for action (index=%d, action=%p)",
-                    G_STRFUNC, i, action);
+        g_debug(
+            "%s: No localized name available for action (index=%d, action=%p)",
+            G_STRFUNC, i, action);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -463,12 +475,12 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     }
     data->jstrLocalizedName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrLocalizedName == NULL) {
-       (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
-       (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-       return NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
     }
-    data->localized_name = (*jniEnv)->GetStringUTFChars(
-        jniEnv, data->jstrLocalizedName, NULL);
+    data->localized_name =
+        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrLocalizedName, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->localized_name == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
@@ -498,7 +510,8 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
-    jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
+    jclass localClass =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkAction");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
@@ -509,13 +522,15 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if (cachedActionAtkActionClass == NULL) {
-        g_warning("%s: Failed to create global reference for AtkAction class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for AtkAction class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
     cachedActionCreateAtkActionMethod = (*jniEnv)->GetStaticMethodID(
         jniEnv, cachedActionAtkActionClass, "create_atk_action",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkAction;");
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
+        "AtkAction;");
 
     cachedActionDoActionMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedActionAtkActionClass, "do_action", "(I)Z");
@@ -523,14 +538,17 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     cachedActionGetNActionsMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedActionAtkActionClass, "get_n_actions", "()I");
 
-    cachedActionGetDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedActionAtkActionClass, "get_description", "(I)Ljava/lang/String;");
+    cachedActionGetDescriptionMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedActionAtkActionClass,
+                               "get_description", "(I)Ljava/lang/String;");
 
-    cachedActionSetDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedActionAtkActionClass, "set_description", "(ILjava/lang/String;)Z");
+    cachedActionSetDescriptionMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedActionAtkActionClass,
+                               "set_description", "(ILjava/lang/String;)Z");
 
-    cachedActionGetLocalizedNameMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedActionAtkActionClass, "get_localized_name", "(I)Ljava/lang/String;");
+    cachedActionGetLocalizedNameMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedActionAtkActionClass,
+                               "get_localized_name", "(I)Ljava/lang/String;");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedActionCreateAtkActionMethod == NULL ||

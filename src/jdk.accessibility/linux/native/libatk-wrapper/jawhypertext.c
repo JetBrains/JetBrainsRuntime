@@ -17,10 +17,10 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "jawcache.h"
 #include "jawhyperlink.h"
 #include "jawimpl.h"
 #include "jawutil.h"
-#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -107,11 +107,14 @@ gpointer jaw_hypertext_data_init(jobject ac) {
         return NULL;
     }
 
-    jobject jatk_hypertext =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedHypertextAtkHypertextClass, cachedHypertextCreateAtkHypertextMethod, ac);
+    jobject jatk_hypertext = (*jniEnv)->CallStaticObjectMethod(
+        jniEnv, cachedHypertextAtkHypertextClass,
+        cachedHypertextCreateAtkHypertextMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_hypertext == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create jatk_hypertext using create_atk_hypertext method", G_STRFUNC);
+        g_warning("%s: Failed to create jatk_hypertext using "
+                  "create_atk_hypertext method",
+                  G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -119,7 +122,8 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     HypertextData *data = g_new0(HypertextData, 1);
     data->atk_hypertext = (*jniEnv)->NewGlobalRef(jniEnv, jatk_hypertext);
     if (data->atk_hypertext == NULL) {
-        g_warning("%s: Failed to create global ref for atk_hypertext", G_STRFUNC);
+        g_warning("%s: Failed to create global ref for atk_hypertext",
+                  G_STRFUNC);
         g_free(data);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -178,7 +182,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
         return NULL;
     }
 
-    JAW_GET_HYPERTEXT(hypertext, NULL); // create global JNI reference `jobject atk_hypertext`
+    JAW_GET_HYPERTEXT(
+        hypertext, NULL); // create global JNI reference `jobject atk_hypertext`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -190,11 +195,12 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
         return NULL;
     }
 
-    jobject jhyperlink = (*jniEnv)->CallObjectMethod(jniEnv, atk_hypertext,
-                                                     cachedHypertextGetLinkMethod, (jint)link_index);
+    jobject jhyperlink = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_hypertext, cachedHypertextGetLinkMethod, (jint)link_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jhyperlink == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create jhyperlink using get_link method", G_STRFUNC);
+        g_warning("%s: Failed to create jhyperlink using get_link method",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -202,7 +208,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
 
     JawHyperlink *jaw_hyperlink = jaw_hyperlink_new(jhyperlink);
     if (jaw_hyperlink == NULL) {
-        g_warning("%s: Failed to create JawHyperlink object for link_index %d", G_STRFUNC, link_index);
+        g_warning("%s: Failed to create JawHyperlink object for link_index %d",
+                  G_STRFUNC, link_index);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -230,9 +237,11 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
         return 0;
     }
 
-    JAW_GET_HYPERTEXT(hypertext, 0); // create global JNI reference `jobject atk_hypertext`
+    JAW_GET_HYPERTEXT(hypertext,
+                      0); // create global JNI reference `jobject atk_hypertext`
 
-    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, cachedHypertextGetNLinksMethod);
+    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
+                                              cachedHypertextGetNLinksMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
@@ -264,9 +273,11 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
         return -1;
     }
 
-    JAW_GET_HYPERTEXT(hypertext, -1); // create global JNI reference `jobject atk_hypertext`
+    JAW_GET_HYPERTEXT(
+        hypertext, -1); // create global JNI reference `jobject atk_hypertext`
 
-    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, cachedHypertextGetLinkIndexMethod,
+    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
+                                              cachedHypertextGetLinkIndexMethod,
                                               (jint)char_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -289,24 +300,29 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
-    jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
+    jclass localClass =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedHypertextAtkHypertextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedHypertextAtkHypertextClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if (cachedHypertextAtkHypertextClass == NULL) {
-        g_warning("%s: Failed to create global reference for AtkHypertext class", G_STRFUNC);
+        g_warning(
+            "%s: Failed to create global reference for AtkHypertext class",
+            G_STRFUNC);
         goto cleanup_and_fail;
     }
 
     cachedHypertextCreateAtkHypertextMethod = (*jniEnv)->GetStaticMethodID(
         jniEnv, cachedHypertextAtkHypertextClass, "create_atk_hypertext",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkHypertext;");
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
+        "AtkHypertext;");
 
     cachedHypertextGetLinkMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedHypertextAtkHypertextClass, "get_link",

@@ -20,10 +20,10 @@
 
 #include "AtkWrapper.h"
 #include "AtkSignal.h"
+#include "jawcache.h"
 #include "jawimpl.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
-#include "jawcache.h"
 #include <X11/Xlib.h>
 #include <atk-bridge.h>
 #include <glib.h>
@@ -76,9 +76,7 @@ static gboolean jaw_initialized = FALSE;
 static pthread_mutex_t jaw_vdc_dup_mutex = PTHREAD_MUTEX_INITIALIZER;
 static jobject jaw_vdc_last_ac = NULL;
 
-static void
-jaw_vdc_clear_last_ac(JNIEnv *jniEnv)
-{
+static void jaw_vdc_clear_last_ac(JNIEnv *jniEnv) {
     if (jaw_vdc_last_ac != NULL && jniEnv != NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_vdc_last_ac);
     }
@@ -477,7 +475,8 @@ static gboolean window_open_handler(gpointer p) {
         gint n = jaw_toplevel_add_window(JAW_TOPLEVEL(atk_get_root()), atk_obj);
         if (n != -1) {
             g_object_notify(G_OBJECT(atk_get_root()), "accessible-name");
-            g_signal_emit_by_name(ATK_OBJECT(atk_get_root()), "children-changed::add", n, atk_obj);
+            g_signal_emit_by_name(ATK_OBJECT(atk_get_root()),
+                                  "children-changed::add", n, atk_obj);
             g_signal_emit_by_name(atk_obj, "create");
         }
     }
@@ -609,7 +608,7 @@ static gboolean window_maximize_handler(gpointer p) {
     CallbackPara *para = (CallbackPara *)p;
     JAW_CHECK_NULL(para, FALSE);
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
-    
+
     if (!atk_obj) {
         g_warning("%s: atk_obj is NULL", G_STRFUNC);
         queue_free_callback_para(para);
@@ -1232,7 +1231,8 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
         if (!child_ac) {
-            g_warning("%s: GetObjectArrayElement failed for child_ac", G_STRFUNC);
+            g_warning("%s: GetObjectArrayElement failed for child_ac",
+                      G_STRFUNC);
             queue_free_callback_para(para);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
@@ -1286,8 +1286,7 @@ static gboolean object_state_change_handler(gpointer p) {
         return FALSE;
     }
 
-    atk_object_notify_state_change(atk_obj, para->atk_state,
-                                   para->state_value);
+    atk_object_notify_state_change(atk_obj, para->atk_state, para->state_value);
 
     queue_free_callback_para(para);
     return G_SOURCE_REMOVE;
@@ -1460,7 +1459,9 @@ static gboolean key_dispatch_handler(gpointer p) {
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkKeyEvent");
     if (!classAtkKeyEvent) {
         // Unknown event type: clean up and exit
-        g_warning("%s: FindClass for org/GNOME/Accessibility/AtkKeyEvent failed", G_STRFUNC);
+        g_warning(
+            "%s: FindClass for org/GNOME/Accessibility/AtkKeyEvent failed",
+            G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1480,7 +1481,9 @@ static gboolean key_dispatch_handler(gpointer p) {
 
     jint type = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, jfidType);
     if (type == -1) {
-        g_warning("%s: Unknown key event type (-1) received; cleaning up and removing source", G_STRFUNC);
+        g_warning("%s: Unknown key event type (-1) received; cleaning up and "
+                  "removing source",
+                  G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1491,7 +1494,8 @@ static gboolean key_dispatch_handler(gpointer p) {
         jniEnv, classAtkKeyEvent, "ATK_KEY_EVENT_PRESSED", "I");
     if (!jfidTypePressed) {
         // Unknown event type: clean up and exit
-        g_warning("%s: GetStaticFieldID for ATK_KEY_EVENT_PRESSED failed", G_STRFUNC);
+        g_warning("%s: GetStaticFieldID for ATK_KEY_EVENT_PRESSED failed",
+                  G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1502,7 +1506,8 @@ static gboolean key_dispatch_handler(gpointer p) {
         jniEnv, classAtkKeyEvent, "ATK_KEY_EVENT_RELEASED", "I");
     if (!jfidTypeReleased) {
         // Unknown event type: clean up and exit
-        g_warning("%s: GetStaticFieldID for ATK_KEY_EVENT_RELEASED failed", G_STRFUNC);
+        g_warning("%s: GetStaticFieldID for ATK_KEY_EVENT_RELEASED failed",
+                  G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -1520,7 +1525,9 @@ static gboolean key_dispatch_handler(gpointer p) {
     } else if (type == type_released) {
         event->type = ATK_KEY_EVENT_RELEASE;
     } else {
-        g_warning("%s: Unknown key event type (%d) received; cleaning up and removing source", G_STRFUNC, type);
+        g_warning("%s: Unknown key event type (%d) received; cleaning up and "
+                  "removing source",
+                  G_STRFUNC, type);
         g_free(event);
         queue_free_callback_para_event(para);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);

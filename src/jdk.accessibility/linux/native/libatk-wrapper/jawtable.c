@@ -18,9 +18,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "jawcache.h"
 #include "jawimpl.h"
 #include "jawutil.h"
-#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -203,7 +203,9 @@ gpointer jaw_table_data_init(jobject ac) {
         jniEnv, cachedTableAtkTableClass, cachedTableCreateAtkTableMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_table == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create jatk_table using create_atk_table method", G_STRFUNC);
+        g_warning(
+            "%s: Failed to create jatk_table using create_atk_table method",
+            G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -304,8 +306,8 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableRefAtMethod,
-                                              (jint)row, (jint)column);
+    jobject jac = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableRefAtMethod, (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jac using ref_at method", G_STRFUNC);
@@ -355,8 +357,9 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
 
     JAW_GET_TABLE(table, -1); // create global JNI reference `jobject atk_table`
 
-    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetIndexAtMethod, (jint)row,
-                                           (jint)column);
+    jint jindex =
+        (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetIndexAtMethod,
+                                 (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_index_at method", G_STRFUNC);
@@ -391,8 +394,8 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jcolumn =
-        (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetColumnAtIndexMethod, (jint)index);
+    jint jcolumn = (*jniEnv)->CallIntMethod(
+        jniEnv, atk_table, cachedTableGetColumnAtIndexMethod, (jint)index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_at_index method", G_STRFUNC);
@@ -427,7 +430,8 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
 
     JAW_GET_TABLE(table, -1); // create global JNI reference `jobject atk_table`
 
-    jint jrow = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetRowAtIndexMethod, (jint)index);
+    jint jrow = (*jniEnv)->CallIntMethod(
+        jniEnv, atk_table, cachedTableGetRowAtIndexMethod, (jint)index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_at_index method", G_STRFUNC);
@@ -459,7 +463,8 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jcolumns = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetNColumnsMethod);
+    jint jcolumns = (*jniEnv)->CallIntMethod(jniEnv, atk_table,
+                                             cachedTableGetNColumnsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_columns method", G_STRFUNC);
@@ -491,7 +496,8 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jrows = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetNRowsMethod);
+    jint jrows =
+        (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetNRowsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_rows method", G_STRFUNC);
@@ -527,8 +533,9 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetColumnExtentAtMethod, (jint)row,
-                                            (jint)column);
+    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table,
+                                            cachedTableGetColumnExtentAtMethod,
+                                            (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_extent_at method", G_STRFUNC);
@@ -556,15 +563,16 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
     JAW_DEBUG_C("%p, %d, %d", table, row, column);
 
     if (table == NULL) {
-        g_warning(
-            "Null argument table passed to function jaw_table_get_row_extent_at");
+        g_warning("Null argument table passed to function "
+                  "jaw_table_get_row_extent_at");
         return 0;
     }
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetRowExtentAtMethod, (jint)row,
-                                            (jint)column);
+    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table,
+                                            cachedTableGetRowExtentAtMethod,
+                                            (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_extent_at method", G_STRFUNC);
@@ -594,7 +602,8 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table,
+                  NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
@@ -603,7 +612,8 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetCaptionMethod);
+    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table,
+                                              cachedTableGetCaptionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_caption method", G_STRFUNC);
@@ -642,7 +652,8 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table,
+                  NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -653,11 +664,12 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         return NULL;
     }
 
-    jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetColumnDescriptionMethod, (jint)column);
+    jstring jstr = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableGetColumnDescriptionMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to call get_column_description method", G_STRFUNC);
+        g_warning("%s: Failed to call get_column_description method",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -697,12 +709,13 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     JAW_DEBUG_C("%p, %d", table, row);
 
     if (table == NULL) {
-        g_warning(
-            "Null argument passed table to function jaw_table_get_row_description");
+        g_warning("Null argument passed table to function "
+                  "jaw_table_get_row_description");
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table,
+                  NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -713,8 +726,8 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
         return NULL;
     }
 
-    jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetRowDescriptionMethod, (jint)row);
+    jstring jstr = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableGetRowDescriptionMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_description method", G_STRFUNC);
@@ -758,12 +771,13 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     JAW_DEBUG_C("%p, %d", table, column);
 
     if (table == NULL) {
-        g_warning(
-            "Null argument table passed to function jaw_table_get_column_header");
+        g_warning("Null argument table passed to function "
+                  "jaw_table_get_column_header");
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table,
+                  NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -774,8 +788,8 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
         return NULL;
     }
 
-    jobject jac =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetColumnHeaderMethod, (jint)column);
+    jobject jac = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableGetColumnHeaderMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_header method", G_STRFUNC);
@@ -814,7 +828,8 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table,
+                  NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -825,8 +840,8 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
         return NULL;
     }
 
-    jobject jac =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetRowHeaderMethod, (jint)row);
+    jobject jac = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableGetRowHeaderMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_header method", G_STRFUNC);
@@ -863,7 +878,8 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
         return NULL;
     }
 
-    JAW_GET_TABLE(table, NULL); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table,
+                  NULL); // create global JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         (*jniEnv)->DeleteGlobalRef(
@@ -874,7 +890,8 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetSummaryMethod);
+    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table,
+                                              cachedTableGetSummaryMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_summary method", G_STRFUNC);
@@ -933,8 +950,8 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
         return 0;
     }
 
-    jintArray jcolumnArray =
-        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetSelectedColumnsMethod));
+    jintArray jcolumnArray = (jintArray)((*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableGetSelectedColumnsMethod));
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jcolumnArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_selected_columns method", G_STRFUNC);
@@ -1005,12 +1022,13 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_table); // deleting ref that was created in JAW_GET_TABLE
-        g_warning("%s: Failed to create a new local reference frame", G_STRFUNC);
+        g_warning("%s: Failed to create a new local reference frame",
+                  G_STRFUNC);
         return 0;
     }
 
-    jintArray jrowArray =
-        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetSelectedRowsMethod));
+    jintArray jrowArray = (jintArray)((*jniEnv)->CallObjectMethod(
+        jniEnv, atk_table, cachedTableGetSelectedRowsMethod));
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrowArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -1065,15 +1083,15 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
     JAW_DEBUG_C("%p, %d", table, column);
 
     if (table == NULL) {
-        g_warning(
-            "Null argument table passed to function jaw_table_is_column_selected");
+        g_warning("Null argument table passed to function "
+                  "jaw_table_is_column_selected");
         return FALSE;
     }
 
     JAW_GET_TABLE(table, FALSE);
 
-    jboolean jselected =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedTableIsColumnSelectedMethod, (jint)column);
+    jboolean jselected = (*jniEnv)->CallBooleanMethod(
+        jniEnv, atk_table, cachedTableIsColumnSelectedMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_column_selected method", G_STRFUNC);
@@ -1107,8 +1125,8 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
 
     JAW_GET_TABLE(table, FALSE);
 
-    jboolean jselected =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedTableIsRowSelectedMethod, (jint)row);
+    jboolean jselected = (*jniEnv)->CallBooleanMethod(
+        jniEnv, atk_table, cachedTableIsRowSelectedMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_row_selected method", G_STRFUNC);
@@ -1143,8 +1161,9 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
 
     JAW_GET_TABLE(table, FALSE);
 
-    jboolean jselected = (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedTableIsSelectedMethod,
-                                                      (jint)row, (jint)column);
+    jboolean jselected = (*jniEnv)->CallBooleanMethod(
+        jniEnv, atk_table, cachedTableIsSelectedMethod, (jint)row,
+        (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_selected method", G_STRFUNC);
@@ -1195,7 +1214,8 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetRowDescriptionMethod, (jint)row, jstr);
+    (*jniEnv)->CallVoidMethod(
+        jniEnv, atk_table, cachedTableSetRowDescriptionMethod, (jint)row, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_row_description method", G_STRFUNC);
@@ -1245,10 +1265,13 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetColumnDescriptionMethod, (jint)column, jstr);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table,
+                              cachedTableSetColumnDescriptionMethod,
+                              (jint)column, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to call set_column_description method", G_STRFUNC);
+        g_warning("%s: Failed to call set_column_description method",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1312,7 +1335,8 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetCaptionMethod, obj);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetCaptionMethod,
+                              obj);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_caption method", G_STRFUNC);
@@ -1380,7 +1404,8 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetSummaryMethod, obj);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetSummaryMethod,
+                              obj);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_summary method", G_STRFUNC);
@@ -1403,7 +1428,8 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
-    jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTable");
+    jclass localClass =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTable");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkTable class", G_STRFUNC);
@@ -1414,17 +1440,19 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if (cachedTableAtkTableClass == NULL) {
-        g_warning("%s: Failed to create global reference for AtkTable class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for AtkTable class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
     cachedTableCreateAtkTableMethod = (*jniEnv)->GetStaticMethodID(
         jniEnv, cachedTableAtkTableClass, "create_atk_table",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkTable;");
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
+        "AtkTable;");
 
-    cachedTableRefAtMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "ref_at",
-        "(II)Ljavax/accessibility/AccessibleContext;");
+    cachedTableRefAtMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass, "ref_at",
+                               "(II)Ljavax/accessibility/AccessibleContext;");
 
     cachedTableGetIndexAtMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "get_index_at", "(II)I");
@@ -1447,17 +1475,17 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     cachedTableGetRowExtentAtMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "get_row_extent_at", "(II)I");
 
-    cachedTableGetCaptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "get_caption",
-        "()Ljavax/accessibility/AccessibleContext;");
+    cachedTableGetCaptionMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass, "get_caption",
+                               "()Ljavax/accessibility/AccessibleContext;");
 
     cachedTableGetColumnDescriptionMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "get_column_description",
         "(I)Ljava/lang/String;");
 
-    cachedTableGetRowDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "get_row_description",
-        "(I)Ljava/lang/String;");
+    cachedTableGetRowDescriptionMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass,
+                               "get_row_description", "(I)Ljava/lang/String;");
 
     cachedTableGetColumnHeaderMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "get_column_header",
@@ -1467,9 +1495,9 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
         jniEnv, cachedTableAtkTableClass, "get_row_header",
         "(I)Ljavax/accessibility/AccessibleContext;");
 
-    cachedTableGetSummaryMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "get_summary",
-        "()Ljavax/accessibility/AccessibleContext;");
+    cachedTableGetSummaryMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass, "get_summary",
+                               "()Ljavax/accessibility/AccessibleContext;");
 
     cachedTableGetSelectedColumnsMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "get_selected_columns", "()[I");
@@ -1486,26 +1514,25 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     cachedTableIsSelectedMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "is_selected", "(II)Z");
 
-    cachedTableSetRowDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "set_row_description",
-        "(ILjava/lang/String;)V");
+    cachedTableSetRowDescriptionMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass,
+                               "set_row_description", "(ILjava/lang/String;)V");
 
     cachedTableSetColumnDescriptionMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTableAtkTableClass, "set_column_description",
         "(ILjava/lang/String;)V");
 
-    cachedTableSetCaptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "set_caption",
-        "(Ljavax/accessibility/Accessible;)V");
+    cachedTableSetCaptionMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass, "set_caption",
+                               "(Ljavax/accessibility/Accessible;)V");
 
-    cachedTableSetSummaryMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTableAtkTableClass, "set_summary",
-        "(Ljavax/accessibility/Accessible;)V");
+    cachedTableSetSummaryMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedTableAtkTableClass, "set_summary",
+                               "(Ljavax/accessibility/Accessible;)V");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedTableCreateAtkTableMethod == NULL ||
-        cachedTableRefAtMethod == NULL ||
-        cachedTableGetIndexAtMethod == NULL ||
+        cachedTableRefAtMethod == NULL || cachedTableGetIndexAtMethod == NULL ||
         cachedTableGetColumnAtIndexMethod == NULL ||
         cachedTableGetRowAtIndexMethod == NULL ||
         cachedTableGetNColumnsMethod == NULL ||

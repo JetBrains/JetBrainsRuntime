@@ -18,9 +18,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
+#include "jawcache.h"
 #include "jawimpl.h"
 #include "jawutil.h"
-#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -74,8 +74,7 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     JAW_DEBUG_ALL("%p, %p", iface, data);
 
     if (iface == NULL) {
-        g_warning("%s: Null argument iface passed to the function",
-                  G_STRFUNC);
+        g_warning("%s: Null argument iface passed to the function", G_STRFUNC);
         return;
     }
 
@@ -119,7 +118,9 @@ gpointer jaw_value_data_init(jobject ac) {
         jniEnv, cachedValueAtkValueClass, cachedValueCreateAtkValueMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_value == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create jatk_value using create_atk_value method", G_STRFUNC);
+        g_warning(
+            "%s: Failed to create jatk_value using create_atk_value method",
+            G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -172,36 +173,39 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
     JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
 
     if (jniEnv == NULL || value == NULL) {
-        g_warning("%s: Null argument passed to the function (jniEnv=%p, value=%p)",
-                  G_STRFUNC,
-                  (void*)jniEnv,
-                  (void*)value);
+        g_warning(
+            "%s: Null argument passed to the function (jniEnv=%p, value=%p)",
+            G_STRFUNC, (void *)jniEnv, (void *)value);
         return;
     }
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedValueByteClass)) {
         g_value_init(value, G_TYPE_CHAR);
-        g_value_set_schar(
-            value, (gchar)(*jniEnv)->CallByteMethod(jniEnv, jnumber, cachedValueByteValueMethod));
+        g_value_set_schar(value,
+                          (gchar)(*jniEnv)->CallByteMethod(
+                              jniEnv, jnumber, cachedValueByteValueMethod));
         return;
     }
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedValueDoubleClass)) {
         g_value_init(value, G_TYPE_DOUBLE);
-        g_value_set_double(
-            value, (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jnumber, cachedValueDoubleValueMethod));
+        g_value_set_double(value,
+                           (gdouble)(*jniEnv)->CallDoubleMethod(
+                               jniEnv, jnumber, cachedValueDoubleValueMethod));
         return;
     }
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedValueFloatClass)) {
         g_value_init(value, G_TYPE_FLOAT);
-        g_value_set_float(
-            value, (gfloat)(*jniEnv)->CallFloatMethod(jniEnv, jnumber, cachedValueFloatValueMethod));
+        g_value_set_float(value,
+                          (gfloat)(*jniEnv)->CallFloatMethod(
+                              jniEnv, jnumber, cachedValueFloatValueMethod));
         return;
     }
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedValueIntegerClass)) {
-        jint v = (*jniEnv)->CallIntMethod(jniEnv, jnumber, cachedValueIntValueMethod);
+        jint v = (*jniEnv)->CallIntMethod(jniEnv, jnumber,
+                                          cachedValueIntValueMethod);
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             jaw_jni_clear_exception(jniEnv);
             g_warning("%s: Exception in Integer.intValue()", G_STRFUNC);
@@ -214,7 +218,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
     }
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedValueShortClass)) {
-        jshort v = (*jniEnv)->CallShortMethod(jniEnv, jnumber, cachedValueShortValueMethod);
+        jshort v = (*jniEnv)->CallShortMethod(jniEnv, jnumber,
+                                              cachedValueShortValueMethod);
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             jaw_jni_clear_exception(jniEnv);
             g_warning("%s: Exception in Short.shortValue()", G_STRFUNC);
@@ -228,8 +233,9 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
 
     if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedValueLongClass)) {
         g_value_init(value, G_TYPE_INT64);
-        g_value_set_int64(
-            value, (gint64)(*jniEnv)->CallLongMethod(jniEnv, jnumber, cachedValueLongValueMethod));
+        g_value_set_int64(value,
+                          (gint64)(*jniEnv)->CallLongMethod(
+                              jniEnv, jnumber, cachedValueLongValueMethod));
         return;
     }
 }
@@ -249,14 +255,12 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 
     if (obj == NULL || value == NULL) {
         g_warning("%s: Null argument passed to the function (obj=%p, value=%p)",
-                  G_STRFUNC,
-                  (void*)obj,
-                  (void*)value);
+                  G_STRFUNC, (void *)obj, (void *)value);
         return;
     }
 
-    if (G_VALUE_TYPE (value) != G_TYPE_INVALID) {
-        g_value_unset (value);
+    if (G_VALUE_TYPE(value) != G_TYPE_INVALID) {
+        g_value_unset(value);
     }
 
     JAW_GET_VALUE(obj, ); // create global JNI reference `jobject atk_value`
@@ -270,17 +274,21 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         return;
     }
 
-    jobject jnumber = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, cachedValueGetCurrentValueMethod);
+    jobject jnumber = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_value, cachedValueGetCurrentValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Exception occurred while calling get_current_value", G_STRFUNC);
+        g_warning("%s: Exception occurred while calling get_current_value",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
     if (jnumber == NULL) {
-        g_warning("%s: Failed to get jnumber by calling get_current_value method", G_STRFUNC);
+        g_warning(
+            "%s: Failed to get jnumber by calling get_current_value method",
+            G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -326,7 +334,9 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
 
-    jobject jdoubleValue = (*jniEnv)->NewObject(jniEnv, cachedValueDoubleClass, cachedValueDoubleConstructorMethod, (jdouble)value);
+    jobject jdoubleValue = (*jniEnv)->NewObject(
+        jniEnv, cachedValueDoubleClass, cachedValueDoubleConstructorMethod,
+        (jdouble)value);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdoubleValue == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create Double object", G_STRFUNC);
@@ -335,7 +345,8 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_value, cachedValueSetValueMethod, jdoubleValue);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_value, cachedValueSetValueMethod,
+                              jdoubleValue);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling set_value", G_STRFUNC);
@@ -359,13 +370,14 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
  * Returns: TRUE if conversion was successful, FALSE if jdouble is NULL
  **/
 static gboolean jaw_value_convert_double_to_gdouble(JNIEnv *jniEnv,
-                                                     jobject jdouble,
-                                                     gdouble *result) {
+                                                    jobject jdouble,
+                                                    gdouble *result) {
     if (jdouble == NULL) {
         return FALSE;
     }
 
-    *result = (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jdouble, cachedValueDoubleValueMethod);
+    *result = (gdouble)(*jniEnv)->CallDoubleMethod(
+        jniEnv, jdouble, cachedValueDoubleValueMethod);
     return TRUE;
 }
 
@@ -400,27 +412,33 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         return NULL;
     }
 
-    jobject jmin = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, cachedValueGetMinimumValueMethod);
+    jobject jmin = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_value, cachedValueGetMinimumValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Exception occurred while calling get_minimum_value", G_STRFUNC);
+        g_warning("%s: Exception occurred while calling get_minimum_value",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    jobject jmax = (*jniEnv)->CallObjectMethod(jniEnv, atk_value, cachedValueGetMaximumValueMethod);
+    jobject jmax = (*jniEnv)->CallObjectMethod(
+        jniEnv, atk_value, cachedValueGetMaximumValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Exception occurred while calling get_maximum_value", G_STRFUNC);
+        g_warning("%s: Exception occurred while calling get_maximum_value",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
     gdouble min_value, max_value;
-    gboolean has_min = jaw_value_convert_double_to_gdouble(jniEnv, jmin, &min_value);
-    gboolean has_max = jaw_value_convert_double_to_gdouble(jniEnv, jmax, &max_value);
+    gboolean has_min =
+        jaw_value_convert_double_to_gdouble(jniEnv, jmin, &min_value);
+    gboolean has_max =
+        jaw_value_convert_double_to_gdouble(jniEnv, jmax, &max_value);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -430,7 +448,8 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         return NULL;
     }
 
-    AtkRange *ret = atk_range_new(min_value, max_value, NULL); // NULL description
+    AtkRange *ret =
+        atk_range_new(min_value, max_value, NULL); // NULL description
     return ret;
 }
 
@@ -458,10 +477,12 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
 
     JAW_GET_VALUE(obj, 0);
 
-    gdouble ret = (*jniEnv)->CallDoubleMethod(jniEnv, atk_value, cachedValueGetIncrementMethod);
+    gdouble ret = (*jniEnv)->CallDoubleMethod(jniEnv, atk_value,
+                                              cachedValueGetIncrementMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Exception occurred while calling get_increment", G_STRFUNC);
+        g_warning("%s: Exception occurred while calling get_increment",
+                  G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
         return 0;
     }
@@ -481,7 +502,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
-    jclass localClassAtkValue = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
+    jclass localClassAtkValue =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkValue");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassAtkValue == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkValue class", G_STRFUNC);
@@ -489,30 +511,36 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
         return FALSE;
     }
 
-    cachedValueAtkValueClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkValue);
+    cachedValueAtkValueClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkValue);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClassAtkValue);
 
     if (cachedValueAtkValueClass == NULL) {
-        g_warning("%s: Failed to create global reference for AtkValue class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for AtkValue class",
+                  G_STRFUNC);
         g_mutex_unlock(&cache_mutex);
         return FALSE;
     }
 
     cachedValueCreateAtkValueMethod = (*jniEnv)->GetStaticMethodID(
         jniEnv, cachedValueAtkValueClass, "create_atk_value",
-        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkValue;");
+        "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/"
+        "AtkValue;");
 
-    cachedValueGetCurrentValueMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedValueAtkValueClass, "get_current_value", "()Ljava/lang/Number;");
+    cachedValueGetCurrentValueMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedValueAtkValueClass,
+                               "get_current_value", "()Ljava/lang/Number;");
 
     cachedValueSetValueMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedValueAtkValueClass, "set_value", "(Ljava/lang/Number;)V");
 
-    cachedValueGetMinimumValueMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedValueAtkValueClass, "get_minimum_value", "()Ljava/lang/Double;");
+    cachedValueGetMinimumValueMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedValueAtkValueClass,
+                               "get_minimum_value", "()Ljava/lang/Double;");
 
-    cachedValueGetMaximumValueMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedValueAtkValueClass, "get_maximum_value", "()Ljava/lang/Double;");
+    cachedValueGetMaximumValueMethod =
+        (*jniEnv)->GetMethodID(jniEnv, cachedValueAtkValueClass,
+                               "get_maximum_value", "()Ljava/lang/Double;");
 
     cachedValueGetIncrementMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedValueAtkValueClass, "get_increment", "()D");
@@ -527,7 +555,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
 
         jaw_jni_clear_exception(jniEnv);
 
-        g_warning("%s: Failed to cache one or more AtkValue method IDs", G_STRFUNC);
+        g_warning("%s: Failed to cache one or more AtkValue method IDs",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
@@ -540,7 +569,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedValueByteClass = (*jniEnv)->NewGlobalRef(jniEnv, localByte);
     (*jniEnv)->DeleteLocalRef(jniEnv, localByte);
     if (cachedValueByteClass == NULL) {
-        g_warning("%s: Failed to create global reference for Byte class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Byte class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
@@ -553,7 +583,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedValueDoubleClass = (*jniEnv)->NewGlobalRef(jniEnv, localDouble);
     (*jniEnv)->DeleteLocalRef(jniEnv, localDouble);
     if (cachedValueDoubleClass == NULL) {
-        g_warning("%s: Failed to create global reference for Double class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Double class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
@@ -566,7 +597,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedValueFloatClass = (*jniEnv)->NewGlobalRef(jniEnv, localFloat);
     (*jniEnv)->DeleteLocalRef(jniEnv, localFloat);
     if (cachedValueFloatClass == NULL) {
-        g_warning("%s: Failed to create global reference for Float class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Float class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
@@ -579,7 +611,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedValueIntegerClass = (*jniEnv)->NewGlobalRef(jniEnv, localInteger);
     (*jniEnv)->DeleteLocalRef(jniEnv, localInteger);
     if (cachedValueIntegerClass == NULL) {
-        g_warning("%s: Failed to create global reference for Integer class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Integer class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
@@ -592,7 +625,8 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedValueLongClass = (*jniEnv)->NewGlobalRef(jniEnv, localLong);
     (*jniEnv)->DeleteLocalRef(jniEnv, localLong);
     if (cachedValueLongClass == NULL) {
-        g_warning("%s: Failed to create global reference for Long class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Long class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
@@ -605,17 +639,25 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedValueShortClass = (*jniEnv)->NewGlobalRef(jniEnv, localShort);
     (*jniEnv)->DeleteLocalRef(jniEnv, localShort);
     if (cachedValueShortClass == NULL) {
-        g_warning("%s: Failed to create global reference for Short class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Short class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedValueByteValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueByteClass, "byteValue", "()B");
-    cachedValueDoubleValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueDoubleClass, "doubleValue", "()D");
-    cachedValueFloatValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueFloatClass, "floatValue", "()F");
-    cachedValueIntValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueIntegerClass, "intValue", "()I");
-    cachedValueLongValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueLongClass, "longValue", "()J");
-    cachedValueShortValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueShortClass, "shortValue", "()S");
-    cachedValueDoubleConstructorMethod = (*jniEnv)->GetMethodID(jniEnv, cachedValueDoubleClass, "<init>", "(D)V");
+    cachedValueByteValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueByteClass, "byteValue", "()B");
+    cachedValueDoubleValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueDoubleClass, "doubleValue", "()D");
+    cachedValueFloatValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueFloatClass, "floatValue", "()F");
+    cachedValueIntValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueIntegerClass, "intValue", "()I");
+    cachedValueLongValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueLongClass, "longValue", "()J");
+    cachedValueShortValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueShortClass, "shortValue", "()S");
+    cachedValueDoubleConstructorMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedValueDoubleClass, "<init>", "(D)V");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedValueByteValueMethod == NULL ||
