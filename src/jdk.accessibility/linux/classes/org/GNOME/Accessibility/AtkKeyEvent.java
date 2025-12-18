@@ -188,7 +188,7 @@ class GNOMEKeyMapping {
         else if (javaKeyLocation == KeyEvent.KEY_LOCATION_RIGHT)
             javaKeyCode += RIGHT_OFFSET;
 
-        if ((gdkKeyInfo = keyMap.get(Integer.valueOf(javaKeyCode))) != null) {
+        if ((gdkKeyInfo = keyMap.get(javaKeyCode)) != null) {
             return gdkKeyInfo;
         } else {
             return null;
