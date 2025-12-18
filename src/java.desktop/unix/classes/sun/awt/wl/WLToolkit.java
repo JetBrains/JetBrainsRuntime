@@ -317,6 +317,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         });
     }
 
+    /*
     public static void invokeAndWait(Runnable r) {
         if (EventQueue.isDispatchThread()) {
             r.run();
@@ -334,7 +335,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             }
         }
     }
-
+*/
+    /*
     public static <T> T invokeAndWait(Supplier<T> task) {
         if (EventQueue.isDispatchThread()) {
             return task.get();
@@ -346,6 +348,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             return result.get();
         }
     }
+*/
 
     public static void invokeLater(Runnable r) {
         if (EventQueue.isDispatchThread()) {

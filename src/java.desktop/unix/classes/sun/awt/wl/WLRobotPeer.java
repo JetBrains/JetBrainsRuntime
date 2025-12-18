@@ -127,22 +127,22 @@ public class WLRobotPeer implements RobotPeer {
     }
 
     private int getRGBPixelOfSingularWindow(int x, int y) {
-        return WLToolkit.invokeAndWait(() -> {
-            WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        synchronized (peer.getStateLock()) {
             Point loc = peer.convertPontFromDeviceSpace(x, y);
             checkPeerForPixelGrab(peer);
             return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(loc.x, loc.y);
-        });
+        }
     }
 
-    private int [] getRGBPixelsOfSingularWindow(Rectangle bounds) {
-        return WLToolkit.invokeAndWait(() -> {
-            WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+    private int[] getRGBPixelsOfSingularWindow(Rectangle bounds) {
+        WLComponentPeer peer = WLToolkit.getSingularWindowPeer();
+        synchronized (peer.getStateLock()) {
             Point loc = peer.convertPontFromDeviceSpace(bounds.x, bounds.y);
             Rectangle adjustedBounds = new Rectangle(loc, bounds.getSize());
             checkPeerForPixelGrab(peer);
             return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(adjustedBounds);
-        });
+        }
     }
 
     private static void checkPeerForPixelGrab(WLComponentPeer peer) {

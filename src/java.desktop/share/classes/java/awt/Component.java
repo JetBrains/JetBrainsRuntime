@@ -986,6 +986,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
             public BufferStrategy getBufferStrategy(Component comp) {
                 return comp.getBufferStrategy();
             }
+
+            @Override
+            public Object getTreeLock() {
+                return LOCK;
+            }
         });
     }
 
