@@ -307,7 +307,10 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         return;
     }
 
-    g_value_unset(value);
+    if (G_VALUE_TYPE (value) != G_TYPE_INVALID) {
+        g_value_unset (value);
+    }
+
     JAW_GET_VALUE(obj, ); // create global JNI reference `jobject atk_value`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
