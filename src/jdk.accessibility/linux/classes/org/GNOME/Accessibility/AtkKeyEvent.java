@@ -159,7 +159,8 @@ public class AtkKeyEvent {
 
 class GNOMEKeyMapping {
 
-    private static final HashMap<Integer, GNOMEKeyInfo> keyMap;
+    private static HashMap<Integer, GNOMEKeyInfo> keyMap = null;
+
     /* Used to offset VK for NUMPAD keys that don't have a VK_KP_* equivalent.
      * At present max VK_* value is 0x0000FFFF
      * Also need to support Left/Right variations.
