@@ -21,6 +21,7 @@
 #include "jawutil.h"
 #include "jawobject.h"
 #include "jawtoplevel.h"
+#include "jawcache.h"
 #include <glib.h>
 #include <glib/gprintf.h>
 #include <jni.h>
@@ -42,21 +43,21 @@ static const gchar *jaw_util_get_toolkit_version(void);
 
 static JavaVM *cachedJVM = NULL;
 
-static jclass cachedAtkObjectClass = NULL;
-static jclass cachedAccessibleRoleClass = NULL;
-static jclass cachedAccessibleStateClass = NULL;
-static jclass cachedRectangleClass = NULL;
+jclass cachedUtilAtkObjectClass = NULL;
+jclass cachedUtilAccessibleRoleClass = NULL;
+jclass cachedUtilAccessibleStateClass = NULL;
+jclass cachedUtilRectangleClass = NULL;
 
-static jmethodID cachedGetTflagFromObjMethod = NULL;
-static jmethodID cachedGetAccessibleRoleMethod = NULL;
-static jmethodID cachedGetAccessibleParentMethod = NULL;
+jmethodID cachedUtilGetTflagFromObjMethod = NULL;
+jmethodID cachedUtilGetAccessibleRoleMethod = NULL;
+jmethodID cachedUtilGetAccessibleParentMethod = NULL;
 
-static jfieldID cachedRectangleXField = NULL;
-static jfieldID cachedRectangleYField = NULL;
-static jfieldID cachedRectangleWidthField = NULL;
-static jfieldID cachedRectangleHeightField = NULL;
+jfieldID cachedUtilRectangleXField = NULL;
+jfieldID cachedUtilRectangleYField = NULL;
+jfieldID cachedUtilRectangleWidthField = NULL;
+jfieldID cachedUtilRectangleHeightField = NULL;
 
-static GMutex jawutil_cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean jawutil_cache_initialized = FALSE;
 
 static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv);
@@ -310,7 +311,7 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
     }
 
     guint result = (guint)(*jniEnv)->CallStaticIntMethod(
-        jniEnv, cachedAtkObjectClass, cachedGetTflagFromObjMethod, jObj);
+        jniEnv, cachedUtilAtkObjectClass, cachedUtilGetTflagFromObjMethod, jObj);
 
     return result;
 }
@@ -405,14 +406,14 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
         return NULL;
     }
 
-    jfieldID jfid = (*jniEnv)->GetStaticFieldID(jniEnv, cachedAccessibleRoleClass, roleName,
+    jfieldID jfid = (*jniEnv)->GetStaticFieldID(jniEnv, cachedUtilAccessibleRoleClass, roleName,
                                                 "Ljavax/accessibility/AccessibleRole;");
     if (jfid == NULL) {
         g_warning("%s: Failed to find field %s in AccessibleRole class", G_STRFUNC, roleName);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jobject jrole = (*jniEnv)->GetStaticObjectField(jniEnv, cachedAccessibleRoleClass, jfid);
+    jobject jrole = (*jniEnv)->GetStaticObjectField(jniEnv, cachedUtilAccessibleRoleClass, jfid);
 
     return (*jniEnv)->PopLocalFrame(jniEnv, jrole);
 }
@@ -463,14 +464,14 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     }
 
     jobject ac_role = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkObjectClass, cachedGetAccessibleRoleMethod, jAccessibleContext);
+        jniEnv, cachedUtilAtkObjectClass, cachedUtilGetAccessibleRoleMethod, jAccessibleContext);
     if (ac_role == NULL) {
         g_warning("%s: Failed to get accessible role from AccessibleContext", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_UNKNOWN;
     }
 
-    if (!(*jniEnv)->IsInstanceOf(jniEnv, ac_role, cachedAccessibleRoleClass)) {
+    if (!(*jniEnv)->IsInstanceOf(jniEnv, ac_role, cachedUtilAccessibleRoleClass)) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return ATK_ROLE_INVALID;
     }
@@ -683,7 +684,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "RADIO_BUTTON")) {
 
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, cachedAtkObjectClass, cachedGetAccessibleParentMethod, jAccessibleContext);
+            jniEnv, cachedUtilAtkObjectClass, cachedUtilGetAccessibleParentMethod, jAccessibleContext);
         if (jparent == NULL) {
             g_warning("%s: Failed to get accessible parent using get_accessible_parent", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -691,7 +692,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
         }
 
         jobject parent_role = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, cachedAtkObjectClass, cachedGetAccessibleRoleMethod, jparent);
+            jniEnv, cachedUtilAtkObjectClass, cachedUtilGetAccessibleRoleMethod, jparent);
         if (parent_role == NULL) {
             g_warning("%s: Failed to get parent role using get_accessible_role", G_STRFUNC);
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -793,7 +794,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
 
     if (jaw_util_is_java_acc_role(jniEnv, ac_role, "UNKNOWN")) {
         jobject jparent = (*jniEnv)->CallStaticObjectMethod(
-            jniEnv, cachedAtkObjectClass, cachedGetAccessibleParentMethod, jAccessibleContext);
+            jniEnv, cachedUtilAtkObjectClass, cachedUtilGetAccessibleParentMethod, jAccessibleContext);
         if (jparent == NULL) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return ATK_ROLE_APPLICATION;
@@ -841,7 +842,7 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
     }
 
     jfieldID jfid =
-        (*jniEnv)->GetStaticFieldID(jniEnv, cachedAccessibleStateClass, strState,
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedUtilAccessibleStateClass, strState,
                                     "Ljavax/accessibility/AccessibleState;");
     if (jfid == NULL) {
         g_warning("%s: Failed to find field %s in AccessibleState class", G_STRFUNC, strState);
@@ -849,7 +850,7 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
         return FALSE;
     }
     jobject jstate =
-        (*jniEnv)->GetStaticObjectField(jniEnv, cachedAccessibleStateClass, jfid);
+        (*jniEnv)->GetStaticObjectField(jniEnv, cachedUtilAccessibleStateClass, jfid);
     if (jstate == NULL) {
         g_warning("%s: Failed to get static object field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -988,19 +989,19 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
         return;
     }
 
-    (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedRectangleXField);
-    (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedRectangleYField);
-    (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedRectangleWidthField);
-    (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedRectangleHeightField);
+    (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedUtilRectangleXField);
+    (*y) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedUtilRectangleYField);
+    (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedUtilRectangleWidthField);
+    (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jrect, cachedUtilRectangleHeightField);
 }
 
 static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&jawutil_cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (jawutil_cache_initialized) {
-        g_mutex_unlock(&jawutil_cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -1011,10 +1012,10 @@ static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkObjectClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkObject);
+    cachedUtilAtkObjectClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkObject);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAtkObject);
 
-    if (cachedAtkObjectClass == NULL) {
+    if (cachedUtilAtkObjectClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkObject class", G_STRFUNC);
         goto cleanup_and_fail;
     }
@@ -1026,10 +1027,10 @@ static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAccessibleRoleClass = (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleRole);
+    cachedUtilAccessibleRoleClass = (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleRole);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAccessibleRole);
 
-    if (cachedAccessibleRoleClass == NULL) {
+    if (cachedUtilAccessibleRoleClass == NULL) {
         g_warning("%s: Failed to create global reference for AccessibleRole class", G_STRFUNC);
         goto cleanup_and_fail;
     }
@@ -1041,10 +1042,10 @@ static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAccessibleStateClass = (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleState);
+    cachedUtilAccessibleStateClass = (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleState);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAccessibleState);
 
-    if (cachedAccessibleStateClass == NULL) {
+    if (cachedUtilAccessibleStateClass == NULL) {
         g_warning("%s: Failed to create global reference for AccessibleState class", G_STRFUNC);
         goto cleanup_and_fail;
     }
@@ -1056,38 +1057,38 @@ static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedRectangleClass = (*jniEnv)->NewGlobalRef(jniEnv, localRectangle);
+    cachedUtilRectangleClass = (*jniEnv)->NewGlobalRef(jniEnv, localRectangle);
     (*jniEnv)->DeleteLocalRef(jniEnv, localRectangle);
 
-    if (cachedRectangleClass == NULL) {
+    if (cachedUtilRectangleClass == NULL) {
         g_warning("%s: Failed to create global reference for Rectangle class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedGetTflagFromObjMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
+    cachedUtilGetTflagFromObjMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedUtilAtkObjectClass, "get_tflag_from_obj", "(Ljava/lang/Object;)I");
 
-    cachedGetAccessibleRoleMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_role",
+    cachedUtilGetAccessibleRoleMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedUtilAtkObjectClass, "get_accessible_role",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/AccessibleRole;");
 
-    cachedGetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_parent",
+    cachedUtilGetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedUtilAtkObjectClass, "get_accessible_parent",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/AccessibleContext;");
 
-    cachedRectangleXField = (*jniEnv)->GetFieldID(jniEnv, cachedRectangleClass, "x", "I");
-    cachedRectangleYField = (*jniEnv)->GetFieldID(jniEnv, cachedRectangleClass, "y", "I");
-    cachedRectangleWidthField = (*jniEnv)->GetFieldID(jniEnv, cachedRectangleClass, "width", "I");
-    cachedRectangleHeightField = (*jniEnv)->GetFieldID(jniEnv, cachedRectangleClass, "height", "I");
+    cachedUtilRectangleXField = (*jniEnv)->GetFieldID(jniEnv, cachedUtilRectangleClass, "x", "I");
+    cachedUtilRectangleYField = (*jniEnv)->GetFieldID(jniEnv, cachedUtilRectangleClass, "y", "I");
+    cachedUtilRectangleWidthField = (*jniEnv)->GetFieldID(jniEnv, cachedUtilRectangleClass, "width", "I");
+    cachedUtilRectangleHeightField = (*jniEnv)->GetFieldID(jniEnv, cachedUtilRectangleClass, "height", "I");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedGetTflagFromObjMethod == NULL ||
-        cachedGetAccessibleRoleMethod == NULL ||
-        cachedGetAccessibleParentMethod == NULL ||
-        cachedRectangleXField == NULL ||
-        cachedRectangleYField == NULL ||
-        cachedRectangleWidthField == NULL ||
-        cachedRectangleHeightField == NULL) {
+        cachedUtilGetTflagFromObjMethod == NULL ||
+        cachedUtilGetAccessibleRoleMethod == NULL ||
+        cachedUtilGetAccessibleParentMethod == NULL ||
+        cachedUtilRectangleXField == NULL ||
+        cachedUtilRectangleYField == NULL ||
+        cachedUtilRectangleWidthField == NULL ||
+        cachedUtilRectangleHeightField == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to cache one or more method/field IDs", G_STRFUNC);
@@ -1095,36 +1096,70 @@ static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     jawutil_cache_initialized = TRUE;
-    g_mutex_unlock(&jawutil_cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkObjectClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkObjectClass);
-        cachedAtkObjectClass = NULL;
+    if (cachedUtilAtkObjectClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilAtkObjectClass);
+        cachedUtilAtkObjectClass = NULL;
     }
-    if (cachedAccessibleRoleClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAccessibleRoleClass);
-        cachedAccessibleRoleClass = NULL;
+    if (cachedUtilAccessibleRoleClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilAccessibleRoleClass);
+        cachedUtilAccessibleRoleClass = NULL;
     }
-    if (cachedAccessibleStateClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAccessibleStateClass);
-        cachedAccessibleStateClass = NULL;
+    if (cachedUtilAccessibleStateClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilAccessibleStateClass);
+        cachedUtilAccessibleStateClass = NULL;
     }
-    if (cachedRectangleClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedRectangleClass);
-        cachedRectangleClass = NULL;
+    if (cachedUtilRectangleClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilRectangleClass);
+        cachedUtilRectangleClass = NULL;
     }
-    cachedGetTflagFromObjMethod = NULL;
-    cachedGetAccessibleRoleMethod = NULL;
-    cachedGetAccessibleParentMethod = NULL;
-    cachedRectangleXField = NULL;
-    cachedRectangleYField = NULL;
-    cachedRectangleWidthField = NULL;
-    cachedRectangleHeightField = NULL;
+    cachedUtilGetTflagFromObjMethod = NULL;
+    cachedUtilGetAccessibleRoleMethod = NULL;
+    cachedUtilGetAccessibleParentMethod = NULL;
+    cachedUtilRectangleXField = NULL;
+    cachedUtilRectangleYField = NULL;
+    cachedUtilRectangleWidthField = NULL;
+    cachedUtilRectangleHeightField = NULL;
 
-    g_mutex_unlock(&jawutil_cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_util_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedUtilAtkObjectClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilAtkObjectClass);
+        cachedUtilAtkObjectClass = NULL;
+    }
+    if (cachedUtilAccessibleRoleClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilAccessibleRoleClass);
+        cachedUtilAccessibleRoleClass = NULL;
+    }
+    if (cachedUtilAccessibleStateClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilAccessibleStateClass);
+        cachedUtilAccessibleStateClass = NULL;
+    }
+    if (cachedUtilRectangleClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedUtilRectangleClass);
+        cachedUtilRectangleClass = NULL;
+    }
+    cachedUtilGetTflagFromObjMethod = NULL;
+    cachedUtilGetAccessibleRoleMethod = NULL;
+    cachedUtilGetAccessibleParentMethod = NULL;
+    cachedUtilRectangleXField = NULL;
+    cachedUtilRectangleYField = NULL;
+    cachedUtilRectangleWidthField = NULL;
+    cachedUtilRectangleHeightField = NULL;
+    jawutil_cache_initialized = FALSE;
+    g_mutex_unlock(&cache_mutex);
 }
 
 #ifdef __cplusplus

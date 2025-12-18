@@ -19,6 +19,7 @@
 
 #include "jawimpl.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -50,32 +51,32 @@
  * complex for languages which use ligatures.
  */
 
-static jclass cachedAtkTextClass = NULL;
-static jmethodID cachedCreateAtkTextMethod = NULL;
-static jmethodID cachedGetTextMethod = NULL;
-static jmethodID cachedGetCharacterAtOffsetMethod = NULL;
-static jmethodID cachedGetTextAfterOffsetMethod = NULL;
-static jmethodID cachedGetTextAtOffsetMethod = NULL;
-static jmethodID cachedGetTextBeforeOffsetMethod = NULL;
-static jmethodID cachedGetStringAtOffsetMethod = NULL;
-static jmethodID cachedGetCaretOffsetMethod = NULL;
-static jmethodID cachedGetCharacterExtentsMethod = NULL;
-static jmethodID cachedGetCharacterCountMethod = NULL;
-static jmethodID cachedGetOffsetAtPointMethod = NULL;
-static jmethodID cachedGetRangeExtentsMethod = NULL;
-static jmethodID cachedGetNSelectionsMethod = NULL;
-static jmethodID cachedGetSelectionMethod = NULL;
-static jmethodID cachedAddSelectionMethod = NULL;
-static jmethodID cachedRemoveSelectionMethod = NULL;
-static jmethodID cachedSetSelectionMethod = NULL;
-static jmethodID cachedSetCaretOffsetMethod = NULL;
+jclass cachedTextAtkTextClass = NULL;
+jmethodID cachedTextCreateAtkTextMethod = NULL;
+jmethodID cachedTextGetTextMethod = NULL;
+jmethodID cachedTextGetCharacterAtOffsetMethod = NULL;
+jmethodID cachedTextGetTextAfterOffsetMethod = NULL;
+jmethodID cachedTextGetTextAtOffsetMethod = NULL;
+jmethodID cachedTextGetTextBeforeOffsetMethod = NULL;
+jmethodID cachedTextGetStringAtOffsetMethod = NULL;
+jmethodID cachedTextGetCaretOffsetMethod = NULL;
+jmethodID cachedTextGetCharacterExtentsMethod = NULL;
+jmethodID cachedTextGetCharacterCountMethod = NULL;
+jmethodID cachedTextGetOffsetAtPointMethod = NULL;
+jmethodID cachedTextGetRangeExtentsMethod = NULL;
+jmethodID cachedTextGetNSelectionsMethod = NULL;
+jmethodID cachedTextGetSelectionMethod = NULL;
+jmethodID cachedTextAddSelectionMethod = NULL;
+jmethodID cachedTextRemoveSelectionMethod = NULL;
+jmethodID cachedTextSetSelectionMethod = NULL;
+jmethodID cachedTextSetCaretOffsetMethod = NULL;
 
-static jclass cachedStringSequenceClass = NULL;
-static jfieldID cachedStrFieldID = NULL;
-static jfieldID cachedStartOffsetFieldID = NULL;
-static jfieldID cachedEndOffsetFieldID = NULL;
+jclass cachedTextStringSequenceClass = NULL;
+jfieldID cachedTextStrFieldID = NULL;
+jfieldID cachedTextStartOffsetFieldID = NULL;
+jfieldID cachedTextEndOffsetFieldID = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv);
@@ -207,7 +208,7 @@ gpointer jaw_text_data_init(jobject ac) {
     }
 
     jobject jatk_text = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkTextClass, cachedCreateAtkTextMethod, ac);
+        jniEnv, cachedTextAtkTextClass, cachedTextCreateAtkTextMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_text == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_text using create_atk_text method", G_STRFUNC);
@@ -295,15 +296,15 @@ static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
         return NULL;
     }
 
-    jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedStrFieldID);
+    jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedTextStrFieldID);
     if (jStr == NULL) {
         g_warning("%s: Failed to get jStr field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*start_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedStartOffsetFieldID);
-    (*end_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedEndOffsetFieldID);
+    (*start_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedTextStartOffsetFieldID);
+    (*end_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedTextEndOffsetFieldID);
 
     gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jStr);
 
@@ -346,7 +347,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     }
 
     jstring jstr = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedGetTextMethod, (jint)start_offset, (jint)end_offset);
+        jniEnv, atk_text, cachedTextGetTextMethod, (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using get_text method", G_STRFUNC);
@@ -392,7 +393,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     }
 
     jchar jcharacter =
-        (*jniEnv)->CallCharMethod(jniEnv, atk_text, cachedGetCharacterAtOffsetMethod, (jint)offset);
+        (*jniEnv)->CallCharMethod(jniEnv, atk_text, cachedTextGetCharacterAtOffsetMethod, (jint)offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
@@ -457,7 +458,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
     }
 
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedGetTextAfterOffsetMethod, (jint)offset, (jint)boundary_type);
+        jniEnv, atk_text, cachedTextGetTextAfterOffsetMethod, (jint)offset, (jint)boundary_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jStrSeq using get_text_after_offset method", G_STRFUNC);
@@ -519,7 +520,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
     }
 
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedGetTextAtOffsetMethod, (jint)offset, (jint)boundary_type);
+        jniEnv, atk_text, cachedTextGetTextAtOffsetMethod, (jint)offset, (jint)boundary_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jStrSeq using get_text_at_offset method", G_STRFUNC);
@@ -582,7 +583,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
     }
 
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedGetTextBeforeOffsetMethod, (jint)offset, (jint)boundary_type);
+        jniEnv, atk_text, cachedTextGetTextBeforeOffsetMethod, (jint)offset, (jint)boundary_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jStrSeq using get_text_before_offset method", G_STRFUNC);
@@ -676,7 +677,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
     }
 
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedGetStringAtOffsetMethod, (jint)offset, (jint)granularity);
+        jniEnv, atk_text, cachedTextGetStringAtOffsetMethod, (jint)offset, (jint)granularity);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jStrSeq using get_string_at_offset method", G_STRFUNC);
@@ -714,7 +715,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
 
     JAW_GET_TEXT(text, -1);
 
-    jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedGetCaretOffsetMethod);
+    jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedTextGetCaretOffsetMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
@@ -771,7 +772,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         return;
     }
 
-    jobject jrect = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedGetCharacterExtentsMethod,
+    jobject jrect = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedTextGetCharacterExtentsMethod,
                                                 (jint)offset, (jint)coords);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrect == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -811,7 +812,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
 
     JAW_GET_TEXT(text, -1);
 
-    jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedGetCharacterCountMethod);
+    jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedTextGetCharacterCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
@@ -849,7 +850,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
 
     JAW_GET_TEXT(text, -1);
 
-    jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedGetOffsetAtPointMethod, (jint)x,
+    jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedTextGetOffsetAtPointMethod, (jint)x,
                                             (jint)y, (jint)coords);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -911,7 +912,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
         return;
     }
 
-    jobject jrect = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedGetRangeExtentsMethod,
+    jobject jrect = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedTextGetRangeExtentsMethod,
                                                 (jint)start_offset, (jint)end_offset, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrect == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -946,7 +947,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
 
     JAW_GET_TEXT(text, -1);
 
-    jint jselections = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedGetNSelectionsMethod);
+    jint jselections = (*jniEnv)->CallIntMethod(jniEnv, atk_text, cachedTextGetNSelectionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
@@ -1002,7 +1003,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
     }
 
     // Java AccessibleText only supports a single selection, so selection_num is not used.
-    jobject jStrSeq = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedGetSelectionMethod);
+    jobject jStrSeq = (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedTextGetSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jStrSeq using get_selection method", G_STRFUNC);
@@ -1013,15 +1014,15 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
 
-    jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedStrFieldID);
+    jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedTextStrFieldID);
     if (jStr == NULL) {
         g_warning("%s: Failed to get jStr field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    *start_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedStartOffsetFieldID);
-    *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedEndOffsetFieldID);
+    *start_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedTextStartOffsetFieldID);
+    *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedTextEndOffsetFieldID);
 
     gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jStr);
 
@@ -1051,7 +1052,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
 
     JAW_GET_TEXT(text, FALSE);
 
-    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedAddSelectionMethod,
+    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedTextAddSelectionMethod,
                                                     (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -1087,7 +1088,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
 
     JAW_GET_TEXT(text, FALSE);
 
-    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedRemoveSelectionMethod,
+    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedTextRemoveSelectionMethod,
                                                     (jint)selection_num);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -1128,7 +1129,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
 
     JAW_GET_TEXT(text, FALSE);
 
-    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedSetSelectionMethod,
+    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedTextSetSelectionMethod,
                                                     (jint)selection_num, (jint)start_offset,
                                                     (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -1177,7 +1178,7 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
 
     JAW_GET_TEXT(text, FALSE);
 
-    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedSetCaretOffsetMethod,
+    jboolean jresult = (*jniEnv)->CallBooleanMethod(jniEnv, atk_text, cachedTextSetCaretOffsetMethod,
                                                     (jint)offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -1193,10 +1194,10 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
 static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -1207,93 +1208,93 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkText);
+    cachedTextAtkTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkText);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClassAtkText);
 
-    if (cachedAtkTextClass == NULL) {
+    if (cachedTextAtkTextClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkText class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedCreateAtkTextMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkTextClass, "create_atk_text",
+    cachedTextCreateAtkTextMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedTextAtkTextClass, "create_atk_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkText;");
 
-    cachedGetTextMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_text", "(II)Ljava/lang/String;");
+    cachedTextGetTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_text", "(II)Ljava/lang/String;");
 
-    cachedGetCharacterAtOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_character_at_offset", "(I)C");
+    cachedTextGetCharacterAtOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_character_at_offset", "(I)C");
 
-    cachedGetTextAfterOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_text_after_offset",
+    cachedTextGetTextAfterOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_text_after_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
 
-    cachedGetTextAtOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_text_at_offset",
+    cachedTextGetTextAtOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_text_at_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
 
-    cachedGetTextBeforeOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_text_before_offset",
+    cachedTextGetTextBeforeOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_text_before_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
 
-    cachedGetStringAtOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_string_at_offset",
+    cachedTextGetStringAtOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_string_at_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
 
-    cachedGetCaretOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_caret_offset", "()I");
+    cachedTextGetCaretOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_caret_offset", "()I");
 
-    cachedGetCharacterExtentsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_character_extents", "(II)Ljava/awt/Rectangle;");
+    cachedTextGetCharacterExtentsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_character_extents", "(II)Ljava/awt/Rectangle;");
 
-    cachedGetCharacterCountMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_character_count", "()I");
+    cachedTextGetCharacterCountMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_character_count", "()I");
 
-    cachedGetOffsetAtPointMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_offset_at_point", "(III)I");
+    cachedTextGetOffsetAtPointMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_offset_at_point", "(III)I");
 
-    cachedGetRangeExtentsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_range_extents", "(III)Ljava/awt/Rectangle;");
+    cachedTextGetRangeExtentsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_range_extents", "(III)Ljava/awt/Rectangle;");
 
-    cachedGetNSelectionsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_n_selections", "()I");
+    cachedTextGetNSelectionsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_n_selections", "()I");
 
-    cachedGetSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "get_selection",
+    cachedTextGetSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "get_selection",
         "()Lorg/GNOME/Accessibility/AtkText$StringSequence;");
 
-    cachedAddSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "add_selection", "(II)Z");
+    cachedTextAddSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "add_selection", "(II)Z");
 
-    cachedRemoveSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "remove_selection", "(I)Z");
+    cachedTextRemoveSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "remove_selection", "(I)Z");
 
-    cachedSetSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "set_selection", "(III)Z");
+    cachedTextSetSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "set_selection", "(III)Z");
 
-    cachedSetCaretOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTextClass, "set_caret_offset", "(I)Z");
+    cachedTextSetCaretOffsetMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTextAtkTextClass, "set_caret_offset", "(I)Z");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedCreateAtkTextMethod == NULL ||
-        cachedGetTextMethod == NULL ||
-        cachedGetCharacterAtOffsetMethod == NULL ||
-        cachedGetTextAfterOffsetMethod == NULL ||
-        cachedGetTextAtOffsetMethod == NULL ||
-        cachedGetTextBeforeOffsetMethod == NULL ||
-        cachedGetStringAtOffsetMethod == NULL ||
-        cachedGetCaretOffsetMethod == NULL ||
-        cachedGetCharacterExtentsMethod == NULL ||
-        cachedGetCharacterCountMethod == NULL ||
-        cachedGetOffsetAtPointMethod == NULL ||
-        cachedGetRangeExtentsMethod == NULL ||
-        cachedGetNSelectionsMethod == NULL ||
-        cachedGetSelectionMethod == NULL ||
-        cachedAddSelectionMethod == NULL ||
-        cachedRemoveSelectionMethod == NULL ||
-        cachedSetSelectionMethod == NULL ||
-        cachedSetCaretOffsetMethod == NULL) {
+        cachedTextCreateAtkTextMethod == NULL ||
+        cachedTextGetTextMethod == NULL ||
+        cachedTextGetCharacterAtOffsetMethod == NULL ||
+        cachedTextGetTextAfterOffsetMethod == NULL ||
+        cachedTextGetTextAtOffsetMethod == NULL ||
+        cachedTextGetTextBeforeOffsetMethod == NULL ||
+        cachedTextGetStringAtOffsetMethod == NULL ||
+        cachedTextGetCaretOffsetMethod == NULL ||
+        cachedTextGetCharacterExtentsMethod == NULL ||
+        cachedTextGetCharacterCountMethod == NULL ||
+        cachedTextGetOffsetAtPointMethod == NULL ||
+        cachedTextGetRangeExtentsMethod == NULL ||
+        cachedTextGetNSelectionsMethod == NULL ||
+        cachedTextGetSelectionMethod == NULL ||
+        cachedTextAddSelectionMethod == NULL ||
+        cachedTextRemoveSelectionMethod == NULL ||
+        cachedTextSetSelectionMethod == NULL ||
+        cachedTextSetCaretOffsetMethod == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -1309,28 +1310,28 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedStringSequenceClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassStringSeq);
+    cachedTextStringSequenceClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassStringSeq);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClassStringSeq);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedStringSequenceClass == NULL) {
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedTextStringSequenceClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkText$StringSequence class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedStrFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedStringSequenceClass, "str", "Ljava/lang/String;");
+    cachedTextStrFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTextStringSequenceClass, "str", "Ljava/lang/String;");
 
-    cachedStartOffsetFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedStringSequenceClass, "start_offset", "I");
+    cachedTextStartOffsetFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTextStringSequenceClass, "start_offset", "I");
 
-    cachedEndOffsetFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedStringSequenceClass, "end_offset", "I");
+    cachedTextEndOffsetFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTextStringSequenceClass, "end_offset", "I");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedStrFieldID == NULL ||
-        cachedStartOffsetFieldID == NULL ||
-        cachedEndOffsetFieldID == NULL) {
+        cachedTextStrFieldID == NULL ||
+        cachedTextStartOffsetFieldID == NULL ||
+        cachedTextEndOffsetFieldID == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -1339,39 +1340,80 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkTextClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTextClass);
-        cachedAtkTextClass = NULL;
+    if (cachedTextAtkTextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTextAtkTextClass);
+        cachedTextAtkTextClass = NULL;
     }
-    if (cachedStringSequenceClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedStringSequenceClass);
-        cachedStringSequenceClass = NULL;
+    if (cachedTextStringSequenceClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTextStringSequenceClass);
+        cachedTextStringSequenceClass = NULL;
     }
-    cachedCreateAtkTextMethod = NULL;
-    cachedGetTextMethod = NULL;
-    cachedGetCharacterAtOffsetMethod = NULL;
-    cachedGetTextAfterOffsetMethod = NULL;
-    cachedGetTextAtOffsetMethod = NULL;
-    cachedGetTextBeforeOffsetMethod = NULL;
-    cachedGetStringAtOffsetMethod = NULL;
-    cachedGetCaretOffsetMethod = NULL;
-    cachedGetCharacterExtentsMethod = NULL;
-    cachedGetCharacterCountMethod = NULL;
-    cachedGetOffsetAtPointMethod = NULL;
-    cachedGetRangeExtentsMethod = NULL;
-    cachedGetNSelectionsMethod = NULL;
-    cachedGetSelectionMethod = NULL;
-    cachedAddSelectionMethod = NULL;
-    cachedRemoveSelectionMethod = NULL;
-    cachedSetSelectionMethod = NULL;
-    cachedSetCaretOffsetMethod = NULL;
-    cachedStrFieldID = NULL;
-    cachedStartOffsetFieldID = NULL;
-    cachedEndOffsetFieldID = NULL;
-    g_mutex_unlock(&cache_init_mutex);
+    cachedTextCreateAtkTextMethod = NULL;
+    cachedTextGetTextMethod = NULL;
+    cachedTextGetCharacterAtOffsetMethod = NULL;
+    cachedTextGetTextAfterOffsetMethod = NULL;
+    cachedTextGetTextAtOffsetMethod = NULL;
+    cachedTextGetTextBeforeOffsetMethod = NULL;
+    cachedTextGetStringAtOffsetMethod = NULL;
+    cachedTextGetCaretOffsetMethod = NULL;
+    cachedTextGetCharacterExtentsMethod = NULL;
+    cachedTextGetCharacterCountMethod = NULL;
+    cachedTextGetOffsetAtPointMethod = NULL;
+    cachedTextGetRangeExtentsMethod = NULL;
+    cachedTextGetNSelectionsMethod = NULL;
+    cachedTextGetSelectionMethod = NULL;
+    cachedTextAddSelectionMethod = NULL;
+    cachedTextRemoveSelectionMethod = NULL;
+    cachedTextSetSelectionMethod = NULL;
+    cachedTextSetCaretOffsetMethod = NULL;
+    cachedTextStrFieldID = NULL;
+    cachedTextStartOffsetFieldID = NULL;
+    cachedTextEndOffsetFieldID = NULL;
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_text_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedTextAtkTextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTextAtkTextClass);
+        cachedTextAtkTextClass = NULL;
+    }
+    if (cachedTextStringSequenceClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTextStringSequenceClass);
+        cachedTextStringSequenceClass = NULL;
+    }
+    cachedTextCreateAtkTextMethod = NULL;
+    cachedTextGetTextMethod = NULL;
+    cachedTextGetCharacterAtOffsetMethod = NULL;
+    cachedTextGetTextAfterOffsetMethod = NULL;
+    cachedTextGetTextAtOffsetMethod = NULL;
+    cachedTextGetTextBeforeOffsetMethod = NULL;
+    cachedTextGetStringAtOffsetMethod = NULL;
+    cachedTextGetCaretOffsetMethod = NULL;
+    cachedTextGetCharacterExtentsMethod = NULL;
+    cachedTextGetCharacterCountMethod = NULL;
+    cachedTextGetOffsetAtPointMethod = NULL;
+    cachedTextGetRangeExtentsMethod = NULL;
+    cachedTextGetNSelectionsMethod = NULL;
+    cachedTextGetSelectionMethod = NULL;
+    cachedTextAddSelectionMethod = NULL;
+    cachedTextRemoveSelectionMethod = NULL;
+    cachedTextSetSelectionMethod = NULL;
+    cachedTextSetCaretOffsetMethod = NULL;
+    cachedTextStrFieldID = NULL;
+    cachedTextStartOffsetFieldID = NULL;
+    cachedTextEndOffsetFieldID = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

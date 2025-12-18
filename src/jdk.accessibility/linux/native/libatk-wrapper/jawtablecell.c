@@ -19,6 +19,7 @@
 
 #include "jawimpl.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -36,17 +37,17 @@
  * See [iface@AtkTable]
  */
 
-static jclass cachedAtkTableCellClass = NULL;
-static jmethodID cachedCreateAtkTableCellMethod = NULL;
-static jmethodID cachedGetTableMethod = NULL;
-static jmethodID cachedGetAccessibleColumnHeaderMethod = NULL;
-static jmethodID cachedGetAccessibleRowHeaderMethod = NULL;
-static jfieldID cachedRowFieldID = NULL;
-static jfieldID cachedColumnFieldID = NULL;
-static jfieldID cachedRowSpanFieldID = NULL;
-static jfieldID cachedColumnSpanFieldID = NULL;
+jclass cachedTableCellAtkTableCellClass = NULL;
+jmethodID cachedTableCellCreateAtkTableCellMethod = NULL;
+jmethodID cachedTableCellGetTableMethod = NULL;
+jmethodID cachedTableCellGetAccessibleColumnHeaderMethod = NULL;
+jmethodID cachedTableCellGetAccessibleRowHeaderMethod = NULL;
+jfieldID cachedTableCellRowFieldID = NULL;
+jfieldID cachedTableCellColumnFieldID = NULL;
+jfieldID cachedTableCellRowSpanFieldID = NULL;
+jfieldID cachedTableCellColumnSpanFieldID = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv);
@@ -135,7 +136,7 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     }
 
     jobject jatk_table_cell = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkTableCellClass, cachedCreateAtkTableCellMethod, ac);
+        jniEnv, cachedTableCellAtkTableCellClass, cachedTableCellCreateAtkTableCellMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_table_cell == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_table_cell using create_atk_table_cell method", G_STRFUNC);
@@ -223,7 +224,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell, cachedGetTableMethod);
+    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell, cachedTableCellGetTableMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_table method", G_STRFUNC);
@@ -271,13 +272,13 @@ static gboolean getPosition(JNIEnv *jniEnv, jobject jatk_table_cell,
         return FALSE;
     }
 
-    jint jrow = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedRowFieldID);
+    jint jrow = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedTableCellRowFieldID);
     if (jrow < 0) {
         g_warning("%s: Invalid row value (%d) retrieved", G_STRFUNC, jrow);
         return FALSE;
     }
 
-    jint jcolumn = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedColumnFieldID);
+    jint jcolumn = (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedTableCellColumnFieldID);
     if (jcolumn < 0) {
         g_warning("%s: Invalid column value (%d) retrieved", G_STRFUNC, jcolumn);
         return FALSE;
@@ -345,7 +346,7 @@ static gboolean getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
     }
 
     jint jrow_span =
-        (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedRowSpanFieldID);
+        (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedTableCellRowSpanFieldID);
     if (jrow_span < 0) {
         g_warning("%s: Invalid row span value (%d) retrieved", G_STRFUNC, jrow_span);
         return FALSE;
@@ -377,7 +378,7 @@ static gboolean getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
     }
 
     jint jcolumn_span =
-        (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedColumnSpanFieldID);
+        (*jniEnv)->GetIntField(jniEnv, jatk_table_cell, cachedTableCellColumnSpanFieldID);
     if (jcolumn_span < 0) {
         g_warning("%s: Invalid column span value (%d) retrieved", G_STRFUNC, jcolumn_span);
         return FALSE;
@@ -542,7 +543,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     }
 
     jobjectArray columnHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
-        jniEnv, jatk_table_cell, cachedGetAccessibleColumnHeaderMethod);
+        jniEnv, jatk_table_cell, cachedTableCellGetAccessibleColumnHeaderMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || columnHeaders == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_column_header method", G_STRFUNC);
@@ -606,7 +607,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     }
 
     jobjectArray rowHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
-        jniEnv, jatk_table_cell, cachedGetAccessibleRowHeaderMethod);
+        jniEnv, jatk_table_cell, cachedTableCellGetAccessibleRowHeaderMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || rowHeaders == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_row_header method", G_STRFUNC);
@@ -643,10 +644,10 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
 static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -657,51 +658,51 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkTableCellClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedTableCellAtkTableCellClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkTableCellClass == NULL) {
+    if (cachedTableCellAtkTableCellClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkTableCell class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedCreateAtkTableCellMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkTableCellClass, "create_atk_table_cell",
+    cachedTableCellCreateAtkTableCellMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedTableCellAtkTableCellClass, "create_atk_table_cell",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkTableCell;");
 
-    cachedGetTableMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableCellClass, "get_table",
+    cachedTableCellGetTableMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableCellAtkTableCellClass, "get_table",
         "()Ljavax/accessibility/AccessibleTable;");
 
-    cachedGetAccessibleColumnHeaderMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableCellClass, "get_accessible_column_header",
+    cachedTableCellGetAccessibleColumnHeaderMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableCellAtkTableCellClass, "get_accessible_column_header",
         "()[Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetAccessibleRowHeaderMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableCellClass, "get_accessible_row_header",
+    cachedTableCellGetAccessibleRowHeaderMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableCellAtkTableCellClass, "get_accessible_row_header",
         "()[Ljavax/accessibility/AccessibleContext;");
 
-    cachedRowFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedAtkTableCellClass, "row", "I");
+    cachedTableCellRowFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTableCellAtkTableCellClass, "row", "I");
 
-    cachedColumnFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedAtkTableCellClass, "column", "I");
+    cachedTableCellColumnFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTableCellAtkTableCellClass, "column", "I");
 
-    cachedRowSpanFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedAtkTableCellClass, "rowSpan", "I");
+    cachedTableCellRowSpanFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTableCellAtkTableCellClass, "rowSpan", "I");
 
-    cachedColumnSpanFieldID = (*jniEnv)->GetFieldID(
-        jniEnv, cachedAtkTableCellClass, "columnSpan", "I");
+    cachedTableCellColumnSpanFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedTableCellAtkTableCellClass, "columnSpan", "I");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedCreateAtkTableCellMethod == NULL ||
-        cachedGetTableMethod == NULL ||
-        cachedGetAccessibleColumnHeaderMethod == NULL ||
-        cachedGetAccessibleRowHeaderMethod == NULL ||
-        cachedRowFieldID == NULL ||
-        cachedColumnFieldID == NULL ||
-        cachedRowSpanFieldID == NULL ||
-        cachedColumnSpanFieldID == NULL) {
+        cachedTableCellCreateAtkTableCellMethod == NULL ||
+        cachedTableCellGetTableMethod == NULL ||
+        cachedTableCellGetAccessibleColumnHeaderMethod == NULL ||
+        cachedTableCellGetAccessibleRowHeaderMethod == NULL ||
+        cachedTableCellRowFieldID == NULL ||
+        cachedTableCellColumnFieldID == NULL ||
+        cachedTableCellRowSpanFieldID == NULL ||
+        cachedTableCellColumnSpanFieldID == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -711,22 +712,46 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkTableCellClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTableCellClass);
-        cachedAtkTableCellClass = NULL;
+    if (cachedTableCellAtkTableCellClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTableCellAtkTableCellClass);
+        cachedTableCellAtkTableCellClass = NULL;
     }
-    cachedCreateAtkTableCellMethod = NULL;
-    cachedGetTableMethod = NULL;
-    cachedGetAccessibleColumnHeaderMethod = NULL;
-    cachedGetAccessibleRowHeaderMethod = NULL;
-    cachedRowFieldID = NULL;
-    cachedColumnFieldID = NULL;
-    cachedRowSpanFieldID = NULL;
-    cachedColumnSpanFieldID = NULL;
-    g_mutex_unlock(&cache_init_mutex);
+    cachedTableCellCreateAtkTableCellMethod = NULL;
+    cachedTableCellGetTableMethod = NULL;
+    cachedTableCellGetAccessibleColumnHeaderMethod = NULL;
+    cachedTableCellGetAccessibleRowHeaderMethod = NULL;
+    cachedTableCellRowFieldID = NULL;
+    cachedTableCellColumnFieldID = NULL;
+    cachedTableCellRowSpanFieldID = NULL;
+    cachedTableCellColumnSpanFieldID = NULL;
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_tablecell_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedTableCellAtkTableCellClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTableCellAtkTableCellClass);
+        cachedTableCellAtkTableCellClass = NULL;
+    }
+    cachedTableCellCreateAtkTableCellMethod = NULL;
+    cachedTableCellGetTableMethod = NULL;
+    cachedTableCellGetAccessibleColumnHeaderMethod = NULL;
+    cachedTableCellGetAccessibleRowHeaderMethod = NULL;
+    cachedTableCellRowFieldID = NULL;
+    cachedTableCellColumnFieldID = NULL;
+    cachedTableCellRowSpanFieldID = NULL;
+    cachedTableCellColumnSpanFieldID = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

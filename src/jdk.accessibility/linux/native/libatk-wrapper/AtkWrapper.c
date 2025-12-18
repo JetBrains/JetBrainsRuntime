@@ -23,6 +23,7 @@
 #include "jawimpl.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <X11/Xlib.h>
 #include <atk-bridge.h>
 #include <glib.h>

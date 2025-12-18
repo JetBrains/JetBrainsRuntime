@@ -20,6 +20,7 @@
 
 #include "jawimpl.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -61,33 +62,33 @@
  * index-based methods are deprecated.
  */
 
-static jclass cachedAtkTableClass = NULL;
-static jmethodID cachedCreateAtkTableMethod = NULL;
-static jmethodID cachedRefAtMethod = NULL;
-static jmethodID cachedGetIndexAtMethod = NULL;
-static jmethodID cachedGetColumnAtIndexMethod = NULL;
-static jmethodID cachedGetRowAtIndexMethod = NULL;
-static jmethodID cachedGetNColumnsMethod = NULL;
-static jmethodID cachedGetNRowsMethod = NULL;
-static jmethodID cachedGetColumnExtentAtMethod = NULL;
-static jmethodID cachedGetRowExtentAtMethod = NULL;
-static jmethodID cachedGetCaptionMethod = NULL;
-static jmethodID cachedGetColumnDescriptionMethod = NULL;
-static jmethodID cachedGetRowDescriptionMethod = NULL;
-static jmethodID cachedGetColumnHeaderMethod = NULL;
-static jmethodID cachedGetRowHeaderMethod = NULL;
-static jmethodID cachedGetSummaryMethod = NULL;
-static jmethodID cachedGetSelectedColumnsMethod = NULL;
-static jmethodID cachedGetSelectedRowsMethod = NULL;
-static jmethodID cachedIsColumnSelectedMethod = NULL;
-static jmethodID cachedIsRowSelectedMethod = NULL;
-static jmethodID cachedIsSelectedMethod = NULL;
-static jmethodID cachedSetRowDescriptionMethod = NULL;
-static jmethodID cachedSetColumnDescriptionMethod = NULL;
-static jmethodID cachedSetCaptionMethod = NULL;
-static jmethodID cachedSetSummaryMethod = NULL;
+jclass cachedTableAtkTableClass = NULL;
+jmethodID cachedTableCreateAtkTableMethod = NULL;
+jmethodID cachedTableRefAtMethod = NULL;
+jmethodID cachedTableGetIndexAtMethod = NULL;
+jmethodID cachedTableGetColumnAtIndexMethod = NULL;
+jmethodID cachedTableGetRowAtIndexMethod = NULL;
+jmethodID cachedTableGetNColumnsMethod = NULL;
+jmethodID cachedTableGetNRowsMethod = NULL;
+jmethodID cachedTableGetColumnExtentAtMethod = NULL;
+jmethodID cachedTableGetRowExtentAtMethod = NULL;
+jmethodID cachedTableGetCaptionMethod = NULL;
+jmethodID cachedTableGetColumnDescriptionMethod = NULL;
+jmethodID cachedTableGetRowDescriptionMethod = NULL;
+jmethodID cachedTableGetColumnHeaderMethod = NULL;
+jmethodID cachedTableGetRowHeaderMethod = NULL;
+jmethodID cachedTableGetSummaryMethod = NULL;
+jmethodID cachedTableGetSelectedColumnsMethod = NULL;
+jmethodID cachedTableGetSelectedRowsMethod = NULL;
+jmethodID cachedTableIsColumnSelectedMethod = NULL;
+jmethodID cachedTableIsRowSelectedMethod = NULL;
+jmethodID cachedTableIsSelectedMethod = NULL;
+jmethodID cachedTableSetRowDescriptionMethod = NULL;
+jmethodID cachedTableSetColumnDescriptionMethod = NULL;
+jmethodID cachedTableSetCaptionMethod = NULL;
+jmethodID cachedTableSetSummaryMethod = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv);
@@ -199,7 +200,7 @@ gpointer jaw_table_data_init(jobject ac) {
     }
 
     jobject jatk_table = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkTableClass, cachedCreateAtkTableMethod, ac);
+        jniEnv, cachedTableAtkTableClass, cachedTableCreateAtkTableMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_table == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_table using create_atk_table method", G_STRFUNC);
@@ -303,7 +304,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedRefAtMethod,
+    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableRefAtMethod,
                                               (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -354,7 +355,7 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
 
     JAW_GET_TABLE(table, -1); // create global JNI reference `jobject atk_table`
 
-    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetIndexAtMethod, (jint)row,
+    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetIndexAtMethod, (jint)row,
                                            (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -391,7 +392,7 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
     jint jcolumn =
-        (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetColumnAtIndexMethod, (jint)index);
+        (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetColumnAtIndexMethod, (jint)index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_at_index method", G_STRFUNC);
@@ -426,7 +427,7 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
 
     JAW_GET_TABLE(table, -1); // create global JNI reference `jobject atk_table`
 
-    jint jrow = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetRowAtIndexMethod, (jint)index);
+    jint jrow = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetRowAtIndexMethod, (jint)index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_at_index method", G_STRFUNC);
@@ -458,7 +459,7 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jcolumns = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetNColumnsMethod);
+    jint jcolumns = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetNColumnsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_columns method", G_STRFUNC);
@@ -490,7 +491,7 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jrows = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetNRowsMethod);
+    jint jrows = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetNRowsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_rows method", G_STRFUNC);
@@ -526,7 +527,7 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetColumnExtentAtMethod, (jint)row,
+    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetColumnExtentAtMethod, (jint)row,
                                             (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -562,7 +563,7 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
 
     JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
 
-    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedGetRowExtentAtMethod, (jint)row,
+    jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetRowExtentAtMethod, (jint)row,
                                             (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -602,7 +603,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetCaptionMethod);
+    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetCaptionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_caption method", G_STRFUNC);
@@ -653,7 +654,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     }
 
     jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetColumnDescriptionMethod, (jint)column);
+        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetColumnDescriptionMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_description method", G_STRFUNC);
@@ -713,7 +714,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     }
 
     jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetRowDescriptionMethod, (jint)row);
+        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetRowDescriptionMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_description method", G_STRFUNC);
@@ -774,7 +775,7 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     }
 
     jobject jac =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetColumnHeaderMethod, (jint)column);
+        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetColumnHeaderMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_header method", G_STRFUNC);
@@ -825,7 +826,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     }
 
     jobject jac =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetRowHeaderMethod, (jint)row);
+        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetRowHeaderMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_header method", G_STRFUNC);
@@ -873,7 +874,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
         return NULL;
     }
 
-    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSummaryMethod);
+    jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetSummaryMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_summary method", G_STRFUNC);
@@ -933,7 +934,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     }
 
     jintArray jcolumnArray =
-        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSelectedColumnsMethod));
+        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetSelectedColumnsMethod));
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jcolumnArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_selected_columns method", G_STRFUNC);
@@ -1009,7 +1010,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     }
 
     jintArray jrowArray =
-        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSelectedRowsMethod));
+        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedTableGetSelectedRowsMethod));
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrowArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -1072,7 +1073,7 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
     JAW_GET_TABLE(table, FALSE);
 
     jboolean jselected =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedIsColumnSelectedMethod, (jint)column);
+        (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedTableIsColumnSelectedMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_column_selected method", G_STRFUNC);
@@ -1107,7 +1108,7 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
     JAW_GET_TABLE(table, FALSE);
 
     jboolean jselected =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedIsRowSelectedMethod, (jint)row);
+        (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedTableIsRowSelectedMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_row_selected method", G_STRFUNC);
@@ -1142,7 +1143,7 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
 
     JAW_GET_TABLE(table, FALSE);
 
-    jboolean jselected = (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedIsSelectedMethod,
+    jboolean jselected = (*jniEnv)->CallBooleanMethod(jniEnv, atk_table, cachedTableIsSelectedMethod,
                                                       (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
@@ -1194,7 +1195,7 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedSetRowDescriptionMethod, (jint)row, jstr);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetRowDescriptionMethod, (jint)row, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_row_description method", G_STRFUNC);
@@ -1244,7 +1245,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedSetColumnDescriptionMethod, (jint)column, jstr);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetColumnDescriptionMethod, (jint)column, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_column_description method", G_STRFUNC);
@@ -1311,7 +1312,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedSetCaptionMethod, obj);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetCaptionMethod, obj);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_caption method", G_STRFUNC);
@@ -1379,7 +1380,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedSetSummaryMethod, obj);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_table, cachedTableSetSummaryMethod, obj);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_summary method", G_STRFUNC);
@@ -1395,10 +1396,10 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
 static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -1409,123 +1410,123 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkTableClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedTableAtkTableClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkTableClass == NULL) {
+    if (cachedTableAtkTableClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkTable class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedCreateAtkTableMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkTableClass, "create_atk_table",
+    cachedTableCreateAtkTableMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedTableAtkTableClass, "create_atk_table",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkTable;");
 
-    cachedRefAtMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "ref_at",
+    cachedTableRefAtMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "ref_at",
         "(II)Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetIndexAtMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_index_at", "(II)I");
+    cachedTableGetIndexAtMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_index_at", "(II)I");
 
-    cachedGetColumnAtIndexMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_column_at_index", "(I)I");
+    cachedTableGetColumnAtIndexMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_column_at_index", "(I)I");
 
-    cachedGetRowAtIndexMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_row_at_index", "(I)I");
+    cachedTableGetRowAtIndexMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_row_at_index", "(I)I");
 
-    cachedGetNColumnsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_n_columns", "()I");
+    cachedTableGetNColumnsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_n_columns", "()I");
 
-    cachedGetNRowsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_n_rows", "()I");
+    cachedTableGetNRowsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_n_rows", "()I");
 
-    cachedGetColumnExtentAtMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_column_extent_at", "(II)I");
+    cachedTableGetColumnExtentAtMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_column_extent_at", "(II)I");
 
-    cachedGetRowExtentAtMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_row_extent_at", "(II)I");
+    cachedTableGetRowExtentAtMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_row_extent_at", "(II)I");
 
-    cachedGetCaptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_caption",
+    cachedTableGetCaptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_caption",
         "()Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetColumnDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_column_description",
+    cachedTableGetColumnDescriptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_column_description",
         "(I)Ljava/lang/String;");
 
-    cachedGetRowDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_row_description",
+    cachedTableGetRowDescriptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_row_description",
         "(I)Ljava/lang/String;");
 
-    cachedGetColumnHeaderMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_column_header",
+    cachedTableGetColumnHeaderMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_column_header",
         "(I)Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetRowHeaderMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_row_header",
+    cachedTableGetRowHeaderMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_row_header",
         "(I)Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetSummaryMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_summary",
+    cachedTableGetSummaryMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_summary",
         "()Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetSelectedColumnsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_selected_columns", "()[I");
+    cachedTableGetSelectedColumnsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_selected_columns", "()[I");
 
-    cachedGetSelectedRowsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "get_selected_rows", "()[I");
+    cachedTableGetSelectedRowsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "get_selected_rows", "()[I");
 
-    cachedIsColumnSelectedMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "is_column_selected", "(I)Z");
+    cachedTableIsColumnSelectedMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "is_column_selected", "(I)Z");
 
-    cachedIsRowSelectedMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "is_row_selected", "(I)Z");
+    cachedTableIsRowSelectedMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "is_row_selected", "(I)Z");
 
-    cachedIsSelectedMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "is_selected", "(II)Z");
+    cachedTableIsSelectedMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "is_selected", "(II)Z");
 
-    cachedSetRowDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "set_row_description",
+    cachedTableSetRowDescriptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "set_row_description",
         "(ILjava/lang/String;)V");
 
-    cachedSetColumnDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "set_column_description",
+    cachedTableSetColumnDescriptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "set_column_description",
         "(ILjava/lang/String;)V");
 
-    cachedSetCaptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "set_caption",
+    cachedTableSetCaptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "set_caption",
         "(Ljavax/accessibility/Accessible;)V");
 
-    cachedSetSummaryMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkTableClass, "set_summary",
+    cachedTableSetSummaryMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedTableAtkTableClass, "set_summary",
         "(Ljavax/accessibility/Accessible;)V");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedCreateAtkTableMethod == NULL ||
-        cachedRefAtMethod == NULL ||
-        cachedGetIndexAtMethod == NULL ||
-        cachedGetColumnAtIndexMethod == NULL ||
-        cachedGetRowAtIndexMethod == NULL ||
-        cachedGetNColumnsMethod == NULL ||
-        cachedGetNRowsMethod == NULL ||
-        cachedGetColumnExtentAtMethod == NULL ||
-        cachedGetRowExtentAtMethod == NULL ||
-        cachedGetCaptionMethod == NULL ||
-        cachedGetColumnDescriptionMethod == NULL ||
-        cachedGetRowDescriptionMethod == NULL ||
-        cachedGetColumnHeaderMethod == NULL ||
-        cachedGetRowHeaderMethod == NULL ||
-        cachedGetSummaryMethod == NULL ||
-        cachedGetSelectedColumnsMethod == NULL ||
-        cachedGetSelectedRowsMethod == NULL ||
-        cachedIsColumnSelectedMethod == NULL ||
-        cachedIsRowSelectedMethod == NULL ||
-        cachedIsSelectedMethod == NULL ||
-        cachedSetRowDescriptionMethod == NULL ||
-        cachedSetColumnDescriptionMethod == NULL ||
-        cachedSetCaptionMethod == NULL ||
-        cachedSetSummaryMethod == NULL) {
+        cachedTableCreateAtkTableMethod == NULL ||
+        cachedTableRefAtMethod == NULL ||
+        cachedTableGetIndexAtMethod == NULL ||
+        cachedTableGetColumnAtIndexMethod == NULL ||
+        cachedTableGetRowAtIndexMethod == NULL ||
+        cachedTableGetNColumnsMethod == NULL ||
+        cachedTableGetNRowsMethod == NULL ||
+        cachedTableGetColumnExtentAtMethod == NULL ||
+        cachedTableGetRowExtentAtMethod == NULL ||
+        cachedTableGetCaptionMethod == NULL ||
+        cachedTableGetColumnDescriptionMethod == NULL ||
+        cachedTableGetRowDescriptionMethod == NULL ||
+        cachedTableGetColumnHeaderMethod == NULL ||
+        cachedTableGetRowHeaderMethod == NULL ||
+        cachedTableGetSummaryMethod == NULL ||
+        cachedTableGetSelectedColumnsMethod == NULL ||
+        cachedTableGetSelectedRowsMethod == NULL ||
+        cachedTableIsColumnSelectedMethod == NULL ||
+        cachedTableIsRowSelectedMethod == NULL ||
+        cachedTableIsSelectedMethod == NULL ||
+        cachedTableSetRowDescriptionMethod == NULL ||
+        cachedTableSetColumnDescriptionMethod == NULL ||
+        cachedTableSetCaptionMethod == NULL ||
+        cachedTableSetSummaryMethod == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -1535,38 +1536,78 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkTableClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTableClass);
-        cachedAtkTableClass = NULL;
+    if (cachedTableAtkTableClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTableAtkTableClass);
+        cachedTableAtkTableClass = NULL;
     }
-    cachedCreateAtkTableMethod = NULL;
-    cachedRefAtMethod = NULL;
-    cachedGetIndexAtMethod = NULL;
-    cachedGetColumnAtIndexMethod = NULL;
-    cachedGetRowAtIndexMethod = NULL;
-    cachedGetNColumnsMethod = NULL;
-    cachedGetNRowsMethod = NULL;
-    cachedGetColumnExtentAtMethod = NULL;
-    cachedGetRowExtentAtMethod = NULL;
-    cachedGetCaptionMethod = NULL;
-    cachedGetColumnDescriptionMethod = NULL;
-    cachedGetRowDescriptionMethod = NULL;
-    cachedGetColumnHeaderMethod = NULL;
-    cachedGetRowHeaderMethod = NULL;
-    cachedGetSummaryMethod = NULL;
-    cachedGetSelectedColumnsMethod = NULL;
-    cachedGetSelectedRowsMethod = NULL;
-    cachedIsColumnSelectedMethod = NULL;
-    cachedIsRowSelectedMethod = NULL;
-    cachedIsSelectedMethod = NULL;
-    cachedSetRowDescriptionMethod = NULL;
-    cachedSetColumnDescriptionMethod = NULL;
-    cachedSetCaptionMethod = NULL;
-    cachedSetSummaryMethod = NULL;
-    g_mutex_unlock(&cache_init_mutex);
+    cachedTableCreateAtkTableMethod = NULL;
+    cachedTableRefAtMethod = NULL;
+    cachedTableGetIndexAtMethod = NULL;
+    cachedTableGetColumnAtIndexMethod = NULL;
+    cachedTableGetRowAtIndexMethod = NULL;
+    cachedTableGetNColumnsMethod = NULL;
+    cachedTableGetNRowsMethod = NULL;
+    cachedTableGetColumnExtentAtMethod = NULL;
+    cachedTableGetRowExtentAtMethod = NULL;
+    cachedTableGetCaptionMethod = NULL;
+    cachedTableGetColumnDescriptionMethod = NULL;
+    cachedTableGetRowDescriptionMethod = NULL;
+    cachedTableGetColumnHeaderMethod = NULL;
+    cachedTableGetRowHeaderMethod = NULL;
+    cachedTableGetSummaryMethod = NULL;
+    cachedTableGetSelectedColumnsMethod = NULL;
+    cachedTableGetSelectedRowsMethod = NULL;
+    cachedTableIsColumnSelectedMethod = NULL;
+    cachedTableIsRowSelectedMethod = NULL;
+    cachedTableIsSelectedMethod = NULL;
+    cachedTableSetRowDescriptionMethod = NULL;
+    cachedTableSetColumnDescriptionMethod = NULL;
+    cachedTableSetCaptionMethod = NULL;
+    cachedTableSetSummaryMethod = NULL;
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_table_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedTableAtkTableClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedTableAtkTableClass);
+        cachedTableAtkTableClass = NULL;
+    }
+    cachedTableCreateAtkTableMethod = NULL;
+    cachedTableRefAtMethod = NULL;
+    cachedTableGetIndexAtMethod = NULL;
+    cachedTableGetColumnAtIndexMethod = NULL;
+    cachedTableGetRowAtIndexMethod = NULL;
+    cachedTableGetNColumnsMethod = NULL;
+    cachedTableGetNRowsMethod = NULL;
+    cachedTableGetColumnExtentAtMethod = NULL;
+    cachedTableGetRowExtentAtMethod = NULL;
+    cachedTableGetCaptionMethod = NULL;
+    cachedTableGetColumnDescriptionMethod = NULL;
+    cachedTableGetRowDescriptionMethod = NULL;
+    cachedTableGetColumnHeaderMethod = NULL;
+    cachedTableGetRowHeaderMethod = NULL;
+    cachedTableGetSummaryMethod = NULL;
+    cachedTableGetSelectedColumnsMethod = NULL;
+    cachedTableGetSelectedRowsMethod = NULL;
+    cachedTableIsColumnSelectedMethod = NULL;
+    cachedTableIsRowSelectedMethod = NULL;
+    cachedTableIsSelectedMethod = NULL;
+    cachedTableSetRowDescriptionMethod = NULL;
+    cachedTableSetColumnDescriptionMethod = NULL;
+    cachedTableSetCaptionMethod = NULL;
+    cachedTableSetSummaryMethod = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

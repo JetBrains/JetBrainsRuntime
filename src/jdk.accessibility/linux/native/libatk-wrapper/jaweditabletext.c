@@ -20,6 +20,7 @@
 #include "jawimpl.h"
 #include "jawobject.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -42,17 +43,17 @@
  * See [iface@AtkText]
  */
 
-static jclass cachedAtkEditableTextClass = NULL;
-static jmethodID cachedCreateAtkEditableTextMethod = NULL;
-static jmethodID cachedSetTextContentsMethod = NULL;
-static jmethodID cachedInsertTextMethod = NULL;
-static jmethodID cachedCopyTextMethod = NULL;
-static jmethodID cachedCutTextMethod = NULL;
-static jmethodID cachedDeleteTextMethod = NULL;
-static jmethodID cachedPasteTextMethod = NULL;
-static jmethodID cachedSetRunAttributesMethod = NULL;
+jclass cachedEditableTextAtkEditableTextClass = NULL;
+jmethodID cachedEditableTextCreateAtkEditableTextMethod = NULL;
+jmethodID cachedEditableTextSetTextContentsMethod = NULL;
+jmethodID cachedEditableTextInsertTextMethod = NULL;
+jmethodID cachedEditableTextCopyTextMethod = NULL;
+jmethodID cachedEditableTextCutTextMethod = NULL;
+jmethodID cachedEditableTextDeleteTextMethod = NULL;
+jmethodID cachedEditableTextPasteTextMethod = NULL;
+jmethodID cachedEditableTextSetRunAttributesMethod = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv);
@@ -134,7 +135,7 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     }
 
     jobject jatk_editable_text =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkEditableTextClass, cachedCreateAtkEditableTextMethod, ac);
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedEditableTextAtkEditableTextClass, cachedEditableTextCreateAtkEditableTextMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_editable_text == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_editable_text using create_atk_editable_text method", G_STRFUNC);
@@ -215,7 +216,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
         return;
     }
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedSetTextContentsMethod, jstr);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedEditableTextSetTextContentsMethod, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
@@ -256,7 +257,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedInsertTextMethod, jstr,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedEditableTextInsertTextMethod, jstr,
                               (jint)*position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
@@ -283,7 +284,7 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedCopyTextMethod, (jint)start_pos,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedEditableTextCopyTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
@@ -305,7 +306,7 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedCutTextMethod, (jint)start_pos,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedEditableTextCutTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
@@ -327,7 +328,7 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedDeleteTextMethod, (jint)start_pos,
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedEditableTextDeleteTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
@@ -348,7 +349,7 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
 
     JAW_GET_EDITABLETEXT(text, ); // create global JNI reference `jobject atk_editable_text`
 
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedPasteTextMethod, (jint)position);
+    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedEditableTextPasteTextMethod, (jint)position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
@@ -383,7 +384,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 
     // TODO: make a proper conversion between attrib_set and swing AttributeSet, current implementation is incorrect
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
-        jniEnv, atk_editable_text, cachedSetRunAttributesMethod, (jobject)attrib_set,
+        jniEnv, atk_editable_text, cachedEditableTextSetRunAttributesMethod, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
@@ -399,10 +400,10 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -413,49 +414,49 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkEditableTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedEditableTextAtkEditableTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkEditableTextClass == NULL) {
+    if (cachedEditableTextAtkEditableTextClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkEditableText class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedCreateAtkEditableTextMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkEditableTextClass, "create_atk_editable_text",
+    cachedEditableTextCreateAtkEditableTextMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "create_atk_editable_text",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkEditableText;");
 
-    cachedSetTextContentsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "set_text_contents", "(Ljava/lang/String;)V");
+    cachedEditableTextSetTextContentsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "set_text_contents", "(Ljava/lang/String;)V");
 
-    cachedInsertTextMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "insert_text", "(Ljava/lang/String;I)V");
+    cachedEditableTextInsertTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "insert_text", "(Ljava/lang/String;I)V");
 
-    cachedCopyTextMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "copy_text", "(II)V");
+    cachedEditableTextCopyTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "copy_text", "(II)V");
 
-    cachedCutTextMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "cut_text", "(II)V");
+    cachedEditableTextCutTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "cut_text", "(II)V");
 
-    cachedDeleteTextMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "delete_text", "(II)V");
+    cachedEditableTextDeleteTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "delete_text", "(II)V");
 
-    cachedPasteTextMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "paste_text", "(I)V");
+    cachedEditableTextPasteTextMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "paste_text", "(I)V");
 
-    cachedSetRunAttributesMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkEditableTextClass, "set_run_attributes",
+    cachedEditableTextSetRunAttributesMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedEditableTextAtkEditableTextClass, "set_run_attributes",
         "(Ljavax/swing/text/AttributeSet;II)Z");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedCreateAtkEditableTextMethod == NULL ||
-        cachedSetTextContentsMethod == NULL ||
-        cachedInsertTextMethod == NULL ||
-        cachedCopyTextMethod == NULL ||
-        cachedCutTextMethod == NULL ||
-        cachedDeleteTextMethod == NULL ||
-        cachedPasteTextMethod == NULL ||
-        cachedSetRunAttributesMethod == NULL) {
+        cachedEditableTextCreateAtkEditableTextMethod == NULL ||
+        cachedEditableTextSetTextContentsMethod == NULL ||
+        cachedEditableTextInsertTextMethod == NULL ||
+        cachedEditableTextCopyTextMethod == NULL ||
+        cachedEditableTextCutTextMethod == NULL ||
+        cachedEditableTextDeleteTextMethod == NULL ||
+        cachedEditableTextPasteTextMethod == NULL ||
+        cachedEditableTextSetRunAttributesMethod == NULL) {
 
          jaw_jni_clear_exception(jniEnv);
 
@@ -465,23 +466,47 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkEditableTextClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkEditableTextClass);
-        cachedAtkEditableTextClass = NULL;
+    if (cachedEditableTextAtkEditableTextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedEditableTextAtkEditableTextClass);
+        cachedEditableTextAtkEditableTextClass = NULL;
     }
-    cachedCreateAtkEditableTextMethod = NULL;
-    cachedSetTextContentsMethod = NULL;
-    cachedInsertTextMethod = NULL;
-    cachedCopyTextMethod = NULL;
-    cachedCutTextMethod = NULL;
-    cachedDeleteTextMethod = NULL;
-    cachedPasteTextMethod = NULL;
-    cachedSetRunAttributesMethod = NULL;
+    cachedEditableTextCreateAtkEditableTextMethod = NULL;
+    cachedEditableTextSetTextContentsMethod = NULL;
+    cachedEditableTextInsertTextMethod = NULL;
+    cachedEditableTextCopyTextMethod = NULL;
+    cachedEditableTextCutTextMethod = NULL;
+    cachedEditableTextDeleteTextMethod = NULL;
+    cachedEditableTextPasteTextMethod = NULL;
+    cachedEditableTextSetRunAttributesMethod = NULL;
 
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_editable_text_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedEditableTextAtkEditableTextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedEditableTextAtkEditableTextClass);
+        cachedEditableTextAtkEditableTextClass = NULL;
+    }
+    cachedEditableTextCreateAtkEditableTextMethod = NULL;
+    cachedEditableTextSetTextContentsMethod = NULL;
+    cachedEditableTextInsertTextMethod = NULL;
+    cachedEditableTextCopyTextMethod = NULL;
+    cachedEditableTextCutTextMethod = NULL;
+    cachedEditableTextDeleteTextMethod = NULL;
+    cachedEditableTextPasteTextMethod = NULL;
+    cachedEditableTextSetRunAttributesMethod = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

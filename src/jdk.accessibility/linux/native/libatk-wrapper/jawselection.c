@@ -19,6 +19,7 @@
 
 #include "jawimpl.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -42,17 +43,17 @@
  * to the selection/deselection of children.
  */
 
-static jclass cachedAtkSelectionClass = NULL;
-static jmethodID cachedCreateAtkSelectionMethod = NULL;
-static jmethodID cachedAddSelectionMethod = NULL;
-static jmethodID cachedClearSelectionMethod = NULL;
-static jmethodID cachedRefSelectionMethod = NULL;
-static jmethodID cachedGetSelectionCountMethod = NULL;
-static jmethodID cachedIsChildSelectedMethod = NULL;
-static jmethodID cachedRemoveSelectionMethod = NULL;
-static jmethodID cachedSelectAllSelectionMethod = NULL;
+jclass cachedSelectionAtkSelectionClass = NULL;
+jmethodID cachedSelectionCreateAtkSelectionMethod = NULL;
+jmethodID cachedSelectionAddSelectionMethod = NULL;
+jmethodID cachedSelectionClearSelectionMethod = NULL;
+jmethodID cachedSelectionRefSelectionMethod = NULL;
+jmethodID cachedSelectionGetSelectionCountMethod = NULL;
+jmethodID cachedSelectionIsChildSelectedMethod = NULL;
+jmethodID cachedSelectionRemoveSelectionMethod = NULL;
+jmethodID cachedSelectionSelectAllSelectionMethod = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv);
@@ -125,7 +126,7 @@ gpointer jaw_selection_data_init(jobject ac) {
     }
 
     jobject jatk_selection = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkSelectionClass, cachedCreateAtkSelectionMethod, ac);
+        jniEnv, cachedSelectionAtkSelectionClass, cachedSelectionCreateAtkSelectionMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_selection == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_selection using create_atk_selection method", G_STRFUNC);
@@ -196,7 +197,7 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedAddSelectionMethod, (jint)i);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectionAddSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -228,7 +229,7 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedClearSelectionMethod);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectionClearSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -274,7 +275,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         return NULL;
     }
 
-    jobject child_ac = (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, cachedRefSelectionMethod, (jint)i);
+    jobject child_ac = (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, cachedSelectionRefSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -316,7 +317,7 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, 0); // create global JNI reference `jobject atk_selection`
 
-    jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, cachedGetSelectionCountMethod);
+    jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, cachedSelectionGetSelectionCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -350,7 +351,7 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedIsChildSelectedMethod, (jint)i);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectionIsChildSelectedMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -384,7 +385,7 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedRemoveSelectionMethod, (jint)i);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectionRemoveSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -415,7 +416,7 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(selection, FALSE); // create global JNI reference `jobject atk_selection`
 
-    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectAllSelectionMethod);
+    jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectionSelectAllSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
@@ -430,10 +431,10 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -444,49 +445,49 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkSelectionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedSelectionAtkSelectionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkSelectionClass == NULL) {
+    if (cachedSelectionAtkSelectionClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkSelection class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedCreateAtkSelectionMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkSelectionClass, "create_atk_selection",
+    cachedSelectionCreateAtkSelectionMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "create_atk_selection",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkSelection;");
 
-    cachedAddSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "add_selection", "(I)Z");
+    cachedSelectionAddSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "add_selection", "(I)Z");
 
-    cachedClearSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "clear_selection", "()Z");
+    cachedSelectionClearSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "clear_selection", "()Z");
 
-    cachedRefSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "ref_selection",
+    cachedSelectionRefSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "ref_selection",
         "(I)Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetSelectionCountMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "get_selection_count", "()I");
+    cachedSelectionGetSelectionCountMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "get_selection_count", "()I");
 
-    cachedIsChildSelectedMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "is_child_selected", "(I)Z");
+    cachedSelectionIsChildSelectedMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "is_child_selected", "(I)Z");
 
-    cachedRemoveSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "remove_selection", "(I)Z");
+    cachedSelectionRemoveSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "remove_selection", "(I)Z");
 
-    cachedSelectAllSelectionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkSelectionClass, "select_all_selection", "()Z");
+    cachedSelectionSelectAllSelectionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedSelectionAtkSelectionClass, "select_all_selection", "()Z");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedCreateAtkSelectionMethod == NULL ||
-        cachedAddSelectionMethod == NULL ||
-        cachedClearSelectionMethod == NULL ||
-        cachedRefSelectionMethod == NULL ||
-        cachedGetSelectionCountMethod == NULL ||
-        cachedIsChildSelectedMethod == NULL ||
-        cachedRemoveSelectionMethod == NULL ||
-        cachedSelectAllSelectionMethod == NULL) {
+        cachedSelectionCreateAtkSelectionMethod == NULL ||
+        cachedSelectionAddSelectionMethod == NULL ||
+        cachedSelectionClearSelectionMethod == NULL ||
+        cachedSelectionRefSelectionMethod == NULL ||
+        cachedSelectionGetSelectionCountMethod == NULL ||
+        cachedSelectionIsChildSelectedMethod == NULL ||
+        cachedSelectionRemoveSelectionMethod == NULL ||
+        cachedSelectionSelectAllSelectionMethod == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -496,23 +497,47 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkSelectionClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkSelectionClass);
-        cachedAtkSelectionClass = NULL;
+    if (cachedSelectionAtkSelectionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedSelectionAtkSelectionClass);
+        cachedSelectionAtkSelectionClass = NULL;
     }
-    cachedCreateAtkSelectionMethod = NULL;
-    cachedAddSelectionMethod = NULL;
-    cachedClearSelectionMethod = NULL;
-    cachedRefSelectionMethod = NULL;
-    cachedGetSelectionCountMethod = NULL;
-    cachedIsChildSelectedMethod = NULL;
-    cachedRemoveSelectionMethod = NULL;
-    cachedSelectAllSelectionMethod = NULL;
+    cachedSelectionCreateAtkSelectionMethod = NULL;
+    cachedSelectionAddSelectionMethod = NULL;
+    cachedSelectionClearSelectionMethod = NULL;
+    cachedSelectionRefSelectionMethod = NULL;
+    cachedSelectionGetSelectionCountMethod = NULL;
+    cachedSelectionIsChildSelectedMethod = NULL;
+    cachedSelectionRemoveSelectionMethod = NULL;
+    cachedSelectionSelectAllSelectionMethod = NULL;
 
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_selection_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedSelectionAtkSelectionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedSelectionAtkSelectionClass);
+        cachedSelectionAtkSelectionClass = NULL;
+    }
+    cachedSelectionCreateAtkSelectionMethod = NULL;
+    cachedSelectionAddSelectionMethod = NULL;
+    cachedSelectionClearSelectionMethod = NULL;
+    cachedSelectionRefSelectionMethod = NULL;
+    cachedSelectionGetSelectionCountMethod = NULL;
+    cachedSelectionIsChildSelectedMethod = NULL;
+    cachedSelectionRemoveSelectionMethod = NULL;
+    cachedSelectionSelectAllSelectionMethod = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

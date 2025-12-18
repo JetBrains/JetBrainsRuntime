@@ -19,6 +19,7 @@
 
 #include "jawimpl.h"
 #include "jawutil.h"
+#include "jawcache.h"
 #include <atk/atk.h>
 #include <glib.h>
 
@@ -57,15 +58,15 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
                                            const gchar *description);
 static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i);
 
-static jclass cachedAtkActionClass = NULL;
-static jmethodID cachedCreateAtkActionMethod = NULL;
-static jmethodID cachedDoActionMethod = NULL;
-static jmethodID cachedGetNActionsMethod = NULL;
-static jmethodID cachedGetDescriptionMethod = NULL;
-static jmethodID cachedSetDescriptionMethod = NULL;
-static jmethodID cachedGetLocalizedNameMethod = NULL;
+jclass cachedActionAtkActionClass = NULL;
+jmethodID cachedActionCreateAtkActionMethod = NULL;
+jmethodID cachedActionDoActionMethod = NULL;
+jmethodID cachedActionGetNActionsMethod = NULL;
+jmethodID cachedActionGetDescriptionMethod = NULL;
+jmethodID cachedActionSetDescriptionMethod = NULL;
+jmethodID cachedActionGetLocalizedNameMethod = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 // TODO: introduce JAW_ACTION_DEFAULT_LOCAL_FRAME_SIZE 10
@@ -148,8 +149,8 @@ gpointer jaw_action_data_init(jobject ac) {
     }
 
     jobject jatk_action =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkActionClass,
-                                          cachedCreateAtkActionMethod, ac);
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedActionAtkActionClass,
+                                          cachedActionCreateAtkActionMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_action == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create AtkAction Java object via create_atk_action()", G_STRFUNC);
@@ -239,7 +240,7 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     JAW_GET_ACTION(action, FALSE); // create global JNI reference `jobject atk_action`
 
     jboolean jresult =
-        (*jniEnv)->CallBooleanMethod(jniEnv, atk_action, cachedDoActionMethod, (jint)i);
+        (*jniEnv)->CallBooleanMethod(jniEnv, atk_action, cachedActionDoActionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -272,7 +273,7 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
 
     JAW_GET_ACTION(action, 0); // create global JNI reference `jobject atk_action`
 
-    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action, cachedGetNActionsMethod);
+    gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action, cachedActionGetNActionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -312,7 +313,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     }
 
     jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_action, cachedGetDescriptionMethod, (jint)i);
+        (*jniEnv)->CallObjectMethod(jniEnv, atk_action, cachedActionGetDescriptionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_debug("%s: No description available for action (index=%d, action=%p)",
@@ -401,7 +402,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     }
 
     jboolean jisset = (*jniEnv)->CallBooleanMethod(
-        jniEnv, atk_action, cachedSetDescriptionMethod, (jint)i, (jstring)jdescription);
+        jniEnv, atk_action, cachedActionSetDescriptionMethod, (jint)i, (jstring)jdescription);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
@@ -441,7 +442,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     }
 
     jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_action, cachedGetLocalizedNameMethod, (jint)i);
+        (*jniEnv)->CallObjectMethod(jniEnv, atk_action, cachedActionGetLocalizedNameMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_debug("%s: No localized name available for action (index=%d, action=%p)",
@@ -490,10 +491,10 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
 static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -504,40 +505,40 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkActionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedActionAtkActionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkActionClass == NULL) {
+    if (cachedActionAtkActionClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkAction class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedCreateAtkActionMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkActionClass, "create_atk_action",
+    cachedActionCreateAtkActionMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedActionAtkActionClass, "create_atk_action",
         "(Ljavax/accessibility/AccessibleContext;)Lorg/GNOME/Accessibility/AtkAction;");
 
-    cachedDoActionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkActionClass, "do_action", "(I)Z");
+    cachedActionDoActionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedActionAtkActionClass, "do_action", "(I)Z");
 
-    cachedGetNActionsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkActionClass, "get_n_actions", "()I");
+    cachedActionGetNActionsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedActionAtkActionClass, "get_n_actions", "()I");
 
-    cachedGetDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkActionClass, "get_description", "(I)Ljava/lang/String;");
+    cachedActionGetDescriptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedActionAtkActionClass, "get_description", "(I)Ljava/lang/String;");
 
-    cachedSetDescriptionMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkActionClass, "set_description", "(ILjava/lang/String;)Z");
+    cachedActionSetDescriptionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedActionAtkActionClass, "set_description", "(ILjava/lang/String;)Z");
 
-    cachedGetLocalizedNameMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkActionClass, "get_localized_name", "(I)Ljava/lang/String;");
+    cachedActionGetLocalizedNameMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedActionAtkActionClass, "get_localized_name", "(I)Ljava/lang/String;");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedCreateAtkActionMethod == NULL ||
-        cachedDoActionMethod == NULL ||
-        cachedGetNActionsMethod == NULL ||
-        cachedGetDescriptionMethod == NULL ||
-        cachedSetDescriptionMethod == NULL ||
-        cachedGetLocalizedNameMethod == NULL) {
+        cachedActionCreateAtkActionMethod == NULL ||
+        cachedActionDoActionMethod == NULL ||
+        cachedActionGetNActionsMethod == NULL ||
+        cachedActionGetDescriptionMethod == NULL ||
+        cachedActionSetDescriptionMethod == NULL ||
+        cachedActionGetLocalizedNameMethod == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkAction method IDs",
@@ -546,21 +547,43 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkActionClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkActionClass);
-        cachedAtkActionClass = NULL;
+    if (cachedActionAtkActionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedActionAtkActionClass);
+        cachedActionAtkActionClass = NULL;
     }
-    cachedCreateAtkActionMethod = NULL;
-    cachedDoActionMethod = NULL;
-    cachedGetNActionsMethod = NULL;
-    cachedGetDescriptionMethod = NULL;
-    cachedSetDescriptionMethod = NULL;
-    cachedGetLocalizedNameMethod = NULL;
+    cachedActionCreateAtkActionMethod = NULL;
+    cachedActionDoActionMethod = NULL;
+    cachedActionGetNActionsMethod = NULL;
+    cachedActionGetDescriptionMethod = NULL;
+    cachedActionSetDescriptionMethod = NULL;
+    cachedActionGetLocalizedNameMethod = NULL;
 
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_action_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedActionAtkActionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedActionAtkActionClass);
+        cachedActionAtkActionClass = NULL;
+    }
+    cachedActionCreateAtkActionMethod = NULL;
+    cachedActionDoActionMethod = NULL;
+    cachedActionGetNActionsMethod = NULL;
+    cachedActionGetDescriptionMethod = NULL;
+    cachedActionSetDescriptionMethod = NULL;
+    cachedActionGetLocalizedNameMethod = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

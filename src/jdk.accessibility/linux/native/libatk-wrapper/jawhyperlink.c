@@ -18,6 +18,7 @@
  */
 
 #include "jawhyperlink.h"
+#include "jawcache.h"
 #include "jawimpl.h"
 #include "jawutil.h"
 #include <glib.h>
@@ -38,15 +39,15 @@
  * AtkHypertext object.
  */
 
-static jclass cachedAtkHyperlinkClass = NULL;
-static jmethodID cachedGetUriMethod = NULL;
-static jmethodID cachedGetObjectMethod = NULL;
-static jmethodID cachedGetEndIndexMethod = NULL;
-static jmethodID cachedGetStartIndexMethod = NULL;
-static jmethodID cachedIsValidMethod = NULL;
-static jmethodID cachedGetNAnchorsMethod = NULL;
+jclass cachedHyperlinkAtkHyperlinkClass = NULL;
+jmethodID cachedHyperlinkGetUriMethod = NULL;
+jmethodID cachedHyperlinkGetObjectMethod = NULL;
+jmethodID cachedHyperlinkGetEndIndexMethod = NULL;
+jmethodID cachedHyperlinkGetStartIndexMethod = NULL;
+jmethodID cachedHyperlinkIsValidMethod = NULL;
+jmethodID cachedHyperlinkGetNAnchorsMethod = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv);
@@ -233,7 +234,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     }
 
     jstring jstr =
-        (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, cachedGetUriMethod, (jint)i);
+        (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, cachedHyperlinkGetUriMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
@@ -298,7 +299,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         return NULL;
     }
 
-    jobject ac = (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, cachedGetObjectMethod, (jint)i);
+    jobject ac = (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, cachedHyperlinkGetObjectMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
@@ -355,7 +356,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
 
-    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedGetEndIndexMethod);
+    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedHyperlinkGetEndIndexMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
@@ -404,7 +405,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
 
-    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedGetStartIndexMethod);
+    jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedHyperlinkGetStartIndexMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
@@ -454,7 +455,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
         return FALSE;
     }
 
-    jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, cachedIsValidMethod);
+    jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, cachedHyperlinkIsValidMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
@@ -502,7 +503,7 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
 
-    jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedGetNAnchorsMethod);
+    jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedHyperlinkGetNAnchorsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
        jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
@@ -519,10 +520,10 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
 static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -533,40 +534,40 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkHyperlinkClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedHyperlinkAtkHyperlinkClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkHyperlinkClass == NULL) {
+    if (cachedHyperlinkAtkHyperlinkClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkHyperlink class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedGetUriMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkHyperlinkClass, "get_uri", "(I)Ljava/lang/String;");
+    cachedHyperlinkGetUriMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedHyperlinkAtkHyperlinkClass, "get_uri", "(I)Ljava/lang/String;");
 
-    cachedGetObjectMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkHyperlinkClass, "get_object",
+    cachedHyperlinkGetObjectMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedHyperlinkAtkHyperlinkClass, "get_object",
         "(I)Ljavax/accessibility/AccessibleContext;");
 
-    cachedGetEndIndexMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkHyperlinkClass, "get_end_index", "()I");
+    cachedHyperlinkGetEndIndexMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedHyperlinkAtkHyperlinkClass, "get_end_index", "()I");
 
-    cachedGetStartIndexMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkHyperlinkClass, "get_start_index", "()I");
+    cachedHyperlinkGetStartIndexMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedHyperlinkAtkHyperlinkClass, "get_start_index", "()I");
 
-    cachedIsValidMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkHyperlinkClass, "is_valid", "()Z");
+    cachedHyperlinkIsValidMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedHyperlinkAtkHyperlinkClass, "is_valid", "()Z");
 
-    cachedGetNAnchorsMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedAtkHyperlinkClass, "get_n_anchors", "()I");
+    cachedHyperlinkGetNAnchorsMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedHyperlinkAtkHyperlinkClass, "get_n_anchors", "()I");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedGetUriMethod == NULL ||
-        cachedGetObjectMethod == NULL ||
-        cachedGetEndIndexMethod == NULL ||
-        cachedGetStartIndexMethod == NULL ||
-        cachedIsValidMethod == NULL ||
-        cachedGetNAnchorsMethod == NULL) {
+        cachedHyperlinkGetUriMethod == NULL ||
+        cachedHyperlinkGetObjectMethod == NULL ||
+        cachedHyperlinkGetEndIndexMethod == NULL ||
+        cachedHyperlinkGetStartIndexMethod == NULL ||
+        cachedHyperlinkIsValidMethod == NULL ||
+        cachedHyperlinkGetNAnchorsMethod == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -576,23 +577,45 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkHyperlinkClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkHyperlinkClass);
-        cachedAtkHyperlinkClass = NULL;
+    if (cachedHyperlinkAtkHyperlinkClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedHyperlinkAtkHyperlinkClass);
+        cachedHyperlinkAtkHyperlinkClass = NULL;
     }
-    cachedGetUriMethod = NULL;
-    cachedGetObjectMethod = NULL;
-    cachedGetEndIndexMethod = NULL;
-    cachedGetStartIndexMethod = NULL;
-    cachedIsValidMethod = NULL;
-    cachedGetNAnchorsMethod = NULL;
+    cachedHyperlinkGetUriMethod = NULL;
+    cachedHyperlinkGetObjectMethod = NULL;
+    cachedHyperlinkGetEndIndexMethod = NULL;
+    cachedHyperlinkGetStartIndexMethod = NULL;
+    cachedHyperlinkIsValidMethod = NULL;
+    cachedHyperlinkGetNAnchorsMethod = NULL;
 
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
+}
+
+void jaw_hyperlink_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedHyperlinkAtkHyperlinkClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedHyperlinkAtkHyperlinkClass);
+        cachedHyperlinkAtkHyperlinkClass = NULL;
+    }
+    cachedHyperlinkGetUriMethod = NULL;
+    cachedHyperlinkGetObjectMethod = NULL;
+    cachedHyperlinkGetEndIndexMethod = NULL;
+    cachedHyperlinkGetStartIndexMethod = NULL;
+    cachedHyperlinkIsValidMethod = NULL;
+    cachedHyperlinkGetNAnchorsMethod = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }

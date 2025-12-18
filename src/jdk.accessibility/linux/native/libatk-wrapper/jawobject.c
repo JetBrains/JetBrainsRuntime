@@ -19,6 +19,7 @@
  */
 
 #include "jawobject.h"
+#include "jawcache.h"
 #include "jawimpl.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
@@ -59,21 +60,21 @@
 extern "C" {
 #endif
 
-static jclass cachedAtkObjectClass = NULL;
-static jmethodID cachedGetAccessibleParentMethod = NULL;
-static jmethodID cachedSetAccessibleParentMethod = NULL;
-static jmethodID cachedGetAccessibleNameMethod = NULL;
-static jmethodID cachedSetAccessibleNameMethod = NULL;
-static jmethodID cachedGetAccessibleDescriptionMethod = NULL;
-static jmethodID cachedSetAccessibleDescriptionMethod = NULL;
-static jmethodID cachedGetAccessibleChildrenCountMethod = NULL;
-static jmethodID cachedGetAccessibleIndexInParentMethod = NULL;
-static jmethodID cachedGetArrayAccessibleStateMethod = NULL;
-static jmethodID cachedGetLocaleMethod = NULL;
-static jmethodID cachedGetArrayAccessibleRelationMethod = NULL;
-static jmethodID cachedGetAccessibleChildMethod = NULL;
+jclass cachedObjectAtkObjectClass = NULL;
+jmethodID cachedObjectGetAccessibleParentMethod = NULL;
+jmethodID cachedObjectSetAccessibleParentMethod = NULL;
+jmethodID cachedObjectGetAccessibleNameMethod = NULL;
+jmethodID cachedObjectSetAccessibleNameMethod = NULL;
+jmethodID cachedObjectGetAccessibleDescriptionMethod = NULL;
+jmethodID cachedObjectSetAccessibleDescriptionMethod = NULL;
+jmethodID cachedObjectGetAccessibleChildrenCountMethod = NULL;
+jmethodID cachedObjectGetAccessibleIndexInParentMethod = NULL;
+jmethodID cachedObjectGetArrayAccessibleStateMethod = NULL;
+jmethodID cachedObjectGetLocaleMethod = NULL;
+jmethodID cachedObjectGetArrayAccessibleRelationMethod = NULL;
+jmethodID cachedObjectGetAccessibleChildMethod = NULL;
 
-static GMutex cache_init_mutex;
+static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
 static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv);
@@ -339,7 +340,7 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
     }
 
     jobject jparent =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleParentMethod, ac);
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleParentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jparent == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -409,7 +410,7 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
         return;
     }
 
-    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedAtkObjectClass, cachedSetAccessibleParentMethod, ac, pa);
+    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectSetAccessibleParentMethod, ac, pa);
     jaw_jni_clear_exception(jniEnv);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -470,7 +471,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     }
 
     jstring jstr =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleNameMethod, ac);
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleNameMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -543,7 +544,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
         jstr = (*jniEnv)->NewStringUTF(jniEnv, name);
     }
 
-    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedAtkObjectClass, cachedSetAccessibleNameMethod, ac, jstr);
+    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectSetAccessibleNameMethod, ac, jstr);
     jaw_jni_clear_exception(jniEnv);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -586,7 +587,7 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     }
 
     jstring jstr =
-        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleDescriptionMethod, ac);
+        (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleDescriptionMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -657,7 +658,7 @@ static void jaw_object_set_description(AtkObject *atk_obj,
         jstr = (*jniEnv)->NewStringUTF(jniEnv, description);
     }
 
-    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedAtkObjectClass, cachedSetAccessibleDescriptionMethod, ac, jstr);
+    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectSetAccessibleDescriptionMethod, ac, jstr);
     jaw_jni_clear_exception(jniEnv);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -698,7 +699,7 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         return 0;
     }
 
-    jint count = (*jniEnv)->CallStaticIntMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleChildrenCountMethod, ac);
+    jint count = (*jniEnv)->CallStaticIntMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleChildrenCountMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -751,7 +752,7 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         return -1;
     }
 
-    jint index = (*jniEnv)->CallStaticIntMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleIndexInParentMethod, ac);
+    jint index = (*jniEnv)->CallStaticIntMethod(jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleIndexInParentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -891,7 +892,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
     atk_state_set_clear_states(state_set);
 
     jobject jstate_arr = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkObjectClass, cachedGetArrayAccessibleStateMethod, ac);
+        jniEnv, cachedObjectAtkObjectClass, cachedObjectGetArrayAccessibleStateMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstate_arr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -963,7 +964,7 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
     }
 
     jobject jstr = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkObjectClass, cachedGetLocaleMethod, ac);
+        jniEnv, cachedObjectAtkObjectClass, cachedObjectGetLocaleMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -1033,7 +1034,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
     atk_obj->relation_set = atk_relation_set_new();
 
     jobject jwrap_key_target_arr = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkObjectClass, cachedGetArrayAccessibleRelationMethod, ac);
+        jniEnv, cachedObjectAtkObjectClass, cachedObjectGetArrayAccessibleRelationMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jwrap_key_target_arr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -1175,7 +1176,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     }
 
     jobject child_ac = (*jniEnv)->CallStaticObjectMethod(
-        jniEnv, cachedAtkObjectClass, cachedGetAccessibleChildMethod, ac, i);
+        jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleChildMethod, ac, i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
@@ -1205,10 +1206,10 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
 static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&cache_init_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cache_initialized) {
-        g_mutex_unlock(&cache_init_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -1219,75 +1220,75 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedAtkObjectClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
+    cachedObjectAtkObjectClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkObjectClass == NULL) {
+    if (cachedObjectAtkObjectClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkObject class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedGetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_parent",
+    cachedObjectGetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_accessible_parent",
         "(Ljavax/accessibility/AccessibleContext;)Ljavax/accessibility/AccessibleContext;");
 
-    cachedSetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "set_accessible_parent",
+    cachedObjectSetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "set_accessible_parent",
         "(Ljavax/accessibility/AccessibleContext;Ljavax/accessibility/AccessibleContext;)V");
 
-    cachedGetAccessibleNameMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_name",
+    cachedObjectGetAccessibleNameMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_accessible_name",
         "(Ljavax/accessibility/AccessibleContext;)Ljava/lang/String;");
 
-    cachedSetAccessibleNameMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "set_accessible_name",
+    cachedObjectSetAccessibleNameMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "set_accessible_name",
         "(Ljavax/accessibility/AccessibleContext;Ljava/lang/String;)V");
 
-    cachedGetAccessibleDescriptionMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_description",
+    cachedObjectGetAccessibleDescriptionMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_accessible_description",
         "(Ljavax/accessibility/AccessibleContext;)Ljava/lang/String;");
 
-    cachedSetAccessibleDescriptionMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "set_accessible_description",
+    cachedObjectSetAccessibleDescriptionMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "set_accessible_description",
         "(Ljavax/accessibility/AccessibleContext;Ljava/lang/String;)");
 
-    cachedGetAccessibleChildrenCountMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_children_count",
+    cachedObjectGetAccessibleChildrenCountMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_accessible_children_count",
         "(Ljavax/accessibility/AccessibleContext;)I");
 
-    cachedGetAccessibleIndexInParentMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_index_in_parent",
+    cachedObjectGetAccessibleIndexInParentMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_accessible_index_in_parent",
         "(Ljavax/accessibility/AccessibleContext;)I");
 
-    cachedGetArrayAccessibleStateMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_array_accessible_state",
+    cachedObjectGetArrayAccessibleStateMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_array_accessible_state",
         "(Ljavax/accessibility/AccessibleContext;)[Ljavax/accessibility/AccessibleState;");
 
-    cachedGetLocaleMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_locale",
+    cachedObjectGetLocaleMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_locale",
         "(Ljavax/accessibility/AccessibleContext;)Ljava/lang/String;");
 
-    cachedGetArrayAccessibleRelationMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_array_accessible_relation",
+    cachedObjectGetArrayAccessibleRelationMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_array_accessible_relation",
         "(Ljavax/accessibility/AccessibleContext;)[Lorg/GNOME/Accessibility/AtkObject$WrapKeyAndTarget;");
 
-    cachedGetAccessibleChildMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedAtkObjectClass, "get_accessible_child",
+    cachedObjectGetAccessibleChildMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedObjectAtkObjectClass, "get_accessible_child",
         "(Ljavax/accessibility/AccessibleContext;I)Ljavax/accessibility/AccessibleContext;");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
-        cachedGetAccessibleParentMethod == NULL ||
-        cachedSetAccessibleParentMethod == NULL ||
-        cachedGetAccessibleNameMethod == NULL ||
-        cachedSetAccessibleNameMethod == NULL ||
-        cachedGetAccessibleDescriptionMethod == NULL ||
-        cachedSetAccessibleDescriptionMethod == NULL ||
-        cachedGetAccessibleChildrenCountMethod == NULL ||
-        cachedGetAccessibleIndexInParentMethod == NULL ||
-        cachedGetArrayAccessibleStateMethod == NULL ||
-        cachedGetLocaleMethod == NULL ||
-        cachedGetArrayAccessibleRelationMethod == NULL ||
-        cachedGetAccessibleChildMethod == NULL) {
+        cachedObjectGetAccessibleParentMethod == NULL ||
+        cachedObjectSetAccessibleParentMethod == NULL ||
+        cachedObjectGetAccessibleNameMethod == NULL ||
+        cachedObjectSetAccessibleNameMethod == NULL ||
+        cachedObjectGetAccessibleDescriptionMethod == NULL ||
+        cachedObjectSetAccessibleDescriptionMethod == NULL ||
+        cachedObjectGetAccessibleChildrenCountMethod == NULL ||
+        cachedObjectGetAccessibleIndexInParentMethod == NULL ||
+        cachedObjectGetArrayAccessibleStateMethod == NULL ||
+        cachedObjectGetLocaleMethod == NULL ||
+        cachedObjectGetArrayAccessibleRelationMethod == NULL ||
+        cachedObjectGetAccessibleChildMethod == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
@@ -1297,29 +1298,57 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     cache_initialized = TRUE;
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return TRUE;
 
 cleanup_and_fail:
-    if (cachedAtkObjectClass != NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkObjectClass);
-        cachedAtkObjectClass = NULL;
+    if (cachedObjectAtkObjectClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedObjectAtkObjectClass);
+        cachedObjectAtkObjectClass = NULL;
     }
-    cachedGetAccessibleParentMethod = NULL;
-    cachedSetAccessibleParentMethod = NULL;
-    cachedGetAccessibleNameMethod = NULL;
-    cachedSetAccessibleNameMethod = NULL;
-    cachedGetAccessibleDescriptionMethod = NULL;
-    cachedSetAccessibleDescriptionMethod = NULL;
-    cachedGetAccessibleChildrenCountMethod = NULL;
-    cachedGetAccessibleIndexInParentMethod = NULL;
-    cachedGetArrayAccessibleStateMethod = NULL;
-    cachedGetLocaleMethod = NULL;
-    cachedGetArrayAccessibleRelationMethod = NULL;
-    cachedGetAccessibleChildMethod = NULL;
+    cachedObjectGetAccessibleParentMethod = NULL;
+    cachedObjectSetAccessibleParentMethod = NULL;
+    cachedObjectGetAccessibleNameMethod = NULL;
+    cachedObjectSetAccessibleNameMethod = NULL;
+    cachedObjectGetAccessibleDescriptionMethod = NULL;
+    cachedObjectSetAccessibleDescriptionMethod = NULL;
+    cachedObjectGetAccessibleChildrenCountMethod = NULL;
+    cachedObjectGetAccessibleIndexInParentMethod = NULL;
+    cachedObjectGetArrayAccessibleStateMethod = NULL;
+    cachedObjectGetLocaleMethod = NULL;
+    cachedObjectGetArrayAccessibleRelationMethod = NULL;
+    cachedObjectGetAccessibleChildMethod = NULL;
 
-    g_mutex_unlock(&cache_init_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
+}
+
+void jaw_object_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&cache_mutex);
+
+    if (cachedObjectAtkObjectClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedObjectAtkObjectClass);
+        cachedObjectAtkObjectClass = NULL;
+    }
+    cachedObjectGetAccessibleParentMethod = NULL;
+    cachedObjectSetAccessibleParentMethod = NULL;
+    cachedObjectGetAccessibleNameMethod = NULL;
+    cachedObjectSetAccessibleNameMethod = NULL;
+    cachedObjectGetAccessibleDescriptionMethod = NULL;
+    cachedObjectSetAccessibleDescriptionMethod = NULL;
+    cachedObjectGetAccessibleChildrenCountMethod = NULL;
+    cachedObjectGetAccessibleIndexInParentMethod = NULL;
+    cachedObjectGetArrayAccessibleStateMethod = NULL;
+    cachedObjectGetLocaleMethod = NULL;
+    cachedObjectGetArrayAccessibleRelationMethod = NULL;
+    cachedObjectGetAccessibleChildMethod = NULL;
+    cache_initialized = FALSE;
+
+    g_mutex_unlock(&cache_mutex);
 }
 
 #ifdef __cplusplus
