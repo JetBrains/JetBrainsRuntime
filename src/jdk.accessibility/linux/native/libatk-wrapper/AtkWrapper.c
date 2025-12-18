@@ -1159,11 +1159,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     jobjectArray args) {
     JAW_DEBUG_JNI("%p, %p, %p, %d, %p", jniEnv, jClass, jAccContext, id, args);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("Failed to create a new local reference frame");
-        return;
-    }
-
     pthread_mutex_lock(&jaw_vdc_dup_mutex);
     if (id != org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         /* Something may have happened since the last visible data changed
@@ -1174,7 +1169,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             /* We have already queued to send one and nothing happened in
              * between, this one is really useless */
             pthread_mutex_unlock(&jaw_vdc_dup_mutex);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
 
@@ -1185,7 +1179,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
 
     if (!jAccContext) {
         g_warning("%s: jAccContext is NULL", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -1197,7 +1190,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     if (para == NULL) {
         g_warning("%s: para is NULL", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, global_ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobjectArray global_args =
@@ -1230,18 +1222,17 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         break;
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
-        if (!child_ac) {
+        if (child_ac == NULL) {
             g_warning("%s: GetObjectArrayElement failed for child_ac",
                       G_STRFUNC);
             queue_free_callback_para(para);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
+        (*jniEnv)->DeleteLocalRef(jniEnv, child_ac);
         if (child_impl == NULL) {
             g_warning("%s: child_impl == NULL, return NULL", G_STRFUNC);
             queue_free_callback_para(para);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         g_object_ref(G_OBJECT(child_impl));
@@ -1250,17 +1241,16 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
         jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
-        if (!child_ac) {
+        if (child_ac == NULL) {
             g_warning("%s: child_ac == NULL, return NULL", G_STRFUNC);
             queue_free_callback_para(para);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
+        (*jniEnv)->DeleteLocalRef(jniEnv, child_ac);
         if (child_impl == NULL) {
             g_warning("%s: child_impl == NULL, return NULL", G_STRFUNC);
             queue_free_callback_para(para);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return;
         }
         g_object_ref(G_OBJECT(child_impl));
@@ -1271,7 +1261,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
 
     jni_main_idle_add(signal_emit_handler,
                       para); // calls `queue_free_callback_para`
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean object_state_change_handler(gpointer p) {
