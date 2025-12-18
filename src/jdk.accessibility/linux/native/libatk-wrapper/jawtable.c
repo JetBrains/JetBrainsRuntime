@@ -941,9 +941,14 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
 static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     JAW_DEBUG_C("%p, %p", table, selected);
 
+    if (selected == NULL) {
+        g_warning("%s: Null argument passed selected to function", G_STRFUNC);
+        return 0;
+    }
+    *selected = NULL;
+
     if (table == NULL) {
-        g_warning(
-            "Null argument passed table to function jaw_table_get_selected_columns");
+        g_warning("%s: Null argument passed table to function", G_STRFUNC);
         return 0;
     }
 
@@ -959,7 +964,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     }
 
     jintArray jcolumnArray =
-        (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSelectedColumnsMethod);
+        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSelectedColumnsMethod));
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jcolumnArray == NULL) {
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             (*jniEnv)->ExceptionDescribe(jniEnv);
@@ -972,11 +977,37 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, jcolumnArray);
+    if (length <= 0) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
+    jint *tmp = (*jniEnv)->GetIntArrayElements(jniEnv, jcolumnArray, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || tmp == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to read selected columns array", G_STRFUNC);
+
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
+    *selected = g_new(gint, (gsize)length);
+
+    for (jsize i = 0; i < length; i++) {
+        (*selected)[i] = (gint)tmp[i];
+    }
+
+    (*jniEnv)->ReleaseIntArrayElements(jniEnv, jcolumnArray, tmp, JNI_ABORT);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return length;
+    return (gint)length;
 }
 
 /**
@@ -993,9 +1024,14 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
 static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     JAW_DEBUG_C("%p, %p", table, selected);
 
-    if (!table || !selected) {
-        g_warning(
-            "Null argument passed to function jaw_table_get_selected_rows");
+    if (selected == NULL) {
+        g_warning("%s: Null argument passed selected to function", G_STRFUNC);
+        return 0;
+    }
+    *selected = NULL;
+
+    if (table == NULL) {
+        g_warning("%s: Null argument passed table to function", G_STRFUNC);
         return 0;
     }
 
@@ -1005,12 +1041,13 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             atk_table); // deleting ref that was created in JAW_GET_TABLE
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
+        g_warning("%s: Failed to create a new local reference frame", G_STRFUNC);
         return 0;
     }
 
-    jintArray jrowArray = (*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSelectedRowsMethod);
+    jintArray jrowArray =
+        (jintArray)((*jniEnv)->CallObjectMethod(jniEnv, atk_table, cachedGetSelectedRowsMethod));
+
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrowArray == NULL) {
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             (*jniEnv)->ExceptionDescribe(jniEnv);
@@ -1023,11 +1060,36 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, jrowArray);
+    if (length <= 0) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
+    jint *tmp = (*jniEnv)->GetIntArrayElements(jniEnv, jrowArray, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || tmp == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to read selected rows array", G_STRFUNC);
+
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return 0;
+    }
+
+    *selected = g_new(gint, (gsize)length);
+    for (jsize i = 0; i < length; i++) {
+        (*selected)[i] = (gint)tmp[i];
+    }
+
+    (*jniEnv)->ReleaseIntArrayElements(jniEnv, jrowArray, tmp, JNI_ABORT);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return length;
+    return (gint)length;
 }
 
 /**
