@@ -46,6 +46,10 @@ import java.awt.EventQueue;
  */
 public class AtkObject {
 
+    // need to fix [missing-explicit-ctor]
+    private AtkObject() {
+    }
+
     /**
      * Returns the JMenuItem accelerator. Similar implementation is used on
      * macOS, see CAccessibility.getAcceleratorText(AccessibleContext) in OpenJDK, and
