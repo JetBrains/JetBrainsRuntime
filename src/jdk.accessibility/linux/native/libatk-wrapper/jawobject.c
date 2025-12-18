@@ -1250,7 +1250,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
 
     cachedObjectSetAccessibleDescriptionMethod = (*jniEnv)->GetStaticMethodID(
         jniEnv, cachedObjectAtkObjectClass, "set_accessible_description",
-        "(Ljavax/accessibility/AccessibleContext;Ljava/lang/String;)");
+        "(Ljavax/accessibility/AccessibleContext;Ljava/lang/String;)V");
 
     cachedObjectGetAccessibleChildrenCountMethod = (*jniEnv)->GetStaticMethodID(
         jniEnv, cachedObjectAtkObjectClass, "get_accessible_children_count",
