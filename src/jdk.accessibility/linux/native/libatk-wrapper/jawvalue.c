@@ -35,6 +35,21 @@ static jmethodID cachedGetMinimumValueMethod = NULL;
 static jmethodID cachedGetMaximumValueMethod = NULL;
 static jmethodID cachedGetIncrementMethod = NULL;
 
+static jclass cachedByteClass = NULL;
+static jclass cachedDoubleClass = NULL;
+static jclass cachedFloatClass = NULL;
+static jclass cachedIntegerClass = NULL;
+static jclass cachedLongClass = NULL;
+static jclass cachedShortClass = NULL;
+
+static jmethodID cachedByteValueMethod = NULL;
+static jmethodID cachedDoubleValueMethod = NULL;
+static jmethodID cachedFloatValueMethod = NULL;
+static jmethodID cachedIntValueMethod = NULL;
+static jmethodID cachedLongValueMethod = NULL;
+static jmethodID cachedShortValueMethod = NULL;
+static jmethodID cachedDoubleConstructorMethod = NULL;
+
 static GMutex cache_init_mutex;
 static gboolean cache_initialized = FALSE;
 
@@ -166,103 +181,29 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
         return;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
-    jclass classByte = (*jniEnv)->FindClass(jniEnv, "java/lang/Byte");
-    if (classByte == NULL) {
-        g_warning("%s: Failed to find java/lang/Byte class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
-    if (classDouble == NULL) {
-        g_warning("%s: Failed to find java/lang/Double class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jclass classFloat = (*jniEnv)->FindClass(jniEnv, "java/lang/Float");
-    if (classFloat == NULL) {
-        g_warning("%s: Failed to find java/lang/Float class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jclass classInteger = (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
-    if (classInteger == NULL) {
-        g_warning("%s: Failed to find java/lang/Integer class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jclass classLong = (*jniEnv)->FindClass(jniEnv, "java/lang/Long");
-    if (classLong == NULL) {
-        g_warning("%s: Failed to find java/lang/Long class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jclass classShort = (*jniEnv)->FindClass(jniEnv, "java/lang/Short");
-    if (classShort == NULL) {
-        g_warning("%s: Failed to find java/lang/Short class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    jmethodID jmid;
-
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classByte)) {
-        jmid = (*jniEnv)->GetMethodID(jniEnv, classByte, "byteValue", "()B");
-        if (jmid == NULL) {
-            g_warning("%s: Failed to find byteValue method", G_STRFUNC);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return;
-        }
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedByteClass)) {
         g_value_init(value, G_TYPE_CHAR);
         g_value_set_schar(
-            value, (gchar)(*jniEnv)->CallByteMethod(jniEnv, jnumber, jmid));
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            value, (gchar)(*jniEnv)->CallByteMethod(jniEnv, jnumber, cachedByteValueMethod));
         return;
     }
 
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classDouble)) {
-        jmid =
-            (*jniEnv)->GetMethodID(jniEnv, classDouble, "doubleValue", "()D");
-        if (jmid == NULL) {
-            g_warning("%s: Failed to find doubleValue method", G_STRFUNC);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return;
-        }
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedDoubleClass)) {
         g_value_init(value, G_TYPE_DOUBLE);
         g_value_set_double(
-            value, (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jnumber, jmid));
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            value, (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jnumber, cachedDoubleValueMethod));
         return;
     }
 
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classFloat)) {
-        jmid = (*jniEnv)->GetMethodID(jniEnv, classFloat, "floatValue", "()F");
-        if (jmid == NULL) {
-            g_warning("%s: Failed to find floatValue method", G_STRFUNC);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return;
-        }
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedFloatClass)) {
         g_value_init(value, G_TYPE_FLOAT);
         g_value_set_float(
-            value, (gfloat)(*jniEnv)->CallFloatMethod(jniEnv, jnumber, jmid));
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            value, (gfloat)(*jniEnv)->CallFloatMethod(jniEnv, jnumber, cachedFloatValueMethod));
         return;
     }
 
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classInteger)) {
-        jmethodID mid = (*jniEnv)->GetMethodID(jniEnv, classInteger,
-                                               "intValue", "()I");
-        if (mid == NULL) {
-            g_warning("%s: Failed to find Integer.intValue()", G_STRFUNC);
-            return;
-        }
-
-        jint v = (*jniEnv)->CallIntMethod(jniEnv, jnumber, mid);
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedIntegerClass)) {
+        jint v = (*jniEnv)->CallIntMethod(jniEnv, jnumber, cachedIntValueMethod);
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             (*jniEnv)->ExceptionDescribe(jniEnv);
             (*jniEnv)->ExceptionClear(jniEnv);
@@ -275,15 +216,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
         return;
     }
 
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classShort)) {
-        jmethodID mid = (*jniEnv)->GetMethodID(jniEnv, classShort,
-                                               "shortValue", "()S");
-        if (mid == NULL) {
-            g_warning("%s: Failed to find Short.shortValue()", G_STRFUNC);
-            return;
-        }
-
-        jshort v = (*jniEnv)->CallShortMethod(jniEnv, jnumber, mid);
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedShortClass)) {
+        jshort v = (*jniEnv)->CallShortMethod(jniEnv, jnumber, cachedShortValueMethod);
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             (*jniEnv)->ExceptionDescribe(jniEnv);
             (*jniEnv)->ExceptionClear(jniEnv);
@@ -296,21 +230,12 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
         return;
     }
 
-    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, classLong)) {
-        jmid = (*jniEnv)->GetMethodID(jniEnv, classLong, "longValue", "()J");
-        if (jmid == NULL) {
-            g_warning("%s: Failed to find longValue method", G_STRFUNC);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-            return;
-        }
+    if ((*jniEnv)->IsInstanceOf(jniEnv, jnumber, cachedLongClass)) {
         g_value_init(value, G_TYPE_INT64);
         g_value_set_int64(
-            value, (gint64)(*jniEnv)->CallLongMethod(jniEnv, jnumber, jmid));
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+            value, (gint64)(*jniEnv)->CallLongMethod(jniEnv, jnumber, cachedLongValueMethod));
         return;
     }
-
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -406,31 +331,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
 
-    jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || classDouble == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
-        g_warning("%s: Failed to find Double class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    jmethodID doubleConstructor = (*jniEnv)->GetMethodID(jniEnv, classDouble, "<init>", "(D)V");
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || doubleConstructor == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
-        g_warning("%s: Failed to find Double constructor", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-
-    jobject jdoubleValue = (*jniEnv)->NewObject(jniEnv, classDouble, doubleConstructor, (jdouble)value);
+    jobject jdoubleValue = (*jniEnv)->NewObject(jniEnv, cachedDoubleClass, cachedDoubleConstructorMethod, (jdouble)value);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdoubleValue == NULL) {
         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
             (*jniEnv)->ExceptionDescribe(jniEnv);
@@ -473,20 +374,7 @@ static gboolean jaw_value_convert_double_to_gdouble(JNIEnv *jniEnv,
         return FALSE;
     }
 
-    jclass classDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
-    if (classDouble == NULL) {
-        g_warning("%s: Failed to find Double class", G_STRFUNC);
-        return FALSE;
-    }
-
-    jmethodID jmid =
-        (*jniEnv)->GetMethodID(jniEnv, classDouble, "doubleValue", "()D");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find doubleValue method", G_STRFUNC);
-        return FALSE;
-    }
-
-    *result = (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jdouble, jmid);
+    *result = (gdouble)(*jniEnv)->CallDoubleMethod(jniEnv, jdouble, cachedDoubleValueMethod);
     return TRUE;
 }
 
@@ -662,23 +550,157 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
         }
 
         g_warning("%s: Failed to cache one or more AtkValue method IDs", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkValueClass);
-        cachedAtkValueClass = NULL;
-        cachedCreateAtkValueMethod = NULL;
-        cachedGetCurrentValueMethod = NULL;
-        cachedSetValueMethod = NULL;
-        cachedGetMinimumValueMethod = NULL;
-        cachedGetMaximumValueMethod = NULL;
-        cachedGetIncrementMethod = NULL;
+    jclass localByte = (*jniEnv)->FindClass(jniEnv, "java/lang/Byte");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localByte == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Byte class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+    cachedByteClass = (*jniEnv)->NewGlobalRef(jniEnv, localByte);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localByte);
 
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+    jclass localDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localDouble == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Double class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+    cachedDoubleClass = (*jniEnv)->NewGlobalRef(jniEnv, localDouble);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localDouble);
+
+    jclass localFloat = (*jniEnv)->FindClass(jniEnv, "java/lang/Float");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localFloat == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Float class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+    cachedFloatClass = (*jniEnv)->NewGlobalRef(jniEnv, localFloat);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localFloat);
+
+    jclass localInteger = (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localInteger == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Integer class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+    cachedIntegerClass = (*jniEnv)->NewGlobalRef(jniEnv, localInteger);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localInteger);
+
+    jclass localLong = (*jniEnv)->FindClass(jniEnv, "java/lang/Long");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localLong == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Long class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+    cachedLongClass = (*jniEnv)->NewGlobalRef(jniEnv, localLong);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localLong);
+
+    jclass localShort = (*jniEnv)->FindClass(jniEnv, "java/lang/Short");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localShort == NULL) {
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+        g_warning("%s: Failed to find Short class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+    cachedShortClass = (*jniEnv)->NewGlobalRef(jniEnv, localShort);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localShort);
+
+    cachedByteValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedByteClass, "byteValue", "()B");
+    cachedDoubleValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedDoubleClass, "doubleValue", "()D");
+    cachedFloatValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedFloatClass, "floatValue", "()F");
+    cachedIntValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedIntegerClass, "intValue", "()I");
+    cachedLongValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedLongClass, "longValue", "()J");
+    cachedShortValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedShortClass, "shortValue", "()S");
+    cachedDoubleConstructorMethod = (*jniEnv)->GetMethodID(jniEnv, cachedDoubleClass, "<init>", "(D)V");
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        cachedByteValueMethod == NULL ||
+        cachedDoubleValueMethod == NULL ||
+        cachedFloatValueMethod == NULL ||
+        cachedIntValueMethod == NULL ||
+        cachedLongValueMethod == NULL ||
+        cachedShortValueMethod == NULL ||
+        cachedDoubleConstructorMethod == NULL) {
+
+        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+            (*jniEnv)->ExceptionDescribe(jniEnv);
+            (*jniEnv)->ExceptionClear(jniEnv);
+        }
+
+        g_warning("%s: Failed to cache Number wrapper method IDs", G_STRFUNC);
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkValueClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkValueClass);
+        cachedAtkValueClass = NULL;
+    }
+    if (cachedByteClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedByteClass);
+        cachedByteClass = NULL;
+    }
+    if (cachedDoubleClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedDoubleClass);
+        cachedDoubleClass = NULL;
+    }
+    if (cachedFloatClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedFloatClass);
+        cachedFloatClass = NULL;
+    }
+    if (cachedIntegerClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedIntegerClass);
+        cachedIntegerClass = NULL;
+    }
+    if (cachedLongClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedLongClass);
+        cachedLongClass = NULL;
+    }
+    if (cachedShortClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedShortClass);
+        cachedShortClass = NULL;
+    }
+
+    cachedCreateAtkValueMethod = NULL;
+    cachedGetCurrentValueMethod = NULL;
+    cachedSetValueMethod = NULL;
+    cachedGetMinimumValueMethod = NULL;
+    cachedGetMaximumValueMethod = NULL;
+    cachedGetIncrementMethod = NULL;
+    cachedByteValueMethod = NULL;
+    cachedDoubleValueMethod = NULL;
+    cachedFloatValueMethod = NULL;
+    cachedIntValueMethod = NULL;
+    cachedLongValueMethod = NULL;
+    cachedShortValueMethod = NULL;
+    cachedDoubleConstructorMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }
 
 #ifdef __cplusplus
