@@ -40,7 +40,7 @@ public class IoOverNio {
      */
     public static final Debug DEBUG;
     public static final boolean IS_ENABLED_IN_GENERAL =
-            System.getProperty("jbr.java.io.use.nio", "false").equalsIgnoreCase("true");
+            System.getProperty("jbr.java.io.use.nio", "true").equalsIgnoreCase("true");
     private static final ThreadLocal<Integer> ALLOW_IN_THIS_THREAD = new ThreadLocal<>();
 
     static {
