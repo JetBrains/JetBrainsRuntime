@@ -134,12 +134,13 @@ public class AtkKeyEvent {
             tempKeyval = keyInfo.gdkKeyCode();
             tempString = keyInfo.gdkKeyString();
         } else {
-            if (e.getKeyChar() == KeyEvent.CHAR_UNDEFINED) {
+            char keyChar = e.getKeyChar();
+            if (keyChar == KeyEvent.CHAR_UNDEFINED) {
                 tempKeyval = 0;
                 tempString = KeyEvent.getKeyText(e.getKeyCode());
                 if (tempString == null) tempString = "";
             } else {
-                tempKeyval = e.getKeyChar();
+                tempKeyval = keyChar;
                 tempString = String.valueOf(tempKeyval);
             }
         }
