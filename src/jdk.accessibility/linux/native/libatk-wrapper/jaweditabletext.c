@@ -416,8 +416,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkEditableTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkEditableTextClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkEditableTextClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkEditableText class", G_STRFUNC);
         goto cleanup_and_fail;
     }

@@ -372,8 +372,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkImageClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkImageClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkImageClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkImage class", G_STRFUNC);
         goto cleanup_and_fail;
     }

@@ -238,7 +238,6 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
 
     JAW_GET_ACTION(action, FALSE); // create global JNI reference `jobject atk_action`
 
-    // Use cached method ID instead of repeated lookups
     jboolean jresult =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_action, cachedDoActionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -508,8 +507,7 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkActionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkActionClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkActionClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkAction class", G_STRFUNC);
         goto cleanup_and_fail;
     }

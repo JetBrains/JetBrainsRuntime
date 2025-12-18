@@ -491,8 +491,7 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkValueClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkValue);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClassAtkValue);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkValueClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkValueClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkValue class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -539,6 +538,10 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     }
     cachedByteClass = (*jniEnv)->NewGlobalRef(jniEnv, localByte);
     (*jniEnv)->DeleteLocalRef(jniEnv, localByte);
+    if (cachedByteClass == NULL) {
+        g_warning("%s: Failed to create global reference for Byte class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
     jclass localDouble = (*jniEnv)->FindClass(jniEnv, "java/lang/Double");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localDouble == NULL) {
@@ -548,6 +551,10 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     }
     cachedDoubleClass = (*jniEnv)->NewGlobalRef(jniEnv, localDouble);
     (*jniEnv)->DeleteLocalRef(jniEnv, localDouble);
+    if (cachedDoubleClass == NULL) {
+        g_warning("%s: Failed to create global reference for Double class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
     jclass localFloat = (*jniEnv)->FindClass(jniEnv, "java/lang/Float");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localFloat == NULL) {
@@ -557,6 +564,10 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     }
     cachedFloatClass = (*jniEnv)->NewGlobalRef(jniEnv, localFloat);
     (*jniEnv)->DeleteLocalRef(jniEnv, localFloat);
+    if (cachedFloatClass == NULL) {
+        g_warning("%s: Failed to create global reference for Float class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
     jclass localInteger = (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localInteger == NULL) {
@@ -566,6 +577,10 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     }
     cachedIntegerClass = (*jniEnv)->NewGlobalRef(jniEnv, localInteger);
     (*jniEnv)->DeleteLocalRef(jniEnv, localInteger);
+    if (cachedIntegerClass == NULL) {
+        g_warning("%s: Failed to create global reference for Integer class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
     jclass localLong = (*jniEnv)->FindClass(jniEnv, "java/lang/Long");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localLong == NULL) {
@@ -575,6 +590,10 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     }
     cachedLongClass = (*jniEnv)->NewGlobalRef(jniEnv, localLong);
     (*jniEnv)->DeleteLocalRef(jniEnv, localLong);
+    if (cachedLongClass == NULL) {
+        g_warning("%s: Failed to create global reference for Long class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
     jclass localShort = (*jniEnv)->FindClass(jniEnv, "java/lang/Short");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localShort == NULL) {
@@ -584,6 +603,10 @@ static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
     }
     cachedShortClass = (*jniEnv)->NewGlobalRef(jniEnv, localShort);
     (*jniEnv)->DeleteLocalRef(jniEnv, localShort);
+    if (cachedShortClass == NULL) {
+        g_warning("%s: Failed to create global reference for Short class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
 
     cachedByteValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedByteClass, "byteValue", "()B");
     cachedDoubleValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedDoubleClass, "doubleValue", "()D");

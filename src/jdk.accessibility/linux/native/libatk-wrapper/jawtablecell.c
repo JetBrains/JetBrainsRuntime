@@ -660,8 +660,7 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkTableCellClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkTableCellClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkTableCellClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkTableCell class", G_STRFUNC);
         goto cleanup_and_fail;
     }

@@ -1210,8 +1210,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkText);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClassAtkText);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkTextClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkTextClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkText class", G_STRFUNC);
         goto cleanup_and_fail;
     }
@@ -1302,7 +1301,6 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    // Now cache the StringSequence class and its field IDs
     jclass localClassStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassStringSeq == NULL) {

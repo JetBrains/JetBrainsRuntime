@@ -447,8 +447,7 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkSelectionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkSelectionClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkSelectionClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkSelection class", G_STRFUNC);
         goto cleanup_and_fail;
     }

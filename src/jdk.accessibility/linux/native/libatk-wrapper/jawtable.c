@@ -1412,8 +1412,7 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkTableClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkTableClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkTableClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkTable class", G_STRFUNC);
         goto cleanup_and_fail;
     }

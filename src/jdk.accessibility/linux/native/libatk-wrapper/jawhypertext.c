@@ -298,8 +298,7 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkHypertextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkHypertextClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkHypertextClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkHypertext class", G_STRFUNC);
         goto cleanup_and_fail;
     }

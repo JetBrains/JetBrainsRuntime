@@ -1222,8 +1222,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkObjectClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkObjectClass == NULL) {
-        jaw_jni_clear_exception(jniEnv);
+    if (cachedAtkObjectClass == NULL) {
         g_warning("%s: Failed to create global reference for AtkObject class", G_STRFUNC);
         goto cleanup_and_fail;
     }
