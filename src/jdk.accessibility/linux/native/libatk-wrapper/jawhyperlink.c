@@ -530,8 +530,7 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkHyperlink class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkHyperlinkClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -540,8 +539,7 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkHyperlinkClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkHyperlink class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedGetUriMethod = (*jniEnv)->GetMethodID(
@@ -575,21 +573,27 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkHyperlink method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkHyperlinkClass);
-        cachedAtkHyperlinkClass = NULL;
-        cachedGetUriMethod = NULL;
-        cachedGetObjectMethod = NULL;
-        cachedGetEndIndexMethod = NULL;
-        cachedGetStartIndexMethod = NULL;
-        cachedIsValidMethod = NULL;
-        cachedGetNAnchorsMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
+    g_mutex_unlock(&cache_init_mutex);
+    return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkHyperlinkClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkHyperlinkClass);
+        cachedAtkHyperlinkClass = NULL;
+    }
+    cachedGetUriMethod = NULL;
+    cachedGetObjectMethod = NULL;
+    cachedGetEndIndexMethod = NULL;
+    cachedGetStartIndexMethod = NULL;
+    cachedIsValidMethod = NULL;
+    cachedGetNAnchorsMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
 }

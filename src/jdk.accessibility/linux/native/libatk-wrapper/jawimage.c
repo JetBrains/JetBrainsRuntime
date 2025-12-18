@@ -366,8 +366,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkImage class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkImageClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -376,8 +375,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkImageClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkImage class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkImageMethod = (*jniEnv)->GetStaticMethodID(
@@ -397,10 +395,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localPointClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find Point class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
-        cachedAtkImageClass = NULL;
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedPointClass = (*jniEnv)->NewGlobalRef(jniEnv, localPointClass);
@@ -409,10 +404,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedPointClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for Point class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
-        cachedAtkImageClass = NULL;
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedPointXFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedPointClass, "x", "I");
@@ -422,12 +414,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localDimensionClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find Dimension class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedPointClass);
-        cachedAtkImageClass = NULL;
-        cachedPointClass = NULL;
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedDimensionClass = (*jniEnv)->NewGlobalRef(jniEnv, localDimensionClass);
@@ -436,12 +423,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedDimensionClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for Dimension class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedPointClass);
-        cachedAtkImageClass = NULL;
-        cachedPointClass = NULL;
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedDimensionWidthFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedDimensionClass, "width", "I");
@@ -461,27 +443,35 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkImage method IDs or field IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedPointClass);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedDimensionClass);
-        cachedAtkImageClass = NULL;
-        cachedCreateAtkImageMethod = NULL;
-        cachedGetImagePositionMethod = NULL;
-        cachedGetImageDescriptionMethod = NULL;
-        cachedGetImageSizeMethod = NULL;
-        cachedPointClass = NULL;
-        cachedPointXFieldID = NULL;
-        cachedPointYFieldID = NULL;
-        cachedDimensionClass = NULL;
-        cachedDimensionWidthFieldID = NULL;
-        cachedDimensionHeightFieldID = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkImageClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
+        cachedAtkImageClass = NULL;
+    }
+    if (cachedPointClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedPointClass);
+        cachedPointClass = NULL;
+    }
+    if (cachedDimensionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedDimensionClass);
+        cachedDimensionClass = NULL;
+    }
+    cachedCreateAtkImageMethod = NULL;
+    cachedGetImagePositionMethod = NULL;
+    cachedGetImageDescriptionMethod = NULL;
+    cachedGetImageSizeMethod = NULL;
+    cachedPointXFieldID = NULL;
+    cachedPointYFieldID = NULL;
+    cachedDimensionWidthFieldID = NULL;
+    cachedDimensionHeightFieldID = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }

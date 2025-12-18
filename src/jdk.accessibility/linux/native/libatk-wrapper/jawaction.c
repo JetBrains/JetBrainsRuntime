@@ -502,8 +502,7 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkAction class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkActionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -512,8 +511,7 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkActionClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkAction class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkActionMethod = (*jniEnv)->GetStaticMethodID(
@@ -546,21 +544,25 @@ static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkAction method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkActionClass);
-        cachedAtkActionClass = NULL;
-        cachedCreateAtkActionMethod = NULL;
-        cachedDoActionMethod = NULL;
-        cachedGetNActionsMethod = NULL;
-        cachedGetDescriptionMethod = NULL;
-        cachedSetDescriptionMethod = NULL;
-        cachedGetLocalizedNameMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkActionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkActionClass);
+        cachedAtkActionClass = NULL;
+    }
+    cachedCreateAtkActionMethod = NULL;
+    cachedDoActionMethod = NULL;
+    cachedGetNActionsMethod = NULL;
+    cachedGetDescriptionMethod = NULL;
+    cachedSetDescriptionMethod = NULL;
+    cachedGetLocalizedNameMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }

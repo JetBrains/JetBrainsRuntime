@@ -292,8 +292,7 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkHypertextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -302,8 +301,7 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkHypertextClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkHypertext class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkHypertextMethod = (*jniEnv)->GetStaticMethodID(
@@ -330,19 +328,23 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkHypertext method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkHypertextClass);
-        cachedAtkHypertextClass = NULL;
-        cachedCreateAtkHypertextMethod = NULL;
-        cachedGetLinkMethod = NULL;
-        cachedGetNLinksMethod = NULL;
-        cachedGetLinkIndexMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkHypertextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkHypertextClass);
+        cachedAtkHypertextClass = NULL;
+    }
+    cachedCreateAtkHypertextMethod = NULL;
+    cachedGetLinkMethod = NULL;
+    cachedGetNLinksMethod = NULL;
+    cachedGetLinkIndexMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }

@@ -410,8 +410,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkEditableTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -420,8 +419,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkEditableTextClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkEditableText class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkEditableTextMethod = (*jniEnv)->GetStaticMethodID(
@@ -464,23 +462,27 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkEditableText method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkEditableTextClass);
-        cachedAtkEditableTextClass = NULL;
-        cachedCreateAtkEditableTextMethod = NULL;
-        cachedSetTextContentsMethod = NULL;
-        cachedInsertTextMethod = NULL;
-        cachedCopyTextMethod = NULL;
-        cachedCutTextMethod = NULL;
-        cachedDeleteTextMethod = NULL;
-        cachedPasteTextMethod = NULL;
-        cachedSetRunAttributesMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkEditableTextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkEditableTextClass);
+        cachedAtkEditableTextClass = NULL;
+    }
+    cachedCreateAtkEditableTextMethod = NULL;
+    cachedSetTextContentsMethod = NULL;
+    cachedInsertTextMethod = NULL;
+    cachedCopyTextMethod = NULL;
+    cachedCutTextMethod = NULL;
+    cachedDeleteTextMethod = NULL;
+    cachedPasteTextMethod = NULL;
+    cachedSetRunAttributesMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }

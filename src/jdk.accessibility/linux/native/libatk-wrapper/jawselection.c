@@ -441,8 +441,7 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkSelectionClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -451,8 +450,7 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkSelectionClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkSelection class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkSelectionMethod = (*jniEnv)->GetStaticMethodID(
@@ -495,23 +493,27 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkSelection method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkSelectionClass);
-        cachedAtkSelectionClass = NULL;
-        cachedCreateAtkSelectionMethod = NULL;
-        cachedAddSelectionMethod = NULL;
-        cachedClearSelectionMethod = NULL;
-        cachedRefSelectionMethod = NULL;
-        cachedGetSelectionCountMethod = NULL;
-        cachedIsChildSelectedMethod = NULL;
-        cachedRemoveSelectionMethod = NULL;
-        cachedSelectAllSelectionMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkSelectionClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkSelectionClass);
+        cachedAtkSelectionClass = NULL;
+    }
+    cachedCreateAtkSelectionMethod = NULL;
+    cachedAddSelectionMethod = NULL;
+    cachedClearSelectionMethod = NULL;
+    cachedRefSelectionMethod = NULL;
+    cachedGetSelectionCountMethod = NULL;
+    cachedIsChildSelectedMethod = NULL;
+    cachedRemoveSelectionMethod = NULL;
+    cachedSelectAllSelectionMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }

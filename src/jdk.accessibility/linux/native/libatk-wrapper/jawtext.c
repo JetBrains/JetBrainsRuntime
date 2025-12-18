@@ -1204,8 +1204,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassAtkText == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkText class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkTextClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassAtkText);
@@ -1214,8 +1213,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkTextClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkText class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkTextMethod = (*jniEnv)->GetStaticMethodID(
@@ -1301,30 +1299,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkText method IDs", G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTextClass);
-        cachedAtkTextClass = NULL;
-        cachedCreateAtkTextMethod = NULL;
-        cachedGetTextMethod = NULL;
-        cachedGetCharacterAtOffsetMethod = NULL;
-        cachedGetTextAfterOffsetMethod = NULL;
-        cachedGetTextAtOffsetMethod = NULL;
-        cachedGetTextBeforeOffsetMethod = NULL;
-        cachedGetStringAtOffsetMethod = NULL;
-        cachedGetCaretOffsetMethod = NULL;
-        cachedGetCharacterExtentsMethod = NULL;
-        cachedGetCharacterCountMethod = NULL;
-        cachedGetOffsetAtPointMethod = NULL;
-        cachedGetRangeExtentsMethod = NULL;
-        cachedGetNSelectionsMethod = NULL;
-        cachedGetSelectionMethod = NULL;
-        cachedAddSelectionMethod = NULL;
-        cachedRemoveSelectionMethod = NULL;
-        cachedSetSelectionMethod = NULL;
-        cachedSetCaretOffsetMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     // Now cache the StringSequence class and its field IDs
@@ -1333,30 +1308,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassStringSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkText$StringSequence class", G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTextClass);
-        cachedAtkTextClass = NULL;
-        cachedCreateAtkTextMethod = NULL;
-        cachedGetTextMethod = NULL;
-        cachedGetCharacterAtOffsetMethod = NULL;
-        cachedGetTextAfterOffsetMethod = NULL;
-        cachedGetTextAtOffsetMethod = NULL;
-        cachedGetTextBeforeOffsetMethod = NULL;
-        cachedGetStringAtOffsetMethod = NULL;
-        cachedGetCaretOffsetMethod = NULL;
-        cachedGetCharacterExtentsMethod = NULL;
-        cachedGetCharacterCountMethod = NULL;
-        cachedGetOffsetAtPointMethod = NULL;
-        cachedGetRangeExtentsMethod = NULL;
-        cachedGetNSelectionsMethod = NULL;
-        cachedGetSelectionMethod = NULL;
-        cachedAddSelectionMethod = NULL;
-        cachedRemoveSelectionMethod = NULL;
-        cachedSetSelectionMethod = NULL;
-        cachedSetCaretOffsetMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedStringSequenceClass = (*jniEnv)->NewGlobalRef(jniEnv, localClassStringSeq);
@@ -1365,30 +1317,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedStringSequenceClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkText$StringSequence class", G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTextClass);
-        cachedAtkTextClass = NULL;
-        cachedCreateAtkTextMethod = NULL;
-        cachedGetTextMethod = NULL;
-        cachedGetCharacterAtOffsetMethod = NULL;
-        cachedGetTextAfterOffsetMethod = NULL;
-        cachedGetTextAtOffsetMethod = NULL;
-        cachedGetTextBeforeOffsetMethod = NULL;
-        cachedGetStringAtOffsetMethod = NULL;
-        cachedGetCaretOffsetMethod = NULL;
-        cachedGetCharacterExtentsMethod = NULL;
-        cachedGetCharacterCountMethod = NULL;
-        cachedGetOffsetAtPointMethod = NULL;
-        cachedGetRangeExtentsMethod = NULL;
-        cachedGetNSelectionsMethod = NULL;
-        cachedGetSelectionMethod = NULL;
-        cachedAddSelectionMethod = NULL;
-        cachedRemoveSelectionMethod = NULL;
-        cachedSetSelectionMethod = NULL;
-        cachedSetCaretOffsetMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedStrFieldID = (*jniEnv)->GetFieldID(
@@ -1408,38 +1337,43 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache StringSequence field IDs", G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTextClass);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedStringSequenceClass);
-        cachedAtkTextClass = NULL;
-        cachedStringSequenceClass = NULL;
-        cachedCreateAtkTextMethod = NULL;
-        cachedGetTextMethod = NULL;
-        cachedGetCharacterAtOffsetMethod = NULL;
-        cachedGetTextAfterOffsetMethod = NULL;
-        cachedGetTextAtOffsetMethod = NULL;
-        cachedGetTextBeforeOffsetMethod = NULL;
-        cachedGetStringAtOffsetMethod = NULL;
-        cachedGetCaretOffsetMethod = NULL;
-        cachedGetCharacterExtentsMethod = NULL;
-        cachedGetCharacterCountMethod = NULL;
-        cachedGetOffsetAtPointMethod = NULL;
-        cachedGetRangeExtentsMethod = NULL;
-        cachedGetNSelectionsMethod = NULL;
-        cachedGetSelectionMethod = NULL;
-        cachedAddSelectionMethod = NULL;
-        cachedRemoveSelectionMethod = NULL;
-        cachedSetSelectionMethod = NULL;
-        cachedSetCaretOffsetMethod = NULL;
-        cachedStrFieldID = NULL;
-        cachedStartOffsetFieldID = NULL;
-        cachedEndOffsetFieldID = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkTextClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTextClass);
+        cachedAtkTextClass = NULL;
+    }
+    if (cachedStringSequenceClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedStringSequenceClass);
+        cachedStringSequenceClass = NULL;
+    }
+    cachedCreateAtkTextMethod = NULL;
+    cachedGetTextMethod = NULL;
+    cachedGetCharacterAtOffsetMethod = NULL;
+    cachedGetTextAfterOffsetMethod = NULL;
+    cachedGetTextAtOffsetMethod = NULL;
+    cachedGetTextBeforeOffsetMethod = NULL;
+    cachedGetStringAtOffsetMethod = NULL;
+    cachedGetCaretOffsetMethod = NULL;
+    cachedGetCharacterExtentsMethod = NULL;
+    cachedGetCharacterCountMethod = NULL;
+    cachedGetOffsetAtPointMethod = NULL;
+    cachedGetRangeExtentsMethod = NULL;
+    cachedGetNSelectionsMethod = NULL;
+    cachedGetSelectionMethod = NULL;
+    cachedAddSelectionMethod = NULL;
+    cachedRemoveSelectionMethod = NULL;
+    cachedSetSelectionMethod = NULL;
+    cachedSetCaretOffsetMethod = NULL;
+    cachedStrFieldID = NULL;
+    cachedStartOffsetFieldID = NULL;
+    cachedEndOffsetFieldID = NULL;
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }

@@ -1216,8 +1216,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkObject class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkObjectClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -1226,8 +1225,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkObjectClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkObject class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedGetAccessibleParentMethod = (*jniEnv)->GetStaticMethodID(
@@ -1296,29 +1294,33 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkObject method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkObjectClass);
-        cachedAtkObjectClass = NULL;
-        cachedGetAccessibleParentMethod = NULL;
-        cachedSetAccessibleParentMethod = NULL;
-        cachedGetAccessibleNameMethod = NULL;
-        cachedSetAccessibleNameMethod = NULL;
-        cachedGetAccessibleDescriptionMethod = NULL;
-        cachedSetAccessibleDescriptionMethod = NULL;
-        cachedGetAccessibleChildrenCountMethod = NULL;
-        cachedGetAccessibleIndexInParentMethod = NULL;
-        cachedGetArrayAccessibleStateMethod = NULL;
-        cachedGetLocaleMethod = NULL;
-        cachedGetArrayAccessibleRelationMethod = NULL;
-        cachedGetAccessibleChildMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkObjectClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkObjectClass);
+        cachedAtkObjectClass = NULL;
+    }
+    cachedGetAccessibleParentMethod = NULL;
+    cachedSetAccessibleParentMethod = NULL;
+    cachedGetAccessibleNameMethod = NULL;
+    cachedSetAccessibleNameMethod = NULL;
+    cachedGetAccessibleDescriptionMethod = NULL;
+    cachedSetAccessibleDescriptionMethod = NULL;
+    cachedGetAccessibleChildrenCountMethod = NULL;
+    cachedGetAccessibleIndexInParentMethod = NULL;
+    cachedGetArrayAccessibleStateMethod = NULL;
+    cachedGetLocaleMethod = NULL;
+    cachedGetArrayAccessibleRelationMethod = NULL;
+    cachedGetAccessibleChildMethod = NULL;
+
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }
 
 #ifdef __cplusplus

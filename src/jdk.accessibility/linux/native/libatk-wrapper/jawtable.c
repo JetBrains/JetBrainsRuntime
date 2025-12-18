@@ -1406,8 +1406,7 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkTable class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedAtkTableClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
@@ -1416,8 +1415,7 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkTableClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkTable class", G_STRFUNC);
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cachedCreateAtkTableMethod = (*jniEnv)->GetStaticMethodID(
@@ -1534,39 +1532,42 @@ static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
 
         g_warning("%s: Failed to cache one or more AtkTable method IDs",
                   G_STRFUNC);
-
-        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTableClass);
-        cachedAtkTableClass = NULL;
-        cachedCreateAtkTableMethod = NULL;
-        cachedRefAtMethod = NULL;
-        cachedGetIndexAtMethod = NULL;
-        cachedGetColumnAtIndexMethod = NULL;
-        cachedGetRowAtIndexMethod = NULL;
-        cachedGetNColumnsMethod = NULL;
-        cachedGetNRowsMethod = NULL;
-        cachedGetColumnExtentAtMethod = NULL;
-        cachedGetRowExtentAtMethod = NULL;
-        cachedGetCaptionMethod = NULL;
-        cachedGetColumnDescriptionMethod = NULL;
-        cachedGetRowDescriptionMethod = NULL;
-        cachedGetColumnHeaderMethod = NULL;
-        cachedGetRowHeaderMethod = NULL;
-        cachedGetSummaryMethod = NULL;
-        cachedGetSelectedColumnsMethod = NULL;
-        cachedGetSelectedRowsMethod = NULL;
-        cachedIsColumnSelectedMethod = NULL;
-        cachedIsRowSelectedMethod = NULL;
-        cachedIsSelectedMethod = NULL;
-        cachedSetRowDescriptionMethod = NULL;
-        cachedSetColumnDescriptionMethod = NULL;
-        cachedSetCaptionMethod = NULL;
-        cachedSetSummaryMethod = NULL;
-
-        g_mutex_unlock(&cache_init_mutex);
-        return FALSE;
+        goto cleanup_and_fail;
     }
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_init_mutex);
     return TRUE;
+
+cleanup_and_fail:
+    if (cachedAtkTableClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkTableClass);
+        cachedAtkTableClass = NULL;
+    }
+    cachedCreateAtkTableMethod = NULL;
+    cachedRefAtMethod = NULL;
+    cachedGetIndexAtMethod = NULL;
+    cachedGetColumnAtIndexMethod = NULL;
+    cachedGetRowAtIndexMethod = NULL;
+    cachedGetNColumnsMethod = NULL;
+    cachedGetNRowsMethod = NULL;
+    cachedGetColumnExtentAtMethod = NULL;
+    cachedGetRowExtentAtMethod = NULL;
+    cachedGetCaptionMethod = NULL;
+    cachedGetColumnDescriptionMethod = NULL;
+    cachedGetRowDescriptionMethod = NULL;
+    cachedGetColumnHeaderMethod = NULL;
+    cachedGetRowHeaderMethod = NULL;
+    cachedGetSummaryMethod = NULL;
+    cachedGetSelectedColumnsMethod = NULL;
+    cachedGetSelectedRowsMethod = NULL;
+    cachedIsColumnSelectedMethod = NULL;
+    cachedIsRowSelectedMethod = NULL;
+    cachedIsSelectedMethod = NULL;
+    cachedSetRowDescriptionMethod = NULL;
+    cachedSetColumnDescriptionMethod = NULL;
+    cachedSetCaptionMethod = NULL;
+    cachedSetSummaryMethod = NULL;
+    g_mutex_unlock(&cache_init_mutex);
+    return FALSE;
 }
