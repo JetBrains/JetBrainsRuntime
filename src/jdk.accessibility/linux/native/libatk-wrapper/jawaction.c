@@ -90,6 +90,7 @@ typedef struct _ActionData {
     jstring jstrActionDescription;
 } ActionData;
 
+// TODO: do we need these global references in all files?
 #define JAW_GET_ACTION(action, def_ret)                                        \
     JAW_GET_OBJ_IFACE(action,                                                  \
                       org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION,   \
