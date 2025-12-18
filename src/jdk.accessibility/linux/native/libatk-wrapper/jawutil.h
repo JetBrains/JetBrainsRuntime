@@ -146,6 +146,14 @@ void jaw_util_detach(void);
         }                                                                      \
     }
 
+static inline void jaw_jni_clear_exception(JNIEnv *env)
+{
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+    }
+}
+
 G_END_DECLS
 
 #endif

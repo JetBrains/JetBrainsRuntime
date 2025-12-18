@@ -137,10 +137,7 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     jobject jatk_table_cell = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedAtkTableCellClass, cachedCreateAtkTableCellMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_table_cell == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_table_cell using create_atk_table_cell method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -228,10 +225,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
 
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell, cachedGetTableMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_table method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -550,10 +544,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     jobjectArray columnHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, cachedGetAccessibleColumnHeaderMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || columnHeaders == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_column_header method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -617,10 +608,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     jobjectArray rowHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, cachedGetAccessibleRowHeaderMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || rowHeaders == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_row_header method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -664,10 +652,7 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkTableCell");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkTableCell class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -677,10 +662,7 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkTableCellClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkTableCell class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -724,10 +706,7 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
         cachedRowSpanFieldID == NULL ||
         cachedColumnSpanFieldID == NULL) {
 
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkTableCell method/field IDs",
                   G_STRFUNC);

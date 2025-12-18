@@ -109,10 +109,7 @@ gpointer jaw_hypertext_data_init(jobject ac) {
     jobject jatk_hypertext =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkHypertextClass, cachedCreateAtkHypertextMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_hypertext == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_hypertext using create_atk_hypertext method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -195,10 +192,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     jobject jhyperlink = (*jniEnv)->CallObjectMethod(jniEnv, atk_hypertext,
                                                      cachedGetLinkMethod, (jint)link_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jhyperlink == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jhyperlink using get_link method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -239,8 +233,7 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
 
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, cachedGetNLinksMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         return 0;
     }
@@ -275,8 +268,7 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext, cachedGetLinkIndexMethod,
                                               (jint)char_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
         return -1;
     }
@@ -298,10 +290,7 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHypertext");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkHypertext class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -311,10 +300,7 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkHypertextClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkHypertext class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -340,10 +326,7 @@ static gboolean jaw_hypertext_init_jni_cache(JNIEnv *jniEnv) {
         cachedGetNLinksMethod == NULL ||
         cachedGetLinkIndexMethod == NULL) {
 
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkHypertext method IDs",
                   G_STRFUNC);

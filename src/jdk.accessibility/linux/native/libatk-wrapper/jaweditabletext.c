@@ -136,10 +136,7 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     jobject jatk_editable_text =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkEditableTextClass, cachedCreateAtkEditableTextMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_editable_text == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_editable_text using create_atk_editable_text method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -211,10 +208,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
 
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -223,8 +217,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedSetTextContentsMethod, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return;
@@ -257,10 +250,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
 
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -269,8 +259,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedInsertTextMethod, jstr,
                               (jint)*position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return;
@@ -297,8 +286,7 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedCopyTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        return;
     }
@@ -320,8 +308,7 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedCutTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        return;
     }
@@ -343,8 +330,7 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedDeleteTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        return;
     }
@@ -364,8 +350,7 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text, cachedPasteTextMethod, (jint)position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        return;
     }
@@ -401,8 +386,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
         jniEnv, atk_editable_text, cachedSetRunAttributesMethod, (jobject)attrib_set,
         (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
        return FALSE;
     }
@@ -424,10 +408,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkEditableText");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkEditableText class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -437,10 +418,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkEditableTextClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkEditableText class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -482,10 +460,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
         cachedPasteTextMethod == NULL ||
         cachedSetRunAttributesMethod == NULL) {
 
-         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-         }
+         jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkEditableText method IDs",
                   G_STRFUNC);

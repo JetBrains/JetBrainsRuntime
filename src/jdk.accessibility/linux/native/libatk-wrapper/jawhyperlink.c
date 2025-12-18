@@ -89,10 +89,7 @@ JawHyperlink *jaw_hyperlink_new(jobject jhyperlink) {
 
     jaw_hyperlink->jhyperlink = (*jniEnv)->NewGlobalRef(jniEnv, jhyperlink);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_hyperlink->jhyperlink == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference", G_STRFUNC);
         g_object_unref(jaw_hyperlink);
         return NULL;
@@ -238,10 +235,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, cachedGetUriMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -306,10 +300,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
 
     jobject ac = (*jniEnv)->CallObjectMethod(jniEnv, jhyperlink, cachedGetObjectMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || ac == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -366,8 +357,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
 
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedGetEndIndexMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return 0;
@@ -416,8 +406,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
 
     jint jindex = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedGetStartIndexMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return 0;
@@ -467,8 +456,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
     jboolean jvalid = (*jniEnv)->CallBooleanMethod(jniEnv, jhyperlink, cachedIsValidMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return FALSE;
@@ -516,8 +504,7 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
 
     jint janchors = (*jniEnv)->CallIntMethod(jniEnv, jhyperlink, cachedGetNAnchorsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return 0;
@@ -541,10 +528,7 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkHyperlink");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkHyperlink class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -554,10 +538,7 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkHyperlinkClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkHyperlink class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -590,10 +571,7 @@ static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
         cachedIsValidMethod == NULL ||
         cachedGetNAnchorsMethod == NULL) {
 
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkHyperlink method IDs",
                   G_STRFUNC);

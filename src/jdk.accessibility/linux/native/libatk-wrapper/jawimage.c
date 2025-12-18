@@ -130,10 +130,7 @@ gpointer jaw_image_data_init(jobject ac) {
     jobject jatk_image =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkImageClass, cachedCreateAtkImageMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_image == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_image using create_atk_image method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -231,10 +228,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     jobject jpoint =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_image, cachedGetImagePositionMethod, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jpoint == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jpoint using get_image_position method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -277,10 +271,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 
     jstring jstr = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, cachedGetImageDescriptionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using get_image_description method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -346,10 +337,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
 
     jobject jdimension = (*jniEnv)->CallObjectMethod(jniEnv, atk_image, cachedGetImageSizeMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdimension == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jdimension using get_image_size method", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -376,10 +364,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkImage");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkImage class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -389,10 +374,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkImageClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkImage class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -413,10 +395,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localPointClass = (*jniEnv)->FindClass(jniEnv, "java/awt/Point");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localPointClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find Point class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
         cachedAtkImageClass = NULL;
@@ -428,10 +407,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localPointClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedPointClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for Point class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
         cachedAtkImageClass = NULL;
@@ -444,10 +420,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localDimensionClass = (*jniEnv)->FindClass(jniEnv, "java/awt/Dimension");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localDimensionClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find Dimension class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedPointClass);
@@ -461,10 +434,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localDimensionClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedDimensionClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for Dimension class", G_STRFUNC);
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedAtkImageClass);
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedPointClass);
@@ -487,10 +457,7 @@ static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
         cachedDimensionWidthFieldID == NULL ||
         cachedDimensionHeightFieldID == NULL) {
 
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkImage method IDs or field IDs",
                   G_STRFUNC);

@@ -163,10 +163,7 @@ gpointer jaw_component_data_init(jobject ac) {
     jobject jatk_component =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkComponentClass, cachedCreateAtkComponentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_component == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-           (*jniEnv)->ExceptionDescribe(jniEnv);
-           (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_component using create_atk_component method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -245,8 +242,7 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
     jboolean jcontains = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedContainsMethod, (jint)x, (jint)y, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
        return FALSE;
     }
@@ -295,8 +291,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, cachedGetAccessibleAtPointMethod, (jint)x, (jint)y, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return NULL;
@@ -372,8 +367,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     jobject jrectangle = (*jniEnv)->CallObjectMethod(jniEnv, atk_component,
                                                      cachedGetExtentsMethod, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
        return;
@@ -401,8 +395,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     }
 
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -441,8 +434,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
         jniEnv, atk_component, cachedSetExtentsMethod, (jint)x, (jint)y, (jint)width,
         (jint)height, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
        return FALSE;
     }
@@ -473,8 +465,7 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
     jboolean jresult =
         (*jniEnv)->CallBooleanMethod(jniEnv, atk_component, cachedGrabFocusMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
        return FALSE;
     }
@@ -505,8 +496,7 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
 
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component, cachedGetLayerMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-       (*jniEnv)->ExceptionDescribe(jniEnv);
-       (*jniEnv)->ExceptionClear(jniEnv);
+       jaw_jni_clear_exception(jniEnv);
        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
        return 0;
     }
@@ -527,11 +517,8 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkComponent");
-    if (localClass == NULL || (*jniEnv)->ExceptionCheck(jniEnv)) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkComponent class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -540,11 +527,8 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
     cachedAtkComponentClass = (*jniEnv)->NewGlobalRef(jniEnv, localClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
-    if (cachedAtkComponentClass == NULL || (*jniEnv)->ExceptionCheck(jniEnv)) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkComponentClass == NULL) {
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkComponent class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -581,10 +565,7 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
         cachedSetExtentsMethod == NULL ||
         cachedGrabFocusMethod == NULL ||
         cachedGetLayerMethod == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkComponent method IDs",
                   G_STRFUNC);
@@ -604,11 +585,8 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     jclass localRectangleClass = (*jniEnv)->FindClass(jniEnv, "java/awt/Rectangle");
-    if (localRectangleClass == NULL || (*jniEnv)->ExceptionCheck(jniEnv)) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localRectangleClass == NULL) {
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to find Rectangle class", G_STRFUNC);
 
@@ -630,10 +608,7 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localRectangleClass);
 
     if (cachedRectangleClass == NULL || (*jniEnv)->ExceptionCheck(jniEnv)) {
-         if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-             (*jniEnv)->ExceptionDescribe(jniEnv);
-             (*jniEnv)->ExceptionClear(jniEnv);
-         }
+         jaw_jni_clear_exception(jniEnv);
 
          g_warning("%s: Failed to create global reference for Rectangle class", G_STRFUNC);
 
@@ -661,10 +636,7 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
         cachedRectangleYField == NULL ||
         cachedRectangleWidthField == NULL ||
         cachedRectangleHeightField == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more Rectangle field IDs",
                   G_STRFUNC);

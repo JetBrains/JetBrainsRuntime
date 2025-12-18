@@ -127,10 +127,7 @@ gpointer jaw_selection_data_init(jobject ac) {
     jobject jatk_selection = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedAtkSelectionClass, cachedCreateAtkSelectionMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jatk_selection == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jatk_selection using create_atk_selection method", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -201,8 +198,7 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedAddSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         return FALSE;
     }
@@ -234,8 +230,7 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedClearSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         return FALSE;
     }
@@ -281,10 +276,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 
     jobject child_ac = (*jniEnv)->CallObjectMethod(jniEnv, atk_selection, cachedRefSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -326,8 +318,7 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
 
     jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_selection, cachedGetSelectionCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         return 0;
     }
@@ -361,8 +352,7 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedIsChildSelectedMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         return FALSE;
     }
@@ -396,8 +386,7 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedRemoveSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         return FALSE;
     }
@@ -428,8 +417,7 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(jniEnv, atk_selection, cachedSelectAllSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
         return FALSE;
     }
@@ -451,10 +439,7 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkSelection");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkSelection class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -464,10 +449,7 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkSelectionClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkSelection class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -509,10 +491,7 @@ static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
         cachedRemoveSelectionMethod == NULL ||
         cachedSelectAllSelectionMethod == NULL) {
 
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkSelection method IDs",
                   G_STRFUNC);

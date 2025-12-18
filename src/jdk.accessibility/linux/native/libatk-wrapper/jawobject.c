@@ -341,10 +341,7 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
     jobject jparent =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleParentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jparent == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -413,10 +410,7 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
     }
 
     (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedAtkObjectClass, cachedSetAccessibleParentMethod, ac, pa);
-    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
-    }
+    jaw_jni_clear_exception(jniEnv);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->DeleteGlobalRef(jniEnv, pa);
@@ -478,10 +472,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     jstring jstr =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleNameMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     }
@@ -553,10 +544,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
     }
 
     (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedAtkObjectClass, cachedSetAccessibleNameMethod, ac, jstr);
-    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
-    }
+    jaw_jni_clear_exception(jniEnv);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -600,10 +588,7 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     jstring jstr =
         (*jniEnv)->CallStaticObjectMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleDescriptionMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -673,10 +658,7 @@ static void jaw_object_set_description(AtkObject *atk_obj,
     }
 
     (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedAtkObjectClass, cachedSetAccessibleDescriptionMethod, ac, jstr);
-    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
-    }
+    jaw_jni_clear_exception(jniEnv);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -718,8 +700,7 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
 
     jint count = (*jniEnv)->CallStaticIntMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleChildrenCountMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
@@ -772,8 +753,7 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
 
     jint index = (*jniEnv)->CallStaticIntMethod(jniEnv, cachedAtkObjectClass, cachedGetAccessibleIndexInParentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        (*jniEnv)->ExceptionDescribe(jniEnv);
-        (*jniEnv)->ExceptionClear(jniEnv);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
@@ -913,10 +893,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
     jobject jstate_arr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedAtkObjectClass, cachedGetArrayAccessibleStateMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstate_arr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -988,10 +965,7 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
     jobject jstr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedAtkObjectClass, cachedGetLocaleMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -1061,10 +1035,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
     jobject jwrap_key_target_arr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedAtkObjectClass, cachedGetArrayAccessibleRelationMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jwrap_key_target_arr == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -1206,10 +1177,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     jobject child_ac = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedAtkObjectClass, cachedGetAccessibleChildMethod, ac, i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -1246,10 +1214,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
 
     jclass localClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkObject");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkObject class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -1259,10 +1224,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
     (*jniEnv)->DeleteLocalRef(jniEnv, localClass);
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || cachedAtkObjectClass == NULL) {
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create global reference for AtkObject class", G_STRFUNC);
         g_mutex_unlock(&cache_init_mutex);
         return FALSE;
@@ -1330,10 +1292,7 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
         cachedGetArrayAccessibleRelationMethod == NULL ||
         cachedGetAccessibleChildMethod == NULL) {
 
-        if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-            (*jniEnv)->ExceptionDescribe(jniEnv);
-            (*jniEnv)->ExceptionClear(jniEnv);
-        }
+        jaw_jni_clear_exception(jniEnv);
 
         g_warning("%s: Failed to cache one or more AtkObject method IDs",
                   G_STRFUNC);
