@@ -225,10 +225,10 @@ static void jaw_object_dispose(GObject *gobject) {
 
     if (gobject == NULL) {
         g_warning("%s: Null argument gobject passed to the function", G_STRFUNC);
+        G_OBJECT_CLASS(jaw_object_parent_class)->dispose(gobject);
         return;
     }
 
-    /* Chain up to parent's dispose method */
     G_OBJECT_CLASS(jaw_object_parent_class)->dispose(gobject);
 }
 
@@ -242,11 +242,23 @@ static void jaw_object_finalize(GObject *gobject) {
 
     /* Customized finalize code */
     JawObject *jaw_obj = JAW_OBJECT(gobject);
-    JAW_CHECK_NULL(jaw_obj, );
+    if (jaw_obj == NULL) {
+        g_debug("%s: jaw_obj is NULL", G_STRFUNC);
+        G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
+        return;
+    }
     AtkObject *atk_obj = ATK_OBJECT(gobject);
-    JAW_CHECK_NULL(atk_obj, );
+    if (atk_obj == NULL) {
+        g_debug("%s: atk_obj is NULL", G_STRFUNC);
+        G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
+        return;
+    }
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
+    if (jniEnv == NULL) {
+        g_debug("%s: jniEnv is NULL", G_STRFUNC);
+        G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
+        return;
+    }
 
     if (jaw_obj->jstrName != NULL) {
         if (atk_obj->name != NULL) {

@@ -165,10 +165,18 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     }
 
     JawHyperlink *jaw_hyperlink = JAW_HYPERLINK(gobject);
-    JAW_CHECK_NULL(jaw_hyperlink, );
+    if (jaw_hyperlink == NULL) {
+        g_debug("%s: jaw_hyperlink is NULL", G_STRFUNC);
+        G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
+        return;
+    }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
+    if (jniEnv == NULL) {
+        g_debug("%s: jniEnv is NULL", G_STRFUNC);
+        G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
+        return;
+    }
 
     if (jaw_hyperlink->jstrUri != NULL) {
         if (jaw_hyperlink->uri != NULL) {
