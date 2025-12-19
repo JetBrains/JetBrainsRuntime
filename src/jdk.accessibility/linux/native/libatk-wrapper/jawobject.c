@@ -73,6 +73,11 @@ static jmethodID cachedObjectGetArrayAccessibleStateMethod = NULL;
 static jmethodID cachedObjectGetLocaleMethod = NULL;
 static jmethodID cachedObjectGetArrayAccessibleRelationMethod = NULL;
 static jmethodID cachedObjectGetAccessibleChildMethod = NULL;
+static jclass cachedObjectAccessibleStateClass = NULL;
+static jfieldID cachedObjectCollapsedFieldID = NULL;
+static jclass cachedObjectWrapKeyAndTargetClass = NULL;
+static jfieldID cachedObjectRelationsFieldID = NULL;
+static jfieldID cachedObjectKeyFieldID = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
@@ -822,26 +827,20 @@ static void jaw_object_set_role(AtkObject *atk_obj, AtkRole role) {
 
 #if !ATK_CHECK_VERSION(2, 38, 0)
 static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
+
+    if (!jaw_object_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return FALSE;
     }
-    jclass classAccessibleState =
-        (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleState");
-    if (!classAccessibleState) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jfieldID jfid =
-        (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleState, "COLLAPSED",
-                                    "Ljavax/accessibility/AccessibleState;");
-    if (!jfid) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-    jobject jstate =
-        (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleState, jfid);
+
+    jobject jstate = (*jniEnv)->GetStaticObjectField(
+        jniEnv, cachedObjectAccessibleStateClass, cachedObjectCollapsedFieldID);
 
     // jobj and jstate may be null
     if ((*jniEnv)->IsSameObject(jniEnv, jobj, jstate)) {
@@ -1051,25 +1050,6 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    jclass wrapKeyTarget = (*jniEnv)->FindClass(
-        jniEnv, "org/GNOME/Accessibility/AtkObject$WrapKeyAndTarget");
-    if (!wrapKeyTarget) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jfieldID fIdRelations =
-        (*jniEnv)->GetFieldID(jniEnv, wrapKeyTarget, "relations",
-                              "[Ljavax/accessibility/AccessibleContext;");
-    if (!fIdRelations) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jfieldID fIdKey = (*jniEnv)->GetFieldID(jniEnv, wrapKeyTarget, "key",
-                                            "Ljava/lang/String;");
-    if (!fIdKey) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
 
     jsize i;
     for (i = 0; i < jarr_size; i++) {
@@ -1079,7 +1059,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
             continue;
         }
         jstring jrel_key =
-            (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, fIdKey);
+            (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, cachedObjectKeyFieldID);
         if (!jrel_key) {
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             continue;
@@ -1092,7 +1072,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
             continue;
         }
         jobjectArray jtarget_arr =
-            (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, fIdRelations);
+            (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, cachedObjectRelationsFieldID);
         if (!jtarget_arr) {
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
@@ -1284,6 +1264,55 @@ static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
         "(Ljavax/accessibility/AccessibleContext;I)Ljavax/accessibility/"
         "AccessibleContext;");
 
+    jclass localAccessibleState =
+        (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleState");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localAccessibleState == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to find AccessibleState class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedObjectAccessibleStateClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleState);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localAccessibleState);
+
+    if (cachedObjectAccessibleStateClass == NULL) {
+        g_warning(
+            "%s: Failed to create global reference for AccessibleState class",
+            G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedObjectCollapsedFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedObjectAccessibleStateClass, "COLLAPSED",
+        "Ljavax/accessibility/AccessibleState;");
+
+    jclass localWrapKeyAndTarget = (*jniEnv)->FindClass(
+        jniEnv, "org/GNOME/Accessibility/AtkObject$WrapKeyAndTarget");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localWrapKeyAndTarget == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to find WrapKeyAndTarget class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedObjectWrapKeyAndTargetClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localWrapKeyAndTarget);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localWrapKeyAndTarget);
+
+    if (cachedObjectWrapKeyAndTargetClass == NULL) {
+        g_warning("%s: Failed to create global reference for WrapKeyAndTarget "
+                  "class",
+                  G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedObjectRelationsFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedObjectWrapKeyAndTargetClass, "relations",
+        "[Ljavax/accessibility/AccessibleContext;");
+
+    cachedObjectKeyFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedObjectWrapKeyAndTargetClass, "key", "Ljava/lang/String;");
+
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedObjectGetAccessibleParentMethod == NULL ||
         cachedObjectSetAccessibleParentMethod == NULL ||
@@ -1329,6 +1358,17 @@ cleanup_and_fail:
     cachedObjectGetLocaleMethod = NULL;
     cachedObjectGetArrayAccessibleRelationMethod = NULL;
     cachedObjectGetAccessibleChildMethod = NULL;
+    if (cachedObjectAccessibleStateClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedObjectAccessibleStateClass);
+        cachedObjectAccessibleStateClass = NULL;
+    }
+    cachedObjectCollapsedFieldID = NULL;
+    if (cachedObjectWrapKeyAndTargetClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedObjectWrapKeyAndTargetClass);
+        cachedObjectWrapKeyAndTargetClass = NULL;
+    }
+    cachedObjectRelationsFieldID = NULL;
+    cachedObjectKeyFieldID = NULL;
 
     g_mutex_unlock(&cache_mutex);
     return FALSE;
@@ -1357,6 +1397,17 @@ void jaw_object_cache_cleanup(JNIEnv *jniEnv) {
     cachedObjectGetLocaleMethod = NULL;
     cachedObjectGetArrayAccessibleRelationMethod = NULL;
     cachedObjectGetAccessibleChildMethod = NULL;
+    if (cachedObjectAccessibleStateClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedObjectAccessibleStateClass);
+        cachedObjectAccessibleStateClass = NULL;
+    }
+    cachedObjectCollapsedFieldID = NULL;
+    if (cachedObjectWrapKeyAndTargetClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedObjectWrapKeyAndTargetClass);
+        cachedObjectWrapKeyAndTargetClass = NULL;
+    }
+    cachedObjectRelationsFieldID = NULL;
+    cachedObjectKeyFieldID = NULL;
     cache_initialized = FALSE;
 
     g_mutex_unlock(&cache_mutex);
