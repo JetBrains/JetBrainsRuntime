@@ -1076,7 +1076,6 @@ jdk_awt_wayland = \
     -java/awt/MouseAdapter \
     -java/awt/MouseInfo \
     -java/awt/Multiscreen/MouseEventTest/MouseEventTest.java \
-    -java/awt/Multiscreen/MultiScreenInsetsTest/MultiScreenInsetsTest.java \
     -java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java \
     -java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java \
     -java/awt/Paint/bug8024864.java \
