@@ -27,6 +27,7 @@
 extern "C" {
 #endif
 
+void atk_wrapper_cache_cleanup(JNIEnv *jniEnv);
 void jaw_action_cache_cleanup(JNIEnv *jniEnv);
 void jaw_component_cache_cleanup(JNIEnv *jniEnv);
 void jaw_editable_text_cache_cleanup(JNIEnv *jniEnv);
@@ -48,6 +49,7 @@ static inline void jaw_cache_cleanup(JNIEnv *jniEnv) {
         return;
     }
 
+    atk_wrapper_cache_cleanup(jniEnv);
     jaw_action_cache_cleanup(jniEnv);
     jaw_component_cache_cleanup(jniEnv);
     jaw_editable_text_cache_cleanup(jniEnv);
