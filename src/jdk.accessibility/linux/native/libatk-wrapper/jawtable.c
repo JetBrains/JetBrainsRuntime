@@ -300,7 +300,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -311,7 +311,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jac using ref_at method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -325,7 +325,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -355,7 +355,7 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
         return -1;
     }
 
-    JAW_GET_TABLE(table, -1); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, -1); // create local JNI reference `jobject atk_table`
 
     jint jindex =
         (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetIndexAtMethod,
@@ -363,11 +363,11 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_index_at method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jindex;
 }
@@ -392,18 +392,18 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
         return -1;
     }
 
-    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, 0); // create local JNI reference `jobject atk_table`
 
     jint jcolumn = (*jniEnv)->CallIntMethod(
         jniEnv, atk_table, cachedTableGetColumnAtIndexMethod, (jint)index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_at_index method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jcolumn;
 }
@@ -428,18 +428,18 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
         return -1;
     }
 
-    JAW_GET_TABLE(table, -1); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, -1); // create local JNI reference `jobject atk_table`
 
     jint jrow = (*jniEnv)->CallIntMethod(
         jniEnv, atk_table, cachedTableGetRowAtIndexMethod, (jint)index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_at_index method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jrow;
 }
@@ -461,18 +461,18 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, 0); // create local JNI reference `jobject atk_table`
 
     jint jcolumns = (*jniEnv)->CallIntMethod(jniEnv, atk_table,
                                              cachedTableGetNColumnsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_columns method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jcolumns;
 }
@@ -494,18 +494,18 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, 0); // create local JNI reference `jobject atk_table`
 
     jint jrows =
         (*jniEnv)->CallIntMethod(jniEnv, atk_table, cachedTableGetNRowsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_rows method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jrows;
 }
@@ -531,7 +531,7 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, 0); // create local JNI reference `jobject atk_table`
 
     jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table,
                                             cachedTableGetColumnExtentAtMethod,
@@ -539,11 +539,11 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_extent_at method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jextent;
 }
@@ -568,7 +568,7 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
         return 0;
     }
 
-    JAW_GET_TABLE(table, 0); // create global JNI reference `jobject atk_table`
+    JAW_GET_TABLE(table, 0); // create local JNI reference `jobject atk_table`
 
     jint jextent = (*jniEnv)->CallIntMethod(jniEnv, atk_table,
                                             cachedTableGetRowExtentAtMethod,
@@ -576,11 +576,11 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_extent_at method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jextent;
 }
@@ -603,10 +603,10 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     }
 
     JAW_GET_TABLE(table,
-                  NULL); // create global JNI reference `jobject atk_table`
+                  NULL); // create local JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -617,7 +617,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_caption method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -628,7 +628,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the obj before returning it.
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -653,12 +653,10 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     }
 
     JAW_GET_TABLE(table,
-                  NULL); // create global JNI reference `jobject atk_table`
+                  NULL); // create local JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -670,7 +668,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_description method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -689,7 +687,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     data->description = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrDescription, NULL);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->description;
@@ -715,12 +713,10 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     }
 
     JAW_GET_TABLE(table,
-                  NULL); // create global JNI reference `jobject atk_table`
+                  NULL); // create local JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -731,7 +727,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_description method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -750,7 +746,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     data->description = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrDescription, NULL);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->description;
@@ -777,12 +773,10 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     }
 
     JAW_GET_TABLE(table,
-                  NULL); // create global JNI reference `jobject atk_table`
+                  NULL); // create local JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -793,7 +787,7 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_header method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -803,7 +797,7 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the obj before returning it.
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -829,12 +823,10 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     }
 
     JAW_GET_TABLE(table,
-                  NULL); // create global JNI reference `jobject atk_table`
+                  NULL); // create local JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -845,7 +837,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_header method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -855,7 +847,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the jaw_impl before returning it.
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -879,12 +871,10 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
     }
 
     JAW_GET_TABLE(table,
-                  NULL); // create global JNI reference `jobject atk_table`
+                  NULL); // create local JNI reference `jobject atk_table`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -895,7 +885,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_summary method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -908,7 +898,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -942,9 +932,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     JAW_GET_TABLE(table, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return 0;
@@ -955,14 +943,14 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jcolumnArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_selected_columns method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, jcolumnArray);
     if (length <= 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -972,7 +960,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to read selected columns array", G_STRFUNC);
 
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -985,7 +973,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
 
     (*jniEnv)->ReleaseIntArrayElements(jniEnv, jcolumnArray, tmp, JNI_ABORT);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)length;
@@ -1019,9 +1007,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     JAW_GET_TABLE(table, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return 0;
@@ -1033,14 +1019,14 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrowArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_selected_rows method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, jrowArray);
     if (length <= 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -1050,7 +1036,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to read selected rows array", G_STRFUNC);
 
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -1062,7 +1048,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
 
     (*jniEnv)->ReleaseIntArrayElements(jniEnv, jrowArray, tmp, JNI_ABORT);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)length;
@@ -1095,11 +1081,11 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_column_selected method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jselected;
 }
@@ -1130,11 +1116,11 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_row_selected method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jselected;
 }
@@ -1167,11 +1153,11 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_selected method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jselected;
 }
@@ -1198,9 +1184,7 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
     JAW_GET_TABLE(table, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -1209,7 +1193,7 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, description);
     if (jstr == NULL) {
         g_warning("%s: Failed to create jstr from description", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -1219,12 +1203,12 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_row_description method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -1249,9 +1233,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
     JAW_GET_TABLE(table, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -1260,7 +1242,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, description);
     if (jstr == NULL) {
         g_warning("%s: Failed to create jstr from description", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -1272,12 +1254,12 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_column_description method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -1299,9 +1281,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     JAW_GET_TABLE(table, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -1310,7 +1290,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     JawObject *jcaption = JAW_OBJECT(caption);
     if (jcaption == NULL) {
         JAW_DEBUG_I("jcaption == NULL");
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -1318,19 +1298,19 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/Accessible");
     if (accessible == NULL) {
         g_warning("%s: Failed to find Accessible class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     if (!(*jniEnv)->IsInstanceOf(jniEnv, jcaption->acc_context, accessible)) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jcaption->acc_context);
     if (obj == NULL) {
         JAW_DEBUG_I("jcaption obj == NULL");
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -1340,12 +1320,12 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_caption method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -1368,9 +1348,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     JAW_GET_TABLE(table, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_table); // deleting ref that was created in JAW_GET_TABLE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -1379,7 +1357,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     JawObject *jsummary = JAW_OBJECT(summary);
     if (jsummary == NULL) {
         JAW_DEBUG_I("jsummary == NULL");
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -1387,19 +1365,19 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/Accessible");
     if (accessible == NULL) {
         g_warning("%s: Failed to find Accessible class", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     if (!(*jniEnv)->IsInstanceOf(jniEnv, jsummary->acc_context, accessible)) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jsummary->acc_context);
     if (obj == NULL) {
         JAW_DEBUG_I("jsummary obj == NULL");
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -1409,12 +1387,12 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_summary method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 

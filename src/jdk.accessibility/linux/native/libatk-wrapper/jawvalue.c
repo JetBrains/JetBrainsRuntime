@@ -263,12 +263,10 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         g_value_unset(value);
     }
 
-    JAW_GET_VALUE(obj, ); // create global JNI reference `jobject atk_value`
+    JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_value); // deleting ref that was created in JAW_GET_VALUE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -280,7 +278,7 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_current_value",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -289,14 +287,14 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         g_warning(
             "%s: Failed to get jnumber by calling get_current_value method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
     private_get_g_value_from_java_number(jniEnv, jnumber, value);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -323,12 +321,10 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
         return;
     }
 
-    JAW_GET_VALUE(obj, ); // create global JNI reference `jobject atk_value`
+    JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_value); // deleting ref that was created in JAW_GET_VALUE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);  
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -340,7 +336,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdoubleValue == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create Double object", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -350,12 +346,12 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling set_value", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -404,9 +400,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
     JAW_GET_VALUE(obj, NULL);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_value); // deleting ref that was created in JAW_GET_VALUE
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -418,7 +412,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_minimum_value",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -429,7 +423,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_maximum_value",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -440,7 +434,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
     gboolean has_max =
         jaw_value_convert_double_to_gdouble(jniEnv, jmax, &max_value);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     // If either min or max is NULL, we cannot construct a valid range
@@ -483,11 +477,11 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_increment",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_value);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
 
     return ret;
 }

@@ -183,13 +183,10 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     }
 
     JAW_GET_HYPERTEXT(
-        hypertext, NULL); // create global JNI reference `jobject atk_hypertext`
+        hypertext, NULL); // create local JNI reference `jobject atk_hypertext`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_hypertext); // deleting ref that was created in
-                            // JAW_GET_HYPERTEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -201,7 +198,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jhyperlink using get_link method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -210,12 +207,12 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     if (jaw_hyperlink == NULL) {
         g_warning("%s: Failed to create JawHyperlink object for link_index %d",
                   G_STRFUNC, link_index);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_HYPERLINK(jaw_hyperlink);
@@ -238,17 +235,17 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     }
 
     JAW_GET_HYPERTEXT(hypertext,
-                      0); // create global JNI reference `jobject atk_hypertext`
+                      0); // create local JNI reference `jobject atk_hypertext`
 
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
                                               cachedHypertextGetNLinksMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
 
     return ret;
 }
@@ -274,18 +271,18 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
     }
 
     JAW_GET_HYPERTEXT(
-        hypertext, -1); // create global JNI reference `jobject atk_hypertext`
+        hypertext, -1); // create local JNI reference `jobject atk_hypertext`
 
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
                                               cachedHypertextGetLinkIndexMethod,
                                               (jint)char_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_hypertext);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
 
     return ret;
 }

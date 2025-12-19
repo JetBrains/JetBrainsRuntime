@@ -216,12 +216,12 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         return;
     }
 
-    JAW_GET_IMAGE(image, ); // create global JNI reference `jobject atk_image`
+    JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_image); // deleting ref that was created in JAW_GET_IMAGE
+            atk_image);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -236,7 +236,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jpoint using get_image_position method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -246,7 +246,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     (*y) =
         (gint)(*jniEnv)->GetIntField(jniEnv, jpoint, cachedImagePointYFieldID);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -267,12 +267,12 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     }
 
     JAW_GET_IMAGE(image,
-                  NULL); // create global JNI reference `jobject atk_image`
+                  NULL); // create local JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_image); // deleting ref that was created in JAW_GET_IMAGE
+            atk_image);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -285,7 +285,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         g_warning(
             "%s: Failed to create jstr using get_image_description method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -304,7 +304,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     data->image_description = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrImageDescription, NULL);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->image_description;
@@ -335,12 +335,12 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         return;
     }
 
-    JAW_GET_IMAGE(image, ); // create global JNI reference `jobject atk_image`
+    JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_image); // deleting ref that was created in JAW_GET_IMAGE
+            atk_image);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -355,12 +355,12 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jdimension using get_image_size method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_image);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
 
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jdimension,
                                             cachedImageDimensionWidthFieldID);

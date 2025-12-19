@@ -90,7 +90,6 @@ typedef struct _ActionData {
     jstring jstrActionDescription;
 } ActionData;
 
-// TODO: do we need these global references in all files?
 #define JAW_GET_ACTION(action, def_ret)                                        \
     JAW_GET_OBJ_IFACE(action,                                                  \
                       org_GNOME_Accessibility_AtkInterface_INTERFACE_ACTION,   \
@@ -242,17 +241,17 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     }
 
     JAW_GET_ACTION(action,
-                   FALSE); // create global JNI reference `jobject atk_action`
+                   FALSE); // create local JNI reference `jobject atk_action`
 
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_action, cachedActionDoActionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
 
     return jresult;
 }
@@ -277,17 +276,17 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
     }
 
     JAW_GET_ACTION(action,
-                   0); // create global JNI reference `jobject atk_action`
+                   0); // create local JNI reference `jobject atk_action`
 
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action,
                                               cachedActionGetNActionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
 
     return ret;
 }
@@ -311,10 +310,10 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     }
 
     JAW_GET_ACTION(action,
-                   NULL); // create global JNI reference `jobject atk_action`
+                   NULL); // create local JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -326,7 +325,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         jaw_jni_clear_exception(jniEnv);
         g_debug("%s: No description available for action (index=%d, action=%p)",
                 G_STRFUNC, i, action);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -343,7 +342,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrActionDescription == NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -359,12 +358,12 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
             data->jstrActionDescription = NULL;
         }
 
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->action_description;
@@ -392,10 +391,10 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     }
 
     JAW_GET_ACTION(action,
-                   FALSE); // create global JNI reference `jobject atk_action`
+                   FALSE); // create local JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return FALSE;
@@ -406,7 +405,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create Java string for description",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
@@ -416,12 +415,12 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         (jstring)jdescription);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jisset;
@@ -444,10 +443,10 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     }
 
     JAW_GET_ACTION(action,
-                   NULL); // create global JNI reference `jobject atk_action`
+                   NULL); // create local JNI reference `jobject atk_action`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -460,7 +459,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         g_debug(
             "%s: No localized name available for action (index=%d, action=%p)",
             G_STRFUNC, i, action);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -476,7 +475,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     }
     data->jstrLocalizedName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrLocalizedName == NULL) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -490,12 +489,12 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
             data->jstrLocalizedName = NULL;
         }
 
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_action);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->localized_name;

@@ -119,7 +119,7 @@ void jaw_util_detach(void);
         JAW_DEBUG_I(#env " == NULL");                                          \
         return def_ret;                                                        \
     }                                                                          \
-    jobject name = (*env)->NewGlobalRef(env, data->field);                     \
+    jobject name = (*env)->NewLocalRef(env, data->field);                     \
     if (!name) {                                                               \
         JAW_DEBUG_I(#name " == NULL");                                         \
         return def_ret;                                                        \
@@ -133,7 +133,7 @@ void jaw_util_detach(void);
         return def_ret;                                                        \
     }                                                                          \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
-    jobject name = (*env)->NewGlobalRef(env, object_name->field);              \
+    jobject name = (*env)->NewLocalRef(env, object_name->field);              \
     if (!name) {                                                               \
         JAW_DEBUG_I(#name " == NULL");                                         \
         return def_ret;                                                        \

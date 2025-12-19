@@ -218,13 +218,10 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     }
 
     JAW_GET_TABLECELL(
-        cell, NULL); // create global JNI reference `jobject jatk_table_cell`
+        cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jatk_table_cell); // deleting ref that was created in
-                              // JAW_GET_TABLECELL
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -235,7 +232,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_table method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -248,7 +245,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -320,11 +317,11 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
     JAW_GET_TABLECELL(cell, FALSE);
 
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
 
     return TRUE;
 }
@@ -430,23 +427,23 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
 
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
         g_warning("%s: getPosition failed", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
 
     if (!getRowSpan(jniEnv, jatk_table_cell, row_span)) {
         g_warning("%s: getRowSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
 
     if (!getColumnSpan(jniEnv, jatk_table_cell, column_span)) {
         g_warning("%s: getColumnSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
 
     return TRUE;
 }
@@ -476,11 +473,11 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
     gint row_span = 0;
     if (!getRowSpan(jniEnv, jatk_table_cell, &row_span)) {
         g_warning("%s: getRowSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
     return row_span;
 }
 
@@ -509,11 +506,11 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
     gint column_span = 0;
     if (!getColumnSpan(jniEnv, jatk_table_cell, &column_span)) {
         g_warning("%s: getColumnSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
 
     return column_span;
 }
@@ -536,13 +533,10 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     }
 
     JAW_GET_TABLECELL(
-        cell, NULL); // create global JNI reference `jobject jatk_table_cell`
+        cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jatk_table_cell); // deleting ref that was created in
-                              // JAW_GET_TABLECELL
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -555,7 +549,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_column_header method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -564,7 +558,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -580,7 +574,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jac);
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
@@ -604,13 +598,10 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     }
 
     JAW_GET_TABLECELL(
-        cell, NULL); // create global JNI reference `jobject jatk_table_cell`
+        cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jatk_table_cell); // deleting ref that was created in
-                              // JAW_GET_TABLECELL
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -622,7 +613,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_row_header method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -631,7 +622,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -646,7 +637,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jac);
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jatk_table_cell);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;

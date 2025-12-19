@@ -201,17 +201,17 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
 
     JAW_GET_SELECTION(
         selection,
-        FALSE); // create global JNI reference `jobject atk_selection`
+        FALSE); // create local JNI reference `jobject atk_selection`
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionAddSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -236,17 +236,17 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(
         selection,
-        FALSE); // create global JNI reference `jobject atk_selection`
+        FALSE); // create local JNI reference `jobject atk_selection`
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionClearSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -274,13 +274,12 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     }
 
     JAW_GET_SELECTION(
-        selection, NULL); // create global JNI reference `jobject atk_selection`
+        selection, NULL); // create local JNI reference `jobject atk_selection`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_selection); // deleting ref that was created in
-                            // JAW_GET_SELECTION
+            atk_selection);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -290,7 +289,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         jniEnv, atk_selection, cachedSelectionRefSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -304,7 +303,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         g_object_ref(G_OBJECT(obj));
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return obj;
@@ -328,17 +327,17 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     }
 
     JAW_GET_SELECTION(selection,
-                      0); // create global JNI reference `jobject atk_selection`
+                      0); // create local JNI reference `jobject atk_selection`
 
     jint jcount = (*jniEnv)->CallIntMethod(
         jniEnv, atk_selection, cachedSelectionGetSelectionCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return (gint)jcount;
 }
@@ -365,17 +364,17 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
 
     JAW_GET_SELECTION(
         selection,
-        FALSE); // create global JNI reference `jobject atk_selection`
+        FALSE); // create local JNI reference `jobject atk_selection`
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionIsChildSelectedMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -402,17 +401,17 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
 
     JAW_GET_SELECTION(
         selection,
-        FALSE); // create global JNI reference `jobject atk_selection`
+        FALSE); // create local JNI reference `jobject atk_selection`
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionRemoveSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -436,17 +435,17 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 
     JAW_GET_SELECTION(
         selection,
-        FALSE); // create global JNI reference `jobject atk_selection`
+        FALSE); // create local JNI reference `jobject atk_selection`
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionSelectAllSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_selection);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }

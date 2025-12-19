@@ -200,13 +200,12 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create global JNI reference `jobject atk_editable_text`
+        text, ); // create local JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
+            atk_editable_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -216,7 +215,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -225,12 +224,12 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
                               cachedEditableTextSetTextContentsMethod, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -244,13 +243,12 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create global JNI reference `jobject atk_editable_text`
+        text, ); // create local JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_editable_text); // deleting ref that was created in
-                                // JAW_GET_EDITABLETEXT
+            atk_editable_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -260,7 +258,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -269,7 +267,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
                               (jint)*position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -277,7 +275,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     *position = *position + length;
     atk_text_set_caret_offset(ATK_TEXT(text), *position);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -291,18 +289,18 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create global JNI reference `jobject atk_editable_text`
+        text, ); // create local JNI reference `jobject atk_editable_text`
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextCopyTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
 void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
@@ -315,18 +313,18 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create global JNI reference `jobject atk_editable_text`
+        text, ); // create local JNI reference `jobject atk_editable_text`
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextCutTextMethod, (jint)start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
 void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
@@ -339,18 +337,18 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create global JNI reference `jobject atk_editable_text`
+        text, ); // create local JNI reference `jobject atk_editable_text`
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextDeleteTextMethod,
                               (jint)start_pos, (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
 void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
@@ -362,18 +360,18 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create global JNI reference `jobject atk_editable_text`
+        text, ); // create local JNI reference `jobject atk_editable_text`
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextPasteTextMethod,
                               (jint)position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
 /**
@@ -398,7 +396,7 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, FALSE); // create global JNI reference `jobject atk_editable_text`
+        text, FALSE); // create local JNI reference `jobject atk_editable_text`
 
     // TODO: make a proper conversion between attrib_set and swing AttributeSet,
     // current implementation is incorrect
@@ -407,11 +405,11 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
         (jobject)attrib_set, (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_editable_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 
     return jresult;
 }

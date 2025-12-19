@@ -336,12 +336,10 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
+    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -353,14 +351,14 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using get_text method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
     gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jstr);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
@@ -386,9 +384,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     JAW_GET_TEXT(text, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return 0;
@@ -398,18 +394,18 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
         jniEnv, atk_text, cachedTextGetCharacterAtOffsetMethod, (jint)offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
     if (jcharacter == '\0') {
         g_warning("%s: jcharacter is '\\0'", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gunichar)jcharacter;
@@ -446,12 +442,10 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
+    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -465,7 +459,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
         g_warning(
             "%s: Failed to create jStrSeq using get_text_after_offset method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -473,7 +467,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
     gchar *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
@@ -509,12 +503,10 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
+    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -528,7 +520,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         g_warning(
             "%s: Failed to create jStrSeq using get_text_at_offset method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -536,7 +528,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
     char *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
@@ -573,12 +565,10 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
+    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -592,7 +582,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         g_warning(
             "%s: Failed to create jStrSeq using get_text_before_offset method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -600,7 +590,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
     char *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
@@ -668,12 +658,10 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
+    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -687,7 +675,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         g_warning(
             "%s: Failed to create jStrSeq using get_string_at_offset method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -695,7 +683,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
     char *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
@@ -725,11 +713,11 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
                                             cachedTextGetCaretOffsetMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return (gint)joffset;
 }
@@ -775,9 +763,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     JAW_GET_TEXT(text, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -791,7 +777,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         g_warning(
             "%s: Failed to create jrect using get_character_extents method",
             G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -809,7 +795,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
     if (height != NULL)
         *height = temp_height;
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -835,11 +821,11 @@ static gint jaw_text_get_character_count(AtkText *text) {
                                            cachedTextGetCharacterCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return (gint)jcount;
 }
@@ -875,11 +861,11 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
                                             (jint)x, (jint)y, (jint)coords);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return (gint)joffset;
 }
@@ -923,9 +909,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
     JAW_GET_TEXT(text, );
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -938,7 +922,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jrect using get_range_extents method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
@@ -946,7 +930,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
     jaw_util_get_rect_info(jniEnv, jrect, &(rect->x), &(rect->y),
                            &(rect->width), &(rect->height));
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
@@ -972,11 +956,11 @@ static gint jaw_text_get_n_selections(AtkText *text) {
                                                 cachedTextGetNSelectionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return -1;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return (gint)jselections;
 }
@@ -1011,12 +995,10 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         return NULL;
     }
 
-    JAW_GET_TEXT(text, NULL); // create global JNI reference `jobject atk_text`
+    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            atk_text); // deleting ref that was created in JAW_GET_TEXT
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -1030,12 +1012,12 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jStrSeq using get_selection method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     jstring jStr =
         (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedTextStrFieldID);
@@ -1083,11 +1065,11 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
         (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return jresult;
 }
@@ -1119,11 +1101,11 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
         jniEnv, atk_text, cachedTextRemoveSelectionMethod, (jint)selection_num);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return jresult;
 }
@@ -1161,11 +1143,11 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
         (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return jresult;
 }
@@ -1209,11 +1191,11 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
         jniEnv, atk_text, cachedTextSetCaretOffsetMethod, (jint)offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_text);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
 
     return jresult;
 }

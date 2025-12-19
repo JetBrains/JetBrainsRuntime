@@ -244,18 +244,18 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
 
     JAW_GET_COMPONENT(
         component,
-        FALSE); // create global JNI reference `jobject atk_component`
+        FALSE); // create local JNI reference `jobject atk_component`
 
     jboolean jcontains = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentContainsMethod, (jint)x, (jint)y,
         (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return jcontains;
 }
@@ -285,13 +285,12 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     }
 
     JAW_GET_COMPONENT(
-        component, NULL); // create global JNI reference `jobject atk_component`
+        component, NULL); // create local JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
-            atk_component); // deleting ref that was created in
-                            // JAW_GET_COMPONENT
+            atk_component);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -304,7 +303,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_at_point method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -319,7 +318,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
@@ -362,10 +361,10 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
         (*height) = -1;
 
     JAW_GET_COMPONENT(
-        component, ); // create global JNI reference `jobject atk_component`
+        component, ); // create local JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
+        (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_component); // deleting ref that was created in
                             // JAW_GET_COMPONENT
@@ -381,12 +380,12 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jrectangle using get_extents method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     if (x != NULL) {
         (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle,
@@ -441,18 +440,18 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
 
     JAW_GET_COMPONENT(
         component,
-        FALSE); // create global JNI reference `jobject atk_component`
+        FALSE); // create local JNI reference `jobject atk_component`
 
     jboolean assigned = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentSetExtentsMethod, (jint)x,
         (jint)y, (jint)width, (jint)height, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return assigned;
 }
@@ -475,17 +474,17 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
 
     JAW_GET_COMPONENT(
         component,
-        FALSE); // create global JNI reference `jobject atk_component`
+        FALSE); // create local JNI reference `jobject atk_component`
 
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentGrabFocusMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return jresult;
 }
@@ -508,17 +507,17 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     }
 
     JAW_GET_COMPONENT(component,
-                      0); // create global JNI reference `jobject atk_component`
+                      0); // create local JNI reference `jobject atk_component`
 
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component,
                                            cachedComponentGetLayerMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_component);
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return (AtkLayer)jlayer;
 }
