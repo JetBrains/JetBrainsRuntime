@@ -245,7 +245,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -514,7 +514,7 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         return;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -559,7 +559,7 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
         return FALSE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return FALSE;

@@ -154,7 +154,7 @@ gpointer jaw_component_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -286,7 +286,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     JAW_GET_COMPONENT(
         component, NULL); // create local JNI reference `jobject atk_component`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_component);
@@ -362,7 +362,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     JAW_GET_COMPONENT(
         component, ); // create local JNI reference `jobject atk_component`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_component); // deleting ref that was created in

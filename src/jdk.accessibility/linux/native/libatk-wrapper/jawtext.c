@@ -200,7 +200,7 @@ gpointer jaw_text_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -287,7 +287,7 @@ static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -337,7 +337,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -382,7 +382,7 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
 
     JAW_GET_TEXT(text, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -443,7 +443,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -504,7 +504,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -566,7 +566,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -659,7 +659,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -761,7 +761,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
 
     JAW_GET_TEXT(text, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -907,7 +907,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
 
     JAW_GET_TEXT(text, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -996,7 +996,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);

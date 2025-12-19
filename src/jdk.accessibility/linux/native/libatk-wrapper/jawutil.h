@@ -107,6 +107,8 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event);
 
 void jaw_util_detach(void);
 
+#define JAW_DEFAULT_LOCAL_FRAME_SIZE 10
+
 #define JAW_GET_OBJ_IFACE(o, iface, Data, field, env, name, def_ret)           \
     JawObject *jaw_obj = JAW_OBJECT(o);                                        \
     if (!jaw_obj) {                                                            \

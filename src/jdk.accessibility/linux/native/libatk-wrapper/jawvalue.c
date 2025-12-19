@@ -106,7 +106,7 @@ gpointer jaw_value_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -263,7 +263,7 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -321,7 +321,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
 
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);  
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -397,7 +397,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 
     JAW_GET_VALUE(obj, NULL);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);

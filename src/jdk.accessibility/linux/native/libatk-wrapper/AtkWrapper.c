@@ -831,7 +831,7 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG_C("%p, %p", jniEnv, o);
     JAW_CHECK_NULL(o, NULL);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 4) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("Failed to create a new local reference frame");
         return NULL;
     }
@@ -884,7 +884,7 @@ static gboolean signal_emit_handler(gpointer p) {
         return FALSE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("Failed to create a new local reference frame");
         queue_free_callback_para(para);
         return FALSE;
@@ -1443,7 +1443,7 @@ static gboolean key_dispatch_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 30) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("Failed to create a new local reference frame");
         return 0;
     }

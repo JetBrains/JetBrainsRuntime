@@ -393,7 +393,7 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -453,7 +453,7 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
         return ATK_ROLE_UNKNOWN;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame, return "
                   "ATK_ROLE_UNKNOWN",
                   G_STRFUNC);
@@ -839,7 +839,7 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
         return FALSE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return FALSE;

@@ -101,7 +101,7 @@ gpointer jaw_hypertext_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -185,7 +185,7 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     JAW_GET_HYPERTEXT(
         hypertext, NULL); // create local JNI reference `jobject atk_hypertext`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);

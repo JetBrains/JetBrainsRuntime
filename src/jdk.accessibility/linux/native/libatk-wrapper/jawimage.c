@@ -115,7 +115,7 @@ gpointer jaw_image_data_init(jobject ac) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, NULL);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -218,7 +218,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
 
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_image);
@@ -269,7 +269,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     JAW_GET_IMAGE(image,
                   NULL); // create local JNI reference `jobject atk_image`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_image);
@@ -337,7 +337,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
 
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_image);

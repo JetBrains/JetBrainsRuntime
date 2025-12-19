@@ -69,8 +69,6 @@ static jmethodID cachedActionGetLocalizedNameMethod = NULL;
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
 
-// TODO: introduce JAW_ACTION_DEFAULT_LOCAL_FRAME_SIZE 10
-
 /**
  * jaw_action_init_jni_cache:
  * @jniEnv: JNI environment
@@ -142,7 +140,7 @@ gpointer jaw_action_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -312,7 +310,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     JAW_GET_ACTION(action,
                    NULL); // create local JNI reference `jobject atk_action`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -393,7 +391,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     JAW_GET_ACTION(action,
                    FALSE); // create local JNI reference `jobject atk_action`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -445,7 +443,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     JAW_GET_ACTION(action,
                    NULL); // create local JNI reference `jobject atk_action`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);

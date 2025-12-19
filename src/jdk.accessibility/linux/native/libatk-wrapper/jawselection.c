@@ -119,7 +119,7 @@ gpointer jaw_selection_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -276,7 +276,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     JAW_GET_SELECTION(
         selection, NULL); // create local JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             atk_selection);

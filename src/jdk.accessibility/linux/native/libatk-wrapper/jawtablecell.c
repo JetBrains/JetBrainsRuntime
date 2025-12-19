@@ -129,7 +129,7 @@ gpointer jaw_table_cell_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -220,7 +220,7 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -535,7 +535,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -600,7 +600,7 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);

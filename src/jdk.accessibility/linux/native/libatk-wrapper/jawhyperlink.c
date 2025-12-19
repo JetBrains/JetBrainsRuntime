@@ -219,7 +219,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     JAW_GET_HYPERLINK(atk_hyperlink,
                       NULL); // create global JNI reference `jobject jhyperlink`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
@@ -285,7 +285,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
 
     JAW_GET_HYPERLINK(atk_hyperlink, NULL);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
@@ -344,7 +344,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
@@ -395,7 +395,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
@@ -446,7 +446,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, FALSE);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
@@ -496,7 +496,7 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
 
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteGlobalRef(
             jniEnv,
             jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK

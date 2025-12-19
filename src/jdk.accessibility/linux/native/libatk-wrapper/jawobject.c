@@ -340,7 +340,7 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -397,7 +397,7 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
         return;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -470,7 +470,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -538,7 +538,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
         return;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac); 
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -585,7 +585,7 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(
             jniEnv,
             ac);
@@ -653,7 +653,7 @@ static void jaw_object_set_description(AtkObject *atk_obj,
         return;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -699,7 +699,7 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         return 0;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -753,7 +753,7 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         return -1;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -833,7 +833,7 @@ static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
         return FALSE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return FALSE;
@@ -879,7 +879,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -958,7 +958,7 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1021,7 +1021,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 20) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1148,7 +1148,7 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);

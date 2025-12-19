@@ -193,7 +193,7 @@ gpointer jaw_table_data_init(jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -299,7 +299,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -605,7 +605,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -655,7 +655,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -715,7 +715,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -775,7 +775,7 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -825,7 +825,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -873,7 +873,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -931,7 +931,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
 
     JAW_GET_TABLE(table, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1006,7 +1006,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
 
     JAW_GET_TABLE(table, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1183,7 +1183,7 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1232,7 +1232,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1280,7 +1280,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -1347,7 +1347,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
+    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
