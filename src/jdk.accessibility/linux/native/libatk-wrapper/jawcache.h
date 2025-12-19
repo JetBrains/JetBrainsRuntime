@@ -21,6 +21,7 @@
 #define _JAW_CACHE_H_
 
 #include <jni.h>
+#include <glib.h>
 
 #ifdef __cplusplus
 extern "C" {
