@@ -33,6 +33,7 @@ void jaw_editable_text_cache_cleanup(JNIEnv *jniEnv);
 void jaw_hyperlink_cache_cleanup(JNIEnv *jniEnv);
 void jaw_hypertext_cache_cleanup(JNIEnv *jniEnv);
 void jaw_image_cache_cleanup(JNIEnv *jniEnv);
+void jaw_impl_cache_cleanup(JNIEnv *jniEnv);
 void jaw_object_cache_cleanup(JNIEnv *jniEnv);
 void jaw_selection_cache_cleanup(JNIEnv *jniEnv);
 void jaw_table_cache_cleanup(JNIEnv *jniEnv);
@@ -53,6 +54,7 @@ static inline void jaw_cache_cleanup(JNIEnv *jniEnv) {
     jaw_hyperlink_cache_cleanup(jniEnv);
     jaw_hypertext_cache_cleanup(jniEnv);
     jaw_image_cache_cleanup(jniEnv);
+    jaw_impl_cache_cleanup(jniEnv);
     jaw_object_cache_cleanup(jniEnv);
     jaw_selection_cache_cleanup(jniEnv);
     jaw_table_cache_cleanup(jniEnv);

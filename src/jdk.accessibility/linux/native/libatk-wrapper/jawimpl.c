@@ -50,6 +50,29 @@ static gpointer jaw_impl_parent_class = NULL;
 static GMutex typeTableMutex;
 static GHashTable *typeTable = NULL;
 
+static jclass cachedImplAtkWrapperDisposerClass = NULL;
+static jmethodID cachedImplGetResourceMethod = NULL;
+static jclass cachedImplAtkWrapperClass = NULL;
+static jmethodID cachedImplRegisterPropertyChangeListenerMethod = NULL;
+static jclass cachedImplAccessibleRelationClass = NULL;
+static jfieldID cachedImplChildNodeOfFieldID = NULL;
+static jfieldID cachedImplControlledByFieldID = NULL;
+static jfieldID cachedImplControllerForFieldID = NULL;
+static jfieldID cachedImplEmbeddedByFieldID = NULL;
+static jfieldID cachedImplEmbedsFieldID = NULL;
+static jfieldID cachedImplFlowsFromFieldID = NULL;
+static jfieldID cachedImplFlowsToFieldID = NULL;
+static jfieldID cachedImplLabelForFieldID = NULL;
+static jfieldID cachedImplLabeledByFieldID = NULL;
+static jfieldID cachedImplMemberOfFieldID = NULL;
+static jfieldID cachedImplParentWindowOfFieldID = NULL;
+static jfieldID cachedImplSubwindowOfFieldID = NULL;
+
+static GMutex impl_cache_mutex;
+static gboolean impl_cache_initialized = FALSE;
+
+static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv);
+
 static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
                                 guint tflag) {
     JAW_DEBUG_C("%p, %p, %u", jniEnv, jaw_obj, tflag);
@@ -217,6 +240,11 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         return NULL;
     }
 
+    if (!jaw_impl_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
@@ -224,23 +252,8 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     }
 
     // Check if there is JawImpl associated with the accessible context
-    jclass classAtkWrapper = (*jniEnv)->FindClass(
-        jniEnv, "org/GNOME/Accessibility/AtkWrapperDisposer");
-    if (classAtkWrapper == NULL) {
-        g_warning("%s: Failed to find AtkWrapperDisposer class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
-    jmethodID jmid_get_native_resources = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "get_resource",
-        "(Ljavax/accessibility/AccessibleContext;)J");
-    if (jmid_get_native_resources == NULL) {
-        g_warning("%s: Failed to find get_resource method", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return NULL;
-    }
     jlong reference = (*jniEnv)->CallStaticLongMethod(
-        jniEnv, classAtkWrapper, jmid_get_native_resources, ac);
+        jniEnv, cachedImplAtkWrapperDisposerClass, cachedImplGetResourceMethod, ac);
 
     // If a valid reference exists, return the existing JawImpl instance
     if (reference != -1) {
@@ -248,6 +261,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         return (JawImpl *)reference;
     }
 
+    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return NULL;
 }
 
@@ -495,28 +509,17 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     JAW_CHECK_NULL(jniEnv, );
 
+    if (!jaw_impl_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     if ((*jniEnv)->PushLocalFrame(jniEnv, 10) < 0) {
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
     }
 
-    jclass classAtkWrapper =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
-    if (classAtkWrapper == NULL) {
-        g_warning("%s: Failed to find AtkWrapper class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    }
-    jmethodID jmid = (*jniEnv)->GetStaticMethodID(
-        jniEnv, classAtkWrapper, "register_property_change_listener",
-        "(Ljavax/accessibility/AccessibleContext;)V");
-    if (jmid == NULL) {
-        g_warning("%s: Failed to find register_property_change_listener method",
-                  G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return;
-    };
     jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jaw_obj->acc_context);
     if (ac == NULL) {
         g_warning("%s: Failed to create global reference to acc_context",
@@ -525,7 +528,8 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         return;
     }
 
-    (*jniEnv)->CallStaticVoidMethod(jniEnv, classAtkWrapper, jmid, ac);
+    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedImplAtkWrapperClass,
+                                    cachedImplRegisterPropertyChangeListenerMethod, ac);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -533,20 +537,25 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
 
 /**
  * Checks if the given jKey (name of the relation) matches the value of static
- * field in AccessibleRelation identified by strKey.
+ * field in AccessibleRelation identified by fieldID.
  *
  * @param jniEnv JNI environment pointer
  * @param jKey   key of AccessibleRelation, the name of the relation
- * @param strKey name of the static AccessibleRelation field
+ * @param fieldID cached field ID for the relation field
  * @return       TRUE if jKey equals the corresponding static field, FALSE
  * otherwise
  */
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
-                                     const gchar *strKey) {
-    JAW_DEBUG_C("%p, %p, %s", jniEnv, jKey, strKey);
+                                     jfieldID fieldID) {
+    JAW_DEBUG_C("%p, %p, %p", jniEnv, jKey, fieldID);
 
-    if (!jniEnv || !strKey) {
+    if (!jniEnv || !fieldID) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
+        return FALSE;
+    }
+
+    if (!jaw_impl_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return FALSE;
     }
 
@@ -556,24 +565,8 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
         return FALSE;
     }
 
-    jclass classAccessibleRelation =
-        (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRelation");
-    if (classAccessibleRelation == NULL) {
-        g_warning("%s: Failed to find AccessibleRelation class", G_STRFUNC);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-
-    jfieldID jfid = (*jniEnv)->GetStaticFieldID(jniEnv, classAccessibleRelation,
-                                                strKey, "Ljava/lang/String;");
-    if (jfid == NULL) {
-        g_warning("%s: Failed to find static field %s", G_STRFUNC, strKey);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-        return FALSE;
-    }
-
     jstring jConstKey =
-        (*jniEnv)->GetStaticObjectField(jniEnv, classAccessibleRelation, jfid);
+        (*jniEnv)->GetStaticObjectField(jniEnv, cachedImplAccessibleRelationClass, fieldID);
 
     // jKey and jConstKey may be null
     jboolean result = (*jniEnv)->IsSameObject(jniEnv, jKey, jConstKey);
@@ -595,31 +588,254 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
 AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
                                                jstring jrel_key) {
     JAW_DEBUG_C("%p, %p", jniEnv, jrel_key);
-    if (is_java_relation_key(jniEnv, jrel_key, "CHILD_NODE_OF"))
+
+    if (!jaw_impl_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplChildNodeOfFieldID))
         return ATK_RELATION_NODE_CHILD_OF;
-    if (is_java_relation_key(jniEnv, jrel_key, "CONTROLLED_BY"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplControlledByFieldID))
         return ATK_RELATION_CONTROLLED_BY;
-    if (is_java_relation_key(jniEnv, jrel_key, "CONTROLLER_FOR"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplControllerForFieldID))
         return ATK_RELATION_CONTROLLER_FOR;
-    if (is_java_relation_key(jniEnv, jrel_key, "EMBEDDED_BY"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplEmbeddedByFieldID))
         return ATK_RELATION_EMBEDDED_BY;
-    if (is_java_relation_key(jniEnv, jrel_key, "EMBEDS"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplEmbedsFieldID))
         return ATK_RELATION_EMBEDS;
-    if (is_java_relation_key(jniEnv, jrel_key, "FLOWS_FROM"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplFlowsFromFieldID))
         return ATK_RELATION_FLOWS_FROM;
-    if (is_java_relation_key(jniEnv, jrel_key, "FLOWS_TO"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplFlowsToFieldID))
         return ATK_RELATION_FLOWS_TO;
-    if (is_java_relation_key(jniEnv, jrel_key, "LABEL_FOR"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplLabelForFieldID))
         return ATK_RELATION_LABEL_FOR;
-    if (is_java_relation_key(jniEnv, jrel_key, "LABELED_BY"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplLabeledByFieldID))
         return ATK_RELATION_LABELLED_BY;
-    if (is_java_relation_key(jniEnv, jrel_key, "MEMBER_OF"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplMemberOfFieldID))
         return ATK_RELATION_MEMBER_OF;
-    if (is_java_relation_key(jniEnv, jrel_key, "PARENT_WINDOW_OF"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplParentWindowOfFieldID))
         return ATK_RELATION_PARENT_WINDOW_OF;
-    if (is_java_relation_key(jniEnv, jrel_key, "SUBWINDOW_OF"))
+    if (is_java_relation_key(jniEnv, jrel_key, cachedImplSubwindowOfFieldID))
         return ATK_RELATION_SUBWINDOW_OF;
     return ATK_RELATION_NULL;
+}
+
+static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
+    JAW_CHECK_NULL(jniEnv, FALSE);
+
+    g_mutex_lock(&impl_cache_mutex);
+
+    if (impl_cache_initialized) {
+        g_mutex_unlock(&impl_cache_mutex);
+        return TRUE;
+    }
+
+    jclass localAtkWrapperDisposer =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapperDisposer");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localAtkWrapperDisposer == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to find AtkWrapperDisposer class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedImplAtkWrapperDisposerClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkWrapperDisposer);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localAtkWrapperDisposer);
+
+    if (cachedImplAtkWrapperDisposerClass == NULL) {
+        g_warning("%s: Failed to create global reference for AtkWrapperDisposer class",
+                  G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedImplGetResourceMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedImplAtkWrapperDisposerClass, "get_resource",
+        "(Ljavax/accessibility/AccessibleContext;)J");
+
+    jclass localAtkWrapper =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapper");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localAtkWrapper == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to find AtkWrapper class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedImplAtkWrapperClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkWrapper);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localAtkWrapper);
+
+    if (cachedImplAtkWrapperClass == NULL) {
+        g_warning("%s: Failed to create global reference for AtkWrapper class",
+                  G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedImplRegisterPropertyChangeListenerMethod = (*jniEnv)->GetStaticMethodID(
+        jniEnv, cachedImplAtkWrapperClass, "register_property_change_listener",
+        "(Ljavax/accessibility/AccessibleContext;)V");
+
+    jclass localAccessibleRelation =
+        (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRelation");
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || localAccessibleRelation == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to find AccessibleRelation class", G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedImplAccessibleRelationClass = (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleRelation);
+    (*jniEnv)->DeleteLocalRef(jniEnv, localAccessibleRelation);
+
+    if (cachedImplAccessibleRelationClass == NULL) {
+        g_warning("%s: Failed to create global reference for AccessibleRelation class",
+                  G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    cachedImplChildNodeOfFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "CHILD_NODE_OF",
+        "Ljava/lang/String;");
+
+    cachedImplControlledByFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "CONTROLLED_BY",
+        "Ljava/lang/String;");
+
+    cachedImplControllerForFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "CONTROLLER_FOR",
+        "Ljava/lang/String;");
+
+    cachedImplEmbeddedByFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "EMBEDDED_BY",
+        "Ljava/lang/String;");
+
+    cachedImplEmbedsFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "EMBEDS",
+        "Ljava/lang/String;");
+
+    cachedImplFlowsFromFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "FLOWS_FROM",
+        "Ljava/lang/String;");
+
+    cachedImplFlowsToFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "FLOWS_TO",
+        "Ljava/lang/String;");
+
+    cachedImplLabelForFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "LABEL_FOR",
+        "Ljava/lang/String;");
+
+    cachedImplLabeledByFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "LABELED_BY",
+        "Ljava/lang/String;");
+
+    cachedImplMemberOfFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "MEMBER_OF",
+        "Ljava/lang/String;");
+
+    cachedImplParentWindowOfFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "PARENT_WINDOW_OF",
+        "Ljava/lang/String;");
+
+    cachedImplSubwindowOfFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedImplAccessibleRelationClass, "SUBWINDOW_OF",
+        "Ljava/lang/String;");
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        cachedImplGetResourceMethod == NULL ||
+        cachedImplRegisterPropertyChangeListenerMethod == NULL ||
+        cachedImplChildNodeOfFieldID == NULL ||
+        cachedImplControlledByFieldID == NULL ||
+        cachedImplControllerForFieldID == NULL ||
+        cachedImplEmbeddedByFieldID == NULL ||
+        cachedImplEmbedsFieldID == NULL ||
+        cachedImplFlowsFromFieldID == NULL ||
+        cachedImplFlowsToFieldID == NULL ||
+        cachedImplLabelForFieldID == NULL ||
+        cachedImplLabeledByFieldID == NULL ||
+        cachedImplMemberOfFieldID == NULL ||
+        cachedImplParentWindowOfFieldID == NULL ||
+        cachedImplSubwindowOfFieldID == NULL) {
+
+        jaw_jni_clear_exception(jniEnv);
+
+        g_warning("%s: Failed to cache one or more JawImpl classes or method/field IDs",
+                  G_STRFUNC);
+        goto cleanup_and_fail;
+    }
+
+    impl_cache_initialized = TRUE;
+    g_mutex_unlock(&impl_cache_mutex);
+
+    g_debug("%s: classes and methods cached successfully", G_STRFUNC);
+
+    return TRUE;
+
+cleanup_and_fail:
+    if (cachedImplAtkWrapperDisposerClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAtkWrapperDisposerClass);
+        cachedImplAtkWrapperDisposerClass = NULL;
+    }
+    cachedImplGetResourceMethod = NULL;
+    if (cachedImplAtkWrapperClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAtkWrapperClass);
+        cachedImplAtkWrapperClass = NULL;
+    }
+    cachedImplRegisterPropertyChangeListenerMethod = NULL;
+    if (cachedImplAccessibleRelationClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAccessibleRelationClass);
+        cachedImplAccessibleRelationClass = NULL;
+    }
+    cachedImplChildNodeOfFieldID = NULL;
+    cachedImplControlledByFieldID = NULL;
+    cachedImplControllerForFieldID = NULL;
+    cachedImplEmbeddedByFieldID = NULL;
+    cachedImplEmbedsFieldID = NULL;
+    cachedImplFlowsFromFieldID = NULL;
+    cachedImplFlowsToFieldID = NULL;
+    cachedImplLabelForFieldID = NULL;
+    cachedImplLabeledByFieldID = NULL;
+    cachedImplMemberOfFieldID = NULL;
+    cachedImplParentWindowOfFieldID = NULL;
+    cachedImplSubwindowOfFieldID = NULL;
+
+    g_mutex_unlock(&impl_cache_mutex);
+    return FALSE;
+}
+
+void jaw_impl_cache_cleanup(JNIEnv *jniEnv) {
+    if (jniEnv == NULL) {
+        return;
+    }
+
+    g_mutex_lock(&impl_cache_mutex);
+
+    if (cachedImplAtkWrapperDisposerClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAtkWrapperDisposerClass);
+        cachedImplAtkWrapperDisposerClass = NULL;
+    }
+    cachedImplGetResourceMethod = NULL;
+    if (cachedImplAtkWrapperClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAtkWrapperClass);
+        cachedImplAtkWrapperClass = NULL;
+    }
+    cachedImplRegisterPropertyChangeListenerMethod = NULL;
+    if (cachedImplAccessibleRelationClass != NULL) {
+        (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAccessibleRelationClass);
+        cachedImplAccessibleRelationClass = NULL;
+    }
+    cachedImplChildNodeOfFieldID = NULL;
+    cachedImplControlledByFieldID = NULL;
+    cachedImplControllerForFieldID = NULL;
+    cachedImplEmbeddedByFieldID = NULL;
+    cachedImplEmbedsFieldID = NULL;
+    cachedImplFlowsFromFieldID = NULL;
+    cachedImplFlowsToFieldID = NULL;
+    cachedImplLabelForFieldID = NULL;
+    cachedImplLabeledByFieldID = NULL;
+    cachedImplMemberOfFieldID = NULL;
+    cachedImplParentWindowOfFieldID = NULL;
+    cachedImplSubwindowOfFieldID = NULL;
+    impl_cache_initialized = FALSE;
+
+    g_mutex_unlock(&impl_cache_mutex);
 }
 
 #ifdef __cplusplus
