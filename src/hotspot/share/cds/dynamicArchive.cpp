@@ -348,6 +348,7 @@ void DynamicArchiveBuilder::write_archive(char* serialized_data, AOTClassLocatio
   assert(dynamic_info != nullptr, "Sanity");
 
   dynamic_info->open_as_output();
+  dynamic_info->prepare_for_writing();
   ArchiveHeapInfo no_heap_for_dynamic_dump;
   ArchiveBuilder::write_archive(dynamic_info, &no_heap_for_dynamic_dump);
 
