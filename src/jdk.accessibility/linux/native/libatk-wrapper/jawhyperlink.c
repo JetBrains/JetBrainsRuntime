@@ -217,12 +217,10 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     }
 
     JAW_GET_HYPERLINK(atk_hyperlink,
-                      NULL); // create global JNI reference `jobject jhyperlink`
+                      NULL); // create local JNI reference `jobject jhyperlink`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -230,7 +228,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -239,7 +237,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
         jniEnv, jhyperlink, cachedHyperlinkGetUriMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -258,7 +256,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     jaw_hyperlink->uri = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, jaw_hyperlink->jstrUri, NULL);
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jaw_hyperlink->uri;
@@ -286,9 +284,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     JAW_GET_HYPERLINK(atk_hyperlink, NULL);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -296,7 +292,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -305,7 +301,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         jniEnv, jhyperlink, cachedHyperlinkGetObjectMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
@@ -318,7 +314,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
     // The returned data is owned by the instance (transfer none annotation), so
     // we don't ref the obj before returning it
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return obj;
@@ -345,9 +341,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return 0;
@@ -355,7 +349,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -364,12 +358,12 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
                                            cachedHyperlinkGetEndIndexMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jindex;
@@ -396,9 +390,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return 0;
@@ -406,7 +398,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -415,12 +407,12 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
                                            cachedHyperlinkGetStartIndexMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jindex;
@@ -447,9 +439,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
     JAW_GET_HYPERLINK(atk_hyperlink, FALSE);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return FALSE;
@@ -457,7 +447,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
@@ -466,12 +456,12 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
         jniEnv, jhyperlink, cachedHyperlinkIsValidMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jvalid;
@@ -497,9 +487,7 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
     JAW_GET_HYPERLINK(atk_hyperlink, 0);
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteGlobalRef(
-            jniEnv,
-            jhyperlink); // deleting ref that was created in JAW_GET_HYPERLINK
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return 0;
@@ -507,7 +495,7 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
@@ -516,12 +504,12 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
                                              cachedHyperlinkGetNAnchorsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
-    (*jniEnv)->DeleteGlobalRef(jniEnv, jhyperlink);
+    (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return janchors;
