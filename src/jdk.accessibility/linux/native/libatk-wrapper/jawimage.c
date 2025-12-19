@@ -505,6 +505,9 @@ cleanup_and_fail:
     cachedImageDimensionHeightFieldID = NULL;
 
     g_mutex_unlock(&cache_mutex);
+
+    g_debug("%s: classes and methods cached successfully", G_STRFUNC);
+
     return FALSE;
 }
 

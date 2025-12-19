@@ -722,6 +722,9 @@ static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
 
     cache_initialized = TRUE;
     g_mutex_unlock(&cache_mutex);
+
+    g_debug("%s: classes and methods cached successfully", G_STRFUNC);
+
     return TRUE;
 
 cleanup_and_fail:
