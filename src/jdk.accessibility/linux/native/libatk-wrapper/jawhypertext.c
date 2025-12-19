@@ -42,11 +42,11 @@
  * as well, and Hyperlinks need not have non-zero text offsets.
  */
 
-jclass cachedHypertextAtkHypertextClass = NULL;
-jmethodID cachedHypertextCreateAtkHypertextMethod = NULL;
-jmethodID cachedHypertextGetLinkMethod = NULL;
-jmethodID cachedHypertextGetNLinksMethod = NULL;
-jmethodID cachedHypertextGetLinkIndexMethod = NULL;
+static jclass cachedHypertextAtkHypertextClass = NULL;
+static jmethodID cachedHypertextCreateAtkHypertextMethod = NULL;
+static jmethodID cachedHypertextGetLinkMethod = NULL;
+static jmethodID cachedHypertextGetNLinksMethod = NULL;
+static jmethodID cachedHypertextGetLinkIndexMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

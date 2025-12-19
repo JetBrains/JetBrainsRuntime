@@ -60,19 +60,19 @@
 extern "C" {
 #endif
 
-jclass cachedObjectAtkObjectClass = NULL;
-jmethodID cachedObjectGetAccessibleParentMethod = NULL;
-jmethodID cachedObjectSetAccessibleParentMethod = NULL;
-jmethodID cachedObjectGetAccessibleNameMethod = NULL;
-jmethodID cachedObjectSetAccessibleNameMethod = NULL;
-jmethodID cachedObjectGetAccessibleDescriptionMethod = NULL;
-jmethodID cachedObjectSetAccessibleDescriptionMethod = NULL;
-jmethodID cachedObjectGetAccessibleChildrenCountMethod = NULL;
-jmethodID cachedObjectGetAccessibleIndexInParentMethod = NULL;
-jmethodID cachedObjectGetArrayAccessibleStateMethod = NULL;
-jmethodID cachedObjectGetLocaleMethod = NULL;
-jmethodID cachedObjectGetArrayAccessibleRelationMethod = NULL;
-jmethodID cachedObjectGetAccessibleChildMethod = NULL;
+static jclass cachedObjectAtkObjectClass = NULL;
+static jmethodID cachedObjectGetAccessibleParentMethod = NULL;
+static jmethodID cachedObjectSetAccessibleParentMethod = NULL;
+static jmethodID cachedObjectGetAccessibleNameMethod = NULL;
+static jmethodID cachedObjectSetAccessibleNameMethod = NULL;
+static jmethodID cachedObjectGetAccessibleDescriptionMethod = NULL;
+static jmethodID cachedObjectSetAccessibleDescriptionMethod = NULL;
+static jmethodID cachedObjectGetAccessibleChildrenCountMethod = NULL;
+static jmethodID cachedObjectGetAccessibleIndexInParentMethod = NULL;
+static jmethodID cachedObjectGetArrayAccessibleStateMethod = NULL;
+static jmethodID cachedObjectGetLocaleMethod = NULL;
+static jmethodID cachedObjectGetArrayAccessibleRelationMethod = NULL;
+static jmethodID cachedObjectGetAccessibleChildMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

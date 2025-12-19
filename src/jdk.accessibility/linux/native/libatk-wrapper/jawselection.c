@@ -43,15 +43,15 @@
  * to the selection/deselection of children.
  */
 
-jclass cachedSelectionAtkSelectionClass = NULL;
-jmethodID cachedSelectionCreateAtkSelectionMethod = NULL;
-jmethodID cachedSelectionAddSelectionMethod = NULL;
-jmethodID cachedSelectionClearSelectionMethod = NULL;
-jmethodID cachedSelectionRefSelectionMethod = NULL;
-jmethodID cachedSelectionGetSelectionCountMethod = NULL;
-jmethodID cachedSelectionIsChildSelectedMethod = NULL;
-jmethodID cachedSelectionRemoveSelectionMethod = NULL;
-jmethodID cachedSelectionSelectAllSelectionMethod = NULL;
+static jclass cachedSelectionAtkSelectionClass = NULL;
+static jmethodID cachedSelectionCreateAtkSelectionMethod = NULL;
+static jmethodID cachedSelectionAddSelectionMethod = NULL;
+static jmethodID cachedSelectionClearSelectionMethod = NULL;
+static jmethodID cachedSelectionRefSelectionMethod = NULL;
+static jmethodID cachedSelectionGetSelectionCountMethod = NULL;
+static jmethodID cachedSelectionIsChildSelectedMethod = NULL;
+static jmethodID cachedSelectionRemoveSelectionMethod = NULL;
+static jmethodID cachedSelectionSelectAllSelectionMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

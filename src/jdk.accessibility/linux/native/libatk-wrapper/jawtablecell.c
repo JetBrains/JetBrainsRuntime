@@ -37,15 +37,15 @@
  * See [iface@AtkTable]
  */
 
-jclass cachedTableCellAtkTableCellClass = NULL;
-jmethodID cachedTableCellCreateAtkTableCellMethod = NULL;
-jmethodID cachedTableCellGetTableMethod = NULL;
-jmethodID cachedTableCellGetAccessibleColumnHeaderMethod = NULL;
-jmethodID cachedTableCellGetAccessibleRowHeaderMethod = NULL;
-jfieldID cachedTableCellRowFieldID = NULL;
-jfieldID cachedTableCellColumnFieldID = NULL;
-jfieldID cachedTableCellRowSpanFieldID = NULL;
-jfieldID cachedTableCellColumnSpanFieldID = NULL;
+static jclass cachedTableCellAtkTableCellClass = NULL;
+static jmethodID cachedTableCellCreateAtkTableCellMethod = NULL;
+static jmethodID cachedTableCellGetTableMethod = NULL;
+static jmethodID cachedTableCellGetAccessibleColumnHeaderMethod = NULL;
+static jmethodID cachedTableCellGetAccessibleRowHeaderMethod = NULL;
+static jfieldID cachedTableCellRowFieldID = NULL;
+static jfieldID cachedTableCellColumnFieldID = NULL;
+static jfieldID cachedTableCellRowSpanFieldID = NULL;
+static jfieldID cachedTableCellColumnSpanFieldID = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

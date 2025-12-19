@@ -43,15 +43,15 @@
  * See [iface@AtkText]
  */
 
-jclass cachedEditableTextAtkEditableTextClass = NULL;
-jmethodID cachedEditableTextCreateAtkEditableTextMethod = NULL;
-jmethodID cachedEditableTextSetTextContentsMethod = NULL;
-jmethodID cachedEditableTextInsertTextMethod = NULL;
-jmethodID cachedEditableTextCopyTextMethod = NULL;
-jmethodID cachedEditableTextCutTextMethod = NULL;
-jmethodID cachedEditableTextDeleteTextMethod = NULL;
-jmethodID cachedEditableTextPasteTextMethod = NULL;
-jmethodID cachedEditableTextSetRunAttributesMethod = NULL;
+static jclass cachedEditableTextAtkEditableTextClass = NULL;
+static jmethodID cachedEditableTextCreateAtkEditableTextMethod = NULL;
+static jmethodID cachedEditableTextSetTextContentsMethod = NULL;
+static jmethodID cachedEditableTextInsertTextMethod = NULL;
+static jmethodID cachedEditableTextCopyTextMethod = NULL;
+static jmethodID cachedEditableTextCutTextMethod = NULL;
+static jmethodID cachedEditableTextDeleteTextMethod = NULL;
+static jmethodID cachedEditableTextPasteTextMethod = NULL;
+static jmethodID cachedEditableTextSetRunAttributesMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

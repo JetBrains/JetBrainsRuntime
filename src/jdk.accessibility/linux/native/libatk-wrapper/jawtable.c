@@ -62,31 +62,31 @@
  * index-based methods are deprecated.
  */
 
-jclass cachedTableAtkTableClass = NULL;
-jmethodID cachedTableCreateAtkTableMethod = NULL;
-jmethodID cachedTableRefAtMethod = NULL;
-jmethodID cachedTableGetIndexAtMethod = NULL;
-jmethodID cachedTableGetColumnAtIndexMethod = NULL;
-jmethodID cachedTableGetRowAtIndexMethod = NULL;
-jmethodID cachedTableGetNColumnsMethod = NULL;
-jmethodID cachedTableGetNRowsMethod = NULL;
-jmethodID cachedTableGetColumnExtentAtMethod = NULL;
-jmethodID cachedTableGetRowExtentAtMethod = NULL;
-jmethodID cachedTableGetCaptionMethod = NULL;
-jmethodID cachedTableGetColumnDescriptionMethod = NULL;
-jmethodID cachedTableGetRowDescriptionMethod = NULL;
-jmethodID cachedTableGetColumnHeaderMethod = NULL;
-jmethodID cachedTableGetRowHeaderMethod = NULL;
-jmethodID cachedTableGetSummaryMethod = NULL;
-jmethodID cachedTableGetSelectedColumnsMethod = NULL;
-jmethodID cachedTableGetSelectedRowsMethod = NULL;
-jmethodID cachedTableIsColumnSelectedMethod = NULL;
-jmethodID cachedTableIsRowSelectedMethod = NULL;
-jmethodID cachedTableIsSelectedMethod = NULL;
-jmethodID cachedTableSetRowDescriptionMethod = NULL;
-jmethodID cachedTableSetColumnDescriptionMethod = NULL;
-jmethodID cachedTableSetCaptionMethod = NULL;
-jmethodID cachedTableSetSummaryMethod = NULL;
+static jclass cachedTableAtkTableClass = NULL;
+static jmethodID cachedTableCreateAtkTableMethod = NULL;
+static jmethodID cachedTableRefAtMethod = NULL;
+static jmethodID cachedTableGetIndexAtMethod = NULL;
+static jmethodID cachedTableGetColumnAtIndexMethod = NULL;
+static jmethodID cachedTableGetRowAtIndexMethod = NULL;
+static jmethodID cachedTableGetNColumnsMethod = NULL;
+static jmethodID cachedTableGetNRowsMethod = NULL;
+static jmethodID cachedTableGetColumnExtentAtMethod = NULL;
+static jmethodID cachedTableGetRowExtentAtMethod = NULL;
+static jmethodID cachedTableGetCaptionMethod = NULL;
+static jmethodID cachedTableGetColumnDescriptionMethod = NULL;
+static jmethodID cachedTableGetRowDescriptionMethod = NULL;
+static jmethodID cachedTableGetColumnHeaderMethod = NULL;
+static jmethodID cachedTableGetRowHeaderMethod = NULL;
+static jmethodID cachedTableGetSummaryMethod = NULL;
+static jmethodID cachedTableGetSelectedColumnsMethod = NULL;
+static jmethodID cachedTableGetSelectedRowsMethod = NULL;
+static jmethodID cachedTableIsColumnSelectedMethod = NULL;
+static jmethodID cachedTableIsRowSelectedMethod = NULL;
+static jmethodID cachedTableIsSelectedMethod = NULL;
+static jmethodID cachedTableSetRowDescriptionMethod = NULL;
+static jmethodID cachedTableSetColumnDescriptionMethod = NULL;
+static jmethodID cachedTableSetCaptionMethod = NULL;
+static jmethodID cachedTableSetSummaryMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

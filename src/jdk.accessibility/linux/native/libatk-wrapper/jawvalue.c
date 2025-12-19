@@ -28,28 +28,26 @@
 extern "C" {
 #endif
 
-jclass cachedValueAtkValueClass = NULL;
-jmethodID cachedValueCreateAtkValueMethod = NULL;
-jmethodID cachedValueGetCurrentValueMethod = NULL;
-jmethodID cachedValueSetValueMethod = NULL;
-jmethodID cachedValueGetMinimumValueMethod = NULL;
-jmethodID cachedValueGetMaximumValueMethod = NULL;
-jmethodID cachedValueGetIncrementMethod = NULL;
-
-jclass cachedValueByteClass = NULL;
-jclass cachedValueDoubleClass = NULL;
-jclass cachedValueFloatClass = NULL;
-jclass cachedValueIntegerClass = NULL;
-jclass cachedValueLongClass = NULL;
-jclass cachedValueShortClass = NULL;
-
-jmethodID cachedValueByteValueMethod = NULL;
-jmethodID cachedValueDoubleValueMethod = NULL;
-jmethodID cachedValueFloatValueMethod = NULL;
-jmethodID cachedValueIntValueMethod = NULL;
-jmethodID cachedValueLongValueMethod = NULL;
-jmethodID cachedValueShortValueMethod = NULL;
-jmethodID cachedValueDoubleConstructorMethod = NULL;
+static jclass cachedValueAtkValueClass = NULL;
+static jmethodID cachedValueCreateAtkValueMethod = NULL;
+static jmethodID cachedValueGetCurrentValueMethod = NULL;
+static jmethodID cachedValueSetValueMethod = NULL;
+static jmethodID cachedValueGetMinimumValueMethod = NULL;
+static jmethodID cachedValueGetMaximumValueMethod = NULL;
+static jmethodID cachedValueGetIncrementMethod = NULL;
+static jclass cachedValueByteClass = NULL;
+static jclass cachedValueDoubleClass = NULL;
+static jclass cachedValueFloatClass = NULL;
+static jclass cachedValueIntegerClass = NULL;
+static jclass cachedValueLongClass = NULL;
+static jclass cachedValueShortClass = NULL;
+static jmethodID cachedValueByteValueMethod = NULL;
+static jmethodID cachedValueDoubleValueMethod = NULL;
+static jmethodID cachedValueFloatValueMethod = NULL;
+static jmethodID cachedValueIntValueMethod = NULL;
+static jmethodID cachedValueLongValueMethod = NULL;
+static jmethodID cachedValueShortValueMethod = NULL;
+static jmethodID cachedValueDoubleConstructorMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

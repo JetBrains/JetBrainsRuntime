@@ -39,13 +39,13 @@
  * AtkHypertext object.
  */
 
-jclass cachedHyperlinkAtkHyperlinkClass = NULL;
-jmethodID cachedHyperlinkGetUriMethod = NULL;
-jmethodID cachedHyperlinkGetObjectMethod = NULL;
-jmethodID cachedHyperlinkGetEndIndexMethod = NULL;
-jmethodID cachedHyperlinkGetStartIndexMethod = NULL;
-jmethodID cachedHyperlinkIsValidMethod = NULL;
-jmethodID cachedHyperlinkGetNAnchorsMethod = NULL;
+static jclass cachedHyperlinkAtkHyperlinkClass = NULL;
+static jmethodID cachedHyperlinkGetUriMethod = NULL;
+static jmethodID cachedHyperlinkGetObjectMethod = NULL;
+static jmethodID cachedHyperlinkGetEndIndexMethod = NULL;
+static jmethodID cachedHyperlinkGetStartIndexMethod = NULL;
+static jmethodID cachedHyperlinkIsValidMethod = NULL;
+static jmethodID cachedHyperlinkGetNAnchorsMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

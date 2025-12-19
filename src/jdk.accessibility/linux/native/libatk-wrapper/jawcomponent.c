@@ -46,20 +46,19 @@
  * information is provided by #AtkText.
  */
 
-jclass cachedComponentAtkComponentClass = NULL;
-jmethodID cachedComponentCreateAtkComponentMethod = NULL;
-jmethodID cachedComponentContainsMethod = NULL;
-jmethodID cachedComponentGetAccessibleAtPointMethod = NULL;
-jmethodID cachedComponentGetExtentsMethod = NULL;
-jmethodID cachedComponentSetExtentsMethod = NULL;
-jmethodID cachedComponentGrabFocusMethod = NULL;
-jmethodID cachedComponentGetLayerMethod = NULL;
-
-jclass cachedComponentRectangleClass = NULL;
-jfieldID cachedComponentRectangleXField = NULL;
-jfieldID cachedComponentRectangleYField = NULL;
-jfieldID cachedComponentRectangleWidthField = NULL;
-jfieldID cachedComponentRectangleHeightField = NULL;
+static jclass cachedComponentAtkComponentClass = NULL;
+static jmethodID cachedComponentCreateAtkComponentMethod = NULL;
+static jmethodID cachedComponentContainsMethod = NULL;
+static jmethodID cachedComponentGetAccessibleAtPointMethod = NULL;
+static jmethodID cachedComponentGetExtentsMethod = NULL;
+static jmethodID cachedComponentSetExtentsMethod = NULL;
+static jmethodID cachedComponentGrabFocusMethod = NULL;
+static jmethodID cachedComponentGetLayerMethod = NULL;
+static jclass cachedComponentRectangleClass = NULL;
+static jfieldID cachedComponentRectangleXField = NULL;
+static jfieldID cachedComponentRectangleYField = NULL;
+static jfieldID cachedComponentRectangleWidthField = NULL;
+static jfieldID cachedComponentRectangleHeightField = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

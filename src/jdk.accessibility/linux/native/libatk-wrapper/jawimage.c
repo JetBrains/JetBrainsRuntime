@@ -46,17 +46,17 @@
  * image.
  */
 
-jclass cachedImageAtkImageClass = NULL;
-jmethodID cachedImageCreateAtkImageMethod = NULL;
-jmethodID cachedImageGetImagePositionMethod = NULL;
-jmethodID cachedImageGetImageDescriptionMethod = NULL;
-jmethodID cachedImageGetImageSizeMethod = NULL;
-jclass cachedImagePointClass = NULL;
-jfieldID cachedImagePointXFieldID = NULL;
-jfieldID cachedImagePointYFieldID = NULL;
-jclass cachedImageDimensionClass = NULL;
-jfieldID cachedImageDimensionWidthFieldID = NULL;
-jfieldID cachedImageDimensionHeightFieldID = NULL;
+static jclass cachedImageAtkImageClass = NULL;
+static jmethodID cachedImageCreateAtkImageMethod = NULL;
+static jmethodID cachedImageGetImagePositionMethod = NULL;
+static jmethodID cachedImageGetImageDescriptionMethod = NULL;
+static jmethodID cachedImageGetImageSizeMethod = NULL;
+static jclass cachedImagePointClass = NULL;
+static jfieldID cachedImagePointXFieldID = NULL;
+static jfieldID cachedImagePointYFieldID = NULL;
+static jclass cachedImageDimensionClass = NULL;
+static jfieldID cachedImageDimensionWidthFieldID = NULL;
+static jfieldID cachedImageDimensionHeightFieldID = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

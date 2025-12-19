@@ -43,19 +43,17 @@ static const gchar *jaw_util_get_toolkit_version(void);
 
 static JavaVM *cachedJVM = NULL;
 
-jclass cachedUtilAtkObjectClass = NULL;
-jclass cachedUtilAccessibleRoleClass = NULL;
-jclass cachedUtilAccessibleStateClass = NULL;
-jclass cachedUtilRectangleClass = NULL;
-
-jmethodID cachedUtilGetTflagFromObjMethod = NULL;
-jmethodID cachedUtilGetAccessibleRoleMethod = NULL;
-jmethodID cachedUtilGetAccessibleParentMethod = NULL;
-
-jfieldID cachedUtilRectangleXField = NULL;
-jfieldID cachedUtilRectangleYField = NULL;
-jfieldID cachedUtilRectangleWidthField = NULL;
-jfieldID cachedUtilRectangleHeightField = NULL;
+static jclass cachedUtilAtkObjectClass = NULL;
+static jclass cachedUtilAccessibleRoleClass = NULL;
+static jclass cachedUtilAccessibleStateClass = NULL;
+static jclass cachedUtilRectangleClass = NULL;
+static jmethodID cachedUtilGetTflagFromObjMethod = NULL;
+static jmethodID cachedUtilGetAccessibleRoleMethod = NULL;
+static jmethodID cachedUtilGetAccessibleParentMethod = NULL;
+static jfieldID cachedUtilRectangleXField = NULL;
+static jfieldID cachedUtilRectangleYField = NULL;
+static jfieldID cachedUtilRectangleWidthField = NULL;
+static jfieldID cachedUtilRectangleHeightField = NULL;
 
 static GMutex cache_mutex;
 static gboolean jawutil_cache_initialized = FALSE;

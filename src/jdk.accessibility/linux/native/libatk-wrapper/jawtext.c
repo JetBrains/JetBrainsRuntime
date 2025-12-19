@@ -51,30 +51,29 @@
  * complex for languages which use ligatures.
  */
 
-jclass cachedTextAtkTextClass = NULL;
-jmethodID cachedTextCreateAtkTextMethod = NULL;
-jmethodID cachedTextGetTextMethod = NULL;
-jmethodID cachedTextGetCharacterAtOffsetMethod = NULL;
-jmethodID cachedTextGetTextAfterOffsetMethod = NULL;
-jmethodID cachedTextGetTextAtOffsetMethod = NULL;
-jmethodID cachedTextGetTextBeforeOffsetMethod = NULL;
-jmethodID cachedTextGetStringAtOffsetMethod = NULL;
-jmethodID cachedTextGetCaretOffsetMethod = NULL;
-jmethodID cachedTextGetCharacterExtentsMethod = NULL;
-jmethodID cachedTextGetCharacterCountMethod = NULL;
-jmethodID cachedTextGetOffsetAtPointMethod = NULL;
-jmethodID cachedTextGetRangeExtentsMethod = NULL;
-jmethodID cachedTextGetNSelectionsMethod = NULL;
-jmethodID cachedTextGetSelectionMethod = NULL;
-jmethodID cachedTextAddSelectionMethod = NULL;
-jmethodID cachedTextRemoveSelectionMethod = NULL;
-jmethodID cachedTextSetSelectionMethod = NULL;
-jmethodID cachedTextSetCaretOffsetMethod = NULL;
-
-jclass cachedTextStringSequenceClass = NULL;
-jfieldID cachedTextStrFieldID = NULL;
-jfieldID cachedTextStartOffsetFieldID = NULL;
-jfieldID cachedTextEndOffsetFieldID = NULL;
+static jclass cachedTextAtkTextClass = NULL;
+static jmethodID cachedTextCreateAtkTextMethod = NULL;
+static jmethodID cachedTextGetTextMethod = NULL;
+static jmethodID cachedTextGetCharacterAtOffsetMethod = NULL;
+static jmethodID cachedTextGetTextAfterOffsetMethod = NULL;
+static jmethodID cachedTextGetTextAtOffsetMethod = NULL;
+static jmethodID cachedTextGetTextBeforeOffsetMethod = NULL;
+static jmethodID cachedTextGetStringAtOffsetMethod = NULL;
+static jmethodID cachedTextGetCaretOffsetMethod = NULL;
+static jmethodID cachedTextGetCharacterExtentsMethod = NULL;
+static jmethodID cachedTextGetCharacterCountMethod = NULL;
+static jmethodID cachedTextGetOffsetAtPointMethod = NULL;
+static jmethodID cachedTextGetRangeExtentsMethod = NULL;
+static jmethodID cachedTextGetNSelectionsMethod = NULL;
+static jmethodID cachedTextGetSelectionMethod = NULL;
+static jmethodID cachedTextAddSelectionMethod = NULL;
+static jmethodID cachedTextRemoveSelectionMethod = NULL;
+static jmethodID cachedTextSetSelectionMethod = NULL;
+static jmethodID cachedTextSetCaretOffsetMethod = NULL;
+static jclass cachedTextStringSequenceClass = NULL;
+static jfieldID cachedTextStrFieldID = NULL;
+static jfieldID cachedTextStartOffsetFieldID = NULL;
+static jfieldID cachedTextEndOffsetFieldID = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;

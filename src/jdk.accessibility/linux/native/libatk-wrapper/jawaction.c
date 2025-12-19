@@ -58,13 +58,13 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
                                            const gchar *description);
 static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i);
 
-jclass cachedActionAtkActionClass = NULL;
-jmethodID cachedActionCreateAtkActionMethod = NULL;
-jmethodID cachedActionDoActionMethod = NULL;
-jmethodID cachedActionGetNActionsMethod = NULL;
-jmethodID cachedActionGetDescriptionMethod = NULL;
-jmethodID cachedActionSetDescriptionMethod = NULL;
-jmethodID cachedActionGetLocalizedNameMethod = NULL;
+static jclass cachedActionAtkActionClass = NULL;
+static jmethodID cachedActionCreateAtkActionMethod = NULL;
+static jmethodID cachedActionDoActionMethod = NULL;
+static jmethodID cachedActionGetNActionsMethod = NULL;
+static jmethodID cachedActionGetDescriptionMethod = NULL;
+static jmethodID cachedActionSetDescriptionMethod = NULL;
+static jmethodID cachedActionGetLocalizedNameMethod = NULL;
 
 static GMutex cache_mutex;
 static gboolean cache_initialized = FALSE;
