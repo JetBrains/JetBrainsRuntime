@@ -493,7 +493,7 @@ public class AtkText {
             }
             case AtkTextBoundary.LINE_START:
             case AtkTextBoundary.LINE_END: {
-                // eturned string is from the line start at or before the offset to the line start after the offset.
+                // Returned string is from the line start at or before the offset to the line start after the offset.
                 if (offset == characterCount) {
                     return null;
                 }

@@ -162,7 +162,7 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
      */
     // iface->text_changed implemented by atk
     // iface->text_caret_moved implemented by atk
-    // iface->text_selection_changed implemented bt atk
+    // iface->text_selection_changed implemented by atk
     // iface->text_attributes_changed implemented by atk
     iface->get_range_extents = jaw_text_get_range_extents;
     iface->get_bounded_ranges =
