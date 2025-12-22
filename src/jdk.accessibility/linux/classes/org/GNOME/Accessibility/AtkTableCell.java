@@ -118,9 +118,14 @@ public class AtkTableCell {
                 int length = iteration.getAccessibleColumnCount();
                 AccessibleContext[] result = new AccessibleContext[length];
                 for (int i = 0; i < length; i++) {
-                    AccessibleContext accessibleContext = iteration.getAccessibleAt(0, i).getAccessibleContext();
-                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
-                    result[i] = accessibleContext;
+                    Accessible accessible = iteration.getAccessibleAt(0, i);
+                    if (accessible != null) {
+                        AccessibleContext accessibleContext = accessible.getAccessibleContext();
+                        if (accessibleContext != null) {
+                            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                            result[i] = accessibleContext;
+                        }
+                    }
                 }
                 return result;
             }
@@ -149,9 +154,14 @@ public class AtkTableCell {
                 int length = iteration.getAccessibleRowCount();
                 AccessibleContext[] result = new AccessibleContext[length];
                 for (int i = 0; i < length; i++) {
-                    AccessibleContext accessibleContext = iteration.getAccessibleAt(0, i).getAccessibleContext();
-                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
-                    result[i] = accessibleContext;
+                    Accessible accessible = iteration.getAccessibleAt(0, i);
+                    if (accessible != null) {
+                        AccessibleContext accessibleContext = accessible.getAccessibleContext();
+                        if (accessibleContext != null) {
+                            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                            result[i] = accessibleContext;
+                        }
+                    }
                 }
                 return result;
             }
