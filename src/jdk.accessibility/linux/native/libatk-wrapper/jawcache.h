@@ -43,6 +43,7 @@ void jaw_text_cache_cleanup(JNIEnv *jniEnv);
 void jaw_value_cache_cleanup(JNIEnv *jniEnv);
 void jaw_util_cache_cleanup(JNIEnv *jniEnv);
 
+// TODO: currently leaking
 static inline void jaw_cache_cleanup(JNIEnv *jniEnv) {
     if (jniEnv == NULL) {
         g_warning("%s: Null argument jniEnv passed to the function", G_STRFUNC);
