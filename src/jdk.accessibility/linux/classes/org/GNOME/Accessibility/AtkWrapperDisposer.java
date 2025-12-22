@@ -118,6 +118,9 @@ public class AtkWrapperDisposer implements Runnable {
      * @param ac The AccessibleContext to associate with a native resource.
      */
     public void addRecord(AccessibleContext ac) {
+        if (ac == null) {
+            return;
+        }
         synchronized (lock) {
             if (!weakHashMap.containsKey(ac)) {
                 long nativeReference = AtkWrapper.createNativeResources(ac);

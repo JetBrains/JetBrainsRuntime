@@ -117,7 +117,9 @@ public class AtkSelection {
                 return null;
             }
             AccessibleContext selectedChildAccessibleContext = selectedChild.getAccessibleContext();
-            AtkWrapperDisposer.getInstance().addRecord(selectedChildAccessibleContext);
+            if (selectedChildAccessibleContext != null) {
+                AtkWrapperDisposer.getInstance().addRecord(selectedChildAccessibleContext);
+            }
             return selectedChildAccessibleContext;
         }, null);
     }

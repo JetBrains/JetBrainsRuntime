@@ -86,7 +86,9 @@ public class AtkHyperlink {
             Object anchor = accessibleHyperlink.getAccessibleActionAnchor(index);
             if (anchor instanceof Accessible accessible) {
                 AccessibleContext accessibleContext = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                if (accessibleContext != null) {
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                }
                 return accessibleContext;
             }
             return null;

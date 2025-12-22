@@ -163,7 +163,9 @@ public class AtkObject {
                 return null;
             }
             AccessibleContext accessibleContext = accessibleParent.getAccessibleContext();
-            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            if (accessibleContext != null) {
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            }
             return accessibleContext;
         }, null);
     }
@@ -377,7 +379,9 @@ public class AtkObject {
                 return null;
             }
             AccessibleContext accessibleContext = child.getAccessibleContext();
-            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            if (accessibleContext != null) {
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            }
             return accessibleContext;
         }, null);
     }

@@ -82,7 +82,9 @@ public class AtkTable {
                 return null;
             }
             AccessibleContext accessibleContext = accessible.getAccessibleContext();
-            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            if (accessibleContext != null) {
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            }
             return accessibleContext;
         }, null);
     }
@@ -251,7 +253,9 @@ public class AtkTable {
                 return null;
             }
             AccessibleContext accessibleContext = accessible.getAccessibleContext();
-            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            if (accessibleContext != null) {
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            }
             return accessibleContext;
         }, null);
     }
@@ -396,7 +400,9 @@ public class AtkTable {
                     return null;
                 }
                 AccessibleContext accessibleContext = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                if (accessibleContext != null) {
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                }
                 return accessibleContext;
             }
             return null;
@@ -424,7 +430,9 @@ public class AtkTable {
                     return null;
                 }
                 AccessibleContext accessibleContext = accessible.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                if (accessibleContext != null) {
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+                }
                 return accessibleContext;
             }
             return null;
@@ -449,7 +457,9 @@ public class AtkTable {
                 return null;
             }
             AccessibleContext accessibleContext = accessibleSummary.getAccessibleContext();
-            AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            if (accessibleContext != null) {
+                AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
+            }
             return accessibleContext;
         }, null);
     }

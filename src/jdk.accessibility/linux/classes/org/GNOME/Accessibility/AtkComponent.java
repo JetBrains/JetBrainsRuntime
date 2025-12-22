@@ -199,7 +199,9 @@ public class AtkComponent {
                     return null;
                 }
                 AccessibleContext accessibleContextAt = accessibleAt.getAccessibleContext();
-                AtkWrapperDisposer.getInstance().addRecord(accessibleContextAt);
+                if (accessibleContextAt != null) {
+                    AtkWrapperDisposer.getInstance().addRecord(accessibleContextAt);
+                }
                 return accessibleContextAt;
             }
             return null;
