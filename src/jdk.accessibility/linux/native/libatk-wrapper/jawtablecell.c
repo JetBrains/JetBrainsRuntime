@@ -66,8 +66,6 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell);
 
 typedef struct _TableCellData {
     jobject atk_table_cell;
-    gchar *description;
-    jstring jstrDescription;
 } TableCellData;
 
 #define JAW_GET_TABLECELL(cell, def_ret)                                       \
@@ -182,16 +180,6 @@ void jaw_table_cell_data_finalize(gpointer p) {
         g_warning("%s: JNIEnv is NULL in finalize, leaking JNI resources",
                   G_STRFUNC);
     } else {
-        if (data->jstrDescription != NULL) {
-            if (data->description != NULL) {
-                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                                 data->description);
-                data->description = NULL;
-            }
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-            data->jstrDescription = NULL;
-        }
-
         if (data->atk_table_cell != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_table_cell);
             data->atk_table_cell = NULL;
