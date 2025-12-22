@@ -1042,7 +1042,7 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
-        jaw_obj->locale = (gchar *)(*jniEnv)->GetStringUTFChars(
+        jaw_obj->locale = (*jniEnv)->GetStringUTFChars(
             jniEnv, jaw_obj->jstrLocale, NULL);
         if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_obj->locale == NULL) {
             jaw_jni_clear_exception(jniEnv);

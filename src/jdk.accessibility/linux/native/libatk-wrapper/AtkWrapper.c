@@ -1532,8 +1532,7 @@ static gboolean key_dispatch_handler(gpointer p) {
                                                       cachedWrapperStringFieldID);
     if (jstr != NULL) {
         event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
-        const gchar *tmp_string =
-            (const gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
+        const gchar *tmp_string = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
         event->string = g_strdup(tmp_string);
         (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_string);
     }

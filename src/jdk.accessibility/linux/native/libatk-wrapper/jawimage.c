@@ -71,7 +71,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
 
 typedef struct _ImageData {
     jobject atk_image;
-    gchar *image_description;
+    const gchar *image_description;
     jstring jstrImageDescription;
     GMutex mutex;
 } ImageData;
@@ -315,7 +315,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->image_description = (gchar *)(*jniEnv)->GetStringUTFChars(
+    data->image_description = (*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrImageDescription, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->image_description == NULL) {
         jaw_jni_clear_exception(jniEnv);

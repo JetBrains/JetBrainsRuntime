@@ -126,7 +126,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary);
 // TODO: description used both for column and row
 typedef struct _TableData {
     jobject atk_table;
-    gchar *description;
+    const gchar *description;
     jstring jstrDescription;
     GMutex mutex;
 } TableData;
@@ -699,7 +699,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->description = (gchar *)(*jniEnv)->GetStringUTFChars(
+    data->description = (*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrDescription, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->description == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -779,7 +779,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->description = (gchar *)(*jniEnv)->GetStringUTFChars(
+    data->description = (*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrDescription, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->description == NULL) {
         jaw_jni_clear_exception(jniEnv);

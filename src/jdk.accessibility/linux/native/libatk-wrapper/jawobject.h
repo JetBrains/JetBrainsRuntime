@@ -50,7 +50,7 @@ struct _JawObject {
     jstring jstrName;
     jstring jstrDescription;
     jstring jstrLocale;
-    gchar *locale;
+    const gchar *locale;
     AtkStateSet *state_set;
 
     GHashTable *storedData;
