@@ -55,13 +55,13 @@ public class AtkWrapper {
                 return;
             }
 
+            if (ac == null) {
+                return;
+            }
+
             Object oldValue = e.getOldValue();
             Object newValue = e.getNewValue();
             String propertyName = e.getPropertyName();
-
-            if (ac != null) {
-                AtkWrapperDisposer.getInstance().addRecord(ac);
-            }
 
             if (propertyName.equals(AccessibleContext.ACCESSIBLE_CARET_PROPERTY)) {
                 Object[] args = new Object[1];
