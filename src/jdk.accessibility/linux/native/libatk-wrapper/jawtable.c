@@ -123,6 +123,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
 static void jaw_table_set_caption(AtkTable *table, AtkObject *caption);
 static void jaw_table_set_summary(AtkTable *table, AtkObject *summary);
 
+// TODO: description used both for column and row
 typedef struct _TableData {
     jobject atk_table;
     gchar *description;
