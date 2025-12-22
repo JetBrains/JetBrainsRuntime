@@ -56,8 +56,7 @@ public class AtkTableCell {
         }
         accessibleTableWeakRef = new WeakReference<AccessibleTable>(accessibleTable);
 
-        AccessibleExtendedTable accessibleExtendedTable = (AccessibleExtendedTable) accessibleTable;
-        if (accessibleExtendedTable != null) {
+        if (accessibleTable instanceof AccessibleExtendedTable accessibleExtendedTable) {
             int index = ac.getAccessibleIndexInParent();
             row = accessibleExtendedTable.getAccessibleRow(index);
             column = accessibleExtendedTable.getAccessibleColumn(index);
