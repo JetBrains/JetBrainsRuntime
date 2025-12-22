@@ -250,7 +250,7 @@ public class AtkWrapper {
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_DESCRIPTION_PROPERTY)) {
                 emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_DESCRIPTION, null);
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_NAME_PROPERTY)) {
-                if (newValue != oldValue) {
+                if (!Objects.equals(newValue, oldValue)) {
                     emitSignal(ac, AtkSignal.OBJECT_PROPERTY_CHANGE_ACCESSIBLE_NAME, null);
                 }
             } else if (propertyName.equals(AccessibleContext.ACCESSIBLE_HYPERTEXT_OFFSET)) {
