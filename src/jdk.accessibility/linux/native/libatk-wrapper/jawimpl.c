@@ -219,7 +219,6 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     if (jaw_obj == NULL) {
         g_warning("%s: Failed to create JawObject", G_STRFUNC);
         g_object_unref(G_OBJECT(jaw_impl));
-        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         return NULL;
     }
 
