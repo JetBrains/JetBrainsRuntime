@@ -68,7 +68,7 @@ static jfieldID cachedImplMemberOfFieldID = NULL;
 static jfieldID cachedImplParentWindowOfFieldID = NULL;
 static jfieldID cachedImplSubwindowOfFieldID = NULL;
 
-static GMutex impl_cache_mutex;
+static GMutex cache_mutex;
 static gboolean impl_cache_initialized = FALSE;
 
 static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv);
@@ -624,10 +624,10 @@ AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
 static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
     JAW_CHECK_NULL(jniEnv, FALSE);
 
-    g_mutex_lock(&impl_cache_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (impl_cache_initialized) {
-        g_mutex_unlock(&impl_cache_mutex);
+        g_mutex_unlock(&cache_mutex);
         return TRUE;
     }
 
@@ -762,7 +762,7 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
     }
 
     impl_cache_initialized = TRUE;
-    g_mutex_unlock(&impl_cache_mutex);
+    g_mutex_unlock(&cache_mutex);
 
     g_debug("%s: classes and methods cached successfully", G_STRFUNC);
 
@@ -796,7 +796,7 @@ cleanup_and_fail:
     cachedImplParentWindowOfFieldID = NULL;
     cachedImplSubwindowOfFieldID = NULL;
 
-    g_mutex_unlock(&impl_cache_mutex);
+    g_mutex_unlock(&cache_mutex);
     return FALSE;
 }
 
@@ -805,7 +805,7 @@ void jaw_impl_cache_cleanup(JNIEnv *jniEnv) {
         return;
     }
 
-    g_mutex_lock(&impl_cache_mutex);
+    g_mutex_lock(&cache_mutex);
 
     if (cachedImplAtkWrapperDisposerClass != NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, cachedImplAtkWrapperDisposerClass);
@@ -835,7 +835,7 @@ void jaw_impl_cache_cleanup(JNIEnv *jniEnv) {
     cachedImplSubwindowOfFieldID = NULL;
     impl_cache_initialized = FALSE;
 
-    g_mutex_unlock(&impl_cache_mutex);
+    g_mutex_unlock(&cache_mutex);
 }
 
 #ifdef __cplusplus
