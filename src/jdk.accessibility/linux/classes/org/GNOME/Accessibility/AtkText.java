@@ -736,9 +736,9 @@ public class AtkText {
         return AtkUtil.invokeInSwingAndWait(() -> {
             String selectedText = accessibleText.getSelectedText();
             if (selectedText != null) {
-                return selectedText.length();
+                return 1;
             }
-            return -1;
+            return 0;
         }, -1);
     }
 
