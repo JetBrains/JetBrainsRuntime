@@ -54,6 +54,7 @@ struct _JawObject {
     AtkStateSet *state_set;
 
     GHashTable *storedData;
+    GMutex mutex;
 };
 
 GType jaw_object_get_type(void);

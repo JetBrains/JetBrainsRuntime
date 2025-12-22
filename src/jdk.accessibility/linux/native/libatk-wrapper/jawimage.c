@@ -73,6 +73,7 @@ typedef struct _ImageData {
     jobject atk_image;
     gchar *image_description;
     jstring jstrImageDescription;
+    GMutex mutex;
 } ImageData;
 
 #define JAW_GET_IMAGE(image, def_ret)                                          \
@@ -139,9 +140,11 @@ gpointer jaw_image_data_init(jobject ac) {
     }
 
     ImageData *data = g_new0(ImageData, 1);
+    g_mutex_init(&data->mutex);
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
     if (data->atk_image == NULL) {
         g_warning("%s: Failed to create global ref for atk_image", G_STRFUNC);
+        g_mutex_clear(&data->mutex);
         g_free(data);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -166,6 +169,8 @@ void jaw_image_data_finalize(gpointer p) {
         return;
     }
 
+    g_mutex_lock(&data->mutex);
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
     if (jniEnv == NULL) {
@@ -188,6 +193,8 @@ void jaw_image_data_finalize(gpointer p) {
         }
     }
 
+    g_mutex_unlock(&data->mutex);
+    g_mutex_clear(&data->mutex);
     g_free(data);
 }
 
@@ -290,6 +297,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         return NULL;
     }
 
+    g_mutex_lock(&data->mutex);
     if (data->jstrImageDescription != NULL) {
         if (data->image_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
@@ -301,8 +309,28 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     }
 
     data->jstrImageDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
+    if (data->jstrImageDescription == NULL) {
+        g_mutex_unlock(&data->mutex);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
     data->image_description = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, data->jstrImageDescription, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || data->image_description == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+
+        // data->jstrImageDescription != NULL
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
+        data->jstrImageDescription = NULL;
+
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_mutex_unlock(&data->mutex);
+        return NULL;
+    }
+
+    g_mutex_unlock(&data->mutex);
 
     (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

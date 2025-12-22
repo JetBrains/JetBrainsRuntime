@@ -46,6 +46,7 @@ struct _JawHyperlink {
 
     jstring jstrUri;
     gchar *uri;
+    GMutex mutex;
 };
 
 GType jaw_hyperlink_get_type(void);

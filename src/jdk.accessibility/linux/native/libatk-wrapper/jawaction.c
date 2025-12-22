@@ -86,6 +86,7 @@ typedef struct _ActionData {
     jstring jstrLocalizedName;
     const gchar *action_description;
     jstring jstrActionDescription;
+    GMutex mutex;
 } ActionData;
 
 #define JAW_GET_ACTION(action, def_ret)                                        \
@@ -159,9 +160,11 @@ gpointer jaw_action_data_init(jobject ac) {
     }
 
     ActionData *data = g_new0(ActionData, 1);
+    g_mutex_init(&data->mutex);
     data->atk_action = (*jniEnv)->NewGlobalRef(jniEnv, jatk_action);
     if (data->atk_action == NULL) {
         g_warning("%s: Failed to create global ref for atk_action", G_STRFUNC);
+        g_mutex_clear(&data->mutex);
         g_free(data);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -185,6 +188,8 @@ void jaw_action_data_finalize(gpointer p) {
         g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
+
+    g_mutex_lock(&data->mutex);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -218,6 +223,8 @@ void jaw_action_data_finalize(gpointer p) {
         }
     }
 
+    g_mutex_unlock(&data->mutex);
+    g_mutex_clear(&data->mutex);
     g_free(data);
 }
 
@@ -328,6 +335,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         return NULL;
     }
 
+    g_mutex_lock(&data->mutex);
     if (data->jstrActionDescription != NULL) {
         if (data->action_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(
@@ -340,6 +348,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrActionDescription == NULL) {
+        g_mutex_unlock(&data->mutex);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -347,19 +356,20 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     data->action_description =
         (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrActionDescription, NULL);
-
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->action_description == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
-        if (data->jstrActionDescription != NULL) {
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
-            data->jstrActionDescription = NULL;
-        }
+        // data->jstrActionDescription != NULL
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
+        data->jstrActionDescription = NULL;
 
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_mutex_unlock(&data->mutex);
         return NULL;
     }
+
+    g_mutex_unlock(&data->mutex);
 
     (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -462,6 +472,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
+    g_mutex_lock(&data->mutex);
     if (data->jstrLocalizedName != NULL) {
         if (data->localized_name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
@@ -473,6 +484,7 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     }
     data->jstrLocalizedName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrLocalizedName == NULL) {
+        g_mutex_unlock(&data->mutex);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -482,15 +494,17 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->localized_name == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
-        if (data->jstrLocalizedName != NULL) {
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
-            data->jstrLocalizedName = NULL;
-        }
+        // data->jstrLocalizedName != NULL
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
+        data->jstrLocalizedName = NULL;
 
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        g_mutex_unlock(&data->mutex);
         return NULL;
     }
+
+    g_mutex_unlock(&data->mutex);
 
     (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);

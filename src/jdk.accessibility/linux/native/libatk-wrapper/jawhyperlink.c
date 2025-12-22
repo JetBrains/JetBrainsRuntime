@@ -141,6 +141,7 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
 
 static void jaw_hyperlink_init(JawHyperlink *link) {
     JAW_DEBUG_ALL("%p", link);
+    g_mutex_init(&link->mutex);
 }
 
 static void jaw_hyperlink_dispose(GObject *gobject) {
@@ -173,9 +174,12 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         g_debug("%s: jniEnv is NULL", G_STRFUNC);
+        g_mutex_clear(&jaw_hyperlink->mutex);
         G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
         return;
     }
+
+    g_mutex_lock(&jaw_hyperlink->mutex);
 
     if (jaw_hyperlink->jstrUri != NULL) {
         if (jaw_hyperlink->uri != NULL) {
@@ -191,6 +195,9 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jhyperlink);
         jaw_hyperlink->jhyperlink = NULL;
     }
+
+    g_mutex_unlock(&jaw_hyperlink->mutex);
+    g_mutex_clear(&jaw_hyperlink->mutex);
 
     /* Chain up to parent's finalize */
     G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
@@ -242,6 +249,8 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
         return NULL;
     }
 
+    g_mutex_lock(&jaw_hyperlink->mutex);
+
     if (jaw_hyperlink->jstrUri != NULL) {
         if (jaw_hyperlink->uri != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
@@ -253,13 +262,36 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     }
 
     jaw_hyperlink->jstrUri = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_hyperlink->jstrUri == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_mutex_unlock(&jaw_hyperlink->mutex);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
     jaw_hyperlink->uri = (gchar *)(*jniEnv)->GetStringUTFChars(
         jniEnv, jaw_hyperlink->jstrUri, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_hyperlink->uri == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+
+        // jaw_hyperlink->jstrUri != NULL
+        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
+        jaw_hyperlink->jstrUri = NULL;
+
+        g_mutex_unlock(&jaw_hyperlink->mutex);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
+
+    gchar *result = jaw_hyperlink->uri;
+    g_mutex_unlock(&jaw_hyperlink->mutex);
 
     (*jniEnv)->DeleteLocalRef(jniEnv, jhyperlink);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return jaw_hyperlink->uri;
+    return result;
 }
 
 /**
