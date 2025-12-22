@@ -1443,18 +1443,12 @@ static gboolean key_dispatch_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        g_warning("Failed to create a new local reference frame");
-        return 0;
-    }
-
     AtkKeyEventStruct *event = g_new0(AtkKeyEventStruct, 1);
 
     if (!atk_wrapper_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize cache", G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1465,7 +1459,6 @@ static gboolean key_dispatch_handler(gpointer p) {
                   G_STRFUNC);
         g_free(event);
         queue_free_callback_para_event(para);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1485,7 +1478,6 @@ static gboolean key_dispatch_handler(gpointer p) {
                   G_STRFUNC, type);
         g_free(event);
         queue_free_callback_para_event(para);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return G_SOURCE_REMOVE;
     }
 
@@ -1532,9 +1524,15 @@ static gboolean key_dispatch_handler(gpointer p) {
                                                       cachedWrapperStringFieldID);
     if (jstr != NULL) {
         event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
+
         const gchar *tmp_string = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
-        event->string = g_strdup(tmp_string);
-        (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_string);
+        if (tmp_string != NULL) {
+             event->string = g_strdup(tmp_string);
+             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_string);
+        }
+
+        (*jniEnv)->DeleteLocalRef(jniEnv, jstr);
+        jstr = NULL;
     }
 
     // keycode
@@ -1548,9 +1546,9 @@ static gboolean key_dispatch_handler(gpointer p) {
     jaw_util_dispatch_key_event(event);
 
     // clean up
+    g_free(event->string);
     g_free(event);
     queue_free_callback_para_event(para);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return G_SOURCE_REMOVE;
 }
