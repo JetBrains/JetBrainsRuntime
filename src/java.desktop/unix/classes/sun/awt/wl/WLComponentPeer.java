@@ -99,8 +99,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     protected final Component target;
 
     private Color background; // protected by stateLock
-    protected SurfaceData surfaceData; // accessed under AWT lock
-    private WLMainSurface wlSurface; // accessed under AWT lock
+    protected WLMainSurface wlSurface; // accessed under AWT lock
     private Shadow shadow; // accessed under AWT lock
     private final WLRepaintArea paintArea;
     private boolean paintPending = false; // protected by stateLock
@@ -136,7 +135,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         displayScale = config.getDisplayScale();
         effectiveScale = config.getEffectiveScale();
         wlSize.deriveFromJavaSize(size.width, size.height);
-        surfaceData = config.createSurfaceData(this);
         nativePtr = nativeCreateFrame();
         paintArea = new WLRepaintArea();
         if (log.isLoggable(Level.FINE)) {
@@ -393,12 +391,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 try {
                     notifyNativeWindowToBeHidden(nativePtr);
                     nativeHideFrame(nativePtr);
-                    shadow.hide();
+                    shadow.dispose();
                 } finally {
                     WLMainSurface s = wlSurface;
                     // A null surface is the primary tell that the window is not being shown
                     wlSurface = null;
-                    s.dispose();
+                    s.disposeAndInvalidateData();
                 }
             }
         });
@@ -422,7 +420,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             assert wlSurface == null : "Invisible window already has a Wayland surface attached";
 
             wlSurface = new WLMainSurface((WLWindowPeer) this);
-
             // Need to keep track of the construction stage in order to release resources
             // properly in case of an error during the construction.
             int stage = 0;
@@ -465,7 +462,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                         log.fine("Failed to show " + target + " with " + t);
                     }
                     if (stage >= 3) {
-                        shadow.hide();
+                        shadow.dispose();
                     }
                     if (stage >= 2) {
                         notifyNativeWindowToBeHidden(nativePtr);
@@ -513,8 +510,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     void updateSurfaceData() {
         performLocked(() -> {
-            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                    getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
+            wlSurface.updateSurfaceData(getGraphicsConfiguration(),
+                    getBufferWidth(), getBufferHeight(), getDisplayScale());
 
             shadow.updateSurfaceData();
         });
@@ -618,7 +615,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public Graphics getGraphics() {
-        return getGraphics(surfaceData,
+        if (!isVisible()) {
+            throw new IllegalStateException("Cannot get graphics of a component that is not visible");
+        }
+
+        return getGraphics(wlSurface.getSurfaceData(),
                 target.getForeground(),
                 target.getBackground(),
                 target.getFont());
@@ -637,7 +638,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             if (wlSurface != null) {
                 shadow.paint();
                 shadow.commitSurfaceData();
-                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
+                wlSurface.commitSurfaceData();
             }
         });
         ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
@@ -728,7 +729,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 log.fine(String.format("%s is resizing its buffer to %dx%d pixels",
                         this, getBufferWidth(), getBufferHeight()));
             }
-            updateSurfaceData();
+            if (wlSurface != null) {
+                updateSurfaceData();
+            }
             layout();
 
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
@@ -1023,19 +1026,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
             nativeDisposeFrame(nativePtr);
             nativePtr = 0;
-            if (wlSurface != null) {
-                wlSurface.dispose();
-                wlSurface = null;
-            }
-            SurfaceData oldData = surfaceData;
-            surfaceData = null;
-            if (oldData != null) {
-                oldData.invalidate();
-            }
-            if (shadow != null) {
-                shadow.dispose();
-                shadow = null;
-            }
         });
     }
 
@@ -1786,8 +1776,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         // the state protected by the AWT lock may have changed since the start of the method.
         if (!isVisible()) return;
 
-        if (!wlSurface.hasSurfaceData()) {
-            wlSurface.associateWithSurfaceData(surfaceData);
+        if (!wlSurface.isVisible()) {
+            wlSurface.show();
         }
 
         shadow.notifyConfigured(active, maximized, fullscreen);
@@ -1821,7 +1811,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     void notifyEnteredOutput(int wlOutputID) {
         performLocked(() -> {
-            if (wlSurface != null) {
+            if (wlSurface != null) { // TODO: shouldn't need this check once everything is on EDT
                 wlSurface.notifyEnteredOutput(wlOutputID);
             }
         });
@@ -1835,7 +1825,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     void checkIfOnNewScreen() {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
-        if (wlSurface == null) return;
+        if (wlSurface == null) return; //  TODO: shouldn't need this check once everything is on EDT
         final WLGraphicsDevice newDevice = wlSurface.getGraphicsDevice();
         if (newDevice != null) { // could be null when screens are being reconfigured
             final GraphicsConfiguration gc = newDevice.getDefaultConfiguration();
@@ -1947,7 +1937,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         void createSurface();
         void commitSurface();
         void dispose();
-        void hide();
         void updateSurfaceData();
         void paint();
         void commitSurfaceData();
@@ -2060,7 +2049,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     private class ShadowImpl implements WLSurfaceSizeListener, Shadow {
         private WLSubSurface shadowSurface; // protected by AWT lock
-        private SurfaceData shadowSurfaceData;  // protected by AWT lock
         private boolean needsRepaint = true;  // protected by AWT lock
         private final int shadowSize;
         private final WLSize shadowWlSize = new WLSize(); // protected by stateLock
@@ -2069,7 +2057,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         public ShadowImpl(int shadowSize) {
             this.shadowSize = shadowSize;
             shadowWlSize.deriveFromJavaSize(wlSize.getJavaWidth() + shadowSize * 2, wlSize.getJavaHeight() + shadowSize * 2);
-            shadowSurfaceData = ((WLGraphicsConfig) getGraphicsConfiguration()).createSurfaceData(this, shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight());
         }
 
         public int getSize() {
@@ -2080,7 +2067,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         public void updateSurfaceSize() {
             assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
-            shadowSurface.updateSurfaceSize(shadowWlSize.getSurfaceWidth(), shadowWlSize.getSurfaceHeight());
+            if (shadowSurface != null) {
+                shadowSurface.updateSurfaceSize(shadowWlSize.getSurfaceWidth(), shadowWlSize.getSurfaceHeight());
+            }
         }
 
         public void resizeToParentWindow() {
@@ -2094,7 +2083,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             int shadowOffset = -javaUnitsToSurfaceUnits(shadowSize);
-            shadowSurface = new WLSubSurface(wlSurface, shadowOffset, shadowOffset);
+            shadowSurface = new WLSubSurface(wlSurface, (WLGraphicsConfig) getGraphicsConfiguration(), this,
+                    shadowOffset, shadowOffset, shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight());
+            needsRepaint = true;
         }
 
         public void commitSurface() {
@@ -2108,32 +2099,20 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             if (shadowSurface != null) {
-                shadowSurface.dispose();
+                shadowSurface.disposeAndInvalidateData();
                 shadowSurface = null;
             }
-
-            SurfaceData oldShadowData = shadowSurfaceData;
-            shadowSurfaceData = null;
-            if (oldShadowData != null) {
-                oldShadowData.invalidate();
-            }
-        }
-
-        public void hide() {
-            assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-
-            if (shadowSurface != null) {
-                shadowSurface.dispose();
-                shadowSurface = null;
-            }
+            needsRepaint = false;
         }
 
         public void updateSurfaceData() {
             assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
-            needsRepaint = true;
-            SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).revalidate(
-                    getGraphicsConfiguration(), shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight(), getDisplayScale());
+            if (shadowSurface != null) {
+                needsRepaint = true;
+                shadowSurface.updateSurfaceData(getGraphicsConfiguration(),
+                        shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight(), getDisplayScale());
+            }
         }
 
         public void paint() {
@@ -2143,10 +2122,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 return;
             }
 
+            assert shadowSurface != null : "The shadow surface must be created before painting";
+
             int width = shadowWlSize.getJavaWidth();
             int height = shadowWlSize.getJavaHeight();
 
-            var g = new SunGraphics2D(shadowSurfaceData, Color.BLACK, new Color(0, true), null);
+            var g = new SunGraphics2D(shadowSurface.getSurfaceData(), Color.BLACK, new Color(0, true), null);
             try {
                 g.clearRect(0, 0, width, height);
                 ShadowImage.forSize(shadowSize, isActive).paintTo(g, width, height);
@@ -2158,11 +2139,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void commitSurfaceData() {
-            SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).commit();
+            if (shadowSurface != null) {
+                shadowSurface.commitSurfaceData();
+            }
         }
 
         public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
-            assert shadowSurface != null;
             assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
             needsRepaint |= active ^ isActive;
@@ -2170,14 +2152,17 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             isActive = active;
             boolean showShadow = !fullscreen && !maximized;
             if (showShadow) {
-                if (!shadowSurface.hasSurfaceData()) {
-                    shadowSurface.associateWithSurfaceData(shadowSurfaceData);
+                if (shadowSurface == null) {
+                    createSurface();
                 }
+
+                if (!shadowSurface.isVisible()) {
+                    shadowSurface.show();
+                }
+                shadowSurface.commit();
             } else {
-                shadowSurface.hide();
-                needsRepaint = false;
+                dispose();
             }
-            shadowSurface.commit();
         }
     }
 
@@ -2188,7 +2173,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         @Override public void createSurface() { }
         @Override public void commitSurface() { }
         @Override public void dispose() { }
-        @Override public void hide() { }
         @Override public void updateSurfaceData() { }
         @Override public void paint() { }
         @Override public void commitSurfaceData() { }

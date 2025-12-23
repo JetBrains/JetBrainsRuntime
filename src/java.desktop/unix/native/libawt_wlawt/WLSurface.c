@@ -202,16 +202,6 @@ Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLSurface_nativeHideWlSurface
-        (JNIEnv *env, jobject obj, jlong ptr)
-{
-    struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
-    assert (sd);
-
-    wl_surface_attach(sd->wlSurface, NULL, 0, 0);
-}
-
-JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSurface_nativeCommitWlSurface
         (JNIEnv *env, jobject obj, jlong ptr)
 {

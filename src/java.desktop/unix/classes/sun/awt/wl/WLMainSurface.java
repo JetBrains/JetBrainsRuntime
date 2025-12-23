@@ -27,7 +27,6 @@
 package sun.awt.wl;
 
 import sun.awt.SunToolkit;
-import sun.java2d.SurfaceData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +38,7 @@ public class WLMainSurface extends WLSurface {
     private final List<WLGraphicsDevice> devices = new ArrayList<>();
 
     public WLMainSurface(WLWindowPeer peer) {
+        super(((WLGraphicsConfig) peer.getGraphicsConfiguration()).createSurfaceData(peer));
         this.peer = peer;
     }
 
@@ -98,16 +98,16 @@ public class WLMainSurface extends WLSurface {
     }
 
     @Override
-    public void associateWithSurfaceData(SurfaceData data) {
-        super.associateWithSurfaceData(data);
+    public void show() {
+        super.show();
         WLToolkit.registerWLSurface(getWlSurfacePtr(), peer);
     }
 
     @Override
-    public void dispose() {
+    public void disposeAndInvalidateData() {
         if (isValid) {
             WLToolkit.unregisterWLSurface(getWlSurfacePtr());
-            super.dispose();
+            super.disposeAndInvalidateData();
         }
     }
 

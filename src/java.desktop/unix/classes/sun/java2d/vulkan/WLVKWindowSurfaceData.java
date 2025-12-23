@@ -128,11 +128,23 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         }
     }
 
+    @Override
+    public void dispose() {
+        // TODO: must be invoked on EDT
+        if (isValid()) {
+            flush();
+            VKSurfaceData.dispose(getNativeOps());
+        }
+
+        assert !isValid();
+    }
+
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface
         // but the surface has not been committed yet.
         sizeListener.updateSurfaceSize();
     }
+
     public int getRGBPixelAt(int x, int y) {
         Rectangle r = getBounds();
         if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {

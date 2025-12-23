@@ -29,17 +29,19 @@ package sun.awt.wl;
 import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
+import sun.java2d.wl.WLSurfaceSizeListener;
 
-import java.util.Objects;
+import java.awt.GraphicsConfiguration;
 
 /**
- * Represents a wl_surface Wayland object.
+ * Represents a wl_surface Wayland object. Manages SurfaceData associated with it.
  * All operations must be performed on the AWT thread.
  */
 public class WLSurface {
     private final long nativePtr; // an opaque native handle
     private final long wlSurfacePtr; // a pointer to a wl_surface object
     protected boolean isValid = true;
+    protected boolean isVisible = false;
 
     private SurfaceData surfaceData;
 
@@ -47,35 +49,32 @@ public class WLSurface {
         initIDs();
     }
 
-    protected WLSurface() {
+    protected WLSurface(SurfaceData sd) {
+        surfaceData = sd;
         nativePtr = nativeCreateWlSurface();
         if (nativePtr == 0) {
             throw new RuntimeException("Failed to create WLSurface");
         }
         wlSurfacePtr = wlSurfacePtr(nativePtr);
-        surfaceData = null; // having surface data means that the surface is visible
     }
 
-    public void dispose() {
+    public void commitSurfaceData() {
+        assertIsValid();
+
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
+    }
+
+    public void disposeAndInvalidateData() {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
         if (isValid) {
-            hide();
+            // surfaceData must break its dependency on wl_surface before that wl_surface is destroyed.
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).dispose();
+            surfaceData = null;
             nativeDestroyWlSurface(nativePtr);
+            isVisible = false;
             isValid = false;
         }
-    }
-
-    public void hide() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        assertIsValid();
-
-        if (surfaceData == null) return;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
-        surfaceData = null;
-
-        nativeHideWlSurface(nativePtr);
-        nativeCommitWlSurface(nativePtr);
     }
 
     protected void assertIsValid() {
@@ -84,22 +83,26 @@ public class WLSurface {
         }
     }
 
-    public boolean hasSurfaceData() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        assertIsValid();
-
-        return surfaceData != null;
+    public boolean isVisible() {
+        return isVisible;
     }
 
-    public void associateWithSurfaceData(SurfaceData data) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        Objects.requireNonNull(data);
+    public SurfaceData getSurfaceData() {
         assertIsValid();
 
-        if (surfaceData != null) return;
+        return surfaceData;
+    }
 
-        surfaceData = data;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(wlSurfacePtr);
+    public void updateSurfaceData(GraphicsConfiguration gc, int width, int height, int scale) {
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(gc, width, height, scale);
+    }
+
+    public void show() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assertIsValid();
+
+        isVisible = true;
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
     }
 
     public void commit() {
@@ -167,6 +170,5 @@ public class WLSurface {
     private native long nativeCreateWlSurface();
     private native void nativeSetSize(long ptr, int width, int height);
     private native void nativeDestroyWlSurface(long ptr);
-    private native void nativeHideWlSurface(long ptr);
     private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
 }

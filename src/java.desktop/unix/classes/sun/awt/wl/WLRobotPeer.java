@@ -132,7 +132,7 @@ public class WLRobotPeer implements RobotPeer {
         WLToolkit.awtLock();
         try {
             checkPeerForPixelGrab(peer);
-            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(loc.x, loc.y);
+            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.wlSurface.getSurfaceData()).getRGBPixelAt(loc.x, loc.y);
         } finally {
             WLToolkit.awtUnlock();
         }
@@ -145,7 +145,7 @@ public class WLRobotPeer implements RobotPeer {
         WLToolkit.awtLock();
         try {
             checkPeerForPixelGrab(peer);
-            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(adjustedBounds);
+            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.wlSurface.getSurfaceData()).getRGBPixelsAt(adjustedBounds);
         } finally {
             WLToolkit.awtUnlock();
         }
@@ -155,7 +155,7 @@ public class WLRobotPeer implements RobotPeer {
         if (!peer.isVisible()) {
             throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
         }
-        if (! (peer.surfaceData instanceof WLPixelGrabberExt)) {
+        if (! (peer.wlSurface.getSurfaceData() instanceof WLPixelGrabberExt)) {
             throw new UnsupportedOperationException("WLPixelGrabberExt is required to read pixels from a Wayland surface");
         }
     }

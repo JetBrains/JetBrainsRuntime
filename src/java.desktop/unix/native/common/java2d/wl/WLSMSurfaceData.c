@@ -125,6 +125,26 @@ Java_sun_java2d_wl_WLSMSurfaceData_commit(JNIEnv *env, jobject wsd)
 }
 
 JNIEXPORT void JNICALL
+Java_sun_java2d_wl_WLSMSurfaceData_nativeDispose(JNIEnv *env, jobject wsd)
+{
+#ifndef HEADLESS
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_nativeDispose\n");
+    WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
+    if (wsdo == NULL) {
+        return;
+    }
+
+    // No Wayland event handlers should be able to run while this method
+    // runs. Those handlers may retain a reference to the buffer manager
+    // and therefore must be cancelled before that reference becomes stale.
+    // This code must execute on EDT because of that.
+
+    WLSBM_Destroy(wsdo->bufferManager);
+    wsdo->bufferManager = NULL;
+#endif /* !HEADLESS */
+}
+
+JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_nativeRevalidate(JNIEnv *env, jobject wsd,
                                               jint width, jint height, jint scale)
 {
@@ -319,15 +339,6 @@ WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
     J2dTrace(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
     WLSDOps *wsdo = (WLSDOps*)ops;
-
-    // No Wayland event handlers should be able to run while this method
-    // runs. Those handlers may retain a reference to the buffer manager
-    // and therefore must be cancelled before that reference becomes stale.
-    AWT_LOCK();
-    WLSBM_Destroy(wsdo->bufferManager);
-    wsdo->bufferManager = NULL;
-    AWT_NOFLUSH_UNLOCK();
-
     pthread_mutex_destroy(&wsdo->lock);
 #endif
 }

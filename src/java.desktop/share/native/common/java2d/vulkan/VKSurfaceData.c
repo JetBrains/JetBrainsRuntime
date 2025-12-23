@@ -291,7 +291,8 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
 }
 
 static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
-    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
+    // no-op
+    // TODO: remove completely?
 }
 
 JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format, jint backgroundRGB,

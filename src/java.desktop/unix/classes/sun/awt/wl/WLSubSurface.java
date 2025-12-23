@@ -26,11 +26,13 @@
 
 package sun.awt.wl;
 
+import sun.java2d.wl.WLSurfaceSizeListener;
+
 public class WLSubSurface extends WLSurface {
     private final long wlSubSurfacePtr; // a pointer to a wl_subsurface object
 
-    public WLSubSurface(WLMainSurface mainSurface, int x, int y) {
-        super();
+    public WLSubSurface(WLMainSurface mainSurface, WLGraphicsConfig gc, WLSurfaceSizeListener sl,int x, int y,  int width, int height) {
+        super(gc.createSurfaceData(sl, width, height));
         wlSubSurfacePtr = nativeCreateWlSubSurface(getWlSurfacePtr(), mainSurface.getWlSurfacePtr());
         if (wlSubSurfacePtr == 0) {
             throw new RuntimeException("Failed to create WLSubSurface");
@@ -50,10 +52,10 @@ public class WLSubSurface extends WLSurface {
     }
 
     @Override
-    public void dispose() {
+    public void disposeAndInvalidateData() {
         if (isValid) {
             nativeDestroyWlSubSurface(wlSubSurfacePtr);
-            super.dispose();
+            super.disposeAndInvalidateData();
         }
     }
 
