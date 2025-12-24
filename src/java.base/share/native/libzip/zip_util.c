@@ -101,7 +101,7 @@ ZFILE_Open(const char *fname, int flags) {
         (flags & O_WRONLY) ?  GENERIC_WRITE :
         GENERIC_READ;
     const DWORD sharing =
-        FILE_SHARE_READ | FILE_SHARE_WRITE;
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
     const DWORD disposition =
         /* Note: O_TRUNC overrides O_CREAT */
         (flags & O_TRUNC) ? CREATE_ALWAYS :
