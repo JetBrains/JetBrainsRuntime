@@ -117,7 +117,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     protected void wlSetVisible(boolean v) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (!v) ungrab(true);
 
@@ -329,10 +329,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     public BufferedImage getClientAreaSnapshot(int x, int y, int width, int height) {
-        if (!isVisible()) {
-            throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
-        }
-
         // Move the coordinate system to the client area
         Insets insets = getInsets();
         x += insets.left;
@@ -391,8 +387,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     private boolean canPaintRoundedCorners() {
-        if (!isVisible()) return false;
-
         int roundedCornerSize = WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind);
         // Note: You would normally get a transparency-capable color model when using
         // the default graphics configuration
@@ -424,8 +418,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     private void createCornerMasks() {
-        if (!isVisible()) return;
-
         if (graphics == null) {
             graphics = new SunGraphics2D(getSurfaceData(), Color.WHITE, Color.BLACK, null);
             graphics.setComposite(AlphaComposite.Clear);

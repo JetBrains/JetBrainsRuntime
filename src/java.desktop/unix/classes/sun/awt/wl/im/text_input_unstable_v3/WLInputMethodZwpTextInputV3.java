@@ -29,6 +29,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.awt.wl.WLComponentPeer;
+import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.AWTEvent;
@@ -377,7 +378,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         assert component != null : "Component must not be null";
         assert out != null : "OutgoingChanges must not be null";
 
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         // TODO: there's no dedicated AWT/Swing API for that, but we can make a few guesses, e.g.
         //       (component instanceof JPasswordField) ? ContentPurpose.PASSWORD
@@ -389,7 +390,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *          compatible with {@code zwp_text_input_v3::set_cursor_rectangle} API;
      */
     private static Rectangle awtGetWlCursorRectangleOf(Component component) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         Rectangle result = null;
 
@@ -434,7 +435,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * @throws IllegalArgumentException if {@code visibleComponent} is {@code null} or isn't showing on the screen.
      */
     private static Rectangle awtGetCaretOf(Component visibleComponent) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (!Objects.requireNonNull(visibleComponent, "visibleComponent").isShowing()) {
             throw new IllegalArgumentException("visibleComponent must be showing");
@@ -474,7 +475,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private static Rectangle awtGetVisibleRectOf(final Component component) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (component instanceof javax.swing.JComponent jComponent) {
             return jComponent.getVisibleRect();
@@ -488,7 +489,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or {@code null} if the rectangle couldn't be determined.
      */
     private static Rectangle awtConvertRectOnComponentToRectOnWlSurface(Component component, Rectangle rectOnComponent) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         Objects.requireNonNull(component, "component");
 
@@ -536,7 +537,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or its closest ancestor meeting these requirements.
      */
     private static Window awtGetWlSurfaceComponentOf(Component component) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         return WLComponentPeer.getToplevelFor(component);
     }
@@ -1206,7 +1207,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called by {@link ClientComponentCaretPositionTracker} */
     boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("wlUpdateCursorRectangle(): forceUpdate={0}, this={1}.", forceUpdate, this);
@@ -1290,7 +1291,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::enter} events. */
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1312,7 +1313,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1335,7 +1336,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1355,7 +1356,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::commit_string} events. */
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1375,7 +1376,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         // TODO: support the surrounding text API (set_surrounding_text + set_text_change_cause | delete_surrounding text)
         //       at least for particular cases.
@@ -1394,7 +1395,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::done} events. */
     private void zwp_text_input_v3_onDone(long doneSerial) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
