@@ -24,8 +24,6 @@
  */
 package sun.awt.wl;
 
-import sun.awt.SunToolkit;
-
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
@@ -167,10 +165,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     public void updateWindow() {
         // signals the end of repainting by Swing and/or AWT
-        var g = getGraphics();
-        if (g != null) {
-            paintClientDecorations(g);
-        }
+        paintClientDecorations(getGraphics());
         super.updateWindow();
     }
 
@@ -190,7 +185,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         boolean wasFullscreen = isFullscreen();
 

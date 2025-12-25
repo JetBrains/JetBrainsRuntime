@@ -313,6 +313,20 @@ WLSD_Unlock(JNIEnv *env,
 }
 
 static void
+WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
+{
+#ifndef HEADLESS
+    /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
+    J2dTrace(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
+    WLSDOps *wsdo = (WLSDOps*)ops;
+
+    WLSBM_Destroy(wsdo->bufferManager);
+    wsdo->bufferManager = NULL;
+    pthread_mutex_destroy(&wsdo->lock);
+#endif
+}
+
+static void
 BufferAttachedHandler(jobject surfaceDataWeakRef)
 {
     JNIEnv *env = getEnv();
@@ -388,7 +402,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.Lock = WLSD_Lock;
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
-    wsdo->sdOps.Dispose = NULL;
+    wsdo->sdOps.Dispose = WLSD_Dispose;
     wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, wlShmFormat,
                                        surfaceDataWeakRef,
                                        perfCountersEnabled ? CountFrameSent : NULL,
@@ -409,18 +423,13 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSMSurfaceData_nativeDispose(JNIEnv *env, jobject wsd)
+Java_sun_java2d_wl_WLSMSurfaceData_nativeReset(JNIEnv *env, jobject wsd)
 {
 #ifndef HEADLESS
     WLSDOps * wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     JNU_CHECK_EXCEPTION(env);
-    if (wsdo == NULL) return;
-    if (wsdo->bufferManager == NULL) return;
 
-    WLSBM_Destroy(wsdo->bufferManager);
-    pthread_mutex_destroy(&wsdo->lock);
-    // NB: WLSDOps memory will be freeed by the disposer
-    wsdo->bufferManager = NULL;
+    WLSBM_Reset(wsdo->bufferManager);
 #endif
 }
 

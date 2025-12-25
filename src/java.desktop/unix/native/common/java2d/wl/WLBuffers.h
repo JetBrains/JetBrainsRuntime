@@ -71,8 +71,17 @@ WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint bgPixel, jin
                                       BufferEventCallback bufferAttachedCallback);
 
 /**
- * Free all resources allocated for the WayLand Surface Buffer Manager,
- * including associated buffers.
+ * Destroy all Wayland objects associated with the WayLand Surface Buffer Manager,
+ * including buffers. Disassociate from any previously assigned wl_surface
+ * (see WLSBM_SurfaceAssign). The drawing buffer in not affected by this operation.
+ */
+void WLSBM_Reset(WLSurfaceBufferManager *);
+
+/**
+ * Free all resources allocated for the WayLand Surface Buffer Manager itself
+ * and for the drawing buffer. This operation must be preceded by WLSBM_Reset()
+ * to avoid resource leaks.
+ * The manager cannot be used after this operation.
  */
 void WLSBM_Destroy(WLSurfaceBufferManager *);
 
