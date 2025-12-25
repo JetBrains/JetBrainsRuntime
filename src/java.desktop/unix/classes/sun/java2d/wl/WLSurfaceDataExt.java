@@ -32,5 +32,4 @@ public interface WLSurfaceDataExt {
     void assignSurface(long surfacePtr);
     void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
     void commit();
-    void dispose();
 }
