@@ -29,6 +29,9 @@ package sun.java2d.wl;
 import java.awt.GraphicsConfiguration;
 
 public interface WLSurfaceDataExt {
+    /**
+     * Associates this surface data with a wl_surface object.
+     */
     void assignSurface(long wlSurfacePtr);
     void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
     void commit();

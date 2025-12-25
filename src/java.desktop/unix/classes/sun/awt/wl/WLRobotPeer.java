@@ -184,6 +184,8 @@ public class WLRobotPeer implements RobotPeer {
      * @param y the absolute y-coordinate
      */
     static void setLocationOfWLSurface(WLSurface wlSurface, int x, int y) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (isRobotExtensionPresent) {
             long wlSurfacePtr = wlSurface.getWlSurfacePtr();
             setLocationOfWLSurfaceImpl(wlSurfacePtr, x, y);

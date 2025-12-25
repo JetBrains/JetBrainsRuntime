@@ -130,7 +130,7 @@ public class WLSurface {
     }
 
     /**
-     * NB: the returned pointer is valid for as long as AWT lock is being held
+     * NB: the returned pointer is valid for as long as it is used on EDT
      *
      * @return a pointer to wl_surface native object
      */
