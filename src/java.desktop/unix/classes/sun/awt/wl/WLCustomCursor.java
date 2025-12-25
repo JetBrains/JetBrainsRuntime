@@ -38,11 +38,14 @@ final class WLCustomCursor extends CustomCursor {
 
     @Override
     protected void createNativeCursor(Image im, int[] pixels, int width, int height, int xHotSpot, int yHotSpot) {
-        long pData = nativeCreateCustomCursor(pixels, width, height, xHotSpot, yHotSpot);
-        if (pData == 0) {
-            pData = -1; // mark as unavailable
-        }
-        AWTAccessor.getCursorAccessor().setPData(this, pData);
+        // Invoking on the dispatch thread is probably not absolutely necessary for this operation...
+        WLToolkit.performOnWLThread(() -> {
+            long pData = nativeCreateCustomCursor(pixels, width, height, xHotSpot, yHotSpot);
+            if (pData == 0) {
+                pData = -1; // mark as unavailable
+            }
+            AWTAccessor.getCursorAccessor().setPData(this, pData);
+        });
     }
 
     private static native long nativeCreateCustomCursor(int[] pixels, int width, int height, int xHotSpot, int yHotSpot);

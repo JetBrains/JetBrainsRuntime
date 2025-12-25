@@ -57,6 +57,7 @@
 #include "WLGraphicsEnvironment.h"
 #include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
+#include "sun_awt_wl_WLSurface.h"
 
 #ifdef WAKEFIELD_ROBOT
 #include "wakefield.h"
@@ -161,7 +162,14 @@ assert_on_wl_thread(JNIEnv* env)
     if (pthread_equal(wl_thread_id, pthread_self()) == 0) {
         // A different dispatch thread may have been started, check for real
         jboolean hasException = JNI_FALSE;
-        jvalue ok = JNU_CallStaticMethodByName(env, &hasException, "sun/awt/wl/WLToolkit", "isDispatchThread", "()Z");
+        jvalue ok = JNU_CallStaticMethodByName(env, &hasException, "sun/awt/wl/WLToolkit", "isWLThread", "()Z");
+
+        if (hasException) {
+            fprintf(stderr, "assert_on_wl_thread: failed to call WLToolkit.isWLThread()");
+            (*env)->ExceptionClear(env);
+            return;
+        }
+
         if (!ok.z) {
             JNU_ThrowByName(env, "java/lang/AssertionError", "This function must be executed on EDT");
         } else {

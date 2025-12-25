@@ -105,11 +105,6 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_assignWlSurface(
         JNIEnv *env, jobject vksd, jlong wlSurfacePtr) {
-    VKWinSDOps* vsdo = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
-    if (vsdo == NULL) {
-        return;
-    }
-
     VKSD_InitWindowSurface(env, vksd, WLVK_InitSurfaceData, jlong_to_ptr(wlSurfacePtr));
 }
 

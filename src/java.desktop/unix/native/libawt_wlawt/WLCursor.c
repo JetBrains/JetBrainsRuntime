@@ -64,7 +64,6 @@ Java_java_awt_Cursor_finalizeImpl
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetPredefinedCursor
   (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
-    ASSERT_ON_WL_THREAD(env);
     struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
 
     if (!cursor_theme)
