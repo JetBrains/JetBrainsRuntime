@@ -29,6 +29,11 @@ package sun.java2d.wl;
 import java.awt.GraphicsConfiguration;
 
 public interface WLSurfaceDataExt {
+    /**
+     * Associates this surface data with a wl_surface object.
+     * Once associated, the surface must not be disposed until the
+     * associated wl_surface object is destroyed.
+     */
     void assignSurface(long surfacePtr);
     void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
     void commit();

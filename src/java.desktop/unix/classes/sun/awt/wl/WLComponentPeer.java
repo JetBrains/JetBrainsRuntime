@@ -94,27 +94,28 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     protected static final int MINIMUM_WIDTH = 1;
     protected static final int MINIMUM_HEIGHT = 1;
 
-    private final Object stateLock = new Object();
+    // TODO: remove completely?
+    // private final Object stateLock = new Object();
 
-    private long nativePtr; // accessed under AWT lock
+    private long nativePtr; // accessed on EDT, effectively final until dispose()
     protected final Component target;
 
-    private Color background; // protected by stateLock
-    protected SurfaceData surfaceData; // accessed under AWT lock
-    private WLMainSurface wlSurface; // accessed under AWT lock
-    private Shadow shadow; // accessed under AWT lock
+    private Color background; // protected by getStateLock()
+    protected SurfaceData surfaceData; // TODO effectively final until dispose()
+    private WLMainSurface wlSurface; //  accessed only on EDT
+    private Shadow shadow; //  accessed on EDT, effectively final until dispose()
     private final WLRepaintArea paintArea;
-    private boolean paintPending = false; // protected by stateLock
-    private boolean isLayouting = false; // protected by stateLock
-    protected boolean visible = false;
+    private boolean paintPending = false; // protected by getStateLock()
+    private boolean isLayouting = false; // protected by getStateLock()
+    protected boolean visible = false; // protected by getStateLock()
 
-    private boolean isFullscreen = false;  // protected by stateLock
-    private boolean sizeIsBeingConfigured = false; // protected by stateLock
-    private int displayScale; // protected by stateLock
-    private double effectiveScale; // protected by stateLock
+    private boolean isFullscreen = false;  // protected by getStateLock()
+    private boolean sizeIsBeingConfigured = false; // protected by getStateLock()
+    private int displayScale; // protected by getStateLock()
+    private double effectiveScale; // protected by getStateLock()
     private final WLSize wlSize = new WLSize();
-    private boolean repositionPopup = false; // protected by stateLock
-    private boolean resizePending = false; // protected by stateLock
+    private boolean repositionPopup = false; // protected by getStateLock()
+    private boolean resizePending = false; // protected by getStateLock()
 
     private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
 
@@ -189,7 +190,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     boolean isVisible() {
         synchronized (getStateLock()) {
-            return wlSurface != null && visible;
+            return visible;
         }
     }
 
@@ -510,8 +511,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void updateSurfaceData() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
                 getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
 
@@ -621,6 +620,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public Graphics getGraphics() {
+        // TODO: lock for surfaceData
         return getGraphics(surfaceData,
                 target.getForeground(),
                 target.getBackground(),
@@ -638,6 +638,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     final void commitToServer() {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
+        // TODO: lock
         if (wlSurface != null) {
             shadow.paint();
             shadow.commitSurfaceData();
@@ -712,7 +713,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             WLToolkit.invokeLater(() -> WLRobotPeer.setLocationOfWLSurface(wlSurface, newXNative, newYNative));
         }
 
-        if ((positionChanged || sizeChanged) && isPopup && visible) {
+        if ((positionChanged || sizeChanged) && isPopup && isVisible()) {
             // Need to update the location and size even if does not (yet) have a surface
             // as the initial configure event needs to have the latest data on the location/size.
             markPopupNeedsReposition();
@@ -791,6 +792,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public Point getLocationOnScreen() {
+        // TODO:
         return performLocked(() -> {
             if (wlSurface != null) {
                 try {
@@ -809,26 +811,28 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         // return a reasonable fake. This fake location places all windows in the top-left
         // corner of their respective screen and popups at the offset from
         // their parents' fake screen location.
-        if (targetIsWlPopup()) {
-            Window popup = (Window) target;
-            Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-            Window toplevel = getToplevelFor(popupParent);
-            Point popupOffset = popup.getLocation(); // popup's offset from its parent
-            if (toplevel != null) {
-                Point parentOffset = getRelativeLocation(popupParent, toplevel);
-                Point thisLocation = toplevel.getLocationOnScreen();
-                thisLocation.translate(parentOffset.x, parentOffset.y);
-                thisLocation.translate(popupOffset.x, popupOffset.y);
-                return thisLocation;
+        synchronized (getStateLock()) {
+            if (targetIsWlPopup()) {
+                Window popup = (Window) target;
+                Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
+                Window toplevel = getToplevelFor(popupParent);
+                Point popupOffset = popup.getLocation(); // popup's offset from its parent
+                if (toplevel != null) {
+                    Point parentOffset = getRelativeLocation(popupParent, toplevel);
+                    Point thisLocation = toplevel.getLocationOnScreen();
+                    thisLocation.translate(parentOffset.x, parentOffset.y);
+                    thisLocation.translate(popupOffset.x, popupOffset.y);
+                    return thisLocation;
+                } else {
+                    return popupOffset;
+                }
             } else {
-                return popupOffset;
-            }
-        } else {
-            GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
-            if (graphicsConfig != null) {
-                return graphicsConfig.getBounds().getLocation();
-            } else {
-                return new Point();
+                GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
+                if (graphicsConfig != null) {
+                    return graphicsConfig.getBounds().getLocation();
+                } else {
+                    return new Point();
+                }
             }
         }
     }
@@ -1262,6 +1266,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public WLMainSurface getSurface() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         return wlSurface;
     }
 
@@ -1269,7 +1274,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * This lock object is used to protect instance data from concurrent access
      * by two threads.
      */
-    Object getStateLock() {
+    final Object getStateLock() {
         // TODO: Use Component.LOCK as AWTAccessor.getComponentAccessor().getTreeLock() ?
         // return stateLock;
         return AWTAccessor.getComponentAccessor().getTreeLock();
@@ -1791,6 +1796,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             changeSizeToConfigured(newSurfaceWidth, newSurfaceHeight);
         }
 
+        // TODO: lock
         if (!wlSurface.hasSurfaceData()) {
             wlSurface.associateWithSurfaceData(surfaceData);
         }
@@ -2015,12 +2021,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private class ShadowImpl implements WLSurfaceSizeListener, Shadow {
-        private WLSubSurface shadowSurface; // protected by AWT lock
-        private SurfaceData shadowSurfaceData;  // protected by AWT lock
-        private boolean needsRepaint = true;  // protected by AWT lock
+        private WLSubSurface shadowSurface; // only accessed on EDT
+        private SurfaceData shadowSurfaceData;  // only accessed on EDT
+        private boolean needsRepaint = true;  // only accessed on EDT
         private final int shadowSize;
         private final WLSize shadowWlSize = new WLSize(); // protected by stateLock
-        private boolean isActive;  // protected by AWT lock
+        private boolean isActive;  // only accessed on EDT
 
         public ShadowImpl(int shadowSize) {
             this.shadowSize = shadowSize;

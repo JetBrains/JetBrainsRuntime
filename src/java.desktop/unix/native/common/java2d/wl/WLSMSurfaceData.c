@@ -323,10 +323,12 @@ WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
     // No Wayland event handlers should be able to run while this method
     // runs. Those handlers may retain a reference to the buffer manager
     // and therefore must be cancelled before that reference becomes stale.
-    AWT_LOCK();
+    // TODO:
+    // Threfore, this should be a no-op, but an explicit dispose() should
+    // be executed on EDT
+
     WLSBM_Destroy(wsdo->bufferManager);
     wsdo->bufferManager = NULL;
-    AWT_NOFLUSH_UNLOCK();
 
     pthread_mutex_destroy(&wsdo->lock);
 #endif

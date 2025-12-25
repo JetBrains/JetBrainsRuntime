@@ -149,8 +149,10 @@ public class WLRobotPeer implements RobotPeer {
         if (!peer.isVisible()) {
             throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
         }
-        if (! (peer.surfaceData instanceof WLPixelGrabberExt)) {
-            throw new UnsupportedOperationException("WLPixelGrabberExt is required to read pixels from a Wayland surface");
+        synchronized (peer.getStateLock()) {
+            if (!(peer.surfaceData instanceof WLPixelGrabberExt)) {
+                throw new UnsupportedOperationException("WLPixelGrabberExt is required to read pixels from a Wayland surface");
+            }
         }
     }
 
@@ -185,6 +187,8 @@ public class WLRobotPeer implements RobotPeer {
      * @param y the absolute y-coordinate
      */
     static void setLocationOfWLSurface(WLSurface wlSurface, int x, int y) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         if (isRobotExtensionPresent) {
             long wlSurfacePtr = wlSurface.getWlSurfacePtr();
             setLocationOfWLSurfaceImpl(wlSurfacePtr, x, y);

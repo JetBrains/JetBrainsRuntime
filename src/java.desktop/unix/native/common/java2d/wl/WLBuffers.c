@@ -140,7 +140,7 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
             l = l->next;
         }
     }
-    
+
     // Keep the list sorted so that adjacent areas follow one another
     // in memory in hope that this facilitates faster damage copying.
     l = list;
@@ -1104,6 +1104,7 @@ WLSBM_Create(jint width,
 void
 WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surface)
 {
+    ASSERT_ON_WL_THREAD(getEnv());
     J2dTrace(J2D_TRACE_INFO, "WLSBM_SurfaceAssign: assigned surface %p to manger %p\n", wl_surface, manager);
     WLBufferTrace(manager, "WLSBM_SurfaceAssign(%p)", wl_surface);
 
@@ -1140,6 +1141,7 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
 void
 WLSBM_Destroy(WLSurfaceBufferManager * manager)
 {
+    ASSERT_ON_WL_THREAD(getEnv());
     J2dTrace(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
 
     JNIEnv* env = getEnv();
@@ -1218,6 +1220,7 @@ WLSBM_BufferReturn(WLSurfaceBufferManager * manager, WLDrawBuffer * buffer)
 void
 WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
 {
+    ASSERT_ON_WL_THREAD(getEnv());
     MUTEX_LOCK(manager->showLock);
 
     const bool frameCallbackScheduled = IsFrameCallbackScheduled(manager);
@@ -1256,6 +1259,7 @@ WLSB_DataGet(WLDrawBuffer * buffer)
 void
 WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
 {
+    ASSERT_ON_WL_THREAD(getEnv());
     if (!HaveEnoughMemoryForWindow(width, height)) {
         JNU_ThrowOutOfMemoryError(getEnv(), "Wayland surface buffer too large");
         return;

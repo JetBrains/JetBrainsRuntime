@@ -363,6 +363,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
             bounds.height = bufferBounds.height - bounds.y;
         }
 
+        // TODO: lock
         if (surfaceData instanceof VKSurfaceData vksd) {
             return vksd.getSnapshot(bounds.x, bounds.y, bounds.width, bounds.height);
         } else if (surfaceData instanceof WLSMSurfaceData smsd) {
@@ -376,6 +377,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
         int roundedCornerSize = WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind);
         // Note: You would normally get a transparency-capable color model when using
         // the default graphics configuration
+        // TODO: lock
         return surfaceData.getColorModel().hasAlpha()
                 && getWidth() > roundedCornerSize * 2
                 && getHeight() > roundedCornerSize * 2;

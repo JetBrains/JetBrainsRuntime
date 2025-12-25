@@ -62,7 +62,9 @@ public class WLSurface {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (isValid) {
+            SurfaceData dataToDispose = surfaceData;
             hide();
+            dataToDispose.invalidate(); // TODO: dispose the data
             nativeDestroyWlSurface(nativePtr);
             isValid = false;
         }
@@ -75,6 +77,9 @@ public class WLSurface {
         if (surfaceData == null) return;
         SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
         surfaceData = null;
+        // Note: beyond this point, any references that surface data might have to its corresponding
+        // wl_surface MUST be broken in a synchronious fashion. This is because the subsequent calls
+        // will destroy that wl_surface and the references will become dangling.
 
         nativeHideWlSurface(nativePtr);
         nativeCommitWlSurface(nativePtr);
@@ -112,7 +117,7 @@ public class WLSurface {
     }
 
     /**
-     * NB: the returned pointer is valid for as long as AWT lock is being held
+     * NB: the returned pointer is valid for as long as it is used on EDT
      *
      * @return a pointer to wl_surface native object
      */

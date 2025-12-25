@@ -42,6 +42,7 @@ import java.util.Objects;
 import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
+import sun.awt.wl.WLToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
@@ -159,6 +160,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
 
     public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
         Objects.requireNonNull(gc);
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         WLSMGraphicsConfig wlgc = (WLSMGraphicsConfig) gc;
         this.gc = wlgc;
