@@ -800,18 +800,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public Point getLocationOnScreen() {
-        // TODO:
-        return performLocked(() -> {
-            if (wlSurface != null) {
-                try {
-                    return WLRobotPeer.getLocationOfWLSurface(wlSurface);
-                } catch (UnsupportedOperationException ignore) {
-                    return getFakeLocationOnScreen();
-                }
-            } else {
+        if (wlSurface != null) {
+            try {
+                return WLRobotPeer.getLocationOfWLSurface(wlSurface);
+            } catch (UnsupportedOperationException ignore) {
                 return getFakeLocationOnScreen();
             }
-        }, this::getFakeLocationOnScreen);
+        } else {
+            return getFakeLocationOnScreen();
+        }
     }
 
     private Point getFakeLocationOnScreen() {
@@ -1883,18 +1880,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     private Dimension constrainSize(Dimension bounds) {
         return constrainSize(bounds.width, bounds.height);
-    }
-
-    <T> T performLocked(Supplier<T> task, Supplier<T> defaultValue) {
-        WLToolkit.awtLock();
-        try {
-            if (nativePtr != 0) {
-                return task.get();
-            }
-        } finally {
-            WLToolkit.awtUnlock();
-        }
-        return defaultValue.get();
     }
 
     static Window getNativelyFocusableOwnerOrSelf(Component component) {
