@@ -65,7 +65,7 @@ public abstract class FrameDecoration {
      * Use synchronized(getStateLock()) to synchronize access and
      * Thread.holdsLock(getStateLock()) to verify.
      */
-    public Object getStateLock() {
+    final Object getStateLock() {
         return peer.getStateLock();
     }
 

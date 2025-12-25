@@ -31,7 +31,6 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAutoShutdown;
 import sun.awt.AppContext;
 import sun.awt.LightweightFrame;
-import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
@@ -287,7 +286,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
-                SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
+                WLToolkit.performOnWLThread(() -> {
                     try {
                         dispatchEventsOnEDT();
                         if (dataDevice != null) {
@@ -296,7 +295,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                     } finally {
                         eventsQueued.release();
                     }
-                }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
+                });
                 try {
                     eventsQueued.acquire();
                 } catch (InterruptedException e) {
@@ -357,7 +356,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     }
 */
 
-    public static void invokeLater(Runnable r) {
+    public static void performOnWLThread(Runnable r) {
         if (EventQueue.isDispatchThread()) {
             r.run();
         } else {
@@ -365,7 +364,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         }
     }
 
-    public static boolean isDispatchThread() {
+    public static boolean isWLThread() {
         return EventQueue.isDispatchThread();
     }
 
@@ -388,7 +387,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
 
@@ -418,7 +417,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                                                  char keyChar,
                                                  int modifiers) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         final long timestamp = System.currentTimeMillis();
 
@@ -477,14 +476,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     }
 
     private static void dispatchKeyboardModifiersEvent(long serial) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
         WLDropTargetContextPeer.getInstance().handleModifiersUpdate();
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardEnterEvent: " + serial + ", surface 0x"
@@ -523,7 +522,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchKeyboardLeaveEvent(long serial, long surfacePtr) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardLeaveEvent: " + serial + ", surface 0x"

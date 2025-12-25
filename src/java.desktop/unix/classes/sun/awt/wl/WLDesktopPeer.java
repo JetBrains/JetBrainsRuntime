@@ -48,7 +48,8 @@ public class WLDesktopPeer implements DesktopPeer {
 
     private static boolean nativeLibraryLoaded = false;
     private static boolean initExecuted = false;
-    private static final Object gtkLock = new Object();
+    private static class GtkLock {}
+    private static final Object gtkLock = new GtkLock();
 
     private static void initWithLock(){
         synchronized (gtkLock) {

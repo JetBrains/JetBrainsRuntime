@@ -38,7 +38,7 @@ import java.util.Objects;
  * Once associated with a SurfaceData object using showWithData(),
  * manages the lifetime of that SurfaceData object.
  *
- * All operations must be performed on the AWT thread (enforced with assert).
+ * All operations must be performed on the WL thread (enforced with assert).
  */
 public class WLSurface {
     private final long nativePtr; // an opaque native handle
@@ -52,7 +52,7 @@ public class WLSurface {
     }
 
     protected WLSurface() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         nativePtr = nativeCreateWlSurface();
         if (nativePtr == 0) {
@@ -62,7 +62,7 @@ public class WLSurface {
     }
 
     public void commitSurfaceData() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         if (surfaceData != null) {
@@ -71,7 +71,7 @@ public class WLSurface {
     }
 
     public void hide() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         if (isValid) {
@@ -84,7 +84,7 @@ public class WLSurface {
             }
 
             isValid = false;
-            WLToolkit.invokeLater(this::dispose);
+            WLToolkit.performOnWLThread(this::dispose);
         }
     }
 
@@ -99,12 +99,12 @@ public class WLSurface {
     }
 
     public boolean isVisible() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         return surfaceData != null;
     }
 
     public void updateSurfaceData(GraphicsConfiguration gc, int width, int height, int scale) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         if (surfaceData != null) {
@@ -113,7 +113,7 @@ public class WLSurface {
     }
 
     public void showWithData(SurfaceData sd) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
         Objects.requireNonNull(sd);
         assert sd.isValid() : "SurfaceData must be valid"; // avoid show/hide/show with the same data
@@ -123,40 +123,40 @@ public class WLSurface {
     }
 
     public void commit() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeCommitWlSurface(nativePtr);
     }
 
     /**
-     * NB: the returned pointer is valid for as long as AWT lock is being held
+     * NB: the returned pointer is valid for as long as it is used on EDT
      *
      * @return a pointer to wl_surface native object
      */
     public final long getWlSurfacePtr() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         return wlSurfacePtr;
     }
 
     protected final long getNativePtr() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         return nativePtr;
     }
 
     public void setSize(int width, int height) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeSetSize(nativePtr, width, height);
     }
 
     public void setOpaqueRegion(int x, int y, int width, int height) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
@@ -171,7 +171,7 @@ public class WLSurface {
     }
 
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         setSize(surfaceWidth, surfaceHeight);
@@ -181,7 +181,7 @@ public class WLSurface {
     }
 
     private void dispose() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         nativeDestroyWlSurface(nativePtr);
     }
 

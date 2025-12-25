@@ -25,6 +25,7 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
+import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.event.CaretEvent;
@@ -63,100 +64,115 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     public ClientComponentCaretPositionTracker(WLInputMethodZwpTextInputV3 im) {
         this.im = new WeakReference<>(Objects.requireNonNull(im, "im"));
-        this.imThreading = Objects.requireNonNull(im.getThreading(), "im.getThreading()");
     }
 
 
     public void startTracking(final Component component) {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer(
-                    String.format("startTracking(component=%s): im=%s, this=%s.", component, getOwnerIm(), this),
-                    new Throwable("Stacktrace")
-                );
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(
+                String.format("startTracking(component=%s): im=%s, this=%s.", component, getOwnerIm(), this),
+                new Throwable("Stacktrace")
+            );
+        }
+
+        stopTrackingCurrentComponent();
+
+        if (component == null) {
+            return;
+        }
+
+        trackedComponent = new WeakReference<>(component);
+
+        lastKnownClientWindowBounds = null;
+
+        try {
+            // Moving and changing the size causes a possible change of caret position
+            component.addComponentListener(this);
+
+            if (component instanceof JTextComponent jtc) {
+                jtc.addCaretListener(this);
+                isCaretListenerInstalled = true;
+            } else if (component instanceof TextComponent tc) {
+                tc.addTextListener(this);
+                isTextListenerInstalled = true;
             }
 
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest("startTracking(...): updated this={0}.", this);
+            }
+        } catch (Exception err) {
             stopTrackingCurrentComponent();
-
-            if (component == null) {
-                return;
-            }
-
-            trackedComponent = new WeakReference<>(component);
-
-            lastKnownClientWindowBounds = null;
-
-            try {
-                // Moving and changing the size causes a possible change of caret position
-                component.addComponentListener(this);
-
-                if (component instanceof JTextComponent jtc) {
-                    // Since we don't know whether the current thread is EDT, it may not be safe to call Swing
-                    //   methods here.
-                    // However, AWT guarantees that adding/removing listeners is safe to be done from any thread
-                    //   (java.desktop/share/classes/java/awt/doc-files/AWTThreadIssues.html),
-                    //   let's assume Swing provides this guarantee too.
-                    jtc.addCaretListener(this);
-                    isCaretListenerInstalled = true;
-                } else if (component instanceof TextComponent tc) {
-                    tc.addTextListener(this);
-                    isTextListenerInstalled = true;
-                }
-
-                if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-                    log.finest("startTracking(...): updated this={0}.", this);
-                }
-            } catch (Exception err) {
-                stopTrackingCurrentComponent();
-                throw err;
-            }
-
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("startTracking()", err);
+            throw err;
         }
     }
 
     public void stopTrackingCurrentComponent() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer(String.format("stopTrackingCurrentComponent(): this=%s.", this), new Throwable("Stacktrace"));
-            }
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
-            final Component trackedComponentStrong = getTrackedComponentIfTracking();
-            if (trackedComponentStrong == null) {
-                return;
-            }
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("stopTrackingCurrentComponent(): this=%s.", this), new Throwable("Stacktrace"));
+        }
 
-            if (isTextListenerInstalled) {
-                isTextListenerInstalled = false;
-                try {
-                    ((TextComponent)trackedComponentStrong).removeTextListener(this);
-                } catch (Exception err) {
-                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                        log.warning(String.format("stopTrackingCurrentComponent(): exception occurred while removing the text listener from %s.", trackedComponentStrong), err);
-                    }
-                }
-            }
+        final Component trackedComponentStrong = getTrackedComponentIfTracking();
+        if (trackedComponentStrong == null) {
+            return;
+        }
 
-            if (isCaretListenerInstalled) {
-                isCaretListenerInstalled = false;
-                try {
-                    ((JTextComponent)trackedComponentStrong).removeCaretListener(this);
-                } catch (Exception err) {
-                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                        log.warning(String.format("stopTrackingCurrentComponent(): exception occurred while removing the caret listener from %s.", trackedComponentStrong), err);
-                    }
-                }
-            }
-
+        if (isTextListenerInstalled) {
+            isTextListenerInstalled = false;
             try {
-                trackedComponentStrong.removeComponentListener(this);
+                ((TextComponent)trackedComponentStrong).removeTextListener(this);
             } catch (Exception err) {
                 if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                    log.warning(String.format("stopTrackingCurrentComponent(): exception occurred while removing the component listener from %s.", trackedComponentStrong), err);
+                    log.warning(String.format("stopTrackingCurrentComponent(): exception occurred while removing the text listener from %s.", trackedComponentStrong), err);
                 }
             }
+        }
+
+        if (isCaretListenerInstalled) {
+            isCaretListenerInstalled = false;
+            try {
+                ((JTextComponent)trackedComponentStrong).removeCaretListener(this);
+            } catch (Exception err) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning(String.format("stopTrackingCurrentComponent(): exception occurred while removing the caret listener from %s.", trackedComponentStrong), err);
+                }
+            }
+        }
+
+        try {
+            trackedComponentStrong.removeComponentListener(this);
+        } catch (Exception err) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning(String.format("stopTrackingCurrentComponent(): exception occurred while removing the component listener from %s.", trackedComponentStrong), err);
+            }
+        }
+
+        lastKnownClientWindowBounds = null;
+
+        updatesAreDeferred = false;
+
+        if (trackedComponent != null) {
+            trackedComponent.clear();
+            trackedComponent = null;
+        }
+    }
+
+    public Component getTrackedComponentIfTracking() {
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+
+        final Component trackedComponentStrong;
+        if (trackedComponent == null) {
+            trackedComponentStrong = null;
+        } else {
+            trackedComponentStrong = trackedComponent.get();
+        }
+
+        if (trackedComponentStrong == null) {
+            isTextListenerInstalled = false;
+            isCaretListenerInstalled = false;
 
             lastKnownClientWindowBounds = null;
 
@@ -166,87 +182,43 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
                 trackedComponent.clear();
                 trackedComponent = null;
             }
-
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("stopTrackingCurrentComponent()", err);
         }
-    }
 
-    public Component getTrackedComponentIfTracking() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            final Component trackedComponentStrong;
-            if (trackedComponent == null) {
-                trackedComponentStrong = null;
-            } else {
-                trackedComponentStrong = trackedComponent.get();
-            }
-
-            if (trackedComponentStrong == null) {
-                isTextListenerInstalled = false;
-                isCaretListenerInstalled = false;
-
-                lastKnownClientWindowBounds = null;
-
-                updatesAreDeferred = false;
-
-                if (trackedComponent != null) {
-                    trackedComponent.clear();
-                    trackedComponent = null;
-                }
-            }
-
-            ea.suppressUnusedWarning();
-
-            return trackedComponentStrong;
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("getTrackedComponentIfTracking()", err);
-        }
+        return trackedComponentStrong;
     }
 
 
     public void deferUpdates() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer(String.format("deferUpdates(): this=%s.", this), new Throwable("Stacktrace"));
-            }
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
-            updatesAreDeferred = true;
-
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("deferUpdates()", err);
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("deferUpdates(): this=%s.", this), new Throwable("Stacktrace"));
         }
+
+        updatesAreDeferred = true;
     }
 
     public void resumeUpdates(final boolean discardDeferredUpdates) {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer(String.format("resumeUpdates(%b): this=%s.", discardDeferredUpdates, this), new Throwable("Stacktrace"));
-            }
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
-            if (getTrackedComponentIfTracking() == null) return;
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer(String.format("resumeUpdates(%b): this=%s.", discardDeferredUpdates, this), new Throwable("Stacktrace"));
+        }
 
-            updatesAreDeferred = false;
-            hasDeferredUpdates = hasDeferredUpdates && !discardDeferredUpdates;
+        if (getTrackedComponentIfTracking() == null) return;
 
-            if (hasDeferredUpdates) {
-                updateNotify();
-            }
+        updatesAreDeferred = false;
+        hasDeferredUpdates = hasDeferredUpdates && !discardDeferredUpdates;
 
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("resumeUpdates()", err);
+        if (hasDeferredUpdates) {
+            updateNotify();
         }
     }
 
     public boolean areUpdatesDeferred() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            ea.suppressUnusedWarning();
-            return updatesAreDeferred;
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("areUpdatesDeferred()", err);
-        }
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+
+        return updatesAreDeferred;
     }
 
 
@@ -254,55 +226,47 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#dispatchEvent(AWTEvent)}. */
     public void onIMDispatchEvent(AWTEvent event) {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer("onIMDispatchEvent(event={0}): this={1}.", event, this);
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("onIMDispatchEvent(event={0}): this={1}.", event, this);
+        }
+
+        final int eventId = event.getID();
+
+        if (eventId >= MouseEvent.MOUSE_FIRST && eventId <= MouseEvent.MOUSE_LAST) {
+            // MouseEvent or MouseWheelEvent
+            if (!isCaretListenerInstalled || eventId == MouseEvent.MOUSE_WHEEL) {
+                // We expect no mouse events except MouseWheelEvent can change the physical position of the caret
+                //   without changing its logical position inside the document. The logical position is handled by caretUpdate.
+
+                // The event hasn't been handled by the component yet, so the caret position couldn't have been changed yet.
+                // Hence, we have to postpone the updating request.
+                EventQueue.invokeLater(this::updateNotify);
             }
+        }
 
-            final int eventId = event.getID();
-
-            if (eventId >= MouseEvent.MOUSE_FIRST && eventId <= MouseEvent.MOUSE_LAST) {
-                // MouseEvent or MouseWheelEvent
-                if (!isCaretListenerInstalled || eventId == MouseEvent.MOUSE_WHEEL) {
-                    // We expect no mouse events except MouseWheelEvent can change the physical position of the caret
-                    //   without changing its logical position inside the document. The logical position is handled by caretUpdate.
-
-                    // The event hasn't been handled by the component yet, so the caret position couldn't have been changed yet.
-                    // Hence, we have to postpone the updating request.
-                    EventQueue.invokeLater(this::updateNotify);
-                }
+        if (eventId >= KeyEvent.KEY_FIRST && eventId <= KeyEvent.KEY_LAST) {
+            if ( !isCaretListenerInstalled && (!isTextListenerInstalled || eventId != KeyEvent.KEY_TYPED) ) {
+                EventQueue.invokeLater(this::updateNotify);
             }
-
-            if (eventId >= KeyEvent.KEY_FIRST && eventId <= KeyEvent.KEY_LAST) {
-                if ( !isCaretListenerInstalled && (!isTextListenerInstalled || eventId != KeyEvent.KEY_TYPED) ) {
-                    EventQueue.invokeLater(this::updateNotify);
-                }
-            }
-
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("onIMDispatchEvent()", err);
         }
     }
 
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#notifyClientWindowChange(Rectangle)}. */
     public void onIMNotifyClientWindowChange(Rectangle location) {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer("onIMNotifyClientWindowChange(location={0}): this={1}.", location, this);
-            }
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
-            if (location != null) {
-                // null means the window has become iconified or invisible, so no need to try to update the caret position.
+        if (log.isLoggable(PlatformLogger.Level.FINER)) {
+            log.finer("onIMNotifyClientWindowChange(location={0}): this={1}.", location, this);
+        }
 
-                lastKnownClientWindowBounds = location;
+        if (location != null) {
+            // null means the window has become iconified or invisible, so no need to try to update the caret position.
 
-                updateNotify();
-            }
+            lastKnownClientWindowBounds = location;
 
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("onIMNotifyClientWindowChange()", err);
+            updateNotify();
         }
     }
 
@@ -313,19 +277,16 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     @Override
     public void componentMoved(ComponentEvent e) {
-        // No need to wrap in withExclusiveAccess as long as updateNotify is the only thing done here.
         updateNotify();
     }
 
     @Override
     public void componentResized(ComponentEvent e) {
-        // No need to wrap in withExclusiveAccess as long as updateNotify is the only thing done here.
         updateNotify();
     }
 
     @Override
     public void componentShown(ComponentEvent e) {
-        // No need to wrap in withExclusiveAccess as long as updateNotify is the only thing done here.
         updateNotify();
     }
 
@@ -333,7 +294,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     @Override
     public void caretUpdate(CaretEvent e) {
-        // No need to wrap in withExclusiveAccess as long as updateNotify is the only thing done here.
         updateNotify();
     }
 
@@ -341,7 +301,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     @Override
     public void textValueChanged(TextEvent e) {
-        // No need to wrap in withExclusiveAccess as long as updateNotify is the only thing done here.
         updateNotify();
     }
 
@@ -349,32 +308,23 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     /* java.lang.Object methods section */
     @Override
     public String toString() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            ea.suppressUnusedWarning();
-
-            final StringBuilder sb = new StringBuilder(1024);
-            sb.append("ClientComponentCaretPositionTracker@").append(System.identityHashCode(this));
-            sb.append('{');
-            sb.append("isCaretListenerInstalled=").append(isCaretListenerInstalled);
-            sb.append(", isTextListenerInstalled=").append(isTextListenerInstalled);
-            sb.append(", lastKnownClientWindowBounds=").append(lastKnownClientWindowBounds);
-            sb.append(", updatesAreDeferred=").append(updatesAreDeferred);
-            sb.append(", hasDeferredUpdates=").append(hasDeferredUpdates);
-            sb.append(", trackedComponent=").append(trackedComponent == null ? "null" : trackedComponent.get());
-            sb.append('}');
-            return sb.toString();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("toString()", err);
-        }
+        final StringBuilder sb = new StringBuilder(1024);
+        sb.append("ClientComponentCaretPositionTracker@").append(System.identityHashCode(this));
+        sb.append('{');
+        sb.append("isCaretListenerInstalled=").append(isCaretListenerInstalled);
+        sb.append(", isTextListenerInstalled=").append(isTextListenerInstalled);
+        sb.append(", lastKnownClientWindowBounds=").append(lastKnownClientWindowBounds);
+        sb.append(", updatesAreDeferred=").append(updatesAreDeferred);
+        sb.append(", hasDeferredUpdates=").append(hasDeferredUpdates);
+        sb.append(", trackedComponent=").append(trackedComponent == null ? "null" : trackedComponent.get());
+        sb.append('}');
+        return sb.toString();
     }
 
 
     /* Implementation details */
 
     private final WeakReference<WLInputMethodZwpTextInputV3> im;
-    private final InputMethodThreading imThreading;
-    private static final int EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS = 5000;
-
     private WeakReference<Component> trackedComponent = null;
     private boolean isCaretListenerInstalled = false;
     private boolean isTextListenerInstalled = false;
@@ -383,58 +333,39 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     private boolean hasDeferredUpdates = false;
 
 
-    private static RuntimeException logAndRethrowAsUnchecked(
-        String invokingMethodName,
-        InputMethodThreading.ExclusiveAccessException e
-    ) {
-        log.warning(String.format("%s: failed to obtain the exclusive access to this.", invokingMethodName), e);
-        throw new RuntimeException(e);
-    }
-
-
     private WLInputMethodZwpTextInputV3 getOwnerIm() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            final WLInputMethodZwpTextInputV3 thisImStrong;
-            if (this.im == null) {
-                thisImStrong = null;
-            } else {
-                thisImStrong = this.im.get();
-            }
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
-            if (thisImStrong == null) {
-                stopTrackingCurrentComponent();
-            }
-
-            ea.suppressUnusedWarning();
-
-            return thisImStrong;
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("getOwnerIm()", err);
+        final WLInputMethodZwpTextInputV3 thisImStrong;
+        if (this.im == null) {
+            thisImStrong = null;
+        } else {
+            thisImStrong = this.im.get();
         }
+
+        if (thisImStrong == null) {
+            stopTrackingCurrentComponent();
+        }
+
+        return thisImStrong;
     }
 
     private void updateNotify() {
-        try (final var ea = imThreading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
-            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-                log.finest(String.format("updateNotify(): this=%s.", this), new Throwable("Stacktrace"));
-            }
+        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+            log.finest(String.format("updateNotify(): this=%s.", this), new Throwable("Stacktrace"));
+        }
 
-            if (getTrackedComponentIfTracking() == null) return;
+        if (getTrackedComponentIfTracking() == null) return;
 
-            if (updatesAreDeferred) {
-                hasDeferredUpdates = true;
-                return;
-            }
-            hasDeferredUpdates = false;
+        if (updatesAreDeferred) {
+            hasDeferredUpdates = true;
+            return;
+        }
+        hasDeferredUpdates = false;
 
-            final var imToNotify = getOwnerIm();
-            if (imToNotify != null) {
-                imToNotify.wlUpdateCursorRectangle(false);
-            }
-
-            ea.suppressUnusedWarning();
-        } catch (InputMethodThreading.ExclusiveAccessException err) {
-            throw logAndRethrowAsUnchecked("updateNotify()", err);
+        final var imToNotify = getOwnerIm();
+        if (imToNotify != null) {
+            imToNotify.wlUpdateCursorRectangle(false);
         }
     }
 }
