@@ -473,6 +473,8 @@ inline address_word  mask_address_bits(address x, int m)      { return address_w
 inline address_word  castable_address(address x)              { return address_word(x) ; }
 inline address_word  castable_address(void* x)                { return address_word(x) ; }
 
+typedef const u_char* const_address;
+
 // Pointer subtraction.
 // The idea here is to avoid ptrdiff_t, which is signed and so doesn't have
 // the range we might need to find differences from one end of the heap
