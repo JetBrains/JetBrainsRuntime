@@ -1,5 +1,7 @@
 java/awt/Choice/ChoiceMouseEventOutbounds.java JBR-7980 windows-all
 java/awt/Choice/ChoiceMoveTest.java JBR-7980 windows-all
+java/awt/dnd/CustomDragCursorTest.java 8242805,JBR-8932 macosx-all,windows-x64
+java/awt/dnd/InterJVMLinkTest.java JBR-9255 linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64,linux-6.17.8-200.fc42.aarch64,linux-6.17.13-200.fc42.aarch64
 java/awt/Dialog/ChoiceModalDialogTest.java JBR-8724 windows-all
 java/awt/dnd/DnDAWTLockTest.java JBR-6442 linux-all
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
