@@ -181,6 +181,7 @@ public class RmiRegistrySslTest {
 
             List<String> command = new ArrayList<>();
             command.addAll(Utils.getVmOptions());
+            command.add("-Djdk.rmi.ssl.client.enableEndpointIdentification=false");
             command.add("-Dtest.src=" + TEST_SRC);
             command.add("-Dtest.rmi.port=" + port);
             command.addAll(Arrays.asList(args));
