@@ -30,16 +30,18 @@ import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 
-import java.util.Objects;
+import java.awt.EventQueue;
+import java.awt.GraphicsConfiguration;
 
 /**
- * Represents a wl_surface Wayland object.
+ * Represents a wl_surface Wayland object. Manages SurfaceData associated with it.
  * All operations must be performed on the AWT thread.
  */
 public class WLSurface {
     private final long nativePtr; // an opaque native handle
     private final long wlSurfacePtr; // a pointer to a wl_surface object
     protected boolean isValid = true;
+    protected boolean isVisible = false;
 
     private SurfaceData surfaceData;
 
@@ -47,35 +49,37 @@ public class WLSurface {
         initIDs();
     }
 
-    protected WLSurface() {
+    protected WLSurface(SurfaceData sd) {
+        surfaceData = sd;
         nativePtr = nativeCreateWlSurface();
         if (nativePtr == 0) {
             throw new RuntimeException("Failed to create WLSurface");
         }
         wlSurfacePtr = wlSurfacePtr(nativePtr);
-        surfaceData = null; // having surface data means that the surface is visible
     }
 
-    public void dispose() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+    public void commitSurfaceData() {
+        assertIsValid();
 
-        if (isValid) {
-            hide();
-            nativeDestroyWlSurface(nativePtr);
-            isValid = false;
-        }
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
     }
 
     public void hide() {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        assertIsValid();
 
-        if (surfaceData == null) return;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
-        surfaceData = null;
+        if (isValid && isVisible) {
+            nativeHideWlSurface(nativePtr);
+            nativeCommitWlSurface(nativePtr);
 
-        nativeHideWlSurface(nativePtr);
-        nativeCommitWlSurface(nativePtr);
+            surfaceData.invalidate();
+            surfaceData = null;
+
+            isVisible = false;
+            isValid = false;
+            EventQueue.invokeLater(() -> {
+                dispose();
+            });
+        }
     }
 
     protected void assertIsValid() {
@@ -84,22 +88,26 @@ public class WLSurface {
         }
     }
 
-    public boolean hasSurfaceData() {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        assertIsValid();
-
-        return surfaceData != null;
+    public boolean isVisible() {
+        return isVisible;
     }
 
-    public void associateWithSurfaceData(SurfaceData data) {
-        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
-        Objects.requireNonNull(data);
+    public SurfaceData getSurfaceData() {
         assertIsValid();
 
-        if (surfaceData != null) return;
+        return surfaceData;
+    }
 
-        surfaceData = data;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(wlSurfacePtr);
+    public void updateSurfaceData(GraphicsConfiguration gc, int width, int height, int scale) {
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(gc, width, height, scale);
+    }
+
+    public void show() {
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+        assertIsValid();
+
+        isVisible = true;
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
     }
 
     public void commit() {
@@ -121,7 +129,7 @@ public class WLSurface {
         return wlSurfacePtr;
     }
 
-    protected long getNativePtr() {
+    public long getNativePtr() {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();
 
@@ -160,13 +168,18 @@ public class WLSurface {
         }
     }
 
+    private void dispose() {
+        // TODO: must be invoked on EDT
+        nativeDestroyWlSurface(nativePtr);
+    }
+
     private static native void initIDs();
 
     private native long wlSurfacePtr(long ptr);
     private native void nativeCommitWlSurface(long ptr);
     private native long nativeCreateWlSurface();
     private native void nativeSetSize(long ptr, int width, int height);
-    private native void nativeDestroyWlSurface(long ptr);
+    private static native void nativeDestroyWlSurface(long ptr);
     private native void nativeHideWlSurface(long ptr);
     private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
 }

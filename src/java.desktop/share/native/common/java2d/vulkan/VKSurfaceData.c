@@ -290,10 +290,6 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     return VK_TRUE;
 }
 
-static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
-    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
-}
-
 JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format, jint backgroundRGB,
                                       VKWinSD_SurfaceResizeCallback resizeCallback) {
     VKSDOps* sd = (VKSDOps*)SurfaceData_InitOps(env, vksd,
@@ -304,7 +300,7 @@ JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint
         JNU_ThrowOutOfMemoryError(env, "Initialization of VKSDOps failed");
         return NULL;
     }
-    sd->sdOps.Dispose = VKSD_OnDispose;
+    sd->sdOps.Dispose = NULL;
     sd->drawableType = type;
     sd->drawableFormat = format;
     sd->background = VKUtil_DecodeJavaColor(backgroundRGB, ALPHA_TYPE_STRAIGHT);

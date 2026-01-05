@@ -26,12 +26,14 @@
 package sun.java2d.vulkan;
 
 import java.awt.Component;
+import java.awt.EventQueue;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
 
 import sun.awt.wl.WLComponentPeer;
+import sun.awt.wl.WLSurface;
 import sun.java2d.SurfaceData;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import sun.java2d.pipe.RenderBuffer;
@@ -98,9 +100,9 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     @Override
-    public void assignSurface(long surfacePtr) {
-        assignWlSurface(surfacePtr);
-        if (surfacePtr != 0) configure();
+    public void assignSurface(long wlSurfacePtr) {
+        assignWlSurface(wlSurfacePtr);
+        configure();
     }
 
     @Override
@@ -128,11 +130,19 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         }
     }
 
+    @Override
+    public void invalidate() {
+        super.invalidate();
+        // Note: must dispose the surface data before their corresponding Wayland surface (window) is disposed
+        VKSurfaceData.dispose(getNativeOps());
+    }
+
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface
         // but the surface has not been committed yet.
         sizeListener.updateSurfaceSize();
     }
+
     public int getRGBPixelAt(int x, int y) {
         Rectangle r = getBounds();
         if (x < r.x || x >= r.x + r.width || y < r.y || y >= r.y + r.height) {

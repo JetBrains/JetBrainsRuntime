@@ -29,6 +29,7 @@ package sun.java2d.wl;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.EventQueue;
 import java.awt.Window;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
@@ -42,6 +43,8 @@ import java.util.Objects;
 import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
+import sun.awt.wl.WLSurface;
+import sun.awt.wl.WLToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
@@ -59,7 +62,12 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     private int width; // in pixels
     private int height; // in pixels
 
-    public native void assignSurface(long surfacePtr);
+    public void assignSurface(long wlSurfacePtr) {
+        if (wlSurfacePtr != 0) {
+            nativeAssignSurface(wlSurfacePtr);
+        }
+    }
+    private native void nativeAssignSurface(long wlSurfacePtr);
 
     private native void initOps(int width, int height, int backgroundRGB, int wlShmFormat, boolean perfCountersEnabled);
     private static native void initIDs();
@@ -189,6 +197,17 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         }
         return pixels;
     }
+
+    @Override
+    public void invalidate() {
+        super.invalidate();
+
+        EventQueue.invokeLater(() -> {
+            nativeDispose();
+        });
+    }
+
+    private native void nativeDispose();
 
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface,
