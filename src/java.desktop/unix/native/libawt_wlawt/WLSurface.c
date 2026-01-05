@@ -187,7 +187,7 @@ Java_sun_awt_wl_WLSurface_wlSurfacePtr
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
-        (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jclass cls, jlong ptr)
 {
     ASSERT_ON_WL_THREAD(env);
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
@@ -197,7 +197,6 @@ Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
     wl_surface_destroy(sd->wlSurface);
     delete_all_tokens(sd->activation_token_list);
     sd->activation_token_list = NULL;
-    wlFlushToServer(env);
 
     (*env)->DeleteGlobalRef(env, sd->javaSurface);
     free(sd);
@@ -324,6 +323,7 @@ Java_sun_awt_wl_WLSubSurface_nativeDestroyWlSubSurface
     ASSERT_ON_WL_THREAD(env);
     struct wl_subsurface* subSurface = jlong_to_ptr(subSurfacePtr);
     wl_subsurface_destroy(subSurface);
+    // TODO: once it's all done on EDT, flush-to-server will not be necessary
     wlFlushToServer(env);
 }
 

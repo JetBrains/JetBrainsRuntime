@@ -26,20 +26,24 @@
 
 package sun.awt.wl;
 
-import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 
+import java.awt.GraphicsConfiguration;
 import java.util.Objects;
 
 /**
- * Represents a wl_surface Wayland object.
- * All operations must be performed on the AWT thread.
+ * Represents a wl_surface Wayland object; remains valid until it is hidden,
+ * at which point wl_surface is scheduled for destruction.
+ * Once associated with a SurfaceData object using showWithData(),
+ * manages the lifetime of that SurfaceData object.
+ *
+ * All operations must be performed on the AWT thread (enforced with assert).
  */
 public class WLSurface {
     private final long nativePtr; // an opaque native handle
     private final long wlSurfacePtr; // a pointer to a wl_surface object
-    protected boolean isValid = true;
+    private boolean isValid = true;
 
     private SurfaceData surfaceData;
 
@@ -55,16 +59,14 @@ public class WLSurface {
             throw new RuntimeException("Failed to create WLSurface");
         }
         wlSurfacePtr = wlSurfacePtr(nativePtr);
-        surfaceData = null; // having surface data means that the surface is visible
     }
 
-    public void dispose() {
+    public void commitSurfaceData() {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assertIsValid();
 
-        if (isValid) {
-            hide();
-            nativeDestroyWlSurface(nativePtr);
-            isValid = false;
+        if (surfaceData != null) {
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
         }
     }
 
@@ -72,36 +74,52 @@ public class WLSurface {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
-        if (surfaceData == null) return;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(0);
-        surfaceData = null;
+        if (isValid) {
+            nativeHideWlSurface(nativePtr);
+            nativeCommitWlSurface(nativePtr);
 
-        nativeHideWlSurface(nativePtr);
-        nativeCommitWlSurface(nativePtr);
+            if (surfaceData != null) {
+                surfaceData.invalidate();
+                surfaceData = null;
+            }
+
+            isValid = false;
+            WLToolkit.invokeLater(this::dispose);
+        }
     }
 
-    protected void assertIsValid() {
+    public final boolean isValid() {
+        return isValid;
+    }
+
+    protected final void assertIsValid() {
         if (!isValid) {
             throw new IllegalStateException("WLSurface is not valid");
         }
     }
 
-    public boolean hasSurfaceData() {
+    public boolean isVisible() {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-        assertIsValid();
-
         return surfaceData != null;
     }
 
-    public void associateWithSurfaceData(SurfaceData data) {
+    public void updateSurfaceData(GraphicsConfiguration gc, int width, int height, int scale) {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-        Objects.requireNonNull(data);
         assertIsValid();
 
-        if (surfaceData != null) return;
+        if (surfaceData != null) {
+            SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(gc, width, height, scale);
+        }
+    }
 
-        surfaceData = data;
-        SurfaceData.convertTo(WLSurfaceDataExt.class, data).assignSurface(wlSurfacePtr);
+    public void showWithData(SurfaceData sd) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assertIsValid();
+        Objects.requireNonNull(sd);
+        assert sd.isValid() : "SurfaceData must be valid"; // avoid show/hide/show with the same data
+
+        surfaceData = sd;
+        SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).assignSurface(wlSurfacePtr);
     }
 
     public void commit() {
@@ -116,14 +134,14 @@ public class WLSurface {
      *
      * @return a pointer to wl_surface native object
      */
-    public long getWlSurfacePtr() {
+    public final long getWlSurfacePtr() {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
         return wlSurfacePtr;
     }
 
-    protected long getNativePtr() {
+    protected final long getNativePtr() {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         assertIsValid();
 
@@ -162,13 +180,18 @@ public class WLSurface {
         }
     }
 
+    private void dispose() {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        nativeDestroyWlSurface(nativePtr);
+    }
+
     private static native void initIDs();
 
     private native long wlSurfacePtr(long ptr);
     private native void nativeCommitWlSurface(long ptr);
     private native long nativeCreateWlSurface();
     private native void nativeSetSize(long ptr, int width, int height);
-    private native void nativeDestroyWlSurface(long ptr);
+    private static native void nativeDestroyWlSurface(long ptr);
     private native void nativeHideWlSurface(long ptr);
     private native void nativeSetOpaqueRegion(long ptr, int x, int y, int width, int height);
 }
