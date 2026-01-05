@@ -42,6 +42,7 @@ import java.util.Objects;
 import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
+import sun.awt.wl.WLToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
@@ -59,7 +60,11 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     private int width; // in pixels
     private int height; // in pixels
 
-    public native void assignSurface(long surfacePtr);
+    public void assignSurface(long wlSurfacePtr) {
+        assert wlSurfacePtr != 0 : "wl_surface pointer must not be NULL";
+        nativeAssignSurface(wlSurfacePtr);
+    }
+    private native void nativeAssignSurface(long wlSurfacePtr);
 
     private native void initOps(int width, int height, int backgroundRGB, int wlShmFormat, boolean perfCountersEnabled);
     private static native void initIDs();
@@ -158,6 +163,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     }
 
     public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
         Objects.requireNonNull(gc);
 
         WLSMGraphicsConfig wlgc = (WLSMGraphicsConfig) gc;
@@ -189,6 +195,16 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         }
         return pixels;
     }
+
+    @Override
+    public void invalidate() {
+        if (!isValid()) return;
+
+        super.invalidate();
+        WLToolkit.invokeLater(this::nativeDispose);
+    }
+
+    private native void nativeDispose();
 
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface,

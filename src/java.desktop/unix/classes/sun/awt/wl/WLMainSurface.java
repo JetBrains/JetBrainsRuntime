@@ -26,7 +26,6 @@
 
 package sun.awt.wl;
 
-import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 
 import java.util.ArrayList;
@@ -98,18 +97,16 @@ public class WLMainSurface extends WLSurface {
     }
 
     @Override
-    public void associateWithSurfaceData(SurfaceData data) {
-        super.associateWithSurfaceData(data);
+    public void showWithData(SurfaceData sd) {
+        super.showWithData(sd);
         WLToolkit.registerWLSurface(getWlSurfacePtr(), peer);
     }
 
     @Override
-    public void dispose() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-
-        if (isValid) {
+    public void hide() {
+        if (isValid()) {
             WLToolkit.unregisterWLSurface(getWlSurfacePtr());
-            super.dispose();
+            super.hide();
         }
     }
 

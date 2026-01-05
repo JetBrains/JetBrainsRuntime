@@ -26,7 +26,6 @@
 
 package sun.awt.wl;
 
-import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLPixelGrabberExt;
 
@@ -131,7 +130,7 @@ public class WLRobotPeer implements RobotPeer {
         synchronized (peer.getStateLock()) {
             Point loc = peer.convertPontFromDeviceSpace(x, y);
             checkPeerForPixelGrab(peer);
-            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(loc.x, loc.y);
+            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.getSurfaceData()).getRGBPixelAt(loc.x, loc.y);
         }
     }
 
@@ -141,7 +140,7 @@ public class WLRobotPeer implements RobotPeer {
             Point loc = peer.convertPontFromDeviceSpace(bounds.x, bounds.y);
             Rectangle adjustedBounds = new Rectangle(loc, bounds.getSize());
             checkPeerForPixelGrab(peer);
-            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(adjustedBounds);
+            return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.getSurfaceData()).getRGBPixelsAt(adjustedBounds);
         }
     }
 
@@ -149,7 +148,7 @@ public class WLRobotPeer implements RobotPeer {
         if (!peer.isVisible()) {
             throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
         }
-        if (! (peer.surfaceData instanceof WLPixelGrabberExt)) {
+        if (! (peer.getSurfaceData() instanceof WLPixelGrabberExt)) {
             throw new UnsupportedOperationException("WLPixelGrabberExt is required to read pixels from a Wayland surface");
         }
     }

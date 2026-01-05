@@ -96,8 +96,8 @@ WLSMSurfaceData_GetOps(JNIEnv *env, jobject sData)
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSMSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
-                                                 jlong wlSurfacePtr)
+Java_sun_java2d_wl_WLSMSurfaceData_nativeAssignSurface(JNIEnv *env, jobject wsd,
+                                                       jlong wlSurfacePtr)
 {
 #ifndef HEADLESS
     J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_assignSurface\n");
@@ -106,7 +106,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_assignSurface(JNIEnv *env, jobject wsd,
         return;
     }
 
-    WLSBM_SurfaceAssign(wsdo->bufferManager, (struct wl_surface*)jlong_to_ptr(wlSurfacePtr));
+    WLSBM_SurfaceAssign(wsdo->bufferManager, jlong_to_ptr(wlSurfacePtr));
 #endif /* !HEADLESS */
 }
 
@@ -313,26 +313,6 @@ WLSD_Unlock(JNIEnv *env,
 }
 
 static void
-WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
-{
-#ifndef HEADLESS
-    /* ops is assumed non-null as it is checked in SurfaceData_DisposeOps */
-    J2dTrace(J2D_TRACE_INFO, "WLSD_Dispose %p\n", ops);
-    WLSDOps *wsdo = (WLSDOps*)ops;
-
-    // No Wayland event handlers should be able to run while this method
-    // runs. Those handlers may retain a reference to the buffer manager
-    // and therefore must be cancelled before that reference becomes stale.
-    AWT_LOCK();
-    WLSBM_Destroy(wsdo->bufferManager);
-    wsdo->bufferManager = NULL;
-    AWT_NOFLUSH_UNLOCK();
-
-    pthread_mutex_destroy(&wsdo->lock);
-#endif
-}
-
-static void
 BufferAttachedHandler(jobject surfaceDataWeakRef)
 {
     JNIEnv *env = getEnv();
@@ -408,7 +388,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.Lock = WLSD_Lock;
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
-    wsdo->sdOps.Dispose = WLSD_Dispose;
+    wsdo->sdOps.Dispose = NULL;
     wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, wlShmFormat,
                                        surfaceDataWeakRef,
                                        perfCountersEnabled ? CountFrameSent : NULL,
@@ -427,3 +407,20 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     pthread_mutex_init(&wsdo->lock, &attr);
 #endif /* !HEADLESS */
 }
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_wl_WLSMSurfaceData_nativeDispose(JNIEnv *env, jobject wsd)
+{
+#ifndef HEADLESS
+    WLSDOps * wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
+    JNU_CHECK_EXCEPTION(env);
+    if (wsdo == NULL) return;
+    if (wsdo->bufferManager == NULL) return;
+
+    WLSBM_Destroy(wsdo->bufferManager);
+    pthread_mutex_destroy(&wsdo->lock);
+    // NB: WLSDOps memory will be freeed by the disposer
+    wsdo->bufferManager = NULL;
+#endif
+}
+
