@@ -28,6 +28,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.SurfacePixelGrabber;
 import sun.awt.UngrabEvent;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
 import sun.java2d.vulkan.VKSurfaceData;
 import sun.java2d.wl.WLSMSurfaceData;
 
@@ -328,6 +329,10 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     public BufferedImage getClientAreaSnapshot(int x, int y, int width, int height) {
+        if (!isVisible()) {
+            throw new UnsupportedOperationException("The window has no backing buffer to read pixels from");
+        }
+
         // Move the coordinate system to the client area
         Insets insets = getInsets();
         x += insets.left;
@@ -375,9 +380,10 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
             bounds.height = bufferBounds.height - bounds.y;
         }
 
-        if (surfaceData instanceof VKSurfaceData vksd) {
+        SurfaceData sd = getSurfaceData();
+        if (sd instanceof VKSurfaceData vksd) {
             return vksd.getSnapshot(bounds.x, bounds.y, bounds.width, bounds.height);
-        } else if (surfaceData instanceof WLSMSurfaceData smsd) {
+        } else if (sd instanceof WLSMSurfaceData smsd) {
             return smsd.getSnapshot(bounds.x, bounds.y, bounds.width, bounds.height);
         }
 
@@ -385,10 +391,12 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     private boolean canPaintRoundedCorners() {
+        if (!isVisible()) return false;
+
         int roundedCornerSize = WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind);
         // Note: You would normally get a transparency-capable color model when using
         // the default graphics configuration
-        return surfaceData.getColorModel().hasAlpha()
+        return getSurfaceData().getColorModel().hasAlpha()
                 && getWidth() > roundedCornerSize * 2
                 && getHeight() > roundedCornerSize * 2;
     }
@@ -416,8 +424,10 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     private void createCornerMasks() {
+        if (!isVisible()) return;
+
         if (graphics == null) {
-            graphics = new SunGraphics2D(surfaceData, Color.WHITE, Color.BLACK, null);
+            graphics = new SunGraphics2D(getSurfaceData(), Color.WHITE, Color.BLACK, null);
             graphics.setComposite(AlphaComposite.Clear);
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);

@@ -30,10 +30,6 @@ public class WLSubSurface extends WLSurface {
     private final long wlSubSurfacePtr; // a pointer to a wl_subsurface object
 
     public WLSubSurface(WLMainSurface mainSurface, int x, int y) {
-        super();
-
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-
         wlSubSurfacePtr = nativeCreateWlSubSurface(getWlSurfacePtr(), mainSurface.getWlSurfacePtr());
         if (wlSubSurfacePtr == 0) {
             throw new RuntimeException("Failed to create WLSubSurface");
@@ -53,12 +49,11 @@ public class WLSubSurface extends WLSurface {
     }
 
     @Override
-    public void dispose() {
+    public void hide() {
         assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
-
-        if (isValid) {
+        if (isValid()) {
             nativeDestroyWlSubSurface(wlSubSurfacePtr);
-            super.dispose();
+            super.hide();
         }
     }
 

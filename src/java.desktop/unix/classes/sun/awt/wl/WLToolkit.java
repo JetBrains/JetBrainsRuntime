@@ -91,8 +91,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -181,33 +179,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             toolkitSystemThread.start();
 
             dataDevice = new WLDataDevice(0); // TODO: for multiseat support pass wl_seat pointer here
-
-            registerShutdownHook();
         } else {
             dataDevice = null;
         }
-    }
-
-    private void registerShutdownHook() {
-        // Can't access Wayland from the shutdown hook because at the time it is executing,
-        // the EDT can be blocked in java.lang.Shutdown.runHooks()
-        /*
-        Runnable r = () -> {
-            ArrayList<WLWindowPeer> livePeers;
-            synchronized (wlSurfaceToPeerMap) {
-                livePeers = new ArrayList<>(wlSurfaceToPeerMap.values());
-            }
-            livePeers.forEach(p -> {
-                Component target = p.getTarget();
-                if (target.isDisplayable()) {
-                    target.removeNotify();
-                }
-            });
-        };
-        Thread shutdownThread = InnocuousThread.newSystemThread("WLToolkit-Shutdown-Thread", r);
-        shutdownThread.setDaemon(true);
-        Runtime.getRuntime().addShutdownHook(shutdownThread);
-         */
     }
 
     public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
