@@ -6,6 +6,7 @@ java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java JBR-6294 linux-al
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/Focus/FocusKeepTest.java JBR-8874 windows-x64
+java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-9846 windows-10.0
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
@@ -149,6 +150,9 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 81
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184,JBR-5510 windows-all,linux-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5510,JBR-5951 linux-all,windows-x64
+
+jb/java/awt/Focus/RequestFocusInParent.java JBR-9843 windows-10.0
+
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312,JBR-5510 windows-all,macosx-all,linux-all
 sanity/client/SwingSet/src/EditorPaneDemoTest.java JBR-5510 linux-all
 sanity/client/SwingSet/src/FileChooserDemoTest.java JBR-8534 windows-x64
