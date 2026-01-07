@@ -63,9 +63,8 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     private int height; // in pixels
 
     public void assignSurface(long wlSurfacePtr) {
-        if (wlSurfacePtr != 0) {
-            nativeAssignSurface(wlSurfacePtr);
-        }
+        assert wlSurfacePtr != 0 : "wl_surface pointer must not be NULL";
+        nativeAssignSurface(wlSurfacePtr);
     }
     private native void nativeAssignSurface(long wlSurfacePtr);
 

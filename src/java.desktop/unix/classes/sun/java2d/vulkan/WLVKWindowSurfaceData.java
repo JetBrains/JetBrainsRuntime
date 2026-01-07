@@ -101,6 +101,8 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
 
     @Override
     public void assignSurface(long wlSurfacePtr) {
+        assert wlSurfacePtr != 0 : "wl_surface pointer must not be NULL";
+
         assignWlSurface(wlSurfacePtr);
         configure();
     }
@@ -134,6 +136,8 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     public void invalidate() {
         super.invalidate();
         // Note: must dispose the surface data before their corresponding Wayland surface (window) is disposed
+        //       because the surface data hold a reference to wl_surface, so if wl_surface is destroyed earlier,
+        //       the reference becomes stale and there's no way to reset it.
         VKSurfaceData.dispose(getNativeOps());
     }
 
