@@ -303,14 +303,12 @@ struct WLDrawBuffer {
  * The size of bufferForShow is determined by the width and height fields.
  */
 struct WLSurfaceBufferManager {
-    struct wl_surface * wlSurface;         // only accessed under showLock
-    bool                sendBufferASAP;    // only accessed under showLock
+    struct wl_surface * wlSurface;         // only accessed on the WL thread
+    bool                sendBufferASAP;    // only accessed on the WL thread
     int                 bgPixel;           // the pixel value to be used to clear new buffers
     int                 format;            // one of enum wl_shm_format
 
-    struct wl_callback* wl_frame_callback; // only accessed under showLock
-
-    pthread_mutex_t     showLock;
+    struct wl_callback* wl_frame_callback; // only accessed on the WL thread
 
     /**
      * The "show" buffer that is next to be sent to Wayland for showing on the screen.
@@ -320,15 +318,15 @@ struct WLSurfaceBufferManager {
      * When the "draw" buffer (bufferForDraw) size is changed, this one is
      * immediately invalidated along with all those from the buffersFree list.
      */
-    WLShowBuffer        bufferForShow; // only accessed under showLock
+    WLShowBuffer        bufferForShow; // only accessed on the WL thread
 
     /// The list of buffers that can be re-used as bufferForShow.wlSurfaceBuffer.
-    WLSurfaceBuffer *   buffersFree;   // only accessed under showLock
+    WLSurfaceBuffer *   buffersFree;   // only accessed on the WL thread
 
     /// The list of buffers sent to Wayland and not yet released; when released,
     /// they may be added to the buffersFree list.
     /// Does not exceed MAX_BUFFERS_IN_USE elements.
-    WLSurfaceBuffer *   buffersInUse;  // only accessed under showLock
+    WLSurfaceBuffer *   buffersInUse;  // only accessed on the WL thread
 
     pthread_mutex_t     drawLock;
 
@@ -350,18 +348,6 @@ AssertDrawLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int lin
 {
     // The drawLock is recursive, so can't effectively check if it is locked
     // with trylock. Maybe add a manual lock count or current owner?
-}
-
-static inline void
-AssertShowLockIsHeld(WLSurfaceBufferManager* manager, const char * file, int line)
-{
-#ifdef DEBUG
-    if (pthread_mutex_trylock(&manager->showLock) == 0) {
-        fprintf(stderr, "showLock not acquired at %s:%d\n", file, line);
-        fflush(stderr);
-        assert(0);
-    }
-#endif
 }
 
 static jlong
@@ -587,8 +573,6 @@ SurfaceBufferNotifyReleased(WLSurfaceBufferManager * manager, struct wl_buffer *
         WLBufferTrace(manager, "SurfaceBufferNotifyReleased (%d in use, %d free)", used, free);
     }
 
-    MUTEX_LOCK(manager->showLock);
-
     WLSurfaceBuffer * cur = manager->buffersInUse;
     WLSurfaceBuffer * prev = NULL;
     while (cur) {
@@ -609,15 +593,11 @@ SurfaceBufferNotifyReleased(WLSurfaceBufferManager * manager, struct wl_buffer *
         prev = cur;
         cur = cur->next;
     }
-
-    MUTEX_UNLOCK(manager->showLock);
 }
 
 static void
 ShowBufferChooseFromFree(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
-
     assert(manager->buffersFree != NULL);
 
     manager->bufferForShow.wlSurfaceBuffer = manager->buffersFree;
@@ -628,7 +608,6 @@ ShowBufferChooseFromFree(WLSurfaceBufferManager * manager)
 static bool
 ShowBufferNeedsResize(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     jint newWidth = manager->bufferForDraw.width;
@@ -639,7 +618,6 @@ ShowBufferNeedsResize(WLSurfaceBufferManager * manager)
 static bool
 ShowBufferResize(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     if (!SurfaceBufferResize(manager, manager->bufferForShow.wlSurfaceBuffer)) {
@@ -655,7 +633,6 @@ ShowBufferResize(WLSurfaceBufferManager * manager)
 static bool
 ShowBufferCreate(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     assert(manager->bufferForShow.wlSurfaceBuffer == NULL);
@@ -673,7 +650,6 @@ ShowBufferCreate(WLSurfaceBufferManager * manager)
 static bool
 ShowBufferIsAvailable(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     // Skip sending the next frame if the number of buffers that
@@ -729,8 +705,6 @@ TryCopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager, bool sendNow)
 static void
 TrySendShowBufferToWayland(WLSurfaceBufferManager * manager, bool sendNow)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
-
     WLBufferTrace(manager, "TrySendShowBufferToWayland(%s)", sendNow ? "now" : "later");
 
     if (TryCopyDrawBufferToShowBuffer(manager, sendNow)) {
@@ -753,8 +727,6 @@ wl_frame_callback_done(void * data,
 
     WLBufferTrace(manager, "wl_frame_callback_done");
 
-    MUTEX_LOCK(manager->showLock);
-
     assert(manager->wl_frame_callback == wl_callback);
     CancelFrameCallback(manager);
 
@@ -767,8 +739,6 @@ wl_frame_callback_done(void * data,
         // for another frame; the latter may never bring anything different in case of
         // a static picture, so we'll be cycling frames for nothing.
     }
-
-    MUTEX_UNLOCK(manager->showLock);
 }
 
 static const struct wl_callback_listener wl_frame_callback_listener = {
@@ -784,7 +754,6 @@ IsFrameCallbackScheduled(WLSurfaceBufferManager * manager)
 static void
 ScheduleFrameCallback(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     assert(manager->wlSurface);
 
     if (!IsFrameCallbackScheduled(manager)) {
@@ -796,8 +765,6 @@ ScheduleFrameCallback(WLSurfaceBufferManager * manager)
 static void
 CancelFrameCallback(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
-
     if (IsFrameCallbackScheduled(manager)) {
         wl_callback_destroy(manager->wl_frame_callback);
         manager->wl_frame_callback = NULL;
@@ -811,7 +778,6 @@ CancelFrameCallback(WLSurfaceBufferManager * manager)
 static void
 SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     assert(manager->wlSurface);
 
     jlong startTime = GetJavaTimeNanos();
@@ -855,7 +821,6 @@ SendShowBufferToWayland(WLSurfaceBufferManager * manager)
 static void
 CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, jint height)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     assert(manager->bufferForShow.wlSurfaceBuffer != NULL);
@@ -908,7 +873,6 @@ CopyDamagedArea(WLSurfaceBufferManager * manager, jint x, jint y, jint width, ji
 static void
 CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
 {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
     if (manager->bufferForShow.wlSurfaceBuffer == NULL
@@ -1014,9 +978,8 @@ DrawBufferResize(WLSurfaceBufferManager * manager)
     }
 }
 
-static void ResetBuffers(WLSurfaceBufferManager * manager) {
-    ASSERT_SHOW_LOCK_IS_HELD(manager);
-
+static void
+ResetBuffers(WLSurfaceBufferManager * manager) {
     // Make sure the draw buffer is not copied from and re-set before drawn upon again
     MUTEX_LOCK(manager->drawLock);
     manager->bufferForDraw.resizePending = true;
@@ -1083,8 +1046,6 @@ WLSBM_Create(jint width,
     manager->frameDroppedCallback = frameDroppedCallback;
     manager->bufferAttachedCallback = bufferAttachedCallback;
 
-    pthread_mutex_init(&manager->showLock, NULL);
-
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     // Recursive mutex is required because the same "draw" buffer can be
@@ -1105,10 +1066,10 @@ void
 WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surface)
 {
     ASSERT_ON_WL_THREAD(getEnv());
+
     J2dTrace(J2D_TRACE_INFO, "WLSBM_SurfaceAssign: assigned surface %p to manger %p\n", wl_surface, manager);
     WLBufferTrace(manager, "WLSBM_SurfaceAssign(%p)", wl_surface);
 
-    MUTEX_LOCK(manager->showLock);
     if (manager->wlSurface == NULL || wl_surface == NULL) {
         manager->wlSurface = wl_surface;
         // The "frame" callback depends on the surface; when changing the surface,
@@ -1135,13 +1096,13 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
     } else {
         assert(manager->wlSurface == wl_surface);
     }
-    MUTEX_UNLOCK(manager->showLock);
 }
 
 void
 WLSBM_Destroy(WLSurfaceBufferManager * manager)
 {
     ASSERT_ON_WL_THREAD(getEnv());
+
     J2dTrace(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
 
     JNIEnv* env = getEnv();
@@ -1149,7 +1110,6 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
 
     // NB: must never be called in parallel with the Wayland event handlers
     // because their callbacks retain a pointer to this manager.
-    MUTEX_LOCK(manager->showLock);
     MUTEX_LOCK(manager->drawLock);
 
     CancelFrameCallback(manager);
@@ -1172,9 +1132,7 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
     }
 
     MUTEX_UNLOCK(manager->drawLock);
-    MUTEX_UNLOCK(manager->showLock);
 
-    pthread_mutex_destroy(&manager->showLock);
     pthread_mutex_destroy(&manager->drawLock);
     memset(manager, 0, sizeof(*manager));
     free(manager);
@@ -1221,7 +1179,6 @@ void
 WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
 {
     ASSERT_ON_WL_THREAD(getEnv());
-    MUTEX_LOCK(manager->showLock);
 
     const bool frameCallbackScheduled = IsFrameCallbackScheduled(manager);
     WLBufferTrace(manager, "WLSBM_SurfaceCommit (%x, %s)",
@@ -1232,7 +1189,6 @@ WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
         // Don't always send the frame immediately so as not to overwhelm Wayland
         TrySendShowBufferToWayland(manager, manager->sendBufferASAP);
     }
-    MUTEX_UNLOCK(manager->showLock);
 }
 
 void
@@ -1260,12 +1216,12 @@ void
 WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
 {
     ASSERT_ON_WL_THREAD(getEnv());
+
     if (!HaveEnoughMemoryForWindow(width, height)) {
         JNU_ThrowOutOfMemoryError(getEnv(), "Wayland surface buffer too large");
         return;
     }
 
-    MUTEX_LOCK(manager->showLock);
     MUTEX_LOCK(manager->drawLock);
     if (manager->bufferForDraw.width != width || manager->bufferForDraw.height != height) {
         manager->bufferForDraw.width  = width;
@@ -1284,7 +1240,7 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
     }
 
     MUTEX_UNLOCK(manager->drawLock);
-    MUTEX_UNLOCK(manager->showLock);
 }
 
 #endif
+
