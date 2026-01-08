@@ -50,12 +50,6 @@ function do_configure {
     fi
   fi
 
-  if [ -n "${JCEF_BUILD_LEGACY:-}" ]; then
-    WITH_VULKAN=""
-  else
-    WITH_VULKAN="--with-vulkan"
-  fi
-
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
