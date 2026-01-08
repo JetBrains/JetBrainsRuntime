@@ -199,11 +199,10 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
 
     @Override
     public void invalidate() {
-        super.invalidate();
+        if (!isValid()) return;
 
-        EventQueue.invokeLater(() -> {
-            nativeDispose();
-        });
+        super.invalidate();
+        EventQueue.invokeLater(this::nativeDispose);
     }
 
     private native void nativeDispose();

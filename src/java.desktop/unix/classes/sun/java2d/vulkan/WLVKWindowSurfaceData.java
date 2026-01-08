@@ -134,6 +134,8 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
 
     @Override
     public void invalidate() {
+        if (!isValid()) return;
+
         super.invalidate();
         // Note: must dispose the surface data before their corresponding Wayland surface (window) is disposed
         //       because the surface data hold a reference to wl_surface, so if wl_surface is destroyed earlier,

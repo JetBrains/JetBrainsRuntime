@@ -415,10 +415,12 @@ Java_sun_java2d_wl_WLSMSurfaceData_nativeDispose(JNIEnv *env, jobject wsd)
     WLSDOps * wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
     JNU_CHECK_EXCEPTION(env);
     if (wsdo == NULL) return;
+    if (wsdo->bufferManager == NULL) return;
 
     WLSBM_Destroy(wsdo->bufferManager);
     pthread_mutex_destroy(&wsdo->lock);
     // NB: WLSDOps memory will be freeed by the disposer
+    wsdo->bufferManager = NULL;
 #endif
 }
 
