@@ -133,6 +133,11 @@ case "$bundle_type" in
     jbr_name_postfix="_${bundle_type}"
     do_maketest=1
     ;;
+  "lb")
+    do_reset_changes=1
+    jbr_name_postfix="_${bundle_type}"
+    do_maketest=1
+    ;;
   "nomod" | "")
     bundle_type=""
     ;;
