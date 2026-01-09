@@ -290,39 +290,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         });
     }
 
-    /*
-    public static void invokeAndWait(Runnable r) {
-        if (EventQueue.isDispatchThread()) {
-            r.run();
-        } else {
-            try {
-                EventQueue.invokeAndWait(r);
-            } catch (Exception e) {
-                Throwable cause = e.getCause();
-                if (cause instanceof RuntimeException rec) {
-                    rec.addSuppressed(e);
-                    throw rec;
-                } else {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-    }
-*/
-    /*
-    public static <T> T invokeAndWait(Supplier<T> task) {
-        if (EventQueue.isDispatchThread()) {
-            return task.get();
-        } else {
-            AtomicReference<T> result = new AtomicReference<>();
-            invokeAndWait(() -> {
-                    result.set(task.get());
-            });
-            return result.get();
-        }
-    }
-*/
-
     public static void invokeLater(Runnable r) {
         if (EventQueue.isDispatchThread()) {
             r.run();
