@@ -62,6 +62,8 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
 
     public void assignSurface(long wlSurfacePtr) {
         assert wlSurfacePtr != 0 : "wl_surface pointer must not be NULL";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+
         nativeAssignSurface(wlSurfacePtr);
     }
     private native void nativeAssignSurface(long wlSurfacePtr);
@@ -201,10 +203,10 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         if (!isValid()) return;
 
         super.invalidate();
-        WLToolkit.invokeLater(this::nativeDispose);
+        WLToolkit.invokeLater(this::nativeReset);
     }
 
-    private native void nativeDispose();
+    private native void nativeReset();
 
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface,

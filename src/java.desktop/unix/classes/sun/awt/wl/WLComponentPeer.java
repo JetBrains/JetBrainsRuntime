@@ -627,13 +627,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public Graphics getGraphics() {
-        synchronized (getStateLock()) {
-            return WLComponentPeer.getGraphics(
-                    getSurfaceData(),
-                    target.getForeground(),
-                    target.getBackground(),
-                    target.getFont());
-        }
+        return WLComponentPeer.getGraphics(
+                getSurfaceData(),
+                target.getForeground(),
+                target.getBackground(),
+                target.getFont());
     }
 
     /**

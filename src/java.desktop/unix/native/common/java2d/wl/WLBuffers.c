@@ -978,26 +978,6 @@ DrawBufferResize(WLSurfaceBufferManager * manager)
     }
 }
 
-static void
-ResetBuffers(WLSurfaceBufferManager * manager) {
-    // Make sure the draw buffer is not copied from and re-set before drawn upon again
-    MUTEX_LOCK(manager->drawLock);
-    manager->bufferForDraw.resizePending = true;
-    MUTEX_UNLOCK(manager->drawLock);
-
-    // All the damage refers to a surface that doesn't exist anymore; clean the lists
-    // in case these buffers will be re-used for a new surface
-    for (WLSurfaceBuffer* buffer = manager->buffersFree; buffer != NULL; buffer = buffer->next) {
-        DamageList_FreeAll(buffer->damageList);
-        buffer->damageList = NULL;
-    }
-
-    for (WLSurfaceBuffer* buffer = manager->buffersInUse; buffer != NULL; buffer = buffer->next) {
-        DamageList_FreeAll(buffer->damageList);
-        buffer->damageList = NULL;
-    }
-}
-
 static bool
 HaveEnoughMemoryForWindow(jint width, jint height)
 {
@@ -1066,32 +1046,29 @@ void
 WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surface)
 {
     ASSERT_ON_WL_THREAD(getEnv());
+    assert(wl_surface != NULL);
 
     J2dTrace(J2D_TRACE_INFO, "WLSBM_SurfaceAssign: assigned surface %p to manger %p\n", wl_surface, manager);
     WLBufferTrace(manager, "WLSBM_SurfaceAssign(%p)", wl_surface);
 
-    if (manager->wlSurface == NULL || wl_surface == NULL) {
+    if (manager->wlSurface == NULL) {
         manager->wlSurface = wl_surface;
         // The "frame" callback depends on the surface; when changing the surface,
         // cancel any associated pending callbacks:
         CancelFrameCallback(manager);
-        if (wl_surface != NULL) {
-            // If there's already something drawn in the buffer, let's send it right now,
-            // at a minimum in order to associate the surface with a buffer and make it appear
-            // on the screen. Normally this would happen in WLSBM_SurfaceCommit(),
-            // but the Java side may have already drawn and committed everything it wanted and
-            // will not commit anything new for a while, in which case the surface
-            // may never get associated with a buffer and the window will never appear.
-            if (manager->bufferForDraw.damageList != NULL) {
-                WLBufferTrace(manager, "WLSBM_SurfaceAssign: surface has damage, will try to send it now");
-                TrySendShowBufferToWayland(manager, true);
-            } else {
-                WLBufferTrace(manager, "WLSBM_SurfaceAssign: no damage, will wait for WLSBM_SurfaceCommit()");
-                // The next commit must associate the surface with a buffer, so set the flag:
-                manager->sendBufferASAP = true;
-            }
+        // If there's already something drawn in the buffer, let's send it right now,
+        // at a minimum in order to associate the surface with a buffer and make it appear
+        // on the screen. Normally this would happen in WLSBM_SurfaceCommit(),
+        // but the Java side may have already drawn and committed everything it wanted and
+        // will not commit anything new for a while, in which case the surface
+        // may never get associated with a buffer and the window will never appear.
+        if (manager->bufferForDraw.damageList != NULL) {
+            WLBufferTrace(manager, "WLSBM_SurfaceAssign: surface has damage, will try to send it now");
+            TrySendShowBufferToWayland(manager, true);
         } else {
-            ResetBuffers(manager);
+            WLBufferTrace(manager, "WLSBM_SurfaceAssign: no damage, will wait for WLSBM_SurfaceCommit()");
+            // The next commit must associate the surface with a buffer, so set the flag:
+            manager->sendBufferASAP = true;
         }
     } else {
         assert(manager->wlSurface == wl_surface);
@@ -1099,25 +1076,21 @@ WLSBM_SurfaceAssign(WLSurfaceBufferManager * manager, struct wl_surface* wl_surf
 }
 
 void
-WLSBM_Destroy(WLSurfaceBufferManager * manager)
+WLSBM_Reset(WLSurfaceBufferManager * manager)
 {
     ASSERT_ON_WL_THREAD(getEnv());
 
-    J2dTrace(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
+    J2dTrace(J2D_TRACE_INFO, "WLSBM_Reset: manger %p\n", manager);
 
-    JNIEnv* env = getEnv();
-    (*env)->DeleteWeakGlobalRef(env, manager->surfaceDataWeakRef);
-
-    // NB: must never be called in parallel with the Wayland event handlers
-    // because their callbacks retain a pointer to this manager.
-    MUTEX_LOCK(manager->drawLock);
-
+    manager->wlSurface = NULL;
     CancelFrameCallback(manager);
-    DrawBufferDestroy(manager);
 
     if (manager->bufferForShow.wlSurfaceBuffer) {
         SurfaceBufferDestroy(manager->bufferForShow.wlSurfaceBuffer);
+        manager->bufferForShow.wlSurfaceBuffer = NULL;
     }
+    DamageList_FreeAll(manager->bufferForShow.damageList);
+    manager->bufferForShow.damageList = NULL;
 
     while (manager->buffersFree) {
         WLSurfaceBuffer * next = manager->buffersFree->next;
@@ -1130,9 +1103,19 @@ WLSBM_Destroy(WLSurfaceBufferManager * manager)
         SurfaceBufferDestroy(manager->buffersInUse);
         manager->buffersInUse = next;
     }
+}
 
-    MUTEX_UNLOCK(manager->drawLock);
+void
+WLSBM_Destroy(WLSurfaceBufferManager * manager)
+{
+    J2dTrace(J2D_TRACE_INFO, "WLSBM_Destroy: manger %p\n", manager);
 
+    JNIEnv* env = getEnv();
+    (*env)->DeleteWeakGlobalRef(env, manager->surfaceDataWeakRef);
+
+    assert(!IsFrameCallbackScheduled(manager));
+
+    DrawBufferDestroy(manager);
     pthread_mutex_destroy(&manager->drawLock);
     memset(manager, 0, sizeof(*manager));
     free(manager);
