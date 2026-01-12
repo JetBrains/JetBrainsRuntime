@@ -1540,7 +1540,7 @@ static gboolean key_dispatch_handler(gpointer p) {
         (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, cachedWrapperKeycodeFieldID);
 
     // timestamp
-    event->timestamp = (guint32)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
+    event->timestamp = (gint64)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
                                                        cachedWrapperTimestampFieldID);
 
     jaw_util_dispatch_key_event(event);
@@ -1619,7 +1619,7 @@ static gboolean atk_wrapper_init_jni_cache(JNIEnv *jniEnv) {
     cachedWrapperAltGrFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "isAltGrKeyDown", "Z");
     cachedWrapperKeyvalFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "keyval", "I");
     cachedWrapperStringFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "string", "Ljava/lang/String;");
-    cachedWrapperKeycodeFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "keycode", "J");
+    cachedWrapperKeycodeFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "keycode", "I");
     cachedWrapperTimestampFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "timestamp", "J");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||

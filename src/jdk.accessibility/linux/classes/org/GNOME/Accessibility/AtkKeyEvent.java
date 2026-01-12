@@ -100,7 +100,7 @@ public class AtkKeyEvent {
      */
     private final String string;
     // The raw hardware code that generated the key event.
-    private final long keycode;
+    private final int keycode;
     // A timestamp in milliseconds indicating when the event occurred.
     private final long timestamp;
 
@@ -141,7 +141,7 @@ public class AtkKeyEvent {
                 if (tempString == null) tempString = "";
             } else {
                 tempKeyval = keyChar;
-                tempString = String.valueOf(tempKeyval);
+                tempString = String.valueOf(keyChar);
             }
         }
 
