@@ -306,6 +306,45 @@ public class AtkComponent {
     }
 
     /**
+     * Sets the position of the component.
+     * Called from native code via JNI.
+     *
+     * @param newXByCoordType         x coordinate
+     * @param newYByCoordType         y coordinate
+     * @param coordType specifies whether the coordinates are relative to the screen,
+     *                  the component's toplevel window, or the component's parent
+     * @return true if the extents were set successfully, false otherwise
+     */
+    private boolean set_position(int newXByCoordType, int newYByCoordType, int coordType) {
+        AccessibleContext accessibleContext = accessibleContextWeakRef.get();
+        if (accessibleContext == null) {
+            return false;
+        }
+        AccessibleComponent accessibleComponent = accessibleComponentWeakRef.get();
+        if (accessibleComponent == null) {
+            return false;
+        }
+
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            if (accessibleComponent.isVisible()) {
+                Point locationByCoordType = getLocationByCoordinateType(accessibleContext, coordType);
+                if (locationByCoordType == null) {
+                    return false;
+                }
+
+                Point locationByParent = accessibleComponent.getLocation();
+                if (locationByParent == null) {
+                    return false;
+                }
+
+                accessibleComponent.setLocation(locationByParent.x + (newXByCoordType - locationByCoordType.x), locationByParent.y + (newYByCoordType - locationByCoordType.y));
+                return true;
+            }
+            return false;
+        }, false);
+    }
+
+    /**
      * Gets the AtkLayer of the component based on AccessibleRole.
      * Called from native code via JNI.
      *

@@ -52,6 +52,7 @@ static jmethodID cachedComponentContainsMethod = NULL;
 static jmethodID cachedComponentGetAccessibleAtPointMethod = NULL;
 static jmethodID cachedComponentGetExtentsMethod = NULL;
 static jmethodID cachedComponentSetExtentsMethod = NULL;
+static jmethodID cachedComponentSetPositionMethod = NULL;
 static jmethodID cachedComponentGrabFocusMethod = NULL;
 static jmethodID cachedComponentGetLayerMethod = NULL;
 static jclass cachedComponentRectangleClass = NULL;
@@ -79,6 +80,14 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                                           gint y, gint width, gint height,
                                           AtkCoordType coord_type);
+
+static gboolean
+       jaw_component_set_position (
+         AtkComponent* component,
+         gint x,
+         gint y,
+         AtkCoordType coord_type
+       );
 
 static gboolean jaw_component_grab_focus(AtkComponent *component);
 static AtkLayer jaw_component_get_layer(AtkComponent *component);
@@ -133,8 +142,7 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
     iface->scroll_to_point =
         NULL; // missing java support for iface->scroll_to_point
     iface->set_extents = jaw_component_set_extents;
-    iface->set_position =
-        NULL;               // TODO: iface->set_position similar to set_extents
+    iface->set_position = jaw_component_set_position;
     iface->set_size = NULL; // TODO: iface->set_size similar to set_extents
 }
 
@@ -456,6 +464,44 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
 }
 
 /**
+ * jaw_component_set_position:
+ * @component: an #AtkComponent
+ * @x: x coordinate
+ * @y: y coordinate
+ * @coord_type: specifies whether the coordinates are relative to the screen
+ * or to the components top level window
+ *
+ * Sets the position of @component.
+ *
+ * Returns: %TRUE or %FALSE whether the position were set or not
+ **/
+static gboolean jaw_component_set_position(AtkComponent* component, gint x, gint y, AtkCoordType coord_type) {
+    JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
+
+    if (component == NULL) {
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
+        return FALSE;
+    }
+
+    JAW_GET_COMPONENT(
+        component,
+        FALSE); // create local JNI reference `jobject atk_component`
+
+    jboolean assigned = (*jniEnv)->CallBooleanMethod(
+        jniEnv, atk_component, cachedComponentSetPositionMethod, (jint)x,
+        (jint)y, (jint)coord_type);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        jaw_jni_clear_exception(jniEnv);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
+        return FALSE;
+    }
+
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
+
+    return assigned;
+}
+
+/**
  * jaw_component_grab_focus:
  * @component: an #AtkComponent
  *
@@ -569,6 +615,9 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
     cachedComponentSetExtentsMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedComponentAtkComponentClass, "set_extents", "(IIIII)Z");
 
+    cachedComponentSetPositionMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedComponentAtkComponentClass, "set_position", "(III)Z");
+
     cachedComponentGrabFocusMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedComponentAtkComponentClass, "grab_focus", "()Z");
 
@@ -581,6 +630,7 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
         cachedComponentGetAccessibleAtPointMethod == NULL ||
         cachedComponentGetExtentsMethod == NULL ||
         cachedComponentSetExtentsMethod == NULL ||
+        cachedComponentSetPositionMethod == NULL ||
         cachedComponentGrabFocusMethod == NULL ||
         cachedComponentGetLayerMethod == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -654,6 +704,7 @@ cleanup_and_fail:
     cachedComponentGetAccessibleAtPointMethod = NULL;
     cachedComponentGetExtentsMethod = NULL;
     cachedComponentSetExtentsMethod = NULL;
+    cachedComponentSetPositionMethod = NULL;
     cachedComponentGrabFocusMethod = NULL;
     cachedComponentGetLayerMethod = NULL;
     cachedComponentRectangleXField = NULL;
@@ -685,6 +736,7 @@ void jaw_component_cache_cleanup(JNIEnv *jniEnv) {
     cachedComponentGetAccessibleAtPointMethod = NULL;
     cachedComponentGetExtentsMethod = NULL;
     cachedComponentSetExtentsMethod = NULL;
+    cachedComponentSetPositionMethod = NULL;
     cachedComponentGrabFocusMethod = NULL;
     cachedComponentGetLayerMethod = NULL;
     cachedComponentRectangleXField = NULL;
