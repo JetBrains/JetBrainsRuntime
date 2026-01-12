@@ -23,6 +23,7 @@ package org.GNOME.Accessibility;
 import javax.accessibility.*;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.Dimension;
 import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
 
@@ -263,7 +264,7 @@ public class AtkComponent {
                     return false;
                 }
 
-                accessibleComponent.setBounds(locationByParent.x + (newXByCoordType - locationByCoordType.x), locationByParent.y + (newYByCoordType - locationByCoordType.y), width, height);
+                accessibleComponent.setBounds(new Rectangle(locationByParent.x + (newXByCoordType - locationByCoordType.x), locationByParent.y + (newYByCoordType - locationByCoordType.y), width, height));
                 return true;
             }
             return false;
@@ -337,7 +338,7 @@ public class AtkComponent {
                     return false;
                 }
 
-                accessibleComponent.setLocation(locationByParent.x + (newXByCoordType - locationByCoordType.x), locationByParent.y + (newYByCoordType - locationByCoordType.y));
+                accessibleComponent.setLocation(new Point(locationByParent.x + (newXByCoordType - locationByCoordType.x), locationByParent.y + (newYByCoordType - locationByCoordType.y)));
                 return true;
             }
             return false;
@@ -360,7 +361,7 @@ public class AtkComponent {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (accessibleComponent.isVisible()) {
-                accessibleComponent.setSize(width, height);
+                accessibleComponent.setSize(new Dimension(width, height));
                 return true;
             }
             return false;
