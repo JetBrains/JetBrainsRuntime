@@ -230,20 +230,18 @@ public class AtkComponent {
     }
 
     /**
-     * TODO: check logic
-     * <p>
      * Sets the extents of the component.
      * Called from native code via JNI.
      *
-     * @param x         x coordinate
-     * @param y         y coordinate
+     * @param newXByCoordType         x coordinate
+     * @param newYByCoordType         y coordinate
      * @param width     width to set for the component
      * @param height    height to set for the component
      * @param coordType specifies whether the coordinates are relative to the screen,
      *                  the component's toplevel window, or the component's parent
      * @return true if the extents were set successfully, false otherwise
      */
-    private boolean set_extents(int x, int y, int width, int height, int coordType) {
+    private boolean set_extents(int newXByCoordType, int newYByCoordType, int width, int height, int coordType) {
         AccessibleContext accessibleContext = accessibleContextWeakRef.get();
         if (accessibleContext == null) {
             return false;
@@ -255,12 +253,17 @@ public class AtkComponent {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (accessibleComponent.isVisible()) {
-                Point componentLocation = getLocationByCoordinateType(accessibleContext, coordType);
-                if (componentLocation == null) {
+                Point locationByCoordType = getLocationByCoordinateType(accessibleContext, coordType);
+                if (locationByCoordType == null) {
                     return false;
                 }
 
-                accessibleComponent.setBounds(new Rectangle(x - componentLocation.x, y - componentLocation.y, width, height));
+                Point locationByParent = accessibleComponent.getLocation();
+                if (locationByParent == null) {
+                    return false;
+                }
+
+                accessibleComponent.setBounds(locationByParent.x + (newXByCoordType - locationByCoordType.x), locationByParent.y + (newYByCoordType - locationByCoordType.y), width, height);
                 return true;
             }
             return false;
@@ -284,10 +287,11 @@ public class AtkComponent {
         if (accessibleComponent == null) {
             return null;
         }
+
         return AtkUtil.invokeInSwingAndWait(() -> {
             if (accessibleComponent.isVisible()) {
-                Rectangle bounds = accessibleComponent.getBounds();
-                if (bounds == null) {
+                Dimension dimension = accessibleComponent.getSize();
+                if (dimension == null) {
                     return null;
                 }
                 Point componentLocation = getLocationByCoordinateType(accessibleContext, coordType);
@@ -295,9 +299,7 @@ public class AtkComponent {
                     return null;
                 }
 
-                bounds.x += componentLocation.x;
-                bounds.y += componentLocation.y;
-                return bounds;
+                return new Rectangle(componentLocation.x, componentLocation.y, dimension.width, dimension.height);
             }
             return null;
         }, null);
