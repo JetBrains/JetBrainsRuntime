@@ -345,6 +345,29 @@ public class AtkComponent {
     }
 
     /**
+     * Sets the size of the component.
+     * Called from native code via JNI.
+     *
+     * @param width  width to set for the component
+     * @param height height to set for the component
+     * @return true if the size was set successfully, false otherwise
+     */
+    private boolean set_size(int width, int height) {
+        AccessibleComponent accessibleComponent = accessibleComponentWeakRef.get();
+        if (accessibleComponent == null) {
+            return false;
+        }
+
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            if (accessibleComponent.isVisible()) {
+                accessibleComponent.setSize(width, height);
+                return true;
+            }
+            return false;
+        }, false);
+    }
+
+    /**
      * Gets the AtkLayer of the component based on AccessibleRole.
      * Called from native code via JNI.
      *

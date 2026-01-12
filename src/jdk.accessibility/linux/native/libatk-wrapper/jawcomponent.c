@@ -53,6 +53,7 @@ static jmethodID cachedComponentGetAccessibleAtPointMethod = NULL;
 static jmethodID cachedComponentGetExtentsMethod = NULL;
 static jmethodID cachedComponentSetExtentsMethod = NULL;
 static jmethodID cachedComponentSetPositionMethod = NULL;
+static jmethodID cachedComponentSetSizeMethod = NULL;
 static jmethodID cachedComponentGrabFocusMethod = NULL;
 static jmethodID cachedComponentGetLayerMethod = NULL;
 static jclass cachedComponentRectangleClass = NULL;
@@ -80,6 +81,8 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                                           gint y, gint width, gint height,
                                           AtkCoordType coord_type);
+
+static gboolean jaw_component_set_size (AtkComponent* component, gint width, gint height);
 
 static gboolean
        jaw_component_set_position (
@@ -143,7 +146,7 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
         NULL; // missing java support for iface->scroll_to_point
     iface->set_extents = jaw_component_set_extents;
     iface->set_position = jaw_component_set_position;
-    iface->set_size = NULL; // TODO: iface->set_size similar to set_extents
+    iface->set_size = jaw_component_set_size;
 }
 
 gpointer jaw_component_data_init(jobject ac) {
@@ -502,6 +505,42 @@ static gboolean jaw_component_set_position(AtkComponent* component, gint x, gint
 }
 
 /**
+ * jaw_component_set_size:
+ * @component: an #AtkComponent
+ * @width: width to set for @component
+ * @height: height to set for @component
+ *
+ * Sets the size of @component.
+ *
+ * Returns: %TRUE or %FALSE whether the size were set or not
+ **/
+static gboolean jaw_component_set_size(AtkComponent* component, gint width, gint height) {
+    JAW_DEBUG_C("%p, %d, %d", component, width, height);
+
+    if (component == NULL) {
+        g_warning("%s: Null argument passed to function", G_STRFUNC);
+        return FALSE;
+    }
+
+    JAW_GET_COMPONENT(
+        component,
+        FALSE); // create local JNI reference `jobject atk_component`
+
+    jboolean assigned = (*jniEnv)->CallBooleanMethod(
+        jniEnv, atk_component, cachedComponentSetSizeMethod, (jint)width,
+        (jint)height);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        jaw_jni_clear_exception(jniEnv);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
+        return FALSE;
+    }
+
+    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
+
+    return assigned;
+}
+
+/**
  * jaw_component_grab_focus:
  * @component: an #AtkComponent
  *
@@ -618,6 +657,9 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
     cachedComponentSetPositionMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedComponentAtkComponentClass, "set_position", "(III)Z");
 
+    cachedComponentSetSizeMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedComponentAtkComponentClass, "set_size", "(II)Z");
+
     cachedComponentGrabFocusMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedComponentAtkComponentClass, "grab_focus", "()Z");
 
@@ -631,6 +673,7 @@ static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
         cachedComponentGetExtentsMethod == NULL ||
         cachedComponentSetExtentsMethod == NULL ||
         cachedComponentSetPositionMethod == NULL ||
+        cachedComponentSetSizeMethod == NULL ||
         cachedComponentGrabFocusMethod == NULL ||
         cachedComponentGetLayerMethod == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -705,6 +748,7 @@ cleanup_and_fail:
     cachedComponentGetExtentsMethod = NULL;
     cachedComponentSetExtentsMethod = NULL;
     cachedComponentSetPositionMethod = NULL;
+    cachedComponentSetSizeMethod = NULL;
     cachedComponentGrabFocusMethod = NULL;
     cachedComponentGetLayerMethod = NULL;
     cachedComponentRectangleXField = NULL;
@@ -737,6 +781,7 @@ void jaw_component_cache_cleanup(JNIEnv *jniEnv) {
     cachedComponentGetExtentsMethod = NULL;
     cachedComponentSetExtentsMethod = NULL;
     cachedComponentSetPositionMethod = NULL;
+    cachedComponentSetSizeMethod = NULL;
     cachedComponentGrabFocusMethod = NULL;
     cachedComponentGetLayerMethod = NULL;
     cachedComponentRectangleXField = NULL;
