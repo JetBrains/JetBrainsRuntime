@@ -26,14 +26,12 @@
 package sun.java2d.vulkan;
 
 import java.awt.Component;
-import java.awt.EventQueue;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
 
 import sun.awt.wl.WLComponentPeer;
-import sun.awt.wl.WLSurface;
 import sun.java2d.SurfaceData;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import sun.java2d.pipe.RenderBuffer;

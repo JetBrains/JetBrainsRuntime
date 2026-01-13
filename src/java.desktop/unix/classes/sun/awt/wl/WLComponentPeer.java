@@ -50,7 +50,6 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dialog;
 import java.awt.Dimension;
-import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
@@ -966,7 +965,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void showWindowMenu(long serial, int x, int y) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
 
         // "This request must be used in response to some sort of user action like
         //  a button press, key press, or touch down event."
