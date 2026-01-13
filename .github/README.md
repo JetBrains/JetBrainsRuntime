@@ -31,7 +31,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
-| 2025.3      | [21.0.9-b1163.86](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1163.86)| 03-Dec-2025   |
+| 2025.3      | [21.0.9-b1163.94](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1163.94)| 13-Jan-2026   |
 | 2025.2      | [21.0.9-b1038.78](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1038.78)| 03-Dec-2025   |
 | 2025.1      | [21.0.9-b895.149](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b895.149)| 03-Dec-2025   |
 | 2024.3      | [21.0.6-b631.52](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.7b631.52)  | 15-May-2025   |
