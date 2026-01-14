@@ -120,6 +120,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 java.security.AccessController.doPrivileged(
                         new sun.security.action.GetPropertyAction("sun.awt.wl.Shadow", "true")));
 
+    @SuppressWarnings("removal")
+    private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
+                java.security.AccessController.doPrivileged(
+                        new sun.security.action.GetPropertyAction("sun.awt.wl.NativeModality", "false")));
+
     static {
         initIDs();
     }
@@ -460,9 +465,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private boolean targetIsModal() {
-        return target instanceof Dialog dialog
-                && (dialog.getModalityType() == Dialog.ModalityType.APPLICATION_MODAL
-                || dialog.getModalityType() == Dialog.ModalityType.TOOLKIT_MODAL);
+        if (nativeModalityEnabled) {
+            return target instanceof Dialog dialog
+                    && (dialog.getModalityType() == Dialog.ModalityType.APPLICATION_MODAL
+                    || dialog.getModalityType() == Dialog.ModalityType.TOOLKIT_MODAL);
+        }
+        return false;
     }
 
     void updateSurfaceData() {
