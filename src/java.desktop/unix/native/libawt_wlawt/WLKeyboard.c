@@ -386,6 +386,10 @@ static const struct KeysymToJavaKeycodeMapItem {
         {0x1005ff72 /* XKB_KEY_SunCopy */,            java_awt_event_KeyEvent_VK_COPY,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
         {0x1005ff74 /* XKB_KEY_SunPaste */,           java_awt_event_KeyEvent_VK_PASTE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
         {0x1005ff75 /* XKB_KEY_SunCut */,             java_awt_event_KeyEvent_VK_CUT,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1008ff55 /* XKB_KEY_XF86Clear */,          java_awt_event_KeyEvent_VK_CLEAR,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1008ff57 /* XKB_KEY_XF86Copy */,           java_awt_event_KeyEvent_VK_COPY,                      java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1008ff58 /* XKB_KEY_XF86Cut */,            java_awt_event_KeyEvent_VK_CUT,                       java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
+        {0x1008ff6d /* XKB_KEY_XF86Paste */,          java_awt_event_KeyEvent_VK_PASTE,                     java_awt_event_KeyEvent_KEY_LOCATION_STANDARD},
         {0, 0, 0}
 };
 
