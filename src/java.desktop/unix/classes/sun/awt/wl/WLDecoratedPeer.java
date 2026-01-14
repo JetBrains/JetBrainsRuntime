@@ -29,12 +29,10 @@ import sun.awt.SunToolkit;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
-import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Window;
 import java.awt.event.MouseEvent;
-import java.awt.event.WindowEvent;
 
 public abstract class WLDecoratedPeer extends WLWindowPeer {
     private FrameDecoration decoration; // protected by stateLock
@@ -95,14 +93,6 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
 
     private static boolean isGTKAvailable() {
         return ((WLToolkit) WLToolkit.getDefaultToolkit()).checkGtkVersion(3, 20, 0);
-    }
-
-    private static native void initIDs();
-
-    static {
-        if (!GraphicsEnvironment.isHeadless()) {
-            initIDs();
-        }
     }
 
     public abstract boolean isInteractivelyResizable();
@@ -169,11 +159,6 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         // signals the end of repainting by Swing and/or AWT
         paintClientDecorations(getGraphics());
         super.updateWindow();
-    }
-
-    // called from native code
-    void postWindowClosing() {
-        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
     }
 
     @Override
