@@ -1181,8 +1181,6 @@ WLSB_Damage(WLDrawBuffer * buffer, jint x, jint y, jint width, jint height)
     ASSERT_DRAW_LOCK_IS_HELD(buffer->manager);
     assert(x >= 0);
     assert(y >= 0);
-    assert(x + width <= buffer->manager->bufferForDraw.width);
-    assert(y + height <= buffer->manager->bufferForDraw.height);
 
     buffer->damageList = DamageList_Add(buffer->damageList, x, y, width, height);
     WLBufferTrace(buffer->manager, "WLSB_Damage (at %d, %d %dx%d)", x, y, width, height);

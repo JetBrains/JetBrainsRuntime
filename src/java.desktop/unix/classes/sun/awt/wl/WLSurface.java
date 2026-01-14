@@ -38,7 +38,7 @@ import java.util.Objects;
  * Once associated with a SurfaceData object using showWithData(),
  * manages the lifetime of that SurfaceData object.
  *
- * All operations must be performed on the AWT thread (enforced with assert).
+ * All operations must be performed on the WL thread (enforced with assert).
  */
 public class WLSurface {
     private final long nativePtr; // an opaque native handle

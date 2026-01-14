@@ -31,7 +31,6 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAutoShutdown;
 import sun.awt.AppContext;
 import sun.awt.LightweightFrame;
-import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
@@ -257,7 +256,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 break;
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
-                SunToolkit.postEvent(AppContext.getAppContext(), new PeerEvent(this, () -> {
+                WLToolkit.performOnWLThread(() -> {
                     try {
                         dispatchEventsOnEDT();
                         if (dataDevice != null) {
@@ -266,7 +265,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     } finally {
                         eventsQueued.release();
                     }
-                }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
+                });
                 try {
                     eventsQueued.acquire();
                 } catch (InterruptedException e) {
