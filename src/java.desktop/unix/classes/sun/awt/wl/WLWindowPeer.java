@@ -41,6 +41,7 @@ import java.awt.Dialog;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.Rectangle;
@@ -71,6 +72,12 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     private Path2D.Double bottomLeftMask;   // guarded by stateLock
     private Path2D.Double bottomRightMask;  // guarded by stateLock
     private SunGraphics2D graphics;         // guarded by stateLock
+
+    static {
+        if (!GraphicsEnvironment.isHeadless()) {
+            initIDs();
+        }
+    }
 
     static synchronized Font getDefaultFont() {
         if (null == defaultFont) {
@@ -312,6 +319,11 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
         }
     }
 
+    // called from native code
+    void postWindowClosing() {
+        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
+    }
+
     @Override
     public BufferedImage getClientAreaSnapshot(int x, int y, int width, int height) {
         // Move the coordinate system to the client area
@@ -465,4 +477,6 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
             graphics.fill(bottomRightMask);
         }
     }
+
+    private static native void initIDs();
 }
