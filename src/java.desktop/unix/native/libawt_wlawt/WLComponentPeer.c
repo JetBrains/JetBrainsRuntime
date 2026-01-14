@@ -43,7 +43,7 @@
 #include "wakefield-client-protocol.h"
 #endif
 
-static jmethodID postWindowClosingMID;
+static jmethodID postWindowClosingMID; // WLWindowPeer.postWindowClosing
 static jmethodID notifyConfiguredMID;
 static jmethodID notifyPopupDoneMID;
 
@@ -171,7 +171,7 @@ xdg_toplevel_close(void *data,
     struct WLFrame *frame = (struct WLFrame *) data;
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
-    if (nativeFramePeer) {
+    if (nativeFramePeer) { // a reference to WLWinowPeer or its descendant
         (*env)->CallVoidMethod(env, nativeFramePeer, postWindowClosingMID);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
         JNU_CHECK_EXCEPTION(env);
@@ -223,12 +223,12 @@ Java_sun_awt_wl_WLComponentPeer_initIDs
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLDecoratedPeer_initIDs
+Java_sun_awt_wl_WLWindowPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_IE(env,
                         postWindowClosingMID = (*env)->GetMethodID(env, clazz, "postWindowClosing", "()V"),
-                        "Failed to find method WLDecoratedPeer.postWindowClosing");
+                        "Failed to find method WLWindowPeer.postWindowClosing");
 }
 
 JNIEXPORT jlong JNICALL
