@@ -68,7 +68,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
 
     public void startTracking(final Component component) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(
@@ -109,7 +109,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public void stopTrackingCurrentComponent() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(String.format("stopTrackingCurrentComponent(): this=%s.", this), new Throwable("Stacktrace"));
@@ -161,7 +161,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public Component getTrackedComponentIfTracking() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         final Component trackedComponentStrong;
         if (trackedComponent == null) {
@@ -189,7 +189,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
 
     public void deferUpdates() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(String.format("deferUpdates(): this=%s.", this), new Throwable("Stacktrace"));
@@ -199,7 +199,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public void resumeUpdates(final boolean discardDeferredUpdates) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(String.format("resumeUpdates(%b): this=%s.", discardDeferredUpdates, this), new Throwable("Stacktrace"));
@@ -216,7 +216,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public boolean areUpdatesDeferred() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         return updatesAreDeferred;
     }
@@ -226,7 +226,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#dispatchEvent(AWTEvent)}. */
     public void onIMDispatchEvent(AWTEvent event) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("onIMDispatchEvent(event={0}): this={1}.", event, this);
@@ -255,7 +255,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#notifyClientWindowChange(Rectangle)}. */
     public void onIMNotifyClientWindowChange(Rectangle location) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("onIMNotifyClientWindowChange(location={0}): this={1}.", location, this);
@@ -334,7 +334,7 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
 
     private WLInputMethodZwpTextInputV3 getOwnerIm() {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         final WLInputMethodZwpTextInputV3 thisImStrong;
         if (this.im == null) {

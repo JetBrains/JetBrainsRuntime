@@ -62,7 +62,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
 
     public void assignSurface(long wlSurfacePtr) {
         assert wlSurfacePtr != 0 : "wl_surface pointer must not be NULL";
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         nativeAssignSurface(wlSurfacePtr);
     }
@@ -165,7 +165,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     }
 
     public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         Objects.requireNonNull(gc);
 
         WLSMGraphicsConfig wlgc = (WLSMGraphicsConfig) gc;
@@ -203,7 +203,7 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
         if (!isValid()) return;
 
         super.invalidate();
-        WLToolkit.invokeLater(this::nativeReset);
+        WLToolkit.performOnWLThread(this::nativeReset);
     }
 
     private native void nativeReset();

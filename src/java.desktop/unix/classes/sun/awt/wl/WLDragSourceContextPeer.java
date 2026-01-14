@@ -121,7 +121,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
     @Override
     protected void startDrag(Transferable trans, long[] formats, Map<Long, DataFlavor> formatMap) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         var mainSurface = getSurface();
         if (mainSurface == null) {

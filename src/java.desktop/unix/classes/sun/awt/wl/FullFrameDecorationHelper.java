@@ -196,7 +196,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
     }
 
     private boolean isSignificantDrag(Point p) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         Objects.requireNonNull(p);
         return pressedLocation != null && isSignificantDragDistance(pressedLocation, p);
@@ -208,7 +208,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
 
     @Override
     boolean processMouseEvent(MouseEvent e) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (super.processMouseEvent(e)) return true;
 
@@ -328,7 +328,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         }
 
         private boolean processMouseEvent(MouseEvent e) {
-            assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+            assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
             Rectangle buttonBounds = bounds.get();
             boolean ourLocation = buttonBounds != null && e.getID() != MouseEvent.MOUSE_EXITED &&

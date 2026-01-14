@@ -110,7 +110,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     protected void wlSetVisible(boolean v) {
-        assert WLToolkit.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         if (!v) ungrab(true);
 
