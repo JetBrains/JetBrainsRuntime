@@ -435,8 +435,8 @@ java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
 java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
-java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
-java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
+java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,linux-6.14.0-1018-aws
+java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210,JBR-9770 windows-all,linux-6.14.0-1018-aws
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
 java/awt/Robot/InfiniteLoopException.java 8342638 windows-all,linux-all
@@ -894,7 +894,7 @@ java/nio/channels/DatagramChannel/ManySourcesAndTargets.java    8264385 macosx-a
 java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java 8144003,JBR-9218 macosx-all,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64
 java/nio/channels/DatagramChannel/Promiscuous.java              8144003,JBR-9218 macosx-all,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64
 java/nio/channels/DatagramChannel/PromiscuousIPv6.java JBR-8828,JBR-9218 macosx-x64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64
-java/nio/channels/DatagramChannel/SendReceiveMaxSize.java JBR-9447 linux-6.14.0-1013-aws,linux-6.14.0-1014-aws,linux-6.14.0-1015-aws,linux-6.14.0-1017-aws
+java/nio/channels/DatagramChannel/SendReceiveMaxSize.java JBR-9447 linux-6.14.0-1013-aws,linux-6.14.0-1014-aws,linux-6.14.0-1015-aws,linux-6.14.0-1017-aws,linux-6.14.0-1018-aws
 java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-all
 java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64
 java/nio/channels/Selector/LotsOfInterrupts.java#virtual JBR-8940 windows-aarch64
