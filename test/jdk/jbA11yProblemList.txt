@@ -184,6 +184,7 @@ java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java JB
 java/awt/Frame/DisabledParentOfToplevel.java JBR-9092 windows-x64
 java/awt/Frame/DisposeStressTest/DisposeStressTest.java JBR-7331 windows-all
 java/awt/Frame/FramesGC/FramesGC.java JBR-6057 windows-x64
+java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-9887 windows-10.0
 java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-5505 windows-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-5505 windows-all
 java/awt/hidpi/DrawOnFrameGraphicsTest.java JBR-5505 windows-all
