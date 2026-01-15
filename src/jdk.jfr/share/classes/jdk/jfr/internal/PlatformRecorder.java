@@ -54,6 +54,7 @@ import jdk.jfr.Recording;
 import jdk.jfr.RecordingState;
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
+import jdk.jfr.events.EventConfigurations;
 import jdk.jfr.internal.SecuritySupport.SafePath;
 import jdk.jfr.internal.SecuritySupport.SecureRecorderListener;
 import jdk.jfr.internal.consumer.EventLog;
@@ -83,6 +84,7 @@ public final class PlatformRecorder {
         Logger.log(JFR_SYSTEM, INFO, "Created native");
         JDKEvents.initialize();
         Logger.log(JFR_SYSTEM, INFO, "Registered JDK events");
+        EventConfigurations.initialize();
         JDKEvents.addInstrumentation();
         startDiskMonitor();
         shutdownHook = SecuritySupport.createThreadWitNoPermissions("JFR Shutdown Hook", new ShutdownHook(this));
