@@ -850,22 +850,6 @@ public class CSS implements Serializable {
         return r != null ? r : conv.parseCssValue(key.getDefaultValue());
     }
 
-    static Object mergeTextDecoration(String value) {
-        if (value.startsWith("none")) {
-            return null;
-        }
-
-        boolean underline = value.contains("underline");
-        boolean strikeThrough = value.contains("line-through");
-        if (!underline && !strikeThrough) {
-            return null;
-        }
-        String newValue = underline && strikeThrough
-                          ? "underline,line-through"
-                          : (underline ? "underline" : "line-through");
-        return new StringValue().parseCssValue(newValue);
-    }
-
     /**
      * Maps from a StyleConstants to a CSS Attribute.
      */
