@@ -35,4 +35,10 @@ public final class EventConfigurations {
     public static final EventConfiguration FILE_FORCE = Utils.getConfiguration(FileForceEvent.class);
     public static final EventConfiguration ERROR_THROWN = Utils.getConfiguration(ErrorThrownEvent.class);
     public static final EventConfiguration EXCEPTION_THROWN = Utils.getConfiguration(ExceptionThrownEvent.class);
+
+    public static void initialize() {
+        // This method is intentionally empty. It is used to initialize the
+        // event configurations, i.e. ensure that this class's static
+        // initializer is run.
+    }
 }
