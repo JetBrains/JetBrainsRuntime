@@ -123,11 +123,10 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
 static void jaw_table_set_caption(AtkTable *table, AtkObject *caption);
 static void jaw_table_set_summary(AtkTable *table, AtkObject *summary);
 
-// TODO: description used both for column and row
 typedef struct _TableData {
     jobject atk_table;
-    const gchar *description;
-    jstring jstrDescription;
+    const gchar *row_or_column_description;
+    jstring jstrRowOrColumnDescription;
     GMutex mutex;
 } TableData;
 
@@ -252,14 +251,15 @@ void jaw_table_data_finalize(gpointer p) {
     if (jniEnv == NULL) {
         g_warning("%s: JNIEnv is NULL in finalize", G_STRFUNC);
     } else {
-        if (data->jstrDescription != NULL) {
-            if (data->description != NULL) {
-                (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                                 data->description);
-                data->description = NULL;
+        if (data->jstrRowOrColumnDescription != NULL) {
+            if (data->row_or_column_description != NULL) {
+                (*jniEnv)->ReleaseStringUTFChars(
+                    jniEnv, data->jstrRowOrColumnDescription,
+                    data->row_or_column_description);
+                data->row_or_column_description = NULL;
             }
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-            data->jstrDescription = NULL;
+            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
+            data->jstrRowOrColumnDescription = NULL;
         }
         if (data->atk_table != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, data->atk_table);
@@ -689,31 +689,33 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     }
 
     g_mutex_lock(&data->mutex);
-    if (data->jstrDescription != NULL) {
-        if (data->description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                             data->description);
-            data->description = NULL;
+    if (data->jstrRowOrColumnDescription != NULL) {
+        if (data->row_or_column_description != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(
+                jniEnv, data->jstrRowOrColumnDescription,
+                data->row_or_column_description);
+            data->row_or_column_description = NULL;
         }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-        data->jstrDescription = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
+        data->jstrRowOrColumnDescription = NULL;
     }
 
-    data->jstrDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
-    if (data->jstrDescription == NULL) {
+    data->jstrRowOrColumnDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
+    if (data->jstrRowOrColumnDescription == NULL) {
         g_mutex_unlock(&data->mutex);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->description =
-        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrDescription, NULL);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || data->description == NULL) {
+    data->row_or_column_description = (*jniEnv)->GetStringUTFChars(
+        jniEnv, data->jstrRowOrColumnDescription, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        data->row_or_column_description == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
-        // data->jstrDescription != NULL
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-        data->jstrDescription = NULL;
+        // data->jstrRowOrColumnDescription != NULL
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
+        data->jstrRowOrColumnDescription = NULL;
 
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -726,7 +728,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return data->description;
+    return data->row_or_column_description;
 }
 
 /**
@@ -769,31 +771,33 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     }
 
     g_mutex_lock(&data->mutex);
-    if (data->jstrDescription != NULL) {
-        if (data->description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrDescription,
-                                             data->description);
-            data->description = NULL;
+    if (data->jstrRowOrColumnDescription != NULL) {
+        if (data->row_or_column_description != NULL) {
+            (*jniEnv)->ReleaseStringUTFChars(
+                jniEnv, data->jstrRowOrColumnDescription,
+                data->row_or_column_description);
+            data->row_or_column_description = NULL;
         }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-        data->jstrDescription = NULL;
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
+        data->jstrRowOrColumnDescription = NULL;
     }
 
-    data->jstrDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
-    if (data->jstrDescription == NULL) {
+    data->jstrRowOrColumnDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
+    if (data->jstrRowOrColumnDescription == NULL) {
         g_mutex_unlock(&data->mutex);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->description =
-        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrDescription, NULL);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || data->description == NULL) {
+    data->row_or_column_description = (*jniEnv)->GetStringUTFChars(
+        jniEnv, data->jstrRowOrColumnDescription, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) ||
+        data->row_or_column_description == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
-        // data->jstrDescription != NULL
-        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrDescription);
-        data->jstrDescription = NULL;
+        // data->jstrRowOrColumnDescription != NULL
+        (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
+        data->jstrRowOrColumnDescription = NULL;
 
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -806,7 +810,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
-    return data->description;
+    return data->row_or_column_description;
 }
 
 /**
