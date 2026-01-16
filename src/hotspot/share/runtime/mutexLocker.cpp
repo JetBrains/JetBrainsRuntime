@@ -159,6 +159,7 @@ Mutex*   FinalImageRecipes_lock       = nullptr;
 #endif // INCLUDE_CDS
 Mutex*   Bootclasspath_lock           = nullptr;
 
+Mutex*   OOMEStacks_lock              = nullptr;
 // Only one RecursiveMutex
 RecursiveMutex* MultiArray_lock       = nullptr;
 
@@ -351,6 +352,7 @@ void mutex_init() {
   MUTEX_DEFL(SystemDictionary_lock          , PaddedMonitor, Module_lock);
   MUTEX_DEFL(JvmtiThreadState_lock          , PaddedMutex  , VThreadTransition_lock); // Used by JvmtiThreadState/JvmtiEventController
   MUTEX_DEFL(SharedDecoder_lock             , PaddedMutex  , NmtVirtualMemory_lock);  // Must be lower than NmtVirtualMemory_lock due to MemTracker::print_containing_region
+  MUTEX_DEFN(OOMEStacks_lock                , PaddedMutex  , safepoint);
 
   // Allocate RecursiveMutex
   MultiArray_lock = new RecursiveMutex();
