@@ -167,7 +167,6 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     iface->get_range_extents = jaw_text_get_range_extents;
     iface->get_bounded_ranges =
         NULL; // TODO: iface->get_bounded_ranges from getTextBounds
-    iface->get_string_at_offset = NULL; // TODO: iface->get_string_at_offset
 
     /*
      * Scrolls this text range so it becomes visible on the screen.
