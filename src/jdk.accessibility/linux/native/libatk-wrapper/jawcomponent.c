@@ -123,7 +123,7 @@ typedef struct _ComponentData {
  * set_size (width, height)
  */
 void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p,%p", iface, data);
+    JAW_DEBUG("%p,%p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
@@ -150,7 +150,7 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
 }
 
 gpointer jaw_component_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
@@ -199,7 +199,7 @@ gpointer jaw_component_data_init(jobject ac) {
 }
 
 void jaw_component_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_debug("%s: Null argument passed to function", G_STRFUNC);
@@ -245,7 +245,7 @@ void jaw_component_data_finalize(gpointer p) {
  **/
 static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
                                        AtkCoordType coord_type) {
-    JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
+    JAW_DEBUG("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
@@ -287,7 +287,7 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
 static AtkObject *
 jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
                                       AtkCoordType coord_type) {
-    JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
+    JAW_DEBUG("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to function ", G_STRFUNC);
@@ -353,7 +353,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
 static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
                                       gint *width, gint *height,
                                       AtkCoordType coord_type) {
-    JAW_DEBUG_C("%p, %p, %p, %p, %p, %d", component, x, y, width, height,
+    JAW_DEBUG("%p, %p, %p, %p, %p, %d", component, x, y, width, height,
                 coord_type);
 
     if (component == NULL) {
@@ -440,7 +440,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                                           gint y, gint width, gint height,
                                           AtkCoordType coord_type) {
-    JAW_DEBUG_C("%p, %d, %d, %d, %d, %d", component, x, y, width, height,
+    JAW_DEBUG("%p, %d, %d, %d, %d, %d", component, x, y, width, height,
                 coord_type);
 
     if (component == NULL) {
@@ -479,7 +479,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
  * Returns: %TRUE or %FALSE whether the position were set or not
  **/
 static gboolean jaw_component_set_position(AtkComponent* component, gint x, gint y, AtkCoordType coord_type) {
-    JAW_DEBUG_C("%p, %d, %d, %d", component, x, y, coord_type);
+    JAW_DEBUG("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
@@ -515,7 +515,7 @@ static gboolean jaw_component_set_position(AtkComponent* component, gint x, gint
  * Returns: %TRUE or %FALSE whether the size were set or not
  **/
 static gboolean jaw_component_set_size(AtkComponent* component, gint width, gint height) {
-    JAW_DEBUG_C("%p, %d, %d", component, width, height);
+    JAW_DEBUG("%p, %d, %d", component, width, height);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
@@ -549,7 +549,7 @@ static gboolean jaw_component_set_size(AtkComponent* component, gint width, gint
  * Returns: %TRUE if successful, %FALSE otherwise.
  **/
 static gboolean jaw_component_grab_focus(AtkComponent *component) {
-    JAW_DEBUG_C("%p", component);
+    JAW_DEBUG("%p", component);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -583,7 +583,7 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
  *happened.
  **/
 static AtkLayer jaw_component_get_layer(AtkComponent *component) {
-    JAW_DEBUG_C("%p", component);
+    JAW_DEBUG("%p", component);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -607,7 +607,12 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
 }
 
 static gboolean jaw_component_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -761,7 +766,10 @@ cleanup_and_fail:
 }
 
 void jaw_component_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

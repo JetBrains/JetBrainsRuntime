@@ -87,7 +87,7 @@ typedef struct _SelectionData {
  * @select_all_selection:
  **/
 void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -104,7 +104,7 @@ void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
 }
 
 gpointer jaw_selection_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -153,7 +153,7 @@ gpointer jaw_selection_data_init(jobject ac) {
 }
 
 void jaw_selection_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_warning(
@@ -191,7 +191,7 @@ void jaw_selection_data_finalize(gpointer p) {
  * Returns: TRUE if success, FALSE otherwise.
  **/
 static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
-    JAW_DEBUG_C("%p, %d", selection, i);
+    JAW_DEBUG("%p, %d", selection, i);
 
     if (selection == NULL) {
         g_warning(
@@ -226,7 +226,7 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
  * Returns: TRUE if success, FALSE otherwise.
  **/
 static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
-    JAW_DEBUG_C("%p", selection);
+    JAW_DEBUG("%p", selection);
 
     if (selection == NULL) {
         g_warning(
@@ -265,7 +265,7 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
  * interface.
  **/
 static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
-    JAW_DEBUG_C("%p, %d", selection, i);
+    JAW_DEBUG("%p, %d", selection, i);
 
     if (selection == NULL) {
         g_warning(
@@ -319,7 +319,7 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
  * if @selection does not implement this interface.
  **/
 static gint jaw_selection_get_selection_count(AtkSelection *selection) {
-    JAW_DEBUG_C("%p", selection);
+    JAW_DEBUG("%p", selection);
 
     if (selection == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -354,7 +354,7 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
  **/
 static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
                                                 gint i) {
-    JAW_DEBUG_C("%p, %d", selection, i);
+    JAW_DEBUG("%p, %d", selection, i);
 
     if (selection == NULL) {
         g_warning(
@@ -391,7 +391,7 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
  **/
 static gboolean jaw_selection_remove_selection(AtkSelection *selection,
                                                gint i) {
-    JAW_DEBUG_C("%p, %d", selection, i);
+    JAW_DEBUG("%p, %d", selection, i);
 
     if (selection == NULL) {
         g_warning(
@@ -426,7 +426,7 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
  * Returns: TRUE if success, FALSE otherwise.
  **/
 static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
-    JAW_DEBUG_C("%p", selection);
+    JAW_DEBUG("%p", selection);
 
     if (selection == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -451,7 +451,12 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
 }
 
 static gboolean jaw_selection_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -550,7 +555,10 @@ cleanup_and_fail:
 }
 
 void jaw_selection_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

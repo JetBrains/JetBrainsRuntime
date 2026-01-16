@@ -130,14 +130,14 @@ G_DEFINE_TYPE(JawObject, jaw_object, ATK_TYPE_OBJECT);
                 ac, def_ret)
 
 static guint jaw_window_add_signal(const gchar *name, JawObjectClass *klass) {
-    JAW_DEBUG_C("%s, %p", name, klass);
+    JAW_DEBUG("%s, %p", name, klass);
     return g_signal_new(name, G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
                         (GSignalAccumulator)NULL, NULL,
                         g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
 }
 
 static void jaw_object_class_init(JawObjectClass *klass) {
-    JAW_DEBUG_ALL("%p", klass);
+    JAW_DEBUG("%p", klass);
 
     if (klass == NULL) {
         g_warning("%s: Null argument klass passed to the function", G_STRFUNC);
@@ -185,7 +185,7 @@ static void jaw_object_class_init(JawObjectClass *klass) {
 }
 
 static void jaw_object_initialize(AtkObject *atk_obj, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", atk_obj, data);
+    JAW_DEBUG("%p, %p", atk_obj, data);
 
     if (atk_obj == NULL) {
         g_warning("%s: Null argument atk_obj passed to the function",
@@ -197,7 +197,7 @@ static void jaw_object_initialize(AtkObject *atk_obj, gpointer data) {
 }
 
 gpointer jaw_object_get_interface_data(JawObject *jaw_obj, guint iface) {
-    JAW_DEBUG_C("%p, %u", jaw_obj, iface);
+    JAW_DEBUG("%p, %u", jaw_obj, iface);
 
     if (jaw_obj == NULL) {
         g_warning("%s: Null argument jaw_obj passed to the function",
@@ -214,7 +214,7 @@ gpointer jaw_object_get_interface_data(JawObject *jaw_obj, guint iface) {
 }
 
 static void jaw_object_init(JawObject *object) {
-    JAW_DEBUG_ALL("%p", object);
+    JAW_DEBUG("%p", object);
 
     if (object == NULL) {
         g_warning("%s: Null argument object passed to the function", G_STRFUNC);
@@ -230,7 +230,7 @@ static void jaw_object_init(JawObject *object) {
 }
 
 static void jaw_object_dispose(GObject *gobject) {
-    JAW_DEBUG_C("%p", gobject);
+    JAW_DEBUG("%p", gobject);
 
     if (gobject == NULL) {
         g_warning("%s: Null argument gobject passed to the function",
@@ -243,7 +243,7 @@ static void jaw_object_dispose(GObject *gobject) {
 }
 
 static void jaw_object_finalize(GObject *gobject) {
-    JAW_DEBUG_ALL("%p", gobject);
+    JAW_DEBUG("%p", gobject);
 
     if (gobject == NULL) {
         g_warning("%s: Null argument gobject passed to the function",
@@ -326,7 +326,7 @@ static void jaw_object_finalize(GObject *gobject) {
  * parent of the accessible
  **/
 static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -390,7 +390,7 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
  * parent of the accessible
  **/
 static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
-    JAW_DEBUG_C("%p, %p", atk_obj, parent);
+    JAW_DEBUG("%p, %p", atk_obj, parent);
 
     if (!atk_obj || !parent) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -444,7 +444,7 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
  * Returns: the string describing the AtkRole
  */
 static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -464,7 +464,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
                 const gchar *name = atk_object_get_name(child);
                 g_object_unref(G_OBJECT(child));
                 if (name)
-                    JAW_DEBUG_C("-> %s", name);
+                    JAW_DEBUG("-> %s", name);
                 return name;
             }
         }
@@ -532,7 +532,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     g_mutex_unlock(&jaw_obj->mutex);
 
     if (atk_obj->name != NULL) {
-        JAW_DEBUG_C("-> %s", atk_obj->name);
+        JAW_DEBUG("-> %s", atk_obj->name);
     }
 
     (*jniEnv)->DeleteLocalRef(jniEnv, ac);
@@ -552,7 +552,7 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
  * a empty value you can use "".
  **/
 static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
-    JAW_DEBUG_C("%p, %s", atk_obj, name);
+    JAW_DEBUG("%p, %s", atk_obj, name);
 
     if (!atk_obj || !name) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -599,7 +599,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
  *
  **/
 static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -687,7 +687,7 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
  **/
 static void jaw_object_set_description(AtkObject *atk_obj,
                                        const gchar *description) {
-    JAW_DEBUG_C("%p, %s", atk_obj, description);
+    JAW_DEBUG("%p, %s", atk_obj, description);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -733,7 +733,7 @@ static void jaw_object_set_description(AtkObject *atk_obj,
  * of the accessible.
  **/
 static gint jaw_object_get_n_children(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -781,7 +781,7 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
  * Returns: an integer which is the index of the accessible in its parent
  **/
 static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -834,7 +834,7 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
  * Returns: an #AtkRole which is the role of the accessible
  **/
 static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -843,7 +843,6 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
 
     if (atk_obj->role != ATK_ROLE_INVALID &&
         atk_obj->role != ATK_ROLE_UNKNOWN) {
-        JAW_DEBUG_C("-> %d", atk_obj->role);
         return atk_obj->role;
     }
 
@@ -852,7 +851,6 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
     AtkRole role = jaw_util_get_atk_role_from_AccessibleContext(ac);
     (*jniEnv)->DeleteLocalRef(jniEnv, ac);
 
-    JAW_DEBUG_C("-> %d", role);
     return role;
 }
 
@@ -864,7 +862,7 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
  * Sets the role of the accessible.
  **/
 static void jaw_object_set_role(AtkObject *atk_obj, AtkRole role) {
-    JAW_DEBUG_C("%p, %d", atk_obj, role);
+    JAW_DEBUG("%p, %d", atk_obj, role);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -913,7 +911,7 @@ static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
  * set of the accessible
  **/
 static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -992,7 +990,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
  *          locale of @accessible.
  **/
 static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p", atk_obj);
+    JAW_DEBUG("%p", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -1075,7 +1073,7 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
  * of the object.
  **/
 static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
-    JAW_DEBUG_C("%p)", atk_obj);
+    JAW_DEBUG("%p)", atk_obj);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -1202,7 +1200,7 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
  * accessible child of the accessible.
  **/
 static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
-    JAW_DEBUG_C("%p, %d", atk_obj, i);
+    JAW_DEBUG("%p, %d", atk_obj, i);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -1254,7 +1252,12 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
 }
 
 static gboolean jaw_object_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -1444,7 +1447,10 @@ cleanup_and_fail:
 }
 
 void jaw_object_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

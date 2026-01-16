@@ -75,7 +75,7 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv);
 
 static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
                                 guint tflag) {
-    JAW_DEBUG_C("%p, %p, %u", jniEnv, jaw_obj, tflag);
+    JAW_DEBUG("%p, %p, %u", jniEnv, jaw_obj, tflag);
 
     if (!jniEnv || !jaw_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -197,7 +197,7 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
 }
 
 JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
-    JAW_DEBUG_C("%p, %p", jniEnv, ac);
+    JAW_DEBUG("%p, %p", jniEnv, ac);
 
     if (!ac || !jniEnv) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -232,7 +232,7 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
 }
 
 JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
-    JAW_DEBUG_C("%p, %p", jniEnv, ac);
+    JAW_DEBUG("%p, %p", jniEnv, ac);
 
     if (!ac || !jniEnv) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -265,7 +265,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 }
 
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", klass, data);
+    JAW_DEBUG("%p, %p", klass, data);
 
     if (!klass) {
         g_warning(
@@ -281,7 +281,7 @@ static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
 }
 
 GType jaw_impl_get_type(guint tflag) {
-    JAW_DEBUG_C("%u", tflag);
+    JAW_DEBUG("%u", tflag);
     GType type;
 
     static const GInterfaceInfo atk_action_info = {
@@ -398,7 +398,7 @@ GType jaw_impl_get_type(guint tflag) {
 }
 
 static void jaw_impl_class_init(JawImplClass *klass) {
-    JAW_DEBUG_ALL("%p", klass);
+    JAW_DEBUG("%p", klass);
 
     if (!klass) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -420,13 +420,13 @@ static void jaw_impl_class_init(JawImplClass *klass) {
 }
 
 static void jaw_impl_dispose(GObject *gobject) {
-    JAW_DEBUG_ALL("%p", gobject);
+    JAW_DEBUG("%p", gobject);
     /* Chain up to parent's dispose */
     G_OBJECT_CLASS(jaw_impl_parent_class)->dispose(gobject);
 }
 
 static void jaw_impl_finalize(GObject *gobject) {
-    JAW_DEBUG_ALL("%p", gobject);
+    JAW_DEBUG("%p", gobject);
 
     if (!gobject) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -469,7 +469,7 @@ static void jaw_impl_finalize(GObject *gobject) {
 }
 
 static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
-    JAW_DEBUG_C("%p, %u", jaw_obj, iface);
+    JAW_DEBUG("%p, %u", jaw_obj, iface);
 
     if (!jaw_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -494,7 +494,7 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
 }
 
 static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
-    JAW_DEBUG_C("%p, %p", atk_obj, data);
+    JAW_DEBUG("%p, %p", atk_obj, data);
 
     if (!atk_obj) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -546,7 +546,7 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
  */
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
                                      jfieldID fieldID) {
-    JAW_DEBUG_C("%p, %p, %p", jniEnv, jKey, fieldID);
+    JAW_DEBUG("%p, %p, %p", jniEnv, jKey, fieldID);
 
     if (!jniEnv || !fieldID) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -586,7 +586,7 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
  */
 AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
                                                jstring jrel_key) {
-    JAW_DEBUG_C("%p, %p", jniEnv, jrel_key);
+    JAW_DEBUG("%p, %p", jniEnv, jrel_key);
 
     if (!jaw_impl_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -621,7 +621,12 @@ AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
 }
 
 static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -800,7 +805,10 @@ cleanup_and_fail:
 }
 
 void jaw_impl_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

@@ -69,7 +69,7 @@ typedef struct _JawKeyListenerInfo {
 static GHashTable *key_listener_list = NULL;
 
 GType jaw_util_get_type(void) {
-    JAW_DEBUG_ALL("");
+    JAW_DEBUG("");
     static GType type = 0;
 
     if (!type) {
@@ -93,7 +93,7 @@ GType jaw_util_get_type(void) {
 }
 
 static void jaw_util_class_init(JawUtilClass *kclass, void *klass_data) {
-    JAW_DEBUG_ALL("%p, %p", kclass, klass_data);
+    JAW_DEBUG("%p, %p", kclass, klass_data);
 
     AtkUtilClass *atk_class;
     gpointer data;
@@ -119,7 +119,7 @@ static void jaw_util_class_init(JawUtilClass *kclass, void *klass_data) {
  *         FALSE if any argument is null or the listener returns FALSE.
  */
 static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
-    JAW_DEBUG_C("%p, %p, %p", key, value, data);
+    JAW_DEBUG("%p, %p, %p", key, value, data);
 
     if (value == NULL || data == NULL) {
         g_warning("%s: Null argument passed. value=%p, data=%p", G_STRFUNC,
@@ -135,7 +135,7 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     AtkKeySnoopFunc func = info->listener;
     gpointer func_data = info->data;
 
-    JAW_DEBUG_C("key event %d %x %x %d '%s' %u %u", key_event->type,
+    JAW_DEBUG("key event %d %x %x %d '%s' %u %u", key_event->type,
                 key_event->state, key_event->keyval, key_event->length,
                 key_event->string, (unsigned)key_event->keycode,
                 (unsigned)key_event->timestamp);
@@ -151,7 +151,7 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
  * @param data Pointer to the `GHashTable`
  */
 static void insert_hf(gpointer key, gpointer value, gpointer data) {
-    JAW_DEBUG_C("%p, %p, %p", key, value, data);
+    JAW_DEBUG("%p, %p, %p", key, value, data);
 
     if (key == NULL || value == NULL || data == NULL) {
         g_warning("%s: Null argument passed. key=%p, value=%p, data=%p",
@@ -165,7 +165,7 @@ static void insert_hf(gpointer key, gpointer value, gpointer data) {
 }
 
 gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
-    JAW_DEBUG_C("%p", event);
+    JAW_DEBUG("%p", event);
 
     if (event == NULL) {
         g_warning("%s: Null argument event passed to the function", G_STRFUNC);
@@ -181,7 +181,7 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
             g_hash_table_destroy(new_hash);
         }
     }
-    JAW_DEBUG_C("consumed: %d", consumed);
+    g_debug("%s: consumed: %d", G_STRFUNC, consumed);
 
     return (consumed > 0) ? TRUE : FALSE;
 }
@@ -200,7 +200,7 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event) {
  **/
 static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
                                              gpointer data) {
-    JAW_DEBUG_C("%p, %p", listener, data);
+    JAW_DEBUG("%p, %p", listener, data);
 
     if (listener == NULL) {
         g_warning("%s: Null argument listener passed to the function",
@@ -234,7 +234,7 @@ static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
  * Removes the specified event listener.
  **/
 static void jaw_util_remove_key_event_listener(guint remove_listener) {
-    JAW_DEBUG_C("%u", remove_listener);
+    JAW_DEBUG("%u", remove_listener);
     gpointer *value = g_hash_table_lookup(key_listener_list,
                                           GUINT_TO_POINTER(remove_listener));
     if (value) {
@@ -253,7 +253,7 @@ static void jaw_util_remove_key_event_listener(guint remove_listener) {
  * application
  **/
 static AtkObject *jaw_util_get_root(void) {
-    JAW_DEBUG_C("");
+    JAW_DEBUG("");
     static JawToplevel *root = NULL;
 
     if (root == NULL) {
@@ -273,7 +273,7 @@ static AtkObject *jaw_util_get_root(void) {
  *application
  **/
 static const gchar *jaw_util_get_toolkit_name(void) {
-    JAW_DEBUG_C("");
+    JAW_DEBUG("");
     return "J2SE-access-bridge";
 }
 
@@ -287,12 +287,12 @@ static const gchar *jaw_util_get_toolkit_name(void) {
  *application
  **/
 static const gchar *jaw_util_get_toolkit_version(void) {
-    JAW_DEBUG_C("");
+    JAW_DEBUG("");
     return "1.0";
 }
 
 guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
-    JAW_DEBUG_C("%p, %p", jniEnv, jObj);
+    JAW_DEBUG("%p, %p", jniEnv, jObj);
 
     if (jniEnv == NULL) {
         g_warning("%s: Null argument jniEnv passed to the function", G_STRFUNC);
@@ -312,9 +312,8 @@ guint jaw_util_get_tflag_from_jobj(JNIEnv *jniEnv, jobject jObj) {
 }
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserve) {
-    JAW_DEBUG_JNI("%p, %p", jvm, reserve);
+    JAW_DEBUG("%p, %p", jvm, reserve);
     if (jvm == NULL) {
-        JAW_DEBUG_I("JavaVM pointer was NULL when initializing library");
         g_error("JavaVM pointer was NULL when initializing library");
         return JNI_ERR;
     }
@@ -323,10 +322,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserve) {
 }
 
 JNIEXPORT void JNICALL JNI_OnUnload(JavaVM *jvm, void *reserve) {
-    JAW_DEBUG_JNI("%p, %p", jvm, reserve);
+    JAW_DEBUG("%p, %p", jvm, reserve);
 
     if (jvm == NULL) {
-        JAW_DEBUG_I("JavaVM pointer was NULL when unloading library");
         g_error("JavaVM pointer was NULL when unloading library");
         return;
     }
@@ -374,7 +372,7 @@ JNIEnv *jaw_util_get_jni_env(void) {
 
 /* Currently unused: our thread lives forever until application termination.  */
 void jaw_util_detach(void) {
-    JAW_DEBUG_C("");
+    JAW_DEBUG("");
     JavaVM *jvm;
     jvm = cachedJVM;
     (*jvm)->DetachCurrentThread(jvm);
@@ -382,6 +380,8 @@ void jaw_util_detach(void) {
 
 static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
                                           const gchar *roleName) {
+    JAW_DEBUG("%p, %s", jniEnv, roleName);
+
     if (jniEnv == NULL || roleName == NULL) {
         g_warning("%s: Null argument passed (jniEnv=%p, roleName_ptr=%p)",
                   G_STRFUNC, (void *)jniEnv, (void *)roleName);
@@ -416,6 +416,8 @@ static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
 
 static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
                                           const gchar *roleName) {
+    JAW_DEBUG("%p, %p, %s", jniEnv, acc_role, roleName);
+
     if (jniEnv == NULL || roleName == NULL) {
         g_warning("%s: Null argument passed (jniEnv=%p, roleName_ptr=%p)",
                   G_STRFUNC, (void *)jniEnv, (void *)roleName);
@@ -433,7 +435,7 @@ static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
 
 AtkRole
 jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
-    JAW_DEBUG_C("%p", jAccessibleContext);
+    JAW_DEBUG("%p", jAccessibleContext);
 
     if (jAccessibleContext == NULL) {
         g_warning("%s: Null argument jAccessibleContext passed to the "
@@ -974,7 +976,7 @@ AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
 
 void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
                             gint *width, gint *height) {
-    JAW_DEBUG_C("%p, %p, %p, %p, %p, %p", jniEnv, jrect, x, y, width, height);
+    JAW_DEBUG("%p, %p, %p, %p, %p, %p", jniEnv, jrect, x, y, width, height);
 
     if (jniEnv == NULL || x == NULL || y == NULL || width == NULL ||
         height == NULL || jrect == NULL) {
@@ -1001,7 +1003,12 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
 }
 
 static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -1156,7 +1163,10 @@ cleanup_and_fail:
 }
 
 void jaw_util_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

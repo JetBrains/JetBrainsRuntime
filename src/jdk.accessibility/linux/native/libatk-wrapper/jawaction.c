@@ -105,7 +105,7 @@ typedef struct _ActionData {
  * @get_localized_name:
  **/
 void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument iface passed to the function", G_STRFUNC);
@@ -126,7 +126,7 @@ void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
 }
 
 gpointer jaw_action_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument ac passed to the function", G_STRFUNC);
@@ -176,7 +176,7 @@ gpointer jaw_action_data_init(jobject ac) {
 }
 
 void jaw_action_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_debug("%s: Null argument passed to the function", G_STRFUNC);
@@ -238,7 +238,7 @@ void jaw_action_data_finalize(gpointer p) {
  * Returns: %TRUE if success, %FALSE otherwise
  **/
 static gboolean jaw_action_do_action(AtkAction *action, gint i) {
-    JAW_DEBUG_C("%p, %d", action, i);
+    JAW_DEBUG("%p, %d", action, i);
 
     if (action == NULL) {
         g_warning("%s: Null action passed (index=%d)", G_STRFUNC, i);
@@ -273,7 +273,7 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
  * implement this interface.
  **/
 static gint jaw_action_get_n_actions(AtkAction *action) {
-    JAW_DEBUG_C("%p", action);
+    JAW_DEBUG("%p", action);
 
     if (action == NULL) {
         g_warning("%s: Null action passed to the function", G_STRFUNC);
@@ -307,7 +307,7 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
  * @action does not implement this interface or if an error occurs.
  **/
 static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
-    JAW_DEBUG_C("%p, %d", action, i);
+    JAW_DEBUG("%p, %d", action, i);
 
     if (action == NULL) {
         g_warning("%s: Null action passed to the function", G_STRFUNC);
@@ -387,7 +387,7 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
  **/
 static gboolean jaw_action_set_description(AtkAction *action, gint i,
                                            const gchar *description) {
-    JAW_DEBUG_C("%p, %d, %s", action, i, description);
+    JAW_DEBUG("%p, %d, %s", action, i, description);
 
     if (action == NULL) {
         g_warning("%s: Null action passed (index=%d)", G_STRFUNC, i);
@@ -443,7 +443,7 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
  *   if @action does not implement this interface or if an error occurs.
  **/
 static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
-    JAW_DEBUG_C("%p, %d", action, i);
+    JAW_DEBUG("%p, %d", action, i);
 
     if (action == NULL) {
         g_warning("%s: Null argument action passed to the function", G_STRFUNC);
@@ -513,7 +513,12 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
 }
 
 static gboolean jaw_action_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -600,7 +605,10 @@ cleanup_and_fail:
 }
 
 void jaw_action_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

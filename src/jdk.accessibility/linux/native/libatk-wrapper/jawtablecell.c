@@ -95,7 +95,7 @@ typedef struct _TableCellData {
  * Since: 2.12
  */
 void jaw_table_cell_interface_init(AtkTableCellIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument iface passed to the function", G_STRFUNC);
@@ -112,7 +112,7 @@ void jaw_table_cell_interface_init(AtkTableCellIface *iface, gpointer data) {
 }
 
 gpointer jaw_table_cell_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument ac passed to the function", G_STRFUNC);
@@ -161,7 +161,7 @@ gpointer jaw_table_cell_data_init(jobject ac) {
 }
 
 void jaw_table_cell_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -198,7 +198,7 @@ void jaw_table_cell_data_finalize(gpointer p) {
  * Returns: (transfer full): the atk object for the containing table.
  */
 static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
-    JAW_DEBUG_C("%p", cell);
+    JAW_DEBUG("%p", cell);
 
     if (cell == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -255,6 +255,8 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
  */
 static gboolean getPosition(JNIEnv *jniEnv, jobject jatk_table_cell, gint *row,
                             gint *column) {
+    JAW_DEBUG("%p, %p, %p, %p", jniEnv, jatk_table_cell, row, column);
+
     if (jniEnv == NULL || row == NULL || column == NULL) {
         g_warning("%s: Null argument. jniEnv=%p, row=%p, column=%p", G_STRFUNC,
                   (void *)jniEnv, (void *)row, (void *)column);
@@ -295,13 +297,14 @@ static gboolean getPosition(JNIEnv *jniEnv, jobject jatk_table_cell, gint *row,
  */
 static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
                                             gint *column) {
+    JAW_DEBUG("%p, %p, %p", cell, row, column);
+
     if (cell == NULL || row == NULL || column == NULL) {
         g_warning("%s: Null argument. cell=%p, row=%p, column=%p", G_STRFUNC,
                   (void *)cell, (void *)row, (void *)column);
         return FALSE;
     }
 
-    JAW_DEBUG_C("%p, %p, %p", cell, row, column);
     JAW_GET_TABLECELL(cell, FALSE);
 
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
@@ -329,6 +332,8 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
  */
 static gboolean getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
                            gint *row_span) {
+    JAW_DEBUG("%p, %p, %p", jniEnv, jatk_table_cell, row_span);
+
     if (jniEnv == NULL || row_span == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
@@ -362,6 +367,8 @@ static gboolean getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
  */
 static gboolean getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
                               gint *column_span) {
+    JAW_DEBUG("%p, %p, %p", jniEnv, jatk_table_cell, column_span);
+
     if (jniEnv == NULL || column_span == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
@@ -400,7 +407,7 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
                                                    gint *row, gint *column,
                                                    gint *row_span,
                                                    gint *column_span) {
-    JAW_DEBUG_C("%p, %p, %p, %p, %p", cell, row, column, row_span, column_span);
+    JAW_DEBUG("%p, %p, %p, %p, %p", cell, row, column, row_span, column_span);
 
     if (cell == NULL || row == NULL || column == NULL || row_span == NULL ||
         column_span == NULL) {
@@ -449,7 +456,7 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
  * Since: 2.12
  */
 static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
-    JAW_DEBUG_C("%p", cell);
+    JAW_DEBUG("%p", cell);
 
     if (cell == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -482,7 +489,7 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
  * Since: 2.12
  */
 static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
-    JAW_DEBUG_C("%p", cell);
+    JAW_DEBUG("%p", cell);
 
     if (cell == NULL) {
         g_warning("%s: Null argument cell passed to the function", G_STRFUNC);
@@ -513,7 +520,7 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
  * representing the column header cells.
  */
 static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
-    JAW_DEBUG_C("%p", cell);
+    JAW_DEBUG("%p", cell);
 
     if (cell == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -578,7 +585,7 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
  * representing the row header cells.
  */
 static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
-    JAW_DEBUG_C("%p", cell);
+    JAW_DEBUG("%p", cell);
 
     if (cell == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -632,7 +639,12 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
 }
 
 static gboolean jaw_table_cell_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -733,7 +745,10 @@ cleanup_and_fail:
 }
 
 void jaw_tablecell_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

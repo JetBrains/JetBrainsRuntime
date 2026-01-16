@@ -38,35 +38,10 @@ extern time_t jaw_start_time;
         fflush(jaw_log_file);                                                  \
     } while (0)
 
-#define JAW_DEBUG_I(fmt, ...)                                                  \
+#define JAW_DEBUG(fmt, ...)                                                \
     do {                                                                       \
-        if (jaw_debug) {                                                       \
-            if (1 <= jaw_debug)                                                \
-                PRINT_AND_FLUSH(": " fmt, ##__VA_ARGS__);                      \
-        }                                                                      \
-    } while (0)
-
-#define JAW_DEBUG_JNI(fmt, ...)                                                \
-    do {                                                                       \
-        if (jaw_debug) {                                                       \
-            if (2 <= jaw_debug)                                                \
-                PRINT_AND_FLUSH("(" fmt ")", ##__VA_ARGS__);                   \
-        }                                                                      \
-    } while (0)
-
-#define JAW_DEBUG_C(fmt, ...)                                                  \
-    do {                                                                       \
-        if (jaw_debug) {                                                       \
-            if (3 <= jaw_debug)                                                \
-                PRINT_AND_FLUSH("(" fmt ")", ##__VA_ARGS__);                   \
-        }                                                                      \
-    } while (0)
-
-#define JAW_DEBUG_ALL(fmt, ...)                                                \
-    do {                                                                       \
-        if (jaw_debug) {                                                       \
-            if (4 <= jaw_debug)                                                \
-                PRINT_AND_FLUSH("(" fmt ")", ##__VA_ARGS__);                   \
+        if (jaw_debug) {                                                       \                                          \
+            PRINT_AND_FLUSH("(" fmt ")", ##__VA_ARGS__);                   \
         }                                                                      \
     } while (0)
 
@@ -112,18 +87,18 @@ void jaw_util_detach(void);
 #define JAW_GET_OBJ_IFACE(o, iface, Data, field, env, name, def_ret)           \
     JawObject *jaw_obj = JAW_OBJECT(o);                                        \
     if (!jaw_obj) {                                                            \
-        JAW_DEBUG_I("jaw_obj == NULL");                                        \
+        g_warning("%s: jaw_obj == NULL in JAW_GET_OBJ_IFACE", G_STRFUNC);                                        \
         return def_ret;                                                        \
     }                                                                          \
     Data *data = jaw_object_get_interface_data(jaw_obj, iface);                \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
     if (!env) {                                                                \
-        JAW_DEBUG_I(#env " == NULL");                                          \
+        g_warning(#env " == NULL");                                             \
         return def_ret;                                                        \
     }                                                                          \
     jobject name = (*env)->NewLocalRef(env, data->field);                     \
     if (!name) {                                                               \
-        JAW_DEBUG_I(#name " == NULL");                                         \
+        g_warning(#name " == NULL");                                         \
         return def_ret;                                                        \
     }
 
@@ -131,13 +106,13 @@ void jaw_util_detach(void);
                     def_ret)                                                   \
     JawObject *object_name = CAST(o);                                          \
     if (!object_name) {                                                        \
-        JAW_DEBUG_I(#object_name " == NULL");                                  \
+        g_warning(#object_name " == NULL");                                  \
         return def_ret;                                                        \
     }                                                                          \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
     jobject name = (*env)->NewLocalRef(env, object_name->field);              \
     if (!name) {                                                               \
-        JAW_DEBUG_I(#name " == NULL");                                         \
+        g_warning(#name " == NULL");                                         \
         return def_ret;                                                        \
     }
 

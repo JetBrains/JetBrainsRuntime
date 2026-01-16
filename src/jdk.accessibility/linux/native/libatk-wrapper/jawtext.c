@@ -128,7 +128,7 @@ typedef struct _TextData {
                       TextData, atk_text, jniEnv, atk_text, def_ret)
 
 void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -185,7 +185,7 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
 }
 
 gpointer jaw_text_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -231,7 +231,7 @@ gpointer jaw_text_data_init(jobject ac) {
 }
 
 void jaw_text_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -259,7 +259,7 @@ void jaw_text_data_finalize(gpointer p) {
 
 static gchar *private_jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv,
                                                    jstring jstr) {
-    JAW_DEBUG_C("%p, %p", jniEnv, jstr);
+    JAW_DEBUG("%p, %p", jniEnv, jstr);
 
     if (jniEnv == NULL || jstr == NULL) {
         g_warning("%s: Null argument passed. jniEnv=%p, jstr=%p", G_STRFUNC,
@@ -328,7 +328,7 @@ static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
  **/
 static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
                                 gint end_offset) {
-    JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
+    JAW_DEBUG("%p, %d, %d", text, start_offset, end_offset);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -373,7 +373,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
  * Returns: the character at @offset or 0 in the case of failure.
  **/
 static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
-    JAW_DEBUG_C("%p, %d", text, offset);
+    JAW_DEBUG("%p, %d", text, offset);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -431,7 +431,7 @@ static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
                                              AtkTextBoundary boundary_type,
                                              gint *start_offset,
                                              gint *end_offset) {
-    JAW_DEBUG_C("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
+    JAW_DEBUG("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
                 end_offset);
 
     if (text == NULL || start_offset == NULL || end_offset == NULL) {
@@ -492,7 +492,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
                                           AtkTextBoundary boundary_type,
                                           gint *start_offset,
                                           gint *end_offset) {
-    JAW_DEBUG_C("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
+    JAW_DEBUG("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
                 end_offset);
 
     if (text == NULL || start_offset == NULL || end_offset == NULL) {
@@ -554,7 +554,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
                                               AtkTextBoundary boundary_type,
                                               gint *start_offset,
                                               gint *end_offset) {
-    JAW_DEBUG_C("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
+    JAW_DEBUG("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
                 end_offset);
 
     if (text == NULL || start_offset == NULL || end_offset == NULL) {
@@ -647,7 +647,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
                                             AtkTextGranularity granularity,
                                             gint *start_offset,
                                             gint *end_offset) {
-    JAW_DEBUG_C("%p, %d, %d, %p, %p", text, offset, granularity, start_offset,
+    JAW_DEBUG("%p, %d, %d, %p, %p", text, offset, granularity, start_offset,
                 end_offset);
 
     if (text == NULL || start_offset == NULL || end_offset == NULL) {
@@ -699,7 +699,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
  *          any other failure.
  **/
 static gint jaw_text_get_caret_offset(AtkText *text) {
-    JAW_DEBUG_C("%p", text);
+    JAW_DEBUG("%p", text);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -742,7 +742,7 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
 static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
                                            gint *y, gint *width, gint *height,
                                            AtkCoordType coords) {
-    JAW_DEBUG_C("%p, %d, %p, %p, %p, %p, %d", text, offset, x, y, width, height,
+    JAW_DEBUG("%p, %d, %p, %p, %p, %p, %d", text, offset, x, y, width, height,
                 coords);
 
     if (text == NULL) {
@@ -807,7 +807,7 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
  * Returns: the number of characters or -1 in case of failure.
  **/
 static gint jaw_text_get_character_count(AtkText *text) {
-    JAW_DEBUG_C("%p", text);
+    JAW_DEBUG("%p", text);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -846,7 +846,7 @@ static gint jaw_text_get_character_count(AtkText *text) {
  **/
 static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
                                          AtkCoordType coords) {
-    JAW_DEBUG_C("%p, %d, %d, %d", text, x, y, coords);
+    JAW_DEBUG("%p, %d, %d, %d", text, x, y, coords);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -891,7 +891,7 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
 static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
                                        gint end_offset, AtkCoordType coord_type,
                                        AtkTextRectangle *rect) {
-    JAW_DEBUG_C("%p, %d, %d, %d, %p", text, start_offset, end_offset,
+    JAW_DEBUG("%p, %d, %d, %d, %p", text, start_offset, end_offset,
                 coord_type, rect);
 
     if (text == NULL || rect == NULL) {
@@ -942,7 +942,7 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
  * Returns: The number of selected regions, or -1 in the case of failure.
  **/
 static gint jaw_text_get_n_selections(AtkText *text) {
-    JAW_DEBUG_C("%p", text);
+    JAW_DEBUG("%p", text);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -984,7 +984,7 @@ static gint jaw_text_get_n_selections(AtkText *text) {
  **/
 static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
                                      gint *start_offset, gint *end_offset) {
-    JAW_DEBUG_C("%p, %d, %p, %p", text, selection_num, start_offset,
+    JAW_DEBUG("%p, %d, %p, %p", text, selection_num, start_offset,
                 end_offset);
 
     if (text == NULL || start_offset == NULL || end_offset == NULL) {
@@ -1050,7 +1050,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
  **/
 static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
                                        gint end_offset) {
-    JAW_DEBUG_C("%p, %d, %d", text, start_offset, end_offset);
+    JAW_DEBUG("%p, %d, %d", text, start_offset, end_offset);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -1087,7 +1087,7 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
  * Returns: %TRUE if successful, %FALSE otherwise
  **/
 static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
-    JAW_DEBUG_C("%p, %d", text, selection_num);
+    JAW_DEBUG("%p, %d", text, selection_num);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -1127,7 +1127,7 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
  **/
 static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
                                        gint start_offset, gint end_offset) {
-    JAW_DEBUG_C("%p, %d, %d, %d", text, selection_num, start_offset,
+    JAW_DEBUG("%p, %d, %d, %d", text, selection_num, start_offset,
                 end_offset);
 
     if (text == NULL) {
@@ -1177,7 +1177,7 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
  * Returns: %TRUE if successful, %FALSE otherwise.
  **/
 static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
-    JAW_DEBUG_C("%p, %d", text, offset);
+    JAW_DEBUG("%p, %d", text, offset);
 
     if (text == NULL) {
         g_warning("%s: Null argument text passed to the function", G_STRFUNC);
@@ -1200,7 +1200,12 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
 }
 
 static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -1398,7 +1403,10 @@ cleanup_and_fail:
 }
 
 void jaw_text_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

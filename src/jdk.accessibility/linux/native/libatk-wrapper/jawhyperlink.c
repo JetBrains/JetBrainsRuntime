@@ -69,7 +69,7 @@ G_DEFINE_TYPE(JawHyperlink, jaw_hyperlink, ATK_TYPE_HYPERLINK)
                 jhyperlink, jniEnv, jhyperlink, def_ret)
 
 JawHyperlink *jaw_hyperlink_new(jobject jhyperlink) {
-    JAW_DEBUG_ALL("%p", jhyperlink);
+    JAW_DEBUG("%p", jhyperlink);
 
     if (jhyperlink == NULL) {
         g_warning("%s: NULL jhyperlink parameter", G_STRFUNC);
@@ -114,7 +114,7 @@ JawHyperlink *jaw_hyperlink_new(jobject jhyperlink) {
  *activated.
  **/
 static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
-    JAW_DEBUG_ALL("%p", klass);
+    JAW_DEBUG("%p", klass);
 
     if (klass == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -140,12 +140,12 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
 }
 
 static void jaw_hyperlink_init(JawHyperlink *link) {
-    JAW_DEBUG_ALL("%p", link);
+    JAW_DEBUG("%p", link);
     g_mutex_init(&link->mutex);
 }
 
 static void jaw_hyperlink_dispose(GObject *gobject) {
-    JAW_DEBUG_ALL("%p", gobject);
+    JAW_DEBUG("%p", gobject);
 
     if (gobject == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -157,7 +157,7 @@ static void jaw_hyperlink_dispose(GObject *gobject) {
 }
 
 static void jaw_hyperlink_finalize(GObject *gobject) {
-    JAW_DEBUG_ALL("%p", gobject);
+    JAW_DEBUG("%p", gobject);
 
     if (gobject == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -216,7 +216,7 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
  * Returns: a string specifying the URI
  **/
 static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
-    JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
+    JAW_DEBUG("%p, %d", atk_hyperlink, i);
 
     if (atk_hyperlink == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -306,7 +306,7 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
  **/
 static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
                                            gint i) {
-    JAW_DEBUG_C("%p, %d", atk_hyperlink, i);
+    JAW_DEBUG("%p, %d", atk_hyperlink, i);
 
     if (atk_hyperlink == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -362,7 +362,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
  *an error happened.
  **/
 static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
-    JAW_DEBUG_C("%p", atk_hyperlink);
+    JAW_DEBUG("%p", atk_hyperlink);
 
     if (atk_hyperlink == NULL) {
         g_warning("%s: Null argument atk_hyperlink passed to the function",
@@ -411,7 +411,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
  * if an error happened
  **/
 static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
-    JAW_DEBUG_C("%p", atk_hyperlink);
+    JAW_DEBUG("%p", atk_hyperlink);
 
     if (atk_hyperlink == NULL) {
         g_warning("%s: Null argument atk_hyperlink passed to the function",
@@ -461,7 +461,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
  * Returns: whether or not this link is still valid
  **/
 static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
-    JAW_DEBUG_C("%p", atk_hyperlink);
+    JAW_DEBUG("%p", atk_hyperlink);
 
     if (atk_hyperlink == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -508,7 +508,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
  * Returns: the number of anchors associated with this hyperlink
  **/
 static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
-    JAW_DEBUG_C("%p", atk_hyperlink);
+    JAW_DEBUG("%p", atk_hyperlink);
 
     if (atk_hyperlink == NULL) {
         g_warning("%s: Null argument atk_hyperlink passed to the function",
@@ -548,7 +548,12 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
 }
 
 static gboolean jaw_hyperlink_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -637,7 +642,10 @@ cleanup_and_fail:
 }
 
 void jaw_hyperlink_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

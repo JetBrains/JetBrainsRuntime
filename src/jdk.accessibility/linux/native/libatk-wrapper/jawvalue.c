@@ -69,7 +69,7 @@ typedef struct _ValueData {
                       ValueData, atk_value, jniEnv, atk_value, def_ret)
 
 void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument iface passed to the function", G_STRFUNC);
@@ -91,7 +91,7 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
 }
 
 gpointer jaw_value_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument ac passed to the function", G_STRFUNC);
@@ -138,7 +138,7 @@ gpointer jaw_value_data_init(jobject ac) {
 }
 
 void jaw_value_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_warning("%s: Null argument p passed to the function", G_STRFUNC);
@@ -168,7 +168,7 @@ void jaw_value_data_finalize(gpointer p) {
 static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
                                                  jobject jnumber,
                                                  GValue *value) {
-    JAW_DEBUG_C("%p, %p, %p", jniEnv, jnumber, value);
+    JAW_DEBUG("%p, %p, %p", jniEnv, jnumber, value);
 
     if (jniEnv == NULL || value == NULL) {
         g_warning(
@@ -249,7 +249,7 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
  * instead.
  **/
 static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
-    JAW_DEBUG_C("%p, %p", obj, value);
+    JAW_DEBUG("%p, %p", obj, value);
 
     if (obj == NULL || value == NULL) {
         g_warning("%s: Null argument passed to the function (obj=%p, value=%p)",
@@ -312,7 +312,7 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
  * Since: 2.12
  **/
 static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
-    JAW_DEBUG_C("%p, %lf", obj, value);
+    JAW_DEBUG("%p, %lf", obj, value);
 
     if (obj == NULL) {
         g_warning("%s: Null argument obj passed to the function", G_STRFUNC);
@@ -388,7 +388,7 @@ static gboolean jaw_value_convert_double_to_gdouble(JNIEnv *jniEnv,
  * In Atk Since: 2.12
  **/
 static AtkRange *jaw_value_get_range(AtkValue *obj) {
-    JAW_DEBUG_C("%p", obj);
+    JAW_DEBUG("%p", obj);
 
     if (obj == NULL) {
         g_warning("%s: Null argument obj passed to the function", G_STRFUNC);
@@ -460,7 +460,7 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
  * In atk Since: 2.12
  **/
 static gdouble jaw_value_get_increment(AtkValue *obj) {
-    JAW_DEBUG_C("%p", obj);
+    JAW_DEBUG("%p", obj);
 
     if (obj == NULL) {
         g_warning("%s: Null argument obj passed to the function", G_STRFUNC);
@@ -485,7 +485,12 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
 }
 
 static gboolean jaw_value_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -722,7 +727,10 @@ cleanup_and_fail:
 }
 
 void jaw_value_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

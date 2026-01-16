@@ -90,7 +90,7 @@ typedef struct _ImageData {
  * @get_image_locale:
  **/
 void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -106,7 +106,7 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
 }
 
 gpointer jaw_image_data_init(jobject ac) {
-    JAW_DEBUG_C("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -156,7 +156,7 @@ gpointer jaw_image_data_init(jobject ac) {
 }
 
 void jaw_image_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -216,7 +216,7 @@ void jaw_image_data_finalize(gpointer p) {
  **/
 static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
                                          AtkCoordType coord_type) {
-    JAW_DEBUG_C("%p, %p, %p, %d", image, x, y, coord_type);
+    JAW_DEBUG("%p, %p, %p, %d", image, x, y, coord_type);
 
     if (image == NULL || x == NULL || y == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -266,7 +266,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
  * Returns: a string representing the image description or NULL
  **/
 static const gchar *jaw_image_get_image_description(AtkImage *image) {
-    JAW_DEBUG_C("%p", image);
+    JAW_DEBUG("%p", image);
 
     if (image == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -356,7 +356,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 
 static void jaw_image_get_image_size(AtkImage *image, gint *width,
                                      gint *height) {
-    JAW_DEBUG_C("%p, %p, %p", image, width, height);
+    JAW_DEBUG("%p, %p, %p", image, width, height);
 
     if (image == NULL || width == NULL || height == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -399,7 +399,12 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
 }
 
 static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -540,7 +545,10 @@ cleanup_and_fail:
 }
 
 void jaw_image_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

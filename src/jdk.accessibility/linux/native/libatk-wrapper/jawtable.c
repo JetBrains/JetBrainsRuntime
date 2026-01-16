@@ -137,7 +137,7 @@ typedef struct _TableData {
                       TableData, atk_table, jniEnv, atk_table, def_ret)
 
 void jaw_table_interface_init(AtkTableIface *iface, gpointer data) {
-    JAW_DEBUG_ALL("%p, %p", iface, data);
+    JAW_DEBUG("%p, %p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -180,7 +180,7 @@ void jaw_table_interface_init(AtkTableIface *iface, gpointer data) {
 }
 
 gpointer jaw_table_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument ac passed to the function", G_STRFUNC);
@@ -229,7 +229,7 @@ gpointer jaw_table_data_init(jobject ac) {
 }
 
 void jaw_table_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_warning("%s: Null argument p passed to the function", G_STRFUNC);
@@ -282,7 +282,7 @@ void jaw_table_data_finalize(gpointer p) {
  * to accessible
  **/
 static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
-    JAW_DEBUG_C("%p, %d, %d", table, row, column);
+    JAW_DEBUG("%p, %d, %d", table, row, column);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -292,7 +292,6 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     JawObject *jaw_obj = JAW_OBJECT(table);
     if (jaw_obj == NULL) {
         g_warning("%s: jaw_obj is NULL", G_STRFUNC);
-        JAW_DEBUG_I("jaw_obj == NULL");
         return NULL;
     }
     TableData *data = jaw_object_get_interface_data(
@@ -303,7 +302,6 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     jobject atk_table = (*jniEnv)->NewGlobalRef(jniEnv, data->atk_table);
     if (atk_table == NULL) {
         g_warning("%s: atk_table is NULL", G_STRFUNC);
-        JAW_DEBUG_I("atk_table == NULL");
         return NULL;
     }
 
@@ -356,7 +354,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
  * of table or table does not implement this interface.
  **/
 static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
-    JAW_DEBUG_C("%p, %d, %d", table, row, column);
+    JAW_DEBUG("%p, %d, %d", table, row, column);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -393,7 +391,7 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
  * or -1 if the table does not implement this method.
  **/
 static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
-    JAW_DEBUG_C("%p, %d", table, index);
+    JAW_DEBUG("%p, %d", table, index);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -429,7 +427,7 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
  * or -1 if the table does not implement this method.
  **/
 static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
-    JAW_DEBUG_C("%p, %d", table, index);
+    JAW_DEBUG("%p, %d", table, index);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -462,7 +460,7 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
  * if value does not implement this interface.
  **/
 static gint jaw_table_get_n_columns(AtkTable *table) {
-    JAW_DEBUG_C("%p", table);
+    JAW_DEBUG("%p", table);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -495,7 +493,7 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
  * if value does not implement this interface.
  **/
 static gint jaw_table_get_n_rows(AtkTable *table) {
-    JAW_DEBUG_C("%p", table);
+    JAW_DEBUG("%p", table);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -532,7 +530,7 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
  **/
 static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
                                            gint column) {
-    JAW_DEBUG_C("%p, %d, %d", table, row, column);
+    JAW_DEBUG("%p, %d, %d", table, row, column);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -568,7 +566,7 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
  **/
 static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
                                         gint column) {
-    JAW_DEBUG_C("%p, %d, %d", table, row, column);
+    JAW_DEBUG("%p, %d, %d", table, row, column);
 
     if (table == NULL) {
         g_warning("Null argument table passed to function "
@@ -603,7 +601,7 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
  * table caption, or %NULL if value does not implement this interface.
  **/
 static AtkObject *jaw_table_get_caption(AtkTable *table) {
-    JAW_DEBUG_C("%p", table);
+    JAW_DEBUG("%p", table);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -653,7 +651,7 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
  **/
 static const gchar *jaw_table_get_column_description(AtkTable *table,
                                                      gint column) {
-    JAW_DEBUG_C("%p, %d", table, column);
+    JAW_DEBUG("%p, %d", table, column);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -733,7 +731,7 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
  * %NULL if value does not implement this interface.
  **/
 static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
-    JAW_DEBUG_C("%p, %d", table, row);
+    JAW_DEBUG("%p, %d", table, row);
 
     if (table == NULL) {
         g_warning("Null argument passed table to function "
@@ -814,7 +812,7 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
  * interface.
  **/
 static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
-    JAW_DEBUG_C("%p, %d", table, column);
+    JAW_DEBUG("%p, %d", table, column);
 
     if (table == NULL) {
         g_warning("Null argument table passed to function "
@@ -865,7 +863,7 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
  * interface.
  **/
 static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
-    JAW_DEBUG_C("%p, %d", table, row);
+    JAW_DEBUG("%p, %d", table, row);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -913,7 +911,7 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
  * of the table, or zero if value does not implement this interface.
  **/
 static AtkObject *jaw_table_get_summary(AtkTable *table) {
-    JAW_DEBUG_C("%p", table);
+    JAW_DEBUG("%p", table);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -966,7 +964,7 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
  * or %0 if value does not implement this interface.
  **/
 static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
-    JAW_DEBUG_C("%p, %p", table, selected);
+    JAW_DEBUG("%p, %p", table, selected);
 
     if (selected == NULL) {
         g_warning("%s: Null argument passed selected to function", G_STRFUNC);
@@ -1041,7 +1039,7 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
  * or zero if value does not implement this interface.
  **/
 static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
-    JAW_DEBUG_C("%p, %p", table, selected);
+    JAW_DEBUG("%p, %p", table, selected);
 
     if (selected == NULL) {
         g_warning("%s: Null argument passed selected to function", G_STRFUNC);
@@ -1116,7 +1114,7 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
  * if value does not implement this interface.
  **/
 static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
-    JAW_DEBUG_C("%p, %d", table, column);
+    JAW_DEBUG("%p, %d", table, column);
 
     if (table == NULL) {
         g_warning("Null argument table passed to function "
@@ -1152,7 +1150,7 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
  * if value does not implement this interface.
  **/
 static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
-    JAW_DEBUG_C("%p, %d", table, row);
+    JAW_DEBUG("%p, %d", table, row);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -1188,7 +1186,7 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
  * if value does not implement this interface.
  **/
 static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
-    JAW_DEBUG_C("%p, %d, %d", table, row, column);
+    JAW_DEBUG("%p, %d, %d", table, row, column);
 
     if (table == NULL) {
         g_warning("%s: Null argument table passed to the function", G_STRFUNC);
@@ -1223,7 +1221,7 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
  **/
 static void jaw_table_set_row_description(AtkTable *table, gint row,
                                           const gchar *description) {
-    JAW_DEBUG_C("%p, %d, %s", table, row, description);
+    JAW_DEBUG("%p, %d, %s", table, row, description);
 
     if (!table || !description) {
         g_warning(
@@ -1273,7 +1271,7 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
  **/
 static void jaw_table_set_column_description(AtkTable *table, gint column,
                                              const gchar *description) {
-    JAW_DEBUG_C("%p, %d, %s", table, column, description);
+    JAW_DEBUG("%p, %d, %s", table, column, description);
 
     if (!table || !description) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -1321,7 +1319,7 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
  * Sets the caption for the table.
  **/
 static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
-    JAW_DEBUG_C("%p, %p", table, caption);
+    JAW_DEBUG("%p, %p", table, caption);
 
     if (!table || !caption) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -1339,7 +1337,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
 
     JawObject *jcaption = JAW_OBJECT(caption);
     if (jcaption == NULL) {
-        JAW_DEBUG_I("jcaption == NULL");
+        g_warning("%s: jcaption == NULL", G_STRFUNC);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1359,7 +1357,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jcaption->acc_context);
     if (obj == NULL) {
-        JAW_DEBUG_I("jcaption obj == NULL");
+        g_warning("%s: jcaption obj == NULL", G_STRFUNC);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1388,7 +1386,7 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
  * Sets the summary description of the table.
  **/
 static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
-    JAW_DEBUG_C("%p, %p", table, summary);
+    JAW_DEBUG("%p, %p", table, summary);
 
     if (!table || !summary) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -1406,7 +1404,7 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
 
     JawObject *jsummary = JAW_OBJECT(summary);
     if (jsummary == NULL) {
-        JAW_DEBUG_I("jsummary == NULL");
+        g_warning("%s: jsummary == NULL", G_STRFUNC);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1420,13 +1418,14 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
         return;
     }
     if (!(*jniEnv)->IsInstanceOf(jniEnv, jsummary->acc_context, accessible)) {
+        g_warning("%s: jsummary->acc_context is not instance of accessible", G_STRFUNC);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jsummary->acc_context);
     if (obj == NULL) {
-        JAW_DEBUG_I("jsummary obj == NULL");
+        g_warning("%s: jsummary obj == NULL", G_STRFUNC);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
@@ -1447,7 +1446,12 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
 }
 
 static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -1631,7 +1635,10 @@ cleanup_and_fail:
 }
 
 void jaw_table_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 

@@ -97,7 +97,7 @@ typedef struct _EditableTextData {
  **/
 void jaw_editable_text_interface_init(AtkEditableTextIface *iface,
                                       gpointer data) {
-    JAW_DEBUG_ALL("%p,%p", iface, data);
+    JAW_DEBUG("%p,%p", iface, data);
 
     if (iface == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -114,7 +114,7 @@ void jaw_editable_text_interface_init(AtkEditableTextIface *iface,
 }
 
 gpointer jaw_editable_text_data_init(jobject ac) {
-    JAW_DEBUG_ALL("%p", ac);
+    JAW_DEBUG("%p", ac);
 
     if (ac == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -163,7 +163,7 @@ gpointer jaw_editable_text_data_init(jobject ac) {
 }
 
 void jaw_editable_text_data_finalize(gpointer p) {
-    JAW_DEBUG_ALL("%p", p);
+    JAW_DEBUG("%p", p);
 
     if (p == NULL) {
         g_debug("%s: Null argument passed to the function", G_STRFUNC);
@@ -192,7 +192,7 @@ void jaw_editable_text_data_finalize(gpointer p) {
 
 void jaw_editable_text_set_text_contents(AtkEditableText *text,
                                          const gchar *string) {
-    JAW_DEBUG_C("%p, %s", text, string);
+    JAW_DEBUG("%p, %s", text, string);
 
     if (text == NULL || string == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -235,7 +235,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
 
 void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
                                    gint length, gint *position) {
-    JAW_DEBUG_C("%p, %s, %d, %p", text, string, length, position);
+    JAW_DEBUG("%p, %s, %d, %p", text, string, length, position);
 
     if (text == NULL || string == NULL || position == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -281,7 +281,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
 
 void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
                                  gint end_pos) {
-    JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
+    JAW_DEBUG("%p, %d, %d", text, start_pos, end_pos);
 
     if (text == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -305,7 +305,7 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
 
 void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
                                 gint end_pos) {
-    JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
+    JAW_DEBUG("%p, %d, %d", text, start_pos, end_pos);
 
     if (text == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -329,7 +329,7 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
 
 void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
                                    gint end_pos) {
-    JAW_DEBUG_C("%p, %d, %d", text, start_pos, end_pos);
+    JAW_DEBUG("%p, %d, %d", text, start_pos, end_pos);
 
     if (text == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -352,7 +352,7 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
 }
 
 void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
-    JAW_DEBUG_C("%p, %d", text, position);
+    JAW_DEBUG("%p, %d", text, position);
 
     if (text == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -388,7 +388,7 @@ static gboolean
 jaw_editable_text_set_run_attributes(AtkEditableText *text,
                                      AtkAttributeSet *attrib_set,
                                      gint start_offset, gint end_offset) {
-    JAW_DEBUG_C("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
+    JAW_DEBUG("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
 
     if (text == NULL || attrib_set == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
@@ -415,7 +415,12 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
 }
 
 static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
-    JAW_CHECK_NULL(jniEnv, FALSE);
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     g_mutex_lock(&cache_mutex);
 
@@ -518,7 +523,10 @@ cleanup_and_fail:
 }
 
 void jaw_editable_text_cache_cleanup(JNIEnv *jniEnv) {
+    JAW_DEBUG("JNIEnv: %p", jniEnv);
+
     if (jniEnv == NULL) {
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return;
     }
 
