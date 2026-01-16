@@ -83,12 +83,18 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
     }
 
     JawImpl *jaw_impl = JAW_IMPL(tflag, jaw_obj);
-    JAW_CHECK_NULL(jaw_impl, );
+    if (jaw_impl == NULL) {
+        g_warning("%s: jaw_impl is NULL", G_STRFUNC);
+        return;
+    }
 
     jaw_impl->tflag = tflag;
 
     jobject ac = (*jniEnv)->NewGlobalRef(jniEnv, jaw_obj->acc_context);
-    JAW_CHECK_NULL(ac, );
+    if (ac == NULL) {
+        g_warning("%s: ac is NULL", G_STRFUNC);
+        return;
+    }
 
     jaw_impl->ifaceTable = g_hash_table_new(NULL, NULL);
 
@@ -406,16 +412,25 @@ static void jaw_impl_class_init(JawImplClass *klass) {
     }
 
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
-    JAW_CHECK_NULL(gobject_class, );
+    if (gobject_class == NULL) {
+        g_warning("%s: gobject_class is NULL", G_STRFUNC);
+        return;
+    }
     gobject_class->dispose = jaw_impl_dispose;
     gobject_class->finalize = jaw_impl_finalize;
 
     AtkObjectClass *atk_class = ATK_OBJECT_CLASS(klass);
-    JAW_CHECK_NULL(atk_class, );
+    if (atk_class == NULL) {
+        g_warning("%s: atk_class is NULL", G_STRFUNC);
+        return;
+    }
     atk_class->initialize = jaw_impl_initialize;
 
     JawObjectClass *jaw_class = JAW_OBJECT_CLASS(klass);
-    JAW_CHECK_NULL(jaw_class, );
+    if (jaw_class == NULL) {
+        g_warning("%s: jaw_class is NULL", G_STRFUNC);
+        return;
+    }
     jaw_class->get_interface_data = jaw_impl_get_interface_data;
 }
 
@@ -434,11 +449,20 @@ static void jaw_impl_finalize(GObject *gobject) {
     }
 
     JawObject *jaw_obj = JAW_OBJECT(gobject);
-    JAW_CHECK_NULL(jaw_obj, );
+    if (jaw_obj == NULL) {
+        g_warning("%s: jaw_obj is NULL", G_STRFUNC);
+        return;
+    }
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
-    JAW_CHECK_NULL(jaw_impl, );
+    if (jaw_impl == NULL) {
+        g_warning("%s: jaw_impl is NULL", G_STRFUNC);
+        return;
+    }
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return;
+    }
 
     (*jniEnv)->DeleteWeakGlobalRef(jniEnv, jaw_obj->acc_context);
     jaw_obj->acc_context = NULL;
@@ -477,7 +501,10 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     }
 
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
-    JAW_CHECK_NULL(jaw_obj, NULL);
+    if (jaw_obj == NULL) {
+        g_warning("%s: jaw_obj is NULL", G_STRFUNC);
+        return NULL;
+    }
 
     if (jaw_impl == NULL || jaw_impl->ifaceTable == NULL) {
         return NULL;
@@ -504,9 +531,15 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     ATK_OBJECT_CLASS(jaw_impl_parent_class)->initialize(atk_obj, data);
 
     JawObject *jaw_obj = JAW_OBJECT(atk_obj);
-    JAW_CHECK_NULL(jaw_obj, );
+    if (jaw_obj == NULL) {
+        g_warning("%s: jaw_obj is NULL", G_STRFUNC);
+        return;
+    }
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, );
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return;
+    }
 
     if (!jaw_impl_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);

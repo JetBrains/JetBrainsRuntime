@@ -128,9 +128,15 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     }
 
     JawKeyListenerInfo *info = (JawKeyListenerInfo *)value;
-    JAW_CHECK_NULL(info, FALSE);
+    if (info == NULL) {
+        g_warning("%s: info is NULL", G_STRFUNC);
+        return FALSE;
+    }
     AtkKeyEventStruct *key_event = (AtkKeyEventStruct *)data;
-    JAW_CHECK_NULL(key_event, FALSE);
+    if (key_event == NULL) {
+        g_warning("%s: key_event is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkKeySnoopFunc func = info->listener;
     gpointer func_data = info->data;
@@ -160,7 +166,10 @@ static void insert_hf(gpointer key, gpointer value, gpointer data) {
     }
 
     GHashTable *hash_table = (GHashTable *)data;
-    JAW_CHECK_NULL(hash_table, );
+    if (hash_table == NULL) {
+        g_warning("%s: hash_table is NULL", G_STRFUNC);
+        return;
+    }
     g_hash_table_insert(hash_table, key, value);
 }
 

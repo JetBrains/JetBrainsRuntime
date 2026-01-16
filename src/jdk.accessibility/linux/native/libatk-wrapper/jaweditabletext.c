@@ -122,7 +122,11 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, NULL);
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return NULL;
+    }
+
     if (!jaw_editable_text_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return NULL;

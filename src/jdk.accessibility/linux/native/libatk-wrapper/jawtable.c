@@ -188,7 +188,10 @@ gpointer jaw_table_data_init(jobject ac) {
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, NULL);
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return NULL;
+    }
 
     if (!jaw_table_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -296,9 +299,15 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     }
     TableData *data = jaw_object_get_interface_data(
         jaw_obj, org_GNOME_Accessibility_AtkInterface_INTERFACE_TABLE);
-    JAW_CHECK_NULL(data, NULL);
+    if (data == NULL) {
+        g_warning("%s: data is NULL", G_STRFUNC);
+        return NULL;
+    }
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, NULL);
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return NULL;
+    }
     jobject atk_table = (*jniEnv)->NewGlobalRef(jniEnv, data->atk_table);
     if (atk_table == NULL) {
         g_warning("%s: atk_table is NULL", G_STRFUNC);

@@ -206,7 +206,10 @@ gpointer jaw_object_get_interface_data(JawObject *jaw_obj, guint iface) {
     }
 
     JawObjectClass *klass = JAW_OBJECT_GET_CLASS(jaw_obj);
-    JAW_CHECK_NULL(klass, NULL);
+    if (klass == NULL) {
+        g_warning("%s: klass is NULL", G_STRFUNC);
+        return NULL;
+    }
     if (klass->get_interface_data)
         return klass->get_interface_data(jaw_obj, iface);
 
@@ -222,7 +225,10 @@ static void jaw_object_init(JawObject *object) {
     }
 
     AtkObject *atk_obj = ATK_OBJECT(object);
-    JAW_CHECK_NULL(atk_obj, );
+    if (atk_obj == NULL) {
+        g_warning("%s: atk_obj is NULL", G_STRFUNC);
+        return;
+    }
     atk_obj->description = NULL;
 
     g_mutex_init(&object->mutex);

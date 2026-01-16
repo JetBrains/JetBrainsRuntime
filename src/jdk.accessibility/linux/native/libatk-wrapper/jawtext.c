@@ -193,7 +193,10 @@ gpointer jaw_text_data_init(jobject ac) {
     }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
-    JAW_CHECK_NULL(jniEnv, NULL);
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return NULL;
+    }
 
     if (!jaw_text_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -268,7 +271,10 @@ static gchar *private_jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv,
     }
 
     gchar *tmp_text = (gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
-    JAW_CHECK_NULL(tmp_text, NULL);
+    if (tmp_text == NULL) {
+        g_warning("%s: tmp_text is NULL", G_STRFUNC);
+        return NULL;
+    }
     gchar *text = g_strdup(tmp_text);
     (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_text);
 

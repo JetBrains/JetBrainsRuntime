@@ -434,7 +434,10 @@ static void callback_para_event_process_frees(void) {
 static gboolean focus_notify_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -471,7 +474,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_focusNotify(
 static gboolean window_open_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -530,7 +536,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowOpen(
 static gboolean window_close_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -590,7 +599,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowClose(
 static gboolean window_minimize_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -627,7 +639,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowMinimize(
 static gboolean window_maximize_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
 
     if (!atk_obj) {
@@ -665,7 +680,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowMaximize(
 static gboolean window_restore_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -703,7 +721,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowRestore(
 static gboolean window_activate_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -742,7 +763,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowActivate(
 static gboolean window_deactivate_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -779,7 +803,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_windowDeactivate(
 static gboolean window_state_change_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -829,7 +856,10 @@ static gint get_int_value(JNIEnv *jniEnv, jobject o) {
 
 static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG("%p, %p", jniEnv, o);
-    JAW_CHECK_NULL(o, NULL);
+    if (o == NULL) {
+        g_warning("%s: o is NULL", G_STRFUNC);
+        return NULL;
+    }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
         g_warning("Failed to create a new local reference frame");
@@ -875,7 +905,10 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
 static gboolean signal_emit_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (!jniEnv) {
@@ -1272,7 +1305,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
 static gboolean object_state_change_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -1317,7 +1353,10 @@ Java_org_GNOME_Accessibility_AtkWrapper_objectStateChange(JNIEnv *jniEnv,
 static gboolean component_added_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -1354,7 +1393,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_componentAdded(
 static gboolean component_removed_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -1394,7 +1436,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_componentRemoved(
 static gboolean bounds_changed_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
 
     AtkObject *atk_obj = ATK_OBJECT(para->jaw_impl);
     if (!atk_obj) {
@@ -1434,7 +1479,10 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_boundsChanged(
 static gboolean key_dispatch_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackParaEvent *para = (CallbackParaEvent *)p;
-    JAW_CHECK_NULL(para, FALSE);
+    if (para == NULL) {
+        g_warning("%s: para is NULL", G_STRFUNC);
+        return FALSE;
+    }
     jobject jAtkKeyEvent = para->global_event;
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {

@@ -184,7 +184,10 @@ static gint jaw_toplevel_get_n_children(AtkObject *obj) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    JAW_CHECK_NULL(jaw_toplevel, 0);
+    if (jaw_toplevel == NULL) {
+        g_warning("%s: jaw_toplevel is NULL", G_STRFUNC);
+        return 0;
+    }
 
     g_mutex_lock(&jaw_toplevel->mutex);
     if (jaw_toplevel->windows == NULL) {
@@ -259,7 +262,10 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     }
 
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
-    JAW_CHECK_NULL(jaw_toplevel, NULL);
+    if (jaw_toplevel == NULL) {
+        g_warning("%s: jaw_toplevel is NULL", G_STRFUNC);
+        return NULL;
+    }
 
     g_mutex_lock(&jaw_toplevel->mutex);
     if (jaw_toplevel->windows == NULL) {

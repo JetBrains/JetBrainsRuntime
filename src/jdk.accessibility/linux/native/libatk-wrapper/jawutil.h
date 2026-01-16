@@ -116,13 +116,6 @@ void jaw_util_detach(void);
         return def_ret;                                                        \
     }
 
-#define JAW_CHECK_NULL(ptr, ret_val)                                           \
-    {                                                                          \
-        if (!ptr) {                                                            \
-            return ret_val;                                                    \
-        }                                                                      \
-    }
-
 static inline void jaw_jni_clear_exception(JNIEnv *env) {
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionDescribe(env);
