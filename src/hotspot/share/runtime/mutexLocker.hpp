@@ -165,6 +165,8 @@ extern Mutex*   Bootclasspath_lock;
 
 extern Mutex*   tty_lock;                          // lock to synchronize output.
 
+extern Mutex*   OOMEStacks_lock;
+
 // A MutexLocker provides mutual exclusion with respect to a given mutex
 // for the scope which contains the locker.  The lock is an OS lock, not
 // an object lock, and the two do not interoperate.  Do not use Mutex-based
