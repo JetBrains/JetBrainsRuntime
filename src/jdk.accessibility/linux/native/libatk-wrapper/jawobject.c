@@ -574,7 +574,7 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac); 
+        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -621,9 +621,7 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            ac);
+        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -852,8 +850,8 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
         return atk_obj->role;
     }
 
-    JAW_GET_OBJECT(
-        atk_obj, ATK_ROLE_INVALID); // create local JNI reference `jobject ac`
+    JAW_GET_OBJECT(atk_obj,
+                   ATK_ROLE_INVALID); // create local JNI reference `jobject ac`
     AtkRole role = jaw_util_get_atk_role_from_AccessibleContext(ac);
     (*jniEnv)->DeleteLocalRef(jniEnv, ac);
 
@@ -1046,8 +1044,8 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
             (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
-        jaw_obj->locale = (*jniEnv)->GetStringUTFChars(
-            jniEnv, jaw_obj->jstrLocale, NULL);
+        jaw_obj->locale =
+            (*jniEnv)->GetStringUTFChars(jniEnv, jaw_obj->jstrLocale, NULL);
         if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_obj->locale == NULL) {
             jaw_jni_clear_exception(jniEnv);
 
@@ -1131,8 +1129,8 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         if (!jwrap_key_target) {
             continue;
         }
-        jstring jrel_key =
-            (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, cachedObjectKeyFieldID);
+        jstring jrel_key = (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target,
+                                                     cachedObjectKeyFieldID);
         if (!jrel_key) {
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             continue;
@@ -1144,8 +1142,8 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
             (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
             continue;
         }
-        jobjectArray jtarget_arr =
-            (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target, cachedObjectRelationsFieldID);
+        jobjectArray jtarget_arr = (*jniEnv)->GetObjectField(
+            jniEnv, jwrap_key_target, cachedObjectRelationsFieldID);
         if (!jtarget_arr) {
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);

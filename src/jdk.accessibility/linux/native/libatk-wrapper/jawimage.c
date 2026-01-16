@@ -229,9 +229,7 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_image);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -280,9 +278,7 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
                   NULL); // create local JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_image);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -318,8 +314,8 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->image_description = (*jniEnv)->GetStringUTFChars(
-        jniEnv, data->jstrImageDescription, NULL);
+    data->image_description =
+        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrImageDescription, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->image_description == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
@@ -369,9 +365,7 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_image);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;

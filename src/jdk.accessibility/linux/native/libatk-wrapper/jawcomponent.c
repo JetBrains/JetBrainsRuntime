@@ -82,15 +82,11 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                                           gint y, gint width, gint height,
                                           AtkCoordType coord_type);
 
-static gboolean jaw_component_set_size (AtkComponent* component, gint width, gint height);
+static gboolean jaw_component_set_size(AtkComponent *component, gint width,
+                                       gint height);
 
-static gboolean
-       jaw_component_set_position (
-         AtkComponent* component,
-         gint x,
-         gint y,
-         AtkCoordType coord_type
-       );
+static gboolean jaw_component_set_position(AtkComponent *component, gint x,
+                                           gint y, AtkCoordType coord_type);
 
 static gboolean jaw_component_grab_focus(AtkComponent *component);
 static AtkLayer jaw_component_get_layer(AtkComponent *component);
@@ -301,9 +297,7 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         component, NULL); // create local JNI reference `jobject atk_component`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_component);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return NULL;
@@ -357,7 +351,7 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
                                       gint *width, gint *height,
                                       AtkCoordType coord_type) {
     JAW_DEBUG("%p, %p, %p, %p, %p, %d", component, x, y, width, height,
-                coord_type);
+              coord_type);
 
     if (component == NULL) {
         g_warning("%s: Null component passed to function", G_STRFUNC);
@@ -444,7 +438,7 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
                                           gint y, gint width, gint height,
                                           AtkCoordType coord_type) {
     JAW_DEBUG("%p, %d, %d, %d, %d, %d", component, x, y, width, height,
-                coord_type);
+              coord_type);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to function", G_STRFUNC);
@@ -481,7 +475,8 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
  *
  * Returns: %TRUE or %FALSE whether the position were set or not
  **/
-static gboolean jaw_component_set_position(AtkComponent* component, gint x, gint y, AtkCoordType coord_type) {
+static gboolean jaw_component_set_position(AtkComponent *component, gint x,
+                                           gint y, AtkCoordType coord_type) {
     JAW_DEBUG("%p, %d, %d, %d", component, x, y, coord_type);
 
     if (component == NULL) {
@@ -517,7 +512,8 @@ static gboolean jaw_component_set_position(AtkComponent* component, gint x, gint
  *
  * Returns: %TRUE or %FALSE whether the size were set or not
  **/
-static gboolean jaw_component_set_size(AtkComponent* component, gint width, gint height) {
+static gboolean jaw_component_set_size(AtkComponent *component, gint width,
+                                       gint height) {
     JAW_DEBUG("%p, %d, %d", component, width, height);
 
     if (component == NULL) {

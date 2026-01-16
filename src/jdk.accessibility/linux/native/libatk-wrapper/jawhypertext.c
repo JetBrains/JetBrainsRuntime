@@ -273,8 +273,8 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
         return -1;
     }
 
-    JAW_GET_HYPERTEXT(
-        hypertext, -1); // create local JNI reference `jobject atk_hypertext`
+    JAW_GET_HYPERTEXT(hypertext,
+                      -1); // create local JNI reference `jobject atk_hypertext`
 
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
                                               cachedHypertextGetLinkIndexMethod,

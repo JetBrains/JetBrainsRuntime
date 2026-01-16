@@ -258,7 +258,8 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 
     // Check if there is JawImpl associated with the accessible context
     jlong reference = (*jniEnv)->CallStaticLongMethod(
-        jniEnv, cachedImplAtkWrapperDisposerClass, cachedImplGetResourceMethod, ac);
+        jniEnv, cachedImplAtkWrapperDisposerClass, cachedImplGetResourceMethod,
+        ac);
 
     // If a valid reference exists, return the existing JawImpl instance
     if (reference != -1) {
@@ -560,8 +561,9 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         return;
     }
 
-    (*jniEnv)->CallStaticVoidMethod(jniEnv, cachedImplAtkWrapperClass,
-                                    cachedImplRegisterPropertyChangeListenerMethod, ac);
+    (*jniEnv)->CallStaticVoidMethod(
+        jniEnv, cachedImplAtkWrapperClass,
+        cachedImplRegisterPropertyChangeListenerMethod, ac);
 
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
@@ -597,8 +599,8 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
         return FALSE;
     }
 
-    jstring jConstKey =
-        (*jniEnv)->GetStaticObjectField(jniEnv, cachedImplAccessibleRelationClass, fieldID);
+    jstring jConstKey = (*jniEnv)->GetStaticObjectField(
+        jniEnv, cachedImplAccessibleRelationClass, fieldID);
 
     // jKey and jConstKey may be null
     jboolean result = (*jniEnv)->IsSameObject(jniEnv, jKey, jConstKey);
@@ -668,19 +670,21 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
-    jclass localAtkWrapperDisposer =
-        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkWrapperDisposer");
+    jclass localAtkWrapperDisposer = (*jniEnv)->FindClass(
+        jniEnv, "org/GNOME/Accessibility/AtkWrapperDisposer");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localAtkWrapperDisposer == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkWrapperDisposer class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedImplAtkWrapperDisposerClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkWrapperDisposer);
+    cachedImplAtkWrapperDisposerClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localAtkWrapperDisposer);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAtkWrapperDisposer);
 
     if (cachedImplAtkWrapperDisposerClass == NULL) {
-        g_warning("%s: Failed to create global reference for AtkWrapperDisposer class",
+        g_warning("%s: Failed to create global reference for "
+                  "AtkWrapperDisposer class",
                   G_STRFUNC);
         goto cleanup_and_fail;
     }
@@ -697,7 +701,8 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedImplAtkWrapperClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkWrapper);
+    cachedImplAtkWrapperClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localAtkWrapper);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAtkWrapper);
 
     if (cachedImplAtkWrapperClass == NULL) {
@@ -706,9 +711,11 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedImplRegisterPropertyChangeListenerMethod = (*jniEnv)->GetStaticMethodID(
-        jniEnv, cachedImplAtkWrapperClass, "register_property_change_listener",
-        "(Ljavax/accessibility/AccessibleContext;)V");
+    cachedImplRegisterPropertyChangeListenerMethod =
+        (*jniEnv)->GetStaticMethodID(
+            jniEnv, cachedImplAtkWrapperClass,
+            "register_property_change_listener",
+            "(Ljavax/accessibility/AccessibleContext;)V");
 
     jclass localAccessibleRelation =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/AccessibleRelation");
@@ -718,62 +725,64 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    cachedImplAccessibleRelationClass = (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleRelation);
+    cachedImplAccessibleRelationClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localAccessibleRelation);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAccessibleRelation);
 
     if (cachedImplAccessibleRelationClass == NULL) {
-        g_warning("%s: Failed to create global reference for AccessibleRelation class",
+        g_warning("%s: Failed to create global reference for "
+                  "AccessibleRelation class",
                   G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedImplChildNodeOfFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "CHILD_NODE_OF",
-        "Ljava/lang/String;");
+    cachedImplChildNodeOfFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "CHILD_NODE_OF", "Ljava/lang/String;");
 
-    cachedImplControlledByFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "CONTROLLED_BY",
-        "Ljava/lang/String;");
+    cachedImplControlledByFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "CONTROLLED_BY", "Ljava/lang/String;");
 
-    cachedImplControllerForFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "CONTROLLER_FOR",
-        "Ljava/lang/String;");
+    cachedImplControllerForFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "CONTROLLER_FOR", "Ljava/lang/String;");
 
-    cachedImplEmbeddedByFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "EMBEDDED_BY",
-        "Ljava/lang/String;");
+    cachedImplEmbeddedByFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "EMBEDDED_BY", "Ljava/lang/String;");
 
-    cachedImplEmbedsFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "EMBEDS",
-        "Ljava/lang/String;");
+    cachedImplEmbedsFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "EMBEDS", "Ljava/lang/String;");
 
-    cachedImplFlowsFromFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "FLOWS_FROM",
-        "Ljava/lang/String;");
+    cachedImplFlowsFromFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "FLOWS_FROM", "Ljava/lang/String;");
 
-    cachedImplFlowsToFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "FLOWS_TO",
-        "Ljava/lang/String;");
+    cachedImplFlowsToFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "FLOWS_TO", "Ljava/lang/String;");
 
-    cachedImplLabelForFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "LABEL_FOR",
-        "Ljava/lang/String;");
+    cachedImplLabelForFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "LABEL_FOR", "Ljava/lang/String;");
 
-    cachedImplLabeledByFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "LABELED_BY",
-        "Ljava/lang/String;");
+    cachedImplLabeledByFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "LABELED_BY", "Ljava/lang/String;");
 
-    cachedImplMemberOfFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "MEMBER_OF",
-        "Ljava/lang/String;");
+    cachedImplMemberOfFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "MEMBER_OF", "Ljava/lang/String;");
 
-    cachedImplParentWindowOfFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "PARENT_WINDOW_OF",
-        "Ljava/lang/String;");
+    cachedImplParentWindowOfFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "PARENT_WINDOW_OF", "Ljava/lang/String;");
 
-    cachedImplSubwindowOfFieldID = (*jniEnv)->GetStaticFieldID(
-        jniEnv, cachedImplAccessibleRelationClass, "SUBWINDOW_OF",
-        "Ljava/lang/String;");
+    cachedImplSubwindowOfFieldID =
+        (*jniEnv)->GetStaticFieldID(jniEnv, cachedImplAccessibleRelationClass,
+                                    "SUBWINDOW_OF", "Ljava/lang/String;");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedImplGetResourceMethod == NULL ||
@@ -782,10 +791,8 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
         cachedImplControlledByFieldID == NULL ||
         cachedImplControllerForFieldID == NULL ||
         cachedImplEmbeddedByFieldID == NULL ||
-        cachedImplEmbedsFieldID == NULL ||
-        cachedImplFlowsFromFieldID == NULL ||
-        cachedImplFlowsToFieldID == NULL ||
-        cachedImplLabelForFieldID == NULL ||
+        cachedImplEmbedsFieldID == NULL || cachedImplFlowsFromFieldID == NULL ||
+        cachedImplFlowsToFieldID == NULL || cachedImplLabelForFieldID == NULL ||
         cachedImplLabeledByFieldID == NULL ||
         cachedImplMemberOfFieldID == NULL ||
         cachedImplParentWindowOfFieldID == NULL ||
@@ -793,7 +800,8 @@ static gboolean jaw_impl_init_jni_cache(JNIEnv *jniEnv) {
 
         jaw_jni_clear_exception(jniEnv);
 
-        g_warning("%s: Failed to cache one or more JawImpl classes or method/field IDs",
+        g_warning("%s: Failed to cache one or more JawImpl classes or "
+                  "method/field IDs",
                   G_STRFUNC);
         goto cleanup_and_fail;
     }

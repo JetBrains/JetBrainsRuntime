@@ -142,9 +142,9 @@ static gboolean notify_hf(gpointer key, gpointer value, gpointer data) {
     gpointer func_data = info->data;
 
     JAW_DEBUG("key event %d %x %x %d '%s' %u %u", key_event->type,
-                key_event->state, key_event->keyval, key_event->length,
-                key_event->string, (unsigned)key_event->keycode,
-                (unsigned)key_event->timestamp);
+              key_event->state, key_event->keyval, key_event->length,
+              key_event->string, (unsigned)key_event->keycode,
+              (unsigned)key_event->timestamp);
 
     return (*func)(key_event, func_data) ? TRUE : FALSE;
 }

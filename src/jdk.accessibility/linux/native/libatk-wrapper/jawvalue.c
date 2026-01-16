@@ -325,7 +325,7 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);  
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;

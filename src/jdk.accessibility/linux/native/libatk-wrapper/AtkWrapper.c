@@ -851,7 +851,8 @@ static gint get_int_value(JNIEnv *jniEnv, jobject o) {
         return 0;
     }
 
-    return (gint)(*jniEnv)->CallIntMethod(jniEnv, o, cachedWrapperIntValueMethod);
+    return (gint)(*jniEnv)->CallIntMethod(jniEnv, o,
+                                          cachedWrapperIntValueMethod);
 }
 
 static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
@@ -1329,8 +1330,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_objectStateChange(JNIEnv *jniEnv,
                                                           jobject jAccContext,
                                                           jobject state,
                                                           jboolean value) {
-    JAW_DEBUG("%p, %p, %p, %p, %d", jniEnv, jClass, jAccContext, state,
-                  value);
+    JAW_DEBUG("%p, %p, %p, %p, %d", jniEnv, jClass, jAccContext, state, value);
     if (!jAccContext) {
         g_warning("%s: jAccContext is NULL", G_STRFUNC);
         return;
@@ -1500,7 +1500,8 @@ static gboolean key_dispatch_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    jint type = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, cachedWrapperTypeFieldID);
+    jint type =
+        (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, cachedWrapperTypeFieldID);
     if (type == -1) {
         g_warning("%s: Unknown key event type (-1) received; cleaning up and "
                   "removing source",
@@ -1510,11 +1511,12 @@ static gboolean key_dispatch_handler(gpointer p) {
         return G_SOURCE_REMOVE;
     }
 
-    jint type_pressed =
-        (*jniEnv)->GetStaticIntField(jniEnv, cachedWrapperAtkKeyEventClass, cachedWrapperTypePressedFieldID);
+    jint type_pressed = (*jniEnv)->GetStaticIntField(
+        jniEnv, cachedWrapperAtkKeyEventClass, cachedWrapperTypePressedFieldID);
 
-    jint type_released = (*jniEnv)->GetStaticIntField(jniEnv, cachedWrapperAtkKeyEventClass,
-                                                      cachedWrapperTypeReleasedFieldID);
+    jint type_released =
+        (*jniEnv)->GetStaticIntField(jniEnv, cachedWrapperAtkKeyEventClass,
+                                     cachedWrapperTypeReleasedFieldID);
 
     if (type == type_pressed) {
         event->type = ATK_KEY_EVENT_PRESS;
@@ -1530,53 +1532,54 @@ static gboolean key_dispatch_handler(gpointer p) {
     }
 
     // state: shift
-    jboolean jShiftKeyDown =(*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, cachedWrapperShiftFieldID);
+    jboolean jShiftKeyDown = (*jniEnv)->GetBooleanField(
+        jniEnv, jAtkKeyEvent, cachedWrapperShiftFieldID);
     if (jShiftKeyDown != FALSE) {
         event->state |= GDK_SHIFT_MASK;
     }
 
     // state: ctrl
-    jboolean jCtrlKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, cachedWrapperCtrlFieldID);
+    jboolean jCtrlKeyDown = (*jniEnv)->GetBooleanField(
+        jniEnv, jAtkKeyEvent, cachedWrapperCtrlFieldID);
     if (jCtrlKeyDown != FALSE) {
         event->state |= GDK_CONTROL_MASK;
     }
 
     // state: alt
-    jboolean jAltKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, cachedWrapperAltFieldID);
+    jboolean jAltKeyDown = (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent,
+                                                      cachedWrapperAltFieldID);
     if (jAltKeyDown != FALSE) {
         event->state |= GDK_MOD1_MASK;
     }
 
     // state: meta
-    jboolean jMetaKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, cachedWrapperMetaFieldID);
+    jboolean jMetaKeyDown = (*jniEnv)->GetBooleanField(
+        jniEnv, jAtkKeyEvent, cachedWrapperMetaFieldID);
     if (jMetaKeyDown != FALSE) {
         event->state |= GDK_META_MASK;
     }
 
     // state: alt gr
-    jboolean jAltGrKeyDown =
-        (*jniEnv)->GetBooleanField(jniEnv, jAtkKeyEvent, cachedWrapperAltGrFieldID);
+    jboolean jAltGrKeyDown = (*jniEnv)->GetBooleanField(
+        jniEnv, jAtkKeyEvent, cachedWrapperAltGrFieldID);
     if (jAltGrKeyDown != FALSE) {
         event->state |= GDK_MOD5_MASK;
     }
 
     // keyval
-    event->keyval =
-        (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, cachedWrapperKeyvalFieldID);
+    event->keyval = (*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
+                                           cachedWrapperKeyvalFieldID);
 
     // string
-    jstring jstr = (jstring)(*jniEnv)->GetObjectField(jniEnv, jAtkKeyEvent,
-                                                      cachedWrapperStringFieldID);
+    jstring jstr = (jstring)(*jniEnv)->GetObjectField(
+        jniEnv, jAtkKeyEvent, cachedWrapperStringFieldID);
     if (jstr != NULL) {
         event->length = (gint)(*jniEnv)->GetStringLength(jniEnv, jstr);
 
         const gchar *tmp_string = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, 0);
         if (tmp_string != NULL) {
-             event->string = g_strdup(tmp_string);
-             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_string);
+            event->string = g_strdup(tmp_string);
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_string);
         }
 
         (*jniEnv)->DeleteLocalRef(jniEnv, jstr);
@@ -1584,12 +1587,12 @@ static gboolean key_dispatch_handler(gpointer p) {
     }
 
     // keycode
-    event->keycode =
-        (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent, cachedWrapperKeycodeFieldID);
+    event->keycode = (gint)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
+                                                  cachedWrapperKeycodeFieldID);
 
     // timestamp
-    event->timestamp = (gint64)(*jniEnv)->GetIntField(jniEnv, jAtkKeyEvent,
-                                                       cachedWrapperTimestampFieldID);
+    event->timestamp = (gint64)(*jniEnv)->GetIntField(
+        jniEnv, jAtkKeyEvent, cachedWrapperTimestampFieldID);
 
     jaw_util_dispatch_key_event(event);
 
@@ -1630,50 +1633,69 @@ static gboolean atk_wrapper_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
-    jclass localIntegerClass = (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
+    jclass localIntegerClass =
+        (*jniEnv)->FindClass(jniEnv, "java/lang/Integer");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localIntegerClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find Integer class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedWrapperIntegerClass = (*jniEnv)->NewGlobalRef(jniEnv, localIntegerClass);
+    cachedWrapperIntegerClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localIntegerClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localIntegerClass);
 
     if (cachedWrapperIntegerClass == NULL) {
-        g_warning("%s: Failed to create global reference for Integer class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for Integer class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedWrapperIntValueMethod = (*jniEnv)->GetMethodID(jniEnv, cachedWrapperIntegerClass, "intValue", "()I");
+    cachedWrapperIntValueMethod = (*jniEnv)->GetMethodID(
+        jniEnv, cachedWrapperIntegerClass, "intValue", "()I");
 
-    jclass localAtkKeyEventClass = (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkKeyEvent");
+    jclass localAtkKeyEventClass =
+        (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkKeyEvent");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localAtkKeyEventClass == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to find AtkKeyEvent class", G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedWrapperAtkKeyEventClass = (*jniEnv)->NewGlobalRef(jniEnv, localAtkKeyEventClass);
+    cachedWrapperAtkKeyEventClass =
+        (*jniEnv)->NewGlobalRef(jniEnv, localAtkKeyEventClass);
     (*jniEnv)->DeleteLocalRef(jniEnv, localAtkKeyEventClass);
 
     if (cachedWrapperAtkKeyEventClass == NULL) {
-        g_warning("%s: Failed to create global reference for AtkKeyEvent class", G_STRFUNC);
+        g_warning("%s: Failed to create global reference for AtkKeyEvent class",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 
-    cachedWrapperTypeFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "type", "I");
-    cachedWrapperTypePressedFieldID = (*jniEnv)->GetStaticFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "ATK_KEY_EVENT_PRESSED", "I");
-    cachedWrapperTypeReleasedFieldID = (*jniEnv)->GetStaticFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "ATK_KEY_EVENT_RELEASED", "I");
-    cachedWrapperShiftFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "isShiftKeyDown", "Z");
-    cachedWrapperCtrlFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "isCtrlKeyDown", "Z");
-    cachedWrapperAltFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "isAltKeyDown", "Z");
-    cachedWrapperMetaFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "isMetaKeyDown", "Z");
-    cachedWrapperAltGrFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "isAltGrKeyDown", "Z");
-    cachedWrapperKeyvalFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "keyval", "I");
-    cachedWrapperStringFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "string", "Ljava/lang/String;");
-    cachedWrapperKeycodeFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "keycode", "I");
-    cachedWrapperTimestampFieldID = (*jniEnv)->GetFieldID(jniEnv, cachedWrapperAtkKeyEventClass, "timestamp", "J");
+    cachedWrapperTypeFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "type", "I");
+    cachedWrapperTypePressedFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "ATK_KEY_EVENT_PRESSED", "I");
+    cachedWrapperTypeReleasedFieldID = (*jniEnv)->GetStaticFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "ATK_KEY_EVENT_RELEASED", "I");
+    cachedWrapperShiftFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "isShiftKeyDown", "Z");
+    cachedWrapperCtrlFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "isCtrlKeyDown", "Z");
+    cachedWrapperAltFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "isAltKeyDown", "Z");
+    cachedWrapperMetaFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "isMetaKeyDown", "Z");
+    cachedWrapperAltGrFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "isAltGrKeyDown", "Z");
+    cachedWrapperKeyvalFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "keyval", "I");
+    cachedWrapperStringFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "string", "Ljava/lang/String;");
+    cachedWrapperKeycodeFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "keycode", "I");
+    cachedWrapperTimestampFieldID = (*jniEnv)->GetFieldID(
+        jniEnv, cachedWrapperAtkKeyEventClass, "timestamp", "J");
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedWrapperIntValueMethod == NULL ||
@@ -1681,7 +1703,8 @@ static gboolean atk_wrapper_init_jni_cache(JNIEnv *jniEnv) {
         cachedWrapperTypePressedFieldID == NULL ||
         cachedWrapperTypeReleasedFieldID == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to cache one or more method/field IDs", G_STRFUNC);
+        g_warning("%s: Failed to cache one or more method/field IDs",
+                  G_STRFUNC);
         goto cleanup_and_fail;
     }
 

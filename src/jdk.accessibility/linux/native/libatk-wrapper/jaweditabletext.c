@@ -207,9 +207,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
         text, ); // create local JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;
@@ -250,9 +248,7 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
         text, ); // create local JNI reference `jobject atk_editable_text`
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_editable_text);
+        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         g_warning("%s: Failed to create a new local reference frame",
                   G_STRFUNC);
         return;

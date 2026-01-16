@@ -706,8 +706,8 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->description = (*jniEnv)->GetStringUTFChars(
-        jniEnv, data->jstrDescription, NULL);
+    data->description =
+        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrDescription, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->description == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
@@ -786,8 +786,8 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-    data->description = (*jniEnv)->GetStringUTFChars(
-        jniEnv, data->jstrDescription, NULL);
+    data->description =
+        (*jniEnv)->GetStringUTFChars(jniEnv, data->jstrDescription, NULL);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || data->description == NULL) {
         jaw_jni_clear_exception(jniEnv);
 
@@ -1427,7 +1427,8 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
         return;
     }
     if (!(*jniEnv)->IsInstanceOf(jniEnv, jsummary->acc_context, accessible)) {
-        g_warning("%s: jsummary->acc_context is not instance of accessible", G_STRFUNC);
+        g_warning("%s: jsummary->acc_context is not instance of accessible",
+                  G_STRFUNC);
         (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
