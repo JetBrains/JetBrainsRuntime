@@ -269,6 +269,7 @@ void report_java_out_of_memory(const char* message) {
 
   JFR_ONLY(Jfr::on_report_java_out_of_memory();)
 
+  VMError::record_oome_stack(message);
   // A number of threads may attempt to report OutOfMemoryError at around the
   // same time. To avoid dumping the heap or executing the data collection
   // commands multiple times we just do it once when the first threads reports
