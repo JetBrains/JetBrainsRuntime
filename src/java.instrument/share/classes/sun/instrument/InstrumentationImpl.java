@@ -703,8 +703,6 @@ public class InstrumentationImpl implements Instrumentation {
             if (hotswapListeners == null) {
                 hotswapListeners = new ArrayList<>();
             }
-            // 'l' is a proxy, but contains() uses equals(), which is delegated
-            // to the underlying listener, so duplicate checks still work.
             if (indexOfHotswapListenerLocked(l) == -1) {
                 hotswapListeners.add(l);
             }
@@ -755,6 +753,9 @@ public class InstrumentationImpl implements Instrumentation {
         if (unproxied != null) {
             for (int i=0; i<hotswapListeners.size(); i++) {
                 HotswapListener hl = hotswapListeners.get(i);
+                // 'hl' is a proxy whose equals() delegates to its underlying target.
+                // Compare against the unwrapped proxy target of 'l' (not the proxy itself),
+                // otherwise equals() may not match the original listener instance.
                 if (hl.equals(unproxied)) {
                     return i;
                 }
