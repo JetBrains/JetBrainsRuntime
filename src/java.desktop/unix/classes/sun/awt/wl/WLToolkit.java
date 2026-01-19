@@ -484,12 +484,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
         keyboard.onLostFocus();
 
+        WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
+        WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
+
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
-            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
-            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
             postPriorityEvent(winLostFocusEvent);
         }
         inputState = newInputState;
@@ -1140,6 +1141,19 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     protected static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);
+        if (target instanceof Window window) {
+            // When a window is disposed, we may not get the keyboard leave event that
+            // normally posts WINDOW_LOST_FOCUS, so we need to post it manually to maintain
+            // a correct state of the keyboard focus manager.
+            final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
+            postPriorityEvent(winLostFocusEvent);
+
+            var gc = window.getGraphicsConfiguration();
+            if (gc != null && peer instanceof WLWindowPeer windowPeer) {
+                WLGraphicsDevice gd = (WLGraphicsDevice) gc.getDevice();
+                gd.removeWindow(windowPeer);
+            }
+        }
     }
 
     static void postEvent(AWTEvent event) {
