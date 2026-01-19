@@ -121,6 +121,13 @@ public class WLDataSource {
         setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
     }
 
+    public void offerExtraMime(String mime) {
+        if (nativePtr == 0) {
+            throw new IllegalStateException("Native pointer is null");
+        }
+        offerMimeImpl(nativePtr, mime);
+    }
+
     public synchronized void destroy() {
         if (nativePtr != 0) {
             destroyImpl(nativePtr);
