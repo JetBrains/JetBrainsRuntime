@@ -6,11 +6,12 @@ import sun.util.logging.PlatformLogger;
 
 import java.awt.Component;
 import java.awt.Window;
+import java.lang.ref.WeakReference;
 
 public class WLKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLKeyboardFocusManagerPeer");
 
-    private Window currentFocusedWindow;
+    private WeakReference<Window> currentFocusedWindow = new WeakReference<>(null);
     private static final WLKeyboardFocusManagerPeer instance = new WLKeyboardFocusManagerPeer();
 
     public static WLKeyboardFocusManagerPeer getInstance() {
@@ -23,14 +24,14 @@ public class WLKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
             if (focusLog.isLoggable(PlatformLogger.Level.FINER)) {
                 focusLog.finer("Current focused window -> " + win);
             }
-            currentFocusedWindow = win;
+            currentFocusedWindow = new WeakReference<>(win);
         }
     }
 
     @Override
     public Window getCurrentFocusedWindow() {
         synchronized (this) {
-            return currentFocusedWindow;
+            return currentFocusedWindow.get();
         }
     }
 
@@ -61,7 +62,7 @@ public class WLKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
     @Override
     public Component getCurrentFocusOwner() {
         synchronized (this) {
-            return currentFocusedWindow;
+            return currentFocusedWindow.get();
         }
     }
 }
