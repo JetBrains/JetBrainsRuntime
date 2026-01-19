@@ -118,7 +118,7 @@ java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all
 java/awt/GridBagLayout/ComponentShortage.java 8355280,JBR-9347 windows-all,linux-all,macosx-x64
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-7077 linux-all,windows-all
 java/awt/MenuItem/EnableTest.java JBR-8543 windows-all timeout
-java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64
+java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64,linux-6.18.4-100.fc42.x86_64
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275,JBR-8299,JBR-9259 macosx-all,linux-aarch64
 
 javax/swing/border/TestTitledBorderLeak.java JBR-9272 macosx-14.8
