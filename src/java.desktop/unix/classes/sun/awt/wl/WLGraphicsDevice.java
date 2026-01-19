@@ -35,7 +35,10 @@ import java.awt.GraphicsDevice;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Window;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -119,7 +122,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
      * Top-level window peers that consider this device as their primary one
      * and get their graphics configuration from it
      */
-    private final Set<WLComponentPeer> toplevels = new HashSet<>(); // guarded by 'this'
+    private final Set<WeakReference<WLComponentPeer>> toplevels = new HashSet<>(); // guarded by 'this'
 
     private WLGraphicsDevice(int id,
                              String name,
@@ -205,9 +208,14 @@ public class WLGraphicsDevice extends GraphicsDevice {
     }
 
     private void notifyToplevels() {
-        Set<WLComponentPeer> toplevelsCopy = new HashSet<>(toplevels.size());
+        List<WLComponentPeer> toplevelsCopy = new ArrayList<>(toplevels.size());
         synchronized (this) {
-            toplevelsCopy.addAll(toplevels);
+            for (var toplevel: toplevels) {
+                WLComponentPeer peer = toplevel.get();
+                if (peer != null) {
+                    toplevelsCopy.add(peer);
+                }
+            }
         }
         toplevelsCopy.forEach(WLComponentPeer::checkIfOnNewScreen);
     }
@@ -369,13 +377,16 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     public void addWindow(WLComponentPeer peer) {
         synchronized (this) {
-            toplevels.add(peer);
+            toplevels.add(new WeakReference<>(peer));
         }
     }
 
     public void removeWindow(WLComponentPeer peer) {
         synchronized (this) {
-            toplevels.remove(peer);
+            toplevels.removeIf(ref -> {
+                WLComponentPeer p = ref.get();
+                return p == null || p == peer;
+            });
         }
     }
 
