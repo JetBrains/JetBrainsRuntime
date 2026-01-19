@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
 
 public final class WLClipboard extends SunClipboard {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLClipboard");
@@ -61,6 +62,10 @@ public final class WLClipboard extends SunClipboard {
     // Guarded by dataLock.
     private WLDataSource ourDataSource;
 
+    // Set when announcing a clipboard data source to a random value
+    // Guarded by dataLock.
+    private String ourDataSourceCookie = null;
+
     static {
         flavorTable = DataTransferer.adaptFlavorMap(getDefaultFlavorTable());
     }
@@ -75,6 +80,10 @@ public final class WLClipboard extends SunClipboard {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: Created " + this);
         }
+    }
+
+    private static String generateRandomMimeTypeCookie() {
+        return "JAVA_DATATRANSFER_COOKIE_" + UUID.randomUUID();
     }
 
     private int getProtocol() {
@@ -146,14 +155,26 @@ public final class WLClipboard extends SunClipboard {
                     log.fine("Clipboard: Offering new contents (" + contents + ")");
                 }
 
-                WLDataSource newOffer = null;
-                newOffer = new WLDataSource(dataDevice, getProtocol(), contents);
+                WLDataSource newOffer = new WLDataSource(dataDevice, getProtocol(), contents) {
+                    @Override
+                    protected void handleCancelled() {
+                        synchronized (dataLock) {
+                            if (ourDataSource == this) {
+                                ourDataSource = null;
+                                ourDataSourceCookie = null;
+                            }
+                            destroy();
+                        }
+                    }
+                };
 
                 synchronized (dataLock) {
                     if (ourDataSource != null) {
                         ourDataSource.destroy();
                     }
                     ourDataSource = newOffer;
+                    ourDataSourceCookie = generateRandomMimeTypeCookie();
+                    ourDataSource.offerExtraMime(ourDataSourceCookie);
                     dataDevice.setSelection(getProtocol(), newOffer, eventSerial);
                 }
             }
@@ -240,9 +261,11 @@ public final class WLClipboard extends SunClipboard {
     }
 
     void handleClipboardOffer(WLDataOffer offer /* nullable */) {
-        lostOwnershipNow(null);
-
         synchronized (dataLock) {
+            if (offer == null || ourDataSourceCookie == null || !offer.getMimes().contains(ourDataSourceCookie)) {
+                lostOwnershipNow(null);
+            }
+
             if (clipboardDataOfferedToUs != null) {
                 clipboardDataOfferedToUs.destroy();
             }
