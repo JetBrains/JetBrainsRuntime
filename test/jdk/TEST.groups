@@ -1048,9 +1048,10 @@ jdk_awt_wayland = \
     -java/awt/Graphics2D/CopyAreaOOB.java \
     -java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java \
     -java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java \
-    -java/awt/GridBagLayout \
-    -java/awt/GridLayout \
-    -java/awt/im \
+    -java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java \
+    -java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java \
+    -java/awt/im/4959409/bug4959409.java \
+    -java/awt/im/memoryleak/InputContextMemoryLeakTest.java \
     -java/awt/image/BufferStrategy/ExceptionAfterComponentDispose.java \
     -java/awt/image/MemoryLeakTest/MemoryLeakTest.java \
     -java/awt/image/OpaquePNGToGIFTest.java \
@@ -1067,11 +1068,12 @@ jdk_awt_wayland = \
     -java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest \
     -java/awt/KeyboardFocusmanager/TypeAhead \
     -java/awt/Label \
-    -java/awt/Layout \
     -java/awt/LightweightComponent \
     -java/awt/LightweightDispatcher \
     -java/awt/List \
-    -java/awt/Menu \
+    -java/awt/Menu/NullMenuLabelTest/NullMenuLabelTest.java \
+    -java/awt/Menu/OpensWithNoGrab/OpensWithNoGrab.java \
+    -java/awt/Menu/RmInHideTest.java \
     -java/awt/MenuBar \
     -java/awt/MenuItem \
     -java/awt/Mixing \
@@ -1112,7 +1114,19 @@ jdk_awt_wayland = \
     -java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java \
     -java/awt/TrayIcon \
     -java/awt/wakefield \
-    -java/awt/Window \
+    -java/awt/Window/8027025/Test8027025.java \
+    -java/awt/Window/8159168/SetShapeTest.java \
+    -java/awt/Window/AlwaysOnTop/AlwaysOnTopEvenOfWindow.java \
+    -java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java \
+    -java/awt/Window/Grab/GrabTest.java \
+    -java/awt/Window/GrabSequence/GrabSequence.java \
+    -java/awt/Window/InvalidFocusLostEventTest/InvalidFocusLostEventTest.java \
+    -java/awt/Window/MultiWindowApp/MultiWindowAppTest.java \
+    -java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java \
+    -java/awt/Window/TopLevelLocation/TopLevelLocation.java \
+    -java/awt/Window/WindowJumpingTest/WindowJumpingTest.java \
+    -java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java \
+    -java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java \
     -java/awt/xembed
 
 jdk_swing_wayland= \
