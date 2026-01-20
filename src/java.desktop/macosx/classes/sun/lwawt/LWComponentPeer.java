@@ -72,7 +72,6 @@ import sun.awt.RepaintArea;
 import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
-import sun.java2d.MacOSFlags;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
@@ -1289,7 +1288,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 //        if (!isLayouting && !paintPending) {
         if (!isLayouting()) {
             targetPaintArea.paint(getTarget(), shouldClearRectBeforePaint());
-            if (MacOSFlags.isMetalEnabled() && !MacOSFlags.isMetalDisplaySyncEnabled()) {
+            if (LWToolkit.getLWToolkit().needUpdateWindowAfterPaint()) {
                 SunToolkit.executeOnEventHandlerThread(getTarget(),
                         () -> getWindowPeerOrSelf().updateWindow());
             }
