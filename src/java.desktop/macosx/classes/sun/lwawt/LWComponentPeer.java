@@ -153,6 +153,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     private final PlatformComponent platformComponent;
 
+    private final ToolkitAPI toolkitApi;
+
     /**
      * Character with reasonable value between the minimum width and maximum.
      */
@@ -199,16 +201,17 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         }
     }
 
-    LWComponentPeer(final T target, final PlatformComponent platformComponent) {
+    LWComponentPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
         targetPaintArea = new LWRepaintArea();
         this.target = target;
         this.platformComponent = platformComponent;
+        this.toolkitApi = toolkitApi;
 
         // Container peer is always null for LWWindowPeers, so
         // windowPeer is always null for them as well. On the other
         // hand, LWWindowPeer shouldn't use windowPeer at all
         final Container container = SunToolkit.getNativeContainer(target);
-        containerPeer = (LWContainerPeer) LWToolkit.targetToPeer(container);
+        containerPeer = (LWContainerPeer) toolkitApi.targetToPeer(container);
         windowPeer = containerPeer != null ? containerPeer.getWindowPeerOrSelf()
                                            : null;
         // don't bother about z-order here as updateZOrder()
@@ -302,7 +305,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     /**
      * Initializes this peer. The call to initialize() is not placed to
      * LWComponentPeer ctor to let the subclass ctor to finish completely first.
-     * Instead, it's the LWToolkit object who is responsible for initialization.
+     * Instead, it's the toolkit object who is responsible for initialization.
      * Note that we call setVisible() at the end of initialization.
      */
     public final void initialize() {
@@ -380,11 +383,6 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     // ---- PEER METHODS ---- //
 
-    // Just a helper method
-    public LWToolkit getLWToolkit() {
-        return LWToolkit.getLWToolkit();
-    }
-
     @Override
     public final void dispose() {
         if (disposed.compareAndSet(false, true)) {
@@ -399,7 +397,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
             cp.removeChildPeer(this);
         }
         platformComponent.dispose();
-        LWToolkit.targetDisposedPeer(getTarget(), this);
+        toolkitApi.targetDisposedPeer(getTarget(), this);
     }
 
     public final boolean isDisposed() {
@@ -890,7 +888,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     @Override
     public void updateCursorImmediately() {
-        getLWToolkit().getCursorManager().updateCursor();
+        toolkitApi.updateCursorImmediately();
     }
 
     @Override
@@ -1042,7 +1040,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                         throw new IllegalStateException("Current drop target is not null");
                     }
                     // Create a new drop target:
-                    fDropTarget = LWToolkit.getLWToolkit().createDropTarget(dt, target, this);
+                    fDropTarget = toolkitApi.createDropTarget(dt, target, this);
                 }
             }
         }
@@ -1134,7 +1132,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * Post an event to the proper Java EDT.
      */
     public void postEvent(final AWTEvent event) {
-        LWToolkit.postEvent(event);
+        toolkitApi.postEvent(event);
     }
 
     protected void postPaintEvent(int x, int y, int w, int h) {
@@ -1288,7 +1286,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 //        if (!isLayouting && !paintPending) {
         if (!isLayouting()) {
             targetPaintArea.paint(getTarget(), shouldClearRectBeforePaint());
-            if (LWToolkit.getLWToolkit().needUpdateWindowAfterPaint()) {
+            if (toolkitApi.needUpdateWindowAfterPaint()) {
                 SunToolkit.executeOnEventHandlerThread(getTarget(),
                         () -> getWindowPeerOrSelf().updateWindow());
             }

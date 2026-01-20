@@ -62,8 +62,9 @@ final class LWTextAreaPeer
     private static final int DEFAULT_ROWS = 10;
 
     LWTextAreaPeer(final TextArea target,
-                   final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                   final PlatformComponent platformComponent,
+                   final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

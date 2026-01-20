@@ -52,8 +52,9 @@ final class LWChoicePeer extends LWComponentPeer<Choice, JComboBox<String>>
     private boolean skipPostMessage;
 
     LWChoicePeer(final Choice target,
-                 final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                 final PlatformComponent platformComponent,
+                 final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

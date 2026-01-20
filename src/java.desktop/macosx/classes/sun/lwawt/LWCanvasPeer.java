@@ -40,8 +40,8 @@ import javax.swing.JComponent;
 class LWCanvasPeer<T extends Component, D extends JComponent>
         extends LWComponentPeer<T, D> implements CanvasPeer {
 
-    LWCanvasPeer(final T target, final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+    LWCanvasPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

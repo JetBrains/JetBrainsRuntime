@@ -54,7 +54,6 @@ import java.awt.SystemTray;
 import java.awt.Taskbar;
 import java.awt.Toolkit;
 import java.awt.TrayIcon;
-import java.awt.Window;
 import java.awt.datatransfer.Clipboard;
 import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
@@ -99,14 +98,9 @@ import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
-import sun.lwawt.LWComponentPeer;
-import sun.lwawt.LWCursorManager;
-import sun.lwawt.LWToolkit;
-import sun.lwawt.LWWindowPeer;
+import sun.lwawt.*;
+import sun.lwawt.LWToolkitAPI;
 import sun.lwawt.LWWindowPeer.PeerType;
-import sun.lwawt.PlatformComponent;
-import sun.lwawt.PlatformDropTarget;
-import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
@@ -329,7 +323,8 @@ public final class LWCToolkit extends LWToolkit {
     private CPrinterDialogPeer createCPrinterDialog(CPrinterDialog target) {
         PlatformComponent platformComponent = createPlatformComponent();
         PlatformWindow platformWindow = createPlatformWindow(PeerType.DIALOG);
-        CPrinterDialogPeer peer = new CPrinterDialogPeer(target, platformComponent, platformWindow);
+        CPrinterDialogPeer peer =
+                new CPrinterDialogPeer(target, platformComponent, platformWindow, LWToolkitAPI.getInstance());
         targetCreatedPeer(target, peer);
         return peer;
     }

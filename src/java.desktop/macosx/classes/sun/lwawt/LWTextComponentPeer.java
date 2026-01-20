@@ -55,8 +55,9 @@ abstract class LWTextComponentPeer<T extends TextComponent, D extends JComponent
     private volatile boolean firstChangeSkipped;
 
     LWTextComponentPeer(final T target,
-                        final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                        final PlatformComponent platformComponent,
+                        final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
         if (!getTarget().isBackgroundSet()) {
             getTarget().setBackground(SystemColor.text);
         }
