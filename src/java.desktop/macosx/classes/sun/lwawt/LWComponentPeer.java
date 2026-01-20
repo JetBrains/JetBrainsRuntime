@@ -368,11 +368,6 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         return getWindowPeer();
     }
 
-    // Just a helper method
-    protected final LWContainerPeer<?, ?> getContainerPeer() {
-        return containerPeer;
-    }
-
     public PlatformWindow getPlatformWindow() {
         LWWindowPeer windowPeer = getWindowPeer();
         return windowPeer.getPlatformWindow();
@@ -394,9 +389,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     protected void disposeImpl() {
         destroyBuffers();
-        LWContainerPeer<?, ?> cp = getContainerPeer();
-        if (cp != null) {
-            cp.removeChildPeer(this);
+        if (containerPeer != null) {
+            containerPeer.removeChildPeer(this);
         }
         platformComponent.dispose();
         LWToolkit.targetDisposedPeer(getTarget(), this);
@@ -472,7 +466,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     static final Region computeVisibleRect(final LWComponentPeer<?, ?> c,
                                            Region region) {
-        final LWContainerPeer<?, ?> p = c.getContainerPeer();
+        final LWContainerPeer<?, ?> p = c.containerPeer;
         if (p != null) {
             final Rectangle r = c.getBounds();
             region = region.getTranslatedRegion(r.x, r.y);
@@ -722,9 +716,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     @Override
     public void setEnabled(final boolean e) {
         boolean status = e;
-        final LWComponentPeer<?, ?> cp = getContainerPeer();
-        if (cp != null) {
-            status &= cp.isEnabled();
+        if (containerPeer != null) {
+            status &= containerPeer.isEnabled();
         }
         synchronized (getStateLock()) {
             if (enabled == status) {
@@ -808,11 +801,10 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     @Override
     public void setZOrder(final ComponentPeer above) {
-        LWContainerPeer<?, ?> cp = getContainerPeer();
         // Don't check containerPeer for null as it can only happen
         // for windows, but this method is overridden in
         // LWWindowPeer and doesn't call super()
-        cp.setChildPeerZOrder(this, (LWComponentPeer<?, ?>) above);
+        containerPeer.setChildPeerZOrder(this, (LWComponentPeer<?, ?>) above);
     }
 
     @Override
@@ -1121,10 +1113,9 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected final void repaintParent(final Rectangle oldB) {
-        final LWContainerPeer<?, ?> cp = getContainerPeer();
-        if (cp != null) {
+        if (containerPeer != null) {
             // Repaint unobscured part of the parent
-            cp.repaintPeer(cp.getContentSize().intersection(oldB));
+            containerPeer.repaintPeer(containerPeer.getContentSize().intersection(oldB));
         }
     }
 
@@ -1319,7 +1310,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
             Rectangle cpb = cp.getBounds();
             p.x -= cpb.x;
             p.y -= cpb.y;
-            cp = cp.getContainerPeer();
+            cp = cp.containerPeer;
         }
         // Return a copy to prevent subsequent modifications
         return new Point(p);
@@ -1335,13 +1326,13 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     public Point localToWindow(Point p) {
-        LWComponentPeer<?, ?> cp = getContainerPeer();
+        LWComponentPeer<?, ?> cp = containerPeer;
         Rectangle r = getBounds();
         while (cp != null) {
             p.x += r.x;
             p.y += r.y;
             r = cp.getBounds();
-            cp = cp.getContainerPeer();
+            cp = cp.containerPeer;
         }
         // Return a copy to prevent subsequent modifications
         return new Point(p);
@@ -1375,8 +1366,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     protected final boolean isShowing() {
         synchronized (getPeerTreeLock()) {
             if (isVisible()) {
-                final LWContainerPeer<?, ?> container = getContainerPeer();
-                return (container == null) || container.isShowing();
+                return containerPeer == null || containerPeer.isShowing();
             }
         }
         return false;
