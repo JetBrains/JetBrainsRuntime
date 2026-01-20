@@ -42,9 +42,10 @@ public final class LWLightweightFramePeer extends LWWindowPeer implements Overri
 
     public LWLightweightFramePeer(LightweightFrame target,
                                   PlatformComponent platformComponent,
-                                  PlatformWindow platformWindow)
+                                  PlatformWindow platformWindow,
+                                  ToolkitAPI toolkitApi)
     {
-        super(target, platformComponent, platformWindow, LWWindowPeer.PeerType.LW_FRAME);
+        super(target, platformComponent, platformWindow, LWWindowPeer.PeerType.LW_FRAME, toolkitApi);
     }
 
     private LightweightFrame getLwTarget() {

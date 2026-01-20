@@ -48,8 +48,8 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
      */
     private final List<LWComponentPeer<?, ?>> childPeers = new LinkedList<>();
 
-    LWContainerPeer(final T target, final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+    LWContainerPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     final void addChildPeer(final LWComponentPeer<?, ?> child) {

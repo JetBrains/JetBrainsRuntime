@@ -39,8 +39,8 @@ import javax.swing.SwingConstants;
 final class LWLabelPeer extends LWComponentPeer<Label, JLabel>
         implements LabelPeer {
 
-    LWLabelPeer(final Label target, final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+    LWLabelPeer(final Label target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

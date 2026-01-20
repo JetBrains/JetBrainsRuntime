@@ -47,8 +47,9 @@ final class LWTextFieldPeer
         implements TextFieldPeer, ActionListener {
 
     LWTextFieldPeer(final TextField target,
-                    final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                    final PlatformComponent platformComponent,
+                    final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

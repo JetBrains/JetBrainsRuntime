@@ -70,8 +70,8 @@ final class LWListPeer extends LWComponentPeer<List, LWListPeer.ScrollableJList>
      */
     private static final String TEXT = "0123456789abcde";
 
-    LWListPeer(final List target, final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+    LWListPeer(final List target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
         if (!getTarget().isBackgroundSet()) {
             getTarget().setBackground(SystemColor.text);
         }

@@ -41,8 +41,9 @@ final class LWScrollPanePeer extends LWContainerPeer<ScrollPane, JScrollPane>
         implements ScrollPanePeer, ChangeListener {
 
     LWScrollPanePeer(final ScrollPane target,
-                     final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                     final PlatformComponent platformComponent,
+                     final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override
