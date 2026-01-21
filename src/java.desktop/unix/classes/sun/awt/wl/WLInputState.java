@@ -295,8 +295,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return newModifiers;
     }
 
-    public boolean hasThisPointerButtonPressed(int linuxCode) {
-        return pointerButtonPressedEvent != null && pointerButtonPressedEvent.linuxCode == linuxCode;
+    public boolean hasThisPointerButtonPressedAt(int linuxCode, long x, long y) {
+        return pointerButtonPressedEvent != null && pointerButtonPressedEvent.linuxCode == linuxCode
+                && pointerButtonPressedEvent.surfaceX == x && pointerButtonPressedEvent.surfaceY == y;
     }
 
     public boolean hasPointerButtonPressed() {
