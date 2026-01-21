@@ -58,7 +58,7 @@ import java.util.List;
 
 public class WLWindowPeer extends WLComponentPeer implements WindowPeer, SurfacePixelGrabber {
     private static Font defaultFont;
-    private Dialog blocker;
+    private Dialog blocker; // guarded by getStateLock()
     private static WLWindowPeer grabbingWindow; // fake, kept for UngrabEvent only
 
     // If this window gets focus from Wayland, we need to transfer focus synthFocusOwner, if any
@@ -180,7 +180,15 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
 
     @Override
     public void setModalBlocked(Dialog blocker, boolean blocked) {
-        this.blocker = blocked ? blocker : null;
+        synchronized (getStateLock()) {
+            this.blocker = blocked ? blocker : null;
+        }
+    }
+
+    public Dialog getBlocker() {
+        synchronized (getStateLock()) {
+            return blocker;
+        }
     }
 
     @Override
