@@ -354,6 +354,12 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return true;
     }
 
+    /**
+     * @return the timestamp of the most recent known {@code wl_pointer::*} event or 0 if no such event is known.
+     *
+     * @apiNote don't use these timestamps for constructing any new {@link java.awt.event.InputEvent}s
+     *          because they are not guaranteed to be based on the midnight of Jan 1, 1970 UTC.
+     */
     public long getTimestamp() {
         return eventWithTimestamp != null ? eventWithTimestamp.getTimestamp() : 0;
     }
