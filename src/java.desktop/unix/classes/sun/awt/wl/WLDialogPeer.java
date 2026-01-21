@@ -24,8 +24,13 @@
  */
 package sun.awt.wl;
 
-import java.awt.*;
+import sun.awt.AWTAccessor;
+
+import java.awt.Dialog;
+import java.awt.Frame;
+import java.awt.Window;
 import java.awt.peer.DialogPeer;
+import java.awt.peer.WindowPeer;
 import java.util.List;
 
 public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
@@ -41,7 +46,12 @@ public class WLDialogPeer extends WLDecoratedPeer implements DialogPeer {
 
     @Override
     public void blockWindows(List<Window> windows) {
-
+        for (Window w : windows) {
+            WindowPeer wp = AWTAccessor.getComponentAccessor().getPeer(w);
+            if (wp != null) {
+                wp.setModalBlocked((Dialog)getTarget(), true);
+            }
+        }
     }
 
     @Override
