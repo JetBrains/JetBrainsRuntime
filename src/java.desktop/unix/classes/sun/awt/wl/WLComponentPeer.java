@@ -1289,13 +1289,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * the freshly updated WLInputState, and the previous WLInputState.
      */
     void dispatchPointerEventInContext(WLPointerEvent e, WLInputState oldInputState, WLInputState newInputState) {
+        final long timestamp = System.currentTimeMillis();
+
         final int x = newInputState.getPointerX();
         final int y = newInputState.getPointerY();
         final Point abs = relativePointToAbsolute(new Point(x, y));
         int xAbsolute = abs.x;
         int yAbsolute = abs.y;
-
-        final long timestamp = newInputState.getTimestamp();
 
         if (e.hasEnterEvent()) {
             updateCursorImmediately();
