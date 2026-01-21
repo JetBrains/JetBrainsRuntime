@@ -108,7 +108,7 @@ final class LWScrollPanePeer extends LWContainerPeer<ScrollPane, JScrollPane>
     }
 
     @Override
-    Rectangle getContentSize() {
+    public Rectangle getContentSize() {
         Rectangle viewRect = getDelegate().getViewport().getViewRect();
         return new Rectangle(viewRect.width, viewRect.height);
     }

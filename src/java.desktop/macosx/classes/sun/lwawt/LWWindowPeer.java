@@ -245,7 +245,7 @@ public class LWWindowPeer
     }
 
     @Override
-    protected LWWindowPeer getWindowPeerOrSelf() {
+    public LWWindowPeer getWindowPeerOrSelf() {
         return this;
     }
 
@@ -1456,6 +1456,11 @@ public class LWWindowPeer
             ((CPlatformWindow)window).execute(ptr -> handle[0] = ptr);
         }
         return handle[0];
+    }
+
+    @Override
+    public LWComponentPeer<?, ?> findPeerAt(int x, int y) {
+        return (LWComponentPeer<?, ?>) super.findPeerAt(x, y);
     }
 
     static class Jbr7481MouseEnteredExitedFix {
