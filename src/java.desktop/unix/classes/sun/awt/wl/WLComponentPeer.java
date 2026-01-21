@@ -1192,6 +1192,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
+    final void reactivate(long serial, long surface) {
+        performLocked(() -> {
+            if (serial != 0 &&wlSurface != null && surface != 0) {
+                wlSurface.activateByAnotherSurface(serial, surface);
+            }
+        });
+    }
+
     private static long getSerialForActivation() {
         long serial;
         if (WLToolkit.isKDE()) {
