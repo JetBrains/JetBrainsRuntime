@@ -353,7 +353,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     private static void dispatchKeyboardKeyEvent(long serial,
-                                                 long timestamp,
                                                  int id,
                                                  int keyCode,
                                                  int keyLocation,
@@ -364,13 +363,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        inputState = inputState.updatedFromKeyEvent(serial);
+        final long timestamp = System.currentTimeMillis();
 
-        if (timestamp == 0) {
-            // Happens when a surface was focused with keys already pressed.
-            // Fake the timestamp by peeking at the last known event.
-            timestamp = inputState.getTimestamp();
-        }
+        inputState = inputState.updatedFromKeyEvent(serial);
 
         final long surfacePtr = inputState.surfaceForKeyboardInput();
         final WLComponentPeer peer = peerFromSurface(surfacePtr);
