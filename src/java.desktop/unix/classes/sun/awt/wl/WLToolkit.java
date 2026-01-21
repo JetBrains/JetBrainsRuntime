@@ -439,22 +439,32 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     + Long.toHexString(surfacePtr));
         }
 
-        final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
+        final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
         if (peer != null) {
-            Window window = (Window) peer.getTarget();
-            Window winToFocus = window;
-
-            Component s = peer.getSyntheticFocusOwner();
-            if (s instanceof Window synthWindow) {
-                if (synthWindow.isVisible() && synthWindow.isFocusableWindow()) {
-                    winToFocus = synthWindow;
+            Dialog blocker = peer.getBlocker();
+            if (blocker != null) { // Modality support
+                long activationSerial = serial;
+                if (WLToolkit.isKDE()) {
+                    activationSerial = inputState.latestInputSerial();
                 }
-            }
+                WLWindowPeer blockerPeer = AWTAccessor.getComponentAccessor().getPeer(blocker);
+                blockerPeer.reactivate(activationSerial, surfacePtr);
+            } else {
+                Window window = (Window) peer.getTarget();
+                Window winToFocus = window;
 
-            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
-            WindowEvent windowEnterEvent = new WindowEvent(winToFocus, WindowEvent.WINDOW_GAINED_FOCUS);
-            postPriorityEvent(windowEnterEvent);
+                Component s = peer.getSyntheticFocusOwner();
+                if (s instanceof Window synthWindow) {
+                    if (synthWindow.isVisible() && synthWindow.isFocusableWindow()) {
+                        winToFocus = synthWindow;
+                    }
+                }
+
+                WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
+                WindowEvent windowEnterEvent = new WindowEvent(winToFocus, WindowEvent.WINDOW_GAINED_FOCUS);
+                postPriorityEvent(windowEnterEvent);
+            }
         }
         inputState = newInputState;
     }
