@@ -454,7 +454,6 @@ wlPostKeyEvent(const struct WLKeyEvent* event)
             tkClass,
             dispatchKeyboardKeyEventMID,
             event->serial,
-            event->timestamp,
             event->id,
             event->keyCode,
             event->keyLocation,
@@ -807,7 +806,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardKeyEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                               "dispatchKeyboardKeyEvent",
-                                                                              "(JJIIIIICI)V"),
+                                                                              "(JIIIIICI)V"),
                       JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardModifiersEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                     "dispatchKeyboardModifiersEvent",
