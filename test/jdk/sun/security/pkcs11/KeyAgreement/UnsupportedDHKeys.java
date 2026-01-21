@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@
  * @run main/othervm -Djava.security.manager=allow UnsupportedDHKeys sm
  */
 
+import jtreg.SkippedException;
+
 import java.security.InvalidParameterException;
 import java.security.KeyPairGenerator;
 import java.security.Provider;
@@ -60,8 +62,7 @@ public class UnsupportedDHKeys extends PKCS11Test {
     @Override
     public void main(Provider provider) throws Exception {
         if (provider.getService("KeyPairGenerator", "DiffieHellman") == null) {
-            System.out.println("No supported of DH KeyPairGenerator, skipping");
-            return;
+            throw new SkippedException("DH (DiffieHellman) is not supported in KeyPairGenerator, skipping");
         }
 
         for (UnsupportedKeySize keySize : UnsupportedKeySize.values()) {

@@ -1353,9 +1353,10 @@ void _UpdateIcon(void* p) {
     jobject self = reinterpret_cast<jobject>(p);
     PDATA pData;
     JNI_CHECK_PEER_GOTO(self, ret);
-
-    AwtFrame* frame = (AwtFrame*)pData;
-    frame->DoUpdateIcon();
+    {
+        AwtFrame* frame = (AwtFrame*)pData;
+        frame->DoUpdateIcon();
+    }
 ret:
     env->DeleteGlobalRef(self);
 }
@@ -1515,15 +1516,27 @@ void AwtFrame::_SetState(void *param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
 
-    SetStateStruct *sss = (SetStateStruct *)param;
+    SetStateStruct *sss = static_cast<SetStateStruct *>(param);
     jobject self = sss->frame;
     jint state = sss->state;
 
     AwtFrame *f = NULL;
 
-    PDATA pData;
-    JNI_CHECK_PEER_GOTO(self, ret);
-    f = (AwtFrame *)pData;
+    if (self == NULL) {
+        env->ExceptionClear();
+        JNU_ThrowNullPointerException(env, "self");
+        delete sss;
+        return;
+    } else {
+        f = (AwtFrame *)JNI_GET_PDATA(self);
+        if (f == NULL) {
+            THROW_NULL_PDATA_IF_NOT_DESTROYED(self);
+            env->DeleteGlobalRef(self);
+            delete sss;
+            return;
+        }
+    }
+
     HWND hwnd = f->GetHWnd();
     if (::IsWindow(hwnd))
     {
@@ -1580,7 +1593,7 @@ void AwtFrame::_SetState(void *param)
             f->setZoomed(zoom);
         }
     }
-ret:
+
     env->DeleteGlobalRef(self);
 
     delete sss;
@@ -1748,21 +1761,59 @@ void AwtFrame::_NotifyModalBlocked(void *param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
 
-    NotifyModalBlockedStruct *nmbs = (NotifyModalBlockedStruct *)param;
+    NotifyModalBlockedStruct *nmbs = static_cast<NotifyModalBlockedStruct *>(param);
     jobject self = nmbs->frame;
     jobject peer = nmbs->peer;
     jobject blockerPeer = nmbs->blockerPeer;
     jboolean blocked = nmbs->blocked;
 
-    PDATA pData;
+    AwtFrame *f = NULL;
 
-    JNI_CHECK_PEER_GOTO(peer, ret);
-    AwtFrame *f = (AwtFrame *)pData;
+    if (peer == NULL) {
+        env->ExceptionClear();
+        JNU_ThrowNullPointerException(env, "peer");
+        env->DeleteGlobalRef(self);
+        env->DeleteGlobalRef(blockerPeer);
+
+        delete nmbs;
+        return;
+    } else {
+        f = (AwtFrame *)JNI_GET_PDATA(peer);
+        if (f == NULL) {
+            THROW_NULL_PDATA_IF_NOT_DESTROYED(peer);
+            env->DeleteGlobalRef(self);
+            env->DeleteGlobalRef(peer);
+            env->DeleteGlobalRef(blockerPeer);
+
+            delete nmbs;
+            return;
+        }
+    }
 
     // dialog here may be NULL, for example, if the blocker is a native dialog
     // however, we need to install/unistall modal hooks anyway
-    JNI_CHECK_PEER_GOTO(blockerPeer, ret);
-    AwtDialog *d = (AwtDialog *)pData;
+    AwtDialog *d = NULL;
+
+    if (blockerPeer == NULL) {
+        env->ExceptionClear();
+        JNU_ThrowNullPointerException(env, "blockerPeer");
+        env->DeleteGlobalRef(self);
+        env->DeleteGlobalRef(peer);
+
+        delete nmbs;
+        return;
+    } else {
+        d = (AwtDialog *)JNI_GET_PDATA(blockerPeer);
+        if (d == NULL) {
+            THROW_NULL_PDATA_IF_NOT_DESTROYED(blockerPeer);
+            env->DeleteGlobalRef(self);
+            env->DeleteGlobalRef(peer);
+            env->DeleteGlobalRef(blockerPeer);
+
+            delete nmbs;
+            return;
+        }
+    }
 
     if ((f != NULL) && ::IsWindow(f->GetHWnd()))
     {
@@ -1813,7 +1864,7 @@ void AwtFrame::_NotifyModalBlocked(void *param)
             }
         }
     }
-ret:
+
     env->DeleteGlobalRef(self);
     env->DeleteGlobalRef(peer);
     env->DeleteGlobalRef(blockerPeer);
@@ -2019,14 +2070,15 @@ void AwtFrame::_UpdateCustomTitleBar(void* p) {
     jobject self = reinterpret_cast<jobject>(p);
     PDATA pData;
     JNI_CHECK_PEER_GOTO(self, ret);
-
-    AwtFrame* frame = (AwtFrame*)pData;
-    BOOL old = frame->HasCustomTitleBar();
-    frame->customTitleBarHeight = -1.0f; // Reset to uninitialized
-    if (frame->HasCustomTitleBar() != old) frame->RedrawNonClient();
-    jobject target = frame->GetTarget(env);
-    CustomTitleBarControls::Refresh(frame->customTitleBarControls, frame->GetHWnd(), target, env);
-    env->DeleteLocalRef(target);
+    {
+        AwtFrame* frame = (AwtFrame*)pData;
+        BOOL old = frame->HasCustomTitleBar();
+        frame->customTitleBarHeight = -1.0f; // Reset to uninitialized
+        if (frame->HasCustomTitleBar() != old) frame->RedrawNonClient();
+        jobject target = frame->GetTarget(env);
+        CustomTitleBarControls::Refresh(frame->customTitleBarControls, frame->GetHWnd(), target, env);
+        env->DeleteLocalRef(target);
+    }
     ret:
     env->DeleteGlobalRef(self);
 }

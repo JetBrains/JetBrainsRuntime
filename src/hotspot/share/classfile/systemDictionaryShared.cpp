@@ -34,6 +34,7 @@
 #include "cds/dumpTimeClassInfo.inline.hpp"
 #include "cds/metaspaceShared.hpp"
 #include "cds/runTimeClassInfo.hpp"
+#include "cds/unregisteredClasses.hpp"
 #include "classfile/classFileStream.hpp"
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderData.inline.hpp"
@@ -313,6 +314,12 @@ bool SystemDictionaryShared::check_for_exclusion_impl(InstanceKlass* k) {
     return true;
   }
 
+  if (UnregisteredClasses::check_for_exclusion(k)) {
+    ResourceMark rm;
+    log_info(cds)("Skipping %s: used only when dumping CDS archive", k->name()->as_C_string());
+    return true;
+  }
+
   InstanceKlass* super = k->java_super();
   if (super != nullptr && check_for_exclusion(super, nullptr)) {
     ResourceMark rm;
@@ -449,43 +456,13 @@ bool SystemDictionaryShared::add_unregistered_class(Thread* current, InstanceKla
   return (klass == *v);
 }
 
-// This function is called to lookup the super/interfaces of shared classes for
-// unregistered loaders. E.g., SharedClass in the below example
-// where "super:" (and optionally "interface:") have been specified.
-//
-// java/lang/Object id: 0
-// Interface    id: 2 super: 0 source: cust.jar
-// SharedClass  id: 4 super: 0 interfaces: 2 source: cust.jar
-InstanceKlass* SystemDictionaryShared::lookup_super_for_unregistered_class(
-    Symbol* class_name, Symbol* super_name, bool is_superclass) {
-
-  assert(DumpSharedSpaces, "only when static dumping");
-
-  if (!ClassListParser::is_parsing_thread()) {
-    // Unregistered classes can be created only by ClassListParser::_parsing_thread.
-
+InstanceKlass* SystemDictionaryShared::get_unregistered_class(Symbol* name) {
+  assert(Arguments::is_dumping_archive() || ClassListWriter::is_enabled(), "sanity");
+  if (_unregistered_classes_table == nullptr) {
     return nullptr;
   }
-
-  ClassListParser* parser = ClassListParser::instance();
-  if (parser == nullptr) {
-    // We're still loading the well-known classes, before the ClassListParser is created.
-    return nullptr;
-  }
-  if (class_name->equals(parser->current_class_name())) {
-    // When this function is called, all the numbered super and interface types
-    // must have already been loaded. Hence this function is never recursively called.
-    if (is_superclass) {
-      return parser->lookup_super_for_current_class(super_name);
-    } else {
-      return parser->lookup_interface_for_current_class(super_name);
-    }
-  } else {
-    // The VM is not trying to resolve a super type of parser->current_class_name().
-    // Instead, it's resolving an error class (because parser->current_class_name() has
-    // failed parsing or verification). Don't do anything here.
-    return nullptr;
-  }
+  InstanceKlass** k = _unregistered_classes_table->get(name);
+  return k != nullptr ? *k : nullptr;
 }
 
 void SystemDictionaryShared::set_shared_class_misc_info(InstanceKlass* k, ClassFileStream* cfs) {
