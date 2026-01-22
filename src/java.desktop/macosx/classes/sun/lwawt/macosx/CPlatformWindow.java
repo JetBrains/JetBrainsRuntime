@@ -72,7 +72,6 @@ import sun.awt.AWTThreading;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWKeyboardFocusManagerPeer;
-import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
