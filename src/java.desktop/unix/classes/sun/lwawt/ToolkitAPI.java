@@ -44,7 +44,7 @@ public interface ToolkitAPI {
 
     void updateCursorImmediately();
 
-    PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeer<?, ?> peer);
+    PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer);
 
     static ToolkitAPI getDefaultToolkit() {
         return (ToolkitAPI)Toolkit.getDefaultToolkit();
