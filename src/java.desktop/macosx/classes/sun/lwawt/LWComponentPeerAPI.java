@@ -4,14 +4,28 @@ TODO copyright
 
 package sun.lwawt;
 
+import java.awt.GraphicsConfiguration;
+import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.dnd.peer.DropTargetPeer;
 
 import sun.java2d.pipe.Region;
 
 /**
  * Interface defining the common API for component peers in lwawt.
  */
-public interface LWComponentPeerAPI {
+public interface LWComponentPeerAPI extends DropTargetPeer {
+
+    // TODO these 2 methods come from ComponentPeer actually, should extend it instead?
+    /**
+     * Returns the location of this component on the screen.
+     */
+    Point getLocationOnScreen();
+
+    /**
+     * Returns the graphics configuration for this component.
+     */
+    GraphicsConfiguration getGraphicsConfiguration();
 
     /**
      * Returns the platform window for this component.
@@ -36,7 +50,7 @@ public interface LWComponentPeerAPI {
     /**
      * Returns the window peer for this component, or itself if this is a window peer.
      */
-    LWWindowPeer getWindowPeerOrSelf();
+    LWWindowPeerAPI getWindowPeerOrSelf();
 
     /**
      * Returns whether this component is visible.

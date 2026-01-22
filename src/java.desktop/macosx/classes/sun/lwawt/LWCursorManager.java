@@ -102,7 +102,7 @@ public abstract class LWCursorManager {
     private static final Component findComponent(final Point cursorPos) {
         final LWComponentPeer<?, ?> peer = LWWindowPeer.getPeerUnderCursor();
         Component c = null;
-        if (peer != null && peer.getWindowPeerOrSelf().getBlocker() == null) {
+        if (peer != null && ((LWWindowPeer) peer.getWindowPeerOrSelf()).getBlocker() == null) {
             c = peer.getTarget();
             if (c instanceof Container) {
                 final Point p = peer.getLocationOnScreen();
