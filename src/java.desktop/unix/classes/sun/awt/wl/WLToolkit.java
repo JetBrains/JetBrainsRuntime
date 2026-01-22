@@ -98,7 +98,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -273,10 +273,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return result;
     }
 
-    private final Semaphore eventsQueued = new Semaphore(0);
-
     @Override
     public void run() {
+        // This is the event loop that polls the Wayland server, dispatches the events
+        // received from the server, and performs tasks submitted to the queue via
+        // performOnWLThread()
         while(true) {
             AWTAutoShutdown.notifyToolkitThreadFree(); // will now wait for events
             int result = readEvents();
@@ -284,23 +285,30 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                 log.severe("Wayland protocol I/O error");
                 shutDownAfterServerError();
                 break;
-            } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
+            } else {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
-                WLToolkit.performOnWLThread(() -> {
+
+                if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                     try {
-                        dispatchEventsOnEDT();
-                        if (dataDevice != null) {
-                            dataDevice.performDeletionsOnEDT();
-                        }
-                    } finally {
-                        eventsQueued.release();
+                        dispatchEvents();
+                    } catch (Exception e) {
+                        log.severe("Exception during events handling on the WL thread: " + e.getMessage());
                     }
-                });
-                try {
-                    eventsQueued.acquire();
-                } catch (InterruptedException e) {
-                    log.severe("Wayland protocol I/O thread interrupted");
-                    break;
+                }
+
+                Runnable task = tasks.poll();
+                while (task != null) {
+                    try {
+                        task.run();
+                    } catch (Exception e) {
+                        log.severe("Exception during task invocation on the WL thread: " + e.getMessage());
+                    }
+                    task = tasks.poll();
+                }
+
+                // TODO: remake this into a regular task
+                if (dataDevice != null) {
+                    dataDevice.performDeletionsOnEDT();
                 }
             }
         }
@@ -323,49 +331,19 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return dataDevice;
     }
 
-    /*
-    public static void invokeAndWait(Runnable r) {
-        if (EventQueue.isDispatchThread()) {
-            r.run();
-        } else {
-            try {
-                EventQueue.invokeAndWait(r);
-            } catch (Exception e) {
-                Throwable cause = e.getCause();
-                if (cause instanceof RuntimeException rec) {
-                    rec.addSuppressed(e);
-                    throw rec;
-                } else {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
-    }
-*/
-    /*
-    public static <T> T invokeAndWait(Supplier<T> task) {
-        if (EventQueue.isDispatchThread()) {
-            return task.get();
-        } else {
-            AtomicReference<T> result = new AtomicReference<>();
-            invokeAndWait(() -> {
-                    result.set(task.get());
-            });
-            return result.get();
-        }
-    }
-*/
+    private static final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<>();
 
     public static void performOnWLThread(Runnable r) {
-        if (EventQueue.isDispatchThread()) {
+        if (isWLThread()) {
             r.run();
         } else {
-            EventQueue.invokeLater(r);
+            tasks.add(r);
+            wakeupDisplayPoll(); // so that tasks can execute
         }
     }
 
     public static boolean isWLThread() {
-        return EventQueue.isDispatchThread();
+        return Thread.currentThread() == toolkitThread;
     }
 
     /**
@@ -1155,9 +1133,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private static native boolean isSSDAvailableImpl();
 
     private native int readEvents();
-    private native void dispatchEventsOnEDT();
+    private native void dispatchEvents();
     private native void flushImpl();
     private native void dispatchNonDefaultQueuesImpl();
+    private static native void wakeupDisplayPoll();
+
 
     public static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);

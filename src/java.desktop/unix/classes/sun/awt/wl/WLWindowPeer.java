@@ -265,7 +265,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         if (roundedCornersRequested() && canPaintRoundedCorners()) {
             paintRoundCorners();
         }
-        commitToServer();
+        WLToolkit.performOnWLThread(this::commitToServer);
     }
 
     @Override
