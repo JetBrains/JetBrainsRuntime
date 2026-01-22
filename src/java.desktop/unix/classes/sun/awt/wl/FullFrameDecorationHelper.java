@@ -245,7 +245,10 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         }
         if (e.getID() == MouseEvent.MOUSE_PRESSED) {
             pressedLocation = point;
-        } else if (e.getID() == MouseEvent.MOUSE_DRAGGED && pressedInDragStartArea(point) && isSignificantDrag(point)) {
+        } else if (e.getID() == MouseEvent.MOUSE_DRAGGED
+                && pressedLocation != null
+                && pressedInDragStartArea(pressedLocation)
+                && isSignificantDrag(point)) {
             startDrag();
         } else if (e.getID() == MouseEvent.MOUSE_CLICKED && e.getClickCount() == 2 && pressedInDragStartArea(point)
                 && peer.isFrameStateSupported(Frame.MAXIMIZED_BOTH)) {
