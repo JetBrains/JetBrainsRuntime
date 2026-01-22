@@ -443,7 +443,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
 
     protected abstract PlatformDropTarget createDropTarget(DropTarget dropTarget,
                                                            Component component,
-                                                           LWComponentPeer<?, ?> peer);
+                                                           LWComponentPeerAPI peer);
 
     // ---- UTILITY METHODS ---- //
 

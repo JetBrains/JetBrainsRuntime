@@ -48,7 +48,7 @@ public class LWToolkitAPI implements ToolkitAPI {
     }
 
     @Override
-    public PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeer<?, ?> peer) {
+    public PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer) {
         return LWToolkit.getLWToolkit().createDropTarget(dropTarget, component, peer);
     }
 }
