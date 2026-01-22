@@ -25,7 +25,6 @@
 
 package sun.java2d.opengl;
 
-import java.awt.GraphicsConfiguration;
 import sun.awt.CGraphicsConfig;
 import sun.java2d.NullSurfaceData;
 import sun.lwawt.LWWindowPeer;

@@ -26,7 +26,7 @@
 package sun.lwawt.macosx;
 
 import sun.java2d.SurfaceData;
-import sun.java2d.NullSurfaceData;
+
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.Transparency;
