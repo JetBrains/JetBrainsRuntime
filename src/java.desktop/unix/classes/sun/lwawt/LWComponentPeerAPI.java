@@ -14,6 +14,11 @@ import sun.java2d.pipe.Region;
 public interface LWComponentPeerAPI {
 
     /**
+     * Returns the platform window for this component.
+     */
+    PlatformWindow getPlatformWindow();
+
+    /**
      * Returns the bounds of this component relative to its parent.
      */
     Rectangle getBounds();
