@@ -237,7 +237,7 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
         if (roundedCornersRequested() && canPaintRoundedCorners()) {
             paintRoundCorners();
         }
-        commitToServer();
+        WLToolkit.performOnWLThread(this::commitToServer);
     }
 
     @Override

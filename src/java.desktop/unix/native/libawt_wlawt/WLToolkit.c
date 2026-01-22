@@ -47,6 +47,7 @@
 #include <time.h>
 #include <dlfcn.h>
 #include <pthread.h>
+#include <sys/eventfd.h>
 
 #include "jvm_md.h"
 #include "JNIUtilities.h"
@@ -75,6 +76,7 @@ extern JavaVM *jvm;
 static pthread_t wl_thread_id;
 
 struct wl_display *wl_display = NULL;
+static int wakeup_efd;
 struct wl_shm *wl_shm = NULL;
 struct wl_compositor *wl_compositor = NULL;
 struct wl_subcompositor *wl_subcompositor = NULL;
@@ -957,6 +959,12 @@ Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
 {
     assert (displayPtr != 0);
     wl_display = jlong_to_ptr(displayPtr);
+    wakeup_efd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+    if (wakeup_efd == -1) {
+        perror("eventfd");
+        JNU_ThrowInternalError(env, "Failed to initialize wakeup eventfd for Wayland");
+        return;
+    }
 
     if (!initJavaRefs(env, clazz)) {
         JNU_ThrowInternalError(env, "Failed to find Wayland toolkit internal classes");
@@ -992,7 +1000,7 @@ Java_sun_awt_wl_WLToolkit_isSSDAvailableImpl
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLToolkit_dispatchEventsOnEDT
+Java_sun_awt_wl_WLToolkit_dispatchEvents
   (JNIEnv *env, jobject obj)
 {
     wl_thread_id = pthread_self();
@@ -1010,7 +1018,10 @@ static int
 wlDisplayPoll(struct wl_display *display, int events, int poll_timeout)
 {
     int rc = 0;
-    struct pollfd pfd[1] = { {.fd = wl_display_get_fd(display), .events = events} };
+    struct pollfd pfd[2] = {
+        {.fd = wl_display_get_fd(display), .events = events},
+        {.fd = wakeup_efd, .events = POLLIN}
+    };
     do {
         errno = 0;
         rc = poll(pfd, 1, poll_timeout);
@@ -1076,6 +1087,17 @@ Java_sun_awt_wl_WLToolkit_dispatchNonDefaultQueuesImpl
     // and/or shutdown will happen on the "main" toolkit thread AWT-Wayland,
     // see readEvents() below.
 #endif
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_wakeupDisplayPoll
+  (JNIEnv *env, jclass clazz)
+{
+    uint64_t increment = 1;
+    if (write(wakeup_efd, &increment, sizeof(increment)) == -1) {
+        perror("write");
+        JNU_ThrowInternalError(env, "Failed to to wake up the Wayland event handling thread");
+    }
 }
 
 JNIEXPORT jint JNICALL
