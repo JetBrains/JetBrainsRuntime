@@ -76,7 +76,7 @@ import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
 public abstract class LWComponentPeer<T extends Component, D extends JComponent>
-    implements ComponentPeer, DropTargetPeer, LWComponentPeerAPI
+    implements ComponentPeer, LWComponentPeerAPI
 {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.lwawt.focus.LWComponentPeer");
 
@@ -114,7 +114,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * from the containerPeer in constructor, and should also be updated when
      * the component is reparented to another container
      */
-    private final LWWindowPeer windowPeer;
+    private final LWWindowPeerAPI windowPeer;
 
     private final AtomicBoolean disposed = new AtomicBoolean(false);
 
@@ -358,13 +358,13 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     // Just a helper method
     // Returns the window peer or null if this is a window peer
-    protected final LWWindowPeer getWindowPeer() {
+    protected final LWWindowPeerAPI getWindowPeer() {
         return windowPeer;
     }
 
     // Returns the window peer or 'this' if this is a window peer
     @Override
-    public LWWindowPeer getWindowPeerOrSelf() {
+    public LWWindowPeerAPI getWindowPeerOrSelf() {
         return getWindowPeer();
     }
 
@@ -376,7 +376,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     @Override
     public PlatformWindow getPlatformWindow() {
-        LWWindowPeer windowPeer = getWindowPeer();
+        LWWindowPeerAPI windowPeer = getWindowPeer();
         return windowPeer.getPlatformWindow();
     }
 
@@ -450,7 +450,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * this peer.
      */
     public final Graphics getOnscreenGraphics() {
-        final LWWindowPeer wp = getWindowPeerOrSelf();
+        final LWWindowPeerAPI wp = getWindowPeerOrSelf();
         return wp.getOnscreenGraphics(getForeground(), getBackground(),
                                       getFont());
 
@@ -925,7 +925,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                     LWKeyboardFocusManagerPeer.removeLastFocusRequest(getTarget());
                     return false;
                 }
-                final LWWindowPeer parentPeer =
+                final LWWindowPeerAPI parentPeer =
                         AWTAccessor.getComponentAccessor()
                                    .getPeer(parentWindow);
                 if (parentPeer == null) {
@@ -1025,7 +1025,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     // DropTargetPeer Method
     @Override
     public void addDropTarget(DropTarget dt) {
-        LWWindowPeer winPeer = getWindowPeerOrSelf();
+        LWWindowPeerAPI winPeer = getWindowPeerOrSelf();
         if (winPeer != null && winPeer != this) {
             // We need to register the DropTarget in the
             // peer of the window ancestor of the component
@@ -1049,7 +1049,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     // DropTargetPeer Method
     @Override
     public void removeDropTarget(DropTarget dt) {
-        LWWindowPeer winPeer = getWindowPeerOrSelf();
+        LWWindowPeerAPI winPeer = getWindowPeerOrSelf();
         if (winPeer != null && winPeer != this) {
             // We need to unregister the DropTarget in the
             // peer of the window ancestor of the component
@@ -1311,11 +1311,11 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * coordinates local to this component. The given window peer must be
      * the window where this component is in.
      */
-    public Point windowToLocal(int x, int y, LWWindowPeer wp) {
+    public Point windowToLocal(int x, int y, LWWindowPeerAPI wp) {
         return windowToLocal(new Point(x, y), wp);
     }
 
-    public Point windowToLocal(Point p, LWWindowPeer wp) {
+    public Point windowToLocal(Point p, LWWindowPeerAPI wp) {
         LWComponentPeerAPI cp = this;
         while (cp != null && cp != wp) {
             Rectangle cpb = cp.getBounds();
@@ -1327,7 +1327,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         return new Point(p);
     }
 
-    public Rectangle windowToLocal(Rectangle r, LWWindowPeer wp) {
+    public Rectangle windowToLocal(Rectangle r, LWWindowPeerAPI wp) {
         Point p = windowToLocal(r.getLocation(), wp);
         return new Rectangle(p, r.getSize());
     }
