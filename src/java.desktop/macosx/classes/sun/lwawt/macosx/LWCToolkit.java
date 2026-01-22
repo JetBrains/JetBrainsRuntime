@@ -951,7 +951,7 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     protected PlatformDropTarget createDropTarget(DropTarget dropTarget,
                                                   Component component,
-                                                  LWComponentPeer<?, ?> peer) {
+                                                  LWComponentPeerAPI peer) {
         return new CDropTarget(dropTarget, component, peer);
     }
 
