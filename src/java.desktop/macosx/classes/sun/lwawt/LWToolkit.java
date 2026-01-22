@@ -34,6 +34,9 @@ import java.util.*;
 
 import sun.awt.*;
 import sun.java2d.MacOSFlags;
+import sun.java2d.metal.MTLRenderQueue;
+import sun.java2d.opengl.OGLRenderQueue;
+import sun.java2d.pipe.RenderQueue;
 import sun.print.*;
 import sun.awt.util.ThreadGroupUtils;
 
@@ -465,6 +468,18 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
 
     public static void postEvent(AWTEvent event) {
         postEvent(targetToAppContext(event.getSource()), event);
+    }
+
+    // TODO macOS specific logic, should probably be moved away from this class
+    protected static void flushOnscreenGraphics() {
+        RenderQueue rq =  CGraphicsEnvironment.usingMetalPipeline() ?
+                MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
     }
 
     @Override

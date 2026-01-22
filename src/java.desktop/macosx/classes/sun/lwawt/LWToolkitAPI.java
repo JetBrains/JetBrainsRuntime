@@ -33,6 +33,11 @@ public class LWToolkitAPI implements ToolkitAPI {
     }
 
     @Override
+    public void flushOnscreenGraphics() {
+        LWToolkit.flushOnscreenGraphics();
+    }
+
+    @Override
     public boolean needUpdateWindowAfterPaint() {
         return LWToolkit.getLWToolkit().needUpdateWindowAfterPaint();
     }

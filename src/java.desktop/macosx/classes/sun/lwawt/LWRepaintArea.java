@@ -39,13 +39,19 @@ import sun.awt.RepaintArea;
  */
 final class LWRepaintArea extends RepaintArea {
 
+    private final ToolkitAPI toolkitApi;
+
+    LWRepaintArea(ToolkitAPI toolkitApi) {
+        this.toolkitApi = toolkitApi;
+    }
+
     @Override
     protected void updateComponent(final Component comp, final Graphics g) {
         // We shouldn't paint native component as a result of UPDATE events,
         // just flush onscreen back-buffer.
         if (comp != null) {
             super.updateComponent(comp, g);
-            LWComponentPeer.flushOnscreenGraphics();
+            toolkitApi.flushOnscreenGraphics();
         }
     }
 
@@ -57,7 +63,7 @@ final class LWRepaintArea extends RepaintArea {
                 ((LWComponentPeer<?, ?>) peer).paintPeer(g);
             }
             super.paintComponent(comp, g);
-            LWComponentPeer.flushOnscreenGraphics();
+            toolkitApi.flushOnscreenGraphics();
         }
     }
 }

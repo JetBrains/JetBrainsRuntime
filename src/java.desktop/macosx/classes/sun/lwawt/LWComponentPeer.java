@@ -66,17 +66,13 @@ import javax.swing.SwingUtilities;
 
 import com.sun.java.swing.SwingUtilities3;
 import sun.awt.AWTAccessor;
-import sun.awt.CGraphicsEnvironment;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.RepaintArea;
 import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.java2d.SunGraphics2D;
-import sun.java2d.metal.MTLRenderQueue;
-import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.Region;
-import sun.java2d.pipe.RenderQueue;
 import sun.util.logging.PlatformLogger;
 
 public abstract class LWComponentPeer<T extends Component, D extends JComponent>
@@ -202,7 +198,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     LWComponentPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
-        targetPaintArea = new LWRepaintArea();
+        targetPaintArea = new LWRepaintArea(toolkitApi);
         this.target = target;
         this.platformComponent = platformComponent;
         this.toolkitApi = toolkitApi;
@@ -1397,17 +1393,6 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                 // JComponent.print() is guaranteed to not affect the double buffer
                 getDelegate().print(g);
             }
-        }
-    }
-
-    protected static final void flushOnscreenGraphics(){
-        RenderQueue rq =  CGraphicsEnvironment.usingMetalPipeline() ?
-                MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            rq.flushNow();
-        } finally {
-            rq.unlock();
         }
     }
 
