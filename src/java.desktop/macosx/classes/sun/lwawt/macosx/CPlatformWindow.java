@@ -56,7 +56,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -75,7 +74,6 @@ import sun.awt.CGraphicsDevice;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWKeyboardFocusManagerPeer;
-import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
