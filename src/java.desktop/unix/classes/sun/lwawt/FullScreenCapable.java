@@ -23,7 +23,7 @@
  * questions.
  */
 
-package sun.awt;
+package sun.lwawt;
 
 /**
  * A class implements the FullScreenCapable interface to
