@@ -1117,12 +1117,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     protected static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);
         if (target instanceof Window window) {
-            // When a window is disposed, we may not get the keyboard leave event that
-            // normally posts WINDOW_LOST_FOCUS, so we need to post it manually to maintain
-            // a correct state of the keyboard focus manager.
-            final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
-            postPriorityEvent(winLostFocusEvent);
-
+            // TODO: focusedWindow and activeWindow of class java.awt.KeyboardFocusManager
+            // may still retain references to 'window' because disposed peer may not
+            // get the keyboard_leave event and therefore will not send the WINDOW_LOST_FOCUS
+            // event that would've cleared those references.
             var gc = window.getGraphicsConfiguration();
             if (gc != null && peer instanceof WLWindowPeer windowPeer) {
                 WLGraphicsDevice gd = (WLGraphicsDevice) gc.getDevice();
