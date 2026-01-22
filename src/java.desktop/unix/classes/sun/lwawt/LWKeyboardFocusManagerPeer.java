@@ -44,19 +44,12 @@ public final class LWKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerIm
 
     @Override
     public void setCurrentFocusedWindow(Window win) {
-        LWWindowPeer from, to;
-
         synchronized (this) {
             if (focusedWindow == win) {
                 return;
             }
-
-            from = (LWWindowPeer)LWToolkit.targetToPeer(focusedWindow);
-            to = (LWWindowPeer)LWToolkit.targetToPeer(win);
-
             focusedWindow = win;
         }
-
     }
 
     @Override
