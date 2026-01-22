@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,6 +119,11 @@ final class SSLConfiguration implements Cloneable {
     static final boolean enableDtlsResumeCookie = Utilities.getBooleanProperty(
             "jdk.tls.enableDtlsResumeCookie", true);
 
+    // Number of NewSessionTickets that will be sent by the server.
+    static final int serverNewSessionTicketCount;
+    // Default for NewSessionTickets
+    static final int SERVER_NST_DEFAULT = 1;
+
     // Is the extended_master_secret extension supported?
     static {
         boolean supportExtendedMasterSecret = Utilities.getBooleanProperty(
@@ -131,6 +136,33 @@ final class SSLConfiguration implements Cloneable {
             }
         }
         useExtendedMasterSecret = supportExtendedMasterSecret;
+
+        /*
+         * jdk.tls.server.newSessionTicketCount system property
+         * Sets the number of NewSessionTickets sent to a TLS 1.3 resumption
+         * client.  The value must be between 0 and 10.  Default is defined by
+         * SERVER_NST_DEFAULT.
+         */
+        Integer nstServerCount = GetIntegerAction.privilegedGetProperty(
+            "jdk.tls.server.newSessionTicketCount");
+        if (nstServerCount == null || nstServerCount < 0 ||
+            nstServerCount > 10) {
+            serverNewSessionTicketCount = SERVER_NST_DEFAULT;
+            if (nstServerCount != null && SSLLogger.isOn &&
+                SSLLogger.isOn("ssl,handshake")) {
+                SSLLogger.fine(
+                    "jdk.tls.server.newSessionTicketCount defaults to " +
+                        SERVER_NST_DEFAULT + " as the property was not " +
+                        "between 0 and 10");
+            }
+        } else {
+            serverNewSessionTicketCount = nstServerCount;
+            if (SSLLogger.isOn && SSLLogger.isOn("ssl,handshake")) {
+                SSLLogger.fine(
+                    "jdk.tls.server.newSessionTicketCount set to " +
+                        serverNewSessionTicketCount);
+            }
+        }
     }
 
     SSLConfiguration(SSLContextImpl sslContext, boolean isClientMode) {
