@@ -66,7 +66,6 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.DisplayChangedListener;
 import sun.awt.ExtendedKeyCodes;
-import sun.awt.FullScreenCapable;
 import sun.awt.SunToolkit;
 import sun.awt.TimedWindowEvent;
 import sun.awt.UngrabEvent;
