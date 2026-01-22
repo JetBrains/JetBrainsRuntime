@@ -42,13 +42,14 @@ import sun.awt.LightweightFrame;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWWindowPeer;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 
 public final class CPlatformLWWindow extends CPlatformWindow {
 
     @Override
-    public void initialize(Window target, LWWindowPeer peer, PlatformWindow owner) {
-        initializeBase(target, peer, owner);
+    public void initialize(Window target, LWWindowPeerAPI peer, PlatformWindow owner) {
+        initializeBase(target, (LWWindowPeer) peer, owner);
     }
 
     @Override
