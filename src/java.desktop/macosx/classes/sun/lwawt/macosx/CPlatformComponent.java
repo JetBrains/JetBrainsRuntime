@@ -68,7 +68,7 @@ class CPlatformComponent extends CFRetainedResource
         if (platformWindow != null) {
             // translates values from the coordinate system of the top-level window
             // to the coordinate system of the content view
-            final LWWindowPeer peer = platformWindow.getPeer();
+            final LWWindowPeer peer = (LWWindowPeer) platformWindow.getPeer();
             final Insets insets = (peer != null) ? peer.getInsets() : new Insets(0, 0, 0, 0);
             execute(ptr -> nativeSetBounds(ptr, x - insets.left, y - insets.top, w, h));
         }
