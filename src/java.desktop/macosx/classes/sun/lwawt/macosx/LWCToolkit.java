@@ -102,7 +102,7 @@ import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.RenderQueue;
-import sun.lwawt.LWComponentPeer;
+import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.LWCursorManager;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
@@ -982,7 +982,7 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public PlatformDropTarget createDropTarget(DropTarget dropTarget,
                                                Component component,
-                                               LWComponentPeer<?, ?> peer) {
+                                               LWComponentPeerAPI peer) {
         return new CDropTarget(dropTarget, component, peer);
     }
 
