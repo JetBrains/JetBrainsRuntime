@@ -371,6 +371,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         return containerPeer;
     }
 
+    @Override
     public PlatformWindow getPlatformWindow() {
         LWWindowPeer windowPeer = getWindowPeer();
         return windowPeer.getPlatformWindow();
