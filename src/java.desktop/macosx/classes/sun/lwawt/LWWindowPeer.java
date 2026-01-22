@@ -836,7 +836,7 @@ public class LWWindowPeer
             PlatformWindow topmostPlatformWindow = LWToolkit.getLWToolkit().getPlatformWindowUnderMouse();
 
             LWWindowPeer topmostWindowPeer =
-                    topmostPlatformWindow != null ? topmostPlatformWindow.getPeer() : null;
+                    topmostPlatformWindow != null ? (LWWindowPeer) topmostPlatformWindow.getPeer() : null;
 
             // topmostWindowPeer == null condition is added for the backward
             // compatibility. It can be removed when the
