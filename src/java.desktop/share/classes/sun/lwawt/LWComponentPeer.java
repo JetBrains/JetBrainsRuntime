@@ -43,7 +43,6 @@ import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.dnd.DropTarget;
-import java.awt.dnd.peer.DropTargetPeer;
 import java.awt.event.AWTEventListener;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
