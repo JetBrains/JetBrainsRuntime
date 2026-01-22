@@ -22,6 +22,11 @@ public interface LWComponentPeerAPI {
     Component getTarget();
 
     /**
+     * Returns the platform window for this component.
+     */
+    PlatformWindow getPlatformWindow();
+
+    /**
      * Returns the bounds of this component relative to its parent.
      */
     Rectangle getBounds();
