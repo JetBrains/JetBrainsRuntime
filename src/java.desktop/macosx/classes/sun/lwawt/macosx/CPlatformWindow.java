@@ -79,6 +79,7 @@ import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.LWWindowPeer.PeerType;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
@@ -356,8 +357,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
      * related resources).
      */
     @Override // PlatformWindow
-    public void initialize(Window _target, LWWindowPeer _peer, PlatformWindow _owner) {
-        initializeBase(_target, _peer, _owner);
+    public void initialize(Window _target, LWWindowPeerAPI _peer, PlatformWindow _owner) {
+        initializeBase(_target, (LWWindowPeer) _peer, _owner);
 
         final int styleBits = getInitialStyleBits();
 
@@ -370,7 +371,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             // so we need to set a stub location to force an initial move/resize. Real bounds would be set later.
             bounds = new Rectangle(0, 0, 1, 1);
         } else {
-            bounds = _peer.constrainBounds(_target.getBounds());
+            bounds = peer.constrainBounds(_target.getBounds());
         }
         AtomicLong ref = new AtomicLong();
         contentView.execute(viewPtr -> {

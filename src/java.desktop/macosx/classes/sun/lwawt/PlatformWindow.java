@@ -42,7 +42,7 @@ public interface PlatformWindow {
      * Delegate initialization (create native window and all the
      * related resources).
      */
-    public void initialize(Window target, LWWindowPeer peer, PlatformWindow owner);
+    public void initialize(Window target, LWWindowPeerAPI peer, PlatformWindow owner);
 
     /*
      * Delegate shutdown (dispose native window and all the
@@ -149,7 +149,7 @@ public interface PlatformWindow {
 
     public long getLayerPtr();
 
-    public LWWindowPeer getPeer();
+    public LWWindowPeerAPI getPeer();
 
     public boolean isUnderMouse();
 }
