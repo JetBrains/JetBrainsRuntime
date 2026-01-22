@@ -33,6 +33,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.metal.MTLLayer;
 import sun.java2d.opengl.CGLLayer;
 import sun.lwawt.LWWindowPeer;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
@@ -53,12 +54,12 @@ public final class CPlatformEmbeddedFrame implements PlatformWindow {
     private volatile int screenY;
 
     @Override // PlatformWindow
-    public void initialize(Window target, final LWWindowPeer peer, PlatformWindow owner) {
-        this.peer = peer;
+    public void initialize(Window target, final LWWindowPeerAPI peer, PlatformWindow owner) {
+        this.peer = (LWWindowPeer) peer;
         if (CGraphicsEnvironment.usingMetalPipeline()) {
-            this.windowLayer = new MTLLayer(peer);
+            this.windowLayer = new MTLLayer(this.peer);
         } else {
-            this.windowLayer = new CGLLayer(peer);
+            this.windowLayer = new CGLLayer(this.peer);
         }
         this.target = (CEmbeddedFrame)target;
     }
