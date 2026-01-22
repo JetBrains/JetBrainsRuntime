@@ -34,6 +34,8 @@ import sun.java2d.pipe.Region;
 public interface LWComponentPeerAPI extends ComponentPeer {
     Component getTarget();
 
+    PlatformWindow getPlatformWindow();
+
     Rectangle getBounds();
 
     Region getRegion();
