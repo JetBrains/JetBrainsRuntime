@@ -203,4 +203,9 @@ public final class CViewPlatformEmbeddedFrame implements PlatformWindow {
     public boolean isUnderMouse() {
         return view.isUnderMouse();
     }
+
+    @Override
+    public long getWindowHandle() {
+        return 0;
+    }
 }
