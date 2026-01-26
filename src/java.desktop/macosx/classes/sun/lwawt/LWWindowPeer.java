@@ -64,7 +64,6 @@ import javax.swing.JComponent;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.awt.CGraphicsDevice;
 import sun.awt.DisplayChangedListener;
 import sun.awt.ExtendedKeyCodes;
 import sun.awt.FullScreenCapable;
@@ -559,14 +558,7 @@ public class LWWindowPeer
 
     private Rectangle getDefaultMaximizedBounds() {
         GraphicsConfiguration config = getGraphicsConfiguration();
-        Insets screenInsets = ((CGraphicsDevice) config.getDevice())
-                .getScreenInsets();
-        Rectangle gcBounds = config.getBounds();
-        return new Rectangle(
-                gcBounds.x + screenInsets.left,
-                gcBounds.y + screenInsets.top,
-                gcBounds.width - screenInsets.left - screenInsets.right,
-                gcBounds.height - screenInsets.top - screenInsets.bottom);
+        return platformWindow.getDefaultMaximizedBounds(config);
     }
 
     @Override
