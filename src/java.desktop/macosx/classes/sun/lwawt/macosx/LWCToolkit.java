@@ -75,6 +75,7 @@ import java.awt.peer.DesktopPeer;
 import java.awt.peer.DialogPeer;
 import java.awt.peer.FileDialogPeer;
 import java.awt.peer.FontPeer;
+import java.awt.peer.FramePeer;
 import java.awt.peer.MenuBarPeer;
 import java.awt.peer.MenuItemPeer;
 import java.awt.peer.MenuPeer;
@@ -314,6 +315,29 @@ public final class LWCToolkit extends LWToolkit {
                     || peerType == PeerType.FRAME);
             return new CPlatformWindow();
         }
+    }
+
+    @Override
+    protected LWWindowPeer createDelegatedPeer(Window target,
+                                               PlatformComponent platformComponent,
+                                               PlatformWindow platformWindow,
+                                               PeerType peerType) {
+        LWCWindowPeer peer =
+                new LWCWindowPeer(target, platformComponent, platformWindow, peerType);
+        targetCreatedPeer(target, peer);
+        peer.initialize();
+        return peer;
+    }
+
+    @Override
+    public FramePeer createLightweightFrame(LightweightFrame target) {
+        PlatformComponent platformComponent = createLwPlatformComponent();
+        PlatformWindow platformWindow = createPlatformWindow(PeerType.LW_FRAME);
+        LWCLightweightFramePeer peer =
+                new LWCLightweightFramePeer(target, platformComponent, platformWindow);
+        targetCreatedPeer(target, peer);
+        peer.initialize();
+        return peer;
     }
 
     LWWindowPeer createEmbeddedFrame(CEmbeddedFrame target) {
