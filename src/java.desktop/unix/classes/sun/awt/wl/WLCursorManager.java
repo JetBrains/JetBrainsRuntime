@@ -72,6 +72,16 @@ public class WLCursorManager {
         }
     }
 
+    /*
+    Basically, this works for native windows only.
+
+    Get a cursor position relative to the latest surface under the mouse (native code).
+    Find a component at this position:
+        We start with a peer (window) passes to this method.
+        If it is a container (which is always true?), find a child component under the cursor.
+    Get an associated cursor image (Component.getCursor())
+    Set its cursor (native code).
+     */
     public void updateCursorImmediatelyFor(WLComponentPeer peer) {
         var inputState = WLToolkit.getInputState();
         Cursor cursor = peer.cursorAt(inputState.getPointerX(), inputState.getPointerY());
