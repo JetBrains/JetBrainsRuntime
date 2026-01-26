@@ -283,7 +283,7 @@ public final class PlatformRecorder {
         if (toDisk) {
             PeriodicEvents.setFlushInterval(streamInterval);
         }
-        PeriodicEvents.doChunkBegin();
+        PeriodicEvents.doChunkBegin(true);
         Duration duration = recording.getDuration();
         if (duration != null) {
             recording.setStopTime(startTime.plus(duration));
@@ -355,7 +355,7 @@ public final class PlatformRecorder {
                 finishChunk(currentChunk, stopTime, null);
             }
             currentChunk = newChunk;
-            PeriodicEvents.doChunkBegin();
+            PeriodicEvents.doChunkBegin(false);
         }
 
         if (toDisk) {
@@ -410,7 +410,7 @@ public final class PlatformRecorder {
             finishChunk(currentChunk, timestamp, null);
         }
         currentChunk = newChunk;
-        PeriodicEvents.doChunkBegin();
+        PeriodicEvents.doChunkBegin(false);
     }
 
     private List<PlatformRecording> getRunningRecordings() {

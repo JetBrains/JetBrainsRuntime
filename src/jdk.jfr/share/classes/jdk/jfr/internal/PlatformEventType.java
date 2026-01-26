@@ -41,6 +41,7 @@ public final class PlatformEventType extends Type {
     private final boolean isJVM;
     private final boolean isJDK;
     private final boolean isMethodSampling;
+    private final boolean isBackToBackSensitive;
     private final List<SettingDescriptor> settings = new ArrayList<>(5);
     private final boolean dynamicSettings;
     private final int stackTraceOffset;
@@ -71,8 +72,23 @@ public final class PlatformEventType extends Type {
         this.dynamicSettings = dynamicSettings;
         this.isJVM = Type.isDefinedByJVM(id);
         this.isMethodSampling = isJVM && (name.equals(Type.EVENT_NAME_PREFIX + "ExecutionSample") || name.equals(Type.EVENT_NAME_PREFIX + "NativeMethodSample"));
+        this.isBackToBackSensitive = determineBackToBackSensitive();
         this.isJDK = isJDK;
         this.stackTraceOffset = stackTraceOffset(name, isJDK);
+    }
+
+    private boolean determineBackToBackSensitive() {
+        if (getName().equals(Type.EVENT_NAME_PREFIX + "ThreadDump")) {
+            return true;
+        }
+        if (getName().equals(Type.EVENT_NAME_PREFIX + "ClassLoaderStatistics")) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean isBackToBackSensitive() {
+        return isBackToBackSensitive;
     }
 
     private static boolean isExceptionEvent(String name) {
