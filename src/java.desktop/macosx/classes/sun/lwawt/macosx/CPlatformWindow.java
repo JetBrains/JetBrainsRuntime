@@ -1583,4 +1583,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             execute(ptr -> nativeSetRoundedCorners(ptr, (float) params));
         }
     }
+
+    @Override
+    public long getWindowHandle() {
+        final long[] handle = new long[1];
+        execute(ptr -> handle[0] = ptr);
+        return handle[0];
+    }
 }
