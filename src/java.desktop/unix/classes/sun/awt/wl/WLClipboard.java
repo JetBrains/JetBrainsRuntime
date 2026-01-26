@@ -224,19 +224,29 @@ public final class WLClipboard extends SunClipboard {
     protected byte[] getClipboardData(long format) throws IOException {
         final WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
         final long utf8StringFormat = wlDataTransferer.getFormatForNativeAsLong(utf8String);
-        synchronized (dataLock) {
+        WLDataOffer offer = null;
+
+        try {
+            synchronized (dataLock) {
+                offer = clipboardDataOfferedToUs.ref();
+            }
+
             // Iterate over all mime types, since the mapping between mime types and java formats might not be 1:1
             // Also treat text/plain;charset=utf-8 as UTF8_STRING
-            for (var mime : clipboardDataOfferedToUs.getMimes()) {
+            for (var mime : offer.getMimes()) {
                 long curFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
-                if (curFormat == format) {
-                    return clipboardDataOfferedToUs.receiveData(mime);
-                } else if (mime.equalsIgnoreCase(plainTextUtf8) && utf8StringFormat == format) {
-                    return clipboardDataOfferedToUs.receiveData(mime);
+                boolean isUtf8String = mime.equalsIgnoreCase(plainTextUtf8) && utf8StringFormat == format;
+                if (curFormat == format || isUtf8String) {
+                    return offer.receiveData(mime);
                 }
             }
+
+            throw new IOException("No appropriate mime type found for WLClipboard.getClipboardData with format = " + format);
+        } finally {
+            if (offer != null) {
+                offer.unref();
+            }
         }
-        throw new IOException("No appropriate mime type found for WLClipboard.getClipboardData with format = " + format);
     }
 
     @Override
@@ -267,7 +277,7 @@ public final class WLClipboard extends SunClipboard {
             }
 
             if (clipboardDataOfferedToUs != null) {
-                clipboardDataOfferedToUs.destroy();
+                clipboardDataOfferedToUs.unref();
             }
             clipboardDataOfferedToUs = offer;
         }
