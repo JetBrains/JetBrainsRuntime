@@ -156,4 +156,6 @@ public interface PlatformWindow {
     public LWWindowPeer getPeer();
 
     public boolean isUnderMouse();
+
+    public long getWindowHandle();
 }
