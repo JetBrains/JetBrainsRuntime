@@ -42,6 +42,7 @@ public class WLDataOffer {
     private int sourceActions = 0;
     private int selectedAction = 0;
     private EventListener listener;
+    private int refcount = 1;
 
     private static native void destroyImpl(long nativePtr);
 
@@ -60,12 +61,19 @@ public class WLDataOffer {
         this.nativePtr = nativePtr;
     }
 
-    // after calling destroy(), this object enters an invalid state and needs to be deleted
-    public synchronized void destroy() {
-        if (nativePtr != 0) {
-            destroyImpl(nativePtr);
-            nativePtr = 0;
+    public synchronized void unref() {
+        if (nativePtr != 0 && refcount > 0) {
+            --refcount;
+            if (refcount == 0) {
+                destroyImpl(nativePtr);
+                nativePtr = 0;
+            }
         }
+    }
+
+    public synchronized WLDataOffer ref() {
+        ++refcount;
+        return this;
     }
 
     public synchronized byte[] receiveData(String mime) throws IOException  {
