@@ -137,7 +137,7 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
 
     private synchronized void reset() {
         if (currentOffer != null) {
-            currentOffer.destroy();
+            currentOffer.unref();
         }
 
         currentOffer = null;
