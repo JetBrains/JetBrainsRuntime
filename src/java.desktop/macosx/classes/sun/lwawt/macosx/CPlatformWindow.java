@@ -33,6 +33,7 @@ import java.awt.Dialog.ModalityType;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
@@ -691,6 +692,17 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     @Override
     public void setMaximizedBounds(int x, int y, int w, int h) {
         execute(ptr -> nativeSetNSWindowStandardFrame(ptr, x, y, w, h));
+    }
+
+    @Override
+    public Rectangle getDefaultMaximizedBounds(GraphicsConfiguration config) {
+        Insets screenInsets = ((CGraphicsDevice) config.getDevice()).getScreenInsets();
+        Rectangle gcBounds = config.getBounds();
+        return new Rectangle(
+                gcBounds.x + screenInsets.left,
+                gcBounds.y + screenInsets.top,
+                gcBounds.width - screenInsets.left - screenInsets.right,
+                gcBounds.height - screenInsets.top - screenInsets.bottom);
     }
 
     private boolean isMaximized() {
