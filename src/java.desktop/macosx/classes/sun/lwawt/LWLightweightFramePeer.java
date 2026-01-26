@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013–2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import sun.awt.OverrideNativeWindowHandle;
 import sun.swing.JLightweightFrame;
 import sun.swing.SwingAccessor;
 
-public final class LWLightweightFramePeer extends LWWindowPeer implements OverrideNativeWindowHandle {
+public class LWLightweightFramePeer extends LWWindowPeer implements OverrideNativeWindowHandle {
 
     public LWLightweightFramePeer(LightweightFrame target,
                                   PlatformComponent platformComponent,
