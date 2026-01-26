@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,11 +31,15 @@ import java.io.InputStreamReader;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 import jdk.internal.access.SharedSecrets;
@@ -332,5 +336,119 @@ public class CDS {
         String archiveFilePath = new File(archiveFileName).getAbsolutePath();
         System.out.println("The process was attached by jcmd and dumped a " + (isStatic ? "static" : "dynamic") + " archive " + archiveFilePath);
         return archiveFilePath;
+    }
+
+    /**
+     * This class is used only by native JVM code at CDS dump time for loading
+     * "unregistered classes", which are archived classes that are intended to
+     * be loaded by custom class loaders during runtime.
+     * See src/hotspot/share/cds/unregisteredClasses.cpp.
+     */
+    private static class UnregisteredClassLoader extends ClassLoader {
+        static {
+            registerAsParallelCapable();
+        }
+
+        static interface Source {
+            public byte[] readClassFile(String className) throws IOException;
+        }
+
+        static class JarSource implements Source {
+            private final JarFile jar;
+
+            JarSource(File file) throws IOException {
+                jar = new JarFile(file);
+            }
+
+            @Override
+            public byte[] readClassFile(String className) throws IOException {
+                final var entryName = className.replace('.', '/').concat(".class");
+                final var entry = jar.getEntry(entryName);
+                if (entry == null) {
+                    throw new IOException("No such entry: " + entryName + " in " + jar.getName());
+                }
+                try (final var in = jar.getInputStream(entry)) {
+                    return in.readAllBytes();
+                }
+            }
+        }
+
+        static class DirSource implements Source {
+            private final String basePath;
+
+            DirSource(File dir) {
+                assert dir.isDirectory();
+                basePath = dir.toString();
+            }
+
+            @Override
+            public byte[] readClassFile(String className) throws IOException {
+                final var subPath = className.replace('.', File.separatorChar).concat(".class");
+                final var fullPath = Path.of(basePath, subPath);
+                return Files.readAllBytes(fullPath);
+            }
+        }
+
+        private final HashMap<String, Source> sources = new HashMap<>();
+
+        private Source resolveSource(String path) throws IOException {
+            Source source = sources.get(path);
+            if (source != null) {
+                return source;
+            }
+
+            final var file = new File(path);
+            if (!file.exists()) {
+                throw new IOException("No such file: " + path);
+            }
+            if (file.isFile()) {
+                source = new JarSource(file);
+            } else if (file.isDirectory()) {
+                source = new DirSource(file);
+            } else {
+                throw new IOException("Not a normal file: " + path);
+            }
+            sources.put(path, source);
+
+            return source;
+        }
+
+        /**
+         * Load the class of the given <code>name</code> from the given <code>source</code>.
+         * <p>
+         * All super classes and interfaces of the named class must have already been loaded:
+         * either defined by this class loader (unregistered ones) or loaded, possibly indirectly,
+         * by the system class loader (registered ones).
+         * <p>
+         * If the named class has a registered super class or interface named N there should be no
+         * unregistered class or interface named N loaded yet.
+         *
+         * @param name the name of the class to be loaded.
+         * @param source path to a directory or a JAR file from which the named class should be
+         *               loaded.
+         */
+        private Class<?> load(String name, String source) throws IOException {
+            final Source resolvedSource = resolveSource(source);
+            final byte[] bytes = resolvedSource.readClassFile(name);
+            // 'defineClass()' may cause loading of supertypes of this unregistered class by VM
+            // calling 'this.loadClass()'.
+            //
+            // For any supertype S named SN specified in the classlist the following is ensured by
+            // the CDS implementation:
+            // - if S is an unregistered class it must have already been defined by this class
+            //   loader and thus will be found by 'this.findLoadedClass(SN)',
+            // - if S is not an unregistered class there should be no unregistered class named SN
+            //   loaded yet so either S has previously been (indirectly) loaded by this class loader
+            //   and thus it will be found when calling 'this.findLoadedClass(SN)' or it will be
+            //   found when delegating to the system class loader, which must have already loaded S,
+            //   by calling 'this.getParent().loadClass(SN, false)'.
+            // See the implementation of 'ClassLoader.loadClass()' for details.
+            //
+            // Therefore, we should resolve all supertypes to the expected ones as specified by the
+            // "super:" and "interfaces:" attributes in the classlist. This invariant is validated
+            // by the C++ function 'ClassListParser::load_class_from_source()'.
+            assert getParent() == getSystemClassLoader();
+            return defineClass(name, bytes, 0, bytes.length);
+        }
     }
 }
