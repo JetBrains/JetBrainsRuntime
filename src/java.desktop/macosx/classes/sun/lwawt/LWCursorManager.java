@@ -76,6 +76,19 @@ public abstract class LWCursorManager {
         }
     }
 
+    /*
+    Get a cursor position on the screen (native code)
+    Find a component at this position:
+        Get the latest component under mouse (tracked globally by the window)
+        If its window is modally blocked, return null.
+        If it is a container, find a child component under the cursor.
+        Traverse parents until to find first visible and enabled.
+    Get an associated cursor image
+        For LWComponentPeer we additionally check if the position
+        is indeed inside the component bounds (only happens to text area)
+        Then just use Component.getCursor() (via getTarget())
+    Set it (native code)
+     */
     private void updateCursorImpl() {
         final Point cursorPos = getCursorPosition();
         final Component c = findComponent(cursorPos);
