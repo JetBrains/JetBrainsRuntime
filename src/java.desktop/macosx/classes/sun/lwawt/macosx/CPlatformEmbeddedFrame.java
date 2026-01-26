@@ -204,4 +204,9 @@ public final class CPlatformEmbeddedFrame implements PlatformWindow {
     public boolean isUnderMouse() {
         throw new RuntimeException("Not implemented");
     }
+
+    @Override
+    public long getWindowHandle() {
+        return 0;
+    }
 }
