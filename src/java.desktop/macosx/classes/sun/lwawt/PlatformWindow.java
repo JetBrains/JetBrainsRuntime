@@ -71,6 +71,10 @@ public interface PlatformWindow {
      */
     public default void setMaximizedBounds(int x, int y, int w, int h){}
 
+    public default Rectangle getDefaultMaximizedBounds(GraphicsConfiguration config) {
+        return config.getBounds();
+    }
+
     /*
      * Returns the graphics device where the window is.
      */
