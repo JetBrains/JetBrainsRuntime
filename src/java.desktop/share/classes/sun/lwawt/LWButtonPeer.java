@@ -37,12 +37,12 @@ import javax.swing.JButton;
  * Lightweight implementation of {@link ButtonPeer}. Delegates most of the work
  * to the {@link JButton}.
  */
-final class LWButtonPeer extends LWComponentPeer<Button, JButton>
+public final class LWButtonPeer extends LWComponentPeer<Button, JButton>
         implements ButtonPeer, ActionListener {
 
-    LWButtonPeer(final Button target,
-                 final PlatformComponent platformComponent,
-                 final ToolkitAPI toolkitApi) {
+    public LWButtonPeer(final Button target,
+                        final PlatformComponent platformComponent,
+                        final ToolkitAPI toolkitApi) {
         super(target, platformComponent, toolkitApi);
     }
 

@@ -36,8 +36,10 @@ import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.wl.im.WLInputMethodMetaDescriptor;
+import sun.awt.wl.lwawt.WLToolkitAPI;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.vulkan.VKRenderQueue;
+import sun.lwawt.*;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -240,8 +242,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public ButtonPeer createButton(Button target) {
-        ButtonPeer peer = new WLButtonPeer(target);
+        LWButtonPeer peer = new LWButtonPeer(target, LWDummyPlatformComponent.getInstance(), WLToolkitAPI.getInstance());
         targetCreatedPeer(target, peer);
+        peer.initialize();
         return peer;
     }
 
@@ -1163,7 +1166,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private native void flushImpl();
     private native void dispatchNonDefaultQueuesImpl();
 
-    protected static void targetDisposedPeer(Object target, Object peer) {
+    public static Object targetToPeer(Object target) {
+        return SunToolkit.targetToPeer(target);
+    }
+
+    public static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);
         if (target instanceof Window window) {
             // TODO: focusedWindow and activeWindow of class java.awt.KeyboardFocusManager
@@ -1178,7 +1185,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    static void postEvent(AWTEvent event) {
+    public static void postEvent(AWTEvent event) {
         SunToolkit.postEvent(AppContext.getAppContext(), event);
     }
 
