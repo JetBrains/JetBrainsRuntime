@@ -53,6 +53,12 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
     private static final boolean debugScaleEnabled;
+
+    @SuppressWarnings("removal")
+    private static final boolean correctLogicalSize = Boolean.parseBoolean(
+                java.security.AccessController.doPrivileged(
+                        new sun.security.action.GetPropertyAction("sun.awt.wl.correctLogicalSize", "false")));
+
     private final Dimension totalDisplayBounds = new Dimension();
 
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
@@ -142,6 +148,15 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         // Logical size comes from an optional protocol, so take the data from the main one, if absent
         if (widthLogical <= 0) widthLogical = width;
         if (heightLogical <= 0) heightLogical = height;
+
+        if (correctLogicalSize && widthLogical == width && heightLogical == height && scale > 1) {
+            // With fractional scale OFF, logical and physical sizes are reported as equal.
+            // "Convert" the logical size to logical units to maintain Java promise of
+            // always abstracting out the physical size.
+            // Note that the monitor's location (offset) is left unchanged and is in physical units (pixels).
+            widthLogical = (int) Math.ceil((double) width / scale);
+            heightLogical = (int) Math.ceil((double) height / scale);
+        }
 
         // Physical size may be absent for virtual outputs.
         if (widthMm <= 0 || heightMm <= 0) {
