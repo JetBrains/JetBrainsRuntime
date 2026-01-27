@@ -89,7 +89,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -305,6 +307,60 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         } else {
             tasks.add(r);
             wakeupDisplayPoll(); // so that tasks can execute
+        }
+    }
+
+    public static <T> T performOnWLThreadAndWait(Callable<T> callable) {
+        if (isWLThread()) {
+            try {
+                return callable.call();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            final CallableWrapper<T> wrapper = new CallableWrapper<>(callable);
+            performOnWLThread(wrapper);
+            return wrapper.getResult();
+        }
+    }
+
+    static final class CallableWrapper<T> implements Runnable {
+        final Callable<T> callable;
+        T object;
+        Exception e;
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        CallableWrapper(Callable<T> callable) {
+            this.callable = callable;
+        }
+
+        @Override
+        public void run() {
+            try {
+                object = callable.call();
+            } catch (Exception e) {
+                this.e = e;
+            } finally {
+                latch.countDown();
+            }
+        }
+
+        public T getResult() {
+            try {
+                latch.await();
+            } catch (InterruptedException ie) {
+                throw new RuntimeException(ie);
+            }
+
+            if (e != null) {
+                throw new RuntimeException(e);
+            };
+            return object;
+        }
+
+        @Override
+        public String toString() {
+            return "CallableWrapper{" + callable + "}";
         }
     }
 

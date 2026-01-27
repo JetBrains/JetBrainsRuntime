@@ -378,8 +378,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         assert component != null : "Component must not be null";
         assert out != null : "OutgoingChanges must not be null";
 
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         // TODO: there's no dedicated AWT/Swing API for that, but we can make a few guesses, e.g.
         //       (component instanceof JPasswordField) ? ContentPurpose.PASSWORD
         out.setContentType(ContentHint.NONE.intMask, ContentPurpose.NORMAL);
@@ -390,8 +388,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *          compatible with {@code zwp_text_input_v3::set_cursor_rectangle} API;
      */
     private static Rectangle awtGetWlCursorRectangleOf(Component component) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         Rectangle result = null;
 
         if (component.isShowing()) {
@@ -435,8 +431,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * @throws IllegalArgumentException if {@code visibleComponent} is {@code null} or isn't showing on the screen.
      */
     private static Rectangle awtGetCaretOf(Component visibleComponent) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (!Objects.requireNonNull(visibleComponent, "visibleComponent").isShowing()) {
             throw new IllegalArgumentException("visibleComponent must be showing");
         }
@@ -475,8 +469,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private static Rectangle awtGetVisibleRectOf(final Component component) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (component instanceof javax.swing.JComponent jComponent) {
             return jComponent.getVisibleRect();
         }
@@ -489,8 +481,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or {@code null} if the rectangle couldn't be determined.
      */
     private static Rectangle awtConvertRectOnComponentToRectOnWlSurface(Component component, Rectangle rectOnComponent) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         Objects.requireNonNull(component, "component");
 
         final var wlSurfaceComponent = awtGetWlSurfaceComponentOf(component);
@@ -537,8 +527,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or its closest ancestor meeting these requirements.
      */
     private static Window awtGetWlSurfaceComponentOf(Component component) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         return WLComponentPeer.getToplevelFor(component);
     }
 
@@ -899,44 +887,47 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             log.finer("wlSendPendingChangesNow(): sending the change set {0}. this={1}.", changesToSend, this);
         }
 
-        if (changesToSend != null) {
-            if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
-                if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
-                    throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus=" + this.awtActivationStatus);
+        // Note: works with tree lock acquired
+        WLToolkit.performOnWLThread(() -> {
+            if (changesToSend != null) {
+                if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
+                    if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+                        throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus=" + this.awtActivationStatus);
+                    }
+                    if (this.awtNativeImIsExplicitlyDisabled) {
+                        throw new IllegalStateException("Attempt to enable an input context while it must stay disabled.");
+                    }
+                    zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
                 }
-                if (this.awtNativeImIsExplicitlyDisabled) {
-                    throw new IllegalStateException("Attempt to enable an input context while it must stay disabled.");
+
+                if (changesToSend.getTextChangeCause() != null) {
+                    zwp_text_input_v3_set_text_change_cause(wlInputContextState.nativeContextPtr,
+                            changesToSend.getTextChangeCause().intValue);
                 }
-                zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
+
+                if (changesToSend.getContentTypeHint() != null && changesToSend.getContentTypePurpose() != null) {
+                    zwp_text_input_v3_set_content_type(wlInputContextState.nativeContextPtr,
+                            changesToSend.getContentTypeHint(),
+                            changesToSend.getContentTypePurpose().intValue);
+                }
+
+                if (changesToSend.getCursorRectangle() != null) {
+                    zwp_text_input_v3_set_cursor_rectangle(wlInputContextState.nativeContextPtr,
+                            changesToSend.getCursorRectangle().x,
+                            changesToSend.getCursorRectangle().y,
+                            changesToSend.getCursorRectangle().width,
+                            changesToSend.getCursorRectangle().height);
+                }
+
+                if (Boolean.FALSE.equals(changesToSend.getEnabledState())) {
+                    zwp_text_input_v3_disable(wlInputContextState.nativeContextPtr);
+                }
             }
 
-            if (changesToSend.getTextChangeCause() != null) {
-                zwp_text_input_v3_set_text_change_cause(wlInputContextState.nativeContextPtr,
-                                                        changesToSend.getTextChangeCause().intValue);
-            }
+            zwp_text_input_v3_commit(wlInputContextState.nativeContextPtr);
 
-            if (changesToSend.getContentTypeHint() != null && changesToSend.getContentTypePurpose() != null) {
-                zwp_text_input_v3_set_content_type(wlInputContextState.nativeContextPtr,
-                                                   changesToSend.getContentTypeHint(),
-                                                   changesToSend.getContentTypePurpose().intValue);
-            }
-
-            if (changesToSend.getCursorRectangle() != null) {
-                zwp_text_input_v3_set_cursor_rectangle(wlInputContextState.nativeContextPtr,
-                                                       changesToSend.getCursorRectangle().x,
-                                                       changesToSend.getCursorRectangle().y,
-                                                       changesToSend.getCursorRectangle().width,
-                                                       changesToSend.getCursorRectangle().height);
-            }
-
-            if (Boolean.FALSE.equals(changesToSend.getEnabledState())) {
-                zwp_text_input_v3_disable(wlInputContextState.nativeContextPtr);
-            }
-        }
-
-        zwp_text_input_v3_commit(wlInputContextState.nativeContextPtr);
-
-        wlBeingCommittedChanges = wlInputContextState.syncWithCommittedOutgoingChanges(changesToSend);
+            wlBeingCommittedChanges = wlInputContextState.syncWithCommittedOutgoingChanges(changesToSend);
+        });
     }
 
     /**
@@ -1207,8 +1198,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called by {@link ClientComponentCaretPositionTracker} */
     boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("wlUpdateCursorRectangle(): forceUpdate={0}, this={1}.", forceUpdate, this);
         }

@@ -25,6 +25,7 @@
 
 package sun.awt.wl.im;
 
+import sun.awt.wl.WLToolkit;
 import sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3;
 import sun.util.logging.PlatformLogger;
 
@@ -147,7 +148,7 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
     @Override
     public InputMethod createInputMethod() throws Exception {
-        final InputMethod result = realImDescriptor.createInputMethod();
+        final InputMethod result = WLToolkit.performOnWLThreadAndWait(realImDescriptor::createInputMethod);
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("createInputMethod(): result={0}, this={1}.", result, this);

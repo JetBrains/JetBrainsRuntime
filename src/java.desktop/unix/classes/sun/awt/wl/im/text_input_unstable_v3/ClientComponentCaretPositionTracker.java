@@ -25,7 +25,6 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
-import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.event.CaretEvent;
@@ -68,8 +67,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
 
     public void startTracking(final Component component) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(
                 String.format("startTracking(component=%s): im=%s, this=%s.", component, getOwnerIm(), this),
@@ -109,8 +106,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public void stopTrackingCurrentComponent() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(String.format("stopTrackingCurrentComponent(): this=%s.", this), new Throwable("Stacktrace"));
         }
@@ -161,8 +156,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public Component getTrackedComponentIfTracking() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         final Component trackedComponentStrong;
         if (trackedComponent == null) {
             trackedComponentStrong = null;
@@ -189,8 +182,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
 
     public void deferUpdates() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(String.format("deferUpdates(): this=%s.", this), new Throwable("Stacktrace"));
         }
@@ -199,8 +190,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public void resumeUpdates(final boolean discardDeferredUpdates) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer(String.format("resumeUpdates(%b): this=%s.", discardDeferredUpdates, this), new Throwable("Stacktrace"));
         }
@@ -216,8 +205,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
     }
 
     public boolean areUpdatesDeferred() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         return updatesAreDeferred;
     }
 
@@ -226,8 +213,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#dispatchEvent(AWTEvent)}. */
     public void onIMDispatchEvent(AWTEvent event) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("onIMDispatchEvent(event={0}): this={1}.", event, this);
         }
@@ -255,8 +240,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
     /** This method is intended to be called from the owning IM's {@link java.awt.im.spi.InputMethod#notifyClientWindowChange(Rectangle)}. */
     public void onIMNotifyClientWindowChange(Rectangle location) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         if (log.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("onIMNotifyClientWindowChange(location={0}): this={1}.", location, this);
         }
@@ -334,8 +317,6 @@ class ClientComponentCaretPositionTracker implements ComponentListener, CaretLis
 
 
     private WLInputMethodZwpTextInputV3 getOwnerIm() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
-
         final WLInputMethodZwpTextInputV3 thisImStrong;
         if (this.im == null) {
             thisImStrong = null;

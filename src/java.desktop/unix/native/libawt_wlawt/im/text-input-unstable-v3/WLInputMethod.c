@@ -99,6 +99,8 @@ struct IMContext {
  *         will be raised in @p env
  */
 static struct IMContext* IMContext_Create(JNIEnv * const env, jobject wlInputMethodOwnerRefToCopy) {
+    ASSERT_ON_WL_THREAD(env);
+
     struct wl_seat * const wlSeat = wl_seat;
     struct zwp_text_input_manager_v3 * const textInputManager = zwp_text_input_manager;
 
@@ -174,6 +176,8 @@ failure:
 
 /// Destroys the context previously created by IMContext_Create
 static void IMContext_Destroy(JNIEnv * const env, struct IMContext * const imContext) {
+    ASSERT_ON_WL_THREAD(env);
+
     assert(env != NULL);
     assert(imContext != NULL);
 
@@ -504,6 +508,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_initIDs
 
 JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_createNativeContext(JNIEnv * const env, const jobject self) {
+    ASSERT_ON_WL_THREAD(env);
+
     struct IMContext *result = NULL;
 
     if (!checkIfTheImplementationIsAvailable()) {
@@ -522,6 +528,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_dispose
     const jclass clazz,
     const jlong contextPtr
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     struct IMContext *imContext = jlong_to_ptr(contextPtr);
 
     if (imContext == NULL) {
@@ -539,6 +547,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_zwp_1te
     const jobject self,
     const jlong contextPtr
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     const struct IMContext * const imContext = jlong_to_ptr(contextPtr);
     struct zwp_text_input_v3 *textInput = NULL;
 
@@ -562,6 +572,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_zwp_1te
     const jobject self,
     const jlong contextPtr
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     const struct IMContext * const imContext = jlong_to_ptr(contextPtr);
     struct zwp_text_input_v3 *textInput = NULL;
 
@@ -589,6 +601,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_zwp_1te
     const jint width,
     const jint height
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     const struct IMContext * const imContext = jlong_to_ptr(contextPtr);
     struct zwp_text_input_v3 *textInput = NULL;
 
@@ -620,6 +634,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_zwp_1te
     const jint hint,
     const jint purpose
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     const struct IMContext * const imContext = jlong_to_ptr(contextPtr);
     struct zwp_text_input_v3 *textInput = NULL;
 
@@ -644,6 +660,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_zwp_1te
     const jlong contextPtr,
     const jint changeCause
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     const struct IMContext * const imContext = jlong_to_ptr(contextPtr);
     struct zwp_text_input_v3 *textInput = NULL;
 
@@ -667,6 +685,8 @@ Java_sun_awt_wl_im_text_1input_1unstable_1v3_WLInputMethodZwpTextInputV3_zwp_1te
     const jobject self,
     const jlong contextPtr
 ) {
+    ASSERT_ON_WL_THREAD(env);
+
     const struct IMContext * const imContext = jlong_to_ptr(contextPtr);
     struct zwp_text_input_v3 *textInput = NULL;
 
