@@ -23,10 +23,15 @@
  * questions.
  */
 
-package sun.lwawt;
+package sun.lwawt.macosx;
 
 import java.awt.event.MouseEvent;
 
+import sun.lwawt.LWWindowPeer;
+
+/**
+ * macOS-specific workaround for JBR-7481 mouse entered/exited event issues.
+ */
 class Jbr7481MouseEnteredExitedFix {
     static final boolean isEnabled;
 
@@ -106,7 +111,13 @@ class Jbr7481MouseEnteredExitedFix {
 
     private static Jbr7481MouseEnteredExitedFix getCurrentPeerWorkaroundOrNull() {
         var currentPeer = getCurrentWindowPeer();
-        return currentPeer == null ? null : currentPeer.jbr7481MouseEnteredExitedFix;
+        if (currentPeer instanceof LWCWindowPeer lwcPeer) {
+            return lwcPeer.jbr7481MouseEnteredExitedFix;
+        }
+        if (currentPeer instanceof LWCLightweightFramePeer lwcLwPeer) {
+            return lwcLwPeer.jbr7481MouseEnteredExitedFix;
+        }
+        return null;
     }
 
     private static LWWindowPeer getCurrentWindowPeer() {

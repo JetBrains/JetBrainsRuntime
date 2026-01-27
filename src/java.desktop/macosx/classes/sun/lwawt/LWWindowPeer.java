@@ -154,8 +154,6 @@ public class LWWindowPeer
      */
     private LWWindowPeer blocker;
 
-    Jbr7481MouseEnteredExitedFix jbr7481MouseEnteredExitedFix = null;
-
     public LWWindowPeer(Window target, PlatformComponent platformComponent,
                         PlatformWindow platformWindow, PeerType peerType,
                         ToolkitAPI toolkitApi)
@@ -774,15 +772,10 @@ public class LWWindowPeer
                                  int x, int y, int absX, int absY,
                                  int modifiers, int clickCount, boolean popupTrigger,
                                  byte[] bdata) {
-        if (Jbr7481MouseEnteredExitedFix.isEnabled) {
-            mouseEnteredExitedBugWorkaround().apply(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
-        }
-        else {
-            doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
-        }
+        doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
     }
 
-    void doNotifyMouseEvent(int id, long when, int button,
+    public void doNotifyMouseEvent(int id, long when, int button,
                                  int x, int y, int absX, int absY,
                                  int modifiers, int clickCount, boolean popupTrigger,
                                  byte[] bdata)
@@ -929,13 +922,6 @@ public class LWWindowPeer
             }
         }
         notifyUpdateCursor();
-    }
-
-    private Jbr7481MouseEnteredExitedFix mouseEnteredExitedBugWorkaround() {
-        if (jbr7481MouseEnteredExitedFix == null) {
-            jbr7481MouseEnteredExitedFix = new Jbr7481MouseEnteredExitedFix(this);
-        }
-        return jbr7481MouseEnteredExitedFix;
     }
 
     private void generateMouseEnterExitEventsForComponents(long when,

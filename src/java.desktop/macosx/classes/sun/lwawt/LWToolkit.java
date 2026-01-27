@@ -214,7 +214,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     }
 
     @Override
-    public final FramePeer createLightweightFrame(LightweightFrame target) {
+    public FramePeer createLightweightFrame(LightweightFrame target) {
         PlatformComponent platformComponent = createLwPlatformComponent();
         PlatformWindow platformWindow = createPlatformWindow(PeerType.LW_FRAME);
         LWLightweightFramePeer peer =
