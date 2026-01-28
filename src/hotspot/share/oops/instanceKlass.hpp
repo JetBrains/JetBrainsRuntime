@@ -136,6 +136,7 @@ class InstanceKlass: public Klass {
   friend class ClassFileParser;
   friend class CompileReplay;
   friend class VM_EnhancedRedefineClasses;
+  friend class FieldStream;
 
  public:
   static const KlassKind Kind = InstanceKlassKind;

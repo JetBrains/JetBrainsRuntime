@@ -1892,3 +1892,15 @@ void InterpreterMacroAssembler::load_resolved_indy_entry(Register cache, Registe
   add(cache, cache, Array<ResolvedIndyEntry>::base_offset_in_bytes());
   lea(cache, Address(cache, index));
 }
+
+#ifdef ASSERT
+void InterpreterMacroAssembler::verify_field_offset(Register reg) {
+  // Verify the field offset is not in the header, implicitly checks for 0
+  Label L;
+  subs(zr, reg, static_cast<int>(sizeof(markWord) + (UseCompressedClassPointers ? sizeof(narrowKlass) : sizeof(Klass*))));
+  br(Assembler::GE, L);
+  stop("bad field offset");
+  bind(L);
+}
+#endif
+

@@ -26,11 +26,7 @@
 package sun.net.httpserver;
 
 import java.io.*;
-import java.net.*;
 import java.util.Objects;
-
-import com.sun.net.httpserver.*;
-import com.sun.net.httpserver.spi.*;
 
 /**
  * a class which allows the caller to write an arbitrary
@@ -153,7 +149,7 @@ class ChunkedOutputStream extends FilterOutputStream
             closed = true;
         }
 
-        WriteFinishedEvent e = new WriteFinishedEvent (t);
+        Event e = new Event.WriteFinished(t);
         t.getHttpContext().getServerImpl().addEvent (e);
     }
 
