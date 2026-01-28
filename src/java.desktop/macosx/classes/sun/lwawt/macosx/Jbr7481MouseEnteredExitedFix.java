@@ -80,14 +80,14 @@ class Jbr7481MouseEnteredExitedFix {
                 }
                 // Then forward the "mouse entered" to this window, regardless of whether it's already current.
                 // Repeated "mouse entered" are allowed and may be even needed somewhere deep inside this call.
-                peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                peer.notifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
             }
             case MouseEvent.MOUSE_EXITED -> {
                 var currentPeerWorkaround = getCurrentPeerWorkaroundOrNull();
                 // An "exited" event often arrives too late. Such events may cause the current window to get lost.
                 // And since we've already sent a "mouse exited" when entering the current window, we don't need another one.
                 if (currentPeerWorkaround == this) {
-                    peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                    peer.notifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
                 }
             }
             case MouseEvent.MOUSE_MOVED -> {
@@ -101,10 +101,10 @@ class Jbr7481MouseEnteredExitedFix {
                     // Next, send a fake "mouse entered" to the new window.
                     sendMouseEntered();
                 }
-                peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                peer.notifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
             }
             default -> {
-                peer.doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+                peer.notifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
             }
         }
     }
@@ -125,7 +125,7 @@ class Jbr7481MouseEnteredExitedFix {
     }
 
     private void sendMouseEntered() {
-        peer.doNotifyMouseEvent(
+        peer.notifyMouseEvent(
                 MouseEvent.MOUSE_ENTERED, when, MouseEvent.NOBUTTON,
                 x, y, absX, absY,
                 modifiers, 0, false,
@@ -134,7 +134,7 @@ class Jbr7481MouseEnteredExitedFix {
     }
 
     private void sendMouseExited() {
-        peer.doNotifyMouseEvent(
+        peer.notifyMouseEvent(
                 MouseEvent.MOUSE_EXITED, when, MouseEvent.NOBUTTON,
                 x, y, absX, absY,
                 modifiers, 0, false,

@@ -772,14 +772,6 @@ public class LWWindowPeer
                                  int x, int y, int absX, int absY,
                                  int modifiers, int clickCount, boolean popupTrigger,
                                  byte[] bdata) {
-        doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
-    }
-
-    public void doNotifyMouseEvent(int id, long when, int button,
-                                 int x, int y, int absX, int absY,
-                                 int modifiers, int clickCount, boolean popupTrigger,
-                                 byte[] bdata)
-    {
         // TODO: fill "bdata" member of AWTEvent
         Rectangle r = getBounds();
         // findPeerAt() expects parent coordinates

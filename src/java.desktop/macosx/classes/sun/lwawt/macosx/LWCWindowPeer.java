@@ -53,7 +53,7 @@ public class LWCWindowPeer extends LWWindowPeer {
         if (Jbr7481MouseEnteredExitedFix.isEnabled) {
             mouseEnteredExitedBugWorkaround().apply(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
         } else {
-            doNotifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
+            super.notifyMouseEvent(id, when, button, x, y, absX, absY, modifiers, clickCount, popupTrigger, bdata);
         }
     }
 
