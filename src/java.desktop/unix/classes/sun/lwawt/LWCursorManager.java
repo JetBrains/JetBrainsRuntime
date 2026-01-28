@@ -25,10 +25,7 @@
 
 package sun.lwawt;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Cursor;
-import java.awt.Point;
+import java.awt.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -64,7 +61,7 @@ public abstract class LWCursorManager {
      * This method is called on the toolkit thread as a result of a
      * native update cursor request (e.g. WM_SETCURSOR on Windows).
      */
-    public final void updateCursorLater(final LWWindowPeer window) {
+    public final void updateCursorLater(final Window target) {
         if (updatePending.compareAndSet(false, true)) {
             Runnable r = new Runnable() {
                 @Override
@@ -72,7 +69,7 @@ public abstract class LWCursorManager {
                     updateCursor();
                 }
             };
-            SunToolkit.executeOnEventHandlerThread(window.getTarget(), r);
+            SunToolkit.executeOnEventHandlerThread(target, r);
         }
     }
 
