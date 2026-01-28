@@ -355,6 +355,10 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         return target;
     }
 
+    protected final ToolkitAPI getToolkitApi() {
+        return toolkitApi;
+    }
+
     // Just a helper method
     // Returns the window peer or null if this is a window peer
     protected final LWWindowPeerAPI getWindowPeer() {

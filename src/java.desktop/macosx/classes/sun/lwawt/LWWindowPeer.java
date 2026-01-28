@@ -740,7 +740,7 @@ public class LWWindowPeer
 
     @Override
     public void notifyUpdateCursor() {
-        LWToolkit.getLWToolkit().getCursorManager().updateCursorLater(this);
+        getToolkitApi().updateCursorLater(getTarget());
     }
 
     @Override
@@ -809,7 +809,7 @@ public class LWWindowPeer
                 lastMouseEventPeer = targetPeer;
             }
         } else {
-            PlatformWindow topmostPlatformWindow = LWToolkit.getLWToolkit().getPlatformWindowUnderMouse();
+            PlatformWindow topmostPlatformWindow = getToolkitApi().getPlatformWindowUnderMouse();
 
             LWWindowPeer topmostWindowPeer =
                     topmostPlatformWindow != null ? (LWWindowPeer) topmostPlatformWindow.getPeer() : null;
@@ -1169,8 +1169,8 @@ public class LWWindowPeer
                 oldData.flush();
             }
         }
-        LWToolkit.flushOnscreenGraphics();
-        if (((LWToolkit) Toolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
+        getToolkitApi().flushOnscreenGraphics();
+        if (getToolkitApi().needUpdateWindowAfterPaint()) {
             updateWindow();
         }
     }
