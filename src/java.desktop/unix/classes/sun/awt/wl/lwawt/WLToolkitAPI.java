@@ -28,6 +28,7 @@ package sun.awt.wl.lwawt;
 import sun.awt.wl.WLToolkit;
 import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.PlatformDropTarget;
+import sun.lwawt.PlatformWindow;
 import sun.lwawt.ToolkitAPI;
 
 import java.awt.*;
@@ -72,6 +73,17 @@ public class WLToolkitAPI implements ToolkitAPI {
     @Override
     public void updateCursorImmediately() {
         // TODO compare WLCursorManager and LWCursorManager
+    }
+
+    @Override
+    public void updateCursorLater(Window target) {
+        // TODO implement cursor update for Wayland
+    }
+
+    @Override
+    public PlatformWindow getPlatformWindowUnderMouse() {
+        // TODO implement for Wayland if needed
+        return null;
     }
 
     @Override

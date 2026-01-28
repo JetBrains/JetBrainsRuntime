@@ -48,6 +48,16 @@ public class LWToolkitAPI implements ToolkitAPI {
     }
 
     @Override
+    public void updateCursorLater(Window target) {
+        LWToolkit.getLWToolkit().getCursorManager().updateCursorLater(target);
+    }
+
+    @Override
+    public PlatformWindow getPlatformWindowUnderMouse() {
+        return LWToolkit.getLWToolkit().getPlatformWindowUnderMouse();
+    }
+
+    @Override
     public PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer) {
         return LWToolkit.getLWToolkit().createDropTarget(dropTarget, component, peer);
     }
