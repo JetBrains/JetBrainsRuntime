@@ -35,6 +35,7 @@
 
 #define RUNTIME_CONSTRAINTS(f)                        \
   f(ccstr,  AOTCacheConstraintFunc)                   \
+  f(ccstr,  AOTCacheOutputConstraintFunc)             \
   f(ccstr,  AOTConfigurationConstraintFunc)           \
   f(ccstr,  AOTModeConstraintFunc)                    \
   f(int,    ObjectAlignmentInBytesConstraintFunc)     \
@@ -42,7 +43,8 @@
   f(int,    PerfDataSamplingIntervalFunc)             \
   f(uintx,  VMPageSizeConstraintFunc)                 \
   f(size_t, NUMAInterleaveGranularityConstraintFunc)  \
-  f(ccstr, HotswapAgentConstraintFunc)
+  f(ccstr, HotswapAgentConstraintFunc)                \
+  f(size_t, LargePageSizeInBytesConstraintFunc)
 
 RUNTIME_CONSTRAINTS(DECLARE_CONSTRAINT)
 

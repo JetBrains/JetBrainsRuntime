@@ -242,8 +242,10 @@ const int ObjectAlignmentInBytes = 8;
                                                                             \
   product(size_t, LargePageSizeInBytes, 0,                                  \
           "Maximum large page size used (0 will use the default large "     \
-          "page size for the environment as the maximum)")                  \
+          "page size for the environment as the maximum) "                  \
+          "(must be a power of 2)")                                         \
           range(0, max_uintx)                                               \
+          constraint(LargePageSizeInBytesConstraintFunc, AtParse)           \
                                                                             \
   product(size_t, LargePageHeapSizeThreshold, 128*M,                        \
           "Use large pages if maximum heap is at least this big")           \
@@ -292,6 +294,9 @@ const int ObjectAlignmentInBytes = 8;
                                                                             \
   product(bool, UseInlineCaches, true,                                      \
           "Use Inline Caches for virtual calls ")                           \
+                                                                            \
+  develop(bool, VerifyInlineCaches, true,                                   \
+          "Verify Inline Caches")                                           \
                                                                             \
   product(bool, InlineArrayCopy, true, DIAGNOSTIC,                          \
           "Inline arraycopy native that is known to be part of "            \
@@ -484,6 +489,9 @@ const int ObjectAlignmentInBytes = 8;
                                                                             \
   develop(bool, ZapFillerObjects, trueInDebug,                              \
           "Zap filler objects")                                             \
+                                                                            \
+  develop(bool, ZapCHeap, trueInDebug,                                      \
+          "Zap allocated/freed C heap space")                               \
                                                                             \
   develop(bool, ZapTLAB, trueInDebug,                                       \
           "Zap allocated TLABs")                                            \
@@ -2029,8 +2037,8 @@ const int ObjectAlignmentInBytes = 8;
           "core: core HA. Use integrated hotswap-agent-core.jar"            \
           "external: external HA. use external HA, open required JDK "      \
           "modules.")                                                       \
-          constraint(HotswapAgentConstraintFunc, AfterErgo)
-
+          constraint(HotswapAgentConstraintFunc, AfterErgo)                 \
+                                                                            \
 
 // end of RUNTIME_FLAGS
 
