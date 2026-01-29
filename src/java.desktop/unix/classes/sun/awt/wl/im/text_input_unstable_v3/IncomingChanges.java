@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 JetBrains s.r.o.
+ * Copyright 2025-2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
+import java.nio.charset.CharacterCodingException;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -36,6 +37,25 @@ import java.util.Objects;
  */
 final class IncomingChanges
 {
+    public static class ConversionException extends java.io.IOException {
+        @java.io.Serial
+        private static final long serialVersionUID = 7010594789107134519L;
+
+        public ConversionException(String message) {
+            super(message);
+        }
+        public ConversionException(Throwable cause) {
+            super(cause);
+        }
+        public ConversionException(String message, Throwable cause) {
+            super(message, cause);
+        }
+        public ConversionException(Throwable cause, String format, Object... args) {
+            super(String.format(format, args), cause);
+        }
+    }
+
+
     public IncomingChanges updatePreeditString(byte[] newPreeditStringUtf8, int newPreeditStringCursorBeginUtf8Byte, int newPreeditStringCursorEndUtf8Byte) {
         this.doUpdatePreeditString = true;
         this.newPreeditStringUtf8 = newPreeditStringUtf8;
@@ -50,18 +70,30 @@ final class IncomingChanges
      * @return {@code null} if there are no changes in the preedit string
      *                      (i.e. {@link #updatePreeditString(byte[], int, int)} hasn't been called);
      *         an instance of JavaPreeditString otherwise.
+     * @throws ConversionException if failed to convert the data provided in {@link #updatePreeditString(byte[], int, int)}
+     *                             to an instance of JavaPreeditString.
      * @see JavaPreeditString
      */
-    public JavaPreeditString getPreeditString() {
+    public JavaPreeditString getPreeditString() throws ConversionException {
         if (cachedResultPreeditString != null) {
             return cachedResultPreeditString;
         }
 
-        cachedResultPreeditString = doUpdatePreeditString
-            ? JavaPreeditString.fromWaylandPreeditString(newPreeditStringUtf8, newPreeditStringCursorBeginUtf8Byte, newPreeditStringCursorEndUtf8Byte)
-            : null;
+        try {
+            cachedResultPreeditString = doUpdatePreeditString
+                ? JavaPreeditString.fromWaylandPreeditString(newPreeditStringUtf8, newPreeditStringCursorBeginUtf8Byte, newPreeditStringCursorEndUtf8Byte)
+                : null;
 
-        return cachedResultPreeditString;
+            return cachedResultPreeditString;
+        } catch (CharacterCodingException err) {
+            throw new ConversionException(
+                err,
+                "Failed to convert zwp_text_input_v3::preedit_string(%s, %d, %d) to JavaPreeditString",
+                byteArrayToHexArrayString(newPreeditStringUtf8),
+                newPreeditStringCursorBeginUtf8Byte,
+                newPreeditStringCursorEndUtf8Byte
+            );
+        }
     }
 
 
@@ -77,18 +109,28 @@ final class IncomingChanges
      * @return {@code null} if there are no changes in the commit string
      *                     (i.e. {@link #updateCommitString(byte[])}  hasn't been called);
      *         an instance of JavaCommitString otherwise.
+     * @throws ConversionException if failed to convert the data provided in {@link #updateCommitString(byte[])}
+     *                             to an instance of JavaCommitString.
      * @see JavaCommitString
      */
-    public JavaCommitString getCommitString() {
+    public JavaCommitString getCommitString() throws ConversionException {
         if (cachedResultCommitString != null) {
             return cachedResultCommitString;
         }
 
-        cachedResultCommitString = doUpdateCommitString
-            ? JavaCommitString.fromWaylandCommitString(newCommitStringUtf8)
-            : null;
+        try {
+            cachedResultCommitString = doUpdateCommitString
+                    ? JavaCommitString.fromWaylandCommitString(newCommitStringUtf8)
+                    : null;
 
-        return cachedResultCommitString;
+            return cachedResultCommitString;
+        } catch (CharacterCodingException err) {
+            throw new ConversionException(
+                err,
+                "Failed to convert zwp_text_input_v3::commit_string(%s) to JavaCommitString",
+                byteArrayToHexArrayString(newCommitStringUtf8)
+            );
+        }
     }
 
 
@@ -128,4 +170,27 @@ final class IncomingChanges
     private boolean doUpdateCommitString = false;
     private byte[] newCommitStringUtf8 = null;
     private JavaCommitString cachedResultCommitString = null;
+
+
+    private static String byteArrayToHexArrayString(byte[] arr) {
+        if (arr == null)
+            return "null";
+
+        final int iMax = Math.min(arr.length - 1, 15);
+        if (iMax == -1)
+            return "[]";
+
+        final StringBuilder b = new StringBuilder();
+        b.append('[');
+        for (int i = 0; ; ++i) {
+            b.append("0x").append(Integer.toHexString(Byte.toUnsignedInt(arr[i])));
+            if (i == iMax) {
+                if (iMax < arr.length - 1) {
+                    b.append(", ...");
+                }
+                return b.append(']').toString();
+            }
+            b.append(", ");
+        }
+    }
 }
