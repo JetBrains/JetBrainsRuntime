@@ -163,17 +163,9 @@ assert_on_wl_thread(JNIEnv* env)
 
     if (pthread_equal(wl_thread_id, pthread_self()) == 0) {
         // A different dispatch thread may have been started, check for real
-        jboolean hasException = JNI_FALSE;
-        jvalue ok = JNU_CallStaticMethodByName(env, &hasException, "sun/awt/wl/WLToolkit", "isWLThread", "()Z");
-
-        if (hasException) {
-            fprintf(stderr, "assert_on_wl_thread: failed to call WLToolkit.isWLThread()");
-            (*env)->ExceptionClear(env);
-            return;
-        }
-
+        jvalue ok = JNU_CallStaticMethodByName(env, NULL, "sun/awt/wl/WLToolkit", "isWLThread", "()Z");
         if (!ok.z) {
-            JNU_ThrowByName(env, "java/lang/AssertionError", "This function must be executed on EDT");
+            JNU_CallStaticMethodByName(env, NULL, "sun/awt/wl/WLToolkit", "assertOnWLThread", "()V");
         } else {
             wl_thread_id = pthread_self();
         }

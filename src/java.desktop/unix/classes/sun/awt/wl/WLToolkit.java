@@ -368,6 +368,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return Thread.currentThread() == toolkitThread;
     }
 
+    private static void assertOnWLThread() {
+        assert isWLThread() : "Method must be called on the WL thread";
+    }
+
     /**
      * If more than this amount milliseconds has passed since the same mouse button click,
      * the next click is considered separate and not part of multi-click event.
