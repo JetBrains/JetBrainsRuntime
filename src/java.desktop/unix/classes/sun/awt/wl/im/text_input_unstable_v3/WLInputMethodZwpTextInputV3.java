@@ -1423,8 +1423,33 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 preeditStringToApply = PropertiesInitials.PREEDIT_STRING;
                 commitStringToApply = PropertiesInitials.COMMIT_STRING;
             } else {
-                preeditStringToApply = Objects.requireNonNullElse(incomingChangesToApply.getPreeditString(), PropertiesInitials.PREEDIT_STRING);
-                commitStringToApply = Objects.requireNonNullElse(incomingChangesToApply.getCommitString(), PropertiesInitials.COMMIT_STRING);
+                JavaPreeditString tmp1;
+                try {
+                    tmp1 = incomingChangesToApply.getPreeditString();
+                } catch (IncomingChanges.ConversionException err) {
+                    tmp1 = JavaPreeditString.EMPTY;
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning(
+                            String.format("Failed to obtain the preedit string from the incoming changes, instead will use %s.", tmp1),
+                            err
+                        );
+                    }
+                }
+                preeditStringToApply = Objects.requireNonNullElse(tmp1, PropertiesInitials.PREEDIT_STRING);
+
+                JavaCommitString tmp2;
+                try {
+                    tmp2 = incomingChangesToApply.getCommitString();
+                } catch (IncomingChanges.ConversionException err) {
+                    tmp2 = JavaCommitString.EMPTY;
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning(
+                            String.format("Failed to obtain the commit string from the incoming changes, instead will use %s.", tmp2),
+                            err
+                        );
+                    }
+                }
+                commitStringToApply = Objects.requireNonNullElse(tmp2, PropertiesInitials.COMMIT_STRING);
             }
 
             this.wlInputContextState.syncWithAppliedIncomingChanges(preeditStringToApply, commitStringToApply, doneSerial);

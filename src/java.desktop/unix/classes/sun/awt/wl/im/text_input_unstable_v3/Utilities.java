@@ -25,8 +25,6 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
-import java.nio.charset.StandardCharsets;
-
 
 interface Utilities {
     static int getLengthOfUtf8BytesWithoutTrailingNULs(final byte[] utf8Bytes) {
@@ -40,20 +38,34 @@ interface Utilities {
         return (lastNonNulIndex < 0) ? 0 : lastNonNulIndex + 1;
     }
 
-    static String utf8BytesToJavaString(final byte[] utf8Bytes) {
-        if (utf8Bytes == null) {
-            return "";
+    /**
+     * Checks that {@code index}-th byte is the first byte in a UTF-8 code point sequence or the end of the string.
+     *
+     * @param index index of the byte in {@code utf8StrBytes} to check
+     * @param utf8StrBytes byte array representing a correctly encoded UTF-8 string
+     * @param utf8StrBytesLength if non-negative, will be considered as the array length instead of {@code utf8StrBytes.length}
+     * @return {@code true} if either {@code index} points to the end of the string or to a first byte of a code point
+     */
+    static boolean isUtf8CharBoundary(final int index, final byte[] utf8StrBytes, int utf8StrBytesLength) {
+        utf8StrBytesLength = utf8StrBytesLength < 0 ? utf8StrBytes.length : utf8StrBytesLength;
+
+        if (utf8StrBytesLength > utf8StrBytes.length) {
+            throw new ArrayIndexOutOfBoundsException("utf8StrBytesLength");
+        }
+        if (index < 0 || index > utf8StrBytesLength) {
+            throw new ArrayIndexOutOfBoundsException("index");
         }
 
-        return utf8BytesToJavaString(
-            utf8Bytes,
-            0,
-            // Java's UTF-8 -> UTF-16 conversion doesn't like trailing NUL codepoints, so let's trim them
-            getLengthOfUtf8BytesWithoutTrailingNULs(utf8Bytes)
-        );
-    }
+        if (index == utf8StrBytesLength) {
+            return true;
+        }
 
-    static String utf8BytesToJavaString(final byte[] utf8Bytes, final int offset, final int length) {
-        return utf8Bytes == null ? "" : new String(utf8Bytes, offset, length, StandardCharsets.UTF_8);
+        final byte utf8Byte = utf8StrBytes[index];
+
+        // In a valid UTF-8 string, a byte is the first byte of an encoded code point if and only if
+        //   its binary representation does NOT start with 10, i.e. does NOT match 0b10......
+
+        final int utf8ByteUnsigned = Byte.toUnsignedInt(utf8Byte);
+        return ((utf8ByteUnsigned & 0b1100_0000) != 0b1000_0000);
     }
 }
