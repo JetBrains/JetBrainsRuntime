@@ -1196,6 +1196,29 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         return wlIncomingChanges;
     }
 
+
+    private JavaPreeditString wlFixPreeditStringIfBroken(final JavaPreeditString preeditString) {
+        if (preeditString == null) {
+            return null;
+        }
+
+        final boolean isGNOME46OrBelow;
+        if (CurrentDesktopInfo.isGnome()) {
+            final int gnomeVersion = CurrentDesktopInfo.getGnomeShellMajorVersion();
+            isGNOME46OrBelow = gnomeVersion >= 0 && gnomeVersion <= 46;
+        } else {
+            isGNOME46OrBelow = false;
+        }
+
+        // https://gitlab.gnome.org/GNOME/mutter/-/issues/3547.
+        // Working around it here by resetting cursor_end to cursor_begin.
+        if (isGNOME46OrBelow) {
+            return new JavaPreeditString(preeditString.text(), preeditString.cursorBeginCodeUnit(), preeditString.cursorBeginCodeUnit());
+        }
+        return preeditString;
+    }
+
+
     /** Called by {@link ClientComponentCaretPositionTracker} */
     boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
@@ -1415,8 +1438,34 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 preeditStringToApply = PropertiesInitials.PREEDIT_STRING;
                 commitStringToApply = PropertiesInitials.COMMIT_STRING;
             } else {
-                preeditStringToApply = Objects.requireNonNullElse(incomingChangesToApply.getPreeditString(), PropertiesInitials.PREEDIT_STRING);
-                commitStringToApply = Objects.requireNonNullElse(incomingChangesToApply.getCommitString(), PropertiesInitials.COMMIT_STRING);
+                JavaPreeditString preeditStringToApplyInitializer;
+                try {
+                    preeditStringToApplyInitializer = incomingChangesToApply.getPreeditString();
+                } catch (IncomingChanges.ConversionException err) {
+                    preeditStringToApplyInitializer = JavaPreeditString.EMPTY;
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning(
+                            String.format("Failed to obtain the preedit string from the incoming changes, instead will use %s.", preeditStringToApplyInitializer),
+                            err
+                        );
+                    }
+                }
+                preeditStringToApplyInitializer = wlFixPreeditStringIfBroken(preeditStringToApplyInitializer);
+                preeditStringToApply = Objects.requireNonNullElse(preeditStringToApplyInitializer, PropertiesInitials.PREEDIT_STRING);
+
+                JavaCommitString commitStringToApplyInitializer;
+                try {
+                    commitStringToApplyInitializer = incomingChangesToApply.getCommitString();
+                } catch (IncomingChanges.ConversionException err) {
+                    commitStringToApplyInitializer = JavaCommitString.EMPTY;
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning(
+                            String.format("Failed to obtain the commit string from the incoming changes, instead will use %s.", commitStringToApplyInitializer),
+                            err
+                        );
+                    }
+                }
+                commitStringToApply = Objects.requireNonNullElse(commitStringToApplyInitializer, PropertiesInitials.COMMIT_STRING);
             }
 
             this.wlInputContextState.syncWithAppliedIncomingChanges(preeditStringToApply, commitStringToApply, doneSerial);
