@@ -58,6 +58,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
 
     public WLInputMethodZwpTextInputV3() throws AWTException {
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
         wlInitializeContext();
     }
 
@@ -820,6 +821,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         assert wlPendingChanges == null : "Must not initialize pending changes twice";
         assert wlBeingCommittedChanges == null : "Must not initialize being-committed changes twice";
         assert wlIncomingChanges == null : "Must not initialize incoming changes twice";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
 
         long nativeCtxPtr = 0;
 
@@ -849,7 +851,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         wlIncomingChanges = null;
 
         if (ctxToDispose != null && ctxToDispose.nativeContextPtr != 0) {
-            disposeNativeContext(ctxToDispose.nativeContextPtr);
+            WLToolkit.performOnWLThread(() -> disposeNativeContext(ctxToDispose.nativeContextPtr));
         }
     }
 

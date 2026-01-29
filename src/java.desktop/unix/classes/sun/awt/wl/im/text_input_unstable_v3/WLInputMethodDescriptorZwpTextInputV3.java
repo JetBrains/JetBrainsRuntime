@@ -96,7 +96,7 @@ public final class WLInputMethodDescriptorZwpTextInputV3 implements InputMethodD
 
         ensureIsAvailableOnPlatform();
 
-        final var result = new WLInputMethodZwpTextInputV3();
+        final var result = WLToolkit.performOnWLThreadAndWait(WLInputMethodZwpTextInputV3::new);
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("createInputMethod(): result={0}.", result);
