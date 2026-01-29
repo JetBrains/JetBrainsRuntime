@@ -50,7 +50,7 @@ public class WLSubSurface extends WLSurface {
 
     @Override
     public void hide() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
         if (isValid()) {
             nativeDestroyWlSubSurface(wlSubSurfacePtr);
             super.hide();

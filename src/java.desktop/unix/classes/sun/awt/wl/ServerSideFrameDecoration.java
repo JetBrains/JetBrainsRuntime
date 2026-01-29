@@ -80,7 +80,7 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowCreated(long nativePtr) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         if (!peer.targetIsWlPopup()) {
             nativeDecorPtr = createToplevelDecorationImpl(nativePtr);
@@ -89,7 +89,7 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowToBeHidden(long nativePtr) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         if (nativeDecorPtr != 0) {
             disposeImpl(nativeDecorPtr);
@@ -99,7 +99,7 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void dispose() {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         // Native resources must have been already disposed when the window was hidden
         assert nativeDecorPtr == 0 : "Native resources must have been already disposed";

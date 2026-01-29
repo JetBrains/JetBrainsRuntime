@@ -90,7 +90,7 @@ public class WLMainSurface extends WLSurface {
     }
 
     public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
         assertIsValid();
 
         nativeActivate(getNativePtr(), serial, activatingSurfacePtr);

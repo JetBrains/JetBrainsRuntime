@@ -369,7 +369,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
         // Invoked from the native code
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
 
@@ -399,7 +399,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                                                  char keyChar,
                                                  int modifiers) {
         // Invoked from the native code
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         final long timestamp = System.currentTimeMillis();
 
@@ -458,14 +458,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     }
 
     private static void dispatchKeyboardModifiersEvent(long serial) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
         inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
         WLDropTargetContextPeer.getInstance().handleModifiersUpdate();
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
         // Invoked from the native code
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardEnterEvent: " + serial + ", surface 0x"
@@ -504,7 +504,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchKeyboardLeaveEvent(long serial, long surfacePtr) {
         // Invoked from the native code
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardLeaveEvent: " + serial + ", surface 0x"
