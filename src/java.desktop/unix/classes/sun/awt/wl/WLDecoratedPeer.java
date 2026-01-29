@@ -185,7 +185,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     @Override
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         boolean wasFullscreen = isFullscreen();
 

@@ -58,7 +58,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
 
     public WLInputMethodZwpTextInputV3() throws AWTException {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
         wlInitializeContext();
     }
 
@@ -821,7 +821,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         assert wlPendingChanges == null : "Must not initialize pending changes twice";
         assert wlBeingCommittedChanges == null : "Must not initialize being-committed changes twice";
         assert wlIncomingChanges == null : "Must not initialize incoming changes twice";
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         long nativeCtxPtr = 0;
 
@@ -1282,7 +1282,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::enter} events. */
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1304,7 +1304,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1327,7 +1327,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1347,7 +1347,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::commit_string} events. */
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1367,7 +1367,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         // TODO: support the surrounding text API (set_surrounding_text + set_text_change_cause | delete_surrounding text)
         //       at least for particular cases.
@@ -1386,7 +1386,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::done} events. */
     private void zwp_text_input_v3_onDone(long doneSerial) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         try {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {

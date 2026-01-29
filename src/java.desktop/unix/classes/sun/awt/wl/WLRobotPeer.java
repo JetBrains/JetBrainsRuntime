@@ -164,7 +164,7 @@ public class WLRobotPeer implements RobotPeer {
     static Point getLocationOfWLSurface(WLSurface wlSurface) {
         checkExtensionPresent();
 
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         final long wlSurfacePtr = wlSurface.getWlSurfacePtr();
         // The native implementation allows for just one such request at a time
@@ -184,7 +184,7 @@ public class WLRobotPeer implements RobotPeer {
      * @param y the absolute y-coordinate
      */
     static void setLocationOfWLSurface(WLSurface wlSurface, int x, int y) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         if (isRobotExtensionPresent) {
             long wlSurfacePtr = wlSurface.getWlSurfacePtr();

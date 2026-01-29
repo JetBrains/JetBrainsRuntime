@@ -156,7 +156,7 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     @Override
     void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
                           boolean active, boolean maximized, boolean fullscreen) {
-        assert WLToolkit.isWLThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be invoked on the WL thread";
 
         int widthBefore = getWidth();
         int heightBefore = getHeight();
