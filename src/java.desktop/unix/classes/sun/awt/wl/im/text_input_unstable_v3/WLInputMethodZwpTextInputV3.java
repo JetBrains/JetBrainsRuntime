@@ -1320,9 +1320,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             }
 
             if (wlInputContextState.getCurrentWlSurfacePtr() != leftWlSurfacePtr) {
-                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                    log.warning("zwp_text_input_v3_onLeave: leftWlSurfacePtr==0x{0} isn''t equal to the currently known one 0x{1}.",
-                                Long.toHexString(leftWlSurfacePtr), Long.toHexString(wlInputContextState.getCurrentWlSurfacePtr()));
+                if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                    log.info("zwp_text_input_v3_onLeave: leftWlSurfacePtr==0x{0} isn''t equal to the currently known one 0x{1}.",
+                             Long.toHexString(leftWlSurfacePtr), Long.toHexString(wlInputContextState.getCurrentWlSurfacePtr()));
                 }
             }
 
