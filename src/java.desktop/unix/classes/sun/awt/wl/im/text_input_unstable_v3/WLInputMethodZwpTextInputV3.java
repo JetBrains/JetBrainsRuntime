@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 JetBrains s.r.o.
+ * Copyright 2025-2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -659,18 +659,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 final int highlightEndCodeUnitIndex =
                     Math.max(0, Math.min(preeditString.cursorEndCodeUnit(), preeditString.text().length()));
 
-                // Mutter doesn't seem to send preedit_string events with highlighting
-                //   (i.e. they never have cursor_begin != cursor_end) at all.
-                // KWin, however, always uses highlighting. Looking at how it changes when we navigate within the
-                //   preedit text with arrow keys, it becomes clear KWin expects the caret to be put at the end
-                //   of the highlighting and not at the beginning.
-                // That's why highlightEndCodeUnitIndex is used here and not highlightBeginCodeUnitIndex.
-                imeCaret = TextHitInfo.beforeOffset(highlightEndCodeUnitIndex);
+                imeCaret = TextHitInfo.beforeOffset(highlightBeginCodeUnitIndex);
 
                 // cursor_begin and cursor_end
                 //  "could be represented by the client as a line if both values are the same,
                 //   or as a text highlight otherwise"
-                if (highlightEndCodeUnitIndex == highlightBeginCodeUnitIndex) {
+                if (highlightBeginCodeUnitIndex == highlightEndCodeUnitIndex) {
                     // Only basic highlighting
                     awtInstallIMHighlightingInto(imeText, commitString.text().length(), preeditString.text().length(), 0, 0);
                 } else {
@@ -745,8 +739,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         //           (e.g. via environment variables).
         //     For now we're adjusting to iBus, because it seems to be the most widespread engine.
         final InputMethodHighlight IM_BASIC_HIGHLIGHTING = InputMethodHighlight.UNSELECTED_CONVERTED_TEXT_HIGHLIGHT;
-        // I'm not sure if the "text highlight" mentioned in zwp_text_input_v3::preedit_string means the text
-        //   should look selected.
         final InputMethodHighlight IM_SPECIAL_HIGHLIGHTING = InputMethodHighlight.SELECTED_CONVERTED_TEXT_HIGHLIGHT;
 
         if (specialPreeditHighlightingBegin == specialPreeditHighlightingEnd) {
