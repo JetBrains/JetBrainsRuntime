@@ -659,18 +659,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 final int highlightEndCodeUnitIndex =
                     Math.max(0, Math.min(preeditString.cursorEndCodeUnit(), preeditString.text().length()));
 
-                // Mutter doesn't seem to send preedit_string events with highlighting
-                //   (i.e. they never have cursor_begin != cursor_end) at all.
-                // KWin, however, always uses highlighting. Looking at how it changes when we navigate within the
-                //   preedit text with arrow keys, it becomes clear KWin expects the caret to be put at the end
-                //   of the highlighting and not at the beginning.
-                // That's why highlightEndCodeUnitIndex is used here and not highlightBeginCodeUnitIndex.
-                imeCaret = TextHitInfo.beforeOffset(highlightEndCodeUnitIndex);
+                imeCaret = TextHitInfo.beforeOffset(highlightBeginCodeUnitIndex);
 
                 // cursor_begin and cursor_end
                 //  "could be represented by the client as a line if both values are the same,
                 //   or as a text highlight otherwise"
-                if (highlightEndCodeUnitIndex == highlightBeginCodeUnitIndex) {
+                if (highlightBeginCodeUnitIndex == highlightEndCodeUnitIndex) {
                     // Only basic highlighting
                     awtInstallIMHighlightingInto(imeText, commitString.text().length(), preeditString.text().length(), 0, 0);
                 } else {
@@ -745,8 +739,6 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         //           (e.g. via environment variables).
         //     For now we're adjusting to iBus, because it seems to be the most widespread engine.
         final InputMethodHighlight IM_BASIC_HIGHLIGHTING = InputMethodHighlight.UNSELECTED_CONVERTED_TEXT_HIGHLIGHT;
-        // I'm not sure if the "text highlight" mentioned in zwp_text_input_v3::preedit_string means the text
-        //   should look selected.
         final InputMethodHighlight IM_SPECIAL_HIGHLIGHTING = InputMethodHighlight.SELECTED_CONVERTED_TEXT_HIGHLIGHT;
 
         if (specialPreeditHighlightingBegin == specialPreeditHighlightingEnd) {
@@ -1423,33 +1415,33 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 preeditStringToApply = PropertiesInitials.PREEDIT_STRING;
                 commitStringToApply = PropertiesInitials.COMMIT_STRING;
             } else {
-                JavaPreeditString tmp1;
+                JavaPreeditString preeditStringToApplyInitializer;
                 try {
-                    tmp1 = incomingChangesToApply.getPreeditString();
+                    preeditStringToApplyInitializer = incomingChangesToApply.getPreeditString();
                 } catch (IncomingChanges.ConversionException err) {
-                    tmp1 = JavaPreeditString.EMPTY;
+                    preeditStringToApplyInitializer = JavaPreeditString.EMPTY;
                     if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                         log.warning(
-                            String.format("Failed to obtain the preedit string from the incoming changes, instead will use %s.", tmp1),
+                            String.format("Failed to obtain the preedit string from the incoming changes, instead will use %s.", preeditStringToApplyInitializer),
                             err
                         );
                     }
                 }
-                preeditStringToApply = Objects.requireNonNullElse(tmp1, PropertiesInitials.PREEDIT_STRING);
+                preeditStringToApply = Objects.requireNonNullElse(preeditStringToApplyInitializer, PropertiesInitials.PREEDIT_STRING);
 
-                JavaCommitString tmp2;
+                JavaCommitString commitStringToApplyInitializer;
                 try {
-                    tmp2 = incomingChangesToApply.getCommitString();
+                    commitStringToApplyInitializer = incomingChangesToApply.getCommitString();
                 } catch (IncomingChanges.ConversionException err) {
-                    tmp2 = JavaCommitString.EMPTY;
+                    commitStringToApplyInitializer = JavaCommitString.EMPTY;
                     if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                         log.warning(
-                            String.format("Failed to obtain the commit string from the incoming changes, instead will use %s.", tmp2),
+                            String.format("Failed to obtain the commit string from the incoming changes, instead will use %s.", commitStringToApplyInitializer),
                             err
                         );
                     }
                 }
-                commitStringToApply = Objects.requireNonNullElse(tmp2, PropertiesInitials.COMMIT_STRING);
+                commitStringToApply = Objects.requireNonNullElse(commitStringToApplyInitializer, PropertiesInitials.COMMIT_STRING);
             }
 
             this.wlInputContextState.syncWithAppliedIncomingChanges(preeditStringToApply, commitStringToApply, doneSerial);
