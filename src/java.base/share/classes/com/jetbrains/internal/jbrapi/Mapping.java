@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 JetBrains s.r.o.
+ * Copyright 2023-2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.jetbrains.internal;
+package com.jetbrains.internal.jbrapi;
 
 import jdk.internal.org.objectweb.asm.Label;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
@@ -141,6 +141,26 @@ abstract class Mapping {
         }
     }
 
+    static class Cast extends Nesting {
+        private Cast(Mapping component) {
+            super(component.from, component.to, component);
+        }
+        static Mapping wrap(Mapping m) {
+            return m == null || m instanceof Cast ? m : new Cast(m);
+        }
+        @Override
+        void convert(AccessContext.Method context) {
+            if (context.access().canAccess(from)) context.writer.visitTypeInsn(CHECKCAST, getInternalName(from));
+            component.convert(context);
+        }
+        @Override
+        void convertNonNull(AccessContext.Method context) { convert(context); }
+        @Override
+        Mapping inverse() { return wrap(component.inverse()); }
+        @Override
+        public String toString() { return component.toString(); }
+    }
+
     static class Array extends Nesting {
         private Array(Mapping component) {
             super(component.from.arrayType(), component.to.arrayType(), component);
@@ -160,7 +180,7 @@ abstract class Mapping {
             MethodVisitor m = context.writer;
             Label loopStart = new Label(), loopEnd = new Label();
             // Stack: fromArray -> toArray, fromArray, i=length
-            if (!context.access().canAccess(from)) m.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
+            if (!context.access().canAccess(from)) m.visitTypeInsn(CHECKCAST, getInternalName(Object[].class));
             m.visitInsn(DUP);
             m.visitInsn(ARRAYLENGTH);
             if (context.access().canAccess(to)) {
@@ -344,7 +364,7 @@ abstract class Mapping {
                 for (int i = 0;; i++) {
                     if ((i < tvs.length) ^ tpIterator.hasNext()) throw new RuntimeException("Number of type parameters doesn't match");
                     if (i >= tvs.length) break;
-                    tvMappings.put(tvs[i], tpIterator.next());
+                    tvMappings.put(tvs[i], Cast.wrap(tpIterator.next()));
                 }
             }
             initTypeParameters(type.getGenericSuperclass());

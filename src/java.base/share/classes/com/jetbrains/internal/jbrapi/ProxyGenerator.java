@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2023 JetBrains s.r.o.
+ * Copyright 2000-2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.jetbrains.internal;
+package com.jetbrains.internal.jbrapi;
 
 import jdk.internal.org.objectweb.asm.*;
 import jdk.internal.org.objectweb.asm.util.CheckClassAdapter;
@@ -39,8 +39,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.jetbrains.exported.JBRApi.ServiceNotAvailableException;
-import static com.jetbrains.internal.ASMUtils.*;
-import static com.jetbrains.internal.JBRApi.EXTENSIONS_ENABLED;
+import static com.jetbrains.internal.jbrapi.BytecodeUtils.*;
+import static com.jetbrains.internal.jbrapi.JBRApi.EXTENSIONS_ENABLED;
 import static java.lang.invoke.MethodHandles.Lookup;
 import static jdk.internal.org.objectweb.asm.Opcodes.*;
 import static jdk.internal.org.objectweb.asm.Type.getInternalName;
@@ -65,6 +65,13 @@ import static jdk.internal.org.objectweb.asm.Type.getInternalName;
  */
 class ProxyGenerator {
     private static final String PROXY_INTERFACE_NAME = getInternalName(com.jetbrains.exported.JBRApiSupport.Proxy.class);
+    private static final Map<MethodSignature, Method> OBJECT_METHODS = Stream.of(Object.class.getMethods())
+            .filter(ProxyGenerator::isValidInterfaceMethod)
+            .collect(Collectors.toUnmodifiableMap(MethodSignature::of, m -> m));
+
+    private static boolean isValidInterfaceMethod(Method method) {
+        return (method.getModifiers() & (Modifier.STATIC | Modifier.FINAL)) == 0;
+    }
 
     private final Proxy.Info info;
     private final Class<?> interFace;
@@ -80,6 +87,7 @@ class ProxyGenerator {
     private final ClassVisitor proxyWriter;
 
     private final Map<Enum<?>, Boolean> supportedExtensions = new HashMap<>();
+    private Map<MethodSignature, Method> remainingObjectMethods;
 
     private boolean supported = true;
     private Lookup generatedProxy;
@@ -231,8 +239,7 @@ class ProxyGenerator {
         generateFields();
         generateConstructor();
         generateTargetGetter();
-        generateMethods(interFace);
-        if (interFace.isInterface()) generateMethods(Object.class);
+        generateMethods();
         proxyWriter.visitEnd();
         return supported;
     }
@@ -280,59 +287,78 @@ class ProxyGenerator {
         m.visitEnd();
     }
 
-    private void generateMethods(Class<?> interFace) {
+    private void generateMethods() {
+        boolean isInterface = interFace.isInterface();
+        // Generate implementation for interface methods.
         for (Method method : interFace.getMethods()) {
-            int mod = method.getModifiers();
-            if ((mod & (Modifier.STATIC | Modifier.FINAL)) != 0) continue;
-
-            Exception exception = null;
-            Enum<?> extension = EXTENSIONS_ENABLED && JBRApi.extensionExtractor != null ?
-                    JBRApi.extensionExtractor.apply(method) : null;
-            Mapping.Method methodMapping = mappingContext.getMapping(method);
-            MethodHandle handle;
-            boolean passInstance;
-
-            if (methodMapping.query().valid) {
-                // Try static method.
-                handle = info.getStaticMethod(method.getName(), methodMapping.type());
-                passInstance = false;
-
-                // Try target class.
-                if (handle == null && info.targetLookup != null) {
-                    try {
-                        handle = interFace.equals(info.targetLookup.lookupClass()) ?
-                                info.targetLookup.unreflect(method) : info.targetLookup.findVirtual(
-                                info.targetLookup.lookupClass(), method.getName(), methodMapping.type());
-                        passInstance = true;
-                    } catch (NoSuchMethodException | IllegalAccessException e) {
-                        exception = e;
+            if (isValidInterfaceMethod(method)) {
+                if (isInterface) {
+                    // Remember Object methods which we already encountered, they may be not included in getMethods().
+                    MethodSignature signature = MethodSignature.of(method);
+                    if (remainingObjectMethods == null && OBJECT_METHODS.containsKey(signature)) {
+                        remainingObjectMethods = new HashMap<>(OBJECT_METHODS);
                     }
+                    if (remainingObjectMethods != null) remainingObjectMethods.remove(signature);
                 }
-
-                if (handle != null) {
-                    // Method found.
-                    generateMethod(method, handle, methodMapping, extension, passInstance);
-                    if (extension != null) supportedExtensions.putIfAbsent(extension, true);
-                    continue;
-                }
-            } else {
-                exception = new Exception("Method mapping is invalid: " + methodMapping);
+                generateMethod(method);
             }
-
-            // Skip if possible.
-            if (!Modifier.isAbstract(mod)) continue;
-
-            // Generate unsupported stub.
-            generateUnsupportedMethod(proxyWriter, method);
-            if (JBRApi.VERBOSE) {
-                synchronized (System.err) {
-                    System.err.println("Couldn't generate method " + method.getName());
-                    if (exception != null) exception.printStackTrace(System.err);
-                }
-            }
-            if (extension == null) supported = false;
-            else supportedExtensions.put(extension, false);
         }
+        if (isInterface) {
+            // Generate implementation for the remaining Object methods.
+            for (Method method : (remainingObjectMethods != null ? remainingObjectMethods : OBJECT_METHODS).values()) {
+                generateMethod(method);
+            }
+        }
+    }
+
+    private void generateMethod(Method method) {
+        Exception exception = null;
+        Enum<?> extension = EXTENSIONS_ENABLED && JBRApi.extensionExtractor != null ?
+                JBRApi.extensionExtractor.apply(method) : null;
+        Mapping.Method methodMapping = mappingContext.getMapping(method);
+        MethodHandle handle;
+        boolean passInstance;
+
+        if (methodMapping.query().valid) {
+            // Try static method.
+            handle = info.getStaticMethod(method.getName(), methodMapping.type());
+            passInstance = false;
+
+            // Try target class.
+            if (handle == null && info.targetLookup != null) {
+                try {
+                    handle = interFace.equals(info.targetLookup.lookupClass()) ?
+                            info.targetLookup.unreflect(method) : info.targetLookup.findVirtual(
+                            info.targetLookup.lookupClass(), method.getName(), methodMapping.type());
+                    passInstance = true;
+                } catch (NoSuchMethodException | IllegalAccessException e) {
+                    exception = e;
+                }
+            }
+
+            if (handle != null) {
+                // Method found.
+                generateMethod(method, handle, methodMapping, extension, passInstance);
+                if (extension != null) supportedExtensions.putIfAbsent(extension, true);
+                return;
+            }
+        } else {
+            exception = new Exception("Method mapping is invalid: " + methodMapping);
+        }
+
+        // Skip if possible.
+        if (!Modifier.isAbstract(method.getModifiers())) return;
+
+        // Generate unsupported stub.
+        generateUnsupportedMethod(proxyWriter, method);
+        if (JBRApi.VERBOSE) {
+            synchronized (System.err) {
+                System.err.println("Couldn't generate method " + method.getName());
+                if (exception != null) exception.printStackTrace(System.err);
+            }
+        }
+        if (extension == null) supported = false;
+        else supportedExtensions.put(extension, false);
     }
 
     private void generateMethod(Method interfaceMethod, MethodHandle handle, Mapping.Method mapping, Enum<?> extension, boolean passInstance) {
@@ -416,5 +442,21 @@ class ProxyGenerator {
         m.visitInsn(opcode);
         m.visitMaxs(0, 0);
         m.visitEnd();
+    }
+
+    private record MethodSignature(String name, Class<?>[] parameters) {
+        private static MethodSignature of(Method method) {
+            return new MethodSignature(method.getName(), method.getParameterTypes());
+        }
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            return (o instanceof MethodSignature(String n, Class<?>[] p)) &&
+                    name.equals(n) && Arrays.equals(parameters, p);
+        }
+        @Override
+        public int hashCode() {
+            return name.hashCode() + 31 * Arrays.hashCode(parameters);
+        }
     }
 }

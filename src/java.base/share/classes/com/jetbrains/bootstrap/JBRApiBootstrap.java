@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2023 JetBrains s.r.o.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 
 package com.jetbrains.bootstrap;
 
-import com.jetbrains.internal.JBRApi;
+import com.jetbrains.internal.jbrapi.JBRApi;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
@@ -45,10 +45,7 @@ public class JBRApiBootstrap {
      * @return implementation for {@link com.jetbrains.JBR.ServiceApi} interface
      */
     public static synchronized Object bootstrap(MethodHandles.Lookup outerLookup) {
-        if (!JBRApi.ENABLED) return null;
-        if (JBRApi.VERBOSE) {
-            System.out.println("JBR API bootstrap in compatibility mode: Object bootstrap(MethodHandles.Lookup)");
-        }
+        System.out.println("JBR API bootstrap in compatibility mode: Object bootstrap(MethodHandles.Lookup)");
         Class<?> apiInterface;
         try {
             apiInterface = outerLookup.findClass("com.jetbrains.JBR$ServiceApi");
