@@ -139,6 +139,7 @@ java/awt/Focus/InactiveFocusRace.java 8023263,JBR-8586 linux-all,windows-x64
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.8.0-1043-aws,linux-6.8.0-1044-aws
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
+java/awt/Frame/BogusFocusableWindowState/BogusFocusableWindowState.java 8361521 linux-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
