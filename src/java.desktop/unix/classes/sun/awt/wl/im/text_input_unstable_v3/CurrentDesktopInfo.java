@@ -27,7 +27,7 @@ package sun.awt.wl.im.text_input_unstable_v3;
 
 import sun.awt.UNIXToolkit;
 
-import java.awt.*;
+import java.awt.Toolkit;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Objects;
