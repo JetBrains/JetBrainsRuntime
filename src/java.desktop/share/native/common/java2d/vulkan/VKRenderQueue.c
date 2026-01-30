@@ -24,6 +24,7 @@
  * questions.
  */
 
+#include <math.h>
 #include "sun_font_StrikeCache.h"
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
@@ -315,11 +316,23 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     }
                     if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) continue;
                     if (ginfo->height*ginfo->rowBytes == 0) continue;
-                    VKRenderer_MaskFill((int) glyphx, (int) glyphy,
+
+                    // Calculate subpixel offset.
+                    int rx = ginfo->subpixelResolutionX, ry = ginfo->subpixelResolutionY;
+                    int x = floor(glyphx), y = floor(glyphy);
+                    int xOffset, yOffset;
+                    if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+                        xOffset = yOffset = 0;
+                    } else {
+                        xOffset = (int) ((glyphx - (float) x) * (float) rx);
+                        yOffset = (int) ((glyphy - (float) y) * (float) ry);
+                    }
+
+                    VKRenderer_MaskFill(x, y,
                                         ginfo->width, ginfo->height,
                                         0, ginfo->rowBytes,
                                         ginfo->height * ginfo->rowBytes,
-                                        ginfo->image);
+                                        ginfo->image + (ginfo->rowBytes * ginfo->height) * (xOffset + yOffset * rx));
                 }
                 SKIP_BYTES(b, numGlyphs * bytesPerGlyph);
             }
