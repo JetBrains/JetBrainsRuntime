@@ -822,13 +822,7 @@ jdk_awt_wayland = \
     -java/awt/Button \
     -java/awt/Checkbox \
     -java/awt/Choice \
-    -java/awt/Clipboard/DelayedQueryTest.java \
-    -java/awt/Clipboard/FlavorChangeNotificationTest/SystemClipboardTest.java \
-    -java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java \
-    -java/awt/Clipboard/LostOwnershipChainTest/SystemClipboardTest.java \
-    -java/awt/Clipboard/LostOwnershipChainTest/SystemClipboard2ProcTest.java \
-    -java/awt/Clipboard/NoOwnerNoTargetsTest.java \
-    -java/awt/Clipboard/PasteNullToTextComponentsTest.java \
+    -java/awt/Clipboard \
     -java/awt/ColorClass/AlphaColorTest.java \
     -java/awt/Component/7097771 \
     -java/awt/Component/ComponentEventTest.java \
@@ -870,6 +864,7 @@ jdk_awt_wayland = \
     -java/awt/event/ComponentEvent/TextComponentTextEventTest.java \
     -java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java \
     -java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java \
+    -java/awt/event/InputEvent/InputEventTimeTest.java \
     -java/awt/event/InputEvent/MouseModsTest.java \
     -java/awt/event/KeyEvent/AcceleratorTest/AcceleratorTest.html \
     -java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java \
@@ -879,9 +874,11 @@ jdk_awt_wayland = \
     -java/awt/event/KeyEvent/DisabledTargetF10/DisabledTargetF10.java \
     -java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java \
     -java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java \
+    -java/awt/event/KeyEvent/KeyDownCaptureTest.java \
     -java/awt/event/KeyEvent/KeyChar/KeyCharTest.java \
     -java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java \
     -java/awt/event/KeyEvent/KeyEventLocationTest.java \
+    -java/awt/event/KeyEvent/KeyEventToLightweight.java \
     -java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java \
     -java/awt/event/KeyEvent/KeyTyped/CancelKeyTyped.java \
     -java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java \
@@ -892,6 +889,7 @@ jdk_awt_wayland = \
     -java/awt/event/KeyEvent/RobotCrash/RobotCrash.java \
     -java/awt/event/KeyEvent/ShiftF10Test.java \
     -java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java \
+    -java/awt/event/KeyEvent/TestDoubleKeyEvent.java \
     -java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java \
     -java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java \
     -java/awt/event/MouseEvent/DisabledComponents/DisabledComponentsTest.java \
@@ -904,8 +902,8 @@ jdk_awt_wayland = \
     -java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java \
     -java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java \
     -java/awt/event/MouseEvent/MouseEnterExitTest.java \
-    -java/awt/event/MouseEvent/MouseEventsDuringDrag.java \
     -java/awt/event/MouseEvent/MouseEnterTest.java \
+    -java/awt/event/MouseEvent/MouseEventsDuringDrag.java \
     -java/awt/event/MouseEvent/MouseModifierTest.java \
     -java/awt/event/MouseEvent/MouseRButTest.java \
     -java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java \
@@ -1036,6 +1034,7 @@ jdk_awt_wayland = \
     -java/awt/FullScreen/TranslucentWindow \
     -java/awt/grab \
     -java/awt/Graphics/DrawOvalTest.java \
+    -java/awt/Graphics/GDIResourceExhaustionTest.java \
     -java/awt/Graphics/LCDTextAndGraphicsState.java \
     -java/awt/Graphics/NativeWin32Clear.java \
     -java/awt/Graphics/TextAAHintsTest.java \
@@ -1104,6 +1103,7 @@ jdk_awt_wayland = \
     -java/awt/Toolkit/DesktopProperties/rfe4758438.java \
     -java/awt/Toolkit/DynamicLayout/bug7172833.java \
     -java/awt/Toolkit/Headless/GetPrintJob/GetPrintJob.java \
+    -java/awt/Toolkit/Headless/WrappedToolkitTest/TestWrapped.java \
     -java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java \
     -java/awt/Toolkit/RealSync/Test.java \
     -java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java \
@@ -1160,6 +1160,8 @@ jdk_swing_wayland= \
     -javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java \
     -javax/swing/JComboBox/bug4459267.java \
     -javax/swing/JComboBox/bug4519269.java \
+    -javax/swing/JComboBox/bug4530952.java \
+    -javax/swing/JComboBox/bug4530953.java \
     -javax/swing/JComboBox/bug4924758.java \
     -javax/swing/JComboBox/bug4996503.java \
     -javax/swing/JComboBox/bug5029504.java \
@@ -1168,6 +1170,7 @@ jdk_swing_wayland= \
     -javax/swing/JComboBox/JComboBoxWithTitledBorderTest.java \
     -javax/swing/JComboBox/TestComboBoxComponentRendering.java \
     -javax/swing/JComponent/7154030/bug7154030.java \
+    -javax/swing/JComponent/bug4247610.java \
     -javax/swing/JComponent/JComponentSetRequestFocusEnabledTest.java \
     -javax/swing/JDesktopPane/bug4773378.java \
     -javax/swing/JEditorPane/4666101/JEditorPaneNavigationTest.java \
@@ -1186,6 +1189,7 @@ jdk_swing_wayland= \
     -javax/swing/JFileChooser/8013442/Test8013442.java \
     -javax/swing/JFileChooser/8021253/bug8021253.java \
     -javax/swing/JFileChooser/8041694/bug8041694.java \
+    -javax/swing/JFileChooser/bug4759934.java \
     -javax/swing/JFileChooser/ShellFolderQueries/ShellFolderQueriesSecurityManagerTest.java \
     -javax/swing/JFileChooser/JFileChooserFontReset.java \
     -javax/swing/JFileChooser/JFileChooserSetLocationTest.java \
@@ -1202,7 +1206,10 @@ jdk_swing_wayland= \
     -javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java \
     -javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java \
     -javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java \
+    -javax/swing/JInternalFrame/bug4215380.java \
     -javax/swing/JInternalFrame/bug4309079.java \
+    -javax/swing/JInternalFrame/bug4321312.java \
+    -javax/swing/JInternalFrame/bug4322726.java \
     -javax/swing/JInternalFrame/bug4732229.java \
     -javax/swing/JInternalFrame/Ctrli.java \
     -javax/swing/JInternalFrame/JInternalFrameTest.java \
@@ -1217,6 +1224,7 @@ jdk_swing_wayland= \
     -javax/swing/JList/6462008/bug6462008.java \
     -javax/swing/JList/6510999/bug6510999.java \
     -javax/swing/JList/BasicListTest.java \
+    -javax/swing/JList/bug4618767.java \
     -javax/swing/JList/ListSelectionModelTest.java \
     -javax/swing/JMenu/4213634/bug4213634.java \
     -javax/swing/JMenu/4417601/bug4417601.java \
@@ -1237,6 +1245,7 @@ jdk_swing_wayland= \
     -javax/swing/JMenuItem/4171437/bug4171437.java \
     -javax/swing/JMenuItem/6209975/bug6209975.java \
     -javax/swing/JMenuItem/6249972/bug6249972.java \
+    -javax/swing/JMenuItem/bug4327146.java \
     -javax/swing/JMenuItem/bug4839464.java \
     -javax/swing/JOptionPane/6428694/bug6428694.java \
     -javax/swing/JOptionPane/7138665/bug7138665.java \
@@ -1273,6 +1282,8 @@ jdk_swing_wayland= \
     -javax/swing/JSlider/6401380/bug6401380.java \
     -javax/swing/JSlider/6794831/bug6794831.java \
     -javax/swing/JSlider/6848475/bug6848475.java \
+    -javax/swing/JSlider/bug4186062.java \
+    -javax/swing/JSlider/bug4382876.java \
     -javax/swing/JSpinner/4515999/JSpinnerMouseAndKeyPressTest.java \
     -javax/swing/JSpinner/4670051/DateFieldUnderCursorTest.java \
     -javax/swing/JSpinner/4788637/bug4788637.java \
@@ -1301,6 +1312,7 @@ jdk_swing_wayland= \
     -javax/swing/JTable/6777378/bug6777378.java \
     -javax/swing/JTable/7055065/bug7055065.java \
     -javax/swing/JTable/8236907/LastVisibleRow.java \
+    -javax/swing/JTable/bug4118307.java \
     -javax/swing/JTable/bug4222153.java \
     -javax/swing/JTable/Tab.java \
     -javax/swing/JTable/TestJTableGridReset.java \
@@ -1332,6 +1344,7 @@ jdk_swing_wayland= \
     -javax/swing/JTree/8003400/Test8003400.java \
     -javax/swing/JTree/bug4618767.java \
     -javax/swing/JTree/TestTreeBackgroundColor.java \
+    -javax/swing/JViewport/ScrollRectToVisibleTest3.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java \
     -javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java \
