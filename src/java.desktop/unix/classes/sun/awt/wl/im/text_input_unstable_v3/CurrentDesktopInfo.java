@@ -28,8 +28,6 @@ package sun.awt.wl.im.text_input_unstable_v3;
 import sun.awt.UNIXToolkit;
 
 import java.awt.Toolkit;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -70,12 +68,7 @@ final class CurrentDesktopInfo {
                     result = -1;
                 } else if (Toolkit.getDefaultToolkit() instanceof UNIXToolkit unixToolkit) {
                     try {
-                        @SuppressWarnings("removal")
-                        final Integer version = AccessController.doPrivileged(
-                            (PrivilegedAction<Integer>)unixToolkit::getGnomeShellMajorVersion
-                        );
-
-                        result = Objects.requireNonNullElse(version, -1);
+                        result = Objects.requireNonNullElse(unixToolkit.getGnomeShellMajorVersion(), -1);
                     } catch (Exception ignored) {
                         result = -1;
                     }
