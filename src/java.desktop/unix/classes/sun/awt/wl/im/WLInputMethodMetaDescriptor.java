@@ -25,8 +25,8 @@
 
 package sun.awt.wl.im;
 
+import sun.awt.wl.WLToolkit;
 import sun.awt.wl.im.text_input_unstable_v3.WLInputMethodDescriptorZwpTextInputV3;
-import sun.security.action.GetPropertyAction;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.AWTException;
@@ -35,7 +35,6 @@ import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
 import java.awt.im.spi.InputMethod;
 import java.awt.im.spi.InputMethodDescriptor;
-import java.security.AccessController;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
@@ -90,8 +89,9 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
 
     public static WLInputMethodMetaDescriptor getInstanceIfAvailableOnPlatform() {
         final WLInputMethodMetaDescriptor result;
+        final boolean enableNativeImSupport = WLToolkit.isNativeInputMethodSupportEnabled();
 
-        if (!ENABLE_NATIVE_IM_SUPPORT) {
+        if (!enableNativeImSupport) {
             result = null;
         } else {
             // For now there's only 1 possible implementation of IM,
@@ -104,10 +104,6 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
             } else {
                 result = null;
             }
-        }
-
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("getInstanceIfAvailableOnPlatform(): result={0}, ENABLE_NATIVE_IM_SUPPORT={1}.", result, ENABLE_NATIVE_IM_SUPPORT);
         }
 
         return result;
@@ -187,29 +183,6 @@ public final class WLInputMethodMetaDescriptor implements InputMethodDescriptor 
     private final static Map<TextAttribute, ?> imHighlightMapSelectedConvertedText = Map.of(
         TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON
     );
-
-    /**
-     * This flag allows disabling ALL integrations with native IMs. The idea is to allow users to disable
-     *   unnecessary for them functionality if they face any problems because of it.
-     * Therefore, if it's {@code false}, the Toolkit code shouldn't use (directly or indirectly)
-     *   any of Wayland's input methods-related APIs (e.g. the "text-input" protocol).
-     */
-    private final static boolean ENABLE_NATIVE_IM_SUPPORT;
-
-    static {
-        boolean enableNativeImSupportInitializer = true;
-        try {
-            @SuppressWarnings("removal") // still needed for JBR21
-            final boolean enableNativeImSupportPropertyValue = Boolean.parseBoolean(
-                AccessController.doPrivileged(new GetPropertyAction("sun.awt.wl.im.enabled", "true"))
-            );
-            enableNativeImSupportInitializer = enableNativeImSupportPropertyValue;
-        } catch (Exception err) {
-            log.severe("Failed to read the value of the system property \"sun.awt.wl.im.enabled\". Assuming the default value(=true).", err);
-        }
-
-        ENABLE_NATIVE_IM_SUPPORT = enableNativeImSupportInitializer;
-    }
 
 
     private final InputMethodDescriptor realImDescriptor;
