@@ -151,6 +151,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private static native void initIDs(long displayPtr);
 
     static {
+        // This field must be initialized BEFORE initIDs is called because it'll be read there
+        ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
+
         if (!GraphicsEnvironment.isHeadless()) {
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
@@ -255,6 +258,39 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         targetCreatedPeer(target, peer);
         return peer;
     }
+
+
+    // This method is directly used by native code at the class loading stage, be careful with changing it in any way.
+    public static boolean isNativeInputMethodSupportEnabled() {
+        return ENABLE_NATIVE_IM_SUPPORT;
+    }
+
+    /**
+     * This flag allows disabling ALL integrations with native IMs. The idea is to allow users to disable
+     *   unnecessary for them functionality if they face any problems because of it.
+     * Therefore, if it's {@code false}, the Toolkit code shouldn't use (directly or indirectly)
+     *   any of Wayland's input methods-related APIs (e.g. the "text-input" protocol).
+     */
+    private final static boolean ENABLE_NATIVE_IM_SUPPORT;
+
+    private static boolean obtainWhetherToEnableNativeIMSupport() {
+        // NB: make sure this default value is synchronized with the one used in the native function
+        //     isNativeInputMethodSupportEnabled() in WLToolkit.c
+        boolean result = true;
+        try {
+            result = Boolean.parseBoolean(System.getProperty("sun.awt.wl.im.enabled", "true"));
+        } catch (Exception err) {
+            log.severe(
+                String.format(
+                    "Failed to read the value of the system property \"sun.awt.wl.im.enabled\". Assuming the default value(=%b).",
+                    result
+                ),
+                err
+            );
+        }
+        return result;
+    }
+
 
     /**
      * Wayland events coming to queues other that the default are handled here.
@@ -893,7 +929,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public InputMethodDescriptor getInputMethodAdapterDescriptor() {
-        return WLInputMethodMetaDescriptor.getInstanceIfAvailableOnPlatform();
+        final InputMethodDescriptor result = ENABLE_NATIVE_IM_SUPPORT
+                                             ? WLInputMethodMetaDescriptor.getInstanceIfAvailableOnPlatform()
+                                             : null;
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("getInputMethodAdapterDescriptor(): ENABLE_NATIVE_IM_SUPPORT={0}, result={1}.", ENABLE_NATIVE_IM_SUPPORT, result);
+        }
+
+        return result;
     }
 
     /**

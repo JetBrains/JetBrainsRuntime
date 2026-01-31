@@ -139,6 +139,8 @@ static jmethodID dispatchKeyboardLeaveEventMID;
 static jmethodID dispatchRelativePointerEventMID;
 static jmethodID handleToplevelIconSizeMID;
 
+static jmethodID isNativeInputMethodSupportEnabledMID;
+
 JNIEnv *getEnv() {
     JNIEnv *env;
     // assuming we're always called from a Java thread
@@ -602,6 +604,29 @@ static const struct xdg_toplevel_icon_manager_v1_listener xdg_toplevel_icon_mana
     .done = xdg_toplevel_icon_manager_icon_size_done,
 };
 
+
+static bool isNativeInputMethodSupportEnabled() {
+    // NB: make sure this default value is synchronized with the one used in
+    //     sun.awt.wl.WLToolkit#obtainWhetherToEnableNativeIMSupport
+    const bool deflt = true;
+    JNIEnv * const env = getEnv();
+    jboolean upcallResult;
+
+    if (env == NULL) {
+        return deflt;
+    }
+
+    upcallResult = (*env)->CallStaticBooleanMethod(env, tkClass, isNativeInputMethodSupportEnabledMID);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        return deflt;
+    }
+
+    return (upcallResult == JNI_TRUE) ? true : false;
+}
+
+
 static void
 registry_global(void *data, struct wl_registry *wl_registry,
                 uint32_t name, const char *interface, uint32_t version)
@@ -663,8 +688,11 @@ registry_global(void *data, struct wl_registry *wl_registry,
         //   the event loop may shut down as soon as it gets launched (wl_display_dispatch will return -1),
         //   so let's protect from this since the component being obtained is not vital for work.
         const uint32_t versionToBind = 1;
-        if (versionToBind <= version) {
-            zwp_text_input_manager = wl_registry_bind(wl_registry, name, &zwp_text_input_manager_v3_interface, versionToBind);
+
+        if (isNativeInputMethodSupportEnabled()) {
+            if (versionToBind <= version) {
+                zwp_text_input_manager = wl_registry_bind(wl_registry, name, &zwp_text_input_manager_v3_interface, versionToBind);
+            }
         }
     } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
         xdg_decoration_manager = wl_registry_bind(wl_registry, name, &zxdg_decoration_manager_v1_interface, 1);
@@ -815,6 +843,11 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(dispatchRelativePointerEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                           "dispatchRelativePointerEvent",
                                                                           "(DD)V"),
+                      JNI_FALSE);
+
+    CHECK_NULL_RETURN(isNativeInputMethodSupportEnabledMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                                                       "isNativeInputMethodSupportEnabled",
+                                                                                       "()Z"),
                       JNI_FALSE);
 
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
