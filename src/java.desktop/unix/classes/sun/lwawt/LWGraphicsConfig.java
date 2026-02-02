@@ -25,10 +25,17 @@
 
 package sun.lwawt;
 
+import sun.awt.image.SunVolatileImage;
+
 import java.awt.AWTException;
 import java.awt.BufferCapabilities;
 import java.awt.Component;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
 import java.awt.Image;
+import java.awt.Rectangle;
+import java.awt.Transparency;
 
 /**
  * As lwawt can be used on different platforms with different graphic
@@ -67,18 +74,45 @@ public interface LWGraphicsConfig {
      * Checks that the requested configuration is natively supported; if not, an
      * AWTException is thrown.
      */
-    void assertOperationSupported(int numBuffers, BufferCapabilities caps)
-            throws AWTException;
+    default void assertOperationSupported(int numBuffers, BufferCapabilities caps)
+            throws AWTException {
+        // Assume this method is never called with numBuffers != 2, as 0 is
+        // unsupported, and 1 corresponds to a SingleBufferStrategy which
+        // doesn't depend on the peer. Screen is considered as a separate
+        // "buffer".
+        if (numBuffers != 2) {
+            throw new AWTException("Only double buffering is supported");
+        }
+        final BufferCapabilities configCaps = ((GraphicsConfiguration) this).getBufferCapabilities();
+        if (!configCaps.isPageFlipping()) {
+            throw new AWTException("Page flipping is not supported");
+        }
+        if (caps.getFlipContents() == BufferCapabilities.FlipContents.PRIOR) {
+            throw new AWTException("FlipContents.PRIOR is not supported");
+        }
+    }
 
     /**
      * Creates a back buffer for the given peer and returns the image wrapper.
      */
-    Image createBackBuffer(LWComponentPeer<?, ?> peer);
+    default Image createBackBuffer(LWComponentPeer<?, ?> peer) {
+        final Rectangle r = peer.getBounds();
+        // It is possible for the component to have size 0x0, adjust it to
+        // be at least 1x1 to avoid IAE
+        final int w = Math.max(1, r.width);
+        final int h = Math.max(1, r.height);
+        final int transparency = peer.isTranslucent() ? Transparency.TRANSLUCENT : Transparency.OPAQUE;
+        return new SunVolatileImage((GraphicsConfiguration) this, w, h, transparency, null);
+    }
 
     /**
      * Destroys the back buffer object.
      */
-    void destroyBackBuffer(Image backBuffer);
+    default void destroyBackBuffer(Image backBuffer) {
+        if (backBuffer != null) {
+            backBuffer.flush();
+        }
+    }
 
     /**
      * Performs the native flip operation for the given target Component. Our
@@ -86,8 +120,24 @@ public interface LWGraphicsConfig {
      * because of our components uses a graphic object of the container(in this
      * case we also apply necessary constrains)
      */
-    void flip(LWComponentPeer<?, ?> peer, Image backBuffer, int x1, int y1,
-              int x2, int y2, BufferCapabilities.FlipContents flipAction);
+    default void flip(LWComponentPeer<?, ?> peer, Image backBuffer, int x1, int y1,
+                      int x2, int y2, BufferCapabilities.FlipContents flipAction) {
+        final Graphics g = peer.getGraphics();
+        try {
+            g.drawImage(backBuffer, x1, y1, x2, y2, x1, y1, x2, y2, null);
+        } finally {
+            g.dispose();
+        }
+        if (flipAction == BufferCapabilities.FlipContents.BACKGROUND) {
+            final Graphics2D bg = (Graphics2D) backBuffer.getGraphics();
+            try {
+                bg.setBackground(peer.getBackground());
+                bg.clearRect(0, 0, backBuffer.getWidth(null), backBuffer.getHeight(null));
+            } finally {
+                bg.dispose();
+            }
+        }
+    }
 
     /**
      * Performs the native flush operation for the given peer
