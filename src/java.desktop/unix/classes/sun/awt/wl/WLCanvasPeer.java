@@ -25,26 +25,26 @@
  */
 package sun.awt.wl;
 
-import java.awt.Component;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsEnvironment;
-import java.awt.peer.CanvasPeer;
-
-class WLCanvasPeer extends WLComponentPeer implements CanvasPeer {
-
-    WLCanvasPeer(Component target) {
-        super(target);
-    }
-
-
-    public GraphicsConfiguration getAppropriateGraphicsConfiguration(
-                                    GraphicsConfiguration gc)
-    {
-        return gc;
-    }
-
-    @Override
-    protected void wlSetVisible(boolean v) {
-        // TODO: unimplemented
-    }
-}
+//import java.awt.Component;
+//import java.awt.GraphicsConfiguration;
+//import java.awt.GraphicsEnvironment;
+//import java.awt.peer.CanvasPeer;
+//
+//class WLCanvasPeer extends WLComponentPeer implements CanvasPeer {
+//
+//    WLCanvasPeer(Component target) {
+//        super(target);
+//    }
+//
+//
+//    public GraphicsConfiguration getAppropriateGraphicsConfiguration(
+//                                    GraphicsConfiguration gc)
+//    {
+//        return gc;
+//    }
+//
+//    @Override
+//    protected void wlSetVisible(boolean v) {
+//        // TODO: unimplemented
+//    }
+//}

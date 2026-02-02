@@ -38,6 +38,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.java2d.wl.WLSurfaceSizeListener;
+import sun.lwawt.*;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
@@ -63,6 +64,7 @@ import java.awt.RenderingHints;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.dnd.DropTarget;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
@@ -83,7 +85,7 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
+public abstract class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener, LWWindowPeerAPI {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
@@ -115,6 +117,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean repositionPopup = false; // protected by stateLock
     private boolean resizePending = false; // protected by stateLock
 
+    private final WLPlatformWindow platformWindow;
+
     private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
     private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
             System.getProperty("sun.awt.wl.NativeModality", "false"));
@@ -126,13 +130,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     /**
      * Standard peer constructor, with corresponding Component
      */
-    WLComponentPeer(Component target) {
-        this(target, true);
-    }
+//    WLComponentPeer(Component target) {
+//        this(target, true);
+//    }
 
     protected WLComponentPeer(Component target, boolean dropShadow) {
         this.target = target;
         this.background = target.isBackgroundSet() ? target.getBackground() : SystemColor.window;
+        this.platformWindow = new WLPlatformWindow();
+        this.platformWindow.setPeer(this); // TODO this is leaked, not very good
         Dimension size = constrainSize(target.getBounds().getSize());
         final WLGraphicsConfig config = (WLGraphicsConfig) target.getGraphicsConfiguration();
         displayScale = config.getDisplayScale();
@@ -188,7 +194,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    boolean isVisible() {
+    @Override
+    public boolean isVisible() {
         WLToolkit.awtLock();
         try {
             return wlSurface != null && visible;
@@ -653,9 +660,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public void print(Graphics g) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLComponentPeer.print(Graphics)");
-        }
+        target.print(g);
     }
 
     private void resetTargetLocationTo(int newX, int newY) {
@@ -1047,7 +1052,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void setFont(Font f) {
-        throw new UnsupportedOperationException();
+//        throw new UnsupportedOperationException();
     }
 
     public Font getFont() {
@@ -2311,6 +2316,66 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
         public String toString() {
             return "WLSize[client=" + javaSize + ", pixel=" + pixelSize + ", surface=" + surfaceSize + "]";
+        }
+    }
+
+    @Override
+    public boolean isShowing() {
+        return isVisible();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
+    @Override
+    public LWWindowPeerAPI getWindowPeerOrSelf() {
+        return this;
+    }
+
+    @Override
+    public LWContainerPeerAPI getContainerPeer() {
+        return null;
+    }
+
+    @Override
+    public PlatformWindow getPlatformWindow() {
+        return platformWindow;
+    }
+
+    @Override
+    public Region getRegion() {
+        return Region.getInstance(new Rectangle(getWidth(), getHeight()));
+    }
+
+    @Override
+    public Rectangle getBounds() {
+        Point loc = getLocationOnScreen();
+        return new Rectangle(loc.x, loc.y, getWidth(), getHeight());
+    }
+
+    @Override
+    public void setBounds(Rectangle r) {
+        setBounds(r.x, r.y, r.width, r.height, SET_BOUNDS);
+    }
+
+    @Override
+    public void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget) {
+        setBounds(x, y, w, h, op);
+    }
+
+    @Override
+    public void addDropTarget(DropTarget dt) {
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("Not implemented: WLComponentPeer.addDropTarget()");
+        }
+    }
+
+    @Override
+    public void removeDropTarget(DropTarget dt) {
+        if (log.isLoggable(Level.FINE)) {
+            log.fine("Not implemented: WLComponentPeer.removeDropTarget()");
         }
     }
 }
