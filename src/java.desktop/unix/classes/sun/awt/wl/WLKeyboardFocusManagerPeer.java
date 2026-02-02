@@ -12,6 +12,8 @@ public class WLKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLKeyboardFocusManagerPeer");
 
     private WeakReference<Window> currentFocusedWindow = new WeakReference<>(null);
+    private WeakReference<Component> currentFocusOwner = new WeakReference<>(null);
+
     private static final WLKeyboardFocusManagerPeer instance = new WLKeyboardFocusManagerPeer();
 
     public static WLKeyboardFocusManagerPeer getInstance() {
@@ -37,32 +39,34 @@ public class WLKeyboardFocusManagerPeer extends KeyboardFocusManagerPeerImpl {
 
     @Override
     public void setCurrentFocusOwner(Component comp) {
-        Window cur = getCurrentFocusedWindow();
-        if (comp != null && (!(comp instanceof Window window) ||
-                WLComponentPeer.getNativelyFocusableOwnerOrSelf(window) != cur)) {
-            // In Wayland, only Window can be focused, not any widget in it.
-            focusLog.severe("Unexpected focus owner set in a Window: " + comp);
+        synchronized (this) {
+            currentFocusOwner = new WeakReference<>(comp);
+        }
+        if (comp == null) {
             return;
         }
-
-        if (comp != null) {
-            Window nativeFocusable = WLComponentPeer.getNativelyFocusableOwnerOrSelf(comp);
-            AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-            WLComponentPeer nativeFocusablePeer = acc.getPeer(nativeFocusable);
-            if (nativeFocusablePeer instanceof WLWindowPeer windowPeer) {
-                // May have to transfer the keyboard focus to a child popup window
-                // when this 'windowPeer' receives focus from Wayland again because popups
-                // aren't natively focusable under Wayland.
-                Component synthFocusOwner = nativeFocusable != comp ? comp : null;
-                windowPeer.setSyntheticFocusOwner(synthFocusOwner);
-            }
+        Window nativeFocusable = WLComponentPeer.getNativelyFocusableOwnerOrSelf(comp);
+        if (nativeFocusable != getCurrentFocusedWindow()) {
+            // The component's natively focusable window is not the current focused window.
+            // This can happen for popups that aren't natively focusable under Wayland.
+            focusLog.severe("Unexpected focus owner set outside of focused window: " + comp);
+            return;
+        }
+        AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
+        WLComponentPeer nativeFocusablePeer = acc.getPeer(nativeFocusable);
+        if (nativeFocusablePeer instanceof WLWindowPeer windowPeer) {
+            // May have to transfer the keyboard focus to a child popup window
+            // when this 'windowPeer' receives focus from Wayland again because popups
+            // aren't natively focusable under Wayland.
+            Component synthFocusOwner = nativeFocusable != comp ? comp : null;
+            windowPeer.setSyntheticFocusOwner(synthFocusOwner);
         }
     }
 
     @Override
     public Component getCurrentFocusOwner() {
         synchronized (this) {
-            return currentFocusedWindow.get();
+            return currentFocusOwner.get();
         }
     }
 }
