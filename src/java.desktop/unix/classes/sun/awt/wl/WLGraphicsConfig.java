@@ -26,18 +26,28 @@
 
 package sun.awt.wl;
 
-import java.awt.*;
-import java.awt.geom.AffineTransform;
-import java.awt.image.ColorModel;
-import java.awt.image.WritableRaster;
-
 import sun.awt.image.OffScreenImage;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.wl.WLSurfaceSizeListener;
+import sun.lwawt.LWComponentPeer;
+import sun.lwawt.LWGraphicsConfig;
 
-public abstract class WLGraphicsConfig extends GraphicsConfiguration {
+import java.awt.BufferCapabilities;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
+import java.awt.ImageCapabilities;
+import java.awt.Rectangle;
+import java.awt.Transparency;
+import java.awt.geom.AffineTransform;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
+
+public abstract class WLGraphicsConfig extends GraphicsConfiguration implements LWGraphicsConfig {
     private final WLGraphicsDevice device;
+    private BufferCapabilities bufferCaps;
 
     protected WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
@@ -98,8 +108,49 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     public abstract SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height);
 
     @Override
+    public BufferCapabilities getBufferCapabilities() {
+        if (bufferCaps == null) {
+            bufferCaps = new WLDefaultBufferCapabilities();
+        }
+        return bufferCaps;
+    }
+
+    @Override
+    public int getMaxTextureWidth() {
+        // Not used by Wayland currently
+        return getMaxBufferBounds().width;
+    }
+
+    @Override
+    public int getMaxTextureHeight() {
+        // Not used by Wayland currently
+        return getMaxBufferBounds().height;
+    }
+
+    @Override
+    public void flush(LWComponentPeer<?, ?> peer) {
+        // Not used by Wayland currently
+    }
+
+    public static Dimension getMaxBufferBounds() {
+        // Need to limit the maximum size of the window so that the creation of the underlying
+        // buffers for it may succeed at least in theory. A window that is too large may crash
+        // JVM or even the window manager.
+        Dimension bounds = WLGraphicsEnvironment.getSingleInstance().getTotalDisplayBounds();
+        bounds.width *= 2;
+        bounds.height *= 2;
+        return bounds;
+    }
+
+    @Override
     public String toString() {
         Rectangle bounds = getBounds();
         return String.format("%dx%d@(%d, %d) %dx scale", bounds.width, bounds.height, bounds.x, bounds.y, getDisplayScale());
+    }
+
+    private static class WLDefaultBufferCapabilities extends BufferCapabilities {
+        WLDefaultBufferCapabilities() {
+            super(new ImageCapabilities(false), new ImageCapabilities(false), FlipContents.UNDEFINED);
+        }
     }
 }
