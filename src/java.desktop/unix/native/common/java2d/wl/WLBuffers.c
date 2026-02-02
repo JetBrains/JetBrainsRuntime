@@ -58,6 +58,9 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager);
 static void
 SendShowBufferToWayland(WLSurfaceBufferManager * manager);
 
+static void
+DrawBufferResize(WLSurfaceBufferManager * manager);
+
 static inline void
 ReportFatalError(const char* file, int line, const char *msg)
 {
@@ -140,7 +143,7 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
             l = l->next;
         }
     }
-    
+
     // Keep the list sorted so that adjacent areas follow one another
     // in memory in hope that this facilitates faster damage copying.
     l = list;
@@ -911,9 +914,16 @@ CopyDrawBufferToShowBuffer(WLSurfaceBufferManager * manager)
     ASSERT_SHOW_LOCK_IS_HELD(manager);
     ASSERT_DRAW_LOCK_IS_HELD(manager);
 
-    if (manager->bufferForShow.wlSurfaceBuffer == NULL
-        || manager->bufferForDraw.data == NULL
-        || manager->bufferForDraw.resizePending) {
+    if (manager->bufferForShow.wlSurfaceBuffer == NULL) {
+        return;
+    }
+
+    if (manager->bufferForDraw.resizePending) {
+        // Paint the background in case an empty window needs to be shown
+        DrawBufferResize(manager);
+    }
+
+    if (manager->bufferForDraw.data == NULL) {
         return;
     }
 
@@ -1012,6 +1022,8 @@ DrawBufferResize(WLSurfaceBufferManager * manager)
     for (jint i = 0; i < DrawBufferSizeInPixels(manager); ++i) {
         manager->bufferForDraw.data[i] = manager->bgPixel;
     }
+    // This is so that an empty window can still get displayed
+    manager->bufferForDraw.damageList = DamageList_Add(NULL, 0, 0, manager->bufferForDraw.width, manager->bufferForDraw.height);
 }
 
 static void ResetBuffers(WLSurfaceBufferManager * manager) {
@@ -1281,6 +1293,15 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
 
     MUTEX_UNLOCK(manager->drawLock);
     MUTEX_UNLOCK(manager->showLock);
+}
+
+void
+WLSBM_SetBackground(WLSurfaceBufferManager * manager, jint bg)
+{
+    WLBufferTrace(manager, "WLSBM_SetBackground to 0x%x", bg);
+    MUTEX_LOCK(manager->drawLock);
+    manager->bgPixel = bg;
+    MUTEX_UNLOCK(manager->drawLock);
 }
 
 #endif
