@@ -26,18 +26,21 @@
 
 package sun.awt.wl;
 
+import sun.awt.image.OffScreenImage;
+import sun.java2d.SurfaceData;
+import sun.java2d.loops.SurfaceType;
+import sun.java2d.wl.WLSurfaceSizeListener;
+import sun.lwawt.LWComponentPeer;
+import sun.lwawt.LWGraphicsConfig;
+
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 
-import sun.awt.image.OffScreenImage;
-import sun.java2d.SurfaceData;
-import sun.java2d.loops.SurfaceType;
-import sun.java2d.wl.WLSurfaceSizeListener;
-
-public abstract class WLGraphicsConfig extends GraphicsConfiguration {
+public abstract class WLGraphicsConfig extends GraphicsConfiguration implements LWGraphicsConfig {
     private final WLGraphicsDevice device;
+    private BufferCapabilities bufferCaps;
 
     protected WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
@@ -98,8 +101,39 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
     public abstract SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height);
 
     @Override
+    public BufferCapabilities getBufferCapabilities() {
+        if (bufferCaps == null) {
+            bufferCaps = new WLDefaultBufferCapabilities();
+        }
+        return bufferCaps;
+    }
+
+    @Override
+    public int getMaxTextureWidth() {
+        // TODO
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public int getMaxTextureHeight() {
+        // TODO
+        return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public void flush(LWComponentPeer<?, ?> peer) {
+        // Not used by Wayland currently
+    }
+
+    @Override
     public String toString() {
         Rectangle bounds = getBounds();
         return String.format("%dx%d@(%d, %d) %dx scale", bounds.width, bounds.height, bounds.x, bounds.y, getDisplayScale());
+    }
+
+    private static class WLDefaultBufferCapabilities extends BufferCapabilities {
+        WLDefaultBufferCapabilities() {
+            super(new ImageCapabilities(false), new ImageCapabilities(false), FlipContents.UNDEFINED);
+        }
     }
 }
