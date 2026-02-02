@@ -727,9 +727,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public CanvasPeer createCanvas(Canvas target) {
-        WLCanvasPeer peer = new WLCanvasPeer(target);
-        targetCreatedPeer(target, peer);
-        return peer;
+        return null;
     }
 
     @Override

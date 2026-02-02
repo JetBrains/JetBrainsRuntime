@@ -27,27 +27,18 @@ package sun.awt.wl;
 import sun.awt.AWTAccessor;
 import sun.awt.SurfacePixelGrabber;
 import sun.awt.UngrabEvent;
+import sun.java2d.SurfaceData;
+import sun.java2d.pipe.Region;
+import sun.lwawt.LWChildPeers;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.vulkan.VKSurfaceData;
 import sun.java2d.wl.WLSMSurfaceData;
+import sun.lwawt.LWComponentPeerAPI;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
-import java.awt.AWTEvent;
-import java.awt.AlphaComposite;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dialog;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsEnvironment;
-import java.awt.Image;
-import java.awt.Insets;
-import java.awt.Rectangle;
-import java.awt.RenderingHints;
-import java.awt.SystemColor;
-import java.awt.Window;
+import java.awt.*;
+import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
@@ -72,6 +63,8 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     private Path2D.Double bottomLeftMask;   // guarded by stateLock
     private Path2D.Double bottomRightMask;  // guarded by stateLock
     private SunGraphics2D graphics;         // guarded by stateLock
+
+    private final LWChildPeers childPeers = new LWChildPeers(new Object());
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
@@ -487,4 +480,99 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     private static native void initIDs();
+
+    @Override
+    public Graphics getOnscreenGraphics(Color fg, Color bg, Font f) {
+        return getGraphics(surfaceData, fg, bg, f);
+    }
+
+    @Override
+    public boolean requestWindowFocus(FocusEvent.Cause cause) {
+        // TODO should we use sun.awt.wl.WLWindowPeer#requestWindowFocus() here somehow?
+        return true;
+    }
+
+    @Override
+    public void addChildPeer(LWComponentPeerAPI child) {
+        childPeers.addChildPeer(child);
+    }
+
+    @Override
+    public void removeChildPeer(LWComponentPeerAPI child) {
+        childPeers.removeChildPeer(child);
+    }
+
+    @Override
+    public void setChildPeerZOrder(LWComponentPeerAPI peer, LWComponentPeerAPI above) {
+        childPeers.setChildPeerZOrder(peer, above);
+    }
+
+    @Override
+    public Region cutChildren(Region r, LWComponentPeerAPI above) {
+        return childPeers.cutChildren(r, above, getContentSize());
+    }
+
+    @Override
+    public Rectangle getContentSize() {
+        Region region = getRegion();
+        return new Rectangle(region.getWidth(), region.getHeight());
+    }
+
+    @Override
+    public void repaintPeer(Rectangle r) {
+        final Rectangle toPaint = getContentSize().intersection(r);
+        if (!isShowing() || toPaint.isEmpty()) {
+            return;
+        }
+        postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
+        childPeers.repaintChildren(toPaint, getContentSize());
+    }
+
+    @Override
+    public LWComponentPeerAPI findPeerAt(int x, int y) {
+        final Rectangle r = getBounds();
+        int xLocal = x - r.x;
+        int yLocal = y - r.y;
+        if (!(isVisible() && getRegion().contains(xLocal, yLocal))) {
+            return null;
+        }
+        LWComponentPeerAPI childPeerAt = childPeers.findChildPeerAt(xLocal, yLocal);
+        return childPeerAt != null ? childPeerAt : this;
+    }
+
+    @Override
+    public void setEnabled(boolean value) {
+        super.setEnabled(value);
+        childPeers.setChildrenEnabled(value);
+    }
+
+    @Override
+    public void setBackground(final Color c) {
+        childPeers.setChildrenBackground(c);
+        super.setBackground(c);
+    }
+
+    @Override
+    public void setForeground(final Color c) {
+        childPeers.setChildrenForeground(c);
+        super.setForeground(c);
+    }
+
+    @Override
+    public void setFont(final Font f) {
+        childPeers.setChildrenFont(f);
+        super.setFont(f);
+    }
+
+    @Override
+    public void paint(final Graphics g) {
+        super.paint(g);
+        LWChildPeers.paintChildren(getWindow().getComponents(), g);
+    }
+
+    @Override
+    public void print(final Graphics g) {
+        super.print(g);
+        LWChildPeers.printChildren(getWindow().getComponents(), g);
+    }
 }
