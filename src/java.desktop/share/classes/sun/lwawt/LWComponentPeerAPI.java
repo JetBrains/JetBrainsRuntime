@@ -4,6 +4,10 @@ TODO copyright
 
 package sun.lwawt;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GraphicsConfiguration;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -15,6 +19,10 @@ import sun.java2d.pipe.Region;
  * Interface defining the common API for component peers in lwawt.
  */
 public interface LWComponentPeerAPI extends DropTargetPeer {
+    /**
+     * Returns the AWT component associated with this peer.
+     */
+    Component getTarget();
 
     // TODO these 2 methods come from ComponentPeer actually, should extend it instead?
     /**
@@ -66,6 +74,26 @@ public interface LWComponentPeerAPI extends DropTargetPeer {
      * Returns whether this component is enabled.
      */
     boolean isEnabled();
+
+    /**
+     * Sets whether this component is enabled.
+     */
+    void setEnabled(boolean e);
+
+    /**
+     * Sets the background color for this component.
+     */
+    void setBackground(Color c);
+
+    /**
+     * Sets the foreground color for this component.
+     */
+    void setForeground(Color c);
+
+    /**
+     * Sets the font for this component.
+     */
+    void setFont(Font f);
 
     /**
      * Repaints the specified rectangle of this component.
