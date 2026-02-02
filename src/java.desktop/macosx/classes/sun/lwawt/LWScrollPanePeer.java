@@ -78,7 +78,7 @@ final class LWScrollPanePeer extends LWContainerPeer<ScrollPane, JScrollPane>
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                final LWComponentPeer<?, ?> viewPeer = getViewPeer();
+                final LWComponentPeerAPI viewPeer = getViewPeer();
                 if (viewPeer != null) {
                     final Rectangle r;
                     synchronized (getDelegateLock()) {
@@ -102,8 +102,8 @@ final class LWScrollPanePeer extends LWContainerPeer<ScrollPane, JScrollPane>
         }
     }
 
-    LWComponentPeer<?, ?> getViewPeer() {
-        final List<LWComponentPeer<?, ?>> peerList = getChildren();
+    LWComponentPeerAPI getViewPeer() {
+        final List<LWComponentPeerAPI> peerList = getChildren();
         return peerList.isEmpty() ? null : peerList.get(0);
     }
 
@@ -117,7 +117,7 @@ final class LWScrollPanePeer extends LWContainerPeer<ScrollPane, JScrollPane>
     public void layout() {
         super.layout();
         synchronized (getDelegateLock()) {
-            final LWComponentPeer<?, ?> viewPeer = getViewPeer();
+            final LWComponentPeerAPI viewPeer = getViewPeer();
             if (viewPeer != null) {
                 Component view = getDelegate().getViewport().getView();
                 view.setBounds(viewPeer.getBounds());
