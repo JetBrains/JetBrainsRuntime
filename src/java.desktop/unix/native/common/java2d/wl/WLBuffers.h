@@ -118,6 +118,14 @@ jint WLSBM_HeightGet(WLSurfaceBufferManager *);
 void WLSBM_SizeChangeTo(WLSurfaceBufferManager *, jint width, jint height);
 
 /**
+ * Changes the background color (an ARGB value) for buffers managed by
+ * the buffer manager.
+ * Note: an extra repaint is needed after this call for the new background
+ *       to get used or repainted.
+ */
+void WLSBM_SetBackground(WLSurfaceBufferManager *, jint bg);
+
+/**
  * Returns a buffer managed by the WayLand Surface Buffer Manager
  * that is suitable for drawing on it.
  * This operation locks the buffer such that any subsequent attempt
