@@ -25,6 +25,7 @@
 
 package sun.java2d.vulkan;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
@@ -110,6 +111,11 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         this.scale = scale;
         revalidate((VKGraphicsConfig) gc);
         configure();
+    }
+
+    @Override
+    public void setBackground(Color background) {
+        // TODO
     }
 
     @Override
