@@ -25,7 +25,6 @@
 
 package sun.lwawt;
 
-import sun.awt.SunGraphicsCallback;
 import sun.java2d.pipe.Region;
 
 import java.awt.Color;
@@ -35,7 +34,6 @@ import java.awt.Graphics;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.peer.ContainerPeer;
-import java.util.LinkedList;
 import java.util.List;
 
 import javax.swing.JComponent;
@@ -46,7 +44,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
     /**
      * List of child peers sorted by z-order from bottom-most to top-most.
      */
-    private final List<LWComponentPeerAPI> childPeers = new LinkedList<>();
+    private final LWChildPeers childPeers = new LWChildPeers(getPeerTreeLock());
 
     LWContainerPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
         super(target, platformComponent, toolkitApi);
@@ -54,32 +52,20 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
 
     @Override
     public final void addChildPeer(final LWComponentPeerAPI child) {
-        synchronized (getPeerTreeLock()) {
-            childPeers.add(childPeers.size(), child);
-            // TODO: repaint
-        }
+        childPeers.addChildPeer(child);
+        // TODO: repaint
     }
 
     @Override
     public final void removeChildPeer(final LWComponentPeerAPI child) {
-        synchronized (getPeerTreeLock()) {
-            childPeers.remove(child);
-        }
+        childPeers.removeChildPeer(child);
         // TODO: repaint
     }
 
     // Used by LWComponentPeer.setZOrder()
     @Override
     public final void setChildPeerZOrder(final LWComponentPeerAPI peer, final LWComponentPeerAPI above) {
-        synchronized (getPeerTreeLock()) {
-            childPeers.remove(peer);
-            int index = (above != null) ? childPeers.indexOf(above) : childPeers.size();
-            if (index >= 0) {
-                childPeers.add(index, peer);
-            } else {
-                // TODO: log
-            }
-        }
+        childPeers.setChildPeerZOrder(peer, above);
         // TODO: repaint
     }
 
@@ -126,12 +112,8 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
     /**
      * Returns a copy of the childPeer collection.
      */
-    @SuppressWarnings("unchecked")
     final List<LWComponentPeerAPI> getChildren() {
-        synchronized (getPeerTreeLock()) {
-            Object copy = ((LinkedList<?>) childPeers).clone();
-            return (List<LWComponentPeer<?, ?>>) copy;
-        }
+        return childPeers.getChildren();
     }
 
     @Override
@@ -145,22 +127,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
      */
     @Override
     public final Region cutChildren(Region r, final LWComponentPeerAPI above) {
-        boolean aboveFound = above == null;
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
-            if (!aboveFound && child == above) {
-                aboveFound = true;
-                continue;
-            }
-            if (aboveFound) {
-                if(child.isVisible()){
-                    final Rectangle cb = child.getBounds();
-                    final Region cr = child.getRegion();
-                    final Region tr = cr.getTranslatedRegion(cb.x, cb.y);
-                    r = r.getDifference(tr.getIntersection(getContentSize()));
-                }
-            }
-        }
-        return r;
+        return childPeers.cutChildren(r, above, getContentSize());
     }
 
     // ---- UTILITY METHODS ---- //
@@ -177,14 +144,9 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
         x -= r.x;
         y -= r.y;
         if (peer != null && getContentSize().contains(x, y)) {
-            synchronized (getPeerTreeLock()) {
-                for (int i = childPeers.size() - 1; i >= 0; --i) {
-                    LWComponentPeerAPI p = childPeers.get(i).findPeerAt(x, y);
-                    if (p != null) {
-                        peer = p;
-                        break;
-                    }
-                }
+            LWComponentPeerAPI p = childPeers.findChildPeerAt(x, y);
+            if (p != null) {
+                peer = p;
             }
         }
         return peer;
@@ -205,22 +167,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
         // Second, handle all the children
         // Use the straight order of children, so the bottom
         // ones are painted first
-        repaintChildren(toPaint);
-    }
-
-    /**
-     * Paints all the child peers in the straight z-order, so the
-     * bottom-most ones are painted first.
-     */
-    private void repaintChildren(final Rectangle r) {
-        final Rectangle content = getContentSize();
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
-            final Rectangle childBounds = child.getBounds();
-            Rectangle toPaint = r.intersection(childBounds);
-            toPaint = toPaint.intersection(content);
-            toPaint.translate(-childBounds.x, -childBounds.y);
-            child.repaintPeer(toPaint);
-        }
+        childPeers.repaintChildren(toPaint, getContentSize());
     }
 
     @Override
@@ -231,56 +178,36 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
     @Override
     public void setEnabled(final boolean e) {
         super.setEnabled(e);
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
-            child.setEnabled(e && child.getTarget().isEnabled());
-        }
+        childPeers.setChildrenEnabled(e);
     }
 
     @Override
     public void setBackground(final Color c) {
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
-            if (!child.getTarget().isBackgroundSet()) {
-                child.setBackground(c);
-            }
-        }
+        childPeers.setChildrenBackground(c);
         super.setBackground(c);
     }
 
     @Override
     public void setForeground(final Color c) {
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
-            if (!child.getTarget().isForegroundSet()) {
-                child.setForeground(c);
-            }
-        }
+        childPeers.setChildrenForeground(c);
         super.setForeground(c);
     }
 
     @Override
     public void setFont(final Font f) {
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
-            if (!child.getTarget().isFontSet()) {
-                child.setFont(f);
-            }
-        }
+        childPeers.setChildrenFont(f);
         super.setFont(f);
     }
 
     @Override
     public final void paint(final Graphics g) {
         super.paint(g);
-        SunGraphicsCallback.PaintHeavyweightComponentsCallback.getInstance()
-                .runComponents(getTarget().getComponents(), g,
-                               SunGraphicsCallback.LIGHTWEIGHTS
-                               | SunGraphicsCallback.HEAVYWEIGHTS);
+        LWChildPeers.paintChildren(getTarget().getComponents(), g);
     }
 
     @Override
     public final void print(final Graphics g) {
         super.print(g);
-        SunGraphicsCallback.PrintHeavyweightComponentsCallback.getInstance()
-                .runComponents(getTarget().getComponents(), g,
-                               SunGraphicsCallback.LIGHTWEIGHTS
-                               | SunGraphicsCallback.HEAVYWEIGHTS);
+        LWChildPeers.printChildren(getTarget().getComponents(), g);
     }
 }
