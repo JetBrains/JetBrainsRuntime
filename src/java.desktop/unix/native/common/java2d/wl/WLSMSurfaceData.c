@@ -139,6 +139,21 @@ Java_sun_java2d_wl_WLSMSurfaceData_nativeRevalidate(JNIEnv *env, jobject wsd,
 #endif /* !HEADLESS */
 }
 
+JNIEXPORT void JNICALL
+Java_sun_java2d_wl_WLSMSurfaceData_nativeSetBackground(JNIEnv *env, jobject wsd,
+                                                       jint bg)
+{
+#ifndef HEADLESS
+    J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_nativeSetBackground to 0x%x\n", bg);
+    WLSDOps *wsdo = (WLSDOps*)SurfaceData_GetOps(env, wsd);
+    if (wsdo == NULL) {
+        return;
+    }
+
+    WLSBM_SetBackground(wsdo->bufferManager, bg);
+#endif
+}
+
 JNIEXPORT jint JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_pixelAt(JNIEnv *env, jobject wsd, jint x, jint y)
 {
