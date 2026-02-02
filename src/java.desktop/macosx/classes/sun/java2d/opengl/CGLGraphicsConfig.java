@@ -25,29 +25,10 @@
 
 package sun.java2d.opengl;
 
-import java.awt.AWTException;
-import java.awt.AWTError;
-import java.awt.BufferCapabilities;
-import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.ImageCapabilities;
-import java.awt.Rectangle;
-import java.awt.Transparency;
-import java.awt.color.ColorSpace;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.DataBuffer;
-import java.awt.image.DirectColorModel;
-import java.awt.image.VolatileImage;
-import java.awt.image.WritableRaster;
-
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
-import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
@@ -59,14 +40,18 @@ import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CFRetainedResource;
+import sun.lwawt.macosx.CThreading;
+
+import java.awt.*;
+import java.awt.color.ColorSpace;
+import java.awt.image.*;
+import java.security.PrivilegedAction;
+import java.util.concurrent.Callable;
 
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
 import static sun.java2d.opengl.OGLSurfaceData.FBOBJECT;
 import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
-import sun.lwawt.macosx.CThreading;
-import java.security.PrivilegedAction;
-import java.util.concurrent.Callable;
 
 public final class CGLGraphicsConfig extends CGraphicsConfig
     implements OGLGraphicsConfig
@@ -282,67 +267,6 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         WritableRaster wr = model.createCompatibleWritableRaster(width, height);
         return new OffScreenImage(target, model, wr,
                                   model.isAlphaPremultiplied());
-    }
-
-    @Override
-    public void assertOperationSupported(final int numBuffers,
-                                         final BufferCapabilities caps)
-            throws AWTException {
-        // Assume this method is never called with numBuffers != 2, as 0 is
-        // unsupported, and 1 corresponds to a SingleBufferStrategy which
-        // doesn't depend on the peer. Screen is considered as a separate
-        // "buffer".
-        if (numBuffers != 2) {
-            throw new AWTException("Only double buffering is supported");
-        }
-        final BufferCapabilities configCaps = getBufferCapabilities();
-        if (!configCaps.isPageFlipping()) {
-            throw new AWTException("Page flipping is not supported");
-        }
-        if (caps.getFlipContents() == BufferCapabilities.FlipContents.PRIOR) {
-            throw new AWTException("FlipContents.PRIOR is not supported");
-        }
-    }
-
-    @Override
-    public Image createBackBuffer(final LWComponentPeer<?, ?> peer) {
-        final Rectangle r = peer.getBounds();
-        // It is possible for the component to have size 0x0, adjust it to
-        // be at least 1x1 to avoid IAE
-        final int w = Math.max(1, r.width);
-        final int h = Math.max(1, r.height);
-        final int transparency = peer.isTranslucent() ? Transparency.TRANSLUCENT
-                                                      : Transparency.OPAQUE;
-        return new SunVolatileImage(this, w, h, transparency, null);
-    }
-
-    @Override
-    public void destroyBackBuffer(final Image backBuffer) {
-        if (backBuffer != null) {
-            backBuffer.flush();
-        }
-    }
-
-    @Override
-    public void flip(final LWComponentPeer<?, ?> peer, final Image backBuffer,
-                     final int x1, final int y1, final int x2, final int y2,
-                     final BufferCapabilities.FlipContents flipAction) {
-        final Graphics g = peer.getGraphics();
-        try {
-            g.drawImage(backBuffer, x1, y1, x2, y2, x1, y1, x2, y2, null);
-        } finally {
-            g.dispose();
-        }
-        if (flipAction == BufferCapabilities.FlipContents.BACKGROUND) {
-            final Graphics2D bg = (Graphics2D) backBuffer.getGraphics();
-            try {
-                bg.setBackground(peer.getBackground());
-                bg.clearRect(0, 0, backBuffer.getWidth(null),
-                             backBuffer.getHeight(null));
-            } finally {
-                bg.dispose();
-            }
-        }
     }
 
     @Override
