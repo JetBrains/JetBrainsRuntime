@@ -544,8 +544,9 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         setBounds(x, y, w, h, op, true, false);
     }
 
-    protected void setBounds(int x, int y, int w, int h, int op, boolean notify,
-                             final boolean updateTarget) {
+    @Override
+    public void setBounds(int x, int y, int w, int h, int op, boolean notify,
+                          final boolean updateTarget) {
         Rectangle oldBounds;
         synchronized (getStateLock()) {
             oldBounds = new Rectangle(bounds);
