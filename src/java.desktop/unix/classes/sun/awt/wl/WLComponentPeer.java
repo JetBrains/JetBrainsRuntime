@@ -63,6 +63,7 @@ import java.awt.RenderingHints;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.dnd.DropTarget;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
@@ -84,7 +85,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
+    protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLComponentPeer");
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.awt.wl.focus.WLComponentPeer");
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
@@ -653,9 +654,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public void print(Graphics g) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLComponentPeer.print(Graphics)");
-        }
+        target.print(g);
     }
 
     private void resetTargetLocationTo(int newX, int newY) {
@@ -1047,7 +1046,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void setFont(Font f) {
-        throw new UnsupportedOperationException();
     }
 
     public Font getFont() {

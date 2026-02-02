@@ -481,7 +481,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
         final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
         if (peer != null) {
-            Dialog blocker = peer.getBlocker();
+            Dialog blocker = peer.getBlockerDialog();
             if (blocker != null) { // Modality support
                 long activationSerial = serial;
                 if (WLToolkit.isKDE()) {
