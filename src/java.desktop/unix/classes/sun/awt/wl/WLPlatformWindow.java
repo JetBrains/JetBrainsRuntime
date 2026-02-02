@@ -147,7 +147,7 @@ public class WLPlatformWindow implements PlatformWindow {
 
     @Override
     public boolean isActive() {
-        throw new UnsupportedOperationException();
+        return peer != null && peer.getTarget() == WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow();
     }
 
     @Override
