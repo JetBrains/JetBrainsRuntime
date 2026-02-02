@@ -72,5 +72,33 @@ public interface LWComponentPeerAPI extends DropTargetPeer {
      */
     void repaintPeer(Rectangle r);
 
+    /**
+     * Sets the bounds of this component.
+     */
+    void setBounds(Rectangle r);
+
+    /**
+     * Sets the bounds of this component with additional parameters.
+     *
+     * @param x the x coordinate
+     * @param y the y coordinate
+     * @param w the width
+     * @param h the height
+     * @param op the operation (SET_LOCATION, SET_SIZE, SET_BOUNDS, etc.)
+     * @param notify whether to notify of the change
+     * @param updateTarget whether to update the target component
+     */
+    void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget);
+
+    /**
+     * Returns the preferred size of this component.
+     */
+    Dimension getPreferredSize();
+
+    /**
+     * Returns the minimum size of this component.
+     */
+    Dimension getMinimumSize();
+
     LWComponentPeerAPI findPeerAt(final int x, final int y);
 }
