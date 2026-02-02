@@ -605,7 +605,7 @@ static const struct xdg_toplevel_icon_manager_v1_listener xdg_toplevel_icon_mana
 };
 
 
-static bool isNativeInputMethodSupportEnabled() {
+static bool isNativeInputMethodSupportEnabled(void) {
     // NB: make sure this default value is synchronized with the one used in
     //     sun.awt.wl.WLToolkit#obtainWhetherToEnableNativeIMSupport
     const bool deflt = true;
