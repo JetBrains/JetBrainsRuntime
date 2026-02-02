@@ -108,6 +108,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean isLayouting = false; // protected by stateLock
     protected boolean visible = false;
 
+    private boolean isActive = false;  // protected by stateLock
     private boolean isFullscreen = false;  // protected by stateLock
     private boolean sizeIsBeingConfigured = false; // protected by stateLock
     private int displayScale; // protected by stateLock
@@ -195,6 +196,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             return wlSurface != null && visible;
         } finally {
             WLToolkit.awtUnlock();
+        }
+    }
+
+    boolean isActive() {
+        synchronized (getStateLock()) {
+            return isActive;
         }
     }
 
@@ -1764,6 +1771,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         synchronized (getStateLock()) {
+            isActive = active;
             isFullscreen = fullscreen;
         }
 
