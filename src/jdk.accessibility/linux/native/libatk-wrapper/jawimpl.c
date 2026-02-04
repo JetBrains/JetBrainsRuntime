@@ -253,7 +253,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         return NULL;
     }
 
-    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
+    if (jaw_impl_init_jni_cache(jniEnv) == FALSE) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return NULL;
     }
@@ -550,7 +550,7 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         return;
     }
 
-    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
+    if (jaw_impl_init_jni_cache(jniEnv) == FALSE) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return;
     }
@@ -596,7 +596,7 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
         return FALSE;
     }
 
-    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
+    if (jaw_impl_init_jni_cache(jniEnv) == FALSE) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return FALSE;
     }
@@ -631,7 +631,7 @@ AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
                                                jstring jrel_key) {
     JAW_DEBUG("%p, %p", jniEnv, jrel_key);
 
-    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
+    if (jaw_impl_init_jni_cache(jniEnv) == FALSE) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return FALSE;
     }
