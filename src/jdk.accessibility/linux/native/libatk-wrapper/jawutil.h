@@ -38,10 +38,10 @@ extern time_t jaw_start_time;
         fflush(jaw_log_file);                                                  \
     } while (0)
 
-#define JAW_DEBUG(fmt, ...)                                                \
+#define JAW_DEBUG(fmt, ...)                                                    \
     do {                                                                       \
-        if (jaw_debug) {                                                       \                                          \
-            PRINT_AND_FLUSH("(" fmt ")", ##__VA_ARGS__);                   \
+        if (jaw_debug) {                                                       \
+            PRINT_AND_FLUSH("(" fmt ")", ##__VA_ARGS__);                       \
         }                                                                      \
     } while (0)
 
