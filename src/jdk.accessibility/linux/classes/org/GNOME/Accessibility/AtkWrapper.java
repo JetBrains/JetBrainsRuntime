@@ -499,8 +499,6 @@ public class AtkWrapper {
         }
     };
     private final AWTEventListener globalListener = new AWTEventListener() {
-        private boolean firstEvent = true;
-
         public void eventDispatched(AWTEvent e) {
             if (e instanceof WindowEvent windowEvent) {
                 switch (e.getID()) {
