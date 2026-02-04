@@ -162,8 +162,11 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    void postMouseEvent(MouseEvent e) {
-        boolean processed = getDecoration().processMouseEvent(e);
+    public void postMouseEvent(MouseEvent e) {
+        boolean processed = false;
+        if (e.getComponent() == target) {
+            processed = getDecoration().processMouseEvent(e);
+        }
         if (!processed) {
             super.postMouseEvent(e);
         }
