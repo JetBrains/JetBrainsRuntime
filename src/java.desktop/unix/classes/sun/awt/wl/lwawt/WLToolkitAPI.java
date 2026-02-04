@@ -25,7 +25,11 @@
 
 package sun.awt.wl.lwawt;
 
+import sun.awt.AWTAccessor;
+import sun.awt.wl.WLComponentPeer;
+import sun.awt.wl.WLMouseInfoPeer;
 import sun.awt.wl.WLToolkit;
+import sun.awt.wl.WLWindowPeer;
 import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
@@ -72,18 +76,20 @@ public class WLToolkitAPI implements ToolkitAPI {
 
     @Override
     public void updateCursorImmediately() {
-        // TODO compare WLCursorManager and LWCursorManager
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void updateCursorLater(Window target) {
-        // TODO implement cursor update for Wayland
+        assert EventQueue.isDispatchThread() : "Current implementation assumes this method is invoked on EDT";
+        WLWindowPeer peer = AWTAccessor.getComponentAccessor().getPeer(target);
+        WLToolkit.getCursorManager().updateCursorImmediatelyFor(peer);
     }
 
     @Override
     public PlatformWindow getPlatformWindowUnderMouse() {
-        // TODO implement for Wayland if needed
-        return null;
+        WLComponentPeer peerUnderMouse = WLMouseInfoPeer.getInstance().getPeerUnderMouse();
+        return peerUnderMouse != null ? peerUnderMouse.getPlatformWindow() : null;
     }
 
     @Override
