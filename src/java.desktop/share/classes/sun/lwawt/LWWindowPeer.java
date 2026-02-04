@@ -116,15 +116,15 @@ public class LWWindowPeer
 
     // A peer where the last mouse event came to. Used by cursor manager to
     // find the component under cursor
-    private static volatile LWComponentPeer<?, ?> lastCommonMouseEventPeer;
+    private static volatile LWComponentPeerAPI lastCommonMouseEventPeer;
 
     // A peer where the last mouse event came to. Used to generate
     // MOUSE_ENTERED/EXITED notifications
-    private volatile LWComponentPeer<?, ?> lastMouseEventPeer;
+    private volatile LWComponentPeerAPI lastMouseEventPeer;
 
     // Peers where all dragged/released events should come to,
     // depending on what mouse button is being dragged according to Cocoa
-    private static final LWComponentPeer<?, ?>[] mouseDownTarget = new LWComponentPeer<?, ?>[3];
+    private static final LWComponentPeerAPI[] mouseDownTarget = new LWComponentPeerAPI[3];
 
     // A bitmask that indicates what mouse buttons produce MOUSE_CLICKED events
     // on MOUSE_RELEASE. Click events are only generated if there were no drag
@@ -775,7 +775,7 @@ public class LWWindowPeer
         // TODO: fill "bdata" member of AWTEvent
         Rectangle r = getBounds();
         // findPeerAt() expects parent coordinates
-        LWComponentPeer<?, ?> targetPeer = findPeerAt(r.x + x, r.y + y);
+        LWComponentPeerAPI targetPeer = findPeerAt(r.x + x, r.y + y);
 
         if (id == MouseEvent.MOUSE_EXITED) {
             isMouseOver = false;
@@ -823,7 +823,7 @@ public class LWWindowPeer
                         absX, absY, modifiers, clickCount, popupTrigger,
                         targetPeer);
             } else {
-                LWComponentPeer<?, ?> topmostTargetPeer = topmostWindowPeer.findPeerAt(r.x + x, r.y + y);
+                LWComponentPeerAPI topmostTargetPeer = topmostWindowPeer.findPeerAt(r.x + x, r.y + y);
                 topmostWindowPeer.generateMouseEnterExitEventsForComponents(when, button, x, y,
                         absX, absY, modifiers, clickCount, popupTrigger,
                         topmostTargetPeer);
@@ -919,7 +919,7 @@ public class LWWindowPeer
     private void generateMouseEnterExitEventsForComponents(long when,
             int button, int x, int y, int screenX, int screenY,
             int modifiers, int clickCount, boolean popupTrigger,
-            final LWComponentPeer<?, ?> targetPeer) {
+            final LWComponentPeerAPI targetPeer) {
 
         if (!isMouseOver || targetPeer == lastMouseEventPeer) {
             return;
@@ -974,7 +974,7 @@ public class LWWindowPeer
         // TODO: could we just use the last mouse event target here?
         Rectangle r = getBounds();
         // findPeerAt() expects parent coordinates
-        final LWComponentPeer<?, ?> targetPeer = findPeerAt(r.x + x, r.y + y);
+        final LWComponentPeerAPI targetPeer = findPeerAt(r.x + x, r.y + y);
         if (targetPeer == null || !targetPeer.isEnabled()) {
             return;
         }
@@ -1212,11 +1212,11 @@ public class LWWindowPeer
         return true;
     }
 
-    public static LWWindowPeer getWindowUnderCursor() {
-        return lastCommonMouseEventPeer != null ? (LWWindowPeer) lastCommonMouseEventPeer.getWindowPeerOrSelf() : null;
+    public static LWWindowPeerAPI getWindowUnderCursor() {
+        return lastCommonMouseEventPeer != null ? lastCommonMouseEventPeer.getWindowPeerOrSelf() : null;
     }
 
-    public static LWComponentPeer<?, ?> getPeerUnderCursor() {
+    public static LWComponentPeerAPI getPeerUnderCursor() {
         return lastCommonMouseEventPeer;
     }
 
@@ -1422,10 +1422,5 @@ public class LWWindowPeer
     @Override
     public long getWindowHandle() {
         return platformWindow.getWindowHandle();
-    }
-
-    @Override
-    public LWComponentPeer<?, ?> findPeerAt(int x, int y) {
-        return (LWComponentPeer<?, ?>) super.findPeerAt(x, y);
     }
 }
