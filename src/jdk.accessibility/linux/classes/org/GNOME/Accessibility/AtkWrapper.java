@@ -331,11 +331,15 @@ public class AtkWrapper {
             if (!nativeLibraryInited) {
                 builder = new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress");
                 p = builder.start();
-                var ignoredOutput = p.getInputStream();
-                while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE) ;
-                int code = p.waitFor();
-                if (code == 0 && AtkWrapper.initNativeLibrary()) {
-                    nativeLibraryInited = true;
+                try (InputStream ignoredOutput = p.getInputStream()) {
+                    while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
+                    int code = p.waitFor();
+                    if (code == 0 && AtkWrapper.initNativeLibrary()) {
+                        nativeLibraryInited = true;
+                    }
+                } finally {
+                    p.destroy();
+                    p.waitFor();
                 }
             }
 
