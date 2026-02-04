@@ -323,6 +323,11 @@ public class AtkWrapper {
                         }
                     }
                     return false;
+                } catch (IOException e) {
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                        log.fine("IOException while reading xprop output: ", e);
+                    }
+                    return false;
                 }
             });
 
@@ -331,6 +336,11 @@ public class AtkWrapper {
                     try (InputStream ignored = p.getInputStream()) {
                         while (ignored.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
                         return p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                    } catch (IOException | InterruptedException e) {
+                        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                            log.fine("Exception while checking dbus accessibility: ", e);
+                        }
+                        return false;
                     }
                 });
             }
