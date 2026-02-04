@@ -67,9 +67,9 @@ public class AtkWrapper {
                 Object[] args = new Object[1];
                 args[0] = newValue;
 
-                if (newValue != null && newValue instanceof AccessibleContext accessibleContext) {
+                if (newValue instanceof AccessibleContext accessibleContext) {
                     AtkWrapperDisposer.getInstance().addRecord(accessibleContext);
-                } else if (newValue != null && newValue instanceof Accessible accessible) {
+                } else if (newValue instanceof Accessible accessible) {
                     AccessibleContext accessibleContext = accessible.getAccessibleContext();
                     if (accessibleContext != null) {
                         AtkWrapperDisposer.getInstance().addRecord(accessibleContext);

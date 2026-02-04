@@ -137,7 +137,7 @@ public class AtkObject {
                 AccessibleContext parentAccessibleContext = parent.getAccessibleContext();
                 if (parentAccessibleContext != null) {
                     table = parentAccessibleContext.getAccessibleTable();
-                    if (table != null && table instanceof AccessibleExtendedTable) {
+                    if (table instanceof AccessibleExtendedTable) {
                         flags |= AtkInterface.INTERFACE_TABLE_CELL;
                     }
                 }
