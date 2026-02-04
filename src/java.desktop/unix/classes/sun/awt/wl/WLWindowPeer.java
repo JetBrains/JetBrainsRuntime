@@ -34,6 +34,7 @@ import sun.java2d.wl.WLSMSurfaceData;
 import sun.lwawt.LWChildPeers;
 import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.LWContainerPeerAPI;
+import sun.lwawt.LWMouseEventDispatcher;
 import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 
@@ -58,6 +59,7 @@ import java.awt.SystemColor;
 import java.awt.Window;
 import java.awt.dnd.DropTarget;
 import java.awt.event.FocusEvent;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
@@ -501,6 +503,10 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     private static native void initIDs();
 
+    @Override
+    public Window getTarget() {
+        return getWindow();
+    }
 
     @Override
     public Graphics getOnscreenGraphics(Color fg, Color bg, Font f) {
@@ -518,6 +524,19 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     public LWWindowPeerAPI getBlocker() {
         Dialog blocker = getBlockerDialog();
         return blocker != null ? AWTAccessor.getComponentAccessor().getPeer(blocker) : null;
+    }
+
+    @Override
+    public LWMouseEventDispatcher getMouseEventDispatcher() {
+        if (mouseEventDispatcher == null) {
+            mouseEventDispatcher = new LWMouseEventDispatcher(this);
+        }
+        return mouseEventDispatcher;
+    }
+
+    @Override
+    public void postMouseEvent(MouseEvent e) {
+        super.postMouseEvent(e);
     }
 
     @Override
@@ -656,6 +675,12 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     @Override
     public void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget) {
         setBounds(x, y, w, h, op);
+    }
+
+    @Override
+    public Point windowToLocal(int x, int y, LWWindowPeerAPI wp) {
+        // For WLWindowPeer window coordinates are already local coordinates - no transformation needed.
+        return new Point(x, y);
     }
 
     @Override

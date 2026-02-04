@@ -38,6 +38,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.java2d.wl.WLSurfaceSizeListener;
+import sun.lwawt.LWMouseEventDispatcher;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
@@ -115,6 +116,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private final WLSize wlSize = new WLSize();
     private boolean repositionPopup = false; // protected by stateLock
     private boolean resizePending = false; // protected by stateLock
+
+    protected LWMouseEventDispatcher mouseEventDispatcher;
 
     private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
     private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
@@ -1297,14 +1300,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         int yAbsolute = abs.y;
 
         if (e.hasEnterEvent()) {
-            updateCursorImmediately();
-            final MouseEvent mouseEvent = new MouseEvent(getTarget(), MouseEvent.MOUSE_ENTERED,
+            updateCursorImmediately(); // TODO do we need this? dispatcher does this after posting the event
+            getMouseEventDispatcher().notifyMouseEvent(
+                    MouseEvent.MOUSE_ENTERED,
                     timestamp,
-                    newInputState.getModifiers(),
+                    MouseEvent.NOBUTTON,
                     x, y,
                     xAbsolute, yAbsolute,
-                    0, false, MouseEvent.NOBUTTON);
-            postMouseEvent(mouseEvent);
+                    newInputState.getModifiers(),
+                    0, false);
         }
 
         int clickCount = 0;
@@ -1319,32 +1323,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 isPopupTrigger = buttonCode.isPopupTrigger() && e.getIsButtonPressed();
                 buttonChanged = buttonCode.javaCode;
 
-                final MouseEvent mouseEvent = new MouseEvent(getTarget(),
+                getMouseEventDispatcher().notifyMouseEvent(
                         e.getIsButtonPressed() ? MouseEvent.MOUSE_PRESSED : MouseEvent.MOUSE_RELEASED,
                         timestamp,
-                        newInputState.getModifiers(),
+                        buttonChanged,
                         x, y,
                         xAbsolute, yAbsolute,
+                        newInputState.getModifiers(),
                         clickCount,
-                        isPopupTrigger,
-                        buttonChanged);
-                postMouseEvent(mouseEvent);
-
-                final boolean isButtonReleased = !e.getIsButtonPressed();
-                final boolean wasSameButtonPressed = oldInputState.hasThisPointerButtonPressedAt(e.getButtonCode(), x, y);
-                final boolean isButtonClicked = isButtonReleased && wasSameButtonPressed;
-                if (isButtonClicked) {
-                    final MouseEvent mouseClickEvent = new MouseEvent(getTarget(),
-                            MouseEvent.MOUSE_CLICKED,
-                            timestamp,
-                            newInputState.getModifiers(),
-                            x, y,
-                            xAbsolute, yAbsolute,
-                            clickCount,
-                            isPopupTrigger,
-                            buttonChanged);
-                    postMouseEvent(mouseClickEvent);
-                }
+                        isPopupTrigger);
             }
         }
 
@@ -1437,68 +1424,61 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 assert verticalMWEScrollAmount > 0
                         : String.format("Vertical scrolling event has negative scroll amount: %d", verticalMWEScrollAmount);
 
-                final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
-                        MouseEvent.MOUSE_WHEEL,
+                getMouseEventDispatcher().notifyMouseWheelEvent(
                         timestamp,
-                        // Making sure the event will cause scrolling along the vertical axis
-                        newInputState.getModifiers() & ~KeyEvent.SHIFT_DOWN_MASK,
                         x, y,
                         xAbsolute, yAbsolute,
+                        // Making sure the event will cause scrolling along the vertical axis
+                        newInputState.getModifiers() & ~KeyEvent.SHIFT_DOWN_MASK,
                         1,
                         isPopupTrigger,
                         MouseWheelEvent.WHEEL_UNIT_SCROLL,
                         verticalMWEScrollAmount,
                         verticalMWERoundRotations,
                         verticalMWEPreciseRotations);
-                postMouseEvent(mouseEvent);
             }
 
             if (horizontalMWERoundRotations != 0 || horizontalMWEPreciseRotations != 0) {
                 assert horizontalMWEScrollAmount > 0
-                        : String.format("Horizontal scrolling event has negative scroll amount: %d", horizontalMWEScrollAmount);;
+                        : String.format("Horizontal scrolling event has negative scroll amount: %d", horizontalMWEScrollAmount);
 
-                final MouseEvent mouseEvent = new MouseWheelEvent(getTarget(),
-                        MouseEvent.MOUSE_WHEEL,
+                getMouseEventDispatcher().notifyMouseWheelEvent(
                         timestamp,
-                        // Making sure the event will cause scrolling along the horizontal axis
-                        newInputState.getModifiers() | KeyEvent.SHIFT_DOWN_MASK,
                         x, y,
                         xAbsolute, yAbsolute,
+                        // Making sure the event will cause scrolling along the horizontal axis
+                        newInputState.getModifiers() | KeyEvent.SHIFT_DOWN_MASK,
                         1,
                         isPopupTrigger,
                         MouseWheelEvent.WHEEL_UNIT_SCROLL,
                         horizontalMWEScrollAmount,
                         horizontalMWERoundRotations,
                         horizontalMWEPreciseRotations);
-                postMouseEvent(mouseEvent);
             }
         }
 
         if (e.hasMotionEvent()) {
-            final MouseEvent mouseEvent = new MouseEvent(getTarget(),
-                    newInputState.hasPointerButtonPressed()
-                            ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
+            getMouseEventDispatcher().notifyMouseEvent(
+                    newInputState.hasPointerButtonPressed() ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
                     timestamp,
-                    newInputState.getModifiers(),
+                    buttonChanged,
                     x, y,
                     xAbsolute, yAbsolute,
+                    newInputState.getModifiers(),
                     clickCount,
-                    isPopupTrigger,
-                    buttonChanged);
-            postMouseEvent(mouseEvent);
+                    isPopupTrigger);
         }
 
         if (e.hasLeaveEvent()) {
-            final MouseEvent mouseEvent = new MouseEvent(getTarget(),
+            getMouseEventDispatcher().notifyMouseEvent(
                     MouseEvent.MOUSE_EXITED,
                     timestamp,
-                    newInputState.getModifiers(),
+                    buttonChanged,
                     x, y,
                     xAbsolute, yAbsolute,
+                    newInputState.getModifiers(),
                     clickCount,
-                    isPopupTrigger,
-                    buttonChanged);
-            postMouseEvent(mouseEvent);
+                    isPopupTrigger);
         }
     }
 
@@ -2310,5 +2290,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         public String toString() {
             return "WLSize[client=" + javaSize + ", pixel=" + pixelSize + ", surface=" + surfaceSize + "]";
         }
+    }
+
+    public LWMouseEventDispatcher getMouseEventDispatcher() {
+        // Actual instance is created by WLWindowPeer
+        return mouseEventDispatcher;
     }
 }

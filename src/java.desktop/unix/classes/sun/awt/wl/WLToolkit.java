@@ -490,7 +490,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                 WLWindowPeer blockerPeer = AWTAccessor.getComponentAccessor().getPeer(blocker);
                 blockerPeer.reactivate(activationSerial, surfacePtr);
             } else {
-                Window window = (Window) peer.getTarget();
+                Window window = peer.getTarget();
                 Window winToFocus = window;
 
                 Component s = peer.getSyntheticFocusOwner();
@@ -1256,13 +1256,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public void updateCursorLater(Window target) {
-        // TODO
+        assert EventQueue.isDispatchThread() : "Current implementation assumes this method is invoked on EDT";
+        WLWindowPeer peer = AWTAccessor.getComponentAccessor().getPeer(target);
+        WLToolkit.getCursorManager().updateCursorImmediatelyFor(peer);
     }
 
     @Override
     public PlatformWindow getPlatformWindowUnderMouse() {
-        // TODO
-        return null;
+        WLComponentPeer peerUnderMouse = WLMouseInfoPeer.getInstance().getPeerUnderMouse();
+        return peerUnderMouse instanceof WLWindowPeer windowPeer ? windowPeer.getPlatformWindow() : null;
     }
 
     @Override
