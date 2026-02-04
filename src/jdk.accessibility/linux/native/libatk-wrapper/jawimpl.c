@@ -77,7 +77,7 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
                                 guint tflag) {
     JAW_DEBUG("%p, %p, %u", jniEnv, jaw_obj, tflag);
 
-    if (!jniEnv || !jaw_obj) {
+    if (jniEnv == NULL || jaw_obj == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -214,7 +214,7 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
 JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG("%p, %p", jniEnv, ac);
 
-    if (!ac || !jniEnv) {
+    if (ac == NULL || jniEnv == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -248,12 +248,12 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
 JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG("%p, %p", jniEnv, ac);
 
-    if (!ac || !jniEnv) {
+    if (ac == NULL || jniEnv == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
 
-    if (!jaw_impl_init_jni_cache(jniEnv)) {
+    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return NULL;
     }
@@ -282,7 +282,7 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 static void jaw_impl_class_intern_init(gpointer klass, gpointer data) {
     JAW_DEBUG("%p, %p", klass, data);
 
-    if (!klass) {
+    if (klass == NULL) {
         g_warning(
             "Null argument passed to function jaw_impl_class_intern_init");
         return;
@@ -415,7 +415,7 @@ GType jaw_impl_get_type(guint tflag) {
 static void jaw_impl_class_init(JawImplClass *klass) {
     JAW_DEBUG("%p", klass);
 
-    if (!klass) {
+    if (klass == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -452,7 +452,7 @@ static void jaw_impl_dispose(GObject *gobject) {
 static void jaw_impl_finalize(GObject *gobject) {
     JAW_DEBUG("%p", gobject);
 
-    if (!gobject) {
+    if (gobject == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -504,7 +504,7 @@ static void jaw_impl_finalize(GObject *gobject) {
 static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     JAW_DEBUG("%p, %u", jaw_obj, iface);
 
-    if (!jaw_obj) {
+    if (jaw_obj == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return NULL;
     }
@@ -532,7 +532,7 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
 static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG("%p, %p", atk_obj, data);
 
-    if (!atk_obj) {
+    if (atk_obj == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
@@ -550,7 +550,7 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
         return;
     }
 
-    if (!jaw_impl_init_jni_cache(jniEnv)) {
+    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return;
     }
@@ -591,12 +591,12 @@ static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
                                      jfieldID fieldID) {
     JAW_DEBUG("%p, %p, %p", jniEnv, jKey, fieldID);
 
-    if (!jniEnv || !fieldID) {
+    if (jniEnv == NULL || fieldID == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return FALSE;
     }
 
-    if (!jaw_impl_init_jni_cache(jniEnv)) {
+    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return FALSE;
     }
@@ -631,7 +631,7 @@ AtkRelationType jaw_impl_get_atk_relation_type(JNIEnv *jniEnv,
                                                jstring jrel_key) {
     JAW_DEBUG("%p, %p", jniEnv, jrel_key);
 
-    if (!jaw_impl_init_jni_cache(jniEnv)) {
+    if (jaw_impl_init_jni_cache(jniEnv) == NULL) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
         return FALSE;
     }
