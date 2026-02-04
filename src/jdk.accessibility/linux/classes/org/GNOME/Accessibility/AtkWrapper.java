@@ -586,7 +586,6 @@ public class AtkWrapper {
     private static String findXPropPath() {
         String pathEnv = System.getenv().get("PATH");
         if (pathEnv != null) {
-            String pathSeparator = File.pathSeparator;
             java.util.List<String> paths = Arrays.asList(pathEnv.split(File.pathSeparator));
             for (String path : paths) {
                 File xpropFile = new File(path, "xprop");
