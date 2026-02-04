@@ -28,11 +28,13 @@ import javax.accessibility.*;
 import java.awt.Toolkit;
 import javax.swing.JComboBox;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import sun.util.logging.PlatformLogger;
 
 public class AtkWrapper {
     private static final PlatformLogger log = PlatformLogger.getLogger("org.GNOME.Accessibility.AtkWrapper");
+    private static final long ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS = 5;
     private static boolean accessibilityEnabled = false;
     private static boolean nativeLibraryInited = false;
     // Previously focused accessible context
@@ -328,7 +330,7 @@ public class AtkWrapper {
                 nativeLibraryInited = tryInitAccessibilityViaProcess(new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress"), p -> {
                     try (InputStream ignored = p.getInputStream()) {
                         while (ignored.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
-                        return p.waitFor() == 0;
+                        return p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS) == 0;
                     }
                 });
             }
@@ -571,7 +573,9 @@ public class AtkWrapper {
                 return false;
             } finally {
                 p.destroy();
-                p.waitFor();
+                if (!p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    p.destroyForcibly();
+                }
             }
         } catch (Exception e) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
