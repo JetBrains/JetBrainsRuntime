@@ -333,11 +333,9 @@ public class AtkWrapper {
                 p = builder.start();
                 var ignoredOutput = p.getInputStream();
                 while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE) ;
-                p.waitFor();
-                if (p.exitValue() == 0) {
-                    if (AtkWrapper.initNativeLibrary()) {
-                        nativeLibraryInited = true;
-                    }
+                int code = p.waitFor();
+                if (code == 0 && AtkWrapper.initNativeLibrary()) {
+                    nativeLibraryInited = true;
                 }
             }
 
