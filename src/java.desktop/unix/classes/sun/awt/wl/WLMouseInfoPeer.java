@@ -45,18 +45,21 @@ public class WLMouseInfoPeer implements MouseInfoPeer, SunToolkit.RelativePointe
 
     @Override
     public boolean isWindowUnderMouse(Window w) {
+        WLComponentPeer peerUnderMouse = getPeerUnderMouse();
+        return peerUnderMouse != null && peerUnderMouse.getTarget() == w;
+    }
+
+    public WLComponentPeer getPeerUnderMouse() {
         WLInputState inputState = WLToolkit.getInputState();
         WLComponentPeer peerUnderMouse = inputState.peerForPointerEvents();
-        return peerUnderMouse != null
-                && peerUnderMouse.getTarget() == w
-                && inputState.isPointerOverPeer();
+        return peerUnderMouse != null && inputState.isPointerOverPeer() ? peerUnderMouse : null;
     }
 
     private static class HOLDER {
         static WLMouseInfoPeer instance = new WLMouseInfoPeer();
     }
 
-    static WLMouseInfoPeer getInstance() {
+    public static WLMouseInfoPeer getInstance() {
         return HOLDER.instance;
     }
 
