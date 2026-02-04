@@ -28,14 +28,23 @@ package sun.lwawt;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
+import java.awt.Window;
 import java.awt.event.FocusEvent;
+import java.awt.event.MouseEvent;
 import java.awt.peer.WindowPeer;
 
 public interface LWWindowPeerAPI extends LWContainerPeerAPI, WindowPeer {
+
+    @Override
+    Window getTarget();
 
     Graphics getOnscreenGraphics(Color fg, Color bg, Font f);
 
     boolean requestWindowFocus(FocusEvent.Cause cause);
 
     LWWindowPeerAPI getBlocker();
+
+    LWMouseEventDispatcher getMouseEventDispatcher();
+
+    void postMouseEvent(MouseEvent e);
 }
