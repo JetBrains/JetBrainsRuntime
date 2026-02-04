@@ -313,14 +313,15 @@ public class AtkWrapper {
             System.loadLibrary("atk-wrapper");
             ProcessBuilder builder = new ProcessBuilder(xpropPath, "-root");
             Process p = builder.start();
-            BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            String result;
-            while ((result = b.readLine()) != null) {
-                if (result.indexOf("AT_SPI_IOR") >= 0 || result.indexOf("AT_SPI_BUS") >= 0) {
-                    if (AtkWrapper.initNativeLibrary()) {
-                        nativeLibraryInited = true;
+            try (BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String result;
+                while ((result = b.readLine()) != null) {
+                    if (result.contains("AT_SPI_IOR") || result.contains("AT_SPI_BUS")) {
+                        if (AtkWrapper.initNativeLibrary()) {
+                            nativeLibraryInited = true;
+                        }
+                        break;
                     }
-                    break;
                 }
             }
 
