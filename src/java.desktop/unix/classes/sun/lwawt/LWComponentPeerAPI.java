@@ -26,6 +26,7 @@
 package sun.lwawt;
 
 import java.awt.Component;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.dnd.peer.DropTargetPeer;
 import java.awt.peer.ComponentPeer;
@@ -58,4 +59,11 @@ public interface LWComponentPeerAPI extends ComponentPeer, DropTargetPeer {
     void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget);
 
     LWComponentPeerAPI findPeerAt(final int x, final int y);
+
+    /*
+     * Translated the given point in Window coordinates to the point in
+     * coordinates local to this component. The given window peer must be
+     * the window where this component is in.
+     */
+    Point windowToLocal(int x, int y, LWWindowPeerAPI wp);
 }
