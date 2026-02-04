@@ -6,6 +6,7 @@ package sun.lwawt;
 
 import java.awt.*;
 import java.awt.event.FocusEvent;
+import java.awt.event.MouseEvent;
 
 /**
  * Interface defining the window peer API needed by component peers.
@@ -26,4 +27,12 @@ public interface LWWindowPeerAPI extends LWContainerPeerAPI {
     void updateWindow();
 
     boolean requestWindowFocus(FocusEvent.Cause cause);
+
+    LWMouseEventDispatcher getMouseEventDispatcher();
+
+    /**
+     * Posts a mouse event. Subclasses may override to intercept events
+     * (e.g., for window decoration handling).
+     */
+    void postMouseEvent(MouseEvent e);
 }

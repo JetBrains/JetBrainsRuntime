@@ -129,4 +129,15 @@ public interface LWComponentPeerAPI extends DropTargetPeer {
     Dimension getMinimumSize();
 
     LWComponentPeerAPI findPeerAt(final int x, final int y);
+
+    /**
+     * Translates the given point in window coordinates to the point in
+     * coordinates local to this component.
+     *
+     * @param x the x coordinate in window space
+     * @param y the y coordinate in window space
+     * @param wp the window peer that this component belongs to
+     * @return the point in local coordinates
+     */
+    Point windowToLocal(int x, int y, LWWindowPeerAPI wp);
 }
