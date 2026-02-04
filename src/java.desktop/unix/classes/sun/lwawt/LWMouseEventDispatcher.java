@@ -224,7 +224,8 @@ public class LWMouseEventDispatcher {
     }
 
     public void notifyMouseWheelEvent(long when, int x, int y, int absX, int absY,
-                                      int modifiers, int scrollType, int scrollAmount,
+                                      int modifiers, int clickCount, boolean popupTrigger,
+                                      int scrollType, int scrollAmount,
                                       int wheelRotation, double preciseWheelRotation) {
         // TODO: could we just use the last mouse event target here?
         Rectangle r = windowPeer.getBounds();
@@ -240,8 +241,8 @@ public class LWMouseEventDispatcher {
                 MouseEvent.MOUSE_WHEEL,
                 when, modifiers,
                 lp.x, lp.y,
-                absX, absY, /* absX, absY */
-                0 /* clickCount */, false /* popupTrigger */,
+                absX, absY,
+                clickCount, popupTrigger,
                 scrollType, scrollAmount,
                 wheelRotation, preciseWheelRotation));
 
