@@ -311,40 +311,30 @@ public class AtkWrapper {
                 throw new RuntimeException("No xprop found");
             }
             System.loadLibrary("atk-wrapper");
-            ProcessBuilder builder = new ProcessBuilder(xpropPath, "-root");
-            Process p = builder.start();
-            try (BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                String result;
-                while ((result = b.readLine()) != null) {
-                    if (result.contains("AT_SPI_IOR") || result.contains("AT_SPI_BUS")) {
-                        if (AtkWrapper.initNativeLibrary()) {
-                            nativeLibraryInited = true;
+
+            nativeLibraryInited = tryInitAccessibilityViaProcess(new ProcessBuilder(xpropPath, "-root"), p -> {
+                try (BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                    String line;
+                    while ((line = b.readLine()) != null) {
+                        if (line.contains("AT_SPI_IOR") || line.contains("AT_SPI_BUS")) {
+                            return true;
                         }
-                        break;
                     }
+                    return false;
                 }
-            } finally {
-                p.destroy();
-                p.waitFor();
+            });
+
+            if (!nativeLibraryInited) {
+                nativeLibraryInited = tryInitAccessibilityViaProcess(new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress"), p -> {
+                    try (InputStream ignored = p.getInputStream()) {
+                        while (ignored.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
+                        return p.waitFor() == 0;
+                    }
+                });
             }
 
             if (!nativeLibraryInited) {
-                builder = new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress");
-                p = builder.start();
-                try (InputStream ignoredOutput = p.getInputStream()) {
-                    while (ignoredOutput.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
-                    int code = p.waitFor();
-                    if (code == 0 && AtkWrapper.initNativeLibrary()) {
-                        nativeLibraryInited = true;
-                    }
-                } finally {
-                    p.destroy();
-                    p.waitFor();
-                }
-            }
-
-            if (!nativeLibraryInited) {
-                throw new IllegalStateException("Accessibility is disabled due to an error in initNativeLibrary.");
+                throw new IllegalStateException("Failed to initialize accessibility: process execution failed or native library initialization returned false.");
             }
 
             if (!AtkWrapper.loadAtkBridge()) {
@@ -569,6 +559,26 @@ public class AtkWrapper {
 
     public static void main(String args[]) {
         new AtkWrapper();
+    }
+
+    private static boolean tryInitAccessibilityViaProcess(ProcessBuilder builder, java.util.function.Function<Process, Boolean> successCheck) {
+        try {
+            Process p = builder.start();
+            try {
+                if (successCheck.apply(p)) {
+                    return AtkWrapper.initNativeLibrary();
+                }
+                return false;
+            } finally {
+                p.destroy();
+                p.waitFor();
+            }
+        } catch (Exception e) {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Failed to check accessibility via process: ", e);
+            }
+            return false;
+        }
     }
 
     private static String findXPropPath() {
