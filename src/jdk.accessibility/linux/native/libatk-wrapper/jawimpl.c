@@ -202,6 +202,15 @@ static void aggregate_interface(JNIEnv *jniEnv, JawObject *jaw_obj,
     (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
 }
 
+/**
+ * jaw_impl_create_instance
+ *
+ * @jniEnv: (not nullable) JNI environment for the current thread.
+ * @ac: (not nullable) JNI reference to the Java AccessibleContext.
+ *      This function does not take ownership of @ac.
+ *
+ * Returns: (transfer full) A newly created JawImpl instance, or NULL on error.
+ */
 JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG("%p, %p", jniEnv, ac);
 
@@ -217,7 +226,6 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     jaw_impl = (JawImpl *)g_object_new(JAW_TYPE_IMPL(tflag), NULL);
     if (jaw_impl == NULL) {
         g_warning("%s: Failed to create new JawImpl object", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, ac);
         return NULL;
     }
 
