@@ -496,6 +496,19 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     @Override
+    public LWMouseEventDispatcher getMouseEventDispatcher() {
+        if (mouseEventDispatcher == null) {
+            mouseEventDispatcher = new LWMouseEventDispatcher(this, WLToolkit.getWLToolkit());
+        }
+        return mouseEventDispatcher;
+    }
+
+    @Override
+    public void postMouseEvent(MouseEvent e) {
+        super.postMouseEvent(e);
+    }
+
+    @Override
     public void addChildPeer(LWComponentPeerAPI child) {
         childPeers.addChildPeer(child);
     }
@@ -631,6 +644,12 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     @Override
     public void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget) {
         setBounds(x, y, w, h, op);
+    }
+
+    @Override
+    public Point windowToLocal(int x, int y, LWWindowPeerAPI wp) {
+        // For WLWindowPeer window coordinates are already local coordinates - no transformation needed.
+        return new Point(x, y);
     }
 
     @Override
