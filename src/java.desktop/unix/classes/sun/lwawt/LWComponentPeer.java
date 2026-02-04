@@ -1308,6 +1308,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * coordinates local to this component. The given window peer must be
      * the window where this component is in.
      */
+    @Override
     public Point windowToLocal(int x, int y, LWWindowPeerAPI wp) {
         return windowToLocal(new Point(x, y), wp);
     }
