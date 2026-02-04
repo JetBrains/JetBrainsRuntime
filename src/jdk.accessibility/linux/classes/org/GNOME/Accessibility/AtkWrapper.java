@@ -323,6 +323,9 @@ public class AtkWrapper {
                         break;
                     }
                 }
+            } finally {
+                p.destroy();
+                p.waitFor();
             }
 
             if (!nativeLibraryInited) {
