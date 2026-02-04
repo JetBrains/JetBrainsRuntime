@@ -763,8 +763,8 @@ public class LWWindowPeer
                                       int scrollAmount, int wheelRotation,
                                       double preciseWheelRotation, byte[] bdata)
     {
-        getMouseEventDispatcher().notifyMouseWheelEvent(when, x, y, absX, absY, modifiers, scrollType, scrollAmount,
-                wheelRotation, preciseWheelRotation);
+        getMouseEventDispatcher().notifyMouseWheelEvent(when, x, y, absX, absY, modifiers, 0, false,
+                scrollType, scrollAmount, wheelRotation, preciseWheelRotation);
     }
 
     @Override
