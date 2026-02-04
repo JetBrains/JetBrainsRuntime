@@ -330,7 +330,7 @@ public class AtkWrapper {
                 nativeLibraryInited = tryInitAccessibilityViaProcess(new ProcessBuilder("dbus-send", "--session", "--dest=org.a11y.Bus", "--print-reply", "/org/a11y/bus", "org.a11y.Bus.GetAddress"), p -> {
                     try (InputStream ignored = p.getInputStream()) {
                         while (ignored.skip(Long.MAX_VALUE) == Long.MAX_VALUE);
-                        return p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS) == 0;
+                        return p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                     }
                 });
             }
