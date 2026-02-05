@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include "AtkWrapper.h"
-#include "AtkSignal.h"
+#include "org_GNOME_Accessibility_AtkWrapper.h"
+#include "org_GNOME_Accessibility_AtkSignal.h"
 #include "jawcache.h"
 #include "jawimpl.h"
 #include "jawtoplevel.h"
@@ -139,7 +139,7 @@ static gpointer jni_loop_callback(void *data) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(void) {
+Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(JNIEnv *env, jobject obj) {
     JAW_DEBUG("");
     const gchar *debug_env = g_getenv("JAW_DEBUG");
     if (debug_env != NULL) {
@@ -194,7 +194,7 @@ static guint jni_main_idle_add(GSourceFunc function, gpointer data) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(void) {
+Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env, jobject obj) {
     JAW_DEBUG("");
     // Enable ATK Bridge so we can load it now
     g_unsetenv("NO_AT_BRIDGE");
