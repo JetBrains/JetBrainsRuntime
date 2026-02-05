@@ -273,7 +273,11 @@ java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264 generic-all
 java/awt/Focus/ShowFrameCheckForegroundTest/ShowFrameCheckForegroundTest.java JBR-5210,JBR-6506 windows-all,linux-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java 8080982 generic-all
+java/awt/datatransfer/HTMLTransferConsoleOutputTest.java 8237254,8354505 macosx-all,generic-all
+java/awt/datatransfer/ImageTransferCrashTest.java 8237253,8354505 macosx-all,generic-all
 java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java 8079268 linux-all
+java/awt/datatransfer/ClipboardPerformanceTest.java 8029022 windows-all
+java/awt/datatransfer/ImageTransferCrashTest.java 8237253 macosx-all
 java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java JBR-6393 ResizeableResourceHashtable
 java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux-all
 java/awt/LightweightComponent/LightweightDragTest.java JBR-6557 windows-all
@@ -426,6 +430,10 @@ java/awt/Component/RepaintTest.java JBR-6872 macosx-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-4275 linux-all
 java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java 8165863 macosx-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java 8017454 macosx-all
+java/awt/Clipboard/ClipboardSecurity.java 8054809 macosx-all
+java/awt/Clipboard/GetAltContentsTest/SystemClipboardTest.java 8234140 macosx-all
+java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
+java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
@@ -751,6 +759,7 @@ java/awt/GridBagLayout/GridBagLayoutIpadXYTest/GridBagLayoutIpadXYTest.java 8253
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8324782 windows-all,macosx-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8324782 windows-all,macosx-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java JBR-7847 linux-all
+java/awt/GridBagLayout/ComponentShortage.java 8355280 windows-all,linux-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java 8238720 windows-all
 
 java/awt/wakefield/RobotKeyboard.java JBR-5653 linux-all
@@ -1360,6 +1369,7 @@ javax/swing/JTextField/8036819/bug8036819.java JBR-6113 windows-all
 javax/swing/JTree/4927934/bug4927934.java JBR-6114 windows-all
 java/awt/TrayIcon/DragEventSource/DragEventSource.java 8252242 macosx-all
 java/awt/FileDialog/DefaultFocusOwner/DefaultFocusOwner.java 7187728 macosx-all,linux-all
+java/awt/FileDialog/DoubleActionESC.java 8356981 linux-all
 java/awt/FileDialog/RegexpFilterTest/RegexpFilterTest.html 7187728 macosx-all,linux-all
 java/awt/print/PageFormat/Orient.java 8016055 macosx-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java 8253184 windows-all
@@ -1368,6 +1378,7 @@ java/awt/TextArea/TextAreaCaretVisibilityTest/bug7129742.java JBR-5439 linux-all
 java/awt/TextArea/TextAreaCursorTest/HoveringAndDraggingTest.java 8024986 macosx-all,linux-all
 java/awt/TextArea/TextAreaTwicePack/TextAreaTwicePack.java 8253184 windows-all
 java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7822 linux-all
+java/awt/TextComponent/SelectionAndCaretColor.java 7017622 linux-all
 java/awt/TextField/OverScrollTest/OverScrollTest.java 8253184 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java JBR-6748 linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.java 8256289 windows-all
@@ -1435,6 +1446,7 @@ java/awt/MenuBar/SeparatorsNavigation/SeparatorsNavigation.java JBR-4880,JBR-809
 javax/swing/JFileChooser/8002077/bug8002077.java JBR-4880 windows-all
 javax/swing/JScrollBar/4708809/bug4708809.java 8169957 windows-10.0
 javax/swing/JSlider/6348946/bug6348946.java JBR-5387 linux-all
+javax/swing/JSlider/bug4382876.java JBR-9946 linux-all
 javax/swing/JSpinner/4973721/bug4973721.java JBR-4880 windows-all
 javax/swing/JSpinner/5012888/bug5012888.java JBR-4880,8169958 windows-all,linux-all
 javax/swing/JSpinner/8223788/JSpinnerButtonFocusTest.java JBR-5210 windows-all
