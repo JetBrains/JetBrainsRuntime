@@ -1466,6 +1466,19 @@ public abstract class WLComponentPeer implements ComponentPeer, WLSurfaceSizeLis
         }
 
         if (e.hasMotionEvent()) {
+            if (newInputState.hasPointerButtonPressed()) {
+                final WLPointerEvent.PointerButtonCodes buttonCode
+                        = WLPointerEvent.PointerButtonCodes.recognizedOrNull(newInputState.pointerButtonPressedEvent().linuxCode());
+                if (buttonCode == null) {
+                    if (log.isLoggable(Level.WARNING)) {
+                        log.warning("No button code recognized for dragging event: " + e);
+                    }
+                    return;
+                }
+                clickCount = newInputState.getClickCount();
+                isPopupTrigger = buttonCode.isPopupTrigger() && e.getIsButtonPressed();
+                buttonChanged = buttonCode.javaCode;
+            }
             getMouseEventDispatcher().notifyMouseEvent(
                     newInputState.hasPointerButtonPressed() ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_MOVED,
                     timestamp,
