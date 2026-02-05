@@ -580,9 +580,17 @@ public class AtkWrapper {
                 }
                 return false;
             } finally {
-                p.destroy();
                 if (!p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                    p.destroyForcibly();
+                    if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                        log.fine("Accessibility check process " + p + " did not terminate within " + ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS + " seconds, calling destroy()");
+                    }
+                    p.destroy();
+                    if (!p.waitFor(ACCESSIBILITY_PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                            log.fine("Accessibility check process " + p + " did not terminate after destroy(), calling destroyForcibly()");
+                        }
+                        p.destroyForcibly();
+                    }
                 }
             }
         } catch (Exception e) {
