@@ -89,10 +89,13 @@ static gboolean wrapper_cache_initialized = FALSE;
 static gboolean atk_wrapper_init_jni_cache(JNIEnv *jniEnv);
 
 /*
- * OpenJDK seems to be sending flurries of visible data changed events, which
- * overloads us. They are however usually just for the same object, so we can
- * compact them: there is no need to queue another one if the previous hasn't
- * even been sent!
+ * Deduplication optimization for VISIBLE_DATA_CHANGED events
+ *
+ * During rapid UI updates, the Java side may fire multiple
+ * VISIBLE_DATA_CHANGED events for the same AccessibleContext before the JAW
+ * thread processes the first one. To prevent event-queue saturation, we track
+ * the last queued AccessibleContext and skip duplicates for the same object
+ * until the first event has been processed.
  */
 static pthread_mutex_t jaw_vdc_dup_mutex = PTHREAD_MUTEX_INITIALIZER;
 static jobject jaw_vdc_last_ac = NULL;
@@ -931,8 +934,9 @@ static gboolean signal_emit_handler(gpointer p) {
         org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
         if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, para->global_ac)) {
-            /* So we will be sending the visible data changed event. If any
-             * other comes, we will want to send it  */
+            /* We are now processing the queued event for this object.
+             * Clear the tracking variable so future events for this object
+             * can be queued again. */
             jaw_vdc_clear_last_ac(jniEnv);
         }
         pthread_mutex_unlock(&jaw_vdc_dup_mutex);
@@ -1201,19 +1205,20 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
 
     pthread_mutex_lock(&jaw_vdc_dup_mutex);
     if (id != org_GNOME_Accessibility_AtkSignal_OBJECT_VISIBLE_DATA_CHANGED) {
-        /* Something may have happened since the last visible data changed
-         * event, so we want to sent it again */
+        /* A non-VISIBLE_DATA_CHANGED event indicates something has changed
+         * in the object's state. Clear the tracking variable so that the next
+         * VISIBLE_DATA_CHANGED event for any object will be queued. */
         jaw_vdc_clear_last_ac(jniEnv);
     } else {
         if ((*jniEnv)->IsSameObject(jniEnv, jaw_vdc_last_ac, jAccContext)) {
-            /* We have already queued to send one and nothing happened in
-             * between, this one is really useless */
+            /* A VISIBLE_DATA_CHANGED event for this object is already queued
+             * and has not been processed yet. Skip this duplicate event. */
             pthread_mutex_unlock(&jaw_vdc_dup_mutex);
             return;
+        } else {
+            jaw_vdc_clear_last_ac(jniEnv);
+            jaw_vdc_last_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
         }
-
-        jaw_vdc_clear_last_ac(jniEnv);
-        jaw_vdc_last_ac = (*jniEnv)->NewGlobalRef(jniEnv, jAccContext);
     }
     pthread_mutex_unlock(&jaw_vdc_dup_mutex);
 
