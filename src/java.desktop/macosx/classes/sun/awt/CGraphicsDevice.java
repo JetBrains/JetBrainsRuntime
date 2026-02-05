@@ -391,7 +391,7 @@ public final class CGraphicsDevice extends GraphicsDevice
             map.put(displayID, new Descriptor(new Insets(top, left, bottom, right), scale));
         }
         public Descriptor getDescriptor(int displayID) {
-            return map.get(displayID);
+            return map.getOrDefault(displayID, Descriptor.DEFAULT);
         }
         public static DisplayConfiguration get() {
             try {
@@ -407,6 +407,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     }
 
     private static final class Descriptor {
+        private static final Descriptor DEFAULT = new Descriptor(new Insets(0, 0, 0, 0), 1.0);
         private final Insets screenInsets;
         private final double scale;
         private Descriptor(Insets screenInsets, double scale) {
