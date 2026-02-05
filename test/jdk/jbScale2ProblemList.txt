@@ -10,7 +10,7 @@ java/awt/dnd/DragSourceGCrashTest.java JBR-6442 linux-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/dnd/DroppingVMHangTest.java JBR-9156 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-6442 linux-all
-java/awt/dnd/InterJVMLinkTest.java JBR-9255 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64
+java/awt/dnd/InterJVMLinkTest.java JBR-9255 fedora-41-x64,fedora-42-x64
 java/awt/dnd/MozillaDnDTest.java JBR-6442 linux-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-6292 windows-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java JBR-6292 windows-all
@@ -60,7 +60,7 @@ java/awt/Mixing/OpaqueTest.java JBR-5707,JBR-6090 linux-all,windows-all
 java/awt/Mixing/OverlappingButtons.java JBR-5707,JBR-6090 linux-all,windows-all
 java/awt/Mixing/Validating.java JBR-5908,JBR-6090 linux-all,windows-all
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-all
-java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732,JBR-9207 windows-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.7-200.fc42.aarch64,linux-6.17.8-200.fc42.aarch64
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732,JBR-9207 windows-all,fedora-41-x64,fedora-42-x64,fedora-42-aarch64
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Modal/BlockedMouseInputTest3.java JBR-6134 windows-x64
 java/awt/Mouse/MouseEnterExitTest.java JBR-8096 linux-all,windows-all
@@ -81,7 +81,7 @@ javax/swing/JSlider/6848475/bug6848475.java JBR-7329,JBR-7472 windows-all
 javax/swing/JSplitPane/4885629/bug4885629.java JBR-7270 macosx-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 javax/swing/JTextArea/bug4265784.java JBR-7472 linux-all
-javax/swing/SwingUtilities/7146377/bug7146377.java JBR-4679,JBR-9254 windows-all,linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64
+javax/swing/SwingUtilities/7146377/bug7146377.java JBR-4679,JBR-9254 windows-all,fedora-41-x64,fedora-42-x64
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java JBR-8450 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
 javax/swing/text/StyledEditorKit/4506788/bug4506788.java JBR-8212 linux-all
@@ -124,7 +124,7 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureResolutionTest.java nobug generic
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java nobug generic-all
 java/awt/Robot/ScreenCaptureRobotTest.java#id1 nobug generic-all
 java/awt/Toolkit/ScreenInsetsDPIVariation/ScreenInsetsDPIVariation.java nobug generic-all
-java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64
+java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-aarch64,fedora-41-x64,fedora-42-x64
 java/awt/Window/8159168/SetShapeTest.java nobug generic-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug generic-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java nobug generic-all

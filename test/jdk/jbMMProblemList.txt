@@ -26,7 +26,7 @@ java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JBR-8905 windows-x64
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-x64
 java/awt/Robot/Delay/InterruptOfDelay.java 8265986,JBR-8148 macosx-all,linux-x64
-java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390,JBR-9209 macosx-all,linux-all,linux-6.15.8-100.fc41.x86_64
+java/awt/Robot/MouseLocationOnScreen/MouseLocationOnScreen.java JBR-5390,JBR-9209 macosx-all,linux-all,fedora-41-x64
 java/awt/Robot/NonEmptyErrorStream.java JBR-5442 macosx-15.4,macosx-15.5,macosx-15.6,macosx-15.6.1,macosx-15.7
 java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Robot/SpuriousMouseEvents/SpuriousMouseEvents.java JBR-6572 linux-all
@@ -37,7 +37,7 @@ java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/JButton/bug4234034.java JBR-8997 windows-all
-javax/swing/JLabel/6596966/bug6596966.java JBR-9195,JBR-9507 linux-6.15.8-100.fc41.x86_64,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.7-200.fc42.aarch64,linux-6.17.8-200.fc42.aarch64,windows-all
+javax/swing/JLabel/6596966/bug6596966.java JBR-9195,JBR-9507 fedora-41-x64,fedora-42-x64,fedora-42-aarch64,windows-all
 javax/swing/JTextField/4532513/DefaultCaretRequestsFocusTest.java JBR-8330 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,macosx-15.6,macosx-15.6.1,macosx-15.7
 javax/swing/JTextArea/4514331/TabShiftsFocusToNextComponent.java JBR-8329 macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.5,macosx-15.6,macosx-15.6.1,macosx-15.7
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-5442 linux-all

@@ -132,7 +132,7 @@ java/awt/Robot/NonEmptyErrorStream.java JBR-6275 macosx-all
 java/awt/TextArea/UsingWithMouse/SelectionAutoscrollTest.java JBR-7779 linux-all
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
-javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210,JBR-9273 windows-all,linux-6.16.7-100.fc41.x86_64,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-5210,JBR-9273 windows-all,fedora-41-x64,fedora-42-x64
 javax/swing/JEditorPane/TestBrowserBGColor.java JBR-6697 linux-aarch64
 javax/swing/JTable/7055065/bug7055065.java JBR-9413 windows-x64
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 linux-all
