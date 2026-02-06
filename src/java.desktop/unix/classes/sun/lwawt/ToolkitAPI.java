@@ -20,6 +20,8 @@ public interface ToolkitAPI {
 
     void postEvent(AWTEvent event);
 
+    void flushOnscreenGraphics();
+
     boolean needUpdateWindowAfterPaint();
 
     void updateCursorImmediately();
