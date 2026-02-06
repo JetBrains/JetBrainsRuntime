@@ -59,6 +59,8 @@ public class WLPopupMoves {
         popup.setType(Window.Type.POPUP);
         sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
+        popup.getRootPane()
+            .putClientProperty("wlawt.popup_position_unconstrained", Boolean.TRUE);
     }
 
     public static void main(String... args) throws Exception {
