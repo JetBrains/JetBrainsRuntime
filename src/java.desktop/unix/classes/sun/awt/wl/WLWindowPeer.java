@@ -519,12 +519,17 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
     }
 
     @Override
+    public void postPaintEvent(int x, int y, int w, int h) {
+        repaintPeer(new Rectangle(x, y, w, h));
+    }
+
+    @Override
     public void repaintPeer(Rectangle r) {
         final Rectangle toPaint = getContentSize().intersection(r);
         if (!isShowing() || toPaint.isEmpty()) {
             return;
         }
-        postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
+        super.postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
         childPeers.repaintChildren(toPaint, getContentSize());
     }
 
