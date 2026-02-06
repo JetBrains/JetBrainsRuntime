@@ -461,6 +461,8 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
         postEvent(targetToAppContext(event.getSource()), event);
     }
 
+    public abstract void flushOnscreenGraphics();
+
     @Override
     public final void grab(final Window w) {
         final Object peer = AWTAccessor.getComponentAccessor().getPeer(w);
