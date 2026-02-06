@@ -133,6 +133,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
                     wlID, x, y, width, height, widthLogical, heightLogical, scale));
         }
 
+        Dimension transformed = applyTransform(transform, new Dimension(width, height));
+        width = transformed.width;
+        height = transformed.height;
+
         // Logical size comes from an optional protocol, so take the data from the main one, if absent
         if (widthLogical <= 0) widthLogical = width;
         if (heightLogical <= 0) heightLogical = height;
@@ -181,6 +185,20 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         if (WLToolkit.isInitialized()) {
             displayChanged();
         }
+    }
+
+    private static Dimension applyTransform(int transform, Dimension size) {
+        return switch (transform) {
+            case WL_OUTPUT_TRANSFORM_NORMAL
+                         | WL_OUTPUT_TRANSFORM_FLIPPED
+                         | WL_OUTPUT_TRANSFORM_180
+                         | WL_OUTPUT_TRANSFORM_FLIPPED_180 -> size;
+            case WL_OUTPUT_TRANSFORM_90
+                         | WL_OUTPUT_TRANSFORM_FLIPPED_90
+                         | WL_OUTPUT_TRANSFORM_270
+                         | WL_OUTPUT_TRANSFORM_FLIPPED_270 -> new Dimension(size.height, size.width);
+            default -> size;
+        };
     }
 
     private static String deviceNameFrom(String name, String make, String model) {
