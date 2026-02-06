@@ -198,7 +198,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     LWComponentPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
-        targetPaintArea = new LWRepaintArea();
+        targetPaintArea = new LWRepaintArea(toolkitApi);
         this.target = target;
         this.platformComponent = platformComponent;
         this.toolkitApi = toolkitApi;
