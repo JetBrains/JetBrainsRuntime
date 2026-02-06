@@ -100,6 +100,7 @@ import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
+import sun.java2d.pipe.RenderQueue;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWCursorManager;
 import sun.lwawt.LWToolkit;
@@ -1191,5 +1192,17 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public boolean needUpdateWindowAfterPaint() {
         return MacOSFlags.isMetalEnabled() && !MacOSFlags.isMetalDisplaySyncEnabled();
+    }
+
+    @Override
+    public void flushOnscreenGraphics() {
+        RenderQueue rq = CGraphicsEnvironment.usingMetalPipeline() ?
+                MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
     }
 }
