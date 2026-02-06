@@ -1198,7 +1198,7 @@ public class LWWindowPeer
                 oldData.flush();
             }
         }
-        flushOnscreenGraphics();
+        LWToolkit.getLWToolkit().flushOnscreenGraphics();
         if (((LWToolkit) Toolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
             updateWindow();
         }
