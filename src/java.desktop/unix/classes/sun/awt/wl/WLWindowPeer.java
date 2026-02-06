@@ -523,6 +523,12 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer, Surface
         repaintPeer(new Rectangle(x, y, w, h));
     }
 
+    // Called by setBounds of LWWindowPeer
+    // Called by LW children in repaintParent (setBounds, setVisibleImpl)
+    // Called by applyShape of WLWindowPeer
+    // Called by CPlatformView#deliverWindowDidExposeEvent (probably when native code notifies that a window became visible)
+    // Called by setBackground, setForeground, setFont, setVisibleImpl, setOpacity in LWWindowPeer
+    // Called on iconify, reshape, and 'display changed' events from macOS native code
     @Override
     public void repaintPeer(Rectangle r) {
         final Rectangle toPaint = getContentSize().intersection(r);
