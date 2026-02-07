@@ -154,6 +154,7 @@ java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340374,JBR-7947 m
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
 java/awt/Frame/NonEDT_GUI_DeadlockTest/NonEDT_GUI_Deadlock.java JBR-9838 linux-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
+java/awt/Frame/ResizeAfterSetFont/ResizeAfterSetFont.java JBR-9971 linux-aarch64
 java/awt/Frame/InitialIconifiedTest.java 7144049,8203920 macosx-all,linux-all
 java/awt/Frame/InitialMaximizedTest/InitialMaximizedTest.java JBR-8093 macosx-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
