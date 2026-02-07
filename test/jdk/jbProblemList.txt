@@ -217,7 +217,7 @@ java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java JBR-8885 macosx-all
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
-java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210,JBR-6126 windows-all,ResizeableResourceHashtable,macosx-all
+java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210,JBR-6126 windows-all,macosx-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184 macosx-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java JBR-4880,JBR-9499 windows-all,linux-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
@@ -277,8 +277,6 @@ java/awt/datatransfer/HTMLTransferConsoleOutputTest.java 8237254,8354505 macosx-
 java/awt/datatransfer/ImageTransferCrashTest.java 8237253,8354505 macosx-all,generic-all
 java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java 8079268 linux-all
 java/awt/datatransfer/ClipboardPerformanceTest.java 8029022 windows-all
-java/awt/datatransfer/ImageTransferCrashTest.java 8237253 macosx-all
-java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java JBR-6393 ResizeableResourceHashtable
 java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux-all
 java/awt/LightweightComponent/LightweightDragTest.java JBR-6557 windows-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-8313 windows-all,macosx-all,linux-all
