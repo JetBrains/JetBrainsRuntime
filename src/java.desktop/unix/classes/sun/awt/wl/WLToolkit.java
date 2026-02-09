@@ -38,6 +38,12 @@ import sun.awt.datatransfer.DataTransferer;
 import sun.awt.wl.im.WLInputMethodMetaDescriptor;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.vulkan.VKRenderQueue;
+import sun.lwawt.LWButtonPeer;
+import sun.lwawt.LWComponentPeerAPI;
+import sun.lwawt.LWDummyPlatformComponent;
+import sun.lwawt.PlatformDropTarget;
+import sun.lwawt.PlatformWindow;
+import sun.lwawt.ToolkitAPI;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -46,6 +52,7 @@ import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
+import java.awt.dnd.DropTarget;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.KeyEvent;
@@ -103,7 +110,7 @@ import java.util.concurrent.Semaphore;
  * "AWT-EventThread" by means of SunToolkit.postEvent(). See the implementation
  * of run() method for more comments.
  */
-public class WLToolkit extends UNIXToolkit implements Runnable {
+public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
     private static final PlatformLogger logKeys = PlatformLogger.getLogger("sun.awt.wl.WLToolkit.keys");
 
@@ -240,8 +247,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public ButtonPeer createButton(Button target) {
-        ButtonPeer peer = new WLButtonPeer(target);
+        LWButtonPeer peer = new LWButtonPeer(target, LWDummyPlatformComponent.getInstance());
         targetCreatedPeer(target, peer);
+        peer.initialize();
         return peer;
     }
 
@@ -1163,7 +1171,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     private native void flushImpl();
     private native void dispatchNonDefaultQueuesImpl();
 
-    protected static void targetDisposedPeer(Object target, Object peer) {
+    public static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);
         if (target instanceof Window window) {
             // TODO: focusedWindow and activeWindow of class java.awt.KeyboardFocusManager
@@ -1178,7 +1186,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    static void postEvent(AWTEvent event) {
+    public static void postEvent(AWTEvent event) {
         SunToolkit.postEvent(AppContext.getAppContext(), event);
     }
 
@@ -1211,5 +1219,54 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     // called from native
     private static void handleToplevelIconSize(int size) {
         preferredIconSizes.add(size);
+    }
+
+
+    public static WLToolkit getWLToolkit() {
+        return (WLToolkit)Toolkit.getDefaultToolkit();
+    }
+
+    @Override
+    public Object peerForTarget(Object target) {
+        return SunToolkit.targetToPeer(target);
+    }
+
+    @Override
+    public void peerDisposedForTarget(Object target, Object peer) {
+        targetDisposedPeer(target, peer);
+    }
+
+    @Override
+    public void postAWTEvent(AWTEvent event) {
+        postEvent(event);
+    }
+
+    // Not tested: Used by LWComponentPeer via LWRepaintArea.
+    @Override
+    public void flushOnscreenGraphics() {
+        // TODO not sure what we should do here
+    }
+
+    // Not tested: Used by LWComponentPeer directly
+    @Override
+    public void updateCursorImmediately() {
+        // TODO
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void updateCursorLater(Window target) {
+        // TODO
+    }
+
+    @Override
+    public PlatformWindow getPlatformWindowUnderMouse() {
+        // TODO
+        return null;
+    }
+
+    @Override
+    public PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer) {
+        return () -> {};
     }
 }
