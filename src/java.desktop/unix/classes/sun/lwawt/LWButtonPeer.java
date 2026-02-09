@@ -41,8 +41,9 @@ final class LWButtonPeer extends LWComponentPeer<Button, JButton>
         implements ButtonPeer, ActionListener {
 
     LWButtonPeer(final Button target,
-                 final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                 final PlatformComponent platformComponent,
+                 final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

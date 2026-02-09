@@ -47,8 +47,9 @@ final class LWScrollBarPeer extends LWComponentPeer<Scrollbar, JScrollBar>
     private int currentValue;
 
     LWScrollBarPeer(final Scrollbar target,
-                    final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+                    final PlatformComponent platformComponent,
+                    final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override
