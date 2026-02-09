@@ -60,7 +60,7 @@ public final class AtkUtil {
                 return function.call();
             } catch (Exception ex) {
                 if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                    log.severe("Error occurred while executing function. Returning default value.", ex);
+                    log.warning("Error occurred while executing function. Returning default value.", ex);
                 }
                 return d;
             }
@@ -72,7 +72,7 @@ public final class AtkUtil {
             return wf.get();
         } catch (InterruptedException | ExecutionException ex) {
             if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                log.severe("Swing task execution interrupted or failed, returning default value.", ex);
+                log.warning("Swing task execution interrupted or failed, returning default value.", ex);
             }
             return d;
         }
