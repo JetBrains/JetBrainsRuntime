@@ -30,14 +30,16 @@ import java.awt.Window;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.PlatformComponent;
 import sun.lwawt.PlatformWindow;
+import sun.lwawt.ToolkitAPI;
 
 public class LWCWindowPeer extends LWWindowPeer implements LWCMouseEventNotifier {
 
     Jbr7481MouseEnteredExitedFix jbr7481MouseEnteredExitedFix = null;
 
     public LWCWindowPeer(Window target, PlatformComponent platformComponent,
-                         PlatformWindow platformWindow, PeerType peerType) {
-        super(target, platformComponent, platformWindow, peerType);
+                         PlatformWindow platformWindow, PeerType peerType,
+                         ToolkitAPI toolkitApi) {
+        super(target, platformComponent, platformWindow, peerType, toolkitApi);
     }
 
     @Override

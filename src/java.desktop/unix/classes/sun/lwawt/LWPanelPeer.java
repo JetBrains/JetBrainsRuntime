@@ -38,8 +38,8 @@ import javax.swing.JPanel;
 final class LWPanelPeer extends LWContainerPeer<Panel, JPanel>
         implements PanelPeer {
 
-    LWPanelPeer(final Panel target, final PlatformComponent platformComponent) {
-        super(target, platformComponent);
+    LWPanelPeer(final Panel target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
+        super(target, platformComponent, toolkitApi);
     }
 
     @Override

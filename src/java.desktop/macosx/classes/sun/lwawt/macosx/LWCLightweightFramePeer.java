@@ -29,6 +29,7 @@ import sun.awt.LightweightFrame;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.PlatformComponent;
 import sun.lwawt.PlatformWindow;
+import sun.lwawt.ToolkitAPI;
 
 public final class LWCLightweightFramePeer extends LWLightweightFramePeer implements LWCMouseEventNotifier {
 
@@ -36,8 +37,9 @@ public final class LWCLightweightFramePeer extends LWLightweightFramePeer implem
 
     public LWCLightweightFramePeer(LightweightFrame target,
                                    PlatformComponent platformComponent,
-                                   PlatformWindow platformWindow) {
-        super(target, platformComponent, platformWindow);
+                                   PlatformWindow platformWindow,
+                                   ToolkitAPI toolkitApi) {
+        super(target, platformComponent, platformWindow, toolkitApi);
     }
 
     @Override
