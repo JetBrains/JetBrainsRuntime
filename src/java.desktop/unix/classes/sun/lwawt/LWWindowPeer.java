@@ -155,9 +155,10 @@ public class LWWindowPeer
     private LWWindowPeer blocker;
 
     public LWWindowPeer(Window target, PlatformComponent platformComponent,
-                        PlatformWindow platformWindow, PeerType peerType)
+                        PlatformWindow platformWindow, PeerType peerType,
+                        ToolkitAPI toolkitApi)
     {
-        super(target, platformComponent);
+        super(target, platformComponent, toolkitApi);
         this.platformWindow = platformWindow;
         this.peerType = peerType;
 
@@ -738,7 +739,7 @@ public class LWWindowPeer
 
     @Override
     public void notifyUpdateCursor() {
-        getLWToolkit().getCursorManager().updateCursorLater(this);
+        LWToolkit.getLWToolkit().getCursorManager().updateCursorLater(this);
     }
 
     @Override
