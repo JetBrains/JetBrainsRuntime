@@ -28,6 +28,7 @@ package sun.lwawt.macosx;
 import java.awt.event.MouseEvent;
 
 import sun.lwawt.LWWindowPeer;
+import sun.lwawt.LWWindowPeerAPI;
 
 /**
  * macOS-specific workaround for JBR-7481 mouse entered/exited event issues.
@@ -120,7 +121,7 @@ class Jbr7481MouseEnteredExitedFix {
         return null;
     }
 
-    private static LWWindowPeer getCurrentWindowPeer() {
+    private static LWWindowPeerAPI getCurrentWindowPeer() {
         return LWWindowPeer.getWindowUnderCursor();
     }
 
