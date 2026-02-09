@@ -27,11 +27,12 @@ package sun.lwawt;
 
 import java.awt.Component;
 import java.awt.Rectangle;
+import java.awt.dnd.peer.DropTargetPeer;
 import java.awt.peer.ComponentPeer;
 
 import sun.java2d.pipe.Region;
 
-public interface LWComponentPeerAPI extends ComponentPeer {
+public interface LWComponentPeerAPI extends ComponentPeer, DropTargetPeer {
     Component getTarget();
 
     PlatformWindow getPlatformWindow();
@@ -42,7 +43,7 @@ public interface LWComponentPeerAPI extends ComponentPeer {
 
     LWContainerPeerAPI getContainerPeer();
 
-    LWWindowPeer getWindowPeerOrSelf();
+    LWWindowPeerAPI getWindowPeerOrSelf();
 
     boolean isVisible();
 
