@@ -1615,5 +1615,10 @@ public class ProxyGraphics2D extends Graphics2D implements PrinterGraphics {
      */
      public void clip(Shape s) {
         mGraphics.clip(s);
-     }
+    }
+
+    @Override
+    public void runExternal(java.awt.RenderingTask task) {
+        mGraphics.runExternal(task);
+    }
 }

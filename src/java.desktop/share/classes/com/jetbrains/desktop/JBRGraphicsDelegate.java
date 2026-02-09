@@ -261,6 +261,11 @@ public class JBRGraphicsDelegate extends Graphics2D implements ConstrainableGrap
     }
 
     @Override
+    public void runExternal(java.awt.RenderingTask task) {
+        delegate.runExternal(task);
+    }
+
+    @Override
     public FontRenderContext getFontRenderContext() {
         return delegate.getFontRenderContext();
     }

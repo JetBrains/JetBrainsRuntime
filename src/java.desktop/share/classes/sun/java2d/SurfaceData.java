@@ -55,6 +55,7 @@ import sun.java2d.loops.DrawGlyphListAA;
 import sun.java2d.loops.DrawGlyphListLCD;
 import sun.java2d.loops.DrawGlyphListColor;
 import sun.java2d.pipe.LoopPipe;
+import java.awt.RenderingTask;
 import sun.java2d.pipe.ShapeDrawPipe;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.CompositePipe;
@@ -1040,6 +1041,15 @@ public abstract class SurfaceData
      * Synchronously releases resources associated with this surface.
      */
     public void flush() {}
+
+    /**
+     * Runs a pipeline-specific task on the rendering thread.
+     *
+     * @param sg2d the SunGraphics2D object
+     * @param task the task to be executed
+     */
+    public void runExternal(SunGraphics2D sg2d, RenderingTask task) {
+    }
 
     /**
      * Returns destination associated with this SurfaceData.  This could be

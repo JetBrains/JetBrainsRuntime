@@ -1733,6 +1733,11 @@ public class PeekGraphics extends Graphics2D
         mGraphics.clip(s);
      }
 
+    @Override
+    public void runExternal(java.awt.RenderingTask task) {
+        mGraphics.runExternal(task);
+    }
+
      /**
       * Return true if the Rectangle {@code rect}
       * intersects the area into which the application

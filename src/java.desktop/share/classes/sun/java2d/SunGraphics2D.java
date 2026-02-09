@@ -92,6 +92,7 @@ import sun.java2d.pipe.LoopPipe;
 import sun.java2d.pipe.PixelDrawPipe;
 import sun.java2d.pipe.PixelFillPipe;
 import sun.java2d.pipe.Region;
+import java.awt.RenderingTask;
 import sun.java2d.pipe.ShapeDrawPipe;
 import sun.java2d.pipe.ShapeSpanIterator;
 import sun.java2d.pipe.TextPipe;
@@ -3681,5 +3682,15 @@ public final class SunGraphics2D
     @Override
     public Surface getDestSurface() {
         return surfaceData;
+    }
+
+    /**
+     * Runs a pipeline-specific task on the rendering thread.
+     *
+     * @param task the task to be executed
+     */
+    @Override
+    public void runExternal(RenderingTask task) {
+        surfaceData.runExternal(this, task);
     }
 }

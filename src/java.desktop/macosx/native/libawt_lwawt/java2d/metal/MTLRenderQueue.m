@@ -28,6 +28,7 @@
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 
 #include "jlong.h"
+#include "jni_util.h"
 #include "MTLBlitLoops.h"
 #include "MTLBufImgOps.h"
 #include "MTLMaskBlit.h"
@@ -271,6 +272,35 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jint y = NEXT_INT(b);
                     CONTINUE_IF_NULL(mtlc);
                     MTLRenderer_DrawPixel(mtlc, dstOps, x, y);
+                    break;
+                }
+                case sun_java2d_pipe_BufferedOpCodes_RUN_EXTERNAL:
+                {
+                    CHECK_RENDER_OP(MTL_OP_OTHER, dstOps, sync);
+                    jint extId = NEXT_INT(b);
+                    CONTINUE_IF_NULL(mtlc);
+                    id<MTLDevice> device = [mtlc device];
+                    id<MTLCommandQueue> commandQueue = [mtlc commandQueue];
+                    id<MTLRenderCommandEncoder> encoder = [[mtlc encoderManager] getRenderEncoder:dstOps];
+
+                    id<MTLTexture> texture = (id<MTLTexture>)dstOps->pTexture;
+                    jstring surfaceType = NULL;
+                    if (dstOps->drawableType == MTLSD_TEXTURE || dstOps->drawableType == MTLSD_RT_TEXTURE) {
+                        surfaceType = (*env)->NewStringUTF(env, "MTL_TEXTURE");
+                    }
+
+                    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/metal/MTLRenderQueue",
+                                               "runExternal", "(ILjava/lang/String;JJJJ)V",
+                                               extId,
+                                               surfaceType,
+                                               ptr_to_jlong(device),
+                                               ptr_to_jlong(commandQueue),
+                                               ptr_to_jlong(encoder),
+                                               ptr_to_jlong(texture));
+
+                    if (surfaceType != NULL) {
+                        (*env)->DeleteLocalRef(env, surfaceType);
+                    }
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
@@ -1080,6 +1110,7 @@ static const char* mtlOpCodeToStr(uint opcode) {
         CASE_BUF_OP(DISABLE_RESCALE_OP)
         CASE_BUF_OP(ENABLE_LOOKUP_OP)
         CASE_BUF_OP(DISABLE_LOOKUP_OP)
+        CASE_BUF_OP(RUN_EXTERNAL)
         default:
             return "";
     }

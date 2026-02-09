@@ -1222,4 +1222,11 @@ public abstract class Graphics2D extends Graphics {
 
     public abstract FontRenderContext getFontRenderContext();
 
+    /**
+     * Executes a rendering task on the rendering thread.
+     * This method is intended for internal use by the rendering pipeline.
+     *
+     * @param task the task to be executed
+     */
+    public void runExternal(RenderingTask task) {}
 }

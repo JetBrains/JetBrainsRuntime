@@ -98,4 +98,7 @@ public final class BufferedOpCodes {
     @Native public static final int DISABLE_RESCALE_OP     = 123;
     @Native public static final int ENABLE_LOOKUP_OP       = 124;
     @Native public static final int DISABLE_LOOKUP_OP      = 125;
+
+    // run arbitrary code in the rendering thread
+    @Native public static final int RUN_EXTERNAL           = 130;
 }

@@ -37,6 +37,7 @@ import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.PixelToParallelogramConverter;
 import sun.java2d.pipe.RenderBuffer;
+import java.awt.RenderingTask;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
 
@@ -487,6 +488,11 @@ public abstract class MTLSurfaceData extends SurfaceData
         } finally {
             rq.unlock();
         }
+    }
+
+    @Override
+    public void runExternal(SunGraphics2D sg2d, RenderingTask task) {
+        MTLGraphics2D.runExternal(sg2d, task);
     }
 
     public boolean isOnScreen() {
