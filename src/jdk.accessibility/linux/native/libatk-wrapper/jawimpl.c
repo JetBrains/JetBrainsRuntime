@@ -245,6 +245,11 @@ JawImpl *jaw_impl_create_instance(JNIEnv *jniEnv, jobject ac) {
     return jaw_impl;
 }
 
+/*
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
     JAW_DEBUG("%p, %p", jniEnv, ac);
 
@@ -529,6 +534,19 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     return NULL;
 }
 
+
+/**
+ * jaw_impl_initialize:
+ * @atk_obj: the AtkObject to initialize
+ * @data: initialization data
+ *
+ * Initializes the AtkObject by calling the parent class initialize method
+ * and registering a property change listener for the accessible context.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
     JAW_DEBUG("%p, %p", atk_obj, data);
 
@@ -586,6 +604,10 @@ static void jaw_impl_initialize(AtkObject *atk_obj, gpointer data) {
  * @param fieldID cached field ID for the relation field
  * @return       TRUE if jKey equals the corresponding static field, FALSE
  * otherwise
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
  */
 static gboolean is_java_relation_key(JNIEnv *jniEnv, jstring jKey,
                                      jfieldID fieldID) {

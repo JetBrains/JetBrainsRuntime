@@ -125,6 +125,20 @@ void jaw_action_interface_init(AtkActionIface *iface, gpointer data) {
     iface->get_localized_name = jaw_action_get_localized_name;
 }
 
+/**
+ * jaw_action_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes action interface data for an AccessibleContext.
+ *
+ * Creates a Java AtkAction wrapper and stores it in an ActionData structure.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (transfer full): ActionData pointer, or %NULL on error
+ */
 gpointer jaw_action_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -238,6 +252,8 @@ void jaw_action_data_finalize(gpointer p) {
  *
  * Perform the specified action on the object.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Returns: %TRUE if success, %FALSE otherwise
  **/
 static gboolean jaw_action_do_action(AtkAction *action, gint i) {
@@ -255,11 +271,8 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
         jniEnv, atk_action, cachedActionDoActionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
 
     return jresult;
 }
@@ -271,6 +284,8 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
  * Gets the number of accessible actions available on the object.
  * If there are more than one, the first one is considered the
  * "default" action of the object.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: the number of actions, or 0 if @action does not
  * implement this interface.
@@ -290,11 +305,8 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
                                               cachedActionGetNActionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
 
     return ret;
 }
@@ -305,6 +317,8 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
  * @i: the action index corresponding to the action to be performed
  *
  * Returns a description of the specified action of the object.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: (nullable): a description string for action @i, or %NULL if
  * @action does not implement this interface or if an error occurs.
@@ -320,21 +334,12 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     JAW_GET_ACTION(action,
                    NULL); // create local JNI reference `jobject atk_action`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_action, cachedActionGetDescriptionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_debug("%s: No description available for action (index=%d, action=%p)",
                 G_STRFUNC, i, action);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -352,8 +357,6 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
     data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrActionDescription == NULL) {
         g_mutex_unlock(&data->mutex);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -366,16 +369,11 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
         data->jstrActionDescription = NULL;
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_mutex_unlock(&data->mutex);
         return NULL;
     }
 
     g_mutex_unlock(&data->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->action_description;
 }
@@ -385,6 +383,8 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
  * @action: a #GObject instance that implements AtkActionIface
  * @i: the action index corresponding to the action to be performed
  * @description: the description to be assigned to this action
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: %TRUE if the description was successfully set, %FALSE otherwise.
  **/
@@ -404,20 +404,11 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     JAW_GET_ACTION(action,
                    FALSE); // create local JNI reference `jobject atk_action`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
     jstring jdescription = (*jniEnv)->NewStringUTF(jniEnv, description);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdescription == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create Java string for description",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
 
@@ -426,13 +417,8 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
         (jstring)jdescription);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jisset;
 }
@@ -441,6 +427,8 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
  * jaw_action_get_localized_name:
  * @action: a #GObject instance that implements AtkActionIface
  * @i: the action index corresponding to the action to be performed
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: (nullable): a localized name string for action @i, or %NULL
  *   if @action does not implement this interface or if an error occurs.
@@ -456,13 +444,6 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     JAW_GET_ACTION(action,
                    NULL); // create local JNI reference `jobject atk_action`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_action, cachedActionGetLocalizedNameMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
@@ -470,8 +451,6 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         g_debug(
             "%s: No localized name available for action (index=%d, action=%p)",
             G_STRFUNC, i, action);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -488,8 +467,6 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     data->jstrLocalizedName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrLocalizedName == NULL) {
         g_mutex_unlock(&data->mutex);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     data->localized_name =
@@ -501,16 +478,11 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
         data->jstrLocalizedName = NULL;
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_mutex_unlock(&data->mutex);
         return NULL;
     }
 
     g_mutex_unlock(&data->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_action);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->localized_name;
 }

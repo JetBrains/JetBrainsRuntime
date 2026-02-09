@@ -328,6 +328,8 @@ static void jaw_object_finalize(GObject *gobject) {
  *
  * Gets the accessible parent of the accessible.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  * Returns: (transfer none): an #AtkObject representing the accessible
  * parent of the accessible
  **/
@@ -350,14 +352,6 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
@@ -366,16 +360,11 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
         cachedObjectGetAccessibleParentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jparent == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
     AtkObject *parent_obj =
         (AtkObject *)jaw_impl_find_instance(jniEnv, jparent);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     if (parent_obj != NULL) {
         return parent_obj;
@@ -392,6 +381,8 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
  *
  * Gets the accessible parent of the accessible.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  * Returns: (transfer none): an #AtkObject representing the accessible
  * parent of the accessible
  **/
@@ -407,27 +398,15 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return;
     }
 
     JawObject *jaw_par = JAW_OBJECT(parent);
     if (jaw_par == NULL) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject pa = (*jniEnv)->NewLocalRef(jniEnv, jaw_par->acc_context);
     if (pa == NULL) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -435,10 +414,6 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
                                     cachedObjectSetAccessibleParentMethod, ac,
                                     pa);
     jaw_jni_clear_exception(jniEnv);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->DeleteLocalRef(jniEnv, pa);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -446,6 +421,8 @@ static void jaw_object_set_parent(AtkObject *atk_obj, AtkObject *parent) {
  * @role: The #AtkRole whose name is required
  *
  * Gets the description string describing the #AtkRole @role.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: the string describing the AtkRole
  */
@@ -480,14 +457,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
@@ -496,8 +465,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -516,8 +483,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         jaw_obj->jstrName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
         if (jaw_obj->jstrName == NULL) {
             g_mutex_unlock(&jaw_obj->mutex);
-            (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
         atk_obj->name = (gchar *)(*jniEnv)->GetStringUTFChars(
@@ -530,8 +495,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
             jaw_obj->jstrName = NULL;
 
             g_mutex_unlock(&jaw_obj->mutex);
-            (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
     }
@@ -540,9 +503,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     if (atk_obj->name != NULL) {
         JAW_DEBUG("-> %s", atk_obj->name);
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return atk_obj->name;
 }
@@ -556,6 +516,9 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
  * to NULL. This is reserved for the initial value. In this aspect
  * NULL is similar to ATK_ROLE_UNKNOWN. If you want to set the name to
  * a empty value you can use "".
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  **/
 static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
     JAW_DEBUG("%p, %s", atk_obj, name);
@@ -569,14 +532,6 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return;
     }
 
@@ -589,9 +544,6 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
                                     cachedObjectSetAccessibleNameMethod, ac,
                                     jstr);
     jaw_jni_clear_exception(jniEnv);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -600,9 +552,10 @@ static void jaw_object_set_name(AtkObject *atk_obj, const gchar *name) {
  *
  * Gets the accessible description of the accessible.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  * Returns: a character string representing the accessible description
  * of the accessible.
- *
  **/
 static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     JAW_DEBUG("%p", atk_obj);
@@ -616,14 +569,6 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
@@ -632,8 +577,6 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         cachedObjectGetAccessibleDescriptionMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -652,8 +595,6 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         jaw_obj->jstrDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
         if (jaw_obj->jstrDescription == NULL) {
             g_mutex_unlock(&jaw_obj->mutex);
-            (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
         atk_obj->description = (gchar *)(*jniEnv)->GetStringUTFChars(
@@ -666,15 +607,10 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
             jaw_obj->jstrDescription = NULL;
 
             g_mutex_unlock(&jaw_obj->mutex);
-            (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
     }
     g_mutex_unlock(&jaw_obj->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return atk_obj->description;
 }
@@ -688,6 +624,9 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
  * the description to NULL. This is reserved for the initial value. In
  * this aspect NULL is similar to ATK_ROLE_UNKNOWN. If you want to set
  * the name to a empty value you can use "".
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  **/
 static void jaw_object_set_description(AtkObject *atk_obj,
                                        const gchar *description) {
@@ -702,14 +641,6 @@ static void jaw_object_set_description(AtkObject *atk_obj,
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return;
     }
 
@@ -722,9 +653,6 @@ static void jaw_object_set_description(AtkObject *atk_obj,
                                     cachedObjectSetAccessibleDescriptionMethod,
                                     ac, jstr);
     jaw_jni_clear_exception(jniEnv);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -732,6 +660,8 @@ static void jaw_object_set_description(AtkObject *atk_obj,
  * @accessible: an #AtkObject
  *
  * Gets the number of accessible children of the accessible.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: an integer representing the number of accessible children
  * of the accessible.
@@ -748,14 +678,6 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return 0;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return 0;
     }
 
@@ -764,13 +686,8 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
         cachedObjectGetAccessibleChildrenCountMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)count;
 }
@@ -781,6 +698,8 @@ static gint jaw_object_get_n_children(AtkObject *atk_obj) {
  *
  * Gets the 0-based index of this accessible in its parent; returns -1 if the
  * accessible does not have an accessible parent.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: an integer which is the index of the accessible in its parent
  **/
@@ -802,14 +721,6 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return -1;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return -1;
     }
 
@@ -818,13 +729,8 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
         cachedObjectGetAccessibleIndexInParentMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return -1;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)index;
 }
@@ -834,6 +740,8 @@ static gint jaw_object_get_index_in_parent(AtkObject *atk_obj) {
  * @accessible: an #AtkObject
  *
  * Gets the role of the accessible.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: an #AtkRole which is the role of the accessible
  **/
@@ -853,7 +761,6 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
     JAW_GET_OBJECT(atk_obj,
                    ATK_ROLE_INVALID); // create local JNI reference `jobject ac`
     AtkRole role = jaw_util_get_atk_role_from_AccessibleContext(ac);
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
 
     return role;
 }
@@ -864,6 +771,9 @@ static AtkRole jaw_object_get_role(AtkObject *atk_obj) {
  * @role: an #AtkRole to be set as the role
  *
  * Sets the role of the accessible.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  **/
 static void jaw_object_set_role(AtkObject *atk_obj, AtkRole role) {
     JAW_DEBUG("%p, %d", atk_obj, role);
@@ -884,22 +794,14 @@ static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
         return FALSE;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return FALSE;
-    }
-
     jobject jstate = (*jniEnv)->GetStaticObjectField(
         jniEnv, cachedObjectAccessibleStateClass, cachedObjectCollapsedFieldID);
 
     // jobj and jstate may be null
     if ((*jniEnv)->IsSameObject(jniEnv, jobj, jstate)) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return TRUE;
     }
 
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return FALSE;
 }
 #endif
@@ -910,6 +812,8 @@ static gboolean is_collapsed_java_state(JNIEnv *jniEnv, jobject jobj) {
  *
  * Gets a reference to the state set of the accessible; the caller must
  * unreference it when it is no longer needed.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: (transfer full): a reference to an #AtkStateSet which is the state
  * set of the accessible
@@ -926,21 +830,11 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
     AtkStateSet *state_set = jaw_obj->state_set;
     if (state_set == NULL) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     atk_state_set_clear_states(state_set);
@@ -950,8 +844,6 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         cachedObjectGetArrayAccessibleStateMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstate_arr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -962,7 +854,7 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
             (*jniEnv)->GetObjectArrayElement(jniEnv, jstate_arr, i);
 #if !ATK_CHECK_VERSION(2, 38, 0)
         if (jstate && is_collapsed_java_state(jniEnv, jstate)) {
-            (*jniEnv)->DeleteLocalRef(jniEnv, jstate);
+            (*jniEnv)->DeleteLocalRef(jniEnv, jstate); // deleting local ref in the loop
             continue;
         }
 #endif
@@ -972,13 +864,10 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         if (state_type == ATK_STATE_ENABLED) {
             atk_state_set_add_state(state_set, ATK_STATE_SENSITIVE);
         }
-        (*jniEnv)->DeleteLocalRef(jniEnv, jstate);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jstate); // deleting local ref in the loop
     }
 
     g_object_ref(G_OBJECT(state_set)); // because transfer full
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return state_set;
 }
@@ -989,6 +878,8 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
  *
  * Gets a UTF-8 string indicating the POSIX-style LC_MESSAGES locale
  * of @accessible.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: a UTF-8 string indicating the POSIX-style LC_MESSAGES
  *          locale of @accessible.
@@ -1005,14 +896,6 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
@@ -1020,8 +903,6 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         jniEnv, cachedObjectAtkObjectClass, cachedObjectGetLocaleMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -1040,8 +921,6 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         jaw_obj->jstrLocale = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
         if (jaw_obj->jstrLocale == NULL) {
             g_mutex_unlock(&jaw_obj->mutex);
-            (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
         jaw_obj->locale =
@@ -1054,15 +933,10 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
             jaw_obj->jstrLocale = NULL;
 
             g_mutex_unlock(&jaw_obj->mutex);
-            (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-            (*jniEnv)->PopLocalFrame(jniEnv, NULL);
             return NULL;
         }
     }
     g_mutex_unlock(&jaw_obj->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return jaw_obj->locale;
 }
@@ -1072,6 +946,8 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
  * @accessible: an #AtkObject
  *
  * Gets the #AtkRelationSet associated with the object.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: (transfer full) : an #AtkRelationSet representing the relation set
  * of the object.
@@ -1088,14 +964,6 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
@@ -1109,16 +977,11 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         cachedObjectGetArrayAccessibleRelationMethod, ac);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jwrap_key_target_arr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-
     jsize jarr_size = (*jniEnv)->GetArrayLength(jniEnv, jwrap_key_target_arr);
     if (!jarr_size) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -1132,12 +995,14 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         jstring jrel_key = (*jniEnv)->GetObjectField(jniEnv, jwrap_key_target,
                                                      cachedObjectKeyFieldID);
         if (!jrel_key) {
+            // deleting local ref created in the loop
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             continue;
         }
         AtkRelationType rel_type =
             jaw_impl_get_atk_relation_type(jniEnv, jrel_key);
         if (!rel_type) {
+            // deleting local refs created in the loop
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
             continue;
@@ -1145,12 +1010,14 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         jobjectArray jtarget_arr = (*jniEnv)->GetObjectField(
             jniEnv, jwrap_key_target, cachedObjectRelationsFieldID);
         if (!jtarget_arr) {
+            // deleting local refs created in the loop
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
             continue;
         }
         jsize jtarget_size = (*jniEnv)->GetArrayLength(jniEnv, jtarget_arr);
         if (!jtarget_size) {
+            // deleting local ref created in the loop
             (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
             (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
             (*jniEnv)->DeleteLocalRef(jniEnv, jtarget_arr);
@@ -1172,23 +1039,21 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
                 atk_object_add_relationship(atk_obj, rel_type,
                                             ATK_OBJECT(target_obj));
             }
+            // deleting local ref created in the loop
             (*jniEnv)->DeleteLocalRef(jniEnv, jtarget);
         }
-
+        // deleting local ref created in the loop
         (*jniEnv)->DeleteLocalRef(jniEnv, jwrap_key_target);
         (*jniEnv)->DeleteLocalRef(jniEnv, jrel_key);
         (*jniEnv)->DeleteLocalRef(jniEnv, jtarget_arr);
     }
 
     if (atk_obj->relation_set == NULL) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     if (atk_obj->relation_set != NULL) { // because transfer full
         g_object_ref(G_OBJECT(atk_obj->relation_set));
     }
-
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return atk_obj->relation_set;
 }
@@ -1199,6 +1064,8 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
  * @i: a gint representing the position of the child, starting from 0
  *
  * Gets a reference to the specified accessible child of the object.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: an #AtkObject representing the specified
  * accessible child of the accessible.
@@ -1215,14 +1082,6 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
 
     if (!jaw_object_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        return NULL;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
         return NULL;
     }
 
@@ -1231,8 +1090,6 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
         cachedObjectGetAccessibleChildMethod, ac, i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -1248,9 +1105,6 @@ static AtkObject *jaw_object_ref_child(AtkObject *atk_obj, gint i) {
     if (obj != NULL) {
         g_object_ref(G_OBJECT(obj));
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, ac);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return obj;
 }

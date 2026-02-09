@@ -145,6 +145,18 @@ void jaw_component_interface_init(AtkComponentIface *iface, gpointer data) {
     iface->set_size = jaw_component_set_size;
 }
 
+/**
+ * jaw_component_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes component interface data for an AccessibleContext.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (transfer full): ComponentData pointer, or %NULL on error
+ */
 gpointer jaw_component_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -235,9 +247,7 @@ void jaw_component_data_finalize(gpointer p) {
  *
  * Checks whether the specified point is within the extent of the @component.
  *
- * Toolkit implementor note: ATK provides a default implementation for
- * this virtual method. In general there are little reason to
- * re-implement it.
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: %TRUE or %FALSE indicating whether the specified point is within
  * the extent of the @component or not
@@ -260,11 +270,8 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
         (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return jcontains;
 }
@@ -279,6 +286,8 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
  *
  * Gets a reference to the accessible child, if one exists, at the
  * coordinate point specified by @x and @y.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: (nullable) (transfer full): a reference to the accessible
  * child, if one exists
@@ -296,13 +305,6 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     JAW_GET_COMPONENT(
         component, NULL); // create local JNI reference `jobject atk_component`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, cachedComponentGetAccessibleAtPointMethod,
         (jint)x, (jint)y, (jint)coord_type);
@@ -310,8 +312,6 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_at_point method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -324,9 +324,6 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
     if (jaw_impl != NULL) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -342,6 +339,8 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
  * or to the components top level window
  *
  * Gets the rectangle which gives the extent of the @component.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * If the extent can not be obtained (e.g. a non-embedded plug or missing
  * support), all of x, y, width, height are set to -1.
@@ -370,16 +369,6 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     JAW_GET_COMPONENT(
         component, ); // create local JNI reference `jobject atk_component`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(
-            jniEnv,
-            atk_component); // deleting ref that was created in
-                            // JAW_GET_COMPONENT
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jobject jrectangle = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, cachedComponentGetExtentsMethod,
         (jint)coord_type);
@@ -387,12 +376,8 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jrectangle using get_extents method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     if (x != NULL) {
         (*x) = (gint)(*jniEnv)->GetIntField(jniEnv, jrectangle,
@@ -413,11 +398,8 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
 
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -431,6 +413,8 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
  * or to the components top level window
  *
  * Sets the extents of @component.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: %TRUE or %FALSE whether the extents were set or not
  **/
@@ -454,11 +438,8 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
         (jint)y, (jint)width, (jint)height, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return assigned;
 }
@@ -472,6 +453,8 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
  * or to the components top level window
  *
  * Sets the position of @component.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: %TRUE or %FALSE whether the position were set or not
  **/
@@ -493,11 +476,8 @@ static gboolean jaw_component_set_position(AtkComponent *component, gint x,
         (jint)y, (jint)coord_type);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return assigned;
 }
@@ -509,6 +489,8 @@ static gboolean jaw_component_set_position(AtkComponent *component, gint x,
  * @height: height to set for @component
  *
  * Sets the size of @component.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: %TRUE or %FALSE whether the size were set or not
  **/
@@ -530,11 +512,8 @@ static gboolean jaw_component_set_size(AtkComponent *component, gint width,
         (jint)height);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return assigned;
 }
@@ -544,6 +523,8 @@ static gboolean jaw_component_set_size(AtkComponent *component, gint width,
  * @component: an #AtkComponent
  *
  * Grabs focus for this @component.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: %TRUE if successful, %FALSE otherwise.
  **/
@@ -563,11 +544,8 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
         jniEnv, atk_component, cachedComponentGrabFocusMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return jresult;
 }
@@ -577,6 +555,8 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
  * @component: an #AtkComponent
  *
  * Gets the layer of the component.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: an #AtkLayer which is the layer of the component, 0 if an error
  *happened.
@@ -596,11 +576,8 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
                                            cachedComponentGetLayerMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_component);
 
     return (AtkLayer)jlayer;
 }

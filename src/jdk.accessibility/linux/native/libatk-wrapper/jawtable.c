@@ -178,6 +178,20 @@ void jaw_table_interface_init(AtkTableIface *iface, gpointer data) {
         NULL; // impossible to do a on AccessibleTable Java Object
 }
 
+/**
+ * jaw_table_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes the table interface data for an accessible object.
+ * Creates and returns a TableData structure containing a global reference
+ * to the Java AtkTable object.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (nullable): pointer to TableData or NULL on failure
+ **/
 gpointer jaw_table_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -281,6 +295,8 @@ void jaw_table_data_finalize(gpointer p) {
  * Get a reference to the table cell at @row, @column. This cell
  * should implement the interface #AtkTableCell
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Returns: (transfer full): an #AtkObject representing the referred
  * to accessible
  **/
@@ -314,20 +330,12 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableRefAtMethod, (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jac using ref_at method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
         return NULL;
     }
 
@@ -340,8 +348,7 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -357,6 +364,8 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
  *
  * Deprecated in atk: Since 2.12. Use atk_table_ref_at() in order to get the
  * accessible that represents the cell at (@row, @column)
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a #gint representing the index at specified position.
  * The value -1 is returned if the object at row,column is not a child
@@ -378,11 +387,8 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_index_at method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return -1;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jindex;
 }
@@ -395,6 +401,8 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
  * Gets a #gint representing the column at the specified @index_.
  *
  * Deprecated in atk: Since 2.12.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the column at the specified index,
  * or -1 if the table does not implement this method.
@@ -414,11 +422,8 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_at_index method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return -1;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jcolumn;
 }
@@ -431,6 +436,8 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
  * Gets a #gint representing the row at the specified @index_.
  *
  * Deprecated in atk: since 2.12.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the row at the specified index,
  * or -1 if the table does not implement this method.
@@ -450,11 +457,8 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_at_index method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return -1;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jrow;
 }
@@ -464,6 +468,8 @@ static gint jaw_table_get_row_at_index(AtkTable *table, gint index) {
  * @table: a GObject instance that implements AtkTableIface
  *
  * Gets the number of columns in the table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the number of columns, or 0
  * if value does not implement this interface.
@@ -483,11 +489,8 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_columns method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jcolumns;
 }
@@ -497,6 +500,8 @@ static gint jaw_table_get_n_columns(AtkTable *table) {
  * @table: a GObject instance that implements AtkTableIface
  *
  * Gets the number of rows in the table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the number of rows, or 0
  * if value does not implement this interface.
@@ -516,11 +521,8 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_n_rows method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jrows;
 }
@@ -533,6 +535,8 @@ static gint jaw_table_get_n_rows(AtkTable *table) {
  *
  * Gets the number of columns occupied by the accessible object
  * at the specified @row and @column in the @table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the column extent at specified position, or 0
  * if value does not implement this interface.
@@ -554,11 +558,8 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_extent_at method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jextent;
 }
@@ -569,6 +570,8 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
  * @column: a #gint representing a column in @table
  *
  * Gets the description text of the specified @column in the table
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gchar* representing the column description, or %NULL
  * if value does not implement this interface.
@@ -591,11 +594,8 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_extent_at method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jextent;
 }
@@ -605,6 +605,8 @@ static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
  * @table: a GObject instance that implements AtkTableInterface
  *
  * Gets the caption for the @table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (nullable) (transfer none): a AtkObject* representing the
  * table caption, or %NULL if value does not implement this interface.
@@ -620,20 +622,11 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table,
                                               cachedTableGetCaptionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_caption method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -642,9 +635,6 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
     // From documentation of the `get_caption` in AtkObject:
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the obj before returning it.
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -657,6 +647,9 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
  * to set for the specified @column of the @table
  *
  * Sets the description text for the specified @column of the @table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  **/
 static const gchar *jaw_table_get_column_description(AtkTable *table,
                                                      gint column) {
@@ -670,21 +663,12 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableGetColumnDescriptionMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_description method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -703,8 +687,6 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     data->jstrRowOrColumnDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrRowOrColumnDescription == NULL) {
         g_mutex_unlock(&data->mutex);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     data->row_or_column_description = (*jniEnv)->GetStringUTFChars(
@@ -717,16 +699,11 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
         data->jstrRowOrColumnDescription = NULL;
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_mutex_unlock(&data->mutex);
         return NULL;
     }
 
     g_mutex_unlock(&data->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->row_or_column_description;
 }
@@ -737,6 +714,8 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
  * @row: a #gint representing a row in @table
  *
  * Gets the description text of the specified row in the table
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (nullable): a gchar* representing the row description, or
  * %NULL if value does not implement this interface.
@@ -753,20 +732,11 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableGetRowDescriptionMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_description method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -785,8 +755,6 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     data->jstrRowOrColumnDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrRowOrColumnDescription == NULL) {
         g_mutex_unlock(&data->mutex);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     data->row_or_column_description = (*jniEnv)->GetStringUTFChars(
@@ -799,16 +767,11 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
         data->jstrRowOrColumnDescription = NULL;
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_mutex_unlock(&data->mutex);
         return NULL;
     }
 
     g_mutex_unlock(&data->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->row_or_column_description;
 }
@@ -819,6 +782,8 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
  * @column: a #gint representing a column in the table
  *
  * Gets the column header of a specified column in an accessible table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (nullable) (transfer none): a AtkObject* representing the
  * specified column header, or %NULL if value does not implement this
@@ -836,20 +801,11 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableGetColumnHeaderMethod, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_column_header method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -857,9 +813,6 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
     // From documentation of the `atk_table_get_column_header` in AtkObject:
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the obj before returning it.
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -870,6 +823,8 @@ static AtkObject *jaw_table_get_column_header(AtkTable *table, gint column) {
  * @row: a #gint representing a row in the table
  *
  * Gets the row header of a specified row in an accessible table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (nullable) (transfer none): a AtkObject* representing the
  * specified row header, or %NULL if value does not implement this
@@ -886,20 +841,11 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableGetRowHeaderMethod, (jint)row);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_row_header method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -907,9 +853,6 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
     // From documentation of the `atk_table_get_row_header` in AtkObject:
     // The returned data is owned by the instance (transfer none), so we don't
     // ref the jaw_impl before returning it.
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -919,6 +862,8 @@ static AtkObject *jaw_table_get_row_header(AtkTable *table, gint row) {
  * @table: a GObject instance that implements AtkTableIface
  *
  * Gets the summary description of the table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (transfer full): a AtkObject* representing a summary description
  * of the table, or zero if value does not implement this interface.
@@ -934,20 +879,11 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
     JAW_GET_TABLE(table,
                   NULL); // create local JNI reference `jobject atk_table`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, atk_table,
                                               cachedTableGetSummaryMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_summary method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -959,9 +895,6 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
 
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     return ATK_OBJECT(jaw_impl);
 }
 
@@ -972,6 +905,8 @@ static AtkObject *jaw_table_get_summary(AtkTable *table) {
  *
  * Gets the selected columns of the table by initializing **selected with
  * the selected column numbers. This array should be freed by the caller.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the number of selected columns,
  * or %0 if value does not implement this interface.
@@ -992,27 +927,16 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
 
     JAW_GET_TABLE(table, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return 0;
-    }
-
     jintArray jcolumnArray = (jintArray)((*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableGetSelectedColumnsMethod));
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jcolumnArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_selected_columns method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, jcolumnArray);
     if (length <= 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
@@ -1021,8 +945,6 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to read selected columns array", G_STRFUNC);
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
@@ -1034,9 +956,6 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
 
     (*jniEnv)->ReleaseIntArrayElements(jniEnv, jcolumnArray, tmp, JNI_ABORT);
 
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     return (gint)length;
 }
 
@@ -1047,6 +966,8 @@ static gint jaw_table_get_selected_columns(AtkTable *table, gint **selected) {
  *
  * Gets the selected rows of the table by initializing **selected with
  * the selected row numbers. This array should be freed by the caller.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gint representing the number of selected rows,
  * or zero if value does not implement this interface.
@@ -1067,28 +988,17 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
 
     JAW_GET_TABLE(table, 0);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return 0;
-    }
-
     jintArray jrowArray = (jintArray)((*jniEnv)->CallObjectMethod(
         jniEnv, atk_table, cachedTableGetSelectedRowsMethod));
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jrowArray == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_selected_rows method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, jrowArray);
     if (length <= 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
@@ -1097,8 +1007,6 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to read selected rows array", G_STRFUNC);
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return 0;
     }
 
@@ -1108,9 +1016,6 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
     }
 
     (*jniEnv)->ReleaseIntArrayElements(jniEnv, jrowArray, tmp, JNI_ABORT);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return (gint)length;
 }
@@ -1122,6 +1027,8 @@ static gint jaw_table_get_selected_rows(AtkTable *table, gint **selected) {
  *
  * Gets a boolean value indicating whether the specified @column
  * is selected
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gboolean representing if the column is selected, or 0
  * if value does not implement this interface.
@@ -1142,11 +1049,8 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_column_selected method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jselected;
 }
@@ -1158,6 +1062,8 @@ static gboolean jaw_table_is_column_selected(AtkTable *table, gint column) {
  *
  * Gets a boolean value indicating whether the specified @row
  * is selected
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gboolean representing if the row is selected, or 0
  * if value does not implement this interface.
@@ -1177,11 +1083,8 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_row_selected method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jselected;
 }
@@ -1194,6 +1097,8 @@ static gboolean jaw_table_is_row_selected(AtkTable *table, gint row) {
  *
  * Gets a boolean value indicating whether the accessible object
  * at the specified @row and @column is selected
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: a gboolean representing if the cell is selected, or 0
  * if value does not implement this interface.
@@ -1214,11 +1119,8 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call is_selected method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
 
     return jselected;
 }
@@ -1231,6 +1133,8 @@ static gboolean jaw_table_is_selected(AtkTable *table, gint row, gint column) {
  * to set for the specified @row of @table
  *
  * Sets the description text for the specified @row of @table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  **/
 static void jaw_table_set_row_description(AtkTable *table, gint row,
                                           const gchar *description) {
@@ -1244,18 +1148,9 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, description);
     if (jstr == NULL) {
         g_warning("%s: Failed to create jstr from description", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -1264,13 +1159,8 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_row_description method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -1281,6 +1171,8 @@ static void jaw_table_set_row_description(AtkTable *table, gint row,
  * to set for the specified @column of the @table
  *
  * Sets the description text for the specified @column of the @table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  **/
 static void jaw_table_set_column_description(AtkTable *table, gint column,
                                              const gchar *description) {
@@ -1293,18 +1185,9 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, description);
     if (jstr == NULL) {
         g_warning("%s: Failed to create jstr from description", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -1315,13 +1198,8 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_column_description method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -1330,6 +1208,8 @@ static void jaw_table_set_column_description(AtkTable *table, gint column,
  * @caption: a #AtkObject representing the caption to set for @table
  *
  * Sets the caption for the table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  **/
 static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     JAW_DEBUG("%p, %p", table, caption);
@@ -1341,38 +1221,23 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     JawObject *jcaption = JAW_OBJECT(caption);
     if (jcaption == NULL) {
         g_warning("%s: jcaption == NULL", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass accessible =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/Accessible");
     if (accessible == NULL) {
         g_warning("%s: Failed to find Accessible class", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     if (!(*jniEnv)->IsInstanceOf(jniEnv, jcaption->acc_context, accessible)) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jcaption->acc_context);
     if (obj == NULL) {
         g_warning("%s: jcaption obj == NULL", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -1381,13 +1246,8 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_caption method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -1397,6 +1257,8 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
  * to set for @table
  *
  * Sets the summary description of the table.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  **/
 static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     JAW_DEBUG("%p, %p", table, summary);
@@ -1408,40 +1270,25 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
 
     JAW_GET_TABLE(table, );
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     JawObject *jsummary = JAW_OBJECT(summary);
     if (jsummary == NULL) {
         g_warning("%s: jsummary == NULL", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jclass accessible =
         (*jniEnv)->FindClass(jniEnv, "javax/accessibility/Accessible");
     if (accessible == NULL) {
         g_warning("%s: Failed to find Accessible class", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     if (!(*jniEnv)->IsInstanceOf(jniEnv, jsummary->acc_context, accessible)) {
         g_warning("%s: jsummary->acc_context is not instance of accessible",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jsummary->acc_context);
     if (obj == NULL) {
         g_warning("%s: jsummary obj == NULL", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -1450,13 +1297,8 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call set_summary method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_table);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean jaw_table_init_jni_cache(JNIEnv *jniEnv) {

@@ -113,6 +113,18 @@ void jaw_editable_text_interface_init(AtkEditableTextIface *iface,
     iface->paste_text = jaw_editable_text_paste_text;
 }
 
+/**
+ * jaw_editable_text_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes editable text interface data for an AccessibleContext.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (transfer full): EditableTextData pointer, or %NULL on error
+ */
 gpointer jaw_editable_text_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -194,6 +206,16 @@ void jaw_editable_text_data_finalize(gpointer p) {
     g_free(data);
 }
 
+
+/**
+ * jaw_editable_text_set_text_contents:
+ * @text: an #AtkEditableText
+ * @string: string to set for text contents of @text
+ *
+ * Sets the entire contents of @text to the specified string.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 void jaw_editable_text_set_text_contents(AtkEditableText *text,
                                          const gchar *string) {
     JAW_DEBUG("%p, %s", text, string);
@@ -206,19 +228,10 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     JAW_GET_EDITABLETEXT(
         text, ); // create local JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -226,15 +239,23 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
                               cachedEditableTextSetTextContentsMethod, jstr);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_editable_text_insert_text:
+ * @text: an #AtkEditableText
+ * @string: the text to insert
+ * @length: the length of text to insert, in bytes
+ * @position: (inout): The caller initializes this to the position at which to
+ *   insert the text. After the call it points at the position after the newly
+ *   inserted text.
+ *
+ * Inserts text at a given position.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
                                    gint length, gint *position) {
     JAW_DEBUG("%p, %s, %d, %p", text, string, length, position);
@@ -247,19 +268,10 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     JAW_GET_EDITABLETEXT(
         text, ); // create local JNI reference `jobject atk_editable_text`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
@@ -267,18 +279,24 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
                               (jint)*position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
     *position = *position + length;
     atk_text_set_caret_offset(ATK_TEXT(text), *position);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
+/**
+ * jaw_editable_text_copy_text:
+ * @text: an #AtkEditableText
+ * @start_pos: start position
+ * @end_pos: end position
+ *
+ * Copies text from @start_pos up to, but not including @end_pos to the
+ * clipboard.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
                                  gint end_pos) {
     JAW_DEBUG("%p, %d, %d", text, start_pos, end_pos);
@@ -296,13 +314,21 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
+/**
+ * jaw_editable_text_cut_text:
+ * @text: an #AtkEditableText
+ * @start_pos: start position
+ * @end_pos: end position
+ *
+ * Copies text from @start_pos up to, but not including @end_pos to the
+ * clipboard and then deletes the text from the widget.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
                                 gint end_pos) {
     JAW_DEBUG("%p, %d, %d", text, start_pos, end_pos);
@@ -320,13 +346,20 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
                               (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
+/**
+ * jaw_editable_text_delete_text:
+ * @text: an #AtkEditableText
+ * @start_pos: start position
+ * @end_pos: end position
+ *
+ * Deletes text from @start_pos up to, but not including @end_pos.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
                                    gint end_pos) {
     JAW_DEBUG("%p, %d, %d", text, start_pos, end_pos);
@@ -344,13 +377,19 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
                               (jint)start_pos, (jint)end_pos);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
+/**
+ * jaw_editable_text_paste_text:
+ * @text: an #AtkEditableText
+ * @position: position to paste
+ *
+ * Pastes text from the clipboard to the specified @position.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
     JAW_DEBUG("%p, %d", text, position);
 
@@ -367,23 +406,24 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
                               (jint)position);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 }
 
 /**
- *jaw_editable_text_set_run_attributes:
- *@text: an #AtkEditableText
- *@attrib_set: an #AtkAttributeSet
- *@start_offset: start of range in which to set attributes
- *@end_offset: end of range in which to set attributes
+ * jaw_editable_text_set_run_attributes:
+ * @text: an #AtkEditableText
+ * @attrib_set: an #AtkAttributeSet
+ * @start_offset: start of range in which to set attributes
+ * @end_offset: end of range in which to set attributes
  *
- *Returns: %TRUE if attributes successfully set for the specified
- *range, otherwise %FALSE
- **/
+ * Sets the attributes for a specified range.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
+ * Returns: %TRUE if attributes successfully set for the specified
+ *   range, otherwise %FALSE
+ */
 static gboolean
 jaw_editable_text_set_run_attributes(AtkEditableText *text,
                                      AtkAttributeSet *attrib_set,
@@ -405,11 +445,8 @@ jaw_editable_text_set_run_attributes(AtkEditableText *text,
         (jobject)attrib_set, (jint)start_offset, (jint)end_offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_editable_text);
 
     return jresult;
 }

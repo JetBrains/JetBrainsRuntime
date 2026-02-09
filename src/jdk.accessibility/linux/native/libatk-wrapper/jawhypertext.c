@@ -85,6 +85,20 @@ void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
     iface->get_link_index = jaw_hypertext_get_link_index;
 }
 
+/**
+ * jaw_hypertext_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes hypertext interface data for an AccessibleContext.
+ *
+ * Creates a Java AtkHypertext wrapper and stores it in a HypertextData structure.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (transfer full): HypertextData pointer, or %NULL on error
+ */
 gpointer jaw_hypertext_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -173,6 +187,8 @@ void jaw_hypertext_data_finalize(gpointer p) {
  * Gets the link in this hypertext document at index
  * @link_index
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  * Returns: (transfer none): the link in this hypertext document at
  * index @link_index
  **/
@@ -188,21 +204,12 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     JAW_GET_HYPERTEXT(
         hypertext, NULL); // create local JNI reference `jobject atk_hypertext`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jhyperlink = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_hypertext, cachedHypertextGetLinkMethod, (jint)link_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jhyperlink == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jhyperlink using get_link method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -210,13 +217,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     if (jaw_hyperlink == NULL) {
         g_warning("%s: Failed to create JawHyperlink object for link_index %d",
                   G_STRFUNC, link_index);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_HYPERLINK(jaw_hyperlink);
 }
@@ -226,6 +228,8 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
  * @hypertext: an #AtkHypertext
  *
  * Gets the number of links within this hypertext document.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: the number of links within this hypertext document
  **/
@@ -244,11 +248,8 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
                                               cachedHypertextGetNLinksMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
 
     return ret;
 }
@@ -260,6 +261,8 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
  *
  * Gets the index into the array of hyperlinks that is associated with
  * the character specified by @char_index.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: an index into the array of hyperlinks in @hypertext,
  * or -1 if there is no hyperlink associated with this character.
@@ -281,11 +284,8 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
                                               (jint)char_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
         return -1;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_hypertext);
 
     return ret;
 }

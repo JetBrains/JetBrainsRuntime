@@ -105,6 +105,20 @@ void jaw_image_interface_init(AtkImageIface *iface, gpointer data) {
                                          //  AccessibleContext.getLocale()
 }
 
+/**
+ * jaw_image_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes the image interface data for an accessible object.
+ * Creates and returns an ImageData structure containing a global reference
+ * to the Java AtkImage object.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (nullable): pointer to ImageData or NULL on failure
+ **/
 gpointer jaw_image_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -214,6 +228,8 @@ void jaw_image_data_finalize(gpointer p) {
  * Gets the position of the image in the form of a point specifying the
  * images top-left corner.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  * If the position can not be obtained (e.g. missing support), x and y are set
  * to -1.
  **/
@@ -228,13 +244,6 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
 
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     (*x) = -1;
     (*y) = -1;
 
@@ -244,8 +253,6 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jpoint using get_image_position method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -253,9 +260,6 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
         (gint)(*jniEnv)->GetIntField(jniEnv, jpoint, cachedImagePointXFieldID);
     (*y) =
         (gint)(*jniEnv)->GetIntField(jniEnv, jpoint, cachedImagePointYFieldID);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -263,6 +267,8 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
  * @image: a #GObject instance that implements AtkImageIface
  *
  * Get a textual description of this image.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: a string representing the image description or NULL
  **/
@@ -277,13 +283,6 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     JAW_GET_IMAGE(image,
                   NULL); // create local JNI reference `jobject atk_image`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_image, cachedImageGetImageDescriptionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
@@ -291,8 +290,6 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         g_warning(
             "%s: Failed to create jstr using get_image_description method",
             G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -310,8 +307,6 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
     data->jstrImageDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrImageDescription == NULL) {
         g_mutex_unlock(&data->mutex);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
     data->image_description =
@@ -323,16 +318,11 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
         data->jstrImageDescription = NULL;
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         g_mutex_unlock(&data->mutex);
         return NULL;
     }
 
     g_mutex_unlock(&data->mutex);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return data->image_description;
 }
@@ -349,6 +339,8 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
  * The values of @width and @height are returned as -1 if the
  * values cannot be obtained (for instance, if the object is not onscreen).
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ *
  * If the size can not be obtained (e.g. missing support), x and y are set
  * to -1.
  **/
@@ -364,13 +356,6 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
 
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     (*width) = -1;
     (*height) = -1;
 
@@ -380,19 +365,13 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jdimension using get_image_size method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_image);
 
     (*width) = (gint)(*jniEnv)->GetIntField(jniEnv, jdimension,
                                             cachedImageDimensionWidthFieldID);
     (*height) = (gint)(*jniEnv)->GetIntField(jniEnv, jdimension,
                                              cachedImageDimensionHeightFieldID);
-
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 static gboolean jaw_image_init_jni_cache(JNIEnv *jniEnv) {

@@ -111,6 +111,20 @@ void jaw_table_cell_interface_init(AtkTableCellIface *iface, gpointer data) {
     iface->get_table = jaw_table_cell_get_table;
 }
 
+/**
+ * jaw_table_cell_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes the table cell interface data for an accessible object.
+ * Creates and returns a TableCellData structure containing a global reference
+ * to the Java AtkTableCell object.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (nullable): pointer to TableCellData or NULL on failure
+ **/
 gpointer jaw_table_cell_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -198,6 +212,8 @@ void jaw_table_cell_data_finalize(gpointer p) {
  *
  * Returns a reference to the accessible of the containing table.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Returns: (transfer full): the atk object for the containing table.
  */
 static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
@@ -211,20 +227,11 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell,
                                               cachedTableCellGetTableMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_table method", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -235,9 +242,6 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     if (jaw_impl != NULL) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return ATK_OBJECT(jaw_impl);
 }
@@ -253,6 +257,8 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
  * Retrieves the row and column index of the cell.
  * If the operation succeeds, the values of @row and @column are updated.
  * If it fails, the output arguments are left unchanged.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: %TRUE if successful; %FALSE otherwise.
  */
@@ -294,6 +300,8 @@ static gboolean getPosition(JNIEnv *jniEnv, jobject jatk_table_cell, gint *row,
  *
  * Retrieves the tabular position of this cell.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Returns: %TRUE if successful; %FALSE otherwise.
  *
  * Since: 2.12
@@ -311,11 +319,8 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
     JAW_GET_TABLECELL(cell, FALSE);
 
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
 
     return TRUE;
 }
@@ -330,6 +335,8 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
  * Retrieves the `rowSpan` field from a Java ATK table cell object.
  * On success, the value is stored in @row_span.
  * On failure, @row_span is left unchanged.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: %TRUE if the value was successfully retrieved; %FALSE otherwise.
  */
@@ -364,6 +371,8 @@ static gboolean getRowSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
  * Retrieves the `columnSpan` field from a Java ATK table cell object.
  * On success, the value is stored in @column_span.
  * On failure, @column_span is left unchanged.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: %TRUE if the column span value was successfully retrieved and
  *          stored in @column_span; %FALSE on error.
@@ -402,6 +411,8 @@ static gboolean getColumnSpan(JNIEnv *jniEnv, jobject jatk_table_cell,
  * Note: Even if the function returns %FALSE, some of the output arguments
  *       may have been partially updated before the failure occurred.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Returns: %TRUE if successful; %FALSE otherwise.
  *
  * Since: 2.12
@@ -425,23 +436,18 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
 
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
         g_warning("%s: getPosition failed", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
 
     if (!getRowSpan(jniEnv, jatk_table_cell, row_span)) {
         g_warning("%s: getRowSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
 
     if (!getColumnSpan(jniEnv, jatk_table_cell, column_span)) {
         g_warning("%s: getColumnSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
 
     return TRUE;
 }
@@ -451,6 +457,8 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
  * @cell: (nullable): an #AtkTableCell instance
  *
  * Returns the number of rows occupied by this cell accessible.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (type gint):
  *     A gint representing the number of rows occupied by this cell, or 0 if the
@@ -471,11 +479,9 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
     gint row_span = 0;
     if (!getRowSpan(jniEnv, jatk_table_cell, &row_span)) {
         g_warning("%s: getRowSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return 0;
     }
 
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
     return row_span;
 }
 
@@ -484,6 +490,8 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
  * @cell: (nullable): an #AtkTableCell instance
  *
  * Returns the number of columns occupied by this table cell.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (type gint):
  *     A gint representing the number of columns occupied by this cell,
@@ -504,11 +512,8 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
     gint column_span = 0;
     if (!getColumnSpan(jniEnv, jatk_table_cell, &column_span)) {
         g_warning("%s: getColumnSpan failed", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
 
     return column_span;
 }
@@ -518,6 +523,8 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
  * @cell: a GObject instance that implements AtkTableCellIface
  *
  * Returns the column headers as an array of cell accessibles.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (element-type AtkObject) (transfer full): a GPtrArray of AtkObjects
  * representing the column header cells.
@@ -533,13 +540,6 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobjectArray columnHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell,
         cachedTableCellGetAccessibleColumnHeaderMethod);
@@ -547,8 +547,6 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_column_header method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -556,8 +554,6 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -569,11 +565,8 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
             g_ptr_array_add(result, g_object_ref(G_OBJECT(jaw_impl)));
         }
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, jac);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jac); // deleting local ref created in the loop
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
 }
@@ -583,6 +576,8 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
  * @cell: a GObject instance that implements AtkTableCellIface
  *
  * Returns the row headers as an array of cell accessibles.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: (element-type AtkObject) (transfer full): a GPtrArray of AtkObjects
  * representing the row header cells.
@@ -598,21 +593,12 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobjectArray rowHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, cachedTableCellGetAccessibleRowHeaderMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || rowHeaders == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to call get_accessible_row_header method",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -620,8 +606,6 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -632,11 +616,8 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
             g_ptr_array_add(result, g_object_ref(G_OBJECT(jaw_impl)));
         }
 
-        (*jniEnv)->DeleteLocalRef(jniEnv, jac);
+        (*jniEnv)->DeleteLocalRef(jniEnv, jac); // deleting local ref created in the loop
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, jatk_table_cell);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return result;
 }

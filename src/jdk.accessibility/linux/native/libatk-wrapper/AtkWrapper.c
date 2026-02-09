@@ -59,6 +59,8 @@ extern "C" {
      ((ATSPI_MAJOR_VERSION) == (major) && (ATSPI_MINOR_VERSION) == (minor) &&  \
       (ATSPI_MICRO_VERSION) >= (micro)))
 
+#define G_MAIN_LOOP_LOCAL_FRAME_SIZE 16
+
 gboolean jaw_accessibility_init(void);
 void jaw_accessibility_shutdown(void);
 
@@ -130,11 +132,24 @@ void jaw_accessibility_shutdown(void) {
 
 static gpointer jni_loop_callback(void *data) {
     JAW_DEBUG("%p", data);
-    if (!g_main_loop_is_running((GMainLoop *)data))
-        g_main_loop_run((GMainLoop *)data);
-    else {
-        g_debug("Running JNI already");
+    GMainLoop *loop = (GMainLoop *)data;
+    GMainContext *context = g_main_loop_get_context(loop);
+    JNIEnv *jniEnv = jaw_util_get_jni_env();
+
+    if (jniEnv == NULL) {
+        g_warning("jniEnv == NULL in jni_loop_callback");
+        return 0;
     }
+
+    while (TRUE) {
+        if ((*jniEnv)->PushLocalFrame(jniEnv, G_MAIN_LOOP_LOCAL_FRAME_SIZE) < 0) {
+            g_warning("PushLocalFrame failed in jni_loop_callback");
+            break;
+        }
+        g_main_context_iteration(context, TRUE);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+    }
+
     return 0;
 }
 
@@ -794,6 +809,13 @@ static gint get_int_value(JNIEnv *jniEnv, jobject o) {
                                           cachedWrapperIntValueMethod);
 }
 
+/**
+ * Converts a Java object to its string representation.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     JAW_DEBUG("%p, %p", jniEnv, o);
     if (o == NULL) {
@@ -842,6 +864,11 @@ static gchar *get_string_value(JNIEnv *jniEnv, jobject o) {
     return result;
 }
 
+/**
+ * Handler for emitting ATK signals in response to Java accessibility events.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
+ */
 static gboolean signal_emit_handler(gpointer p) {
     JAW_DEBUG("%p", p);
     CallbackPara *para = (CallbackPara *)p;
@@ -853,12 +880,6 @@ static gboolean signal_emit_handler(gpointer p) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (!jniEnv) {
         g_warning("%s: jaw_util_get_jni_env failed", G_STRFUNC);
-        free_callback_para(para);
-        return FALSE;
-    }
-
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        g_warning("Failed to create a new local reference frame");
         free_callback_para(para);
         return FALSE;
     }
@@ -1129,7 +1150,6 @@ static gboolean signal_emit_handler(gpointer p) {
     }
 
     free_callback_para(para);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     return G_SOURCE_REMOVE;
 }

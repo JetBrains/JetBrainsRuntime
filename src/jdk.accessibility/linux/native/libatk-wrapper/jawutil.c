@@ -387,6 +387,11 @@ void jaw_util_detach(void) {
     (*jvm)->DetachCurrentThread(jvm);
 }
 
+/**
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 static jobject jaw_util_get_java_acc_role(JNIEnv *jniEnv,
                                           const gchar *roleName) {
     JAW_DEBUG("%p, %s", jniEnv, roleName);
@@ -442,6 +447,11 @@ static gboolean jaw_util_is_java_acc_role(JNIEnv *jniEnv, jobject acc_role,
     }
 }
 
+/**
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 AtkRole
 jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     JAW_DEBUG("%p", jAccessibleContext);
@@ -837,6 +847,11 @@ jaw_util_get_atk_role_from_AccessibleContext(jobject jAccessibleContext) {
     return ATK_ROLE_UNKNOWN; /* ROLE_EXTENDED */
 }
 
+/**
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
                                    const gchar *strState) {
     if (jniEnv == NULL || strState == NULL) {
@@ -1011,6 +1026,11 @@ void jaw_util_get_rect_info(JNIEnv *jniEnv, jobject jrect, gint *x, gint *y,
                                              cachedUtilRectangleHeightField);
 }
 
+/**
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ */
 static gboolean jawutil_init_jni_cache(JNIEnv *jniEnv) {
     JAW_DEBUG("JNIEnv: %p", jniEnv);
 

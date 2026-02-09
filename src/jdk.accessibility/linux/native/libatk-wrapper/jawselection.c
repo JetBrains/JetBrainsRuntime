@@ -103,6 +103,20 @@ void jaw_selection_interface_init(AtkSelectionIface *iface, gpointer data) {
     iface->select_all_selection = jaw_selection_select_all_selection;
 }
 
+/**
+ * jaw_selection_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes the selection interface data for an accessible object.
+ * Creates and returns a SelectionData structure containing a global reference
+ * to the Java AtkSelection object.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (nullable): pointer to SelectionData or NULL on failure
+ **/
 gpointer jaw_selection_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -210,11 +224,8 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
         jniEnv, atk_selection, cachedSelectionAddSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -225,6 +236,8 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
  *
  * Clears the selection in the object so that no children in the object
  * are selected.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: TRUE if success, FALSE otherwise.
  **/
@@ -245,11 +258,8 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
         jniEnv, atk_selection, cachedSelectionClearSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -262,6 +272,8 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
  *
  * Gets a reference to the accessible object representing the specified
  * selected child of the object.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: (nullable) (transfer full): an #AtkObject representing the
  * selected accessible, or %NULL if @selection does not implement this
@@ -279,19 +291,10 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
     JAW_GET_SELECTION(
         selection, NULL); // create local JNI reference `jobject atk_selection`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_selection, cachedSelectionRefSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || child_ac == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -304,9 +307,6 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
         g_object_ref(G_OBJECT(obj));
     }
 
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     return obj;
 }
 
@@ -315,6 +315,8 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
  * @selection: a #GObject instance that implements AtkSelectionIface
  *
  * Gets the number of accessible children currently selected.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: a gint representing the number of items selected, or 0
  * if @selection does not implement this interface.
@@ -334,11 +336,8 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
         jniEnv, atk_selection, cachedSelectionGetSelectionCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return (gint)jcount;
 }
@@ -371,11 +370,8 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
         jniEnv, atk_selection, cachedSelectionIsChildSelectedMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -387,6 +383,8 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
  * ith selection as opposed to the ith child).
  *
  * Removes the specified child of the object from the object's selection.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: TRUE if success, FALSE otherwise.
  **/
@@ -408,11 +406,8 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
         jniEnv, atk_selection, cachedSelectionRemoveSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }
@@ -423,6 +418,8 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
  *
  * Causes every child of the object to be selected if the object
  * supports multiple selections.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
  * Returns: TRUE if success, FALSE otherwise.
  **/
@@ -442,11 +439,8 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
         jniEnv, atk_selection, cachedSelectionSelectAllSelectionMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
         return FALSE;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_selection);
 
     return jbool;
 }

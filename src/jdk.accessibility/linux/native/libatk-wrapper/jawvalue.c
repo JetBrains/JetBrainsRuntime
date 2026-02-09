@@ -90,6 +90,20 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
     iface->set_value = jaw_value_set_value;
 }
 
+/**
+   * jaw_value_data_init:
+   * @ac: a Java AccessibleContext object
+   *
+   * Initializes the value interface data for an accessible object.
+   * Creates and returns a ValueData structure containing a global reference
+   * to the Java AtkValue object.
+   *
+   * Explicitly manages a JNI local reference frame using
+   * PushLocalFrame/PopLocalFrame; all local references are released
+   * before the function returns.
+   *
+   * Returns: (nullable): pointer to ValueData or NULL on failure
+   **/
 gpointer jaw_value_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 
@@ -248,6 +262,8 @@ static void private_get_g_value_from_java_number(JNIEnv *jniEnv,
  *
  * Gets the value of this object.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Deprecated in atk: Since 2.12. Use atk_value_get_value_and_text()
  * instead.
  **/
@@ -266,21 +282,12 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jobject jnumber = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_value, cachedValueGetCurrentValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_current_value",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -288,15 +295,10 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
         g_warning(
             "%s: Failed to get jnumber by calling get_current_value method",
             G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
     private_get_g_value_from_java_number(jniEnv, jnumber, value);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -312,6 +314,8 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
  * call, it is possible that the text could change, and will trigger
  * an #AtkValue::value-changed signal emission.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * Since: 2.12
  **/
 static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
@@ -324,21 +328,12 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
 
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return;
-    }
-
     jobject jdoubleValue = (*jniEnv)->NewObject(
         jniEnv, cachedValueDoubleClass, cachedValueDoubleConstructorMethod,
         (jdouble)value);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdoubleValue == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create Double object", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
 
@@ -347,13 +342,8 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling set_value", G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 }
 
 /**
@@ -363,6 +353,8 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
  * @result: (out): pointer to store the converted double value
  *
  * Converts a Java Double object to a gdouble primitive value.
+ *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
  * Returns: TRUE if conversion was successful, FALSE if jdouble is NULL
  **/
@@ -388,6 +380,8 @@ static gboolean jaw_value_convert_double_to_gdouble(JNIEnv *jniEnv,
  * that represents the minimum, maximum and descriptor (if available)
  * of @obj. NULL if that range is not defined.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * In Atk Since: 2.12
  **/
 static AtkRange *jaw_value_get_range(AtkValue *obj) {
@@ -400,21 +394,12 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 
     JAW_GET_VALUE(obj, NULL);
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     jobject jmin = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_value, cachedValueGetMinimumValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_minimum_value",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -424,8 +409,6 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_maximum_value",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
@@ -434,9 +417,6 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
         jaw_value_convert_double_to_gdouble(jniEnv, jmin, &min_value);
     gboolean has_max =
         jaw_value_convert_double_to_gdouble(jniEnv, jmax, &max_value);
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
 
     // If either min or max is NULL, we cannot construct a valid range
     if (!has_min || !has_max) {
@@ -460,6 +440,8 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
  * Return value: the minimum increment by which the value of this
  * object may be changed. zero if undefined.
  *
+ * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
+ *
  * In atk Since: 2.12
  **/
 static gdouble jaw_value_get_increment(AtkValue *obj) {
@@ -478,11 +460,8 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Exception occurred while calling get_increment",
                   G_STRFUNC);
-        (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
         return 0;
     }
-
-    (*jniEnv)->DeleteLocalRef(jniEnv, atk_value);
 
     return ret;
 }
