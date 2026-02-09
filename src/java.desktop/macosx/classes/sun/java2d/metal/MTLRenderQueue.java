@@ -25,6 +25,7 @@
 
 package sun.java2d.metal;
 
+import java.awt.RenderingTask;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
@@ -32,8 +33,15 @@ import sun.java2d.pipe.RenderQueue;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_CONFIG;
 import static sun.java2d.pipe.BufferedOpCodes.SYNC;
+import static sun.java2d.pipe.BufferedOpCodes.RUN_EXTERNAL;
 
 /**
  * MTL-specific implementation of RenderQueue.  This class provides a
@@ -42,6 +50,9 @@ import static sun.java2d.pipe.BufferedOpCodes.SYNC;
  * OpenGL libraries for the entire process.
  */
 public class MTLRenderQueue extends RenderQueue {
+    // Registry for external Metal tasks enqueued to run on the rendering thread
+    private static final ConcurrentHashMap<Integer, RenderingTask> EXTERNALS = new ConcurrentHashMap<>();
+    private static final AtomicInteger EXTERNAL_ID = new AtomicInteger(1);
 
     private static MTLRenderQueue theInstance;
     private final QueueFlusher flusher;
@@ -141,6 +152,54 @@ public class MTLRenderQueue extends RenderQueue {
     }
 
     private native void flushBuffer(long buf, int limit);
+
+    /**
+     * Enqueue an external Metal task to be executed on the rendering thread.
+     * The caller must hold the queue lock.
+     */
+    public void enqueueExternal(RenderingTask task) {
+        // Keep a strong reference until the queue is flushed and task is executed
+        addReference(task);
+        int id = EXTERNAL_ID.getAndIncrement();
+        EXTERNALS.put(id, task);
+        // 8 bytes: opcode + id
+        ensureCapacity(8);
+        RenderBuffer b = getBuffer();
+        b.putInt(RUN_EXTERNAL);
+        b.putInt(id);
+    }
+
+    /**
+     * Called from native Metal rendering thread to run the external task.
+     */
+    public static void runExternal(int id, String surfaceType,
+                                   long device, long commandQueue,
+                                   long renderEncoder, long texture)
+    {
+        RenderingTask r = EXTERNALS.remove(id);
+        if (r != null) {
+            try {
+                ArrayList<Long> pointers = new ArrayList<>(Collections.nCopies(4, 0L));
+                ArrayList<String> names = new ArrayList<>(Collections.nCopies(4, ""));
+
+                pointers.set(RenderingTask.MTL_DEVICE_ARG_INDEX, device);
+                names.set(RenderingTask.MTL_DEVICE_ARG_INDEX, RenderingTask.MTL_DEVICE_ARG);
+
+                pointers.set(RenderingTask.MTL_COMMAND_QUEUE_ARG_INDEX, commandQueue);
+                names.set(RenderingTask.MTL_COMMAND_QUEUE_ARG_INDEX, RenderingTask.MTL_COMMAND_QUEUE_ARG);
+
+                pointers.set(RenderingTask.MTL_RENDER_COMMAND_ENCODER_ARG_INDEX, renderEncoder);
+                names.set(RenderingTask.MTL_RENDER_COMMAND_ENCODER_ARG_INDEX, RenderingTask.MTL_RENDER_COMMAND_ENCODER_ARG);
+
+                pointers.set(RenderingTask.MTL_TEXTURE_ARG_INDEX, texture);
+                names.set(RenderingTask.MTL_TEXTURE_ARG_INDEX, RenderingTask.MTL_TEXTURE_ARG);
+
+                r.run(surfaceType, pointers, names);
+            } catch (Throwable t) {
+                logger.severe("MTLRenderQueue.runExternal: exception occurred: ", t);
+            }
+        }
+    }
 
     private void flushBuffer() {
         // assert lock.isHeldByCurrentThread();
