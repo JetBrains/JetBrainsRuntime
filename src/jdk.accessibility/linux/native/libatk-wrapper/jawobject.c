@@ -854,7 +854,8 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
             (*jniEnv)->GetObjectArrayElement(jniEnv, jstate_arr, i);
 #if !ATK_CHECK_VERSION(2, 38, 0)
         if (jstate && is_collapsed_java_state(jniEnv, jstate)) {
-            (*jniEnv)->DeleteLocalRef(jniEnv, jstate); // deleting local ref in the loop
+            (*jniEnv)->DeleteLocalRef(jniEnv,
+                                      jstate); // deleting local ref in the loop
             continue;
         }
 #endif
@@ -864,7 +865,8 @@ static AtkStateSet *jaw_object_ref_state_set(AtkObject *atk_obj) {
         if (state_type == ATK_STATE_ENABLED) {
             atk_state_set_add_state(state_set, ATK_STATE_SENSITIVE);
         }
-        (*jniEnv)->DeleteLocalRef(jniEnv, jstate); // deleting local ref in the loop
+        (*jniEnv)->DeleteLocalRef(jniEnv,
+                                  jstate); // deleting local ref in the loop
     }
 
     g_object_ref(G_OBJECT(state_set)); // because transfer full

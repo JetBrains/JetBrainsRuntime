@@ -272,7 +272,8 @@ void jaw_table_data_finalize(gpointer p) {
                     data->row_or_column_description);
                 data->row_or_column_description = NULL;
             }
-            (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
+            (*jniEnv)->DeleteGlobalRef(jniEnv,
+                                       data->jstrRowOrColumnDescription);
             data->jstrRowOrColumnDescription = NULL;
         }
         if (data->atk_table != NULL) {
@@ -675,9 +676,9 @@ static const gchar *jaw_table_get_column_description(AtkTable *table,
     g_mutex_lock(&data->mutex);
     if (data->jstrRowOrColumnDescription != NULL) {
         if (data->row_or_column_description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(
-                jniEnv, data->jstrRowOrColumnDescription,
-                data->row_or_column_description);
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv,
+                                             data->jstrRowOrColumnDescription,
+                                             data->row_or_column_description);
             data->row_or_column_description = NULL;
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);
@@ -743,9 +744,9 @@ static const gchar *jaw_table_get_row_description(AtkTable *table, gint row) {
     g_mutex_lock(&data->mutex);
     if (data->jstrRowOrColumnDescription != NULL) {
         if (data->row_or_column_description != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(
-                jniEnv, data->jstrRowOrColumnDescription,
-                data->row_or_column_description);
+            (*jniEnv)->ReleaseStringUTFChars(jniEnv,
+                                             data->jstrRowOrColumnDescription,
+                                             data->row_or_column_description);
             data->row_or_column_description = NULL;
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrRowOrColumnDescription);

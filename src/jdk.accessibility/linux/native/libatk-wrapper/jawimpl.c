@@ -534,7 +534,6 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     return NULL;
 }
 
-
 /**
  * jaw_impl_initialize:
  * @atk_obj: the AtkObject to initialize

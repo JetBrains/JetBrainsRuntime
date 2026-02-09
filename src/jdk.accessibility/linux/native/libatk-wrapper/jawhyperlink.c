@@ -299,7 +299,8 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
         return NULL;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, NULL); // create local JNI reference `jobject jhyperlink`
+    JAW_GET_HYPERLINK(atk_hyperlink,
+                      NULL); // create local JNI reference `jobject jhyperlink`
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -344,7 +345,8 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, 0); // create local JNI reference `jobject jhyperlink`
+    JAW_GET_HYPERLINK(atk_hyperlink,
+                      0); // create local JNI reference `jobject jhyperlink`
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -381,7 +383,8 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, 0); // create local JNI reference `jobject jhyperlink`
+    JAW_GET_HYPERLINK(atk_hyperlink,
+                      0); // create local JNI reference `jobject jhyperlink`
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -418,7 +421,8 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
         return FALSE;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, FALSE); // create local JNI reference `jobject jhyperlink`
+    JAW_GET_HYPERLINK(atk_hyperlink,
+                      FALSE); // create local JNI reference `jobject jhyperlink`
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
@@ -454,7 +458,8 @@ static gint jaw_hyperlink_get_n_anchors(AtkHyperlink *atk_hyperlink) {
         return 0;
     }
 
-    JAW_GET_HYPERLINK(atk_hyperlink, 0); // create local JNI reference `jobject jhyperlink`
+    JAW_GET_HYPERLINK(atk_hyperlink,
+                      0); // create local JNI reference `jobject jhyperlink`
 
     if (!jaw_hyperlink_init_jni_cache(jniEnv)) {
         g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);

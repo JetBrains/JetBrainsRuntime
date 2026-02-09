@@ -91,19 +91,19 @@ void jaw_value_interface_init(AtkValueIface *iface, gpointer data) {
 }
 
 /**
-   * jaw_value_data_init:
-   * @ac: a Java AccessibleContext object
-   *
-   * Initializes the value interface data for an accessible object.
-   * Creates and returns a ValueData structure containing a global reference
-   * to the Java AtkValue object.
-   *
-   * Explicitly manages a JNI local reference frame using
-   * PushLocalFrame/PopLocalFrame; all local references are released
-   * before the function returns.
-   *
-   * Returns: (nullable): pointer to ValueData or NULL on failure
-   **/
+ * jaw_value_data_init:
+ * @ac: a Java AccessibleContext object
+ *
+ * Initializes the value interface data for an accessible object.
+ * Creates and returns a ValueData structure containing a global reference
+ * to the Java AtkValue object.
+ *
+ * Explicitly manages a JNI local reference frame using
+ * PushLocalFrame/PopLocalFrame; all local references are released
+ * before the function returns.
+ *
+ * Returns: (nullable): pointer to ValueData or NULL on failure
+ **/
 gpointer jaw_value_data_init(jobject ac) {
     JAW_DEBUG("%p", ac);
 

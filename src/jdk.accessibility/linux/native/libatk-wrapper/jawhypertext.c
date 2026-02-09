@@ -91,7 +91,8 @@ void jaw_hypertext_interface_init(AtkHypertextIface *iface, gpointer data) {
  *
  * Initializes hypertext interface data for an AccessibleContext.
  *
- * Creates a Java AtkHypertext wrapper and stores it in a HypertextData structure.
+ * Creates a Java AtkHypertext wrapper and stores it in a HypertextData
+ * structure.
  *
  * Explicitly manages a JNI local reference frame using
  * PushLocalFrame/PopLocalFrame; all local references are released

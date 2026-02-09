@@ -206,7 +206,6 @@ void jaw_editable_text_data_finalize(gpointer p) {
     g_free(data);
 }
 
-
 /**
  * jaw_editable_text_set_text_contents:
  * @text: an #AtkEditableText

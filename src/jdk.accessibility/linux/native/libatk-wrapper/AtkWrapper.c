@@ -18,12 +18,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
  */
 
-#include "org_GNOME_Accessibility_AtkWrapper.h"
-#include "org_GNOME_Accessibility_AtkSignal.h"
 #include "jawcache.h"
 #include "jawimpl.h"
 #include "jawtoplevel.h"
 #include "jawutil.h"
+#include "org_GNOME_Accessibility_AtkSignal.h"
+#include "org_GNOME_Accessibility_AtkWrapper.h"
 #include <X11/Xlib.h>
 #include <atk-bridge.h>
 #include <glib.h>
@@ -209,7 +209,8 @@ static guint jni_main_idle_add(GSourceFunc function, gpointer data) {
 }
 
 JNIEXPORT jboolean JNICALL
-Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env, jobject obj) {
+Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env,
+                                                      jobject obj) {
     JAW_DEBUG("");
     // Enable ATK Bridge so we can load it now
     g_unsetenv("NO_AT_BRIDGE");
