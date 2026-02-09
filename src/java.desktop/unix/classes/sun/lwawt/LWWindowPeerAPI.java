@@ -25,37 +25,17 @@
 
 package sun.lwawt;
 
-import java.awt.Component;
-import java.awt.Rectangle;
-import java.awt.dnd.peer.DropTargetPeer;
-import java.awt.peer.ComponentPeer;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.event.FocusEvent;
+import java.awt.peer.WindowPeer;
 
-import sun.java2d.pipe.Region;
+public interface LWWindowPeerAPI extends LWContainerPeerAPI, WindowPeer {
 
-public interface LWComponentPeerAPI extends ComponentPeer, DropTargetPeer {
-    Component getTarget();
+    Graphics getOnscreenGraphics(Color fg, Color bg, Font f);
 
-    PlatformWindow getPlatformWindow();
+    boolean requestWindowFocus(FocusEvent.Cause cause);
 
-    Rectangle getBounds();
-
-    Region getRegion();
-
-    LWContainerPeerAPI getContainerPeer();
-
-    LWWindowPeerAPI getWindowPeerOrSelf();
-
-    boolean isVisible();
-
-    boolean isShowing();
-
-    boolean isEnabled();
-
-    void repaintPeer(Rectangle r);
-
-    void setBounds(Rectangle r);
-
-    void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget);
-
-    LWComponentPeerAPI findPeerAt(final int x, final int y);
+    LWWindowPeerAPI getBlocker();
 }
