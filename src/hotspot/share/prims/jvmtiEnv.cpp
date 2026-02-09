@@ -600,7 +600,19 @@ JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_de
     event.set_redefinitionId(op_id);
     event.commit();
 
-    JBR_call_hotswap_on_classes_redefined();
+    if (AllowEnhancedClassRedefinition) {
+      JavaThread* thread = JavaThread::current();
+      if (thread != nullptr) {
+        JavaThreadState st = thread->thread_state();
+        if (st == _thread_in_vm) {
+          // JBR-9975: JNI calls in JBR_call_hotswap_on_classes_redefined() require _thread_in_native.
+          ThreadToNativeFromVM ttn(thread);
+          JBR_call_hotswap_on_classes_redefined();
+        } else if (st == _thread_in_native) {
+          JBR_call_hotswap_on_classes_redefined();
+        }
+      }
+    }
   }
   return error;
 } /* end RedefineClasses */
