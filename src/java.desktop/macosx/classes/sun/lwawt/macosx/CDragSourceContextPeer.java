@@ -43,6 +43,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.dnd.*;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWWindowPeer;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 
 
@@ -416,7 +417,7 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
                     new Callable<Component>() {
                         @Override
                         public Component call() {
-                            LWWindowPeer mouseEventComponent = LWWindowPeer.getWindowUnderCursor();
+                            LWWindowPeerAPI mouseEventComponent = LWWindowPeer.getWindowUnderCursor();
                             if (mouseEventComponent == null) {
                                 return null;
                             }
