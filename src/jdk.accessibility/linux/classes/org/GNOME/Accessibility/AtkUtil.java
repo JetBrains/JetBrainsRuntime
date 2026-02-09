@@ -70,7 +70,7 @@ public final class AtkUtil {
         SwingUtilities.invokeLater(wf);
         try {
             return wf.get();
-        } catch (InterruptedException | ExecutionException ex) {
+        } catch (Exception ex) {
             if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                 log.warning("Swing task execution interrupted or failed, returning default value.", ex);
             }
