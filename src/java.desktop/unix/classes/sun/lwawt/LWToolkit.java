@@ -378,8 +378,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitA
         return new LWMouseInfoPeer();
     }
 
-    protected abstract PlatformWindow getPlatformWindowUnderMouse();
-
     @Override
     public final PrintJob getPrintJob(Frame frame, String doctitle,
                                       Properties props) {
@@ -524,5 +522,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitA
     @Override
     public void updateCursorImmediately() {
         getCursorManager().updateCursor();
+    }
+
+    @Override
+    public void updateCursorLater(Window target) {
+        getCursorManager().updateCursorLater(target);
     }
 }
