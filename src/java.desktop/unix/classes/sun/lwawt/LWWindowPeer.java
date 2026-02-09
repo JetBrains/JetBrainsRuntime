@@ -78,7 +78,7 @@ import sun.util.logging.PlatformLogger;
 
 public class LWWindowPeer
     extends LWContainerPeer<Window, JComponent>
-    implements FramePeer, DialogPeer, FullScreenCapable, DisplayChangedListener, PlatformEventNotifier
+    implements FramePeer, DialogPeer, FullScreenCapable, DisplayChangedListener, PlatformEventNotifier, LWWindowPeerAPI
 {
     public enum PeerType {
         SIMPLEWINDOW,
@@ -292,7 +292,8 @@ public class LWWindowPeer
         return false;
     }
 
-    protected final Graphics getOnscreenGraphics(Color fg, Color bg, Font f) {
+    @Override
+    public Graphics getOnscreenGraphics(Color fg, Color bg, Font f) {
         SurfaceData surfaceData = getSurfaceData();
         if (surfaceData == null) {
             return null;
@@ -1207,7 +1208,7 @@ public class LWWindowPeer
         return true;
     }
 
-    public static LWWindowPeer getWindowUnderCursor() {
+    public static LWWindowPeerAPI getWindowUnderCursor() {
         return lastCommonMouseEventPeer != null ? lastCommonMouseEventPeer.getWindowPeerOrSelf() : null;
     }
 
@@ -1219,6 +1220,7 @@ public class LWWindowPeer
      * Requests platform to set native focus on a frame/dialog.
      * In case of a simple window, triggers appropriate java focus change.
      */
+    @Override
     public boolean requestWindowFocus(FocusEvent.Cause cause) {
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("requesting native focus to " + this);
@@ -1350,7 +1352,8 @@ public class LWWindowPeer
     /**
      * Returns the foremost modal blocker of this window, or null.
      */
-    public LWWindowPeer getBlocker() {
+    @Override
+    public LWWindowPeerAPI getBlocker() {
         synchronized (getPeerTreeLock()) {
             LWWindowPeer blocker = this.blocker;
             if (blocker == null) {
