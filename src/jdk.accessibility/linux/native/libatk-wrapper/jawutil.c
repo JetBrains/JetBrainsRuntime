@@ -355,6 +355,7 @@ JNIEnv *jaw_util_get_jni_env(void) {
 
     switch (res) {
     case JNI_EDETACHED:
+    {
         JavaVMAttachArgs args;
         args.version = JNI_VERSION_1_6;
         args.name = "JavaAtkWrapper-JNI-Attached-Thread";
@@ -367,6 +368,7 @@ JNIEnv *jaw_util_get_jni_env(void) {
         }
         g_printerr("\n *** Attach failed. *** JNIEnv thread is detached.\n");
         break;
+    }
     case JNI_EVERSION:
         g_printerr(" *** Version error *** \n");
         break;
