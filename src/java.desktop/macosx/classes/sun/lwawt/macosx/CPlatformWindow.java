@@ -78,6 +78,7 @@ import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.LWWindowPeer.PeerType;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
@@ -727,7 +728,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return this.visible;
     }
 
-    private static LWWindowPeer getBlockerFor(Window window) {
+    private static LWWindowPeerAPI getBlockerFor(Window window) {
         if (window != null) {
             ComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(window);
             if (peer instanceof LWWindowPeer) {
@@ -790,13 +791,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         this.visible = visible;
 
         // Actually show or hide the window
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
+        LWWindowPeerAPI blocker = (peer == null)? null : peer.getBlocker();
         if (!visible) {
             execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeHideWindow(ptr, wait)));
         } else if (delayShowing()) {
             if (blocker == null) {
                 Window focusedWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
-                LWWindowPeer focusedWindowBlocker = getBlockerFor(focusedWindow);
+                LWWindowPeerAPI focusedWindowBlocker = getBlockerFor(focusedWindow);
                 if (focusedWindowBlocker == peer) {
                     // try to switch to target space if we're adding a modal dialog
                     // that would block currently focused window
@@ -1527,7 +1528,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     private void checkBlockingAndOrder() {
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
+        LWWindowPeerAPI blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null) {
             // If it's not blocked, make sure it's above its siblings
             orderAboveSiblings();
