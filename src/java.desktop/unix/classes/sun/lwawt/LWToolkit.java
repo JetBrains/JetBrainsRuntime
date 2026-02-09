@@ -41,7 +41,7 @@ import static sun.lwawt.LWWindowPeer.PeerType;
 import sun.util.logging.PlatformLogger;
 
 
-public abstract class LWToolkit extends SunToolkit implements Runnable {
+public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitAPI {
 
     private static final PlatformLogger log = PlatformLogger.getLogger(LWToolkit.class.getName());
 
@@ -202,7 +202,8 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
                                                PlatformComponent platformComponent,
                                                PlatformWindow platformWindow,
                                                PeerType peerType) {
-        LWWindowPeer peer = new LWWindowPeer(target, platformComponent, platformWindow, peerType);
+        LWWindowPeer peer =
+                new LWWindowPeer(target, platformComponent, platformWindow, peerType, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -212,9 +213,8 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     public FramePeer createLightweightFrame(LightweightFrame target) {
         PlatformComponent platformComponent = createLwPlatformComponent();
         PlatformWindow platformWindow = createPlatformWindow(PeerType.LW_FRAME);
-        LWLightweightFramePeer peer = new LWLightweightFramePeer(target,
-                                                                 platformComponent,
-                                                                 platformWindow);
+        LWLightweightFramePeer peer =
+                new LWLightweightFramePeer(target, platformComponent, platformWindow, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -253,7 +253,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ButtonPeer createButton(Button target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWButtonPeer peer = new LWButtonPeer(target, platformComponent);
+        LWButtonPeer peer = new LWButtonPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -262,7 +262,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final CheckboxPeer createCheckbox(Checkbox target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWCheckboxPeer peer = new LWCheckboxPeer(target, platformComponent);
+        LWCheckboxPeer peer = new LWCheckboxPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -271,7 +271,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ChoicePeer createChoice(Choice target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWChoicePeer peer = new LWChoicePeer(target, platformComponent);
+        LWChoicePeer peer = new LWChoicePeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -280,7 +280,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final LabelPeer createLabel(Label target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWLabelPeer peer = new LWLabelPeer(target, platformComponent);
+        LWLabelPeer peer = new LWLabelPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -289,7 +289,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final CanvasPeer createCanvas(Canvas target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWCanvasPeer<?, ?> peer = new LWCanvasPeer<>(target, platformComponent);
+        LWCanvasPeer<?, ?> peer = new LWCanvasPeer<>(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -298,7 +298,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ListPeer createList(List target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWListPeer peer = new LWListPeer(target, platformComponent);
+        LWListPeer peer = new LWListPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -307,7 +307,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final PanelPeer createPanel(Panel target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWPanelPeer peer = new LWPanelPeer(target, platformComponent);
+        LWPanelPeer peer = new LWPanelPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -316,7 +316,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ScrollPanePeer createScrollPane(ScrollPane target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWScrollPanePeer peer = new LWScrollPanePeer(target, platformComponent);
+        LWScrollPanePeer peer = new LWScrollPanePeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -325,7 +325,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ScrollbarPeer createScrollbar(Scrollbar target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWScrollBarPeer peer = new LWScrollBarPeer(target, platformComponent);
+        LWScrollBarPeer peer = new LWScrollBarPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -334,7 +334,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final TextAreaPeer createTextArea(TextArea target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWTextAreaPeer peer = new LWTextAreaPeer(target, platformComponent);
+        LWTextAreaPeer peer = new LWTextAreaPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -343,7 +343,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final TextFieldPeer createTextField(TextField target) {
         PlatformComponent platformComponent = createPlatformComponent();
-        LWTextFieldPeer peer = new LWTextFieldPeer(target, platformComponent);
+        LWTextFieldPeer peer = new LWTextFieldPeer(target, platformComponent, getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -432,10 +432,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
 
     protected abstract FileDialogPeer createFileDialogPeer(FileDialog target);
 
-    protected abstract PlatformDropTarget createDropTarget(DropTarget dropTarget,
-                                                           Component component,
-                                                           LWComponentPeer<?, ?> peer);
-
     // ---- UTILITY METHODS ---- //
 
     /*
@@ -460,8 +456,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     public static void postEvent(AWTEvent event) {
         postEvent(targetToAppContext(event.getSource()), event);
     }
-
-    public abstract void flushOnscreenGraphics();
 
     @Override
     public final void grab(final Window w) {
@@ -510,5 +504,25 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     protected final boolean isDynamicLayoutSupported() {
         // "Live resizing" is supported by default.
         return true;
+    }
+
+    @Override
+    public Object peerForTarget(Object target) {
+        return targetToPeer(target);
+    }
+
+    @Override
+    public void peerDisposedForTarget(Object target, Object peer) {
+        targetDisposedPeer(target, peer);
+    }
+
+    @Override
+    public void postAWTEvent(AWTEvent event) {
+        postEvent(event);
+    }
+
+    @Override
+    public void updateCursorImmediately() {
+        getCursorManager().updateCursor();
     }
 }

@@ -74,14 +74,8 @@ import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.RenderQueue;
-import sun.lwawt.LWComponentPeer;
-import sun.lwawt.LWCursorManager;
-import sun.lwawt.LWToolkit;
-import sun.lwawt.LWWindowPeer;
+import sun.lwawt.*;
 import sun.lwawt.LWWindowPeer.PeerType;
-import sun.lwawt.PlatformComponent;
-import sun.lwawt.PlatformDropTarget;
-import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
@@ -295,7 +289,7 @@ public final class LWCToolkit extends LWToolkit {
                                                PlatformWindow platformWindow,
                                                PeerType peerType) {
         LWCWindowPeer peer =
-                new LWCWindowPeer(target, platformComponent, platformWindow, peerType);
+                new LWCWindowPeer(target, platformComponent, platformWindow, peerType, LWToolkit.getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -306,7 +300,7 @@ public final class LWCToolkit extends LWToolkit {
         PlatformComponent platformComponent = createLwPlatformComponent();
         PlatformWindow platformWindow = createPlatformWindow(PeerType.LW_FRAME);
         LWCLightweightFramePeer peer =
-                new LWCLightweightFramePeer(target, platformComponent, platformWindow);
+                new LWCLightweightFramePeer(target, platformComponent, platformWindow, LWToolkit.getLWToolkit());
         targetCreatedPeer(target, peer);
         peer.initialize();
         return peer;
@@ -327,7 +321,8 @@ public final class LWCToolkit extends LWToolkit {
     private CPrinterDialogPeer createCPrinterDialog(CPrinterDialog target) {
         PlatformComponent platformComponent = createPlatformComponent();
         PlatformWindow platformWindow = createPlatformWindow(PeerType.DIALOG);
-        CPrinterDialogPeer peer = new CPrinterDialogPeer(target, platformComponent, platformWindow);
+        CPrinterDialogPeer peer =
+                new CPrinterDialogPeer(target, platformComponent, platformWindow, LWToolkit.getLWToolkit());
         targetCreatedPeer(target, peer);
         return peer;
     }
@@ -952,9 +947,9 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     @Override
-    protected PlatformDropTarget createDropTarget(DropTarget dropTarget,
-                                                  Component component,
-                                                  LWComponentPeer<?, ?> peer) {
+    public PlatformDropTarget createDropTarget(DropTarget dropTarget,
+                                               Component component,
+                                               LWComponentPeer<?, ?> peer) {
         return new CDropTarget(dropTarget, component, peer);
     }
 
