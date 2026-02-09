@@ -88,11 +88,25 @@ public final class AtkUtil {
     public static void invokeInSwing(Runnable function) {
         if (SwingUtilities.isEventDispatchThread()) {
             // We are already running in the EDT, we can call it directly
-            function.run();
+            try {
+                function.run();
+            } catch (Exception ex) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("Error occurred while executing function.", ex);
+                }
+            }
             return;
         }
 
-        SwingUtilities.invokeLater(function);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                function.run();
+            } catch (Exception ex) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning("Error occurred while executing function asynchronously.", ex);
+                }
+            }
+        });
     }
 
 }
