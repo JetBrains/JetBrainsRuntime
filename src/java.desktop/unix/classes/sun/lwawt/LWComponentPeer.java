@@ -76,7 +76,7 @@ import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
 public abstract class LWComponentPeer<T extends Component, D extends JComponent>
-    implements ComponentPeer, DropTargetPeer
+    implements DropTargetPeer, LWComponentPeerAPI
 {
     private static final PlatformLogger focusLog = PlatformLogger.getLogger("sun.lwawt.focus.LWComponentPeer");
 
@@ -107,7 +107,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * the hierarchy. The exception is LWWindowPeers: their containers are
      * always null
      */
-    private final LWContainerPeer<?, ?> containerPeer;
+    private final LWContainerPeerAPI containerPeer;
 
     /**
      * Handy reference to the top-level window peer. Window peer is borrowed
@@ -211,7 +211,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         // windowPeer is always null for them as well. On the other
         // hand, LWWindowPeer shouldn't use windowPeer at all
         final Container container = SunToolkit.getNativeContainer(target);
-        containerPeer = (LWContainerPeer) ToolkitAPI.getDefaultToolkit().peerForTarget(container);
+        containerPeer = (LWContainerPeerAPI) ToolkitAPI.getDefaultToolkit().peerForTarget(container);
         windowPeer = containerPeer != null ? containerPeer.getWindowPeerOrSelf()
                                            : null;
         // don't bother about z-order here as updateZOrder()
@@ -367,8 +367,15 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     // Returns the window peer or 'this' if this is a window peer
-    protected LWWindowPeer getWindowPeerOrSelf() {
+    @Override
+    public LWWindowPeer getWindowPeerOrSelf() {
         return getWindowPeer();
+    }
+
+    // Returns the container peer for this component
+    @Override
+    public LWContainerPeerAPI getContainerPeer() {
+        return containerPeer;
     }
 
     public PlatformWindow getPlatformWindow() {
@@ -462,9 +469,9 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         return computeVisibleRect(this, getRegion());
     }
 
-    static final Region computeVisibleRect(final LWComponentPeer<?, ?> c,
+    static final Region computeVisibleRect(final LWComponentPeerAPI c,
                                            Region region) {
-        final LWContainerPeer<?, ?> p = c.containerPeer;
+        final LWContainerPeerAPI p = c.getContainerPeer();
         if (p != null) {
             final Rectangle r = c.getBounds();
             region = region.getTranslatedRegion(r.x, r.y);
@@ -537,8 +544,9 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         setBounds(x, y, w, h, op, true, false);
     }
 
-    protected void setBounds(int x, int y, int w, int h, int op, boolean notify,
-                             final boolean updateTarget) {
+    @Override
+    public void setBounds(int x, int y, int w, int h, int op, boolean notify,
+                          final boolean updateTarget) {
         Rectangle oldBounds;
         synchronized (getStateLock()) {
             oldBounds = new Rectangle(bounds);
@@ -580,6 +588,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         }
     }
 
+    @Override
     public final Rectangle getBounds() {
         synchronized (getStateLock()) {
             // Return a copy to prevent subsequent modifications
@@ -736,6 +745,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     // Helper method
+    @Override
     public final boolean isEnabled() {
         synchronized (getStateLock()) {
             return enabled;
@@ -769,6 +779,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     // Helper method
+    @Override
     public final boolean isVisible() {
         synchronized (getStateLock()) {
             return visible;
@@ -1002,7 +1013,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         repaintParent(getBounds());
     }
 
-    protected final Region getRegion() {
+    @Override
+    public final Region getRegion() {
         synchronized (getStateLock()) {
             return isShaped() ? region : Region.getInstance(getSize());
         }
@@ -1290,7 +1302,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * Finds a top-most visible component for the given point. The location is
      * specified relative to the peer's parent.
      */
-    LWComponentPeer<?, ?> findPeerAt(final int x, final int y) {
+    @Override
+    public LWComponentPeerAPI findPeerAt(final int x, final int y) {
         final Rectangle r = getBounds();
         final Region sh = getRegion();
         final boolean found = isVisible() && sh.contains(x - r.x, y - r.y);
@@ -1307,12 +1320,12 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     public Point windowToLocal(Point p, LWWindowPeer wp) {
-        LWComponentPeer<?, ?> cp = this;
+        LWComponentPeerAPI cp = this;
         while (cp != null && cp != wp) {
             Rectangle cpb = cp.getBounds();
             p.x -= cpb.x;
             p.y -= cpb.y;
-            cp = cp.containerPeer;
+            cp = cp.getContainerPeer();
         }
         // Return a copy to prevent subsequent modifications
         return new Point(p);
@@ -1328,13 +1341,13 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     public Point localToWindow(Point p) {
-        LWComponentPeer<?, ?> cp = containerPeer;
+        LWComponentPeerAPI cp = containerPeer;
         Rectangle r = getBounds();
         while (cp != null) {
             p.x += r.x;
             p.y += r.y;
             r = cp.getBounds();
-            cp = cp.containerPeer;
+            cp = cp.getContainerPeer();
         }
         // Return a copy to prevent subsequent modifications
         return new Point(p);
@@ -1349,7 +1362,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
         repaintPeer(getSize());
     }
 
-    void repaintPeer(final Rectangle r) {
+    @Override
+    public void repaintPeer(final Rectangle r) {
         final Rectangle toPaint = getSize().intersection(r);
         if (!isShowing() || toPaint.isEmpty()) {
             return;
@@ -1365,7 +1379,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      *
      * @see #isVisible()
      */
-    protected final boolean isShowing() {
+    @Override
+    public final boolean isShowing() {
         synchronized (getPeerTreeLock()) {
             if (isVisible()) {
                 return containerPeer == null || containerPeer.isShowing();
