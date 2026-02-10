@@ -481,22 +481,24 @@ static void jaw_impl_finalize(GObject *gobject) {
     (*jniEnv)->DeleteWeakGlobalRef(jniEnv, jaw_obj->acc_context);
     jaw_obj->acc_context = NULL;
 
-    /* Interface finalize */
-    GHashTableIter iter;
-    gpointer value;
+    if (jaw_impl->ifaceTable != NULL) {
+        /* Interface finalize */
+        GHashTableIter iter;
+        gpointer value;
 
-    g_hash_table_iter_init(&iter, jaw_impl->ifaceTable);
-    while (g_hash_table_iter_next(&iter, NULL, &value)) {
-        JawInterfaceInfo *info = (JawInterfaceInfo *)value;
-        if (info != NULL) {
-            info->finalize(info->data);
-            g_free(info);
+        g_hash_table_iter_init(&iter, jaw_impl->ifaceTable);
+        while (g_hash_table_iter_next(&iter, NULL, &value)) {
+            JawInterfaceInfo *info = (JawInterfaceInfo *)value;
+            if (info != NULL) {
+                info->finalize(info->data);
+                g_free(info);
+            }
+
+            g_hash_table_iter_remove(&iter);
         }
 
-        g_hash_table_iter_remove(&iter);
-    }
-    if (jaw_impl->ifaceTable != NULL) {
         g_hash_table_unref(jaw_impl->ifaceTable);
+        jaw_impl->ifaceTable = NULL;
     }
     if (jaw_obj->storedData != NULL) {
         g_hash_table_destroy(jaw_obj->storedData);
