@@ -329,6 +329,22 @@ static CallbackParaEvent *alloc_callback_para_event(JNIEnv *jniEnv,
     return para;
 }
 
+/**
+ * free_callback_para:
+ * @para: The callback parameter structure to free.
+ *
+ * Frees the resources associated with a CallbackPara structure, including
+ * JNI global references and GObject references.
+ *
+ * This function is called from the GLib main loop thread. Before commit
+ * 355a91eaae8fb9f4d546ee7d1efc4aa527dfc322 (GNOME java-atk-wrapper), there
+ * was a different approach where resource cleanup was performed from a Java
+ * thread due to concerns about calling Java code from native threads
+ * (see https://bugzilla.gnome.org/show_bug.cgi?id=766774). However, the
+ * finalize methods does not call any Java code - it only performs JNI cleanup
+ * operations - there is no reason to dispatch to a Java thread, and it can
+ * safely execute in the GLib main loop thread.
+ */
 static void free_callback_para(CallbackPara *para) {
     JAW_DEBUG("%p", para);
 
@@ -371,6 +387,22 @@ static void free_callback_para(CallbackPara *para) {
     g_free(para);
 }
 
+/**
+ * free_callback_para_event:
+ * @para: The event callback parameter structure to free.
+ *
+ * Frees the resources associated with a CallbackParaEvent structure, including
+ * JNI global references to event objects.
+ *
+ * This function is called from the GLib main loop thread. Before commit
+ * 355a91eaae8fb9f4d546ee7d1efc4aa527dfc322 (GNOME java-atk-wrapper), there
+ * was a different approach where resource cleanup was performed from a Java
+ * thread due to concerns about calling Java code from native threads
+ * (see https://bugzilla.gnome.org/show_bug.cgi?id=766774). However, since
+ * this function does not call any Java code - it only performs JNI cleanup
+ * operations - there is no reason to dispatch to a Java thread, and it can
+ * safely execute in the GLib main loop thread.
+ */
 static void free_callback_para_event(CallbackParaEvent *para) {
     JAW_DEBUG("%p", para);
 
