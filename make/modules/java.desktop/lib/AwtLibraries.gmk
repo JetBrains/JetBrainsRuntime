@@ -156,6 +156,16 @@ ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += $(A11Y_JAWS_ANNOUNCING_CFLAGS)
 endif
 
+# Setup speech-dispatcher a11y announcer for Linux XAWT/WLAWT
+A11Y_SPEECHD_ANNOUNCING_CFLAGS := -DNO_A11Y_SPEECHD_ANNOUNCING
+ifeq ($(call isTargetOs, linux), true)
+  A11Y_SPEECHD_ANNOUNCING_CFLAGS := $(SPEECHD_CFLAGS) -DNO_A11Y_SPEECHD_ANNOUNCING
+
+  ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
+    A11Y_SPEECHD_ANNOUNCING_CFLAGS := $(SPEECHD_CFLAGS)
+  endif
+endif
+
 # Setup Vulkan
 ifeq ($(VULKAN_ENABLED), true)
   LIBAWT_EXTRA_SRC += common/font common/java2d/vulkan
@@ -335,21 +345,10 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       common/awt \
       common/java2d \
       common/font \
+      common/accessibility/AccessibleAnnouncer \
       #
 
-  ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
-      A11Y_SPEECHD_ANNOUNCING_CFLAGS :=
-  else
-      A11Y_SPEECHD_ANNOUNCING_CFLAGS := -DNO_A11Y_SPEECHD_ANNOUNCING
-  endif
-
-  ifeq ($(call isTargetOs, linux), true)
-      LIBAWT_XAWT_EXTRA_SRC += \
-          $(TOPDIR)/src/$(MODULE)/linux/native/libawt_xawt \
-          #
-  endif
-
-  LIBAWT_XAWT_CFLAGS += $(SPEECHD_CFLAGS) $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
+  LIBAWT_XAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
   LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
@@ -448,6 +447,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/font \
         common/wayland \
         $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland \
+        common/accessibility/AccessibleAnnouncer \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11 $(VULKAN_EXCLUDES)
@@ -481,7 +481,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(VULKAN_FLAGS) \
         $(WAYLAND_CFLAGS) \
         $(CUPS_CFLAGS) \
-        $(DBUS_CFLAGS)
+        $(DBUS_CFLAGS) \
+        $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
     ifeq ($(TOOLCHAIN_TYPE), gcc)
       # Turn off all warnings for the following files since they contain warnings
