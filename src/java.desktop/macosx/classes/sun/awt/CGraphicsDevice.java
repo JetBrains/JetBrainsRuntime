@@ -42,6 +42,7 @@ import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
+import sun.lwawt.FullScreenCapable;
 import sun.lwawt.macosx.CThreading;
 import sun.util.logging.PlatformLogger;
 
