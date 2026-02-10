@@ -25,8 +25,25 @@
 
 package sun.lwawt.macosx;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.DefaultKeyboardFocusManager;
+import java.awt.Dialog;
 import java.awt.Dialog.ModalityType;
+import java.awt.EventQueue;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
+import java.awt.MenuBar;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowStateListener;
