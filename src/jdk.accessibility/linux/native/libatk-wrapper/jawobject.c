@@ -379,7 +379,7 @@ static AtkObject *jaw_object_get_parent(AtkObject *atk_obj) {
  * jaw_object_set_parent:
  * @accessible: an #AtkObject
  *
- * Gets the accessible parent of the accessible.
+ * Sets the accessible parent of the accessible.
  *
  * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
