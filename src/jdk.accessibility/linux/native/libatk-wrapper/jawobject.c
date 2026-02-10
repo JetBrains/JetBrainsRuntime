@@ -272,6 +272,10 @@ static void jaw_object_finalize(GObject *gobject) {
     }
     g_mutex_lock(&jaw_obj->mutex);
 
+    if (jaw_obj->state_set != NULL) {
+        g_object_unref(G_OBJECT(jaw_obj->state_set));
+    }
+
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         g_debug("%s: jniEnv is NULL", G_STRFUNC);
@@ -309,10 +313,6 @@ static void jaw_object_finalize(GObject *gobject) {
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
         jaw_obj->jstrLocale = NULL;
-    }
-
-    if (jaw_obj->state_set != NULL) {
-        g_object_unref(G_OBJECT(jaw_obj->state_set));
     }
 
     g_mutex_unlock(&jaw_obj->mutex);
