@@ -382,13 +382,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/wayland \
         #
 
-    # Setup speech dispatcher for Orca announcer
-    ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
-        A11Y_SPEECHD_ANNOUNCING_CFLAGS :=
-    else
-        A11Y_SPEECHD_ANNOUNCING_CFLAGS := -DNO_A11Y_SPEECHD_ANNOUNCING
-    endif
-
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11
     LIBAWT_WLAWT_EXCLUDE_FILES := common/awt/X11Color.c common/awt/awt_Font.c
 
@@ -419,13 +412,11 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(WAKEFIELD_ROBOT_CFLAGS) \
         $(FONTCONFIG_CFLAGS) \
         $(VULKAN_FLAGS) \
-        $(CUPS_CFLAGS) \
-        $(SPEECHD_CFLAGS) \
-        $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
+        $(CUPS_CFLAGS)
 
     LIBAWT_WLAWT_CXXFLAGS += $(VULKAN_FLAGS)
 
-    LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(SPEECHD_LIBS) $(LIBDL) -ljava -ljvm -lrt
+    LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
     ifeq ($(call isTargetOs, linux), true)
       LIBAWT_WLAWT_LIBS += -lpthread
