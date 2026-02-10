@@ -41,25 +41,27 @@ import java.util.List;
 import javax.swing.JComponent;
 
 abstract class LWContainerPeer<T extends Container, D extends JComponent>
-        extends LWCanvasPeer<T, D> implements ContainerPeer {
+        extends LWCanvasPeer<T, D> implements ContainerPeer, LWContainerPeerAPI {
 
     /**
      * List of child peers sorted by z-order from bottom-most to top-most.
      */
-    private final List<LWComponentPeer<?, ?>> childPeers = new LinkedList<>();
+    private final List<LWComponentPeerAPI> childPeers = new LinkedList<>();
 
     LWContainerPeer(final T target, final PlatformComponent platformComponent, final ToolkitAPI toolkitApi) {
         super(target, platformComponent, toolkitApi);
     }
 
-    final void addChildPeer(final LWComponentPeer<?, ?> child) {
+    @Override
+    public final void addChildPeer(final LWComponentPeerAPI child) {
         synchronized (getPeerTreeLock()) {
             childPeers.add(childPeers.size(), child);
             // TODO: repaint
         }
     }
 
-    final void removeChildPeer(final LWComponentPeer<?, ?> child) {
+    @Override
+    public final void removeChildPeer(final LWComponentPeerAPI child) {
         synchronized (getPeerTreeLock()) {
             childPeers.remove(child);
         }
@@ -67,8 +69,8 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
     }
 
     // Used by LWComponentPeer.setZOrder()
-    final void setChildPeerZOrder(final LWComponentPeer<?, ?> peer,
-                                  final LWComponentPeer<?, ?> above) {
+    @Override
+    public final void setChildPeerZOrder(final LWComponentPeerAPI peer, final LWComponentPeerAPI above) {
         synchronized (getPeerTreeLock()) {
             childPeers.remove(peer);
             int index = (above != null) ? childPeers.indexOf(above) : childPeers.size();
@@ -125,10 +127,10 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
      * Returns a copy of the childPeer collection.
      */
     @SuppressWarnings("unchecked")
-    final List<LWComponentPeer<?, ?>> getChildren() {
+    final List<LWComponentPeerAPI> getChildren() {
         synchronized (getPeerTreeLock()) {
             Object copy = ((LinkedList<?>) childPeers).clone();
-            return (List<LWComponentPeer<?, ?>>) copy;
+            return (List<LWComponentPeerAPI>) copy;
         }
     }
 
@@ -141,9 +143,10 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
      * Removes bounds of children above specific child from the region. If above
      * is null removes all bounds of children.
      */
-    final Region cutChildren(Region r, final LWComponentPeer<?, ?> above) {
+    @Override
+    public final Region cutChildren(Region r, final LWComponentPeerAPI above) {
         boolean aboveFound = above == null;
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
+        for (final LWComponentPeerAPI child : getChildren()) {
             if (!aboveFound && child == above) {
                 aboveFound = true;
                 continue;
@@ -167,8 +170,8 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
      * specified relative to the peer's parent.
      */
     @Override
-    final LWComponentPeer<?, ?> findPeerAt(int x, int y) {
-        LWComponentPeer<?, ?> peer = super.findPeerAt(x, y);
+    public LWComponentPeerAPI findPeerAt(int x, int y) {
+        LWComponentPeerAPI peer = super.findPeerAt(x, y);
         final Rectangle r = getBounds();
         // Translate to this container's coordinates to pass to children
         x -= r.x;
@@ -176,7 +179,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
         if (peer != null && getContentSize().contains(x, y)) {
             synchronized (getPeerTreeLock()) {
                 for (int i = childPeers.size() - 1; i >= 0; --i) {
-                    LWComponentPeer<?, ?> p = childPeers.get(i).findPeerAt(x, y);
+                    LWComponentPeerAPI p = childPeers.get(i).findPeerAt(x, y);
                     if (p != null) {
                         peer = p;
                         break;
@@ -192,7 +195,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
     * peers should be repainted
     */
     @Override
-    final void repaintPeer(final Rectangle r) {
+    public final void repaintPeer(final Rectangle r) {
         final Rectangle toPaint = getSize().intersection(r);
         if (!isShowing() || toPaint.isEmpty()) {
             return;
@@ -211,7 +214,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
      */
     private void repaintChildren(final Rectangle r) {
         final Rectangle content = getContentSize();
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
+        for (final LWComponentPeerAPI child : getChildren()) {
             final Rectangle childBounds = child.getBounds();
             Rectangle toPaint = r.intersection(childBounds);
             toPaint = toPaint.intersection(content);
@@ -220,21 +223,22 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
         }
     }
 
-    Rectangle getContentSize() {
+    @Override
+    public Rectangle getContentSize() {
         return getSize();
     }
 
     @Override
     public void setEnabled(final boolean e) {
         super.setEnabled(e);
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
+        for (final LWComponentPeerAPI child : getChildren()) {
             child.setEnabled(e && child.getTarget().isEnabled());
         }
     }
 
     @Override
     public void setBackground(final Color c) {
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
+        for (final LWComponentPeerAPI child : getChildren()) {
             if (!child.getTarget().isBackgroundSet()) {
                 child.setBackground(c);
             }
@@ -244,7 +248,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
 
     @Override
     public void setForeground(final Color c) {
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
+        for (final LWComponentPeerAPI child : getChildren()) {
             if (!child.getTarget().isForegroundSet()) {
                 child.setForeground(c);
             }
@@ -254,7 +258,7 @@ abstract class LWContainerPeer<T extends Container, D extends JComponent>
 
     @Override
     public void setFont(final Font f) {
-        for (final LWComponentPeer<?, ?> child : getChildren()) {
+        for (final LWComponentPeerAPI child : getChildren()) {
             if (!child.getTarget().isFontSet()) {
                 child.setFont(f);
             }
