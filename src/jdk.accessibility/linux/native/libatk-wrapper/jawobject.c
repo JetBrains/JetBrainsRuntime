@@ -1050,9 +1050,6 @@ static AtkRelationSet *jaw_object_ref_relation_set(AtkObject *atk_obj) {
         (*jniEnv)->DeleteLocalRef(jniEnv, jtarget_arr);
     }
 
-    if (atk_obj->relation_set == NULL) {
-        return NULL;
-    }
     if (atk_obj->relation_set != NULL) { // because transfer full
         g_object_ref(G_OBJECT(atk_obj->relation_set));
     }
