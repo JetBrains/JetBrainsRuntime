@@ -463,10 +463,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
     jstring jstr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleNameMethod,
         ac);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        jaw_jni_clear_exception(jniEnv);
-        return NULL;
-    }
 
     g_mutex_lock(&jaw_obj->mutex);
     if (jaw_obj->jstrName != NULL) {
@@ -477,6 +473,12 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
         jaw_obj->jstrName = NULL;
+    }
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_mutex_unlock(&jaw_obj->mutex);
+        return NULL;
     }
 
     if (jstr != NULL) {
@@ -575,10 +577,6 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
     jstring jstr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedObjectAtkObjectClass,
         cachedObjectGetAccessibleDescriptionMethod, ac);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        jaw_jni_clear_exception(jniEnv);
-        return NULL;
-    }
 
     g_mutex_lock(&jaw_obj->mutex);
     if (jaw_obj->jstrDescription != NULL) {
@@ -589,6 +587,12 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrDescription);
         jaw_obj->jstrDescription = NULL;
+    }
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_mutex_unlock(&jaw_obj->mutex);
+        return NULL;
     }
 
     if (jstr != NULL) {
@@ -903,10 +907,6 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
 
     jobject jstr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedObjectAtkObjectClass, cachedObjectGetLocaleMethod, ac);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
-        jaw_jni_clear_exception(jniEnv);
-        return NULL;
-    }
 
     g_mutex_lock(&jaw_obj->mutex);
     if (jaw_obj->jstrLocale != NULL) {
@@ -917,6 +917,12 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
         }
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
         jaw_obj->jstrLocale = NULL;
+    }
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
+        jaw_jni_clear_exception(jniEnv);
+        g_mutex_unlock(&jaw_obj->mutex);
+        return NULL;
     }
 
     if (jstr != NULL) {
