@@ -237,7 +237,7 @@ public class LWWindowPeer
     }
 
     @Override
-    protected LWWindowPeer getWindowPeerOrSelf() {
+    public LWWindowPeer getWindowPeerOrSelf() {
         return this;
     }
 
@@ -1416,5 +1416,10 @@ public class LWWindowPeer
     @Override
     public long getWindowHandle() {
         return platformWindow.getWindowHandle();
+    }
+
+    @Override
+    public LWComponentPeer<?, ?> findPeerAt(int x, int y) {
+        return (LWComponentPeer<?, ?>) super.findPeerAt(x, y);
     }
 }
