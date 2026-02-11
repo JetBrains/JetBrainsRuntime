@@ -44,6 +44,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.TreeMap;
@@ -314,7 +315,7 @@ class MyFrame extends JFrame {
         final Object framePeer;
         {
             final var frameClass = Component.class;
-            final var peerField = frameClass.getDeclaredField("peer");
+            final var peerField = findDeclaredField(frameClass, "peer");
 
             peerField.setAccessible(true);
 
@@ -324,7 +325,7 @@ class MyFrame extends JFrame {
         final Object peerPlatformWindow;
         {
             final var peerClass = framePeer.getClass();
-            final var platformWindowField = peerClass.getDeclaredField("platformWindow");
+            final var platformWindowField = findDeclaredField(peerClass, "platformWindow");
 
             platformWindowField.setAccessible(true);
 
@@ -334,7 +335,7 @@ class MyFrame extends JFrame {
         final Object platformWindowResponder;
         {
             final var peerPlatformWindowClass = peerPlatformWindow.getClass();
-            final var platformWindowResponderField = peerPlatformWindowClass.getDeclaredField("responder");
+            final var platformWindowResponderField = findDeclaredField(peerPlatformWindowClass, "responder");
 
             platformWindowResponderField.setAccessible(true);
 
@@ -347,7 +348,7 @@ class MyFrame extends JFrame {
     /** Obtains {@link sun.lwawt.macosx.CPlatformResponder#handleMouseEvent(int, int, int, int, int, int, int, int)} */
     private static Method obtainHandleMouseEventMethod(final Object platformResponder) throws NoSuchMethodException {
         final var responderClass = platformResponder.getClass();
-        final var handleMouseEventMethod = responderClass.getDeclaredMethod(
+        final var handleMouseEventMethod = findDeclaredMethod(responderClass,
             "handleMouseEvent",
             int.class, int.class, int.class, int.class, int.class, int.class, int.class, int.class
         );
@@ -355,5 +356,28 @@ class MyFrame extends JFrame {
         handleMouseEventMethod.setAccessible(true);
 
         return handleMouseEventMethod;
+    }
+
+    private static Field findDeclaredField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            try {
+                return c.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                // continue up the hierarchy
+            }
+        }
+        throw new NoSuchFieldException(fieldName + " not found in hierarchy of " + clazz.getName());
+    }
+
+    private static Method findDeclaredMethod(Class<?> clazz, String methodName, Class<?>... paramTypes)
+            throws NoSuchMethodException {
+        for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+            try {
+                return c.getDeclaredMethod(methodName, paramTypes);
+            } catch (NoSuchMethodException e) {
+                // continue up the hierarchy
+            }
+        }
+        throw new NoSuchMethodException(methodName + " not found in hierarchy of " + clazz.getName());
     }
 }
