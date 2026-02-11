@@ -39,7 +39,7 @@ public interface ToolkitAPI {
 
     void postAWTEvent(AWTEvent event);
 
-    void flushOnscreenGraphics();
+    void flushOnscreenGraphics(Component context);
 
     boolean needUpdateWindowAfterPaint();
 
