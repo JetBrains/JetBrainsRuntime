@@ -59,6 +59,7 @@ class MetaspaceShared : AllStatic {
   static char* _requested_base_address;
   static bool _use_optimized_module_handling;
   static Array<Method*>* _archived_method_handle_intrinsics;
+  static int volatile _preimage_static_archive_dumped;
   static FileMapInfo* _output_mapinfo;
 
  public:
@@ -110,6 +111,8 @@ public:
 
   static bool is_shared_dynamic(void* p) NOT_CDS_RETURN_(false);
   static bool is_shared_static(void* p) NOT_CDS_RETURN_(false);
+
+  static bool preimage_static_archive_dumped() NOT_CDS_RETURN_(false);
 
   static void unrecoverable_loading_error(const char* message = "unrecoverable error");
   static void report_loading_error(const char* format, ...) ATTRIBUTE_PRINTF(1, 0);
