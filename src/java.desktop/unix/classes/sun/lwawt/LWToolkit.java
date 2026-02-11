@@ -559,7 +559,7 @@ public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitA
     }
 
     @Override
-    public void updateCursorImmediately() {
+    public void updateCursorImmediately(LWComponentPeerAPI peer) {
         getCursorManager().updateCursor();
     }
 
