@@ -1,0 +1,4 @@
+grant {
+    permission java.lang.RuntimePermission "setSecurityManager";
+    permission java.net.SocketPermission "", "connect,listen,resolve";
+};
