@@ -972,7 +972,7 @@ public class LWWindowPeer
                 oldData.flush();
             }
         }
-        ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics();
+        ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics(getTarget());
         if (ToolkitAPI.getDefaultToolkit().needUpdateWindowAfterPaint()) {
             updateWindow();
         }
