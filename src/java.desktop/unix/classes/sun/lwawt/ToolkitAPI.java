@@ -43,7 +43,7 @@ public interface ToolkitAPI {
 
     boolean needUpdateWindowAfterPaint();
 
-    void updateCursorImmediately();
+    void updateCursorImmediately(LWComponentPeerAPI peer);
 
     void updateCursorLater(Window target);
 
