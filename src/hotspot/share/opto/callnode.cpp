@@ -263,7 +263,8 @@ uint TailJumpNode::match_edge(uint idx) const {
 
 //=============================================================================
 JVMState::JVMState(ciMethod* method, JVMState* caller) :
-  _method(method) {
+  _method(method),
+  _receiver_info(nullptr) {
   assert(method != nullptr, "must be valid call site");
   _bci = InvocationEntryBci;
   _reexecute = Reexecute_Undefined;
@@ -279,7 +280,8 @@ JVMState::JVMState(ciMethod* method, JVMState* caller) :
   _sp = 0;
 }
 JVMState::JVMState(int stack_size) :
-  _method(nullptr) {
+  _method(nullptr),
+  _receiver_info(nullptr) {
   _bci = InvocationEntryBci;
   _reexecute = Reexecute_Undefined;
   debug_only(_map = (SafePointNode*)-1);
@@ -614,6 +616,7 @@ JVMState* JVMState::clone_shallow(Compile* C) const {
   n->set_endoff(_endoff);
   n->set_sp(_sp);
   n->set_map(_map);
+  n->set_receiver_info(_receiver_info);
   return n;
 }
 
@@ -686,6 +689,20 @@ int JVMState::interpreter_frame_size() const {
     jvms = jvms->caller();
   }
   return size + Deoptimization::last_frame_adjust(0, callee_locals) * BytesPerWord;
+}
+
+// Compute receiver info for a compiled lambda form at call site.
+ciInstance* JVMState::compute_receiver_info(ciMethod* callee) const {
+  assert(callee != nullptr && callee->is_compiled_lambda_form(), "");
+  if (has_method() && method()->is_compiled_lambda_form()) { // callee is not a MH invoker
+    Node* recv = map()->argument(this, 0);
+    assert(recv != nullptr, "");
+    const TypeOopPtr* recv_toop = recv->bottom_type()->isa_oopptr();
+    if (recv_toop != nullptr && recv_toop->const_oop() != nullptr) {
+      return recv_toop->const_oop()->as_instance();
+    }
+  }
+  return nullptr;
 }
 
 //=============================================================================
@@ -1262,7 +1279,7 @@ void CallLeafNode::dump_spec(outputStream *st) const {
 
 //=============================================================================
 
-void SafePointNode::set_local(JVMState* jvms, uint idx, Node *c) {
+void SafePointNode::set_local(const JVMState* jvms, uint idx, Node *c) {
   assert(verify_jvms(jvms), "jvms must match");
   int loc = jvms->locoff() + idx;
   if (in(loc)->is_top() && idx > 0 && !c->is_top() ) {
