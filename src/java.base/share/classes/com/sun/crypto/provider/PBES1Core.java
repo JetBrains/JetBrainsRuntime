@@ -48,7 +48,8 @@ final class PBES1Core {
     private int blkSize;
     private String algo = null;
     private byte[] salt = null;
-    private int iCount = 10;
+    // RFC 8018 and NIST SP 800-132 sec 5.2 recommend 1000 as the minimum
+    private int iCount = PKCS12PBECipherCore.DEFAULT_COUNT;
 
     /**
      * Creates an instance of PBE Cipher using the specified CipherSpi
