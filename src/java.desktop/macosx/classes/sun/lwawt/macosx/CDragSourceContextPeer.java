@@ -120,9 +120,11 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
                 fDragCImage = CImage.getCreator().createFromImageImmediately(fDragImage);
             } catch(Exception e) {
                 // image creation may fail for any reason
+                resetDragImage();
                 throw new InvalidDnDOperationException("Drag image can not be created.");
             }
             if (fDragCImage == null) {
+                resetDragImage();
                 throw new InvalidDnDOperationException("Drag image is not ready.");
             }
 
@@ -154,6 +156,7 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
         }
 
         catch (Exception e) {
+            resetDragImage();
             throw new InvalidDnDOperationException("failed to create native peer: " + e);
         }
 
@@ -174,11 +177,7 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
                     e.printStackTrace();
                 } finally {
                     releaseNativeDragSource(nativeDragSource);
-                    fDragImage = null;
-                    if (fDragCImage != null) {
-                        fDragCImage.dispose();
-                        fDragCImage = null;
-                    }
+                    resetDragImage();
                 }
             };
             new Thread(null, dragRunnable, "Drag", 0, false).start();
@@ -187,6 +186,7 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
             setNativeContext(0);
             releaseNativeDragSource(nativeDragSource);
             SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(null);
+            resetDragImage();
             throw new InvalidDnDOperationException("failed to start dragging thread: " + e);
         }
     }
@@ -466,6 +466,15 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
         }
 
         return null;
+    }
+
+    private void resetDragImage() {
+        fDragImage = null;
+        if (fDragCImage != null) {
+            fDragCImage.dispose();
+            fDragCImage = null;
+        }
+        fDragImageOffset = null;
     }
 
     /**
