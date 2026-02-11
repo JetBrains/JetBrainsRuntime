@@ -24,7 +24,7 @@ public interface ToolkitAPI {
 
     boolean needUpdateWindowAfterPaint();
 
-    void updateCursorImmediately();
+    void updateCursorImmediately(LWComponentPeerAPI peer);
 
     /**
      * Schedules a cursor update for the specified component.
