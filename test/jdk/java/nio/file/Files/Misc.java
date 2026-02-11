@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,7 +159,7 @@ public class Misc {
             /**
              * Test: Symbolic links
              */
-            if (TestUtil.supportsLinks(tmpdir)) {
+            if (TestUtil.supportsSymbolicLinks(tmpdir)) {
                 createSymbolicLink(thatFile, thisFile);
                 try {
                     assertTrue(isSameFile(thisFile, thatFile));
@@ -201,7 +201,7 @@ public class Misc {
             assertTrue(!isDirectory(file, NOFOLLOW_LINKS));
             assertTrue(!isSymbolicLink(file));
 
-            if (TestUtil.supportsLinks(tmpdir)) {
+            if (TestUtil.supportsSymbolicLinks(tmpdir)) {
                 Path link = tmpdir.resolve("link");
 
                 createSymbolicLink(link, tmpdir);
@@ -225,6 +225,10 @@ public class Misc {
                 } finally {
                     delete(link);
                 }
+            }
+
+            if (TestUtil.supportsHardLinks(tmpdir)) {
+                Path link = tmpdir.resolve("hardlink");
 
                 createLink(link, file);
                 try {
@@ -237,7 +241,6 @@ public class Misc {
                     delete(link);
                 }
             }
-
         } finally {
             delete(file);
         }
@@ -276,7 +279,7 @@ public class Misc {
             }
 
             // sym link exists
-            if (TestUtil.supportsLinks(tmpdir)) {
+            if (TestUtil.supportsSymbolicLinks(tmpdir)) {
                 Path link = tmpdir.resolve("link");
 
                 createSymbolicLink(link, file);

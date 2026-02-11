@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2011, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,7 +169,7 @@ public class Basic {
 
         // create link (to file that doesn't exist) and test reading of
         // permissions
-        if (TestUtil.supportsLinks(dir)) {
+        if (TestUtil.supportsSymbolicLinks(dir)) {
             Path link = dir.resolve("link");
             System.out.format("create link %s\n", link);
             Files.createSymbolicLink(link, file);

@@ -39,12 +39,12 @@ import java.util.*;
 
 public class SBC {
 
-    static boolean supportsLinks;
+    static boolean supportsSymbolicLinks;
 
     public static void main(String[] args) throws Exception {
         Path dir = TestUtil.createTemporaryDirectory();
         try {
-            supportsLinks = TestUtil.supportsLinks(dir);
+            supportsSymbolicLinks = TestUtil.supportsSymbolicLinks(dir);
 
             // open options
             createTests(dir);
@@ -85,7 +85,7 @@ public class SBC {
             Files.newByteChannel(file, CREATE, WRITE).close();
 
             // create file where existing file is a sym link
-            if (supportsLinks) {
+            if (supportsSymbolicLinks) {
                 Path link = Files.createSymbolicLink(dir.resolve("link"), file);
                 try {
                     // file already exists
@@ -122,7 +122,7 @@ public class SBC {
             } catch (FileAlreadyExistsException x) { }
 
             // create should fail
-            if (supportsLinks) {
+            if (supportsSymbolicLinks) {
                 Path link = dir.resolve("link");
                 Path target = dir.resolve("thisDoesNotExist");
                 Files.createSymbolicLink(link, target);
@@ -225,7 +225,7 @@ public class SBC {
 
     // test NOFOLLOW_LINKS option
     static void noFollowLinksTests(Path dir) throws Exception {
-        if (!supportsLinks)
+        if (!supportsSymbolicLinks)
             return;
         Path file = Files.createFile(dir.resolve("foo"));
         try {
