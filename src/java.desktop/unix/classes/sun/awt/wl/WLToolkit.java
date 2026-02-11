@@ -1254,11 +1254,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         AWTAccessor.getWindowAccessor().updateWindow(window);
     }
 
-    // Not tested: Used by LWComponentPeer directly
     @Override
-    public void updateCursorImmediately() {
-        // TODO
-        throw new UnsupportedOperationException();
+    public void updateCursorImmediately(LWComponentPeerAPI peer) {
+        WLWindowPeer windowPeer = (WLWindowPeer)peer.getWindowPeerOrSelf();
+        WLToolkit.getCursorManager().updateCursorImmediatelyFor(windowPeer);
     }
 
     @Override
