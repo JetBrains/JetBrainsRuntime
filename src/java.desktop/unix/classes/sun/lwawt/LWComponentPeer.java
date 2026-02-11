@@ -884,7 +884,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
     @Override
     public void updateCursorImmediately() {
-        ToolkitAPI.getDefaultToolkit().updateCursorImmediately();
+        ToolkitAPI.getDefaultToolkit().updateCursorImmediately(this);
     }
 
     @Override
