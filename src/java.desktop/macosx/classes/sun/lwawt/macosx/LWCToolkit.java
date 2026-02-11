@@ -1186,7 +1186,7 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     @Override
-    public void flushOnscreenGraphics() {
+    public void flushOnscreenGraphics(Component context) {
         RenderQueue rq = CGraphicsEnvironment.usingMetalPipeline() ?
                 MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
         rq.lock();

@@ -976,7 +976,7 @@ public class LWWindowPeer
                 oldData.flush();
             }
         }
-        getToolkitApi().flushOnscreenGraphics();
+        getToolkitApi().flushOnscreenGraphics(getTarget());
         if (getToolkitApi().needUpdateWindowAfterPaint()) {
             updateWindow();
         }
