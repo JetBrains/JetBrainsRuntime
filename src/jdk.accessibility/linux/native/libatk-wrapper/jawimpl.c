@@ -263,12 +263,6 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
         return NULL;
     }
 
-    if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
-        return NULL;
-    }
-
     // Check if there is JawImpl associated with the accessible context
     jlong reference = (*jniEnv)->CallStaticLongMethod(
         jniEnv, cachedImplAtkWrapperDisposerClass, cachedImplGetResourceMethod,
@@ -276,11 +270,9 @@ JawImpl *jaw_impl_find_instance(JNIEnv *jniEnv, jobject ac) {
 
     // If a valid reference exists, return the existing JawImpl instance
     if (reference != -1) {
-        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return (JawImpl *)reference;
     }
 
-    (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     return NULL;
 }
 
