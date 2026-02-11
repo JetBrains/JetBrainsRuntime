@@ -41,6 +41,7 @@ import sun.java2d.vulkan.VKRenderQueue;
 import sun.lwawt.*;
 import sun.util.logging.PlatformLogger;
 
+import javax.swing.SwingUtilities;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.dnd.*;
@@ -1235,10 +1236,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         postEvent(event);
     }
 
-    // Not tested: Used by LWComponentPeer via LWRepaintArea.
     @Override
-    public void flushOnscreenGraphics() {
-        // TODO not sure what we should do here
+    public void flushOnscreenGraphics(Component context) {
+        if (context == null) {
+            return;
+        }
+        Window window = context instanceof Window w ? w : SwingUtilities.getWindowAncestor(context);
+        if (window == null) {
+            return;
+        }
+        AWTAccessor.getWindowAccessor().updateWindow(window);
     }
 
     // Not tested: Used by LWComponentPeer directly
