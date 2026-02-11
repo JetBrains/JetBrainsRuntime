@@ -285,9 +285,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                     id<MTLTexture> texture = (id<MTLTexture>)dstOps->pTexture;
                     jstring surfaceType = NULL;
-                    if (dstOps->drawableType == MTLSD_TEXTURE || dstOps->drawableType == MTLSD_RT_TEXTURE) {
-                        surfaceType = (*env)->NewStringUTF(env, "MTL_TEXTURE");
-                    }
+//                    if (dstOps->drawableType == MTLSD_TEXTURE || dstOps->drawableType == MTLSD_RT_TEXTURE) {
+//                        surfaceType = (*env)->NewStringUTF(env, "MTL_TEXTURE");
+//                    }
 
                     JNU_CallStaticMethodByName(env, NULL, "sun/java2d/metal/MTLRenderQueue",
                                                "runExternal", "(ILjava/lang/String;JJJJ)V",
