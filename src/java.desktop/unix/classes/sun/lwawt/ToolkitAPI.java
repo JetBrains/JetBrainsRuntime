@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright 2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,41 +23,30 @@
  * questions.
  */
 
-
 package sun.lwawt;
 
+import java.awt.AWTEvent;
 import java.awt.Component;
-import java.awt.Graphics;
+import java.awt.Toolkit;
+import java.awt.dnd.DropTarget;
 
-import sun.awt.AWTAccessor;
-import sun.awt.RepaintArea;
+public interface ToolkitAPI {
 
-/**
- * Emulates appearance of heavyweight components before call of the user code.
- *
- * @author Sergey Bylokhov
- */
-final class LWRepaintArea extends RepaintArea {
+    Object peerForTarget(Object target);
 
-    @Override
-    protected void updateComponent(final Component comp, final Graphics g) {
-        // We shouldn't paint native component as a result of UPDATE events,
-        // just flush onscreen back-buffer.
-        if (comp != null) {
-            super.updateComponent(comp, g);
-            ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics();
-        }
-    }
+    void peerDisposedForTarget(Object target, Object peer);
 
-    @Override
-    protected void paintComponent(final Component comp, final Graphics g) {
-        if (comp != null) {
-            Object peer = AWTAccessor.getComponentAccessor().getPeer(comp);
-            if (peer != null) {
-                ((LWComponentPeer<?, ?>) peer).paintPeer(g);
-            }
-            super.paintComponent(comp, g);
-            ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics();
-        }
+    void postAWTEvent(AWTEvent event);
+
+    void flushOnscreenGraphics();
+
+    boolean needUpdateWindowAfterPaint();
+
+    void updateCursorImmediately();
+
+    PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeer<?, ?> peer);
+
+    static ToolkitAPI getDefaultToolkit() {
+        return (ToolkitAPI)Toolkit.getDefaultToolkit();
     }
 }

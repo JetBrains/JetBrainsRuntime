@@ -28,7 +28,6 @@ package sun.lwawt;
 import java.awt.*;
 import java.awt.List;
 import java.awt.datatransfer.*;
-import java.awt.dnd.DropTarget;
 import java.awt.peer.*;
 import java.util.*;
 
@@ -41,7 +40,7 @@ import static sun.lwawt.LWWindowPeer.PeerType;
 import sun.util.logging.PlatformLogger;
 
 
-public abstract class LWToolkit extends SunToolkit implements Runnable {
+public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitAPI {
 
     private static final PlatformLogger log = PlatformLogger.getLogger(LWToolkit.class.getName());
 
@@ -432,10 +431,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
 
     protected abstract FileDialogPeer createFileDialogPeer(FileDialog target);
 
-    protected abstract PlatformDropTarget createDropTarget(DropTarget dropTarget,
-                                                           Component component,
-                                                           LWComponentPeer<?, ?> peer);
-
     // ---- UTILITY METHODS ---- //
 
     /*
@@ -460,8 +455,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     public static void postEvent(AWTEvent event) {
         postEvent(targetToAppContext(event.getSource()), event);
     }
-
-    public abstract void flushOnscreenGraphics();
 
     @Override
     public final void grab(final Window w) {
@@ -510,5 +503,25 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     protected final boolean isDynamicLayoutSupported() {
         // "Live resizing" is supported by default.
         return true;
+    }
+
+    @Override
+    public Object peerForTarget(Object target) {
+        return targetToPeer(target);
+    }
+
+    @Override
+    public void peerDisposedForTarget(Object target, Object peer) {
+        targetDisposedPeer(target, peer);
+    }
+
+    @Override
+    public void postAWTEvent(AWTEvent event) {
+        postEvent(event);
+    }
+
+    @Override
+    public void updateCursorImmediately() {
+        getCursorManager().updateCursor();
     }
 }
