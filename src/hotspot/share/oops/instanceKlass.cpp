@@ -4293,7 +4293,7 @@ void InstanceKlass::verify_on(outputStream* st) {
   if (method_ordering() != nullptr) {
     Array<int>* method_ordering = this->method_ordering();
     int length = method_ordering->length();
-    if (JvmtiExport::can_maintain_original_method_order() ||
+    if (AllowEnhancedClassRedefinition || JvmtiExport::can_maintain_original_method_order() ||
         ((CDSConfig::is_using_archive() || CDSConfig::is_dumping_archive()) && length != 0)) {
       guarantee(length == methods()->length(), "invalid method ordering length");
       jlong sum = 0;
