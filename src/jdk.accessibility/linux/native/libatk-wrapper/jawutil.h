@@ -93,12 +93,12 @@ void jaw_util_detach(void);
     Data *data = jaw_object_get_interface_data(jaw_obj, iface);                \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
     if (!env) {                                                                \
-        g_warning(#env " == NULL");                                             \
+        g_warning("%s: " #env " == NULL", G_STRFUNC);                          \
         return def_ret;                                                        \
     }                                                                          \
     jobject name = (*env)->NewLocalRef(env, data->field);                     \
     if (!name) {                                                               \
-        g_warning(#name " == NULL");                                         \
+        g_warning("%s: " #name " == NULL", G_STRFUNC);                         \
         return def_ret;                                                        \
     }
 

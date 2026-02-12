@@ -64,10 +64,11 @@ extern "C" {
 gboolean jaw_accessibility_init(void);
 void jaw_accessibility_shutdown(void);
 
-static GMainLoop *jni_main_loop;
-static GMainContext *jni_main_context;
+static GMainLoop *jaw_main_loop;
+static GMainContext *jaw_main_context;
+static GThread *jaw_loop_thread = NULL;
 
-static gboolean jaw_initialized = FALSE;
+static volatile gboolean jaw_loop_exit_requested = FALSE;
 
 static jclass cachedWrapperIntegerClass = NULL;
 static jmethodID cachedWrapperIntValueMethod = NULL;
@@ -115,40 +116,30 @@ gboolean jaw_accessibility_init(void) {
         g_warning("%s: atk_bridge_adaptor_init failed", G_STRFUNC);
         return FALSE;
     }
-    g_debug("Atk Bridge Initialized");
+    g_debug("%s: ATK Bridge initialized", G_STRFUNC);
     return TRUE;
 }
 
-void jaw_accessibility_shutdown(void) {
-    JAW_DEBUG("");
-
-    pthread_mutex_lock(&jaw_vdc_dup_mutex);
-    JNIEnv *jniEnv = jaw_util_get_jni_env();
-    jaw_vdc_clear_last_ac(jniEnv);
-    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
-
-    atk_bridge_adaptor_cleanup();
-}
-
-static gpointer jni_loop_callback(void *data) {
+static gpointer jaw_loop_callback(void *data) {
     JAW_DEBUG("%p", data);
-    GMainLoop *loop = (GMainLoop *)data;
-    GMainContext *context = g_main_loop_get_context(loop);
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
     if (jniEnv == NULL) {
-        g_warning("jniEnv == NULL in jni_loop_callback");
+        g_warning("%s: jniEnv == NULL", G_STRFUNC);
         return 0;
     }
 
-    while (TRUE) {
+    while (!jaw_loop_exit_requested) {
         if ((*jniEnv)->PushLocalFrame(jniEnv, G_MAIN_LOOP_LOCAL_FRAME_SIZE) < 0) {
-            g_warning("PushLocalFrame failed in jni_loop_callback");
+            g_warning("%s: PushLocalFrame failed", G_STRFUNC);
             break;
         }
-        g_main_context_iteration(context, TRUE);
+        g_main_context_iteration(jaw_main_context, TRUE);
+        jaw_jni_clear_exception(jniEnv);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
     }
+
+    g_debug("%s: Main loop exiting due to shutdown request", G_STRFUNC);
 
     return 0;
 }
@@ -181,7 +172,6 @@ Java_org_GNOME_Accessibility_AtkWrapper_initNativeLibrary(JNIEnv *env, jobject o
 
     // Java app with GTK Look And Feel will load gail
     // Set NO_GAIL to "1" to prevent gail from executing
-
     g_setenv("NO_GAIL", "1", TRUE);
 
     // Disable ATK Bridge temporarily to aoid the loading
@@ -202,7 +192,7 @@ static guint jni_main_idle_add(GSourceFunc function, gpointer data) {
 
     source = g_idle_source_new();
     g_source_set_callback(source, function, data, NULL);
-    id = g_source_attach(source, jni_main_context);
+    id = g_source_attach(source, jaw_main_context);
     g_source_unref(source);
 
     return id;
@@ -215,13 +205,12 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env,
     // Enable ATK Bridge so we can load it now
     g_unsetenv("NO_AT_BRIDGE");
 
-    GThread *thread;
     GError *err;
     const char *message;
     message = "JavaAtkWrapper-MainLoop";
     err = NULL;
 
-    jaw_initialized = jaw_accessibility_init();
+    gboolean jaw_initialized = jaw_accessibility_init();
     g_debug("%s: Jaw Initialization STATUS = %d", G_STRFUNC, jaw_initialized);
     if (!jaw_initialized) {
         g_warning("%s: loadAtkBridge: jaw_initialized == NULL", G_STRFUNC);
@@ -229,29 +218,32 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env,
     }
 
 #if ATSPI_CHECK_VERSION(2, 33, 1)
-    jni_main_context = g_main_context_new();
-    jni_main_loop =
-        g_main_loop_new(jni_main_context, FALSE); /*main loop NOT running*/
-    atk_bridge_set_event_context(jni_main_context);
+    jaw_main_context = g_main_context_new();
+    jaw_main_loop =
+        g_main_loop_new(jaw_main_context, FALSE); /*main loop NOT running*/
+    atk_bridge_set_event_context(jaw_main_context);
 #else
-    jni_main_loop = g_main_loop_new(NULL, FALSE);
+    jaw_main_loop = g_main_loop_new(NULL, FALSE);
 #endif
 
-    thread = g_thread_try_new(message, jni_loop_callback, (void *)jni_main_loop,
+    jaw_loop_thread = g_thread_try_new(message, jaw_loop_callback, (void *)jaw_main_loop,
                               &err);
-    if (thread == NULL) {
+    if (jaw_loop_thread == NULL) {
         g_warning("%s: g_thread_try_new failed: %s", G_STRFUNC, err->message);
-        g_main_loop_unref(jni_main_loop);
+        g_main_loop_unref(jaw_main_loop);
 #if ATSPI_CHECK_VERSION(2, 33, 1)
         atk_bridge_set_event_context(NULL); // set default context
-        g_main_context_unref(jni_main_context);
+        g_main_context_unref(jaw_main_context);
 #endif
         g_error_free(err);
-        jaw_accessibility_shutdown();
+
+        pthread_mutex_lock(&jaw_vdc_dup_mutex);
+        jaw_vdc_clear_last_ac(jniEnv);
+        pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+
+        atk_bridge_adaptor_cleanup();
+
         return JNI_FALSE;
-    } else {
-        /* We won't join it */
-        g_thread_unref(thread);
     }
     return JNI_TRUE;
 }
@@ -379,9 +371,10 @@ static void free_callback_para(CallbackPara *para) {
     if (jniEnv != NULL) {
         if (para->args != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, para->args);
-        } else {
-            g_debug("%s: para->args == NULL", G_STRFUNC);
         }
+//        else {
+//            g_debug("%s: para->args == NULL", G_STRFUNC);
+//        }
     }
 
     g_free(para);
@@ -420,7 +413,7 @@ static void free_callback_para_event(CallbackParaEvent *para) {
         if (para->global_event != NULL) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, para->global_event);
         } else {
-            g_debug("para->global_event == NULL");
+            g_debug("%s: para->global_event == NULL", G_STRFUNC);
         }
     }
 
@@ -1604,6 +1597,51 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_dispatchKeyEvent(
         return;
     }
     jni_main_idle_add(key_dispatch_handler, para);
+}
+
+JNIEXPORT void JNICALL
+Java_org_GNOME_Accessibility_AtkWrapper_nativeCleanup(JNIEnv *jniEnv,
+                                                      jclass jClass) {
+    JAW_DEBUG("%p, %p", jniEnv, jClass);
+    g_debug("%s: AtkWrapper native cleanup called", G_STRFUNC);
+
+    jaw_loop_exit_requested = TRUE;
+
+    if (jaw_main_context != NULL) {
+        g_main_context_wakeup(jaw_main_context);
+    }
+
+    if (jaw_loop_thread != NULL) {
+        g_thread_join(jaw_loop_thread);
+        g_thread_unref(jaw_loop_thread);
+        jaw_loop_thread = NULL;
+        g_debug("%s: Loop thread joined and unref'd", G_STRFUNC);
+    }
+
+    if (jaw_main_loop != NULL) {
+        g_main_loop_unref(jaw_main_loop);
+        jaw_main_loop = NULL;
+        g_debug("%s: Main loop unref'd", G_STRFUNC);
+    }
+
+    if (jaw_main_context != NULL) {
+        g_main_context_unref(jaw_main_context);
+        jaw_main_context = NULL;
+        g_debug("%s: Main context unref'd", G_STRFUNC);
+    }
+
+    pthread_mutex_lock(&jaw_vdc_dup_mutex);
+    jaw_vdc_clear_last_ac(jniEnv);
+    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+
+    jaw_cache_cleanup(jniEnv);
+
+    if (jaw_log_file != NULL) {
+        fclose(jaw_log_file);
+        jaw_log_file = NULL;
+    }
+
+    g_debug("%s: AtkWrapper cleanup finished", G_STRFUNC);
 }
 
 static gboolean atk_wrapper_init_jni_cache(JNIEnv *jniEnv) {

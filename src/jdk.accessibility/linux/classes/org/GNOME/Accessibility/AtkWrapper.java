@@ -355,6 +355,13 @@ public class AtkWrapper {
 
             accessibilityEnabled = true;
 
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("AtkWrapper shutdown hook called");
+                }
+                nativeCleanup();
+            }));
+
         } catch (Exception e) {
             if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
                 log.severe("Error during ATK accessibility initialization: ", e);
@@ -694,6 +701,8 @@ public class AtkWrapper {
     private native static boolean initNativeLibrary();
 
     private native static boolean loadAtkBridge();
+
+    private native static void nativeCleanup();
 
     native static long createNativeResources(AccessibleContext ac);
 
