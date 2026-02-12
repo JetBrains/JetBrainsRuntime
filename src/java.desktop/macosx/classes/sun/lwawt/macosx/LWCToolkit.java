@@ -1161,7 +1161,7 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     @Override
-    protected PlatformWindow getPlatformWindowUnderMouse() {
+    public PlatformWindow getPlatformWindowUnderMouse() {
         return CPlatformWindow.nativeGetTopmostPlatformWindowUnderMouse();
     }
 
