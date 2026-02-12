@@ -28,6 +28,7 @@ package sun.lwawt;
 import java.awt.AWTEvent;
 import java.awt.Component;
 import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.dnd.DropTarget;
 
 public interface ToolkitAPI {
@@ -43,6 +44,10 @@ public interface ToolkitAPI {
     boolean needUpdateWindowAfterPaint();
 
     void updateCursorImmediately();
+
+    void updateCursorLater(Window target);
+
+    PlatformWindow getPlatformWindowUnderMouse();
 
     PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer);
 
