@@ -44,12 +44,10 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.SystemColor;
-import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.DialogPeer;
@@ -737,7 +735,7 @@ public class LWWindowPeer
 
     @Override
     public void notifyUpdateCursor() {
-        getLWToolkit().getCursorManager().updateCursorLater(this);
+        LWToolkit.getLWToolkit().getCursorManager().updateCursorLater(this);
     }
 
     @Override
@@ -1166,8 +1164,8 @@ public class LWWindowPeer
                 oldData.flush();
             }
         }
-        LWToolkit.getLWToolkit().flushOnscreenGraphics();
-        if (((LWToolkit) Toolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
+        ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics();
+        if (ToolkitAPI.getDefaultToolkit().needUpdateWindowAfterPaint()) {
             updateWindow();
         }
     }
