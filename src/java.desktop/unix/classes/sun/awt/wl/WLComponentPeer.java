@@ -64,7 +64,6 @@ import java.awt.RenderingHints;
 import java.awt.SystemColor;
 import java.awt.Toolkit;
 import java.awt.Window;
-import java.awt.dnd.DropTarget;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InputEvent;
@@ -887,7 +886,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 // Skip all painting while layouting and all UPDATEs
                 // while waiting for native paint
                 if (!isLayouting && !paintPending) {
-                    paintArea.paint(target, false);
+                    paintArea.paint(target, true);
+                    WLToolkit.getWLToolkit().flushOnscreenGraphics(target);
                 }
                 return;
             case FocusEvent.FOCUS_LOST:
