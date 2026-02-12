@@ -45,7 +45,7 @@ final class LWRepaintArea extends RepaintArea {
         // just flush onscreen back-buffer.
         if (comp != null) {
             super.updateComponent(comp, g);
-            LWToolkit.getLWToolkit().flushOnscreenGraphics();
+            ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics();
         }
     }
 
@@ -57,7 +57,7 @@ final class LWRepaintArea extends RepaintArea {
                 ((LWComponentPeer<?, ?>) peer).paintPeer(g);
             }
             super.paintComponent(comp, g);
-            LWToolkit.getLWToolkit().flushOnscreenGraphics();
+            ToolkitAPI.getDefaultToolkit().flushOnscreenGraphics();
         }
     }
 }
