@@ -28,7 +28,6 @@ package sun.lwawt;
 import java.awt.*;
 import java.awt.List;
 import java.awt.datatransfer.*;
-import java.awt.dnd.DropTarget;
 import java.awt.image.*;
 import java.awt.peer.*;
 import java.util.*;
@@ -39,7 +38,7 @@ import sun.awt.util.ThreadGroupUtils;
 
 import static sun.lwawt.LWWindowPeer.PeerType;
 
-public abstract class LWToolkit extends SunToolkit implements Runnable {
+public abstract class LWToolkit extends SunToolkit implements Runnable, ToolkitAPI {
 
     private static final int STATE_NONE = 0;
     private static final int STATE_INIT = 1;
@@ -425,10 +424,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
 
     protected abstract FileDialogPeer createFileDialogPeer(FileDialog target);
 
-    protected abstract PlatformDropTarget createDropTarget(DropTarget dropTarget,
-                                                           Component component,
-                                                           LWComponentPeer<?, ?> peer);
-
     // ---- UTILITY METHODS ---- //
 
     /*
@@ -453,8 +448,6 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     public static void postEvent(AWTEvent event) {
         SunToolkit.postEvent(event);
     }
-
-    public abstract void flushOnscreenGraphics();
 
     @Override
     public final void grab(final Window w) {
@@ -503,5 +496,25 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     protected final boolean isDynamicLayoutSupported() {
         // "Live resizing" is supported by default.
         return true;
+    }
+
+    @Override
+    public Object peerForTarget(Object target) {
+        return targetToPeer(target);
+    }
+
+    @Override
+    public void peerDisposedForTarget(Object target, Object peer) {
+        targetDisposedPeer(target, peer);
+    }
+
+    @Override
+    public void postAWTEvent(AWTEvent event) {
+        postEvent(event);
+    }
+
+    @Override
+    public void updateCursorImmediately() {
+        getCursorManager().updateCursor();
     }
 }
