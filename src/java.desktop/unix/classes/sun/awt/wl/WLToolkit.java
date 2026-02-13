@@ -38,9 +38,9 @@ import sun.awt.datatransfer.DataTransferer;
 import sun.awt.wl.im.WLInputMethodMetaDescriptor;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.vulkan.VKRenderQueue;
-import sun.lwawt.LWButtonPeer;
 import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.LWDummyPlatformComponent;
+import sun.lwawt.LWToolkit;
 import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
 import sun.lwawt.ToolkitAPI;
@@ -248,10 +248,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public ButtonPeer createButton(Button target) {
-        LWButtonPeer peer = new LWButtonPeer(target, LWDummyPlatformComponent.getInstance());
-        targetCreatedPeer(target, peer);
-        peer.initialize();
-        return peer;
+        return LWToolkit.createButton(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
@@ -669,66 +666,42 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public TextFieldPeer createTextField(TextField target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createTextField()");
-        }
-        return null;
+        return LWToolkit.createTextField(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public LabelPeer createLabel(Label target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createLabel()");
-        }
-        return null;
+        return LWToolkit.createLabel(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ListPeer createList(java.awt.List target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createList()");
-        }
-        return null;
+        return LWToolkit.createList(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public CheckboxPeer createCheckbox(Checkbox target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createCheckbox()");
-        }
-        return null;
+        return LWToolkit.createCheckbox(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ScrollbarPeer createScrollbar(Scrollbar target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createScrollbar()");
-        }
-        return null;
+        return LWToolkit.createScrollbar(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ScrollPanePeer createScrollPane(ScrollPane target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createScrollPane()");
-        }
-        return null;
+        return LWToolkit.createScrollPane(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public TextAreaPeer createTextArea(TextArea target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createTextArea()");
-        }
-        return null;
+        return LWToolkit.createTextArea(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ChoicePeer createChoice(Choice target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createChoice()");
-        }
-        return null;
+        return LWToolkit.createChoice(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
@@ -740,10 +713,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public PanelPeer createPanel(Panel target) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Not implemented: WLToolkit.createPanel()");
-        }
-        return null;
+        return LWToolkit.createPanel(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
