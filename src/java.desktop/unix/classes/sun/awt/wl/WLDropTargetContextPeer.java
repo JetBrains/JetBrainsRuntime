@@ -167,6 +167,13 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
 
         reset();
 
+        var currentSource = WLToolkit.getDataDevice().getCurrentDragSource();
+        if (currentSource != null && currentSource.isSourceFor(offer)) {
+            SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(currentSource.getData());
+        } else {
+            SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(null);
+        }
+
         currentTarget = peer.getTarget();
         currentX = x;
         currentY = y;
