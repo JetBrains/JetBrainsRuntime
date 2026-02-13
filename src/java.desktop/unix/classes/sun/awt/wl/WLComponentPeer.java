@@ -38,6 +38,8 @@ import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.java2d.wl.WLSurfaceSizeListener;
+import sun.lwawt.LWComponentPeer;
+import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.LWMouseEventDispatcher;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
@@ -279,6 +281,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public static Window getToplevelFor(Component component) {
+        LWComponentPeerAPI peerForDelegate = LWComponentPeer.peerForDelegate(component);
+        if (peerForDelegate != null) {
+            // For LWAWT we have a target component -> component peer -> delegate component.
+            // Delegate components do not see the parent window of the target.
+            // So we first find the target to be able to get the parent window.
+            component = peerForDelegate.getTarget();
+        }
+
         Container container = component instanceof Container c ? c : component.getParent();
         for (Container p = container; p != null; p = p.getParent()) {
             if (p instanceof Window window && !isWlPopup(window)) {
