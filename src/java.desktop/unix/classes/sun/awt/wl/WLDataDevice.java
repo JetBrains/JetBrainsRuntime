@@ -49,6 +49,7 @@ public class WLDataDevice {
     private long nativePtr;
     private final WLClipboard systemClipboard;
     private final WLClipboard primarySelectionClipboard;
+    private WLDataSource currentDragSource;
 
     public static final int DND_COPY = 0x01;
     public static final int DND_MOVE = 0x02;
@@ -101,6 +102,14 @@ public class WLDataDevice {
 
     public void startDrag(WLDataSource source, long originSurfaceNativePtr, long serial) {
         startDragImpl(nativePtr, source.getNativePtr(), originSurfaceNativePtr, serial);
+    }
+
+    public WLDataSource getCurrentDragSource() {
+        return currentDragSource;
+    }
+
+    public void setCurrentDragSource(WLDataSource source) {
+        currentDragSource = source;
     }
 
     public WLClipboard getSystemClipboard() {
