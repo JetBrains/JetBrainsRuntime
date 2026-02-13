@@ -42,7 +42,7 @@ public class WLDataSource {
 
     private final String mimeTypeCookie;
 
-    private boolean anyMimesAnnounced;
+    private final boolean anyMimesAnnounced;
 
     private native long initNative(long dataDeviceNativePtr, int protocol);
 
@@ -61,7 +61,7 @@ public class WLDataSource {
         assert nativePtr != 0 : "Failed to initialize the native part of the source"; // should've already thrown in native
         this.data = data;
         this.mimeTypeCookie = "JAVA_DATATRANSFER_COOKIE_" + UUID.randomUUID();
-        this.anyMimesAnnounced = false;
+        boolean anyMimesAnnounced = false;
 
         try {
             if (data != null) {
@@ -70,7 +70,7 @@ public class WLDataSource {
 
                 long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
                 if (formats.length > 0) {
-                    this.anyMimesAnnounced = true;
+                    anyMimesAnnounced = true;
                 }
 
                 for (long format : formats) {
@@ -91,6 +91,8 @@ public class WLDataSource {
             destroyImpl(nativePtr);
             throw e;
         }
+
+        this.anyMimesAnnounced = anyMimesAnnounced;
     }
 
     // Used by WLDataDevice to set this source as a selection or to start drag-and-drop.
