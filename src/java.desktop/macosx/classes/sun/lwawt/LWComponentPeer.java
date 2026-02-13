@@ -168,9 +168,16 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      * intentionally do not use parent of the peer.
      */
     @SuppressWarnings("serial")// Safe: outer class is non-serializable.
-    private final class DelegateContainer extends Container {
-        {
+    private static final class DelegateContainer extends Container {
+        private final LWComponentPeerAPI delegatePeer;
+
+        private DelegateContainer(LWComponentPeerAPI delegatePeer) {
+            this.delegatePeer = delegatePeer;
             enableEvents(0xFFFFFFFF);
+        }
+
+        private LWComponentPeerAPI getDelegatePeer() {
+            return delegatePeer;
         }
 
         @Override
@@ -185,7 +192,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
 
         @Override
         public Point getLocationOnScreen() {
-            return LWComponentPeer.this.getLocationOnScreen();
+            return delegatePeer.getLocationOnScreen();
         }
 
         @Override
@@ -228,7 +235,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                     delegate = createDelegate();
                     if (delegate != null) {
                         delegate.setVisible(false);
-                        delegateContainer = new DelegateContainer();
+                        delegateContainer = new DelegateContainer(this);
                         delegateContainer.add(delegate);
                         delegateContainer.addNotify();
                         delegate.addNotify();
@@ -1416,5 +1423,18 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      */
     private boolean isLayouting() {
         return isLayouting;
+    }
+
+    /**
+     * If the given component is a Swing delegate of a {@link LWComponentPeer},
+     * returns the peer. Returns {@code null} otherwise.
+     */
+    public static LWComponentPeerAPI peerForDelegate(Component c) {
+        for (Component p = c; p != null; p = p.getParent()) {
+            if (p instanceof DelegateContainer dc) {
+                return dc.getDelegatePeer();
+            }
+        }
+        return null;
     }
 }
