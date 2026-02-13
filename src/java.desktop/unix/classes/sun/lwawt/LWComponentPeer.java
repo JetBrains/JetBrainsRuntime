@@ -158,6 +158,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      */
     private Image backBuffer;
 
+    private static final String DELEGATE_PEER_KEY = "sun.lwawt.delegatePeer";
+
     /**
      * All Swing delegates use delegateContainer as a parent. This container
      * intentionally do not use parent of the peer.
@@ -223,6 +225,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                     delegate = createDelegate();
                     if (delegate != null) {
                         delegate.setVisible(false);
+                        delegate.putClientProperty(DELEGATE_PEER_KEY, this);
                         delegateContainer = new DelegateContainer();
                         delegateContainer.add(delegate);
                         delegateContainer.addNotify();
@@ -1416,5 +1419,13 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
      */
     private boolean isLayouting() {
         return isLayouting;
+    }
+
+    /**
+     * If the given component is a Swing delegate of an {@link LWComponentPeer},
+     * returns the peer. Returns {@code null} otherwise.
+     */
+    public static LWComponentPeerAPI peerForDelegate(Component c) {
+        return c instanceof JComponent jc ? (LWComponentPeerAPI) jc.getClientProperty(DELEGATE_PEER_KEY) : null;
     }
 }
