@@ -139,7 +139,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static boolean initialized = false;
     private static Thread toolkitThread;
-    private final WLDataDevice dataDevice;
+    private static WLDataDevice dataDevice;
 
     private static Boolean sunAwtDisableGtkFileDialogs = null;
 
@@ -365,6 +365,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             // no longer available, so let's exit forcibly.
             System.exit(0);
         });
+    }
+
+    static WLDataDevice getDataDevice() {
+        return dataDevice;
     }
 
     /**

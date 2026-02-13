@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.UUID;
 
 public final class WLClipboard extends SunClipboard {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLClipboard");
@@ -62,10 +61,6 @@ public final class WLClipboard extends SunClipboard {
     // Guarded by dataLock.
     private WLDataSource ourDataSource;
 
-    // Set when announcing a clipboard data source to a random value
-    // Guarded by dataLock.
-    private String ourDataSourceCookie = null;
-
     static {
         flavorTable = DataTransferer.adaptFlavorMap(getDefaultFlavorTable());
     }
@@ -80,10 +75,6 @@ public final class WLClipboard extends SunClipboard {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: Created " + this);
         }
-    }
-
-    private static String generateRandomMimeTypeCookie() {
-        return "JAVA_DATATRANSFER_COOKIE_" + UUID.randomUUID();
     }
 
     private int getProtocol() {
@@ -161,7 +152,6 @@ public final class WLClipboard extends SunClipboard {
                         synchronized (dataLock) {
                             if (ourDataSource == this) {
                                 ourDataSource = null;
-                                ourDataSourceCookie = null;
                             }
                             destroy();
                         }
@@ -173,8 +163,6 @@ public final class WLClipboard extends SunClipboard {
                         ourDataSource.destroy();
                     }
                     ourDataSource = newOffer;
-                    ourDataSourceCookie = generateRandomMimeTypeCookie();
-                    ourDataSource.offerExtraMime(ourDataSourceCookie);
                     dataDevice.setSelection(getProtocol(), newOffer, eventSerial);
                 }
             }
@@ -272,7 +260,7 @@ public final class WLClipboard extends SunClipboard {
 
     void handleClipboardOffer(WLDataOffer offer /* nullable */) {
         synchronized (dataLock) {
-            if (offer == null || ourDataSourceCookie == null || !offer.getMimes().contains(ourDataSourceCookie)) {
+            if (ourDataSource == null || !ourDataSource.isSourceFor(offer)) {
                 lostOwnershipNow(null);
             }
 
