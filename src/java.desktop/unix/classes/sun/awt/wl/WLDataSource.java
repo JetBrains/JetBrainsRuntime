@@ -30,6 +30,7 @@ import java.awt.Image;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.util.HashSet;
+import java.util.UUID;
 
 public class WLDataSource {
     // nativePtr will be reset to 0 after this object receives a "cancelled" event, and is destroyed.
@@ -38,6 +39,10 @@ public class WLDataSource {
     private long nativePtr;
 
     private final Transferable data;
+
+    private final String mimeTypeCookie;
+
+    private boolean anyMimesAnnounced;
 
     private native long initNative(long dataDeviceNativePtr, int protocol);
 
@@ -55,12 +60,19 @@ public class WLDataSource {
         nativePtr = initNative(dataDevice.getNativePtr(), protocol);
         assert nativePtr != 0 : "Failed to initialize the native part of the source"; // should've already thrown in native
         this.data = data;
+        this.mimeTypeCookie = "JAVA_DATATRANSFER_COOKIE_" + UUID.randomUUID();
+        this.anyMimesAnnounced = false;
 
         try {
             if (data != null) {
                 var mimes = new HashSet<String>();
+                mimes.add(mimeTypeCookie);
 
                 long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
+                if (formats.length > 0) {
+                    this.anyMimesAnnounced = true;
+                }
+
                 for (long format : formats) {
                     String mime = wlDataTransferer.getNativeForFormat(format);
                     mimes.add(mime);
@@ -86,6 +98,26 @@ public class WLDataSource {
     // because after that, source might receive a cancel event at any time and be destroyed.
     long getNativePtr() {
         return nativePtr;
+    }
+
+    public String getMimeTypeCookie() {
+        return mimeTypeCookie;
+    }
+
+    public Transferable getData() {
+        return data;
+    }
+
+    public boolean hasSerializableFormats() {
+        return anyMimesAnnounced;
+    }
+
+    public boolean isSourceFor(WLDataOffer offer) {
+        if (offer == null) {
+            return false;
+        }
+
+        return offer.getMimes().contains(mimeTypeCookie);
     }
 
     // This method can only be called once before setting this object as a drag-and-drop source
@@ -119,13 +151,6 @@ public class WLDataSource {
         }
 
         setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
-    }
-
-    public void offerExtraMime(String mime) {
-        if (nativePtr == 0) {
-            throw new IllegalStateException("Native pointer is null");
-        }
-        offerMimeImpl(nativePtr, mime);
     }
 
     public synchronized void destroy() {
