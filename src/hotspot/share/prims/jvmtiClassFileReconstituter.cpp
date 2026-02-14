@@ -871,7 +871,7 @@ void JvmtiClassFileReconstituter::write_method_infos() {
   }
 
   write_u2(checked_cast<u2>(num_methods - num_overpass));
-  if (JvmtiExport::can_maintain_original_method_order()) {
+  if (AllowEnhancedClassRedefinition || JvmtiExport::can_maintain_original_method_order()) {
     int index;
     int original_index;
     intArray method_order(num_methods, num_methods, 0);
