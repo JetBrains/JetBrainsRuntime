@@ -44,8 +44,9 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         private boolean didSendFinishedEvent = false;
         private boolean didSucceed = false;
 
-        WLDragSource(Transferable data) {
+        WLDragSource(Transferable data, int defaultAction) {
             super(dataDevice, WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND, data);
+            action = defaultAction;
         }
 
         private void sendFinishedEvent() {
@@ -128,11 +129,21 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             return;
         }
 
-        // formats and formatMap are unused, because WLDataSource already references the same DataTransferer singleton
-        var source = new WLDragSource(trans);
-
-        var actions = getDragSourceContext().getSourceActions();
+        int actions = 0;
+        var dragSourceContext = getDragSourceContext();
+        if (dragSourceContext != null) {
+            actions = dragSourceContext.getSourceActions();
+        }
         int waylandActions = WLDataDevice.javaActionsToWayland(actions);
+        int defaultAction = 0;
+        if ((waylandActions & WLDataDevice.DND_MOVE) != 0) {
+            defaultAction = WLDataDevice.DND_MOVE;
+        } else if ((waylandActions & WLDataDevice.DND_COPY) != 0) {
+            defaultAction = WLDataDevice.DND_COPY;
+        }
+
+        // formats and formatMap are unused, because WLDataSource already references the same DataTransferer singleton
+        var source = new WLDragSource(trans, defaultAction);
 
         source.setDnDActions(waylandActions);
 
