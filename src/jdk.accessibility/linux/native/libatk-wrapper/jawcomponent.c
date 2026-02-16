@@ -558,25 +558,25 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
  *
  * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
- * Returns: an #AtkLayer which is the layer of the component, 0 if an error
- *happened.
+ * Returns: an #AtkLayer which is the layer of the component, ATK_LAYER_INVALID
+ * if an error occurred.
  **/
 static AtkLayer jaw_component_get_layer(AtkComponent *component) {
     JAW_DEBUG("%p", component);
 
     if (component == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return 0;
+        return ATK_LAYER_INVALID;
     }
 
     JAW_GET_COMPONENT(component,
-                      0); // create local JNI reference `jobject atk_component`
+                      ATK_LAYER_INVALID); // create local JNI reference `jobject atk_component`
 
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component,
                                            cachedComponentGetLayerMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
-        return 0;
+        return ATK_LAYER_INVALID;
     }
 
     return (AtkLayer)jlayer;
