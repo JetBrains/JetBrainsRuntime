@@ -507,7 +507,7 @@ static gpointer jaw_impl_get_interface_data(JawObject *jaw_obj, guint iface) {
     }
 
     JawImpl *jaw_impl = (JawImpl *)jaw_obj;
-    if (jaw_obj == NULL) {
+    if (jaw_impl == NULL) {
         g_warning("%s: jaw_obj is NULL", G_STRFUNC);
         return NULL;
     }
