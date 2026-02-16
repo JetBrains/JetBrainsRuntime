@@ -642,6 +642,7 @@ public:
     : WorkerTask("IterateObject Closure"), _cl(cl), _poi(poi), _removed_interfaces(removed_interfaces), _needs_instance_update(false) { }
 
   virtual void work(uint worker_id) {
+    ResourceMark rm(Thread::current()); // copy_to_tmp uses resource_allocate_bytes
     HandleMark hm(Thread::current());   // make sure any handles created are deleted
     ChangePointersObjectClosure objectClosure(_cl, _removed_interfaces);
     _poi->object_iterate(&objectClosure, worker_id);
