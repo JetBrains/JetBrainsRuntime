@@ -87,10 +87,14 @@ void jaw_util_detach(void);
 #define JAW_GET_OBJ_IFACE(o, iface, Data, field, env, name, def_ret)           \
     JawObject *jaw_obj = JAW_OBJECT(o);                                        \
     if (!jaw_obj) {                                                            \
-        g_warning("%s: jaw_obj == NULL in JAW_GET_OBJ_IFACE", G_STRFUNC);                                        \
+        g_warning("%s: jaw_obj == NULL in JAW_GET_OBJ_IFACE", G_STRFUNC);      \
         return def_ret;                                                        \
     }                                                                          \
     Data *data = jaw_object_get_interface_data(jaw_obj, iface);                \
+    if (!data) {                                                               \
+        g_warning("%s: data == NULL for interface %u", G_STRFUNC, iface);      \
+        return def_ret;                                                        \
+    }                                                                          \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
     if (!env) {                                                                \
         g_warning("%s: " #env " == NULL", G_STRFUNC);                          \
