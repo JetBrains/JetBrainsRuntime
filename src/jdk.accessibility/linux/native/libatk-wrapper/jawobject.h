@@ -53,6 +53,7 @@ struct _JawObject {
     const gchar *locale;
     AtkStateSet *state_set;
 
+    // Hash table for data. Does not destroy keys or values on cleanup.
     GHashTable *storedData;
     GMutex mutex;
 };
