@@ -216,20 +216,18 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         boolean isPressed = e.getID() == MouseEvent.MOUSE_PRESSED;
         boolean isRMBPressed = isRMB && isPressed;
 
-        Point point = e.getPoint();
+        Point point = getPointInFrame(e);
         if (isRMBPressed && getTitleBarBounds().contains(point.x, point.y)) {
             peer.showWindowMenu(WLToolkit.getInputState().pointerButtonSerial(), point.x, point.y);
             return true;
         }
 
         Rectangle bounds = getTitleBarBounds();
-        boolean pointerInside = point.y >= bounds.height && e.getID() != MouseEvent.MOUSE_EXITED ||
+        boolean isWindowExit = e.getID() == MouseEvent.MOUSE_EXITED && e.getComponent() == peer.target;
+        boolean pointerInside = point.y >= bounds.height && !isWindowExit ||
                 pressedInside && e.getID() == MouseEvent.MOUSE_DRAGGED;
         if (pointerInside && !this.pointerInside && e.getID() != MouseEvent.MOUSE_ENTERED) {
             WLToolkit.postEvent(convertEvent(e, MouseEvent.MOUSE_ENTERED));
-        }
-        if (pointerInside || this.pointerInside && e.getID() == MouseEvent.MOUSE_EXITED) {
-            WLToolkit.postEvent(e);
         }
         if (!pointerInside && this.pointerInside && e.getID() != MouseEvent.MOUSE_EXITED) {
             WLToolkit.postEvent(convertEvent(e, MouseEvent.MOUSE_EXITED));
@@ -238,9 +236,9 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         if (e.getID() == MouseEvent.MOUSE_DRAGGED) {
             pressedInside = pointerInside;
         }
-        if ((closeButton != null && closeButton.processMouseEvent(e)) |
-                (maximizeButton != null && maximizeButton.processMouseEvent(e)) |
-                (minimizeButton != null && minimizeButton.processMouseEvent(e))) {
+        if ((closeButton != null && closeButton.processMouseEvent(e, point)) |
+                (maximizeButton != null && maximizeButton.processMouseEvent(e, point)) |
+                (minimizeButton != null && minimizeButton.processMouseEvent(e, point))) {
             peer.notifyClientDecorationsChanged();
         }
         if (e.getID() == MouseEvent.MOUSE_PRESSED) {
@@ -256,8 +254,8 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         } else if (e.getID() == MouseEvent.MOUSE_MOVED && !pointerInside) {
             peer.updateCursorImmediately();
         }
-
-        return true;
+        // Return false for content-area events so they reach child components
+        return !pointerInside;
     }
 
     private void startDrag() {
@@ -328,12 +326,12 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
             return changed;
         }
 
-        private boolean processMouseEvent(MouseEvent e) {
+        private boolean processMouseEvent(MouseEvent e, Point pointInFrame) {
             assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
             Rectangle buttonBounds = bounds.get();
             boolean ourLocation = buttonBounds != null && e.getID() != MouseEvent.MOUSE_EXITED &&
-                    buttonBounds.contains(e.getPoint());
+                    buttonBounds.contains(pointInFrame);
             boolean oldHovered = hovered;
             boolean oldPressed = pressed;
             hovered = ourLocation;
