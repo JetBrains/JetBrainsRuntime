@@ -22,6 +22,8 @@ package org.GNOME.Accessibility;
 import javax.accessibility.*;
 import java.lang.ref.WeakReference;
 import java.awt.EventQueue;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * The ATK Action interface implementation for Java accessibility.
@@ -34,9 +36,8 @@ public class AtkAction {
     private final WeakReference<AccessibleContext> accessibleContextWeakRef;
     private final WeakReference<AccessibleAction> accessibleActionWeakRef;
 
-    private final String[] actionDescriptions;
-    private final String[] actionLocalizedNames;
-    private final int actionCount; // the number of accessible actions available on the object
+    private final Map<Integer, String> actionDescriptionsCached;
+    private final Map<Integer, String> actionLocalizedNamesCached;
 
     private final Object actionDescriptionsLock = new Object();
     private final Object actionLocalizedNamesLock = new Object();
@@ -51,9 +52,8 @@ public class AtkAction {
 
         this.accessibleContextWeakRef = new WeakReference<AccessibleContext>(ac);
         this.accessibleActionWeakRef = new WeakReference<AccessibleAction>(accessibleAction);
-        this.actionCount = accessibleAction.getAccessibleActionCount();
-        this.actionDescriptions = new String[actionCount];
-        this.actionLocalizedNames = new String[actionCount];
+        this.actionDescriptionsCached = new HashMap<>();
+        this.actionLocalizedNamesCached = new HashMap<>();
     }
 
     /* JNI upcalls section */
@@ -79,7 +79,7 @@ public class AtkAction {
      * @return true if the action was successfully performed, false otherwise
      */
     private boolean do_action(int index) {
-        if (index < 0 || index >= actionCount) {
+        if (index < 0) {
             return false;
         }
         AccessibleAction accessibleAction = accessibleActionWeakRef.get();
@@ -88,6 +88,10 @@ public class AtkAction {
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
+            int count = accessibleAction.getAccessibleActionCount();
+            if (index >= count) {
+                return false;
+            }
             return accessibleAction.doAccessibleAction(index);
         }, false);
     }
@@ -99,7 +103,13 @@ public class AtkAction {
      * @return the number of actions, or 0 if this object does not implement actions
      */
     private int get_n_actions() {
-        return this.actionCount;
+        AccessibleAction accessibleAction = accessibleActionWeakRef.get();
+        if (accessibleAction == null) {
+            return 0;
+        }
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            return accessibleAction.getAccessibleActionCount();
+        }, 0);
     }
 
     /**
@@ -110,7 +120,7 @@ public class AtkAction {
      * @return a description string, or null if the action does not exist
      */
     private String get_description(int index) {
-        if (index < 0 || index >= actionCount) {
+        if (index < 0) {
             return null;
         }
         AccessibleAction accessibleAction = accessibleActionWeakRef.get();
@@ -121,20 +131,24 @@ public class AtkAction {
         String desc;
 
         synchronized (actionDescriptionsLock) {
-            desc = actionDescriptions[index];
+            desc = actionDescriptionsCached.get(index);
             if (desc != null) {
                 return desc;
             }
         }
 
         String computedActionDesc = AtkUtil.invokeInSwingAndWait(() -> {
+            int count = accessibleAction.getAccessibleActionCount();
+            if (index >= count) {
+                return null;
+            }
             return accessibleAction.getAccessibleActionDescription(index);
         }, null);
 
         synchronized (actionDescriptionsLock) {
-            desc = actionDescriptions[index];
+            desc = actionDescriptionsCached.get(index);
             if (desc == null) {
-                actionDescriptions[index] = computedActionDesc;
+                actionDescriptionsCached.put(index, computedActionDesc);
                 desc = computedActionDesc;
             }
         }
@@ -151,13 +165,24 @@ public class AtkAction {
      * @return true if the description was successfully set, false otherwise
      */
     private boolean set_description(int index, String description) {
-        if (index < 0 || index >= actionCount) {
+        if (index < 0) {
             return false;
         }
-        synchronized (actionDescriptionsLock) {
-            actionDescriptions[index] = description;
+        AccessibleAction accessibleAction = accessibleActionWeakRef.get();
+        if (accessibleAction == null) {
+            return false;
         }
-        return true;
+
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            int count = accessibleAction.getAccessibleActionCount();
+            if (index >= count) {
+                return false;
+            }
+            synchronized (actionDescriptionsLock) {
+                actionDescriptionsCached.put(index, description);
+            }
+            return true;
+        }, false);
     }
 
     /**
@@ -168,7 +193,7 @@ public class AtkAction {
      * @return a localized name string, or null if the action does not exist
      */
     private String get_localized_name(int index) {
-        if (index < 0 || index >= actionCount) {
+        if (index < 0) {
             return null;
         }
         AccessibleContext accessibleContext = accessibleContextWeakRef.get();
@@ -183,13 +208,17 @@ public class AtkAction {
         String localizedName;
 
         synchronized (actionLocalizedNamesLock) {
-            localizedName = actionLocalizedNames[index];
+            localizedName = actionLocalizedNamesCached.get(index);
             if (localizedName != null) {
                 return localizedName;
             }
         }
 
         String computedLocalizedName = AtkUtil.invokeInSwingAndWait(() -> {
+            int count = accessibleAction.getAccessibleActionCount();
+            if (index >= count) {
+                return null;
+            }
             String description = accessibleAction.getAccessibleActionDescription(index);
             if (description != null) {
                 return description;
@@ -202,9 +231,9 @@ public class AtkAction {
         }, null);
 
         synchronized (actionLocalizedNamesLock) {
-            localizedName = actionLocalizedNames[index];
+            localizedName = actionLocalizedNamesCached.get(index);
             if (localizedName == null) {
-                actionLocalizedNames[index] = computedLocalizedName;
+                actionLocalizedNamesCached.put(index, computedLocalizedName);
                 localizedName = computedLocalizedName;
             }
         }
