@@ -37,12 +37,20 @@ import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.FocusEvent;
 
+/**
+ * Wayland's implementation is not based on the PlatformWindow infrastructure of the LW AWT.
+ * Mainly due to historical reasons. We do not expect any of the methods here to be called by the LW AWT,
+ * so they all throw UnsupportedOperationException.
+ */
 public class WLPlatformWindow implements PlatformWindow {
 
-    private final WLWindowPeer peer;
+    private static final WLPlatformWindow INSTANCE = new WLPlatformWindow();
 
-    WLPlatformWindow(WLWindowPeer peer) {
-        this.peer = peer;
+    public static WLPlatformWindow getInstance() {
+        return INSTANCE;
+    }
+
+    private WLPlatformWindow() {
     }
 
     @Override
