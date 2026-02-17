@@ -41,6 +41,7 @@ import sun.java2d.vulkan.VKRenderQueue;
 import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.LWDummyPlatformComponent;
 import sun.lwawt.LWToolkit;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformDropTarget;
 import sun.lwawt.PlatformWindow;
 import sun.lwawt.ToolkitAPI;
@@ -1243,8 +1244,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public PlatformWindow getPlatformWindowUnderMouse() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public LWWindowPeerAPI getWindowPeerUnderMouse() {
         WLComponentPeer peerUnderMouse = WLMouseInfoPeer.getInstance().getPeerUnderMouse();
-        return peerUnderMouse instanceof WLWindowPeer windowPeer ? windowPeer.getPlatformWindow() : null;
+        return peerUnderMouse instanceof WLWindowPeer windowPeer ? windowPeer : null;
     }
 
     @Override
