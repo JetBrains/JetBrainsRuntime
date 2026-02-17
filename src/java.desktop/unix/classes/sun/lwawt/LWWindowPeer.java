@@ -766,27 +766,35 @@ public class LWWindowPeer
     @Override
     public LWMouseEventDispatcher getMouseEventDispatcher() {
         if (mouseEventDispatcher == null) {
-            mouseEventDispatcher = new LWMouseEventDispatcher(this) {
-                @Override
-                protected void onMousePressed() {
-                    // Ungrab only if this window is not an owned window of the grabbing one.
-                    if (!isGrabbing() && grabbingWindow != null &&
-                            !grabbingWindow.isOneOfOwnersOf(LWWindowPeer.this))
-                    {
-                        grabbingWindow.ungrab();
-                    }
-                    // The window should be focused on mouse click. If it gets activated by the native platform,
-                    // this request will be no op. It will take effect when:
-                    // 1. A simple not focused window is clicked.
-                    // 2. An active but not focused owner frame/dialog is clicked.
-                    // The mouse event then will trigger a focus request "in window" to the component, so the window
-                    // should gain focus before.
-                    requestWindowFocus(FocusEvent.Cause.MOUSE_EVENT);
-
-                }
-            };
+            mouseEventDispatcher = createMouseEventDispatcher();
         }
         return mouseEventDispatcher;
+    }
+
+    protected LWMouseEventDispatcher createMouseEventDispatcher() {
+        return new LWMouseEventDispatcher(this) {
+            @Override
+            protected void onMousePressed() {
+                onMousePressedEvent();
+
+            }
+        };
+    }
+
+    protected void onMousePressedEvent() {
+        // Ungrab only if this window is not an owned window of the grabbing one.
+        if (!isGrabbing() && grabbingWindow != null &&
+                !grabbingWindow.isOneOfOwnersOf(LWWindowPeer.this))
+        {
+            grabbingWindow.ungrab();
+        }
+        // The window should be focused on mouse click. If it gets activated by the native platform,
+        // this request will be no op. It will take effect when:
+        // 1. A simple not focused window is clicked.
+        // 2. An active but not focused owner frame/dialog is clicked.
+        // The mouse event then will trigger a focus request "in window" to the component, so the window
+        // should gain focus before.
+        requestWindowFocus(FocusEvent.Cause.MOUSE_EVENT);
     }
 
     @Override
