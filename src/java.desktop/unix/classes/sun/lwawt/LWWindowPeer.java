@@ -1236,4 +1236,9 @@ public class LWWindowPeer
     public long getWindowHandle() {
         return platformWindow.getWindowHandle();
     }
+
+    @Override
+    public boolean isActive() {
+        return platformWindow.isActive();
+    }
 }
