@@ -49,6 +49,11 @@ public interface ToolkitAPI {
 
     PlatformWindow getPlatformWindowUnderMouse();
 
+    default LWWindowPeerAPI getWindowPeerUnderMouse() {
+        PlatformWindow platformWindow = ToolkitAPI.getDefaultToolkit().getPlatformWindowUnderMouse();
+        return platformWindow != null ? platformWindow.getPeer() : null;
+    }
+
     PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer);
 
     static ToolkitAPI getDefaultToolkit() {
