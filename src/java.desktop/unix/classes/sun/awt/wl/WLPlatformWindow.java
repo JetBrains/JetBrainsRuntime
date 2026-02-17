@@ -47,7 +47,7 @@ public class WLPlatformWindow implements PlatformWindow {
 
     @Override
     public LWWindowPeerAPI getPeer() {
-        return peer;
+        throw new UnsupportedOperationException();
     }
 
     @Override
