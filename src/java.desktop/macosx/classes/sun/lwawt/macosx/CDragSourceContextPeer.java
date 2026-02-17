@@ -120,9 +120,11 @@ public final class CDragSourceContextPeer extends SunDragSourceContextPeer {
                 fDragCImage = CImage.getCreator().createFromImageImmediately(fDragImage);
             } catch(Exception e) {
                 // image creation may fail for any reason
+                resetDragImage();
                 throw new InvalidDnDOperationException("Drag image can not be created.");
             }
             if (fDragCImage == null) {
+                resetDragImage();
                 throw new InvalidDnDOperationException("Drag image is not ready.");
             }
 
