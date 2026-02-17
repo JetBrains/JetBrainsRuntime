@@ -1442,7 +1442,8 @@ jdk_swing_wayland_vulkan = \
 
 jdk_desktop_wayland_vulkan = \
     :jdk_awt_wayland_vulkan \
-    :jdk_swing_wayland_vulkan
+    :jdk_swing_wayland_vulkan \
+    :jdk_awt_vulkan
 
 # Vulkan tests to be executed with -Dsun.java2d.vulkan=True
 jdk_awt_vulkan = \
