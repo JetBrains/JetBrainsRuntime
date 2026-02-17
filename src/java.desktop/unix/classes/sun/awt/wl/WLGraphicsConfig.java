@@ -116,13 +116,13 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
 
     @Override
     public int getMaxTextureWidth() {
-        // TODO
+        // Not used by Wayland currently
         return Integer.MAX_VALUE;
     }
 
     @Override
     public int getMaxTextureHeight() {
-        // TODO
+        // Not used by Wayland currently
         return Integer.MAX_VALUE;
     }
 
