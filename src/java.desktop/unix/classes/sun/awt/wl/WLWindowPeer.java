@@ -64,7 +64,6 @@ import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
-import java.awt.peer.WindowPeer;
 import java.lang.ref.WeakReference;
 import java.util.List;
 
@@ -298,13 +297,16 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     }
 
     // supporting only 'synthetic' focus transfers for now (when natively focused window stays the same)
-    private void requestWindowFocus() {
+    private boolean requestWindowFocus() {
         Window window = getWindow();
         Window nativeFocusTarget = getNativelyFocusableOwnerOrSelf(window);
-        if (nativeFocusTarget != null &&
-                WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget) {
+        boolean isFocusable = nativeFocusTarget != null &&
+                WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget;
+        if (isFocusable) {
             WLToolkit.postPriorityEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
+            return true;
         }
+        return false;
     }
 
     public Component getSyntheticFocusOwner() {
@@ -515,9 +517,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     public boolean requestWindowFocus(FocusEvent.Cause cause) {
-        // TODO this method has limitations, so the current implementation doesn't cover some cases
-        requestWindowFocus();
-        return true;
+        return requestWindowFocus();
     }
 
     @Override
