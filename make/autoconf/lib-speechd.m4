@@ -43,7 +43,6 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
     fi
     A11Y_SPEECHD_ANNOUNCING_ENABLED=false
     SPEECHD_CFLAGS=
-    SPEECHD_LIBS=
   else
     SPEECHD_FOUND=no
 
@@ -51,7 +50,6 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
       AC_MSG_CHECKING([for speechd header and library])
       if test -s "${with_speechd}/include/libspeechd.h"; then
         SPEECHD_CFLAGS="-I${with_speechd}/include"
-        SPEECHD_LIBS="-L${with_speechd}/lib -lspeechd"
         SPEECHD_FOUND=yes
         AC_MSG_RESULT([$SPEECHD_FOUND])
       else
@@ -76,7 +74,6 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
       )
       if test "x$SPEECHD_FOUND" = xyes; then
           SPEECHD_CFLAGS=
-          SPEECHD_LIBS="-lspeechd"
       fi
     fi
     if test "x$SPEECHD_FOUND" = xno; then
@@ -88,5 +85,4 @@ AC_DEFUN_ONCE([LIB_SETUP_SPEECHD],
 
   AC_SUBST(A11Y_SPEECHD_ANNOUNCING_ENABLED)
   AC_SUBST(SPEECHD_CFLAGS)
-  AC_SUBST(SPEECHD_LIBS)
 ])
