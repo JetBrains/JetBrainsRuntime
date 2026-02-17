@@ -105,14 +105,9 @@ public class LWMouseEventDispatcher {
                 lastMouseEventPeer = targetPeer;
             }
         } else {
-            PlatformWindow topmostPlatformWindow = ToolkitAPI.getDefaultToolkit().getPlatformWindowUnderMouse();
-            LWWindowPeerAPI topmostWindowPeer =
-                    topmostPlatformWindow != null ? topmostPlatformWindow.getPeer() : null;
-
-            // topmostWindowPeer == null condition is added for the backward
-            // compatibility. It can be removed when the
-            // getTopmostPlatformWindowUnderMouse() method will be properly
-            // implemented in CPlatformEmbeddedFrame class
+            LWWindowPeerAPI topmostWindowPeer = ToolkitAPI.getDefaultToolkit().getWindowPeerUnderMouse();
+            // topmostWindowPeer == null condition is added for the backward compatibility.
+            // It can be removed when the getWindowPeerUnderMouse() method will be properly implemented.
             if (topmostWindowPeer == windowPeer || topmostWindowPeer == null) {
                 generateMouseEnterExitEventsForComponents(when, button, x, y,
                         absX, absY, modifiers, clickCount, popupTrigger,
