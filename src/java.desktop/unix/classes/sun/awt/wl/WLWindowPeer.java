@@ -540,6 +540,11 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     }
 
     @Override
+    public boolean isActive() {
+        return super.isActive();
+    }
+
+    @Override
     public void addChildPeer(LWComponentPeerAPI child) {
         childPeers.addChildPeer(child);
     }
