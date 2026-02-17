@@ -84,7 +84,6 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     private Path2D.Double bottomRightMask;  // guarded by stateLock
     private SunGraphics2D graphics;         // guarded by stateLock
 
-    private WLPlatformWindow platformWindow;
     private final LWChildPeers childPeers = new LWChildPeers(new Object());
 
     static {
@@ -540,6 +539,11 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     }
 
     @Override
+    public boolean isActive() {
+        return super.isActive();
+    }
+
+    @Override
     public void addChildPeer(LWComponentPeerAPI child) {
         childPeers.addChildPeer(child);
     }
@@ -655,10 +659,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     public PlatformWindow getPlatformWindow() {
-        if (platformWindow == null) {
-            platformWindow = new WLPlatformWindow(this);
-        }
-        return platformWindow;
+        return WLPlatformWindow.getInstance();
     }
 
     @Override
