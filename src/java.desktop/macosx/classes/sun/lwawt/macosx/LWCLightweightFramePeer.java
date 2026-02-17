@@ -27,6 +27,7 @@ package sun.lwawt.macosx;
 
 import sun.awt.LightweightFrame;
 import sun.lwawt.LWLightweightFramePeer;
+import sun.lwawt.LWMouseEventDispatcher;
 import sun.lwawt.PlatformComponent;
 import sun.lwawt.PlatformWindow;
 
@@ -65,5 +66,15 @@ public final class LWCLightweightFramePeer extends LWLightweightFramePeer implem
             jbr7481MouseEnteredExitedFix = new Jbr7481MouseEnteredExitedFix(this);
         }
         return jbr7481MouseEnteredExitedFix;
+    }
+
+    @Override
+    protected LWMouseEventDispatcher createMouseEventDispatcher() {
+        return new LWCMouseEventDispatcher(this) {
+            @Override
+            protected void onMousePressed() {
+                onMousePressedEvent();
+            }
+        };
     }
 }
