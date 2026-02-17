@@ -47,4 +47,6 @@ public interface LWWindowPeerAPI extends LWContainerPeerAPI, WindowPeer {
     LWMouseEventDispatcher getMouseEventDispatcher();
 
     void postMouseEvent(MouseEvent e);
+
+    boolean isActive();
 }

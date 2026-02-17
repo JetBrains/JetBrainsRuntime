@@ -1344,7 +1344,7 @@ public class LWWindowPeer
     }
 
     @Override
-    public LWComponentPeer<?, ?> findPeerAt(int x, int y) {
-        return (LWComponentPeer<?, ?>) super.findPeerAt(x, y);
+    public boolean isActive() {
+        return platformWindow.isActive();
     }
 }
