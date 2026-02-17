@@ -936,7 +936,7 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                 // however that is the shared code and this particular problem's reproducibility has
                 // platform specifics. So, it was decided to narrow down the fix to lwawt (OSX) in
                 // current release. TODO: consider fixing it in the shared code.
-                if (!focusedWindowChangeAllowed && !parentPeer.getPlatformWindow().isActive()) {
+                if (!focusedWindowChangeAllowed && !parentPeer.isActive()) {
                     if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
                         focusLog.fine("request rejected, focusedWindowChangeAllowed==false, " +
                                 "parentPeer is inactive: " + parentPeer);
