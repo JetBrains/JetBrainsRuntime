@@ -325,7 +325,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
       endif
     endif
 
-    LIBAWT_XAWT_LIBS := $(LIBM) -lawt -lXext -lX11 -lXrender $(SPEECHD_LIBS) $(LIBDL) -lXtst -lXi -ljava -ljvm
+    LIBAWT_XAWT_LIBS := $(LIBM) -lawt -lXext -lX11 -lXrender $(LIBDL) -lXtst -lXi -ljava -ljvm
 
     ifeq ($(call isTargetOs, linux), true)
       LIBAWT_XAWT_LIBS += -lpthread
