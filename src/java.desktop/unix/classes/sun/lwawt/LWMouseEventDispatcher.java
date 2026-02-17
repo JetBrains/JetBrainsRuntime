@@ -47,8 +47,10 @@ public class LWMouseEventDispatcher {
     private volatile LWComponentPeerAPI lastMouseEventPeer;
 
     // Peers where all dragged/released events should come to,
-    // depending on what mouse button is being dragged according to Cocoa
-    private static final LWComponentPeerAPI[] mouseDownTarget = new LWComponentPeerAPI[3];
+    // depending on what mouse button is being dragged.
+    // The size of this array is set to fit all known buttons in existing implementations.
+    // If a new implementation with more buttons is added, the size should be increased.
+    protected static final LWComponentPeerAPI[] mouseDownTarget = new LWComponentPeerAPI[6];
 
     // A bitmask that indicates what mouse buttons produce MOUSE_CLICKED events
     // on MOUSE_RELEASE. Click events are only generated if there were no drag
@@ -127,10 +129,6 @@ public class LWMouseEventDispatcher {
             int eventButtonMask = (button > 0) ? MouseEvent.getMaskForButton(button) : 0;
             int otherButtonsPressed = modifiers & ~eventButtonMask;
 
-            // For pressed/dragged/released events OS X treats other
-            // mouse buttons as if they were BUTTON2, so we do the same
-            int targetIdx = (button > 3) ? MouseEvent.BUTTON2 - 1 : button - 1;
-
             // MOUSE_ENTERED/EXITED are generated for the components strictly under
             // mouse even when dragging. That's why we first update lastMouseEventPeer
             // based on initial targetPeer value and only then recalculate targetPeer
@@ -142,12 +140,12 @@ public class LWMouseEventDispatcher {
                 } else {
                     mouseClickButtons |= eventButtonMask;
                 }
-                mouseDownTarget[targetIdx] = targetPeer;
+                storeMouseDownTarget(button, targetPeer);
             } else if (id == MouseEvent.MOUSE_DRAGGED) {
                 // Cocoa dragged event has the information about which mouse
                 // button is being dragged. Use it to determine the peer that
                 // should receive the dragged event.
-                targetPeer = mouseDownTarget[targetIdx];
+                targetPeer = getMouseDownTarget(button);
                 mouseClickButtons &= ~modifiers;
             } else if (id == MouseEvent.MOUSE_RELEASED) {
                 // TODO: currently, mouse released event goes to the same component
@@ -155,10 +153,10 @@ public class LWMouseEventDispatcher {
                 // it's OK, however, we need to make sure that our behavior is consistent
                 // with 1.6 for cases where component in question have been
                 // hidden/removed in between of mouse pressed/released events.
-                targetPeer = mouseDownTarget[targetIdx];
+                targetPeer = getMouseDownTarget(button);
 
                 if ((modifiers & eventButtonMask) == 0) {
-                    mouseDownTarget[targetIdx] = null;
+                    storeMouseDownTarget(button, null);
                 }
 
                 // mouseClickButtons is updated below, after MOUSE_CLICK is sent
@@ -271,5 +269,17 @@ public class LWMouseEventDispatcher {
      * Called when a mouse press event is being processed, before dispatching.
      */
     protected void onMousePressed() {
+    }
+
+    protected void storeMouseDownTarget(int button, LWComponentPeerAPI peer) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
+        mouseDownTarget[button - 1] = peer;
+    }
+
+    protected LWComponentPeerAPI getMouseDownTarget(int button) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
+        return mouseDownTarget[button - 1];
     }
 }
