@@ -391,7 +391,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             // the surface has recently disappeared, in which case
             // e.getSurface() is likely 0.
         } else {
-            peer.dispatchPointerEventInContext(e, oldInputState, newInputState);
+            peer.dispatchPointerEventInContext(e, newInputState);
         }
     }
 

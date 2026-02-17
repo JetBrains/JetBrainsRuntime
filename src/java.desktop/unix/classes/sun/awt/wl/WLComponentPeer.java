@@ -1297,7 +1297,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * Creates and posts mouse events based on the given WLPointerEvent received from Wayland,
      * the freshly updated WLInputState, and the previous WLInputState.
      */
-    void dispatchPointerEventInContext(WLPointerEvent e, WLInputState oldInputState, WLInputState newInputState) {
+    void dispatchPointerEventInContext(WLPointerEvent e, WLInputState newInputState) {
         final long timestamp = System.currentTimeMillis();
 
         final int x = newInputState.getPointerX();
