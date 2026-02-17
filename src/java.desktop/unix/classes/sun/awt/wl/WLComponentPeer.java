@@ -1307,7 +1307,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         int yAbsolute = abs.y;
 
         if (e.hasEnterEvent()) {
-            updateCursorImmediately(); // TODO do we need this? dispatcher does this after posting the event
             getMouseEventDispatcher().notifyMouseEvent(
                     MouseEvent.MOUSE_ENTERED,
                     timestamp,
