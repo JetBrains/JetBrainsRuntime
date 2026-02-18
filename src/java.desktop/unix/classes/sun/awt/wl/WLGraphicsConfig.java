@@ -35,6 +35,7 @@ import sun.lwawt.LWGraphicsConfig;
 
 import java.awt.BufferCapabilities;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.Image;
 import java.awt.ImageCapabilities;
@@ -117,18 +118,28 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
     @Override
     public int getMaxTextureWidth() {
         // Not used by Wayland currently
-        return Integer.MAX_VALUE;
+        return getMaxBufferBounds().width;
     }
 
     @Override
     public int getMaxTextureHeight() {
         // Not used by Wayland currently
-        return Integer.MAX_VALUE;
+        return getMaxBufferBounds().height;
     }
 
     @Override
     public void flush(LWComponentPeer<?, ?> peer) {
         // Not used by Wayland currently
+    }
+
+    public static Dimension getMaxBufferBounds() {
+        // Need to limit the maximum size of the window so that the creation of the underlying
+        // buffers for it may succeed at least in theory. A window that is too large may crash
+        // JVM or even the window manager.
+        Dimension bounds = WLGraphicsEnvironment.getSingleInstance().getTotalDisplayBounds();
+        bounds.width *= 2;
+        bounds.height *= 2;
+        return bounds;
     }
 
     @Override

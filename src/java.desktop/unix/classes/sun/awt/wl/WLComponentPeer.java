@@ -1866,18 +1866,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    private static Dimension getMaxBufferBounds() {
-        // Need to limit the maximum size of the window so that the creation of the underlying
-        // buffers for it may succeed at least in theory. A window that is too large may crash
-        // JVM or even the window manager.
-        Dimension bounds = WLGraphicsEnvironment.getSingleInstance().getTotalDisplayBounds();
-        bounds.width *= 2;
-        bounds.height *= 2;
-        return bounds;
-    }
-
     private Dimension constrainSize(int width, int height) {
-        Dimension maxBounds = getMaxBufferBounds();
+        Dimension maxBounds = WLGraphicsConfig.getMaxBufferBounds();
         Dimension minSize = getMinimumSize();
         minSize.width = Math.max(MINIMUM_WIDTH, minSize.width);
         minSize.height = Math.max(MINIMUM_HEIGHT, minSize.height);
