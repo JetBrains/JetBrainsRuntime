@@ -267,10 +267,14 @@ public class LWMouseEventDispatcher {
     }
 
     protected void storeMouseDownTarget(int button, LWComponentPeerAPI peer) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
         mouseDownTarget[button - 1] = peer;
     }
 
     protected LWComponentPeerAPI getMouseDownTarget(int button) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
         return mouseDownTarget[button - 1];
     }
 }

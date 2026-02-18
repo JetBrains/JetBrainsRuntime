@@ -39,11 +39,15 @@ public class LWCMouseEventDispatcher extends LWMouseEventDispatcher {
 
     @Override
     protected void storeMouseDownTarget(int button, LWComponentPeerAPI peer) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
         mouseDownTarget[getTargetIndex(button)] = peer;
     }
 
     @Override
     protected LWComponentPeerAPI getMouseDownTarget(int button) {
+        assert button > 0 && button <= mouseDownTarget.length
+                : "Unexpected button index: " + button + ", expected values: 1-" + mouseDownTarget.length;
         return mouseDownTarget[getTargetIndex(button)];
     }
 
