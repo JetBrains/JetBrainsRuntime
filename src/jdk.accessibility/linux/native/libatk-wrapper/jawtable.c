@@ -644,13 +644,12 @@ static AtkObject *jaw_table_get_caption(AtkTable *table) {
  * jaw_table_get_column_description:
  * @table: a GObject instance that implements AtkTableIface
  * @column: a #gint representing a column in @table
- * @description: a #gchar representing the description text
- * to set for the specified @column of the @table
  *
- * Sets the description text for the specified @column of the @table.
+ * Returns the description text for the specified @column of the @table.
  *
  * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
+ * Returns: a const gchar representing the description text for the specified column, or NULL
  **/
 static const gchar *jaw_table_get_column_description(AtkTable *table,
                                                      gint column) {
