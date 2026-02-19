@@ -19,10 +19,9 @@
 
 package org.GNOME.Accessibility;
 
-import java.awt.event.*;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.HashMap;
-
-import sun.awt.AWTAccessor;
 
 /**
  * Repeats structure of Atk.KeyEventStruct encapsulating information about a key event.
