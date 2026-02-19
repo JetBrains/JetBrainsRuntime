@@ -27,10 +27,13 @@
 #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 #include "jvm_io.h"         // jio_fprintf
+#include "debug_assert.h"   // DASSERT
 #include <libspeechd.h>
 #include <stdbool.h>        // bool, true, false
 #include <pthread.h>        // pthread_*
 #include <dlfcn.h>          // dlopen, dlclose, dlsym, dlerror
+#include <string.h>         // strdup
+#include <stdarg.h>         // va_list, va_start, va_end
 
 
 // =============================================== libspeechd RESOURCES ===============================================
@@ -451,6 +454,452 @@ fail:
 }
 
 // ==================================== End of libspeechd LOADING/UNLOADING section ===================================
+
+
+// ======================================== libspeechd.h FUNCTIONS INTERCEPTORS =======================================
+
+// If something is missing and the AccessibleAnnouncer tries to use it, it's expected the AWT will fail to build at
+//   link-time instead of blowing up at run-time/load-time.
+
+#define INVOKE_SPEECHD_OR_RETURN_VALUE(retVal, funcPtr, ...)  \
+    do {                                                      \
+        if (!TryLoadSpeechd()) {                              \
+            return retVal;                                    \
+        }                                                     \
+        DASSERT(funcPtr != NULL);                             \
+        return funcPtr(__VA_ARGS__);                          \
+    } while (0)
+
+static const char* NOT_LOADED_ERR_MSG = "libspeechd not loaded";
+
+void SPDConnectionAddress__free(SPDConnectionAddress *address)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(, libspeechd_funcptr_SPDConnectionAddress__free, address);
+}
+
+SPDConnectionAddress* spd_get_default_address(char **error)
+{
+    if (!TryLoadSpeechd())
+    {
+        if (error != NULL)
+        {
+            // The original implementation also dynamically allocates the error string
+            *error = strdup(NOT_LOADED_ERR_MSG);
+        }
+        return NULL;
+    }
+    DASSERT(libspeechd_funcptr_spd_get_default_address != NULL);
+
+    return libspeechd_funcptr_spd_get_default_address(error);
+}
+
+SPDConnection* spd_open(const char *client_name, const char *connection_name, const char *user_name, SPDConnectionMode mode)
+{
+    if (!TryLoadSpeechd())
+    {
+        return NULL;
+    }
+    DASSERT(libspeechd_funcptr_spd_open != NULL);
+
+    return libspeechd_funcptr_spd_open(client_name, connection_name, user_name, mode);
+}
+
+SPDConnection* spd_open2(
+    const char *client_name,
+    const char *connection_name,
+    const char *user_name,
+    SPDConnectionMode mode,
+    const SPDConnectionAddress *address,
+    int autospawn,
+    char **error_result
+) {
+    if (!TryLoadSpeechd())
+    {
+        if (error_result != NULL)
+        {
+            *error_result = strdup(NOT_LOADED_ERR_MSG);
+        }
+        return NULL;
+    }
+    DASSERT(libspeechd_funcptr_spd_open2 != NULL);
+
+    return libspeechd_funcptr_spd_open2(client_name, connection_name, user_name, mode, address, autospawn, error_result);
+}
+
+int spd_fd(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_fd, connection);
+}
+
+int spd_get_client_id(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(0, libspeechd_funcptr_spd_get_client_id, connection);
+}
+
+void spd_close(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(, libspeechd_funcptr_spd_close, connection);
+}
+
+
+int spd_say(SPDConnection *connection, SPDPriority priority, const char *text)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_say, connection, priority, text);
+}
+
+int spd_sayf(SPDConnection *connection, SPDPriority priority, const char *format, ...)
+{
+    int result;
+    va_list args;
+
+    if (!TryLoadSpeechd())
+    {
+        return -1;
+    }
+    DASSERT(libspeechd_funcptr_spd_sayf != NULL);
+
+    va_start(args, format);
+    result = libspeechd_funcptr_spd_sayf(connection, priority, format, args);
+    va_end(args);
+
+    return result;
+}
+
+
+int spd_stop(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_stop, connection);
+}
+
+int spd_stop_all(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_stop_all, connection);
+}
+
+int spd_stop_uid(SPDConnection *connection, int target_uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_stop_uid, connection, target_uid);
+}
+
+
+int spd_cancel(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_cancel, connection);
+}
+
+int spd_cancel_all(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_cancel_all, connection);
+}
+
+int spd_cancel_uid(SPDConnection *connection, int target_uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_cancel_uid, connection, target_uid);
+}
+
+
+int spd_pause(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_pause, connection);
+}
+
+int spd_pause_all(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_pause_all, connection);
+}
+
+int spd_pause_uid(SPDConnection *connection, int target_uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_pause_uid, connection, target_uid);
+}
+
+
+int spd_resume(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_resume, connection);
+}
+
+int spd_resume_all(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_resume_all, connection);
+}
+
+int spd_resume_uid(SPDConnection *connection, int target_uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_resume_uid, connection, target_uid);
+}
+
+
+
+int spd_key(SPDConnection *connection, SPDPriority priority, const char *key_name)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_key, connection, priority, key_name);
+}
+
+int spd_char(SPDConnection *connection, SPDPriority priority, const char *character)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_char, connection, priority, character);
+}
+
+int spd_wchar(SPDConnection *connection, SPDPriority priority, wchar_t wcharacter)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_wchar, connection, priority, wcharacter);
+}
+
+
+int spd_sound_icon(SPDConnection *connection, SPDPriority priority, const char *icon_name)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_sound_icon, connection, priority, icon_name);
+}
+
+
+int spd_set_voice_type(SPDConnection *connection, SPDVoiceType type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_type, connection, type);
+}
+
+int spd_set_voice_type_all(SPDConnection *connection, SPDVoiceType type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_type_all, connection, type);
+}
+
+int spd_set_voice_type_uid(SPDConnection *connection, SPDVoiceType type, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_type_uid, connection, type, uid);
+}
+
+SPDVoiceType spd_get_voice_type(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(0, libspeechd_funcptr_spd_get_voice_type, connection);
+}
+
+
+int spd_set_synthesis_voice(SPDConnection *connection, const char *voice_name)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_synthesis_voice, connection, voice_name);
+}
+
+int spd_set_synthesis_voice_all(SPDConnection *connection, const char *voice_name)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_synthesis_voice_all, connection, voice_name);
+}
+
+int spd_set_synthesis_voice_uid(SPDConnection *connection, const char *voice_name, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_synthesis_voice_uid, connection, voice_name, uid);
+}
+
+
+int spd_set_data_mode(SPDConnection *connection, SPDDataMode mode)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_data_mode, connection, mode);
+}
+
+
+int spd_set_notification_on(SPDConnection *connection, SPDNotification notification)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_notification_on, connection, notification);
+}
+
+int spd_set_notification_off(SPDConnection *connection, SPDNotification notification)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_notification_off, connection, notification);
+}
+
+int spd_set_notification(SPDConnection *connection, SPDNotification notification, const char *state)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_notification, connection, notification, state);
+}
+
+
+int spd_set_voice_rate(SPDConnection *connection, signed int rate)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_rate, connection, rate);
+}
+
+int spd_set_voice_rate_all(SPDConnection *connection, signed int rate)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_rate_all, connection, rate);
+}
+
+int spd_set_voice_rate_uid(SPDConnection *connection, signed int rate, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_rate_uid, connection, rate, uid);
+}
+
+int spd_get_voice_rate(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(0, libspeechd_funcptr_spd_get_voice_rate, connection);
+}
+
+
+int spd_set_voice_pitch(SPDConnection *connection, signed int pitch)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_pitch, connection, pitch);
+}
+
+int spd_set_voice_pitch_all(SPDConnection *connection, signed int pitch)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_pitch_all, connection, pitch);
+}
+
+int spd_set_voice_pitch_uid(SPDConnection *connection, signed int pitch, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_pitch_uid, connection, pitch, uid);
+}
+
+int spd_get_voice_pitch(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_get_voice_pitch, connection);
+}
+
+
+int spd_set_voice_pitch_range(SPDConnection *connection, signed int pitch_range)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_pitch_range, connection, pitch_range);
+}
+
+int spd_set_voice_pitch_range_all(SPDConnection *connection, signed int pitch_range)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_pitch_range_all, connection, pitch_range);
+}
+
+int spd_set_voice_pitch_range_uid(SPDConnection *connection, signed int pitch_range, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_voice_pitch_range_uid, connection, pitch_range, uid);
+}
+
+
+int spd_set_volume(SPDConnection *connection, signed int volume)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_volume, connection, volume);
+}
+
+int spd_set_volume_all(SPDConnection *connection, signed int volume)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_volume_all, connection, volume);
+}
+
+int spd_set_volume_uid(SPDConnection *connection, signed int volume, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_volume_uid, connection, volume, uid);
+}
+
+int spd_get_volume(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(0, libspeechd_funcptr_spd_get_volume, connection);
+}
+
+
+int spd_set_punctuation(SPDConnection *connection, SPDPunctuation type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_punctuation, connection, type);
+}
+
+int spd_set_punctuation_all(SPDConnection *connection, SPDPunctuation type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_punctuation_all, connection, type);
+}
+
+int spd_set_punctuation_uid(SPDConnection *connection, SPDPunctuation type, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_punctuation_uid, connection, type, uid);
+}
+
+
+int spd_set_capital_letters(SPDConnection *connection, SPDCapitalLetters type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_capital_letters, connection, type);
+}
+
+int spd_set_capital_letters_all(SPDConnection *connection, SPDCapitalLetters type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_capital_letters_all, connection, type);
+}
+
+int spd_set_capital_letters_uid(SPDConnection *connection, SPDCapitalLetters type, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_capital_letters_uid, connection, type, uid);
+}
+
+
+int spd_set_spelling(SPDConnection *connection, SPDSpelling type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_spelling, connection, type);
+}
+
+int spd_set_spelling_all(SPDConnection *connection, SPDSpelling type)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_spelling_all, connection, type);
+}
+
+int spd_set_spelling_uid(SPDConnection *connection, SPDSpelling type, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_spelling_uid, connection, type, uid);
+}
+
+
+int spd_set_language(SPDConnection *connection, const char *language)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_language, connection, language);
+}
+
+int spd_set_language_all(SPDConnection *connection, const char *language)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_language_all, connection, language);
+}
+
+int spd_set_language_uid(SPDConnection *connection, const char *language, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_language_uid, connection, language, uid);
+}
+
+char* spd_get_language(SPDConnection *connection)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(NULL, libspeechd_funcptr_spd_get_language, connection);
+}
+
+
+int spd_set_output_module(SPDConnection *connection, const char *output_module)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_output_module, connection, output_module);
+}
+
+int spd_set_output_module_all(SPDConnection *connection, const char *output_module)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_output_module_all, connection, output_module);
+}
+
+int spd_set_output_module_uid(SPDConnection *connection, const char *output_module, unsigned int uid)
+{
+    INVOKE_SPEECHD_OR_RETURN_VALUE(-1, libspeechd_funcptr_spd_set_output_module_uid, connection, output_module, uid);
+}
+
+
+int spd_get_client_list(SPDConnection *connection, char **client_names, int *client_ids, int *active);
+int spd_get_message_list_fd(SPDConnection *connection, int target, int *msg_ids, char **client_names);
+
+char** spd_list_modules(SPDConnection *connection);
+void free_spd_modules(char **);
+char* spd_get_output_module(SPDConnection *connection);
+
+char** spd_list_voices(SPDConnection *connection);
+void free_spd_symbolic_voices(char **voices);
+SPDVoice** spd_list_synthesis_voices(SPDConnection *connection);
+SPDVoice** spd_list_synthesis_voices2(SPDConnection *connection, const char *language, const char *variant);
+void free_spd_voices(SPDVoice **voices);
+char** spd_execute_command_with_list_reply(SPDConnection *connection, const char *command);
+
+int spd_execute_command(SPDConnection *connection, const char *command);
+int spd_execute_command_with_reply(SPDConnection *connection, const char *command, char **reply);
+int spd_execute_command_wo_mutex(SPDConnection *connection, const char *command);
+char* spd_send_data(SPDConnection *connection, const char *message, int wfr);
+char* spd_send_data_wo_mutex(SPDConnection *connection, const char *message, int wfr);
+
+
+#undef INVOKE_SPEECHD_OR_RETURN_VALUE
+
+// ================================ End of libspeechd.h FUNCTIONS INTERCEPTORS section ================================
 
 
 #endif // ndef NO_A11Y_SPEECHD_ANNOUNCING
