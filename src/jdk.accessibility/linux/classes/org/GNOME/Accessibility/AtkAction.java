@@ -45,6 +45,10 @@ public class AtkAction {
     private AtkAction(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         AccessibleAction accessibleAction = ac.getAccessibleAction();
         if (accessibleAction == null) {
             throw new IllegalArgumentException("AccessibleContext must have AccessibleAction");

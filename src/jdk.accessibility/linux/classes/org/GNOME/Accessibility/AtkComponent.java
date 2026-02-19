@@ -41,6 +41,10 @@ public class AtkComponent {
     private AtkComponent(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         AccessibleComponent accessibleComponent = ac.getAccessibleComponent();
         if (accessibleComponent == null) {
             throw new IllegalArgumentException("AccessibleContext must have AccessibleComponent");

@@ -47,8 +47,17 @@ public class AtkImage {
     private AtkImage(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
+        AccessibleIcon[] icons = ac.getAccessibleIcon();
+        if (icons == null) {
+            throw new IllegalArgumentException("AccessibleContext must have AccessibleIcon");
+        }
+
         this.accessibleContextWeakRef = new WeakReference<AccessibleContext>(ac);
-        this.accessibleIcons = new WeakReference<AccessibleIcon[]>(ac.getAccessibleIcon());
+        this.accessibleIcons = new WeakReference<AccessibleIcon[]>(icons);
     }
 
     // JNI upcalls section

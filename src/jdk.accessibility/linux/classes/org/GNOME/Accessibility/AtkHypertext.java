@@ -40,6 +40,10 @@ public class AtkHypertext extends AtkText {
 
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         AccessibleText accessibleText = ac.getAccessibleText();
         if (accessibleText instanceof AccessibleHypertext accessibleHypertext) {
             accessibleHypertextRef = new WeakReference<AccessibleHypertext>(accessibleHypertext);

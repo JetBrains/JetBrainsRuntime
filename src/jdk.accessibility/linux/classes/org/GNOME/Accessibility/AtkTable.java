@@ -38,6 +38,10 @@ public class AtkTable {
     private AtkTable(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         AccessibleTable accessibleTable = ac.getAccessibleTable();
         if (accessibleTable == null) {
             throw new IllegalArgumentException("AccessibleContext must have AccessibleTable");

@@ -40,6 +40,10 @@ public class AtkTableCell {
     private AtkTableCell(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         Accessible accessibleParent = ac.getAccessibleParent();
         if (accessibleParent == null) {
             throw new IllegalArgumentException("AccessibleContext must have accessibleParent");

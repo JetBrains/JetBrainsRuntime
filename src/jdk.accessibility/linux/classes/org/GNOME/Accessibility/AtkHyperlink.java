@@ -35,6 +35,11 @@ public class AtkHyperlink {
 
     private AtkHyperlink(AccessibleHyperlink accessibleHyperlink) {
         assert EventQueue.isDispatchThread();
+
+        if (accessibleHyperlink == null) {
+            throw new IllegalArgumentException("AccessibleHyperlink must be not null");
+        }
+
         accessibleHyperlinkWeakRef = new WeakReference<AccessibleHyperlink>(accessibleHyperlink);
     }
 

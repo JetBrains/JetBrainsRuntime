@@ -37,6 +37,10 @@ public class AtkSelection {
     private AtkSelection(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         AccessibleSelection accessibleSelection = ac.getAccessibleSelection();
         if (accessibleSelection == null) {
             throw new IllegalArgumentException("AccessibleContext must have AccessibleSelection");

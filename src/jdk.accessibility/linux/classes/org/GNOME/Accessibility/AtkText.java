@@ -37,10 +37,14 @@ public class AtkText {
 
     private final WeakReference<AccessibleContext> accessibleContextWeakRef;
     private final WeakReference<AccessibleText> accessibleTextWeakRef;
-    private final WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef;
+    private final WeakReference<AccessibleEditableText> accessibleEditableTextWeakRef; // May reference null
 
     protected AtkText(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
+
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
 
         this.accessibleContextWeakRef = new WeakReference<AccessibleContext>(ac);
 

@@ -38,6 +38,10 @@ public class AtkValue {
     private AtkValue(AccessibleContext ac) {
         assert EventQueue.isDispatchThread();
 
+        if (ac == null) {
+            throw new IllegalArgumentException("AccessibleContext must be not null");
+        }
+
         AccessibleValue accessibleValue = ac.getAccessibleValue();
         if (accessibleValue == null) {
             throw new IllegalArgumentException("AccessibleContext must have AccessibleValue");
