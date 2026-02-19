@@ -1232,12 +1232,13 @@ static void jaw_table_set_caption(AtkTable *table, AtkObject *caption) {
         g_warning("%s: Failed to find Accessible class", G_STRFUNC);
         return;
     }
-    if (!(*jniEnv)->IsInstanceOf(jniEnv, jcaption->acc_context, accessible)) {
-        return;
-    }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jcaption->acc_context);
     if (obj == NULL) {
         g_warning("%s: jcaption obj == NULL", G_STRFUNC);
+        return;
+    }
+    if (!(*jniEnv)->IsInstanceOf(jniEnv, obj, accessible)) {
+        g_warning("%s: jcaption->acc_context is not instance of accessible", G_STRFUNC);
         return;
     }
 
@@ -1281,14 +1282,14 @@ static void jaw_table_set_summary(AtkTable *table, AtkObject *summary) {
         g_warning("%s: Failed to find Accessible class", G_STRFUNC);
         return;
     }
-    if (!(*jniEnv)->IsInstanceOf(jniEnv, jsummary->acc_context, accessible)) {
-        g_warning("%s: jsummary->acc_context is not instance of accessible",
-                  G_STRFUNC);
-        return;
-    }
     jobject obj = (*jniEnv)->NewLocalRef(jniEnv, jsummary->acc_context);
     if (obj == NULL) {
         g_warning("%s: jsummary obj == NULL", G_STRFUNC);
+        return;
+    }
+    if (!(*jniEnv)->IsInstanceOf(jniEnv, obj, accessible)) {
+        g_warning("%s: jsummary->acc_context is not instance of accessible",
+                  G_STRFUNC);
         return;
     }
 
