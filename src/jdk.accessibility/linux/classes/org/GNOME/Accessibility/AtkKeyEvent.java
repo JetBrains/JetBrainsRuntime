@@ -213,7 +213,6 @@ class GNOMEKeyMapping {
         keyMap.put(KeyEvent.VK_KATAKANA, new GNOMEKeyInfo(0xFF26, "Katakana")); // GDK_Katakana
         keyMap.put(KeyEvent.VK_KANA_LOCK, new GNOMEKeyInfo(0xFF2D, "Kana_Lock")); // GDK_Kana_Lock
         keyMap.put(KeyEvent.VK_KANA, new GNOMEKeyInfo(0xFF2E, "Kana_Shift")); // GDK_Kana_Shift
-        keyMap.put(KeyEvent.VK_KANJI, new GNOMEKeyInfo(0xFF37, "Kanji_Bangou")); // GDK_Kanji_Bangou
 
         keyMap.put(KeyEvent.VK_HOME, new GNOMEKeyInfo(0xFF50, "Home")); // GDK_Home
         keyMap.put(KeyEvent.VK_LEFT, new GNOMEKeyInfo(0xFF51, "Left")); // GDK_Left
