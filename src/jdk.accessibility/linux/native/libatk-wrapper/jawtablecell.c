@@ -581,6 +581,11 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
             jniEnv, jac); // deleting local ref created in the loop
     }
 
+    if (result->len == 0) {
+        g_ptr_array_unref(result);
+        return NULL;
+    }
+
     return result;
 }
 
@@ -643,6 +648,11 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
 
         (*jniEnv)->DeleteLocalRef(
             jniEnv, jac); // deleting local ref created in the loop
+    }
+
+    if (result->len == 0) {
+        g_ptr_array_unref(result);
+        return NULL;
     }
 
     return result;
