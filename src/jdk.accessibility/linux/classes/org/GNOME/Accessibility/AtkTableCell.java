@@ -154,7 +154,7 @@ public class AtkTableCell {
                 int length = iteration.getAccessibleRowCount();
                 AccessibleContext[] result = new AccessibleContext[length];
                 for (int i = 0; i < length; i++) {
-                    Accessible accessible = iteration.getAccessibleAt(0, i);
+                    Accessible accessible = iteration.getAccessibleAt(i, 0);
                     if (accessible != null) {
                         AccessibleContext accessibleContext = accessible.getAccessibleContext();
                         if (accessibleContext != null) {
