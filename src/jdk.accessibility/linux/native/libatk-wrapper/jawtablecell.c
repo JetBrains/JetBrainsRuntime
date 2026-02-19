@@ -550,6 +550,15 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, columnHeaders);
+    if (length < 0) {
+        g_warning("%s: Invalid columnHeaders array length: %d", G_STRFUNC,
+                  length);
+        return NULL;
+    }
+    if (length == 0) {
+        return NULL;
+    }
+
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
@@ -559,6 +568,10 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
     for (jsize i = 0; i < length; i++) {
         jobject jac =
             (*jniEnv)->GetObjectArrayElement(jniEnv, columnHeaders, i);
+        if (jac == NULL) {
+            continue;
+        }
+
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
         if (jaw_impl != NULL) {
             g_ptr_array_add(result, g_object_ref(G_OBJECT(jaw_impl)));
@@ -603,6 +616,14 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
     }
 
     jsize length = (*jniEnv)->GetArrayLength(jniEnv, rowHeaders);
+    if (length < 0) {
+        g_warning("%s: Invalid rowHeaders array length: %d", G_STRFUNC, length);
+        return NULL;
+    }
+    if (length == 0) {
+        return NULL;
+    }
+
     GPtrArray *result = g_ptr_array_sized_new((guint)length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
@@ -611,6 +632,10 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
 
     for (jsize i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, rowHeaders, i);
+        if (jac == NULL) {
+            continue;
+        }
+
         JawImpl *jaw_impl = jaw_impl_find_instance(jniEnv, jac);
         if (jaw_impl != NULL) {
             g_ptr_array_add(result, g_object_ref(G_OBJECT(jaw_impl)));
