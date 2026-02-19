@@ -559,11 +559,19 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
         return NULL;
     }
 
-    GPtrArray *result = g_ptr_array_sized_new((guint)length);
+    GPtrArray *result = g_ptr_array_sized_new(length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
         return NULL;
     }
+
+    /*
+     * Consumed by the ATK D-Bus bridge (message_from_object_array()).
+     * That function only calls g_ptr_array_unref(array) and does not
+     * unref individual elements, so we set g_object_unref as the
+     * array's free func to release contained objects automatically.
+     */
+    g_ptr_array_set_free_func(result, (GDestroyNotify)g_object_unref);
 
     for (jsize i = 0; i < length; i++) {
         jobject jac =
@@ -629,11 +637,19 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
         return NULL;
     }
 
-    GPtrArray *result = g_ptr_array_sized_new((guint)length);
+    GPtrArray *result = g_ptr_array_sized_new(length);
     if (result == NULL) {
         g_warning("%s: Failed to allocate GPtrArray", G_STRFUNC);
         return NULL;
     }
+
+    /*
+     * Consumed by the ATK D-Bus bridge (message_from_object_array()).
+     * That function only calls g_ptr_array_unref(array) and does not
+     * unref individual elements, so we set g_object_unref as the
+     * array's free func to release contained objects automatically.
+     */
+    g_ptr_array_set_free_func(result, (GDestroyNotify)g_object_unref);
 
     for (jsize i = 0; i < length; i++) {
         jobject jac = (*jniEnv)->GetObjectArrayElement(jniEnv, rowHeaders, i);
