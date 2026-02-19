@@ -48,7 +48,6 @@ import sun.util.logging.PlatformLogger;
  * has already been created and the association between the AccessibleContext and the
  * native resource exists.
  */
-@SuppressWarnings("removal")
 public class AtkWrapperDisposer implements Runnable {
     // Reference queue that holds objects ready for garbage collection
     private static final ReferenceQueue<AccessibleContext> queue = new ReferenceQueue<>();
