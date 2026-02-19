@@ -574,7 +574,7 @@ static gint jaw_table_get_column_extent_at(AtkTable *table, gint row,
  *
  * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed
  *
- * Returns: a gchar* representing the column description, or %NULL
+ * Returns: a gint representing the row extent at specified position, or 0
  * if value does not implement this interface.
  **/
 static gint jaw_table_get_row_extent_at(AtkTable *table, gint row,
