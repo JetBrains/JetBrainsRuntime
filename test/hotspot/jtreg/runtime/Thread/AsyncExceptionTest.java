@@ -27,7 +27,7 @@
  * @requires vm.compiler1.enabled | vm.compiler2.enabled
  * @summary Stress delivery of asynchronous exceptions.
  * @library /test/hotspot/jtreg/testlibrary
- * @run main/othervm -Xcomp
+ * @run main/othervm/native -Xcomp
                      -XX:CompileCommand=dontinline,AsyncExceptionTest::internalRun2
                      -XX:CompileCommand=compileonly,AsyncExceptionTest::internalRun1
                      -XX:CompileCommand=compileonly,AsyncExceptionTest::internalRun2
