@@ -250,7 +250,6 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
  * getPosition:
  * @jniEnv: JNI environment pointer.
  * @jatk_table_cell: a Java object implementing the AtkTableCell interface.
- * @classAtkTableCell: the Java class of @jatk_table_cell.
  * @row: (out): return location for the zero-based row index of the cell.
  * @column: (out): return location for the zero-based column index of the cell.
  *
