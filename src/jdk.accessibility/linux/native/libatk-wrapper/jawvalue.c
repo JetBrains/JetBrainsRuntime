@@ -304,7 +304,7 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 /**
  * atk_value_set_value:
  * @obj: a GObject instance that implements AtkValueIface
- * @new_value: a double which is the desired new accessible value.
+ * @value: a double which is the desired new accessible value.
  *
  * Sets the value of this object.
  *

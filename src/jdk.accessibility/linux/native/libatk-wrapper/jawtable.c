@@ -397,9 +397,9 @@ static gint jaw_table_get_index_at(AtkTable *table, gint row, gint column) {
 /**
  * jaw_table_get_column_at_index:
  * @table: a GObject instance that implements AtkTableInterface
- * @index_: a #gint representing an index in @table
+ * @index: a #gint representing an index in @table
  *
- * Gets a #gint representing the column at the specified @index_.
+ * Gets a #gint representing the column at the specified @index.
  *
  * Deprecated in atk: Since 2.12.
  *
@@ -432,9 +432,9 @@ static gint jaw_table_get_column_at_index(AtkTable *table, gint index) {
 /**
  * atk_table_get_row_at_index:
  * @table: a GObject instance that implements AtkTableInterface
- * @index_: a #gint representing an index in @table
+ * @index: a #gint representing an index in @table
  *
- * Gets a #gint representing the row at the specified @index_.
+ * Gets a #gint representing the row at the specified @index.
  *
  * Deprecated in atk: since 2.12.
  *

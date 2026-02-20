@@ -235,22 +235,22 @@ static guint jaw_util_add_key_event_listener(AtkKeySnoopFunc listener,
 
 /**
  * jaw_util_remove_key_event_listener:
- * @listener_id: the id of the event listener to remove
+ * @remove_listener_id: the id of the event listener to remove
  *
- * @listener_id is the value returned by #atk_add_key_event_listener
+ * @remove_listener_id is the value returned by #atk_add_key_event_listener
  * when you registered that event listener.
  *
  * Removes the specified event listener.
  **/
-static void jaw_util_remove_key_event_listener(guint remove_listener) {
-    JAW_DEBUG("%u", remove_listener);
+static void jaw_util_remove_key_event_listener(guint remove_listener_id) {
+    JAW_DEBUG("%u", remove_listener_id);
     gpointer *value = g_hash_table_lookup(key_listener_list,
-                                          GUINT_TO_POINTER(remove_listener));
+                                          GUINT_TO_POINTER(remove_listener_id));
     if (value) {
         g_free(value);
     }
 
-    g_hash_table_remove(key_listener_list, GUINT_TO_POINTER(remove_listener));
+    g_hash_table_remove(key_listener_list, GUINT_TO_POINTER(remove_listener_id));
 }
 
 /**

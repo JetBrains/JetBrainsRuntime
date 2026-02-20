@@ -292,7 +292,7 @@ static AtkObject *jaw_hyperlink_get_object(AtkHyperlink *atk_hyperlink,
 
 /**
  * atk_hyperlink_get_end_index:
- * @link_: an #AtkHyperlink
+ * @atk_hyperlink: an #AtkHyperlink
  *
  * Gets the index with the hypertext document at which this link ends.
  *
@@ -330,7 +330,7 @@ static gint jaw_hyperlink_get_end_index(AtkHyperlink *atk_hyperlink) {
 
 /**
  * jaw_hyperlink_get_start_index:
- * @link_: an #AtkHyperlink
+ * @atk_hyperlink: an #AtkHyperlink
  *
  * Gets the index with the hypertext document at which this link begins.
  *
@@ -368,7 +368,7 @@ static gint jaw_hyperlink_get_start_index(AtkHyperlink *atk_hyperlink) {
 
 /**
  * jaw_hyperlink_is_valid:
- * @link_: an #AtkHyperlink
+ * @atk_hyperlink: an #AtkHyperlink
  *
  * Since the document that a link is associated with may have changed
  * this method returns %TRUE if the link is still valid (with
@@ -406,7 +406,7 @@ static gboolean jaw_hyperlink_is_valid(AtkHyperlink *atk_hyperlink) {
 
 /**
  * jaw_hyperlink_get_n_anchors:
- * @link_: an #AtkHyperlink
+ * @atk_hyperlink: an #AtkHyperlink
  *
  * Gets the number of anchors associated with this hyperlink.
  *
