@@ -434,27 +434,29 @@ static gboolean
 jaw_editable_text_set_run_attributes(AtkEditableText *text,
                                      AtkAttributeSet *attrib_set,
                                      gint start_offset, gint end_offset) {
-    JAW_DEBUG("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
-
-    if (text == NULL || attrib_set == NULL) {
-        g_warning("%s: Null argument passed to the function", G_STRFUNC);
-        return FALSE;
-    }
-
-    JAW_GET_EDITABLETEXT(
-        text, FALSE); // create local JNI reference `jobject atk_editable_text`
-
     // TODO: make a proper conversion between attrib_set and swing AttributeSet,
     // current implementation is incorrect
-    jboolean jresult = (*jniEnv)->CallBooleanMethod(
-        jniEnv, atk_editable_text, cachedEditableTextSetRunAttributesMethod,
-        (jobject)attrib_set, (jint)start_offset, (jint)end_offset);
-    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        jaw_jni_clear_exception(jniEnv);
-        return FALSE;
-    }
 
-    return jresult;
+    JAW_DEBUG("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
+    return FALSE;
+
+//    if (text == NULL || attrib_set == NULL) {
+//        g_warning("%s: Null argument passed to the function", G_STRFUNC);
+//        return FALSE;
+//    }
+//
+//    JAW_GET_EDITABLETEXT(
+//        text, FALSE); // create local JNI reference `jobject atk_editable_text`
+//
+//    jboolean jresult = (*jniEnv)->CallBooleanMethod(
+//        jniEnv, atk_editable_text, cachedEditableTextSetRunAttributesMethod,
+//        (jobject)attrib_set, (jint)start_offset, (jint)end_offset);
+//    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+//        jaw_jni_clear_exception(jniEnv);
+//        return FALSE;
+//    }
+//
+//    return jresult;
 }
 
 static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
