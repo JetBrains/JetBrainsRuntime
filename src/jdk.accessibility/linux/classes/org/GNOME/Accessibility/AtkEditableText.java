@@ -121,17 +121,14 @@ public class AtkEditableText extends AtkText {
             return;
         }
 
-        int charCount = AtkUtil.invokeInSwingAndWait(() -> {
-            return accessibleEditableText.getCharCount();
-        }, -1);
-
-        if (charCount == -1) {
-            return;
-        }
-
-        final int rightStart = getRightStart(start);
-        final int rightEnd = getRightEnd(rightStart, end, charCount);
         AtkUtil.invokeInSwing(() -> {
+            int charCount = accessibleEditableText.getCharCount();
+            if (charCount == -1) {
+                return;
+            }
+
+            int rightStart = getRightStart(start);
+            int rightEnd = getRightEnd(rightStart, end, charCount);
             String textRange = accessibleEditableText.getTextRange(rightStart, rightEnd);
             if (textRange != null) {
                 StringSelection stringSelection = new StringSelection(textRange);
