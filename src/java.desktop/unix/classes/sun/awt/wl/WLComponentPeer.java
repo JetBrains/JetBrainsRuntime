@@ -1770,7 +1770,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // Popups have their initial size communicated to Wayland even before they are shown,
             // so it is highly likely that they won't get the initial paint event because of
             // the size change from target.setSize() above.
-            postPaintEvent();
+            repaintPeer(new Rectangle(0, 0, getWidth(), getHeight()));
         }
     }
 
@@ -2257,6 +2257,10 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         public String toString() {
             return "WLSize[client=" + javaSize + ", pixel=" + pixelSize + ", surface=" + surfaceSize + "]";
         }
+    }
+
+    public void repaintPeer(Rectangle r) {
+        // Actual implementation is in WLWindowPeer
     }
 
     public LWMouseEventDispatcher getMouseEventDispatcher() {
