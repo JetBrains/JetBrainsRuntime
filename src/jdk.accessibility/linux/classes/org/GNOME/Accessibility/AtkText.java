@@ -273,29 +273,21 @@ public class AtkText {
 
     /**
      * Gets the end position of a paragraph given its start position.
-     * Paragraphs are defined as text blocks separated by newlines.
+     * Paragraphs are defined as text blocks separated by blank lines (double newlines).
      *
      * @param start The start position of the paragraph
      * @param text  The full text to search within
-     * @return The end position of the paragraph (position of newline or end of text)
+     * @return The end position of the paragraph (position before blank line or end of text)
      */
     private int getParagraphEndFromStart(int start, String text) {
         if (text == null || text.isEmpty()) {
             return 0;
         }
 
-        int length = text.length();
-        if (start < 0) start = 0;
-        if (start >= length) return length;
+        start = Math.max(0, Math.min(start, text.length()));
 
-        int pos = start;
-        while (pos < length) {
-            if (text.charAt(pos) == '\n') {
-                return pos;
-            }
-            pos++;
-        }
-        return length;
+        int index = text.indexOf("\n\n", start);
+        return (index != -1) ? index : text.length();
     }
 
     @Deprecated
