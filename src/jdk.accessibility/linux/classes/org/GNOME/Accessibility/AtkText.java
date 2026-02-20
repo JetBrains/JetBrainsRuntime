@@ -112,36 +112,6 @@ public class AtkText {
         return wordStart;
     }
 
-    // Currently unused.
-    private int getNextWordStart(int offset, String text) {
-        if (text == null || text.isEmpty()) {
-            return BreakIterator.DONE;
-        }
-
-        int length = text.length();
-
-        if (offset < 0) {
-            offset = 0;
-        } else if (offset > length) {
-            offset = length;
-        }
-
-        BreakIterator words = BreakIterator.getWordInstance();
-        words.setText(text);
-        int segmentStart = words.following(offset);
-        int segmentEnd = words.next();
-
-        while (segmentEnd != BreakIterator.DONE) {
-            for (int i = segmentStart; i < segmentEnd; i++) {
-                if (Character.isLetter(text.codePointAt(i))) {
-                    return segmentStart;
-                }
-            }
-            segmentStart = segmentEnd;
-            segmentEnd = words.next();
-        }
-
-        return BreakIterator.DONE;
     }
 
     private int getPreviousWordStart(int offset, String text) {
@@ -211,24 +181,6 @@ public class AtkText {
     }
 
     /**
-     * Gets the start position of the next sentence after the given offset.
-     *
-     * @param offset The character offset within the text
-     * @param text   The full text to search within
-     * @return The start position of the next sentence, or BreakIterator.DONE if not found
-     */
-    private int getNextSentenceStart(int offset, String text) {
-        if (text == null || text.isEmpty()) {
-            return BreakIterator.DONE;
-        }
-
-        BreakIterator sentences = BreakIterator.getSentenceInstance();
-        sentences.setText(text);
-
-        return sentences.following(offset);
-    }
-
-    /**
      * Gets the start position of the previous sentence before the given offset.
      *
      * @param offset The character offset within the text
@@ -291,26 +243,6 @@ public class AtkText {
         return 0;
     }
 
-    private int getNextLineStart(int offset, String str) {
-        int max = str.length();
-        while (offset < max) {
-            if (str.charAt(offset) == '\n')
-                return offset + 1;
-            offset += 1;
-        }
-        return offset;
-    }
-
-    private int getPreviousLineStart(int offset, String str) {
-        offset -= 2;
-        while (offset >= 0) {
-            if (str.charAt(offset) == '\n')
-                return offset + 1;
-            offset -= 1;
-        }
-        return 0;
-    }
-
     /**
      * Gets the end position of a line given its start position.
      *
@@ -337,27 +269,6 @@ public class AtkText {
         return length;
     }
 
-    private int getNextLineEnd(int offset, String str) {
-        int max = str.length();
-        offset += 1;
-        while (offset < max) {
-            if (str.charAt(offset) == '\n')
-                return offset;
-            offset += 1;
-        }
-        return offset;
-    }
-
-    private int getPreviousLineEnd(int offset, String str) {
-        offset -= 1;
-        while (offset >= 0) {
-            if (str.charAt(offset) == '\n')
-                return offset;
-            offset -= 1;
-        }
-        return 0;
-    }
-
     /**
      * Gets the start position of the paragraph that contains the given offset.
      * Paragraphs are defined as text blocks separated by newlines.
@@ -382,28 +293,6 @@ public class AtkText {
                 return pos;
             }
             pos--;
-        }
-        return 0;
-    }
-
-    private int getNextParagraphStart(int offset, String str) {
-        int max = str.length();
-        while (offset < max) {
-            if (offset < max - 1 && str.charAt(offset) == '\n' && str.charAt(offset + 1) == '\n') {
-                return offset + 2;
-            }
-            offset += 1;
-        }
-        return offset;
-    }
-
-    private int getPreviousParagraphStart(int offset, String str) {
-        offset -= 2;
-        while (offset >= 0) {
-            if (offset > 0 && str.charAt(offset) == '\n' && str.charAt(offset - 1) == '\n') {
-                return offset + 1;
-            }
-            offset -= 1;
         }
         return 0;
     }
