@@ -325,18 +325,12 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
         g_warning("%s: jniEnv is NULL", G_STRFUNC);
         return NULL;
     }
-    jobject atk_table = (*jniEnv)->NewGlobalRef(jniEnv, data->atk_table);
-    if (atk_table == NULL) {
-        g_warning("%s: atk_table is NULL", G_STRFUNC);
-        return NULL;
-    }
 
     jobject jac = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_table, cachedTableRefAtMethod, (jint)row, (jint)column);
+        jniEnv, data->atk_table, cachedTableRefAtMethod, (jint)row, (jint)column);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
         jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to create jac using ref_at method", G_STRFUNC);
-        (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
         return NULL;
     }
 
@@ -348,8 +342,6 @@ static AtkObject *jaw_table_ref_at(AtkTable *table, gint row, gint column) {
     if (jaw_impl != NULL) {
         g_object_ref(G_OBJECT(jaw_impl));
     }
-
-    (*jniEnv)->DeleteGlobalRef(jniEnv, atk_table);
 
     return ATK_OBJECT(jaw_impl);
 }
