@@ -589,7 +589,6 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         }
         super.postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
         childPeers.repaintChildren(toPaint, getContentSize());
-        SunToolkit.executeOnEventHandlerThread(new PeerEvent(getTarget(), () -> updateWindow(), PeerEvent.LOW_PRIORITY_EVENT));
     }
 
     @Override
