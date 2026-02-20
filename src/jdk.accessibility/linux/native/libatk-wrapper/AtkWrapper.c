@@ -276,6 +276,15 @@ Java_org_GNOME_Accessibility_AtkWrapper_createNativeResources(JNIEnv *jniEnv,
     return (jlong)jaw_impl;
 }
 
+static gboolean unref_handler(gpointer p) {
+    JAW_DEBUG("%p", p);
+    JawImpl *jaw_impl = (JawImpl *)p;
+    if (jaw_impl != NULL) {
+        g_object_unref(G_OBJECT(jaw_impl));
+    }
+    return G_SOURCE_REMOVE;
+}
+
 JNIEXPORT void JNICALL
 Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(
     JNIEnv *jniEnv, jclass jClass, jlong reference) {
@@ -285,7 +294,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_releaseNativeResources(
         g_warning("%s: jaw_impl is NULL", G_STRFUNC);
         return;
     }
-    g_object_unref(G_OBJECT(jaw_impl));
+    jni_main_idle_add(unref_handler, jaw_impl);
 }
 
 static CallbackPara *alloc_callback_para(JNIEnv *jniEnv, jobject ac) {
