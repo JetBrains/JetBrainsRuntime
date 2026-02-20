@@ -410,7 +410,9 @@ public class AtkText {
             StringBuilder builder = new StringBuilder();
             for (int i = rightStart; i <= rightEnd - 1; i++) {
                 String textAtIndex = accessibleText.getAtIndex(AccessibleText.CHARACTER, i);
-                builder.append(textAtIndex);
+                if (textAtIndex != null) {
+                    builder.append(textAtIndex);
+                }
             }
             return builder.toString();
         }, null);
