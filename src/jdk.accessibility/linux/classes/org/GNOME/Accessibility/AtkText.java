@@ -294,7 +294,7 @@ public class AtkText {
     private StringSequence getTextAtOffset(int offset,
                                            int boundaryType) {
         int characterCount = get_character_count();
-        if (offset < 0 || offset > characterCount) {
+        if (characterCount < 0 || offset < 0 || offset > characterCount) {
             return null;
         }
 
@@ -791,7 +791,7 @@ public class AtkText {
      */
     private StringSequence get_string_at_offset(int offset, int granularity) {
         int characterCount = get_character_count();
-        if (offset < 0 || offset >= characterCount) {
+        if (characterCount < 0 || offset < 0 || offset >= characterCount) {
             return null;
         }
 
