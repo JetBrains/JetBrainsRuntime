@@ -483,7 +483,7 @@ public class AtkText {
                 return accessibleExtendedText.getTextRange(rightStart, rightEnd);
             }
             StringBuilder builder = new StringBuilder();
-            for (int i = rightStart; i <= rightEnd - 1; i++) {
+            for (int i = rightStart; i < rightEnd; i++) {
                 String textAtIndex = accessibleText.getAtIndex(AccessibleText.CHARACTER, i);
                 if (textAtIndex != null) {
                     builder.append(textAtIndex);
