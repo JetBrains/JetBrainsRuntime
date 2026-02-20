@@ -238,7 +238,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env,
         g_error_free(err);
 
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
-        jaw_vdc_clear_last_ac(jniEnv);
+        jaw_vdc_clear_last_ac(env);
         pthread_mutex_unlock(&jaw_vdc_dup_mutex);
 
         atk_bridge_adaptor_cleanup();
