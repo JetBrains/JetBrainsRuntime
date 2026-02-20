@@ -432,6 +432,11 @@ public class AtkText {
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
+            int charCount = accessibleText.getCharCount();
+            if (offset < 0 || offset >= charCount) {
+                return '\0';
+            }
+
             String textAtOffset = accessibleText.getAtIndex(AccessibleText.CHARACTER, offset);
             if (textAtOffset == null || textAtOffset.isEmpty()) {
                 return '\0';
