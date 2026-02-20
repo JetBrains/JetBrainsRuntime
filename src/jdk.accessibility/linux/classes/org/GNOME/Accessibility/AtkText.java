@@ -645,12 +645,12 @@ public class AtkText {
     private int get_character_count() {
         AccessibleText accessibleText = accessibleTextWeakRef.get();
         if (accessibleText == null) {
-            return 0;
+            return -1;
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             return accessibleText.getCharCount();
-        }, 0);
+        }, -1);
     }
 
     /**
