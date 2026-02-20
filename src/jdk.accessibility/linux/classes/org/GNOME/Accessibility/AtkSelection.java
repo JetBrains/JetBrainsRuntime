@@ -80,7 +80,7 @@ public class AtkSelection {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             accessibleSelection.addAccessibleSelection(index);
-            return is_child_selected(index);
+            return accessibleSelection.isAccessibleChildSelected(index);
         }, false);
     }
 
@@ -188,7 +188,7 @@ public class AtkSelection {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             accessibleSelection.removeAccessibleSelection(i);
-            return !is_child_selected(i);
+            return !accessibleSelection.isAccessibleChildSelected(i);
         }, false);
     }
 
