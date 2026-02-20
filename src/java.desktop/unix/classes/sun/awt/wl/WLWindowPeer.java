@@ -577,8 +577,8 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     }
 
     @Override
-    public void postPaintEvent(int x, int y, int w, int h) {
-        repaintPeer(new Rectangle(x, y, w, h));
+    void postPaintEvent() {
+        repaintPeer(new Rectangle(0, 0, getWidth(), getHeight()));
     }
 
     @Override
@@ -587,9 +587,13 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         if (!isShowing() || toPaint.isEmpty()) {
             return;
         }
-        super.postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
-        childPeers.repaintChildren(toPaint, getContentSize());
+        postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
+        postChildPaintEvents(toPaint);
         SunToolkit.executeOnEventHandlerThread(new PeerEvent(getTarget(), () -> updateWindow(), PeerEvent.LOW_PRIORITY_EVENT));
+    }
+
+    protected void postChildPaintEvents(Rectangle r) {
+        childPeers.repaintChildren(r, getContentSize());
     }
 
     @Override
