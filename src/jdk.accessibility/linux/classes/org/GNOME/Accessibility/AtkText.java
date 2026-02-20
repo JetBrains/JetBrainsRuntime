@@ -652,7 +652,7 @@ public class AtkText {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             // Java AccessibleText only supports a single selection, so reject if one already exists
-            if (accessibleText.getSelectedText() != null) {
+            if (accessibleText.getSelectedText() != null && accessibleText.getSelectionStart() != accessibleText.getSelectionEnd()) {
                 return false;
             }
 
