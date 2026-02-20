@@ -27,6 +27,7 @@
 #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
 #include "jvm_io.h"         // jio_fprintf
+#include "jvm_md.h"         // VERSIONED_JNI_LIB_NAME
 #include "debug_assert.h"   // DASSERT
 #include <libspeechd.h>
 #include <stdbool.h>        // bool, true, false
@@ -95,8 +96,8 @@ static bool TryLoadSpeechd(void)
 
 static void LoadSpeechdOnceImpl(void)
 {
-    // Currently we're only supporting .so.2
-    static const char *soName = "libspeechd.so.2";
+    // Currently we're only supporting version 2
+    static const char *soName = VERSIONED_JNI_LIB_NAME("speechd", "2");
 
     libspeechd_libhandle = dlopen(soName, RTLD_LAZY | RTLD_LOCAL);
     if (libspeechd_libhandle == NULL)
