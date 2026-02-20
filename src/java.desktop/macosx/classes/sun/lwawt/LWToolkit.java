@@ -246,6 +246,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ButtonPeer createButton(Button target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createButton(target, platformComponent);
+    }
+
+    public static ButtonPeer createButton(Button target, PlatformComponent platformComponent) {
         LWButtonPeer peer = new LWButtonPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -255,6 +259,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final CheckboxPeer createCheckbox(Checkbox target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createCheckbox(target, platformComponent);
+    }
+
+    public static CheckboxPeer createCheckbox(Checkbox target, PlatformComponent platformComponent) {
         LWCheckboxPeer peer = new LWCheckboxPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -264,6 +272,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ChoicePeer createChoice(Choice target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createChoice(target, platformComponent);
+    }
+
+    public static ChoicePeer createChoice(Choice target, PlatformComponent platformComponent) {
         LWChoicePeer peer = new LWChoicePeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -273,6 +285,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final LabelPeer createLabel(Label target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createLabel(target, platformComponent);
+    }
+
+    public static LabelPeer createLabel(Label target, PlatformComponent platformComponent) {
         LWLabelPeer peer = new LWLabelPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -291,6 +307,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ListPeer createList(List target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createList(target, platformComponent);
+    }
+
+    public static ListPeer createList(List target, PlatformComponent platformComponent) {
         LWListPeer peer = new LWListPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -300,6 +320,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final PanelPeer createPanel(Panel target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createPanel(target, platformComponent);
+    }
+
+    public static PanelPeer createPanel(Panel target, PlatformComponent platformComponent) {
         LWPanelPeer peer = new LWPanelPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -309,6 +333,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ScrollPanePeer createScrollPane(ScrollPane target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createScrollPane(target, platformComponent);
+    }
+
+    public static ScrollPanePeer createScrollPane(ScrollPane target, PlatformComponent platformComponent) {
         LWScrollPanePeer peer = new LWScrollPanePeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -318,6 +346,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final ScrollbarPeer createScrollbar(Scrollbar target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createScrollbar(target, platformComponent);
+    }
+
+    public static ScrollbarPeer createScrollbar(Scrollbar target, PlatformComponent platformComponent) {
         LWScrollBarPeer peer = new LWScrollBarPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -327,6 +359,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final TextAreaPeer createTextArea(TextArea target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createTextArea(target, platformComponent);
+    }
+
+    public static TextAreaPeer createTextArea(TextArea target, PlatformComponent platformComponent) {
         LWTextAreaPeer peer = new LWTextAreaPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
@@ -336,6 +372,10 @@ public abstract class LWToolkit extends SunToolkit implements Runnable {
     @Override
     public final TextFieldPeer createTextField(TextField target) {
         PlatformComponent platformComponent = createPlatformComponent();
+        return createTextField(target, platformComponent);
+    }
+
+    public static TextFieldPeer createTextField(TextField target, PlatformComponent platformComponent) {
         LWTextFieldPeer peer = new LWTextFieldPeer(target, platformComponent);
         targetCreatedPeer(target, peer);
         peer.initialize();
