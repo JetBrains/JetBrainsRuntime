@@ -45,6 +45,7 @@ import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import java.awt.AWTEvent;
 import java.awt.AWTException;
 import java.awt.BufferCapabilities;
@@ -120,6 +121,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean resizePending = false; // protected by stateLock
 
     protected LWMouseEventDispatcher mouseEventDispatcher;
+
+    private static final int COMMIT_DEBOUNCE_MS = Integer.parseInt(System.getProperty("sun.awt.wl.CommitDelayMs", "10"));
+    private Timer commitDebounceTimer;
 
     private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
     private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
@@ -658,6 +662,18 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * the displaying buffer is ready to accept new data.
      */
     public void commitToServer() {
+        if (COMMIT_DEBOUNCE_MS <= 0) {
+            doCommitToServer();
+            return;
+        }
+        if (commitDebounceTimer == null) {
+            commitDebounceTimer = new Timer(COMMIT_DEBOUNCE_MS, e -> doCommitToServer());
+            commitDebounceTimer.setRepeats(false);
+        }
+        commitDebounceTimer.restart();
+    }
+
+    private void doCommitToServer() {
         performLocked(() -> {
             if (wlSurface != null) {
                 shadow.paint();
@@ -1041,6 +1057,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void dispose() {
+        if (commitDebounceTimer != null) {
+            commitDebounceTimer.stop();
+        }
         WLToolkit.targetDisposedPeer(target, this);
 
         performLocked(() -> {
