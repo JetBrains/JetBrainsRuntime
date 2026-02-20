@@ -516,7 +516,7 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    char *result = private_jaw_text_get_gtext_from_string_seq(
+    gchar *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
     return result;
@@ -568,7 +568,7 @@ static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    char *result = private_jaw_text_get_gtext_from_string_seq(
+    gchar *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
     return result;
@@ -651,7 +651,7 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
         return NULL;
     }
 
-    char *result = private_jaw_text_get_gtext_from_string_seq(
+    gchar *result = private_jaw_text_get_gtext_from_string_seq(
         jniEnv, jStrSeq, start_offset, end_offset);
 
     return result;
