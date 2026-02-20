@@ -151,8 +151,8 @@ AWT_ASSERT_APPKIT_THREAD;
     glViewport(0, 0, textureWidth, textureHeight);
 
     (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInCGLContext);
-    CHECK_EXCEPTION();
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    CHECK_EXCEPTION();
 
     // Call super to finalize the drawing. By default all it does is call glFlush().
     [super drawInCGLContext:glContext pixelFormat:pixelFormat forLayerTime:timeInterval displayTime:timeStamp];

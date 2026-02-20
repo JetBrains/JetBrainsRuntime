@@ -32,7 +32,9 @@
 #import <Cocoa/Cocoa.h>
 
 /* Define to 1 to check for pending exceptions in JNI_COCOA_EXIT */
-#define CHECK_PENDING_EXCEPTION 0
+#define CHECK_PENDING_EXCEPTION     1
+
+#define FORCE_LOG_EXCEPTION         1
 
 /********        LOGGING SUPPORT    *********/
 
@@ -48,7 +50,7 @@
                   (*env)->ExceptionDescribe(env); \
            } \
        } \
-       [NSException raise:NSGenericException format:@"JNI Lookup Exception"];  \
+       [NSException raise:NSGenericException format:@"JNI Lookup Exception [%s]", name]; \
     }
 
 /********        GET CLASS SUPPORT    *********/
@@ -188,14 +190,20 @@
 #define CHECK_EXCEPTION_IN_ENV(env) { \
     jthrowable exc = (*(env))->ExceptionOccurred(env); \
     if (exc != NULL) { \
+        if (FORCE_LOG_EXCEPTION) { \
+            /* report exception in stderr */ \
+            (*(env))->ExceptionDescribe(env); \
+            /* TODO: use unified logging */ \
+            NSLog(@"%@", [NSThread callStackSymbols]); \
+        } \
         if ([NSThread isMainThread]) { \
             if (getenv("JNU_APPKIT_TRACE")) { \
                 (*(env))->ExceptionDescribe(env); \
                 NSLog(@"%@", [NSThread callStackSymbols]); \
-              } \
+            } \
         } \
         (*env)->ExceptionClear(env); \
-        if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) {\
+        if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) { \
             [NSException raise:NSGenericException \
                         format:@"%@", ThrowableToNSString(env, exc)]; \
         } \

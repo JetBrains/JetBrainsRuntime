@@ -23,6 +23,7 @@
  * questions.
  */
 
+#import <dispatch/dispatch.h>
 #import <sys/sysctl.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
@@ -31,6 +32,7 @@
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
+#import "ThreadUtilities.h"
 
 #define MAX_DRAWABLE    3
 #define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
@@ -172,6 +174,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     return self;
 }
 
++ (void) releaseLayer:(MTLLayer*)layer {
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        [layer release];
+    }];
+}
+
 - (void) blitTexture {
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
         self.ctx.device == nil)
@@ -278,40 +286,49 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             if (@available(macOS 10.15.4, *)) {
                 [self retain];
                 [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
-                    // note: called anyway even if drawable.present() not called!
-                    const CFTimeInterval presentedTime = drawable.presentedTime;
-                    if (presentedTime != 0.0) {
-                        if (self.perfCountersEnabled) {
-                            [self countFramePresentedCallback];
-                        }
+                    // TODO:
+                    //NSLog(@"PresentedHandler: thread : %@", [NSThread currentThread]);
+                    @try {
+                        // note: called anyway even if drawable.present() not called!
+                        const CFTimeInterval presentedTime = drawable.presentedTime;
+                        if (presentedTime != 0.0) {
+                            if (self.perfCountersEnabled) {
+                                [self countFramePresentedCallback];
+                            }
 #if TRACE_DISPLAY_ON
-                        const CFTimeInterval now = CACurrentMediaTime();
-                        const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
-                        const CFTimeInterval frameInterval = (self.lastPresentedTime != 0.0) ? (presentedTime - self.lastPresentedTime) : -1.0;
-                        J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                                      "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) presented"
-                                      " - presentedHandlerLatency = %.3lf ms frameInterval = %.3lf ms",
-                                      CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
-                                      1000.0 * presentedHandlerLatency, 1000.0 * frameInterval
-                        );
-                        self.lastPresentedTime = presentedTime;
-#endif
-                    } else {
-                        if (self.perfCountersEnabled) {
-                            [self countFrameDroppedCallback];
-                        }
-                        if (TRACE_DISPLAY) {
                             const CFTimeInterval now = CACurrentMediaTime();
                             const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
+                            const CFTimeInterval frameInterval = (self.lastPresentedTime != 0.0) ? (presentedTime - self.lastPresentedTime) : -1.0;
                             J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                                          "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) skipped"
-                                          " - presentedHandlerLatency = %.3lf ms",
+                                          "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) presented"
+                                          " - presentedHandlerLatency = %.3lf ms frameInterval = %.3lf ms",
                                           CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
-                                          1000.0 * presentedHandlerLatency
+                                          1000.0 * presentedHandlerLatency, 1000.0 * frameInterval
                             );
+                            self.lastPresentedTime = presentedTime;
+#endif
+                        } else {
+                            if (self.perfCountersEnabled) {
+                                [self countFrameDroppedCallback];
+                            }
+                            if (TRACE_DISPLAY) {
+                                const CFTimeInterval now = CACurrentMediaTime();
+                                const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
+                                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                                              "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) skipped"
+                                              " - presentedHandlerLatency = %.3lf ms",
+                                              CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
+                                              1000.0 * presentedHandlerLatency
+                                );
+                            }
                         }
+                    } @catch (NSException *exception) {
+                        // report exception to the NSApplicationAWT exception handler:
+                        NSAPP_AWT_REPORT_EXCEPTION(exception, NO);
+                    } @finally {
+                        // ensure releasing on main thread:
+                        [MTLLayer releaseLayer:self];
                     }
-                    [self release];
                 }];
             }
             // Present drawable:
@@ -342,7 +359,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                         self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
                     }
                 }
-                [self release];
+                // ensure releasing on main thread:
+                [MTLLayer releaseLayer:self];
             }];
 
             [commandBuf commit];
@@ -383,7 +401,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     }
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
-    self.javaLayer = nil;
+    self.javaLayer = NULL;
     [self stopRedraw:YES];
     self.buffer = NULL;
     self.outBuffer = NULL;
@@ -394,6 +412,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void) blitCallback {
     AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+    JNI_COCOA_ENTER(env);
     GET_MTL_LAYER_CLASS();
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
 
@@ -405,6 +424,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     const CFTimeInterval beforeMethod = CACurrentMediaTime();
 
     (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
+    (*env)->DeleteLocalRef(env, javaLayerLocalRef);
     CHECK_EXCEPTION();
 
     const CFTimeInterval drawInMTLContextLatency = (CACurrentMediaTime() - beforeMethod);
@@ -413,7 +433,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
         }
     }
-    (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    JNI_COCOA_EXIT(env);
 }
 
 - (void) display {
@@ -482,7 +502,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [self retain];
     [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
         [self startRedraw];
-        [self release];
+        // ensure releasing on main thread:
+        [MTLLayer releaseLayer:self];
     }];
     [commandbuf commit];
 }
@@ -504,7 +525,8 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
                                        waitUntilDone:NO useJavaModes:NO]; // critical
             }
-            [self release];
+            // ensure releasing on main thread:
+            [MTLLayer releaseLayer:self];
         }];
 
         [commandbuf commit];
@@ -524,46 +546,90 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     }
 }
 
-- (void) countFramePresentedCallback {
-    // attach the current thread to the JVM if necessary, and get an env
-    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
-    GET_MTL_LAYER_CLASS();
-    DECLARE_METHOD(jm_countNewFrame, jc_JavaLayer, "countNewFrame", "()V");
-
-    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
-    if (javaLayerLocalRef != NULL) {
-        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countNewFrame);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
-    }
+#define CHECK_LAYER(caller) { \
+    if (self.ctx == NULL || self.javaLayer == NULL || self.ctx.device == nil) \
+    { \
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, \
+                      "MTLLayer.%s: uninitialized (mtlc=%p, javaLayer=%p, device=%p)", \
+                      caller, self.ctx, self.javaLayer, self.ctx.device); \
+        return; \
+    } \
 }
 
 - (void) addStatCallback:(int)type value:(double)value {
-    // attach the current thread to the JVM if necessary, and get an env
-    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
-    GET_MTL_LAYER_CLASS();
-    DECLARE_METHOD(jm_addStatFrame, jc_JavaLayer, "addStat", "(ID)V");
+    AWT_ASSERT_APPKIT_THREAD;
+    CHECK_LAYER("addStatCallback");
 
-    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
-    if (javaLayerLocalRef != NULL) {
-        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_addStatFrame, (jint)type, (jdouble)value);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
-    }
+    [self retain];
+    JNI_SUBMIT_ASYNC(^{
+        // Reuse a single JNIEnv:
+        JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+        JNI_COCOA_ENTER(env);
+        GET_MTL_LAYER_CLASS();
+        DECLARE_METHOD(jm_addStatFrame, jc_JavaLayer, "addStat", "(ID)V");
+
+        if (self.javaLayer != NULL) {
+            jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+            if (javaLayerLocalRef != NULL) {
+                (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_addStatFrame, (jint)type, (jdouble)value);
+                (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+                CHECK_EXCEPTION();
+            }
+        }
+        JNI_COCOA_EXIT(env);
+        // ensure releasing on main thread:
+        [MTLLayer releaseLayer:self];
+    });
+}
+
+- (void) countFramePresentedCallback {
+    CHECK_LAYER("countFramePresentedCallback");
+
+    [self retain];
+    JNI_SUBMIT_ASYNC(^{
+        // Reuse a single JNIEnv:
+        JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+        JNI_COCOA_ENTER(env);
+        GET_MTL_LAYER_CLASS();
+        DECLARE_METHOD(jm_countNewFrame, jc_JavaLayer, "countNewFrame", "()V");
+
+        if (self.javaLayer != NULL) {
+            jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+            if (javaLayerLocalRef != NULL) {
+                (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countNewFrame);
+                (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+                CHECK_EXCEPTION();
+            }
+        }
+        JNI_COCOA_EXIT(env);
+        // ensure releasing on main thread:
+        [MTLLayer releaseLayer:self];
+    });
 }
 
 - (void) countFrameDroppedCallback {
-    // attach the current thread to the JVM if necessary, and get an env
-    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
-    GET_MTL_LAYER_CLASS();
-    DECLARE_METHOD(jm_countDroppedFrame, jc_JavaLayer, "countDroppedFrame", "()V");
+    CHECK_LAYER("countFrameDroppedCallback");
 
-    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
-    if (javaLayerLocalRef != NULL) {
-        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countDroppedFrame);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
-    }
+    [self retain];
+    JNI_SUBMIT_ASYNC(^{
+        // Reuse a single JNIEnv:
+        JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+        JNI_COCOA_ENTER(env);
+        GET_MTL_LAYER_CLASS();
+        DECLARE_METHOD(jm_countDroppedFrame, jc_JavaLayer, "countDroppedFrame", "()V");
+
+        if (self.javaLayer != NULL) {
+            jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+            if (javaLayerLocalRef != NULL) {
+                (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countDroppedFrame);
+                (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+                CHECK_EXCEPTION();
+            }
+        }
+        JNI_COCOA_EXIT(env);
+        // ensure releasing on main thread:
+        [MTLLayer releaseLayer:self];
+    });
 }
 @end
 

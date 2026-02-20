@@ -30,8 +30,8 @@
 #include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
 
-#define TRACE_DISPLAY_ENABLED   0
-#define TRACE_DISPLAY_CHANGED   0
+#define TRACE_DISPLAY_ENABLED   1
+#define TRACE_DISPLAY_CHANGED   1
 
 #define TRACE_DISPLAY_ON        (TRACE_DISPLAY_ENABLED == 1)
 

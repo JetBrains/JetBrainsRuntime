@@ -144,6 +144,35 @@ BOOL shouldCrashOnException();
 /* Get AWT's NSUncaughtExceptionHandler */
 JNIEXPORT NSUncaughtExceptionHandler* GetAWTUncaughtExceptionHandler(void);
 
+/* CallbackJNIThread */
+#define CONDITION_NO_DATA   1
+#define CONDITION_HAS_DATA  2
+
+/* submit JNI Callback asynchronously and concurrently (low latency) */
+#define JNI_SUBMIT_ASYNC(block) \
+    [CallbackJNIThread submit:block file:__FILE__ line:__LINE__ function:__FUNCTION__]
+
+__attribute__((visibility("default")))
+@interface CallbackJNIThread : NSThread
+
+- (id) init;
+
++ (void) prepare;
++ (void) stop;
+
++ (void) submit:(void (^)())block
+           file:(const char*)file line:(int)line function:(const char*)function;
+@end
+
+@interface CallbackJNIBlock : NSObject
+
+- (id) init:(NSString*) caller block:(void (^)())block;
+- (void) dealloc;
+
+@property (readwrite, atomic, retain) NSString* caller;
+@property (copy) void(^blockOp)(void);
+
+@end
 
 @interface RunLoopCallbackQueue : NSObject
 
@@ -224,6 +253,7 @@ __attribute__((visibility("default")))
 
 /* internal special RunLoop callbacks */
 + (void)registerMainThreadRunLoopCallback:(u_long)coalesingBit block:(void (^)())block;
++ (void)invokeBlockCopy:(void (^)(void))blockCopy;
 
 /* native thread tracing */
 + (ThreadTraceContext*)getTraceContext;
@@ -237,6 +267,7 @@ __attribute__((visibility("default")))
 + (void)dumpThreadTraceContext:(const char*)pOperation;
 
 + (NSString*)getThreadTraceContexts;
++ (NSString*)getCallerStack:(NSString*)prefixSymbol;
 @end
 
 JNIEXPORT void OSXAPP_SetJavaVM(JavaVM *vm);

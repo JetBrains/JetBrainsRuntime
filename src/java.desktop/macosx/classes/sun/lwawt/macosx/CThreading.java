@@ -97,6 +97,7 @@ public class CThreading {
 
             FutureTask<V> future = new FutureTask<>(commandWithTNameFix);
 
+            System.out.println("dispatch.getNonBlockingMainQueueExecutor().execute(future) on "+command);
             dispatch.getNonBlockingMainQueueExecutor().execute(future);
 
             try {

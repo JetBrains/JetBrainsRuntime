@@ -129,8 +129,8 @@ JNI_COCOA_ENTER(env);
             JNI_COCOA_ENTER(blockEnv);
                 // call the user's runnable
                 (*blockEnv)->CallVoidMethod(blockEnv, runnableRef, jm_run);
-                CHECK_EXCEPTION_IN_ENV(blockEnv);
                 (*blockEnv)->DeleteGlobalRef(blockEnv, runnableRef);
+                CHECK_EXCEPTION_IN_ENV(blockEnv);
             JNI_COCOA_EXIT(blockEnv);
         });
 

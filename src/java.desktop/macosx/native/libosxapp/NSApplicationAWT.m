@@ -476,6 +476,8 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
                                              subtype: NativeSyncQueueEvent
                                                data1: NativeSyncQueueEvent
                                                data2: NativeSyncQueueEvent];
+
+        NSLog(@"postDummyEvent: %@ (cocoa=%d)", event, useCocoa);
         if (useCocoa) {
             [NSApp postEvent:event atStart:NO];
         } else {
@@ -493,8 +495,10 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
     @try {
         if (timeout >= 0) {
             double sec = timeout / 1000;
+            NSLog(@"waitForDummyEvent: timeout = %lf", sec);
             unlock = [seenDummyEventLock lockWhenCondition:YES
                                    beforeDate:[NSDate dateWithTimeIntervalSinceNow:sec]];
+            NSLog(@"waitForDummyEvent: done");
         } else {
             [seenDummyEventLock lockWhenCondition:YES];
         }
@@ -537,7 +541,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
                     file:(const char*)file line:(int)line function:(const char*)function
 {
     @autoreleasepool {
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached]; /* CHECK LEAK */
         if (shouldCrashOnException()) {
             // calling [super reportException:exception] will cause a crash
             // so _crashOnException will be called instead:
@@ -581,7 +585,7 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
                  file:(const char*)file line:(int)line function:(const char*)function
 {
     @autoreleasepool {
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached]; /* CHECK LEAK */
         NSMutableString *info = [[[NSMutableString alloc] init] autorelease];
         [NSApplicationAWT logException:exception uncaught:NO forProcess:[NSProcessInfo processInfo]
                                withEnv:env prefix:@"Log: " to:info

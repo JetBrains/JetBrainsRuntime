@@ -60,15 +60,15 @@ extern BOOL MTLLayer_isExtraRedrawEnabled();
 extern void dumpDisplayInfo(jint displayID);
 extern BOOL isValidDisplayMode(CGDisplayModeRef mode);
 
-#define STATS_CVLINK        0
+#define STATS_CVLINK        1
 
-#define TRACE_NOTIF         0
+#define TRACE_NOTIF         1
 
-#define TRACE_CVLINK        0
+#define TRACE_CVLINK        1
 #define TRACE_CVLINK_WARN   0
 #define TRACE_CVLINK_DEBUG  0
 
-#define TRACE_DISPLAY       0
+#define TRACE_DISPLAY       1
 
 #define CHECK_CVLINK(op, source, dl, cmd)                                               \
 {                                                                                       \
@@ -1087,51 +1087,50 @@ extern void initSamplers(id<MTLDevice> device);
 }
 
 CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp* nowTime, const CVTimeStamp* outputTime, CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* displayLinkContext) {
-    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-    JNI_COCOA_ENTER(env);
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
+    // note: This displayLink callback will be called by threads (created by Start, destoyed by Stop):
+    // NOTE: avoid creating JNIEnv in this method.
+    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_mtlDisplayLinkCallback: ctx=%p", displayLinkContext);
 
-        MTLDisplayLinkState *dlState = (__bridge MTLDisplayLinkState*) displayLinkContext;
-        if (dlState == nil) {
-            if (TRACE_CVLINK_WARN) {
-                NSLog(@"MTLContext_mtlDisplayLinkCallback: dlState is nil!");
-            }
-            return kCVReturnError;
+    MTLDisplayLinkState *dlState = (__bridge MTLDisplayLinkState*) displayLinkContext;
+    if (dlState == nil) {
+        if (TRACE_CVLINK_WARN) {
+            NSLog(@"MTLContext_mtlDisplayLinkCallback: dlState is nil!");
         }
-        const MTLContext *mtlc = dlState->mtlc;
-        const jint displayID = dlState->displayID;
+        return kCVReturnError;
+    }
+    const MTLContext *mtlc = dlState->mtlc;
+    const jint displayID = dlState->displayID;
 
-        if (STATS_CVLINK) {
-            const CFTimeInterval now = outputTime->videoTime / (double) outputTime->videoTimeScale; // seconds
-            const CFTimeInterval delta = (dlState->lastDisplayLinkTime != 0.0) ? (now - dlState->lastDisplayLinkTime)
-                                                                               : -1.0;
-            dlState->lastDisplayLinkTime = now;
+    if (STATS_CVLINK) {
+        const CFTimeInterval now = outputTime->videoTime / (double) outputTime->videoTimeScale; // seconds
+        const CFTimeInterval delta = (dlState->lastDisplayLinkTime != 0.0) ? (now - dlState->lastDisplayLinkTime)
+                                                                           : -1.0;
+        dlState->lastDisplayLinkTime = now;
 
-            dlState->avgDisplayLinkSamples++;
-            dlState->avgDisplayLinkTime = EXP_AVG_WEIGHT * delta + EXP_INV_WEIGHT * dlState->avgDisplayLinkTime;
+        dlState->avgDisplayLinkSamples++;
+        dlState->avgDisplayLinkTime = EXP_AVG_WEIGHT * delta + EXP_INV_WEIGHT * dlState->avgDisplayLinkTime;
 
-            if (dlState->lastStatTime == 0.0) {
-                dlState->lastStatTime = now;
-            } else if ((now - dlState->lastStatTime) > 1.0) {
-                dlState->lastStatTime = now;
-                // dump stats:
-                NSLog(@"mtlDisplayLinkCallback[displayID: %d]: avg interval = %.3lf ms (%.1lf fps) on %d samples", displayID,
-                      TO_MS(dlState->avgDisplayLinkTime), TO_FPS(dlState->avgDisplayLinkTime), dlState->avgDisplayLinkSamples);
-            }
+        if (dlState->lastStatTime == 0.0) {
+            dlState->lastStatTime = now;
+        } else if ((now - dlState->lastStatTime) > 1.0) {
+            dlState->lastStatTime = now;
+            // dump stats:
+            NSLog(@"mtlDisplayLinkCallback[displayID: %d]: avg interval = %.3lf ms (%.1lf fps) on %d samples", displayID,
+                  TO_MS(dlState->avgDisplayLinkTime), TO_FPS(dlState->avgDisplayLinkTime), dlState->avgDisplayLinkSamples);
         }
+    }
 
-        /* defensive programming (should not happen) */
-        if ([ThreadUtilities blockingMainThread]) {
-            if (TRACE_CVLINK_WARN) {
-                NSLog(@"MTLContext_mtlDisplayLinkCallback: ctx=%p - invalid state: blockingMainThread = YES !",
-                      displayLinkContext);
-            }
-            return kCVReturnError;
+    /* defensive programming (should not happen) */
+    if ([ThreadUtilities blockingMainThread]) {
+        if (TRACE_CVLINK_WARN) {
+            NSLog(@"MTLContext_mtlDisplayLinkCallback: ctx=%p - invalid state: blockingMainThread = YES !",
+                  displayLinkContext);
         }
+        return kCVReturnError;
+    }
 
-        [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
-                               waitUntilDone:NO useJavaModes:NO]; // critical
-    JNI_COCOA_EXIT(env);
+    [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
+                           waitUntilDone:NO useJavaModes:NO]; // critical
     return kCVReturnSuccess;
 }
 

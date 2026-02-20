@@ -454,6 +454,9 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
 {
     long currentEventNum = [AWTToolkit getEventCount];
 
+    NSLog(@"LWCToolkit_nativeSyncQueue: num = %ld (timeout=%ld)",
+            currentEventNum, timeout);
+
     NSApplicationAWT* app = [NSApplicationAWT sharedApplicationAWT];
     if (app != nil) {
         // We use two different API to post events to the application,
@@ -484,8 +487,11 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
         // could happen if we are embedded inside SWT application,
         // in this case just spin a single empty block through
         // the event loop to give it a chance to process pending events
+        NSLog(@"LWCToolkit_nativeSyncQueue: performOnMainThreadWaiting");
         [ThreadUtilities performOnMainThreadWaiting:YES block:[ThreadUtilities GetEmptyBlock]];
     }
+
+    NSLog(@"LWCToolkit_nativeSyncQueue: exit");
 
     if (([AWTToolkit getEventCount] - currentEventNum) != 0) {
         return JNI_TRUE;
@@ -959,8 +965,7 @@ Java_sun_lwawt_macosx_LWCToolkit_initAppkit
 
     [AWTStarter start:headless ? YES : NO];
 
-    JNI_COCOA_EXIT_WITH_ACTION(env, NSAPP_AWT_LOG_EXCEPTION(exception)
-    );
+    JNI_COCOA_EXIT_WITH_ACTION(env, NSAPP_AWT_LOG_EXCEPTION(exception));
 }
 
 JNIEXPORT jint JNICALL DEF_JNI_OnLoad(JavaVM *vm, void *reserved) {

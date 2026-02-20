@@ -41,6 +41,36 @@
 /* See LWCToolkit.APPKIT_THREAD_NAME */
 #define MAIN_THREAD_NAME    "AppKit Thread"
 
+// The following must be named "jvm", as there are extern references to it in AWT
+JavaVM *jvm = NULL;
+
+JNIEnv *getEnv() {
+    JNIEnv *env;
+    if ((*jvm)->GetEnv(jvm, (void**)&env, JNI_VERSION_1_2)) {
+        return NULL; /* Nothing else we can do */
+    }
+    return env;
+}
+
+#define TRACE_JNI_RETURN_NO_ENV YES
+
+static bool traceJNIEnvInitialized = false;
+
+static BOOL isTraceJNIEnv() {
+    static int traceJNIEnv = -1;
+    if (traceJNIEnv == -1) {
+        JNIEnv *env = getEnv();
+        if (env == NULL) {
+            return TRACE_JNI_RETURN_NO_ENV;
+        }
+        NSString* traceJNIEnvProp = [PropertiesUtilities javaSystemPropertyForKey:@"apple.jvm.traceJNIEnv"
+                                                                             withEnv:env];
+        traceJNIEnv = [@"true" isCaseInsensitiveLike:traceJNIEnvProp] ? YES : NO;
+        traceJNIEnvInitialized = true;
+    }
+    return (BOOL)traceJNIEnv;
+}
+
 // Global CrashOnException handling flags used by:
 // - UncaughtExceptionHandler
 // - NSApplicationAWT _crashOnException:(NSException *)exception
@@ -99,8 +129,6 @@ static const char* toCString(id obj) {
     return (obj == nil) ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
 }
 
-// The following must be named "jvm", as there are extern references to it in AWT
-JavaVM *jvm = NULL;
 static BOOL isNSApplicationOwner = NO;
 static JNIEnv *appKitEnv = NULL;
 static jobject appkitThreadGroup = NULL;
@@ -111,14 +139,14 @@ static NSArray<NSString*> *javaModes = nil;
 static NSArray<NSString*> *allModesExceptJava = nil;
 
 /* Traceability data */
-static const BOOL forceTracing = NO;
+static const BOOL forceTracing = YES;
 static const BOOL enableTracing = NO || forceTracing;
 static const BOOL enableTracingLog = NO;
 static const BOOL enableTracingNSLog = YES && enableTracingLog;
 static const BOOL enableCallStacks = YES;
 
 /* Traceability data */
-static const int TRACE_BLOCKING_FLAGS = 0;
+static const int TRACE_BLOCKING_FLAGS = 2; /* TEST */
 
 /* RunLoop traceability identifier generators */
 static atomic_long mainThreadActionId = 0L;
@@ -176,17 +204,257 @@ static inline void doLog(JNIEnv* env, const char *formatMsg, ...) {
     }
 }
 
+static void logThreadJNIEnv(JNIEnv* env, const char* callerName) {
+    static jclass threadClass = NULL;
+
+    if (!traceJNIEnvInitialized) {
+        NSLog(@"%s : JNIEnv(native thread=[%@]) = traceJNIEnvInitialized = false !",
+              callerName, [NSThread currentThread]
+        );
+        return;
+    }
+    if (env == NULL) {
+        NSLog(@"%s : JNIEnv(native thread=[%@]) = NULL !",
+              callerName, [NSThread currentThread]
+        );
+        return;
+    }
+    /* Initialize our java identifiers once. Checking before locking
+     * is a huge performance win.
+     */
+    if (threadClass == NULL) {
+        jclass tc = (*env)->FindClass(env, "java/lang/Thread");
+        if (tc == NULL) {
+            NSLog(@"FUCK");
+            return;
+        }
+        threadClass = (*env)->NewGlobalRef(env, tc);
+        (*env)->DeleteLocalRef(env, tc);
+    } /* threadClass == NULL*/
+
+    // Then, we can look for it's static method 'currentThread'
+    // TODO: make static
+    jmethodID mid = (*env)->GetStaticMethodID(env, threadClass, "currentThread", "()Ljava/lang/Thread;");
+    if (mid == NULL) {
+        printf("Error while calling GetMethodID for: currentThread\n");
+        return;
+    }
+
+    // Once you have method, you can call it. Remember that result is
+    // a jobject
+    jobject thread = (*env)->CallStaticObjectMethod(env, threadClass, mid);
+    if (thread == NULL) {
+        printf("Error while calling static method: currentThread\n");
+        return;
+    }
+
+    // Now, we have to find another method - 'getId'
+    // TODO: make static
+    jmethodID mid_getid = (*env)->GetMethodID(env, threadClass, "getId", "()J");
+    if (mid_getid == NULL) {
+        printf("Error while calling GetMethodID for: getId\n");
+        return;
+    }
+
+    // This time, we are calling instance method, note the difference
+    // in Call... method
+    jlong tid = (*env)->CallLongMethod(env, thread, mid_getid);
+
+    // Finally, let's call 'getName' of Thread object
+    // TODO: make static
+    jmethodID mid_getname = (*env)->GetMethodID(env, threadClass, "getName", "()Ljava/lang/String;");
+    if(mid_getname == NULL) {
+        printf("Error while calling GetMethodID for: getName\n");
+        return;
+    }
+
+    // As above, we are calling instance method
+    jobject tname = (*env)->CallObjectMethod(env, thread, mid_getname);
+
+    // Remember to retrieve characters from String object
+    const char *c_str;
+    c_str = (*env)->GetStringUTFChars(env, tname, NULL);
+    if (c_str == NULL) {
+        return;
+    }
+
+    NSString *callerStack = [ThreadUtilities getCallerStack:@"logThreadJNIEnv"];
+
+    NSLog(@"%s (native thread=[%@], javaThread=['%s' id: %ld]): jniEnv = %p\n CallStack:\n%@",
+          callerName, [NSThread currentThread], c_str, tid, env, callerStack
+    );
+
+    // and make sure to release allocated memory before leaving JNI
+    (*env)->ReleaseStringUTFChars(env, tname, c_str);
+}
+
 static inline void attachCurrentThread(void** env) {
+    JNIEnv *prevEnv = getEnv();
+    if (prevEnv != NULL) {
+        *env = prevEnv;
+        return;
+    }
     if ([NSThread isMainThread]) {
         JavaVMAttachArgs args;
         args.version = JNI_VERSION_1_4;
         args.name = MAIN_THREAD_NAME;
         args.group = appkitThreadGroup;
+
         (*jvm)->AttachCurrentThreadAsDaemon(jvm, env, &args);
     } else {
         (*jvm)->AttachCurrentThreadAsDaemon(jvm, env, NULL);
     }
+    if (isTraceJNIEnv()) {
+        logThreadJNIEnv(*env, "attachCurrentThread");
+    }
 }
+
+/* --- CallbackJNIThread implementation --- */
+#define MAX_JNI_CALLBACK_THREADS    1
+#define TRACE_JNI_THREAD            0
+
+@implementation CallbackJNIThread {
+    int _invoke;
+}
+
+static int                  _threadCounter = 0;
+// TODO: use generic queue ?
+static NSConditionLock*     _condLock;
+static NSMutableArray*      _queue;
+static NSMutableArray*      _threads;
+
++ (void) prepare {
+    _condLock = [[NSConditionLock alloc] initWithCondition:CONDITION_NO_DATA];
+    _queue = [[NSMutableArray alloc] initWithCapacity:16];
+    _threads = [[NSMutableArray alloc] initWithCapacity:MAX_JNI_CALLBACK_THREADS];
+
+    for (int i = 0; i < MAX_JNI_CALLBACK_THREADS; i++) {
+        NSThread* thread = [[CallbackJNIThread alloc] init];
+        //thread.qualityOfService = NSQualityOfServiceUserInteractive; // highest
+        [_threads addObject:thread];
+        // start threads:
+        [thread start];
+    }
+}
+
++ (void) stop {
+    while (_threads.count != 0) {
+        NSThread* thread = (NSThread*) [_threads firstObject];
+        [_threads removeObjectAtIndex:0];
+
+        [thread cancel];
+    }
+}
+
++ (void) submit:(void (^)())block
+           file:(const char*)file line:(int)line function:(const char*)function
+{
+    static dispatch_once_t oncePredicate;
+    dispatch_once(&oncePredicate, ^{
+        [CallbackJNIThread prepare];
+    });
+    if (_threads.count != 0) {
+        NSString* caller = (TRACE_JNI_THREAD) ?
+            [[NSString stringWithFormat:@"(%s:%d %s)", file, line, function] autorelease] : nil;
+
+        CallbackJNIBlock* cbBlock = [[CallbackJNIBlock alloc] init:caller block:Block_copy(block)];
+
+        // add block to the shared queue:
+        [_condLock lock];
+        [_queue addObject:cbBlock];
+        [_condLock unlockWithCondition:CONDITION_HAS_DATA];
+    }
+}
+
+- (id) init {
+    self = [super init];
+    if (self) {
+        _invoke = 0;
+        self.name = [NSString stringWithFormat:@"%s-%d", "CallbackJNIThread", ++_threadCounter];
+    }
+    return self;
+}
+
+- (void) main {
+    if (TRACE_JNI_THREAD) {
+        NSLog(@"CallbackJNIThread.main(%p): start", self);
+    }
+    {
+        // Prepare JNIEnv early:
+        JNIEnv *env = NULL;
+
+        // see attachCurrentThread:
+        JavaVMAttachArgs args;
+        args.version = JNI_VERSION_1_4;
+        // which group use (root) ?
+        args.group = appkitThreadGroup;
+        args.name = (char*)self.name.UTF8String;
+
+        (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, &args);
+
+        if (isTraceJNIEnv()) {
+            logThreadJNIEnv(env, "CallbackJNIThread.main");
+        }
+    }
+
+    // Until cancelled, wait for data, and then process it.
+    while (!self.cancelled)
+    {
+        const NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+        CallbackJNIBlock* cbBlock = nil;
+        @try {
+            [_condLock lockWhenCondition:CONDITION_HAS_DATA];
+
+            cbBlock = (CallbackJNIBlock*) [_queue firstObject];
+            [_queue removeObjectAtIndex:0];
+
+            [_condLock unlockWithCondition:((_queue.count == 0) ? CONDITION_NO_DATA : CONDITION_HAS_DATA)];
+
+            // invoke callback:
+            void (^blockCopy)(void) = cbBlock.blockOp;
+            if (TRACE_JNI_THREAD) {
+                _invoke++;
+                NSLog(@"CallbackJNIThread(%p): main: invoke_block(%d) at %@",
+                      self, _invoke, cbBlock.caller);
+            }
+            [ThreadUtilities invokeBlockCopy:blockCopy];
+
+        } @catch (NSException *exception) {
+            // report exception to the NSApplicationAWT exception handler:
+            NSAPP_AWT_REPORT_EXCEPTION(exception, NO);
+        } @finally {
+            [cbBlock release];
+            [pool drain];
+        }
+    }
+    // Finalize thread resources:
+    [ThreadUtilities detachCurrentThread];
+    if (TRACE_JNI_THREAD) {
+        NSLog(@"CallbackJNIThread.main(%p): exit", self);
+    }
+}
+@end
+
+
+@implementation CallbackJNIBlock
+
+- (id) init:(NSString*) caller block:(void (^)())block {
+    self = [super init];
+    if (self) {
+        [caller retain];
+        self.caller = caller;
+        self.blockOp = block;
+    }
+    return self;
+}
+
+- (void) dealloc {
+    [self.caller release];
+    [super dealloc];
+}
+
+@end
+
 
 @implementation ThreadUtilities
 
@@ -308,23 +576,26 @@ AWT_ASSERT_APPKIT_THREAD;
             attachCurrentThread((void **)&appKitEnv);
         }
         return appKitEnv;
-    } else {
-        return [ThreadUtilities getJNIEnvUncached];
     }
+    return [ThreadUtilities getJNIEnvUncached];
 }
 
 + (JNIEnv*)getJNIEnvUncached {
-    if ([NSThread isMainThread] && (appKitEnv != NULL)) {
+    if (isNSApplicationOwner && [NSThread isMainThread] && (appKitEnv != NULL)) {
         return appKitEnv;
-    } else {
-        JNIEnv *env = NULL;
-        attachCurrentThread((void **)&env);
-        return env;
     }
+    JNIEnv *env = NULL;
+    attachCurrentThread((void **)&env);
+    return env;
 }
 
 + (void)detachCurrentThread {
-    (*jvm)->DetachCurrentThread(jvm);
+    if (![NSThread isMainThread]) {
+        if (isTraceJNIEnv()) {
+            logThreadJNIEnv(getEnv(), "DetachCurrentThread");
+        }
+        (*jvm)->DetachCurrentThread(jvm);
+    }
 }
 
 + (void)setAppkitThreadGroup:(jobject)group {
