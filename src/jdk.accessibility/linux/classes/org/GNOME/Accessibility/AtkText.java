@@ -727,8 +727,8 @@ public class AtkText {
 
     /**
      * Gets the number of selected regions.
+     * Called from native code via JNI.
      *
-     * @param text an #AtkText
      * @return The number of selected regions, or -1 in the case of failure.
      */
     private int get_n_selections() {
