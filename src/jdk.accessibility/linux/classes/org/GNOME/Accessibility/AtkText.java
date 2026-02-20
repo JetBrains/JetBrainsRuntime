@@ -112,8 +112,6 @@ public class AtkText {
         return wordStart;
     }
 
-    }
-
     private int getPreviousWordStart(int offset, String text) {
         if (text == null || text.isEmpty()) return BreakIterator.DONE;
 
@@ -230,17 +228,10 @@ public class AtkText {
         }
 
         int length = text.length();
-        if (offset < 0) offset = 0;
-        if (offset >= length) offset = length - 1;
+        offset = Math.max(0, Math.min(offset, length - 1));
 
-        int pos = offset;
-        while (pos > 0) {
-            if (text.charAt(pos - 1) == '\n') {
-                return pos;
-            }
-            pos--;
-        }
-        return 0;
+        int index = text.lastIndexOf('\n', offset - 1);
+        return (index == -1) ? 0 : index + 1;
     }
 
     /**
