@@ -254,7 +254,7 @@ public class AtkText {
 
     /**
      * Gets the start position of the paragraph that contains the given offset.
-     * Paragraphs are defined as text blocks separated by newlines.
+     * Paragraphs are defined as text blocks separated by blank lines (double newlines)
      *
      * @param offset The character offset within the text
      * @param text   The full text to search within
@@ -265,19 +265,10 @@ public class AtkText {
             return 0;
         }
 
-        int length = text.length();
-        if (offset < 0) offset = 0;
-        if (offset >= length) offset = length - 1;
+        offset = Math.max(0, Math.min(offset, text.length() - 1));
 
-        // Search backwards from offset to find the start of the current paragraph
-        int pos = offset;
-        while (pos > 0) {
-            if (text.charAt(pos - 1) == '\n') {
-                return pos;
-            }
-            pos--;
-        }
-        return 0;
+        int index = text.lastIndexOf("\n\n", offset);
+        return (index != -1) ? index + 2 : 0;
     }
 
     /**
