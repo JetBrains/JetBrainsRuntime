@@ -303,20 +303,62 @@ public class AtkText {
         return (index != -1) ? index : text.length();
     }
 
+    private TextSnapshot getFullTextSnapshot() {
+        AccessibleText accessibleText = accessibleTextWeakRef.get();
+        if (accessibleText == null) {
+            return null;
+        }
+
+        return AtkUtil.invokeInSwingAndWait(() -> {
+            int charCount = accessibleText.getCharCount();
+            if (charCount < 0) {
+                return null;
+            }
+
+            int end = getRightEnd(0, charCount, charCount); // фактически charCount
+            String text;
+
+            if (accessibleText instanceof AccessibleExtendedText ext) {
+                text = ext.getTextRange(0, end);
+            } else {
+                StringBuilder b = new StringBuilder(end);
+                for (int i = 0; i < end; i++) {
+                    String ch = accessibleText.getAtIndex(AccessibleText.CHARACTER, i);
+                    if (ch != null) {
+                        b.append(ch);
+                    }
+                }
+                text = b.toString();
+            }
+
+            if (text == null) {
+                return null;
+            }
+            return new TextSnapshot(text, text.length());
+        }, null);
+    }
+
     @Deprecated
     private StringSequence getTextAtOffset(int offset,
                                            int boundaryType) {
-        int characterCount = get_character_count();
-        if (characterCount < 0 || offset < 0 || offset > characterCount) {
+        TextSnapshot snapshot = getFullTextSnapshot();
+        if (snapshot == null) {
             return null;
         }
+
+        int characterCount = snapshot.length();
+        if (offset < 0 || offset > characterCount) {
+            return null;
+        }
+
+        String fullText = snapshot.text();
 
         switch (boundaryType) {
             case AtkTextBoundary.CHAR: {
                 if (offset == characterCount) {
                     return null;
                 }
-                String str = get_text(offset, offset + 1);
+                String str = fullText.substring(offset, offset + 1);
                 return new StringSequence(str, offset, offset + 1);
             }
             case AtkTextBoundary.WORD_START: {
@@ -324,8 +366,6 @@ public class AtkText {
                 if (offset == characterCount) {
                     return null;
                 }
-
-                String fullText = get_text(0, characterCount);
 
                 int start = getCurrentWordStart(offset, fullText);
                 int end = getWordEndFromStart(start, fullText);
@@ -336,7 +376,7 @@ public class AtkText {
                         return null;
                     }
                 }
-                String str = get_text(start, end);
+                String str = fullText.substring(start, end);
                 return new StringSequence(str, start, end);
             }
             case AtkTextBoundary.WORD_END: {
@@ -346,13 +386,12 @@ public class AtkText {
                     return null;
                 }
 
-                String fullText = get_text(0, characterCount);
                 int start = getCurrentWordStart(offset, fullText);
                 int end = getWordEndFromStart(start, fullText);
                 if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
                     return null;
                 }
-                String str = get_text(start, end);
+                String str = fullText.substring(start, end);
                 return new StringSequence(str, start, end);
             }
             case AtkTextBoundary.SENTENCE_START: {
@@ -360,8 +399,6 @@ public class AtkText {
                 if (offset == characterCount) {
                     return null;
                 }
-
-                String fullText = get_text(0, characterCount);
 
                 int start = getCurrentSentenceStart(offset, fullText);
                 int end = getSentenceEndFromStart(start, fullText);
@@ -372,7 +409,7 @@ public class AtkText {
                         return null;
                     }
                 }
-                String str = get_text(start, end);
+                String str = fullText.substring(start, end);
                 return new StringSequence(str, start, end);
             }
             case AtkTextBoundary.SENTENCE_END: {
@@ -382,13 +419,12 @@ public class AtkText {
                     return null;
                 }
 
-                String fullText = get_text(0, characterCount);
                 int start = getCurrentSentenceStart(offset, fullText);
                 int end = getSentenceEndFromStart(start, fullText);
                 if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
                     return null;
                 }
-                String str = get_text(start, end);
+                String str = fullText.substring(start, end);
                 return new StringSequence(str, start, end);
             }
             case AtkTextBoundary.LINE_START:
@@ -398,12 +434,10 @@ public class AtkText {
                     return null;
                 }
 
-                String fullText = get_text(0, characterCount);
-
                 int start = getCurrentLineStart(offset, fullText);
                 int end = getLineEndFromStart(start, fullText);
 
-                String str = get_text(start, end);
+                String str = fullText.substring(start, end);
                 return new StringSequence(str, start, end);
             }
             default: {
@@ -840,28 +874,34 @@ public class AtkText {
      * @since ATK 2.10
      */
     private StringSequence get_string_at_offset(int offset, int granularity) {
-        int characterCount = get_character_count();
-        if (characterCount < 0 || offset < 0 || offset >= characterCount) {
+        TextSnapshot snapshot = getFullTextSnapshot();
+        if (snapshot == null) {
             return null;
         }
 
+        int characterCount = snapshot.length();
+        if (offset < 0 || offset >= characterCount) {
+            return null;
+        }
+
+        String fullText = snapshot.text();
+
         switch (granularity) {
             case AtkTextGranularity.CHAR: {
-                String resultText = get_text(offset, offset + 1);
+                String resultText = fullText.substring(offset, offset + 1);
                 return new StringSequence(resultText, offset, offset + 1);
             }
             case AtkTextGranularity.WORD: {
                 // Granularity is defined by the boundaries of a word,
                 // starting at the beginning of the current word and finishing
                 // at the beginning of the following one, if present.
-                String fullText = get_text(0, characterCount);
 
                 int start = getCurrentWordStart(offset, fullText);
                 int end = getWordEndFromStart(start, fullText);
                 if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
                     return null;
                 } else {
-                    String resultText = get_text(start, end);
+                    String resultText = fullText.substring(start, end);
                     return new StringSequence(resultText, start, end);
                 }
             }
@@ -869,14 +909,13 @@ public class AtkText {
                 // Granularity is defined by the boundaries of a sentence,
                 // starting at the beginning of the current sentence and finishing
                 // at the end of the current sentence.
-                String fullText = get_text(0, characterCount);
 
                 int start = getCurrentSentenceStart(offset, fullText);
                 int end = getSentenceEndFromStart(start, fullText);
                 if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
                     return null;
                 } else {
-                    String resultText = get_text(start, end);
+                    String resultText = fullText.substring(start, end);
                     return new StringSequence(resultText, start, end);
                 }
             }
@@ -884,24 +923,22 @@ public class AtkText {
                 // Granularity is defined by the boundaries of a line,
                 // starting at the beginning of the current line and finishing
                 // at the beginning of the following one, if present.
-                String fullText = get_text(0, characterCount);
 
                 int start = getCurrentLineStart(offset, fullText);
                 int end = getLineEndFromStart(start, fullText);
 
-                String resultText = get_text(start, end);
+                String resultText = fullText.substring(start, end);
                 return new StringSequence(resultText, start, end);
             }
             case AtkTextGranularity.PARAGRAPH: {
                 // Granularity is defined by the boundaries of a paragraph,
                 // starting at the beginning of the current paragraph and finishing
                 // at the end of the current paragraph (newline or end of text).
-                String fullText = get_text(0, characterCount);
 
                 int start = getCurrentParagraphStart(offset, fullText);
                 int end = getParagraphEndFromStart(start, fullText);
 
-                String resultText = get_text(start, end);
+                String resultText = fullText.substring(start, end);
                 return new StringSequence(resultText, start, end);
             }
             default: {
@@ -911,5 +948,8 @@ public class AtkText {
     }
 
     private record StringSequence(String str, int start_offset, int end_offset) {
+    }
+
+    private record TextSnapshot(String text, int length) {
     }
 }
