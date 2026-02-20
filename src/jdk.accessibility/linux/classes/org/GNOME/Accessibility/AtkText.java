@@ -601,10 +601,9 @@ public class AtkText {
 
         return AtkUtil.invokeInSwingAndWait(() -> {
             String selectedText = accessibleText.getSelectedText();
-            if (selectedText != null) {
-                return 1;
-            }
-            return 0;
+            int start = accessibleText.getSelectionStart();
+            int end = accessibleText.getSelectionEnd();
+            return (selectedText != null && start != end) ? 1 : 0;
         }, -1);
     }
 
