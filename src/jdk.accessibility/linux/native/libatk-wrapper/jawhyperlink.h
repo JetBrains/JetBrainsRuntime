@@ -43,9 +43,6 @@ typedef struct _JawHyperlinkClass JawHyperlinkClass;
 struct _JawHyperlink {
     AtkHyperlink parent;
     jobject jhyperlink;
-
-    jstring jstrUri;
-    gchar *uri;
     GMutex mutex;
 };
 

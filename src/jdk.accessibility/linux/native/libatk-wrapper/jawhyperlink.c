@@ -181,16 +181,6 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
 
     g_mutex_lock(&jaw_hyperlink->mutex);
 
-    if (jaw_hyperlink->jstrUri != NULL) {
-        if (jaw_hyperlink->uri != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
-                                             jaw_hyperlink->uri);
-            jaw_hyperlink->uri = NULL;
-        }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
-        jaw_hyperlink->jstrUri = NULL;
-    }
-
     if (jaw_hyperlink->jhyperlink != NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jhyperlink);
         jaw_hyperlink->jhyperlink = NULL;
@@ -205,17 +195,18 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
 
 /**
  * jaw_hyperlink_get_uri:
- * @link_: an #AtkHyperlink
+ * @atk_hyperlink: an #AtkHyperlink
  * @i: a (zero-index) integer specifying the desired anchor
  *
- * Get a the URI associated with the anchor specified
- * by @i of @link_.
+ * Get the URI associated with the anchor specified
+ * by @i of @atk_hyperlink.
  *
  * Multiple anchors are primarily used by client-side image maps.
  *
  * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  *
- * Returns: a string specifying the URI
+ * Returns: a string specifying the URI.
+ * The caller of the method takes ownership of the returned data, and is responsible for freeing it
  **/
 static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
     JAW_DEBUG("%p, %d", atk_hyperlink, i);
@@ -240,40 +231,14 @@ static gchar *jaw_hyperlink_get_uri(AtkHyperlink *atk_hyperlink, gint i) {
         return NULL;
     }
 
-    g_mutex_lock(&jaw_hyperlink->mutex);
-
-    if (jaw_hyperlink->jstrUri != NULL) {
-        if (jaw_hyperlink->uri != NULL) {
-            (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_hyperlink->jstrUri,
-                                             jaw_hyperlink->uri);
-            jaw_hyperlink->uri = NULL;
-        }
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
-        jaw_hyperlink->jstrUri = NULL;
-    }
-
-    jaw_hyperlink->jstrUri = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_hyperlink->jstrUri == NULL) {
+    const char *uri = (*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || uri == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_mutex_unlock(&jaw_hyperlink->mutex);
         return NULL;
     }
 
-    jaw_hyperlink->uri = (gchar *)(*jniEnv)->GetStringUTFChars(
-        jniEnv, jaw_hyperlink->jstrUri, NULL);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jaw_hyperlink->uri == NULL) {
-        jaw_jni_clear_exception(jniEnv);
-
-        // jaw_hyperlink->jstrUri != NULL
-        (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jstrUri);
-        jaw_hyperlink->jstrUri = NULL;
-
-        g_mutex_unlock(&jaw_hyperlink->mutex);
-        return NULL;
-    }
-
-    gchar *result = jaw_hyperlink->uri;
-    g_mutex_unlock(&jaw_hyperlink->mutex);
+    gchar *result = g_strdup(uri);
+    (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, uri);
 
     return result;
 }
