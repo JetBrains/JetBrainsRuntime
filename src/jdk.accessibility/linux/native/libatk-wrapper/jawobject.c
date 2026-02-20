@@ -231,7 +231,6 @@ static void jaw_object_init(JawObject *object) {
     }
     atk_obj->description = NULL;
 
-    g_mutex_init(&object->mutex);
     object->state_set = atk_state_set_new();
 }
 
@@ -270,7 +269,6 @@ static void jaw_object_finalize(GObject *gobject) {
         G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
         return;
     }
-    g_mutex_lock(&jaw_obj->mutex);
 
     if (jaw_obj->state_set != NULL) {
         g_object_unref(G_OBJECT(jaw_obj->state_set));
@@ -279,8 +277,6 @@ static void jaw_object_finalize(GObject *gobject) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         g_debug("%s: jniEnv is NULL", G_STRFUNC);
-        g_mutex_unlock(&jaw_obj->mutex);
-        g_mutex_clear(&jaw_obj->mutex);
         G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
         return;
     }
@@ -314,9 +310,6 @@ static void jaw_object_finalize(GObject *gobject) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
         jaw_obj->jstrLocale = NULL;
     }
-
-    g_mutex_unlock(&jaw_obj->mutex);
-    g_mutex_clear(&jaw_obj->mutex);
 
     /* Chain up to parent's finalize method */
     G_OBJECT_CLASS(jaw_object_parent_class)->finalize(gobject);
@@ -464,7 +457,6 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
         jniEnv, cachedObjectAtkObjectClass, cachedObjectGetAccessibleNameMethod,
         ac);
 
-    g_mutex_lock(&jaw_obj->mutex);
     if (jaw_obj->jstrName != NULL) {
         if (atk_obj->name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrName,
@@ -477,14 +469,12 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_mutex_unlock(&jaw_obj->mutex);
         return NULL;
     }
 
     if (jstr != NULL) {
         jaw_obj->jstrName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
         if (jaw_obj->jstrName == NULL) {
-            g_mutex_unlock(&jaw_obj->mutex);
             return NULL;
         }
         atk_obj->name = (gchar *)(*jniEnv)->GetStringUTFChars(
@@ -496,11 +486,9 @@ static const gchar *jaw_object_get_name(AtkObject *atk_obj) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrName);
             jaw_obj->jstrName = NULL;
 
-            g_mutex_unlock(&jaw_obj->mutex);
             return NULL;
         }
     }
-    g_mutex_unlock(&jaw_obj->mutex);
 
     if (atk_obj->name != NULL) {
         JAW_DEBUG("-> %s", atk_obj->name);
@@ -578,7 +566,6 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
         jniEnv, cachedObjectAtkObjectClass,
         cachedObjectGetAccessibleDescriptionMethod, ac);
 
-    g_mutex_lock(&jaw_obj->mutex);
     if (jaw_obj->jstrDescription != NULL) {
         if (atk_obj->description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrDescription,
@@ -591,14 +578,12 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_mutex_unlock(&jaw_obj->mutex);
         return NULL;
     }
 
     if (jstr != NULL) {
         jaw_obj->jstrDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
         if (jaw_obj->jstrDescription == NULL) {
-            g_mutex_unlock(&jaw_obj->mutex);
             return NULL;
         }
         atk_obj->description = (gchar *)(*jniEnv)->GetStringUTFChars(
@@ -610,11 +595,9 @@ static const gchar *jaw_object_get_description(AtkObject *atk_obj) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrDescription);
             jaw_obj->jstrDescription = NULL;
 
-            g_mutex_unlock(&jaw_obj->mutex);
             return NULL;
         }
     }
-    g_mutex_unlock(&jaw_obj->mutex);
 
     return atk_obj->description;
 }
@@ -908,7 +891,6 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
     jobject jstr = (*jniEnv)->CallStaticObjectMethod(
         jniEnv, cachedObjectAtkObjectClass, cachedObjectGetLocaleMethod, ac);
 
-    g_mutex_lock(&jaw_obj->mutex);
     if (jaw_obj->jstrLocale != NULL) {
         if (jaw_obj->locale != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, jaw_obj->jstrLocale,
@@ -921,14 +903,12 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
 
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_mutex_unlock(&jaw_obj->mutex);
         return NULL;
     }
 
     if (jstr != NULL) {
         jaw_obj->jstrLocale = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
         if (jaw_obj->jstrLocale == NULL) {
-            g_mutex_unlock(&jaw_obj->mutex);
             return NULL;
         }
         jaw_obj->locale =
@@ -940,11 +920,9 @@ static const gchar *jaw_object_get_object_locale(AtkObject *atk_obj) {
             (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_obj->jstrLocale);
             jaw_obj->jstrLocale = NULL;
 
-            g_mutex_unlock(&jaw_obj->mutex);
             return NULL;
         }
     }
-    g_mutex_unlock(&jaw_obj->mutex);
 
     return jaw_obj->locale;
 }

@@ -42,7 +42,6 @@ typedef struct _JawToplevelClass JawToplevelClass;
 struct _JawToplevel {
     AtkObject parent;
     GList *windows;
-    GMutex mutex;
 };
 
 GType jaw_toplevel_get_type(void);

@@ -178,6 +178,13 @@ gpointer jaw_editable_text_data_init(jobject ac) {
     return data;
 }
 
+/**
+ * jaw_editable_text_data_finalize:
+ * @p: EditableTextData pointer to finalize
+ *
+ * Cleans up EditableTextData when the parent GObject is finalized.
+ * Called from jaw_impl_finalize() when the object's reference count reaches zero.
+ */
 void jaw_editable_text_data_finalize(gpointer p) {
     JAW_DEBUG("%p", p);
 

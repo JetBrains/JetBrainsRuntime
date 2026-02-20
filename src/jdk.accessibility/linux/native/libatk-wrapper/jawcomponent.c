@@ -209,6 +209,13 @@ gpointer jaw_component_data_init(jobject ac) {
     return data;
 }
 
+/**
+ * jaw_component_data_finalize:
+ * @p: ComponentData pointer to finalize
+ *
+ * Cleans up ComponentData when the parent GObject is finalized.
+ * Called from jaw_impl_finalize() when the object's reference count reaches zero.
+ */
 void jaw_component_data_finalize(gpointer p) {
     JAW_DEBUG("%p", p);
 

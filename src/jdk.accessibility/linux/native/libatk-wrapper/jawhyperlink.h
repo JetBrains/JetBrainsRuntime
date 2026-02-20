@@ -43,7 +43,6 @@ typedef struct _JawHyperlinkClass JawHyperlinkClass;
 struct _JawHyperlink {
     AtkHyperlink parent;
     jobject jhyperlink;
-    GMutex mutex;
 };
 
 GType jaw_hyperlink_get_type(void);

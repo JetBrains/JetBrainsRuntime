@@ -69,7 +69,6 @@ static void jaw_toplevel_init(JawToplevel *toplevel) {
         return;
     }
 
-    g_mutex_init(&toplevel->mutex);
     toplevel->windows = NULL;
 }
 
@@ -96,13 +95,10 @@ static void jaw_toplevel_object_finalize(GObject *obj) {
     JawToplevel *jaw_toplevel = JAW_TOPLEVEL(obj);
 
     if (jaw_toplevel != NULL) {
-        g_mutex_lock(&jaw_toplevel->mutex);
         if (jaw_toplevel->windows != NULL) {
             g_list_free(jaw_toplevel->windows);
             jaw_toplevel->windows = NULL;
         }
-        g_mutex_unlock(&jaw_toplevel->mutex);
-        g_mutex_clear(&jaw_toplevel->mutex);
     }
 
     G_OBJECT_CLASS(jaw_toplevel_parent_class)->finalize(obj);
@@ -189,13 +185,10 @@ static gint jaw_toplevel_get_n_children(AtkObject *obj) {
         return 0;
     }
 
-    g_mutex_lock(&jaw_toplevel->mutex);
     if (jaw_toplevel->windows == NULL) {
-        g_mutex_unlock(&jaw_toplevel->mutex);
         return 0;
     }
     gint children_number = g_list_length(jaw_toplevel->windows);
-    g_mutex_unlock(&jaw_toplevel->mutex);
 
     return children_number;
 }
@@ -267,9 +260,7 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
         return NULL;
     }
 
-    g_mutex_lock(&jaw_toplevel->mutex);
     if (jaw_toplevel->windows == NULL) {
-        g_mutex_unlock(&jaw_toplevel->mutex);
         return NULL;
     }
     AtkObject *child = (AtkObject *)g_list_nth_data(jaw_toplevel->windows, i);
@@ -279,7 +270,6 @@ static AtkObject *jaw_toplevel_ref_child(AtkObject *obj, gint i) {
     if (child != NULL) {
         g_object_ref(G_OBJECT(child));
     }
-    g_mutex_unlock(&jaw_toplevel->mutex);
 
     return child;
 }
@@ -314,16 +304,13 @@ gint jaw_toplevel_add_window(JawToplevel *toplevel, AtkObject *child) {
         return -1;
     }
 
-    g_mutex_lock(&toplevel->mutex);
     if (toplevel->windows != NULL &&
         g_list_index(toplevel->windows, child) != -1) {
-        g_mutex_unlock(&toplevel->mutex);
         return -1;
     }
 
     toplevel->windows = g_list_append(toplevel->windows, child);
     gint index = g_list_index(toplevel->windows, child);
-    g_mutex_unlock(&toplevel->mutex);
 
     return index;
 }
@@ -337,13 +324,11 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
         return -1;
     }
 
-    g_mutex_lock(&toplevel->mutex);
     if (toplevel->windows == NULL) {
         g_warning(
             "%s: Cannot remove window %p: the toplevel window list is NULL "
             "(not initialized or already cleared)",
             G_STRFUNC, child);
-        g_mutex_unlock(&toplevel->mutex);
         return -1;
     }
 
@@ -352,12 +337,10 @@ gint jaw_toplevel_remove_window(JawToplevel *toplevel, AtkObject *child) {
         g_warning("%s: Cannot remove window %p: it is not present in the "
                   "toplevel window list",
                   G_STRFUNC, child);
-        g_mutex_unlock(&toplevel->mutex);
         return -1;
     }
 
     toplevel->windows = g_list_remove(toplevel->windows, child);
-    g_mutex_unlock(&toplevel->mutex);
 
     return index;
 }
@@ -371,13 +354,10 @@ gint jaw_toplevel_get_child_index(JawToplevel *toplevel, AtkObject *child) {
         return -1;
     }
 
-    g_mutex_lock(&toplevel->mutex);
     if (toplevel->windows == NULL) {
-        g_mutex_unlock(&toplevel->mutex);
         return -1;
     }
 
     gint index = g_list_index(toplevel->windows, child);
-    g_mutex_unlock(&toplevel->mutex);
     return index;
 }

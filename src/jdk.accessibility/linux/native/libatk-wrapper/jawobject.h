@@ -55,7 +55,6 @@ struct _JawObject {
 
     // Hash table for data. Does not destroy keys or values on cleanup.
     GHashTable *storedData;
-    GMutex mutex;
 };
 
 GType jaw_object_get_type(void);

@@ -73,7 +73,6 @@ typedef struct _ImageData {
     jobject atk_image;
     const gchar *image_description;
     jstring jstrImageDescription;
-    GMutex mutex;
 } ImageData;
 
 #define JAW_GET_IMAGE(image, def_ret)                                          \
@@ -157,11 +156,9 @@ gpointer jaw_image_data_init(jobject ac) {
     }
 
     ImageData *data = g_new0(ImageData, 1);
-    g_mutex_init(&data->mutex);
     data->atk_image = (*jniEnv)->NewGlobalRef(jniEnv, jatk_image);
     if (data->atk_image == NULL) {
         g_warning("%s: Failed to create global ref for atk_image", G_STRFUNC);
-        g_mutex_clear(&data->mutex);
         g_free(data);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -172,6 +169,13 @@ gpointer jaw_image_data_init(jobject ac) {
     return data;
 }
 
+/**
+ * jaw_image_data_finalize:
+ * @p: ImageData pointer to finalize
+ *
+ * Cleans up ImageData when the parent GObject is finalized.
+ * Called from jaw_impl_finalize() when the object's reference count reaches zero.
+ */
 void jaw_image_data_finalize(gpointer p) {
     JAW_DEBUG("%p", p);
 
@@ -185,8 +189,6 @@ void jaw_image_data_finalize(gpointer p) {
         g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
-
-    g_mutex_lock(&data->mutex);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -210,8 +212,6 @@ void jaw_image_data_finalize(gpointer p) {
         }
     }
 
-    g_mutex_unlock(&data->mutex);
-    g_mutex_clear(&data->mutex);
     g_free(data);
 }
 
@@ -293,7 +293,6 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         return NULL;
     }
 
-    g_mutex_lock(&data->mutex);
     if (data->jstrImageDescription != NULL) {
         if (data->image_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrImageDescription,
@@ -306,7 +305,6 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 
     data->jstrImageDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrImageDescription == NULL) {
-        g_mutex_unlock(&data->mutex);
         return NULL;
     }
     data->image_description =
@@ -318,11 +316,8 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrImageDescription);
         data->jstrImageDescription = NULL;
 
-        g_mutex_unlock(&data->mutex);
         return NULL;
     }
-
-    g_mutex_unlock(&data->mutex);
 
     return data->image_description;
 }

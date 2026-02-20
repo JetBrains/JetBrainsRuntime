@@ -141,7 +141,6 @@ static void jaw_hyperlink_class_init(JawHyperlinkClass *klass) {
 
 static void jaw_hyperlink_init(JawHyperlink *link) {
     JAW_DEBUG("%p", link);
-    g_mutex_init(&link->mutex);
 }
 
 static void jaw_hyperlink_dispose(GObject *gobject) {
@@ -174,20 +173,14 @@ static void jaw_hyperlink_finalize(GObject *gobject) {
     JNIEnv *jniEnv = jaw_util_get_jni_env();
     if (jniEnv == NULL) {
         g_debug("%s: jniEnv is NULL", G_STRFUNC);
-        g_mutex_clear(&jaw_hyperlink->mutex);
         G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);
         return;
     }
-
-    g_mutex_lock(&jaw_hyperlink->mutex);
 
     if (jaw_hyperlink->jhyperlink != NULL) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, jaw_hyperlink->jhyperlink);
         jaw_hyperlink->jhyperlink = NULL;
     }
-
-    g_mutex_unlock(&jaw_hyperlink->mutex);
-    g_mutex_clear(&jaw_hyperlink->mutex);
 
     /* Chain up to parent's finalize */
     G_OBJECT_CLASS(jaw_hyperlink_parent_class)->finalize(gobject);

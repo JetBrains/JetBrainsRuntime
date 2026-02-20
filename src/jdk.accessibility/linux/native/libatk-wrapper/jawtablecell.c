@@ -177,6 +177,13 @@ gpointer jaw_table_cell_data_init(jobject ac) {
     return data;
 }
 
+/**
+ * jaw_table_cell_data_finalize:
+ * @p: TableCellData pointer to finalize
+ *
+ * Cleans up TableCellData when the parent GObject is finalized.
+ * Called from jaw_impl_finalize() when the object's reference count reaches zero.
+ */
 void jaw_table_cell_data_finalize(gpointer p) {
     JAW_DEBUG("%p", p);
 

@@ -86,7 +86,6 @@ typedef struct _ActionData {
     jstring jstrLocalizedName;
     const gchar *action_description;
     jstring jstrActionDescription;
-    GMutex mutex;
 } ActionData;
 
 #define JAW_GET_ACTION(action, def_ret)                                        \
@@ -177,11 +176,9 @@ gpointer jaw_action_data_init(jobject ac) {
     }
 
     ActionData *data = g_new0(ActionData, 1);
-    g_mutex_init(&data->mutex);
     data->atk_action = (*jniEnv)->NewGlobalRef(jniEnv, jatk_action);
     if (data->atk_action == NULL) {
         g_warning("%s: Failed to create global ref for atk_action", G_STRFUNC);
-        g_mutex_clear(&data->mutex);
         g_free(data);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
@@ -192,6 +189,13 @@ gpointer jaw_action_data_init(jobject ac) {
     return data;
 }
 
+/**
+ * jaw_action_data_finalize:
+ * @p: ActionData pointer to finalize
+ *
+ * Cleans up ActionData when the parent GObject is finalized.
+ * Called from jaw_impl_finalize() when the object's reference count reaches zero.
+ */
 void jaw_action_data_finalize(gpointer p) {
     JAW_DEBUG("%p", p);
 
@@ -205,8 +209,6 @@ void jaw_action_data_finalize(gpointer p) {
         g_warning("%s: data is null after cast", G_STRFUNC);
         return;
     }
-
-    g_mutex_lock(&data->mutex);
 
     JNIEnv *jniEnv = jaw_util_get_jni_env();
 
@@ -240,8 +242,6 @@ void jaw_action_data_finalize(gpointer p) {
         }
     }
 
-    g_mutex_unlock(&data->mutex);
-    g_mutex_clear(&data->mutex);
     g_free(data);
 }
 
@@ -343,7 +343,6 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         return NULL;
     }
 
-    g_mutex_lock(&data->mutex);
     if (data->jstrActionDescription != NULL) {
         if (data->action_description != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(
@@ -356,7 +355,6 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     data->jstrActionDescription = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrActionDescription == NULL) {
-        g_mutex_unlock(&data->mutex);
         return NULL;
     }
 
@@ -369,11 +367,8 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrActionDescription);
         data->jstrActionDescription = NULL;
 
-        g_mutex_unlock(&data->mutex);
         return NULL;
     }
-
-    g_mutex_unlock(&data->mutex);
 
     return data->action_description;
 }
@@ -454,7 +449,6 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         return NULL;
     }
 
-    g_mutex_lock(&data->mutex);
     if (data->jstrLocalizedName != NULL) {
         if (data->localized_name != NULL) {
             (*jniEnv)->ReleaseStringUTFChars(jniEnv, data->jstrLocalizedName,
@@ -466,7 +460,6 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
     }
     data->jstrLocalizedName = (*jniEnv)->NewGlobalRef(jniEnv, jstr);
     if (data->jstrLocalizedName == NULL) {
-        g_mutex_unlock(&data->mutex);
         return NULL;
     }
     data->localized_name =
@@ -478,11 +471,8 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
         (*jniEnv)->DeleteGlobalRef(jniEnv, data->jstrLocalizedName);
         data->jstrLocalizedName = NULL;
 
-        g_mutex_unlock(&data->mutex);
         return NULL;
     }
-
-    g_mutex_unlock(&data->mutex);
 
     return data->localized_name;
 }
