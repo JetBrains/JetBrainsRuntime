@@ -624,7 +624,7 @@ public class AtkText {
             int start = accessibleText.getSelectionStart();
             int end = accessibleText.getSelectionEnd();
             String text = accessibleText.getSelectedText();
-            if (text == null) {
+            if (text == null || start == end) {
                 return null;
             }
             return new StringSequence(text, start, end);
