@@ -319,10 +319,8 @@ public class AtkText {
                 String str = get_text(offset, offset + 1);
                 return new StringSequence(str, offset, offset + 1);
             }
-            case AtkTextBoundary.WORD_START:
-            case AtkTextBoundary.WORD_END: {
-                // The returned string will contain the word at the offset if the offset is
-                // inside a word and will contain the word before the offset if the offset is not inside a word
+            case AtkTextBoundary.WORD_START: {
+                // ATK docs: if offset is inside a word -> that word; otherwise -> word before offset.
                 if (offset == characterCount) {
                     return null;
                 }
@@ -341,10 +339,24 @@ public class AtkText {
                 String str = get_text(start, end);
                 return new StringSequence(str, start, end);
             }
-            case AtkTextBoundary.SENTENCE_START:
-            case AtkTextBoundary.SENTENCE_END: {
-                // The returned string will contain the sentence at the offset if the offset 
-                // is inside a sentence and will contain the sentence before the offset if the offset is not inside a sentence.
+            case AtkTextBoundary.WORD_END: {
+                // No "fallback to previous word" is specified for WORD_END in the ATK docs excerpt.
+                // Only return a word if offset is inside a word.
+                if (offset == characterCount) {
+                    return null;
+                }
+
+                String fullText = get_text(0, characterCount);
+                int start = getCurrentWordStart(offset, fullText);
+                int end = getWordEndFromStart(start, fullText);
+                if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
+                    return null;
+                }
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.SENTENCE_START: {
+                // ATK docs: if offset is inside a sentence -> that sentence; otherwise -> sentence before offset.
                 if (offset == characterCount) {
                     return null;
                 }
@@ -359,6 +371,22 @@ public class AtkText {
                     if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
                         return null;
                     }
+                }
+                String str = get_text(start, end);
+                return new StringSequence(str, start, end);
+            }
+            case AtkTextBoundary.SENTENCE_END: {
+                // No "fallback to previous sentence" is specified for SENTENCE_END in the ATK docs excerpt.
+                // Only return a sentence if offset is inside a sentence.
+                if (offset == characterCount) {
+                    return null;
+                }
+
+                String fullText = get_text(0, characterCount);
+                int start = getCurrentSentenceStart(offset, fullText);
+                int end = getSentenceEndFromStart(start, fullText);
+                if (start == BreakIterator.DONE || end == BreakIterator.DONE) {
+                    return null;
                 }
                 String str = get_text(start, end);
                 return new StringSequence(str, start, end);
