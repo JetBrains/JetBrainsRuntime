@@ -98,18 +98,33 @@ public class AtkText {
         if (offset < 0) offset = 0;
         if (offset >= length) offset = length - 1;
 
-        if (!Character.isLetter(text.codePointAt(offset))) {
-            return BreakIterator.DONE;
-        }
-
         BreakIterator words = BreakIterator.getWordInstance();
         words.setText(text);
 
-        int wordEnd = words.following(offset);
-        if (wordEnd == BreakIterator.DONE) return BreakIterator.DONE;
+        int segmentEnd = words.following(offset);
+        if (segmentEnd == BreakIterator.DONE) {
+            return BreakIterator.DONE;
+        }
 
-        int wordStart = words.previous();
-        return wordStart;
+        int segmentStart = words.previous();
+        if (segmentStart == BreakIterator.DONE) {
+            return BreakIterator.DONE;
+        }
+
+        if (!containsLetterOrDigit(text, segmentStart, segmentEnd)) {
+            return BreakIterator.DONE;
+        }
+
+        return segmentStart;
+    }
+
+    private static boolean containsLetterOrDigit(String text, int start, int end) {
+        for (int i = start; i < end; i++) {
+            if (Character.isLetterOrDigit(text.codePointAt(i))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int getPreviousWordStart(int offset, String text) {
@@ -128,10 +143,8 @@ public class AtkText {
         int segmentStart = words.previous();
 
         while (segmentStart != BreakIterator.DONE) {
-            for (int i = segmentStart; i < segmentEnd; i++) {
-                if (Character.isLetter(text.codePointAt(i))) {
-                    return segmentStart;
-                }
+            if (containsLetterOrDigit(text, segmentStart, segmentEnd)) {
+                return segmentStart;
             }
             segmentEnd = segmentStart;
             segmentStart = words.previous();
