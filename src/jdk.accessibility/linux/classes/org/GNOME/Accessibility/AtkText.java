@@ -785,15 +785,18 @@ public class AtkText {
             return false;
         }
         AccessibleEditableText accessibleEditableText = accessibleEditableTextWeakRef.get();
-
-        // Java AccessibleText only supports a single selection, so reject if one already exists
-        if (accessibleEditableText == null || get_n_selections() > 0) {
+        if (accessibleEditableText == null) {
             return false;
         }
 
         return AtkUtil.invokeInSwingAndWait(() -> {
-            final int rightStart = getRightStart(start);
-            final int rightEnd = getRightEnd(rightStart, end, accessibleText.getCharCount());
+            // Java AccessibleText only supports a single selection, so reject if one already exists
+            if (accessibleText.getSelectedText() != null) {
+                return false;
+            }
+
+            int rightStart = getRightStart(start);
+            int rightEnd = getRightEnd(rightStart, end, accessibleText.getCharCount());
 
             return set_selection(0, rightStart, rightEnd);
         }, false);
