@@ -743,18 +743,22 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
         return;
     }
 
-    gint temp_x, temp_y, temp_width, temp_height;
+    gint temp_x = -1, temp_y = -1, temp_width = -1, temp_height = -1;
     jaw_util_get_rect_info(jniEnv, jrect, &temp_x, &temp_y, &temp_width,
                            &temp_height);
 
-    if (x != NULL)
+    if (x != NULL) {
         *x = temp_x;
-    if (y != NULL)
+    }
+    if (y != NULL) {
         *y = temp_y;
-    if (width != NULL)
+    }
+    if (width != NULL) {
         *width = temp_width;
-    if (height != NULL)
+    }
+    if (height != NULL) {
         *height = temp_height;
+    }
 }
 
 /**
