@@ -182,7 +182,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    protected void postPaintEvent(int x, int y, int w, int h) {
+    public void postPaintEvent(int x, int y, int w, int h) {
         if (isVisible()) {
             PaintEvent event = PaintEventDispatcher.getPaintEventDispatcher().
                     createPaintEvent(target, x, y, w, h);
@@ -193,7 +193,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     void postPaintEvent() {
-        postPaintEvent(0, 0, getWidth(), getHeight());
+        if (isVisible()) {
+            postPaintEvent(0, 0, getWidth(), getHeight());
+        }
     }
 
     boolean isVisible() {

@@ -204,10 +204,12 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
         }
     }
 
-    @Override
-    protected void postChildPaintEvents(Rectangle r) {
-        notifyClientDecorationsChanged();
-        super.postChildPaintEvents(r);
+    void postPaintEvent() {
+        if (isVisible()) {
+            // Full re-paint must include window decorations, if any
+            notifyClientDecorationsChanged();
+            super.postPaintEvent();
+        }
     }
 
     final void paintClientDecorations(Graphics g) {
