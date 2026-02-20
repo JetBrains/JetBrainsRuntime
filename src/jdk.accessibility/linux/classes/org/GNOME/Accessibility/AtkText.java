@@ -246,18 +246,10 @@ public class AtkText {
             return 0;
         }
 
-        int length = text.length();
-        if (start < 0) start = 0;
-        if (start >= length) return length;
+        start = Math.max(0, Math.min(start, text.length()));
 
-        int pos = start;
-        while (pos < length) {
-            if (text.charAt(pos) == '\n') {
-                return pos;
-            }
-            pos++;
-        }
-        return length;
+        int index = text.indexOf('\n', start);
+        return (index == -1) ? text.length() : index;
     }
 
     /**
