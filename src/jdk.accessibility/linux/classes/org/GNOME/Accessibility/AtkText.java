@@ -925,17 +925,14 @@ public class AtkText {
      *
      * @param offset       The position in the text where the extraction starts.
      * @param granularity  The granularity of the text to extract, which can be one of the following:
-     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_CHAR}: returns the character at the offset.
-     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_WORD}: returns the word that contains the offset.
-     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_SENTENCE}: returns the sentence that contains the offset.
-     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_LINE}: returns the line that contains the offset.
-     *                     - {@link AtkTextGranularity#ATK_TEXT_GRANULARITY_PARAGRAPH}: returns the paragraph that contains the offset.
-     * @param start_offset (out) The starting character offset of the returned string, or -1 if there is an error (e.g., invalid offset, not implemented).
-     * @param end_offset   (out) The offset of the first character after the returned string, or -1 in the case of an error (e.g., invalid offset, not implemented).
-     * @return A newly allocated string containing the text at the specified offset, bounded by the specified granularity.
-     * The caller is responsible for freeing the returned string using {@code g_free()}.
-     * Returns {@code null} if the offset is invalid or no implementation is available.
-     * @since 2.10 (in atk)
+     *                     - {@link AtkTextGranularity#CHAR}: returns the character at the offset.
+     *                     - {@link AtkTextGranularity#WORD}: returns the word that contains the offset.
+     *                     - {@link AtkTextGranularity#SENTENCE}: returns the sentence that contains the offset.
+     *                     - {@link AtkTextGranularity#LINE}: returns the line that contains the offset.
+     *                     - {@link AtkTextGranularity#PARAGRAPH}: returns the paragraph that contains the offset.
+     * @return A StringSequence containing the text at the specified offset bounded by the specified granularity,
+     *         along with the start and end offsets. Returns {@code null} if the offset is invalid or no implementation is available.
+     * @since ATK 2.10
      */
     private StringSequence get_string_at_offset(int offset, int granularity) {
         int characterCount = get_character_count();
