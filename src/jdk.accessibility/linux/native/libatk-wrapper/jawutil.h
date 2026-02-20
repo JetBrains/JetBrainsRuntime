@@ -92,7 +92,7 @@ void jaw_util_detach(void);
     }                                                                          \
     Data *data = jaw_object_get_interface_data(jaw_obj, iface);                \
     if (!data) {                                                               \
-        g_warning("%s: data == NULL for interface %u", G_STRFUNC, iface);      \
+        g_warning("%s: data == NULL for interface %lu", G_STRFUNC, iface);     \
         return def_ret;                                                        \
     }                                                                          \
     JNIEnv *env = jaw_util_get_jni_env();                                      \
