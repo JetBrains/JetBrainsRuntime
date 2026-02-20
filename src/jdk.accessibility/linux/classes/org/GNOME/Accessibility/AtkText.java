@@ -795,15 +795,17 @@ public class AtkText {
     /**
      * @param offset       Position.
      * @param boundaryType An AtkTextBoundary.
-     * @return A newly allocated string containing the text before offset bounded by the specified boundary_type
+     * @return A newly allocated string containing the text before offset bounded by the specified boundary_type.
+     *
      * @deprecated Please use get_string_at_offset() instead.
      * <p>
      * Returns a newly allocated string containing the text before offset bounded by the specified boundary_type.
+     * Currently not implemented and always returns {@code null}.
      */
     @Deprecated
     private StringSequence get_text_before_offset(int offset, int boundaryType) {
         // TODO: Implement if required.
-        return getTextAtOffset(offset, boundaryType);
+        return null;
     }
 
     /**
@@ -813,11 +815,12 @@ public class AtkText {
      * @deprecated Please use get_string_at_offset() instead.
      * <p>
      * Returns newly allocated string containing the text after offset bounded by the specified boundary_type.
+     * Currently not implemented and always returns {@code null}.
      */
     @Deprecated
     private StringSequence get_text_after_offset(int offset, int boundaryType) {
         // TODO:  Implement if required.
-        return getTextAtOffset(offset, boundaryType);
+        return null;
     }
 
     /**
