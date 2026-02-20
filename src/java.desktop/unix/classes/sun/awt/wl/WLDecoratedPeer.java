@@ -155,10 +155,9 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     @Override
-    public void updateWindow() {
-        // signals the end of repainting by Swing and/or AWT
-        paintClientDecorations(getGraphics());
-        super.updateWindow();
+    void paintPeer(Graphics g) {
+        paintClientDecorations(g);
+        super.paintPeer(g);
     }
 
     @Override
