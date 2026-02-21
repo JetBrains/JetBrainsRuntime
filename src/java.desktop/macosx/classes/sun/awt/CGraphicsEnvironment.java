@@ -186,23 +186,33 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * @param flags CGDisplayChangeSummaryFlags flags as integer
      */
     void _displayReconfiguration(int displayId, int flags) {
-        // See CGDisplayChangeSummaryFlags
-        LogDisplay log = !LogDisplay.ENABLED ? null :
-                (flags & (1 << 4)) != 0 ? LogDisplay.ADDED :
-                (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
-        if (log == LogDisplay.REMOVED) {
-            CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfiguration({}): enter", displayId);
         }
-        // we ignore the passed parameters and check removed devices ourself
-        // Note that it is possible that this callback is called when the
-        // monitors are not added nor removed, but when the video card is
-        // switched to/from the discrete video card, so we should try to map the
-        // old to the new devices.
-        initDevices();
-        if (log != null && log != LogDisplay.REMOVED) {
-            CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        try {
+            // See CGDisplayChangeSummaryFlags
+            LogDisplay log = !LogDisplay.ENABLED ? null :
+                    (flags & (1 << 4)) != 0 ? LogDisplay.ADDED :
+                    (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
+            if (log == LogDisplay.REMOVED) {
+                CGraphicsDevice gd = devices.get(displayId);
+                log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+            }
+            // we ignore the passed parameters and check removed devices ourself
+            // Note that it is possible that this callback is called when the
+            // monitors are not added nor removed, but when the video card is
+            // switched to/from the discrete video card, so we should try to map the
+            // old to the new devices.
+            initDevices();
+            if (log != null && log != LogDisplay.REMOVED) {
+                CGraphicsDevice gd = devices.get(displayId);
+                log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+            }
+        } catch (RuntimeException re) {
+            logger.severe("CGraphicsEnvironment._displayReconfiguration: exception occurred: ", re);
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfiguration({}): exit", displayId);
         }
     }
 
@@ -215,8 +225,8 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
         try {
             doNotifyListeners();
-        } catch (Exception e) {
-            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", e);
+        } catch (RuntimeException re) {
+            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", re);
         } finally {
             // notify the metal pipeline after processing listeners:
             if (CGraphicsEnvironment.usingMetalPipeline()) {
@@ -224,7 +234,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             }
         }
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-            logger.fine("_displayReconfigurationFinished(): exit");
+            logger.fine("CGraphicsEnvironment._displayReconfigurationFinished(): exit");
         }
     }
 
