@@ -196,7 +196,12 @@ public final class CGraphicsDevice extends GraphicsDevice
         Insets newScreenInsets = nativeGetScreenInsets(displayID);
         if (!newScreenInsets.equals(screenInsets)) {
             if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                logger.fine("Screen insets for display(" + displayID + ") changed " + screenInsets + "->" + newScreenInsets);
+                logger.fine("Screen insets for display(" + displayID + ") changed " +
+                        ((screenInsets != null) ? ("[top="  + screenInsets.top + ",left=" + screenInsets.left +
+                           ",bottom=" + screenInsets.bottom + ",right=" + screenInsets.right ) : "[null") +
+                        "]->[top="  + newScreenInsets.top + ",left=" + newScreenInsets.left +
+                        ",bottom=" + newScreenInsets.bottom + ",right=" + newScreenInsets.right +
+                        "]");
             }
             screenInsets = newScreenInsets;
         }
