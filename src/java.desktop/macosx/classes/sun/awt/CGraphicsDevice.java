@@ -200,8 +200,8 @@ public final class CGraphicsDevice extends GraphicsDevice
         if (!desc.screenInsets.equals(screenInsets)) {
             if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                 logger.fine("Screen insets for display(" + displayID + ") changed " +
-                        "[top="  + screenInsets.top + ",left=" + screenInsets.left +
-                        ",bottom=" + screenInsets.bottom + ",right=" + screenInsets.right +
+                        ((screenInsets != null) ? ("[top="  + screenInsets.top + ",left=" + screenInsets.left +
+                           ",bottom=" + screenInsets.bottom + ",right=" + screenInsets.right ) : "[null") +
                         "]->[top="  + desc.screenInsets.top + ",left=" + desc.screenInsets.left +
                         ",bottom=" + desc.screenInsets.bottom + ",right=" + desc.screenInsets.right +
                         "]");
