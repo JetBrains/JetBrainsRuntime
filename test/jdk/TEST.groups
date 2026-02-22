@@ -936,7 +936,6 @@ jdk_awt_wayland = \
     -java/awt/Focus/8282640 \
     -java/awt/Focus/ActualFocusedWindowTest \
     -java/awt/Focus/ActivateOnProperAppContextTest.java \
-    -java/awt/Focus/AppletInitialFocusTest \
     -java/awt/Focus/AsyncUpFocusCycleTest.java \
     -java/awt/Focus/AutoRequestFocusTest \
     -java/awt/Focus/Cause \
