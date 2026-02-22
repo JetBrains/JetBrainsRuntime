@@ -46,6 +46,7 @@ import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
 import java.io.Serializable;
 import java.lang.annotation.Native;
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
@@ -66,6 +67,7 @@ import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
 import javax.accessibility.AccessibleStateSet;
 
+import com.jetbrains.internal.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTPermissions;
 import sun.awt.AppContext;
@@ -4017,6 +4019,9 @@ public class Window extends Container implements Accessible {
 
         void setCustomDecorationEnabled(Window window, boolean enabled) {
             window.hasCustomDecoration = enabled;
+            if (Win.INSTANCE != null) {
+                Win.INSTANCE.updateCustomDecoration(window.peer);
+            }
         }
         boolean isCustomDecorationEnabled(Window window) {
             return window.hasCustomDecoration;
@@ -4034,6 +4039,12 @@ public class Window extends Container implements Accessible {
         }
         int getCustomDecorationTitleBarHeight(Window window) {
             return window.customDecorTitleBarHeight;
+        }
+
+        private interface Win {
+            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup(), null)
+                    .withStatic("updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
+            void updateCustomDecoration(ComponentPeer peer);
         }
     }
 
