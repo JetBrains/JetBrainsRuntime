@@ -78,18 +78,6 @@
 #include "opto/c2compiler.hpp"
 #endif
 
-Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = nullptr;
-Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = nullptr;
-Method**  VM_EnhancedRedefineClasses::_matching_old_methods = nullptr;
-Method**  VM_EnhancedRedefineClasses::_matching_new_methods = nullptr;
-Method**  VM_EnhancedRedefineClasses::_deleted_methods      = nullptr;
-Method**  VM_EnhancedRedefineClasses::_added_methods        = nullptr;
-int         VM_EnhancedRedefineClasses::_matching_methods_length = 0;
-int         VM_EnhancedRedefineClasses::_deleted_methods_length  = 0;
-int         VM_EnhancedRedefineClasses::_added_methods_length    = 0;
-Klass*      VM_EnhancedRedefineClasses::_the_class_oop = nullptr;
-u8        VM_EnhancedRedefineClasses::_id_counter = 0;
-
 //
 // Create new instance of enhanced class redefiner.
 //
@@ -116,6 +104,16 @@ VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const j
   _object_klass_redefined = false;
   _vm_class_redefined = false;
   _id = next_id();
+  _old_methods = nullptr;
+  _new_methods = nullptr;
+  _matching_old_methods = nullptr;
+  _matching_new_methods = nullptr;
+  _deleted_methods      = nullptr;
+  _added_methods        = nullptr;
+  _matching_methods_length = 0;
+  _deleted_methods_length  = 0;
+  _added_methods_length    = 0;
+  _id_counter = 0;
 }
 
 static inline InstanceKlass* get_ik(jclass def) {
@@ -978,9 +976,6 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
     delete _affected_klasses;
     _affected_klasses = nullptr;
   }
-
-  // Reset the_class_oop to null for error printing.
-  _the_class_oop = nullptr;
 
   if (log_is_enabled(Info, redefine, class, timer)) {
     // Used to have separate timers for "doit" and "all", but the timer
@@ -2069,10 +2064,6 @@ void VM_EnhancedRedefineClasses::check_methods_and_mark_as_obsolete() {
               old_method->name_and_sig_as_C_string(), new_method->name_and_sig_as_C_string());
         // assert(old_method->method_idnum() == new_method->method_idnum(), "must match");
       }
-//      u2 num = InstanceKlass::cast(_the_class_oop)->next_method_idnum();
-//      if (num != ConstMethod::UNSET_IDNUM) {
-//        old_method->set_method_idnum(num);
-//      }
     }
     old_method->set_is_old();
   }
@@ -2345,7 +2336,6 @@ void VM_EnhancedRedefineClasses::redefine_single_class(Thread *current, Instance
 
   _old_methods = the_class->methods();
   _new_methods = new_class->methods();
-  _the_class_oop = the_class;
   compute_added_deleted_matching_methods();
 
   // track number of methods that are EMCP for add_previous_version() call below
