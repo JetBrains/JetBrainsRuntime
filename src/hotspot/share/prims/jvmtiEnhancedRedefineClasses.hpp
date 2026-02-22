@@ -54,17 +54,16 @@ public:
 private:
   // These static fields are needed by ClassLoaderDataGraph::classes_do()
   // facility and the AdjustCpoolCacheAndVtable helper:
-  static Array<Method*>* _old_methods;
-  static Array<Method*>* _new_methods;
-  static Method**      _matching_old_methods;
-  static Method**      _matching_new_methods;
-  static Method**      _deleted_methods;
-  static Method**      _added_methods;
-  static int           _matching_methods_length;
-  static int           _deleted_methods_length;
-  static int           _added_methods_length;
-  static Klass*        _the_class_oop;
-  static u8            _id_counter;
+  Array<Method*>* _old_methods;
+  Array<Method*>* _new_methods;
+  Method**      _matching_old_methods;
+  Method**      _matching_new_methods;
+  Method**      _deleted_methods;
+  Method**      _added_methods;
+  int           _matching_methods_length;
+  int           _deleted_methods_length;
+  int           _added_methods_length;
+  u8            _id_counter;
 
   // The instance fields are used to pass information from
   // doit_prologue() to doit() and doit_epilogue().
@@ -165,7 +164,7 @@ private:
 
   static void check_class(InstanceKlass* k_oop);
 
-  static void dump_methods();
+  void dump_methods();
 
   // Unevolving classes may point to methods of the_class directly
   // from their constant pool caches, itables, and/or vtables. We
