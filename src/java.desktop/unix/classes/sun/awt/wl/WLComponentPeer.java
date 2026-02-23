@@ -904,7 +904,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 // while waiting for native paint
                 if (!isLayouting && !paintPending) {
                     paintArea.paint(target, true);
-                    WLToolkit.getWLToolkit().flushOnscreenGraphics(target);
+                    SunToolkit.executeOnEventHandlerThread(getTarget(),
+                            () -> WLToolkit.getWLToolkit().flushOnscreenGraphics(target));
                 }
                 return;
             case FocusEvent.FOCUS_LOST:
