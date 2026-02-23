@@ -50,7 +50,6 @@ final class WLRepaintArea extends RepaintArea {
             // We don't call peer.paintPeer() here, because we shouldn't paint
             // native component when processing UPDATE events.
             super.updateComponent(comp, g);
-            WLToolkit.getWLToolkit().flushOnscreenGraphics(comp);
         }
     }
 
@@ -59,16 +58,11 @@ final class WLRepaintArea extends RepaintArea {
      */
     protected void paintComponent(Component comp, Graphics g) {
         if (comp != null) {
-            final WLComponentPeer peer = AWTAccessor.getComponentAccessor()
-                                                   .getPeer(comp);
-            try {
-                if (peer != null) {
-                    peer.paintPeer(g);
-                }
-                super.paintComponent(comp, g);
-            } finally {
-                WLToolkit.getWLToolkit().flushOnscreenGraphics(comp);
+            final WLComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(comp);
+            if (peer != null) {
+                peer.paintPeer(g);
             }
+            super.paintComponent(comp, g);
         }
     }
 }
