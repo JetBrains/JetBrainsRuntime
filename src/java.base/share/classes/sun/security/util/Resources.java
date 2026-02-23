@@ -138,6 +138,10 @@ public class Resources extends java.util.ListResourceBundle {
         // sun.security.pkcs11.SunPKCS11
         {"PKCS11.Token.providerName.Password.",
                 "PKCS11 Token [{0}] Password: "},
+
+        // sun.security.util.Password
+        {"warning.input.may.be.visible.on.screen",
+                "[WARNING: Input may be visible on screen]\u0020"},
     };
 
 
