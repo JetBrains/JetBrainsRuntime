@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -709,6 +709,10 @@ static const gchar *(*fp_g_variant_get_string)(GVariant *value, gsize *length);
 
 static guint32 (*fp_g_variant_get_uint32)(GVariant *value);
 
+static const gchar *(*fp_g_variant_get_type_string)(GVariant *value);
+
+static gboolean (*fp_g_variant_is_of_type)(GVariant *value, const GVariantType *type);
+
 static gboolean (*fp_g_variant_lookup)(GVariant *dictionary,
                                        const gchar *key,
                                        const gchar *format_string,
@@ -750,11 +754,15 @@ static void *(*fp_g_string_printf)(GString *string, const gchar *format, ...);
 
 static gboolean (*fp_g_uuid_string_is_valid)(const gchar *str);
 
+static gchar *(*fp_g_variant_print)(GVariant *value, gboolean type_annotate);
+static gchar *(*fp_g_strconcat)(const gchar *string1, ...);
 
 // ---------- * ----------
 static void (*fp_g_error_free)(GError *error);
 
 static gint (*fp_g_unix_fd_list_get)(GUnixFDList *list, gint index_, GError **error);
+
+static gint (*fp_g_unix_fd_list_get_length)(GUnixFDList* list);
 
 #endif /* !_GTK3_INTERFACE_H */
 
