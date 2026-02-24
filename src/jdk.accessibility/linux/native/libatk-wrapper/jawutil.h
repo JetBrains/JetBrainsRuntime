@@ -82,6 +82,9 @@ gboolean jaw_util_dispatch_key_event(AtkKeyEventStruct *event);
 
 void jaw_util_detach(void);
 
+jstring jaw_util_utf8_gchar_to_jstring(JNIEnv* env, const gchar* utf8);
+gchar* jaw_util_jstring_to_utf8_gchar(JNIEnv* env, jstring jstr);
+
 #define JAW_DEFAULT_LOCAL_FRAME_SIZE 10
 
 #define JAW_GET_OBJ_IFACE(o, iface, Data, field, env, name, def_ret)           \

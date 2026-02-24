@@ -703,6 +703,77 @@ static gboolean is_same_java_state(JNIEnv *jniEnv, jobject jobj,
     return FALSE;
 }
 
+/**
+ * jaw_util_utf8_gchar_to_jstring:
+ * @env: JNI environment pointer
+ * @utf8: UTF-8 encoded null-terminated string to convert, or NULL
+ *
+ * Returns: A new jstring containing the converted text, or NULL
+ */
+jstring jaw_util_utf8_gchar_to_jstring(JNIEnv* env, const gchar* utf8) {
+    if (utf8 == NULL) {
+        return NULL;
+    }
+
+    GError* error = NULL;
+    glong items_read = 0, items_written = 0;
+
+    gunichar2* utf16 = g_utf8_to_utf16(utf8, -1, &items_read, &items_written, &error);
+    if (error != NULL) {
+        g_error_free(error);
+        return NULL;
+    }
+    if (utf16 == NULL) {
+        return NULL;
+    }
+
+    jstring jstr = (*env)->NewString(env, (const jchar*)utf16, (jsize)items_written);
+    g_free(utf16);
+    return jstr;
+}
+
+/**
+ * jaw_util_jstring_to_utf8_gchar:
+ * @env: JNI environment pointer
+ * @jstr: Java string to convert, or NULL
+ *
+ * Returns: A newly allocated UTF-8 string, or NULL
+ *
+ * Note: The caller is responsible for freeing the returned string using g_free().
+ */
+gchar* jaw_util_jstring_to_utf8_gchar(JNIEnv* env, jstring jstr) {
+    if (jstr == NULL) {
+        return NULL;
+    }
+
+    const jchar* utf16 = (*env)->GetStringChars(env, jstr, NULL);
+    if (utf16 == NULL) {
+        return NULL;
+    }
+
+    jsize utf16_len = (*env)->GetStringLength(env, jstr);
+
+    GError* error = NULL;
+    gchar* utf8 = g_utf16_to_utf8((const gunichar2*)utf16,
+                                 (glong)utf16_len,
+                                 NULL,
+                                 NULL,
+                                 &error);
+
+    (*env)->ReleaseStringChars(env, jstr, utf16);
+
+    if (error != NULL) {
+        g_error_free(error);
+        return NULL;
+    }
+
+    if (utf8 == NULL) {
+        return NULL;
+    }
+
+    return utf8;
+}
+
 AtkStateType jaw_util_get_atk_state_type_from_java_state(JNIEnv *jniEnv,
                                                          jobject jobj) {
     if (jniEnv == NULL) {

@@ -86,14 +86,6 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset);
 static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
                                           AtkTextBoundary boundary_type,
                                           gint *start_offset, gint *end_offset);
-static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
-                                              AtkTextBoundary boundary_type,
-                                              gint *start_offset,
-                                              gint *end_offset);
-static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
-                                             AtkTextBoundary boundary_type,
-                                             gint *start_offset,
-                                             gint *end_offset);
 static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
                                             AtkTextGranularity granularity,
                                             gint *start_offset,
@@ -136,10 +128,10 @@ void jaw_text_interface_init(AtkTextIface *iface, gpointer data) {
     }
 
     iface->get_text = jaw_text_get_text;
-    iface->get_text_after_offset = jaw_text_get_text_after_offset;
+    iface->get_text_after_offset = NULL; // TODO: jaw_text_get_text_after_offset;
     iface->get_text_at_offset = jaw_text_get_text_at_offset;
     iface->get_character_at_offset = jaw_text_get_character_at_offset;
-    iface->get_text_before_offset = jaw_text_get_text_before_offset;
+    iface->get_text_before_offset = NULL; // TODO: jaw_text_get_text_before_offset;
     iface->get_string_at_offset = jaw_text_get_string_at_offset;
     iface->get_caret_offset = jaw_text_get_caret_offset;
     iface->get_run_attributes =
@@ -280,28 +272,11 @@ void jaw_text_data_finalize(gpointer p) {
     g_free(data);
 }
 
-static gchar *private_jaw_text_get_gtext_from_jstr(JNIEnv *jniEnv,
-                                                   jstring jstr) {
-    JAW_DEBUG("%p, %p", jniEnv, jstr);
-
-    if (jniEnv == NULL || jstr == NULL) {
-        g_warning("%s: Null argument passed. jniEnv=%p, jstr=%p", G_STRFUNC,
-                  (void *)jniEnv, (void *)jstr);
-        return NULL;
-    }
-
-    gchar *tmp_text = (gchar *)(*jniEnv)->GetStringUTFChars(jniEnv, jstr, NULL);
-    if (tmp_text == NULL) {
-        g_warning("%s: tmp_text is NULL", G_STRFUNC);
-        return NULL;
-    }
-    gchar *text = g_strdup(tmp_text);
-    (*jniEnv)->ReleaseStringUTFChars(jniEnv, jstr, tmp_text);
-
-    return text;
-}
-
 /**
+ * @start_offset: (out): the starting character offset of the returned string
+ * @end_offset: (out): the offset of the first character after the
+ *              returned substring
+ *
  * Explicitly manages a JNI local reference frame using
  * PushLocalFrame/PopLocalFrame; all local references are released
  * before the function returns.
@@ -310,37 +285,39 @@ static gchar *private_jaw_text_get_gtext_from_string_seq(JNIEnv *jniEnv,
                                                          jobject jStrSeq,
                                                          gint *start_offset,
                                                          gint *end_offset) {
-    if (jniEnv == NULL || start_offset == NULL || end_offset == NULL) {
-        g_warning(
-            "%s: Null argument. jniEnv=%p, start_offset=%p, end_offset=%p",
-            G_STRFUNC, (void *)jniEnv, (void *)start_offset,
-            (void *)end_offset);
+    if (jniEnv == NULL || jStrSeq == NULL || start_offset == NULL ||
+        end_offset == NULL) {
+        g_warning("%s: Null argument. jniEnv=%p, jStrSeq=%p, start_offset=%p, end_offset=%p",
+                  G_STRFUNC, (void *)jniEnv, (void *)jStrSeq,
+                  (void *)start_offset, (void *)end_offset);
         return NULL;
     }
 
     if ((*jniEnv)->PushLocalFrame(jniEnv, JAW_DEFAULT_LOCAL_FRAME_SIZE) < 0) {
-        g_warning("%s: Failed to create a new local reference frame",
-                  G_STRFUNC);
+        g_warning("%s: Failed to create a new local reference frame", G_STRFUNC);
         return NULL;
     }
 
-    jstring jStr =
-        (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedTextStrFieldID);
-    if (jStr == NULL) {
+    jstring jStr = (*jniEnv)->GetObjectField(jniEnv, jStrSeq, cachedTextStrFieldID);
+    if ((*jniEnv)->ExceptionCheck(jniEnv) || jStr == NULL) {
+        jaw_jni_clear_exception(jniEnv);
         g_warning("%s: Failed to get jStr field", G_STRFUNC);
         (*jniEnv)->PopLocalFrame(jniEnv, NULL);
         return NULL;
     }
 
-    (*start_offset) = (gint)(*jniEnv)->GetIntField(
-        jniEnv, jStrSeq, cachedTextStartOffsetFieldID);
-    (*end_offset) = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq,
-                                                 cachedTextEndOffsetFieldID);
+    *start_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedTextStartOffsetFieldID);
+    *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq, cachedTextEndOffsetFieldID);
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to get offsets from StringSequence", G_STRFUNC);
+        (*jniEnv)->PopLocalFrame(jniEnv, NULL);
+        return NULL;
+    }
 
-    gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jStr);
+    gchar *result = jaw_util_jstring_to_utf8_gchar(jniEnv, jStr);
 
     (*jniEnv)->PopLocalFrame(jniEnv, NULL);
-
     return result;
 }
 
@@ -379,7 +356,7 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
         return NULL;
     }
 
-    gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jstr);
+    gchar *result = jaw_util_jstring_to_utf8_gchar(jniEnv, jstr);
 
     return result;
 }
@@ -403,72 +380,20 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
         return 0;
     }
 
-    JAW_GET_TEXT(text, 0);
+    JAW_GET_TEXT(text, 0); // create local JNI reference `jobject atk_text`
 
-    jchar jcharacter = (*jniEnv)->CallCharMethod(
+    jint jcodepoint = (*jniEnv)->CallIntMethod(
         jniEnv, atk_text, cachedTextGetCharacterAtOffsetMethod, (jint)offset);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
         jaw_jni_clear_exception(jniEnv);
         return 0;
     }
-    if (jcharacter == '\0') {
-        g_warning("%s: jcharacter is '\\0'", G_STRFUNC);
+    if (jcodepoint == 0) {
+        g_warning("%s: jcodepoint is 0", G_STRFUNC);
         return 0;
     }
 
-    return (gunichar)jcharacter;
-}
-
-/**
- * jaw_text_get_text_after_offset:
- * @text: an #AtkText
- * @offset: position
- * @boundary_type: An #AtkTextBoundary
- * @start_offset: (out): the starting character offset of the returned string
- * @end_offset: (out): the offset of the first character after the
- *              returned substring
- *
- * Gets the specified text.
- *
- * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
- *
- * Deprecated: 2.9.3 in atk: Please use atk_text_get_string_at_offset() instead.
- *
- * Returns: a newly allocated string containing the text after @offset bounded
- *          by the specified @boundary_type. Use g_free() to free the returned
- *          string.
- **/
-static gchar *jaw_text_get_text_after_offset(AtkText *text, gint offset,
-                                             AtkTextBoundary boundary_type,
-                                             gint *start_offset,
-                                             gint *end_offset) {
-    JAW_DEBUG("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
-              end_offset);
-
-    if (text == NULL || start_offset == NULL || end_offset == NULL) {
-        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
-                  G_STRFUNC, (void *)text, (void *)start_offset,
-                  (void *)end_offset);
-        return NULL;
-    }
-
-    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
-
-    jobject jStrSeq = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedTextGetTextAfterOffsetMethod, (jint)offset,
-        (jint)boundary_type);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
-        jaw_jni_clear_exception(jniEnv);
-        g_warning(
-            "%s: Failed to create jStrSeq using get_text_after_offset method",
-            G_STRFUNC);
-        return NULL;
-    }
-
-    gchar *result = private_jaw_text_get_gtext_from_string_seq(
-        jniEnv, jStrSeq, start_offset, end_offset);
-
-    return result;
+    return (gunichar)jcodepoint;
 }
 
 /**
@@ -512,58 +437,6 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
         jaw_jni_clear_exception(jniEnv);
         g_warning(
             "%s: Failed to create jStrSeq using get_text_at_offset method",
-            G_STRFUNC);
-        return NULL;
-    }
-
-    gchar *result = private_jaw_text_get_gtext_from_string_seq(
-        jniEnv, jStrSeq, start_offset, end_offset);
-
-    return result;
-}
-
-/**
- * jaw_text_get_text_before_offset:
- * @text: an #AtkText
- * @offset: position
- * @boundary_type: An #AtkTextBoundary
- * @start_offset: (out): the starting character offset of the returned string
- * @end_offset: (out): the offset of the first character after the
- *              returned substring
- *
- * Gets the specified text.
- *
- * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
- *
- * Deprecated in atk: 2.9.3: Please use atk_text_get_string_at_offset() instead.
- *
- * Returns: a newly allocated string containing the text before @offset bounded
- *          by the specified @boundary_type. Use g_free() to free the returned
- *          string.
- **/
-static gchar *jaw_text_get_text_before_offset(AtkText *text, gint offset,
-                                              AtkTextBoundary boundary_type,
-                                              gint *start_offset,
-                                              gint *end_offset) {
-    JAW_DEBUG("%p, %d, %d, %p, %p", text, offset, boundary_type, start_offset,
-              end_offset);
-
-    if (text == NULL || start_offset == NULL || end_offset == NULL) {
-        g_warning("%s: Null argument. text=%p, start_offset=%p, end_offset=%p",
-                  G_STRFUNC, (void *)text, (void *)start_offset,
-                  (void *)end_offset);
-        return NULL;
-    }
-
-    JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
-
-    jobject jStrSeq = (*jniEnv)->CallObjectMethod(
-        jniEnv, atk_text, cachedTextGetTextBeforeOffsetMethod, (jint)offset,
-        (jint)boundary_type);
-    if ((*jniEnv)->ExceptionCheck(jniEnv) || jStrSeq == NULL) {
-        jaw_jni_clear_exception(jniEnv);
-        g_warning(
-            "%s: Failed to create jStrSeq using get_text_before_offset method",
             G_STRFUNC);
         return NULL;
     }
@@ -970,7 +843,7 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
     *end_offset = (gint)(*jniEnv)->GetIntField(jniEnv, jStrSeq,
                                                cachedTextEndOffsetFieldID);
 
-    gchar *result = private_jaw_text_get_gtext_from_jstr(jniEnv, jStr);
+    gchar *result = jaw_util_jstring_to_utf8_gchar(jniEnv, jStr);
 
     return result;
 }
@@ -1172,7 +1045,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         jniEnv, cachedTextAtkTextClass, "get_text", "(II)Ljava/lang/String;");
 
     cachedTextGetCharacterAtOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTextAtkTextClass, "get_character_at_offset", "(I)C");
+        jniEnv, cachedTextAtkTextClass, "get_character_at_offset", "(I)I");
 
     cachedTextGetTextAfterOffsetMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTextAtkTextClass, "get_text_after_offset",

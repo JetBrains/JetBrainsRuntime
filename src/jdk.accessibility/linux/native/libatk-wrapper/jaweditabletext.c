@@ -71,11 +71,6 @@ static void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
                                           gint end_pos);
 static void jaw_editable_text_paste_text(AtkEditableText *text, gint position);
 
-static gboolean
-jaw_editable_text_set_run_attributes(AtkEditableText *text,
-                                     AtkAttributeSet *attrib_set,
-                                     gint start_offset, gint end_offset);
-
 typedef struct _EditableTextData {
     jobject atk_editable_text;
 } EditableTextData;
@@ -104,7 +99,7 @@ void jaw_editable_text_interface_init(AtkEditableTextIface *iface,
         return;
     }
 
-    iface->set_run_attributes = jaw_editable_text_set_run_attributes;
+    iface->set_run_attributes = NULL; // TODO: jaw_editable_text_set_run_attributes, make a proper conversion between attrib_set and swing AttributeSet,
     iface->set_text_contents = jaw_editable_text_set_text_contents;
     iface->insert_text = jaw_editable_text_insert_text;
     iface->copy_text = jaw_editable_text_copy_text;
@@ -232,12 +227,12 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     }
 
     JAW_GET_EDITABLETEXT(
-        text, ); // create local JNI reference `jobject atk_editable_text`
+        text, ); // creates local JNI reference `jobject atk_editable_text`
 
-    jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
+    jstring jstr = jaw_util_utf8_gchar_to_jstring(jniEnv, string);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
+        g_warning("%s: Failed to create jstring from UTF-8 input", G_STRFUNC);
         return;
     }
 
@@ -253,7 +248,7 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
  * jaw_editable_text_insert_text:
  * @text: an #AtkEditableText
  * @string: the text to insert
- * @length: the length of text to insert, in bytes
+ * @length: the length of text to insert, in bytes. If len is negative, then the string is nul-terminated.
  * @position: (inout): The caller initializes this to the position at which to
  *   insert the text. After the call it points at the position after the newly
  *   inserted text.
@@ -263,33 +258,69 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
  * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
  */
 void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
-                                   gint length, gint *position) {
-    JAW_DEBUG("%p, %s, %d, %p", text, string, length, position);
+                                   gint utf8_len, gint *position) {
+    JAW_DEBUG("%p, %s, %d, %p", text, string, utf8_len, position);
 
     if (text == NULL || string == NULL || position == NULL) {
         g_warning("%s: Null argument passed to the function", G_STRFUNC);
         return;
     }
 
-    JAW_GET_EDITABLETEXT(
-        text, ); // create local JNI reference `jobject atk_editable_text`
+    JNIEnv *jniEnv = jaw_util_get_jni_env();
+    if (jniEnv == NULL) {
+        g_warning("%s: jniEnv is NULL", G_STRFUNC);
+        return;
+    }
 
-    jstring jstr = (*jniEnv)->NewStringUTF(jniEnv, string);
+    JAW_GET_EDITABLETEXT(text, ); // create local JNI reference `jobject atk_editable_text`
+
+    const gchar *buf = string;
+    gssize buf_len = -1;
+    gchar *string_copy = NULL;
+
+    if (utf8_len >= 0) {
+        string_copy = g_strndup(string, (gsize)utf8_len); // A newly-allocated buffer utf8_len + 1 bytes long which will always be nul-terminated
+        buf = string_copy;
+        buf_len = (gssize)utf8_len;
+    }
+
+    jstring jstr = jaw_util_utf8_gchar_to_jstring(jniEnv, buf);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
-        g_warning("%s: Failed to create jstr using NewStringUTF", G_STRFUNC);
-        return;
-    }
-    (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
-                              cachedEditableTextInsertTextMethod, jstr,
-                              (jint)*position);
-    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-        jaw_jni_clear_exception(jniEnv);
+        g_warning("%s: Failed to create jstring from UTF-8 input", G_STRFUNC);
+        if (string_copy) g_free(string_copy);
         return;
     }
 
-    *position = *position + length;
+    gint new_position = *position;
+
+    (*jniEnv)->CallVoidMethod(jniEnv,
+                              atk_editable_text,
+                              cachedEditableTextInsertTextMethod,
+                              jstr,
+                              (jint)new_position);
+
+    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
+        jaw_jni_clear_exception(jniEnv);
+        if (string_copy != NULL) {
+            g_free(string_copy);
+        }
+        return;
+    }
+
+    glong inserted_codepoints = g_utf8_strlen(buf, buf_len);
+    if (inserted_codepoints < 0) {
+        inserted_codepoints = 0;
+    }
+
+    new_position += (gint)inserted_codepoints;
+    *position = new_position;
+
     atk_text_set_caret_offset(ATK_TEXT(text), *position);
+
+    if (string_copy) {
+        g_free(string_copy);
+    }
 }
 
 /**
@@ -414,49 +445,6 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
         jaw_jni_clear_exception(jniEnv);
         return;
     }
-}
-
-/**
- * jaw_editable_text_set_run_attributes:
- * @text: an #AtkEditableText
- * @attrib_set: an #AtkAttributeSet
- * @start_offset: start of range in which to set attributes
- * @end_offset: end of range in which to set attributes
- *
- * Sets the attributes for a specified range.
- *
- * Invoked from GLib main loop; no Push/PopLocalFrame/DeleteLocalRef needed.
- *
- * Returns: %TRUE if attributes successfully set for the specified
- *   range, otherwise %FALSE
- */
-static gboolean
-jaw_editable_text_set_run_attributes(AtkEditableText *text,
-                                     AtkAttributeSet *attrib_set,
-                                     gint start_offset, gint end_offset) {
-    // TODO: make a proper conversion between attrib_set and swing AttributeSet,
-    // current implementation is incorrect
-
-    JAW_DEBUG("%p, %p, %d, %d", text, attrib_set, start_offset, end_offset);
-    return FALSE;
-
-//    if (text == NULL || attrib_set == NULL) {
-//        g_warning("%s: Null argument passed to the function", G_STRFUNC);
-//        return FALSE;
-//    }
-//
-//    JAW_GET_EDITABLETEXT(
-//        text, FALSE); // create local JNI reference `jobject atk_editable_text`
-//
-//    jboolean jresult = (*jniEnv)->CallBooleanMethod(
-//        jniEnv, atk_editable_text, cachedEditableTextSetRunAttributesMethod,
-//        (jobject)attrib_set, (jint)start_offset, (jint)end_offset);
-//    if ((*jniEnv)->ExceptionCheck(jniEnv)) {
-//        jaw_jni_clear_exception(jniEnv);
-//        return FALSE;
-//    }
-//
-//    return jresult;
 }
 
 static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
