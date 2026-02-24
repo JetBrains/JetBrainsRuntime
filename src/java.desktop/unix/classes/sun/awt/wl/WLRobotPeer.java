@@ -27,6 +27,7 @@
 package sun.awt.wl;
 
 import sun.awt.SunToolkit;
+import sun.awt.screencast.XdgDesktopPortalRobot;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLPixelGrabberExt;
 
@@ -35,6 +36,9 @@ import java.awt.peer.RobotPeer;
 
 public class WLRobotPeer implements RobotPeer {
     private final WLGraphicsConfig wgc;
+
+    private static final boolean useRemoteDesktopRobot =
+            Boolean.parseBoolean(System.getProperty("sun.awt.wl.UseRemoteDesktopRobot", "false"));
 
     static {
         initIDs();
@@ -46,6 +50,10 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void mouseMove(int x, int y) {
+        if (useRemoteDesktopRobotForInput()) {
+            XdgDesktopPortalRobot.mouseMove(x, y);
+            return;
+        }
         checkExtensionPresent();
 
         synchronized (WLRobotPeer.class) {
@@ -55,6 +63,10 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void mousePress(int buttons) {
+        if (useRemoteDesktopRobotForInput()) {
+            XdgDesktopPortalRobot.mouseButton(true, buttons);
+            return;
+        }
         checkExtensionPresent();
 
         synchronized (WLRobotPeer.class) {
@@ -64,6 +76,10 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void mouseRelease(int buttons) {
+        if (useRemoteDesktopRobotForInput()) {
+            XdgDesktopPortalRobot.mouseButton(false, buttons);
+            return;
+        }
         checkExtensionPresent();
 
         synchronized (WLRobotPeer.class) {
@@ -73,6 +89,10 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void mouseWheel(int wheelAmt) {
+        if (useRemoteDesktopRobotForInput()) {
+            XdgDesktopPortalRobot.mouseWheel(wheelAmt);
+            return;
+        }
         checkExtensionPresent();
 
         synchronized (WLRobotPeer.class) {
@@ -82,6 +102,10 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void keyPress(int keycode) {
+        if (useRemoteDesktopRobotForInput()) {
+            XdgDesktopPortalRobot.key(true, keycode);
+            return;
+        }
         checkExtensionPresent();
 
         synchronized (WLRobotPeer.class) {
@@ -91,6 +115,10 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public void keyRelease(int keycode) {
+        if (useRemoteDesktopRobotForInput()) {
+            XdgDesktopPortalRobot.key(false, keycode);
+            return;
+        }
         checkExtensionPresent();
 
         synchronized (WLRobotPeer.class) {
@@ -100,6 +128,9 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public int getRGBPixel(int x, int y) {
+        if (useRemoteDesktopRobotForCapture()) {
+            return XdgDesktopPortalRobot.getRGBPixel(x, y);
+        }
         if (isRobotExtensionPresent) {
             // The native implementation allows for just one such request at a time
             synchronized (WLRobotPeer.class) {
@@ -114,6 +145,9 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public int [] getRGBPixels(Rectangle bounds) {
+        if (useRemoteDesktopRobotForCapture()) {
+            return XdgDesktopPortalRobot.getRGBPixels(bounds);
+        }
         if (isRobotExtensionPresent) {
             // The native implementation allows for just one such request at a time
             synchronized (WLRobotPeer.class) {
@@ -204,6 +238,14 @@ public class WLRobotPeer implements RobotPeer {
     }
 
     private static final boolean  isRobotExtensionPresent = isRobotExtensionPresentImpl();
+
+    private static boolean useRemoteDesktopRobotForInput() {
+        return useRemoteDesktopRobot && XdgDesktopPortalRobot.useForInput();
+    }
+
+    private static boolean useRemoteDesktopRobotForCapture() {
+        return useRemoteDesktopRobot && XdgDesktopPortalRobot.useForCapture();
+    }
 
     private static native void    initIDs();
 
