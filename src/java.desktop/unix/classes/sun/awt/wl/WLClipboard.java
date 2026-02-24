@@ -261,7 +261,7 @@ public final class WLClipboard extends SunClipboard {
     void handleClipboardOffer(WLDataOffer offer /* nullable */) {
         synchronized (dataLock) {
             if (ourDataSource == null || !ourDataSource.isSourceFor(offer)) {
-                lostOwnershipNow(null);
+                lostOwnershipNow();
             }
 
             if (clipboardDataOfferedToUs != null) {
