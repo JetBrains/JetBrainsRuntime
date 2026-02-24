@@ -455,10 +455,11 @@ ifeq ($(call isTargetOs, windows macosx), false)
 
     LIBAWT_WLAWT_EXTRA_HEADER_DIRS := \
         $(LIBAWT_DEFAULT_HEADER_DIRS) \
-        libawt_wlawt/awt \
+        libawt_wlawt \
         $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland \
         include \
         common/awt/debug \
+        common/awt/screencast \
         common/awt/systemscale \
         common/font \
         common/java2d \
@@ -470,6 +471,11 @@ ifeq ($(call isTargetOs, windows macosx), false)
         libvmahpp \
         #
 
+    # exclude pipewire from the AIX build, no Wayland support
+    ifeq ($(call isTargetOs, aix), false)
+      LIBAWT_WLAWT_EXTRA_HEADER_DIRS += libpipewire/include
+    endif
+
     # Enable 'wakefield' extension for java.awt.Robot support
     WAKEFIELD_ROBOT_CFLAGS=-DWAKEFIELD_ROBOT
 
@@ -478,7 +484,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(FONTCONFIG_CFLAGS) \
         $(VULKAN_FLAGS) \
         $(WAYLAND_CFLAGS) \
-        $(CUPS_CFLAGS)
+        $(CUPS_CFLAGS) \
+        $(DBUS_CFLAGS)
 
     ifeq ($(TOOLCHAIN_TYPE), gcc)
       # Turn off all warnings for the following files since they contain warnings
@@ -511,9 +518,12 @@ ifeq ($(call isTargetOs, windows macosx), false)
         DISABLED_WARNINGS_gcc_awt_InputMethod.c := unused-label, \
         DISABLED_WARNINGS_gcc_CUPSfuncs.c := unused-variable, \
         DISABLED_WARNINGS_gcc_VKRenderQueue.c := unused-variable unused-but-set-variable, \
+        DISABLED_WARNINGS_gcc_screencast_pipewire.c := undef, \
+        DISABLED_WARNINGS_gcc_screencast_portal.c := undef, \
         DISABLED_WARNINGS_clang_awt_InputMethod.c := unused-label, \
         DISABLED_WARNINGS_clang_CUPSfuncs.c := unused-variable, \
         DISABLED_WARNINGS_clang_VKRenderQueue.c := unused-variable unused-but-set-variable, \
+        DISABLED_WARNINGS_clang_screencast_pipewire.c := format-nonliteral, \
         JDK_LIBS := libawt java.base:libjava java.base:libjvm, \
         LIBS := $(WAYLAND_LIBS), \
         LIBS_unix := $(LIBDL) $(LIBM), \
