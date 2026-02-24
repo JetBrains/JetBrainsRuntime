@@ -99,7 +99,9 @@ struct pw_properties * (*fp_pw_properties_new)(const char *key, ...);
 
 #include "gtk_interface.h"
 #include "gtk3_interface.h"
+#ifdef XAWT
 #include "canvas.h"
+#endif
 
 int DEBUG_SCREENCAST_ENABLED = FALSE;
 
@@ -1251,6 +1253,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_screencast_ScreencastHelper_remoteDesktopMou
     return result ? RESULT_OK : pw.pwFd;
 }
 
+#ifdef XAWT
 static int getNumpadKey(jint jkey) {
     switch (jkey) {
         case java_awt_event_KeyEvent_VK_NUMPAD0: return XK_KP_Insert;
@@ -1307,6 +1310,12 @@ JNIEXPORT jint JNICALL Java_sun_awt_screencast_ScreencastHelper_remoteDesktopKey
 
     return result ? RESULT_OK : pw.pwFd;
 }
+#else /* !XAWT */
+JNIEXPORT jint JNICALL Java_sun_awt_screencast_ScreencastHelper_remoteDesktopKeyImpl
+        (JNIEnv *env, jclass cls, jboolean isPress, jint jkey, jstring jtoken) {
+    return RESULT_ERROR;
+}
+#endif /* XAWT */
 
 #else
 JNIEXPORT void JNICALL
