@@ -750,6 +750,8 @@ static void *(*fp_g_string_printf)(GString *string, const gchar *format, ...);
 
 static gboolean (*fp_g_uuid_string_is_valid)(const gchar *str);
 
+static gchar *(*fp_g_variant_print)(GVariant *value, gboolean type_annotate);
+static gchar *(*fp_g_strconcat)(const gchar *string1, ...);
 
 // ---------- * ----------
 static void (*fp_g_error_free)(GError *error);
