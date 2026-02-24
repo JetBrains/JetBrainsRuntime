@@ -200,7 +200,7 @@ static void gtk3_file_chooser_load()
     fp_gtk_g_slist_length = dl_symbol("g_slist_length");
 }
 
-static gboolean glib_version_2_68 = FALSE;
+gboolean glib_version_2_68 = FALSE;
 
 GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
 {
@@ -505,6 +505,8 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
             fp_g_settings_get_string = dl_symbol("g_settings_get_string"); // since 2.26
         }
         fp_g_string_printf = dl_symbol("g_string_printf");
+        fp_g_variant_print = dl_symbol("g_variant_print");
+        fp_g_strconcat = dl_symbol("g_strconcat");
 
         fp_g_error_free = dl_symbol("g_error_free");
         fp_g_unix_fd_list_get = dl_symbol("g_unix_fd_list_get");
@@ -2862,6 +2864,8 @@ static void gtk3_init(GtkApi* gtk)
     gtk->g_string_replace = fp_g_string_replace;
     gtk->g_string_printf = fp_g_string_printf;
     gtk->g_uuid_string_is_valid = fp_g_uuid_string_is_valid;
+    gtk->g_variant_print = fp_g_variant_print;
+    gtk->g_strconcat = fp_g_strconcat;
 
     gtk->g_main_context_iteration = fp_g_main_context_iteration;
     gtk->g_main_context_default = fp_g_main_context_default;
