@@ -66,7 +66,13 @@ ifeq ($(DBUS_FOUND), false)
 endif
 
 ifeq ($(call isTargetOs, linux macosx aix), true)
-  LIBAWT_EXCLUDE_FILES += awt_Font.c CUPSfuncs.c fontpath.c X11Color.c
+  LIBAWT_EXCLUDE_FILES += \
+  	awt_Font.c \
+  	CUPSfuncs.c \
+  	fontpath.c \
+  	X11Color.c \
+    screencast_pipewire.c \
+    screencast_portal.c
 endif
 
 ifeq ($(call isTargetOs, macosx), true)
@@ -271,6 +277,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
       X11PMBlitLoops.c \
       X11Renderer.c \
       X11SurfaceData.c \
+      screencast_pipewire.c \
+      screencast_portal.c \
       #
 
   LIBAWT_HEADLESS_EXTRA_HEADER_DIRS := \
@@ -348,6 +356,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       libawt_xawt/awt \
       include \
       common/awt/debug \
+      common/awt/screencast \
       common/awt/systemscale \
       common/font \
       common/java2d/opengl \
