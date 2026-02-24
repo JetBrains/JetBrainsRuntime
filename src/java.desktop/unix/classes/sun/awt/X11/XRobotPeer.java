@@ -36,8 +36,7 @@ import sun.awt.UNIXToolkit;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
-import sun.awt.screencast.ScreencastHelper;
-import sun.awt.screencast.XdgDesktopPortal;
+import sun.awt.screencast.XdgDesktopPortalRobot;
 
 final class XRobotPeer implements RobotPeer {
 
@@ -75,17 +74,17 @@ final class XRobotPeer implements RobotPeer {
         Point p = ((X11GraphicsEnvironment) X11GraphicsEnvironment.getLocalGraphicsEnvironment())
                 .scaleUp(xgc.getDevice(), x, y);
         mouseMoveImpl(xgc, p != null ? p.x : x, p != null ? p.y : y);
-        if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
+        if (XdgDesktopPortalRobot.useForInput()) {
             // We still call mouseMoveImpl on purpose to change the mouse position
             // within the XWayland server so that we can retrieve it later.
-            ScreencastHelper.remoteDesktopMouseMove(p != null ? p.x : x, p != null ? p.y : y);
+            XdgDesktopPortalRobot.mouseMove(p != null ? p.x : x, p != null ? p.y : y);
         }
     }
 
     @Override
     public void mousePress(int buttons) {
-        if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
-            ScreencastHelper.remoteDesktopMouseButton(true, buttons);
+        if (XdgDesktopPortalRobot.useForInput()) {
+            XdgDesktopPortalRobot.mouseButton(true, buttons);
         } else {
             mousePressImpl(buttons);
         }
@@ -93,8 +92,8 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void mouseRelease(int buttons) {
-        if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
-            ScreencastHelper.remoteDesktopMouseButton(false, buttons);
+        if (XdgDesktopPortalRobot.useForInput()) {
+            XdgDesktopPortalRobot.mouseButton(false, buttons);
         } else {
             mouseReleaseImpl(buttons);
         }
@@ -102,8 +101,8 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void mouseWheel(int wheelAmt) {
-        if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
-            ScreencastHelper.remoteDesktopMouseWheel(wheelAmt);
+        if (XdgDesktopPortalRobot.useForInput()) {
+            XdgDesktopPortalRobot.mouseWheel(wheelAmt);
         } else {
             mouseWheelImpl(wheelAmt);
         }
@@ -111,8 +110,8 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void keyPress(int keycode) {
-        if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
-            ScreencastHelper.remoteDesktopKey(true, keycode);
+        if (XdgDesktopPortalRobot.useForInput()) {
+            XdgDesktopPortalRobot.key(true, keycode);
         } else {
             keyPressImpl(keycode);
         }
@@ -120,8 +119,8 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public void keyRelease(int keycode) {
-        if (XdgDesktopPortal.isRemoteDesktop() && ScreencastHelper.isAvailable()) {
-            ScreencastHelper.remoteDesktopKey(false, keycode);
+        if (XdgDesktopPortalRobot.useForInput()) {
+            XdgDesktopPortalRobot.key(false, keycode);
         } else {
             keyReleaseImpl(keycode);
         }
@@ -129,31 +128,21 @@ final class XRobotPeer implements RobotPeer {
 
     @Override
     public int getRGBPixel(int x, int y) {
-        int[] pixelArray = new int[1];
-        if ((XdgDesktopPortal.isScreencast()
-                || XdgDesktopPortal.isRemoteDesktop()) && ScreencastHelper.isAvailable()) {
-            ScreencastHelper.getRGBPixels(x, y, 1, 1, pixelArray);
-        } else {
-            getRGBPixelsImpl(xgc, x, y, 1, 1, pixelArray, useGtk);
+        if (XdgDesktopPortalRobot.useForCapture()) {
+            return XdgDesktopPortalRobot.getRGBPixel(x, y);
         }
+        int[] pixelArray = new int[1];
+        getRGBPixelsImpl(xgc, x, y, 1, 1, pixelArray, useGtk);
         return pixelArray[0];
     }
 
     @Override
     public int[] getRGBPixels(Rectangle bounds) {
-        int[] pixelArray = new int[bounds.width * bounds.height];
-        if ((XdgDesktopPortal.isScreencast()
-                || XdgDesktopPortal.isRemoteDesktop()) && ScreencastHelper.isAvailable()) {
-
-            ScreencastHelper.getRGBPixels(bounds.x, bounds.y,
-                                          bounds.width, bounds.height,
-                                          pixelArray);
-        } else {
-            getRGBPixelsImpl(xgc,
-                             bounds.x, bounds.y,
-                             bounds.width, bounds.height,
-                             pixelArray, useGtk);
+        if (XdgDesktopPortalRobot.useForCapture()) {
+            return XdgDesktopPortalRobot.getRGBPixels(bounds);
         }
+        int[] pixelArray = new int[bounds.width * bounds.height];
+        getRGBPixelsImpl(xgc, bounds.x, bounds.y, bounds.width, bounds.height, pixelArray, useGtk);
         return pixelArray;
     }
 
