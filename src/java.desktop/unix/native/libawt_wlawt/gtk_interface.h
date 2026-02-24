@@ -817,6 +817,9 @@ typedef struct GtkApi {
             int dest_y
     );
 
+    gchar *(*g_variant_print)(GVariant *value, gboolean type_annotate);
+    gchar *(*g_strconcat)(const gchar *string1, ...);
+
     /* </for screencast, used only with GTK3>  */
 } GtkApi;
 
