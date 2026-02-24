@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -668,6 +668,8 @@ typedef struct GtkApi {
                           ...);
     const gchar *(*g_variant_get_string)(GVariant *value, gsize *length);
     guint32 (*g_variant_get_uint32)(GVariant *value);
+    const gchar *(*g_variant_get_type_string)(GVariant *value);
+    gboolean (*g_variant_is_of_type)(GVariant *value, const GVariantType *type);
 
     gboolean (*g_variant_lookup)(GVariant *dictionary,
                                  const gchar *key,
@@ -777,6 +779,9 @@ typedef struct GtkApi {
                                gint index_,
                                GError **error);
 
+    gint (*g_unix_fd_list_get_length)(GUnixFDList* list);
+
+
     GdkPixbuf *(*gdk_pixbuf_new)(GdkColorspace colorspace,
                                  gboolean has_alpha,
                                  int bits_per_sample,
@@ -816,6 +821,9 @@ typedef struct GtkApi {
             int dest_x,
             int dest_y
     );
+
+    gchar *(*g_variant_print)(GVariant *value, gboolean type_annotate);
+    gchar *(*g_strconcat)(const gchar *string1, ...);
 
     /* </for screencast, used only with GTK3>  */
 } GtkApi;
