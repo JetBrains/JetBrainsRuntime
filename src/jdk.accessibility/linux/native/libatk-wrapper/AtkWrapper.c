@@ -141,6 +141,32 @@ static gpointer jaw_loop_callback(void *data) {
 
     g_debug("%s: Main loop exiting due to shutdown request", G_STRFUNC);
 
+    if (jaw_main_loop != NULL) {
+        g_main_loop_unref(jaw_main_loop);
+        jaw_main_loop = NULL;
+        g_debug("%s: Main loop unref'd", G_STRFUNC);
+    }
+
+    if (jaw_main_context != NULL) {
+        g_main_context_unref(jaw_main_context);
+        jaw_main_context = NULL;
+        g_debug("%s: Main context unref'd", G_STRFUNC);
+    }
+
+    pthread_mutex_lock(&jaw_vdc_dup_mutex);
+    jaw_vdc_clear_last_ac(jniEnv);
+    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+
+    jaw_cache_cleanup(jniEnv);
+
+    if (jaw_log_file != NULL) {
+        fclose(jaw_log_file);
+        jaw_log_file = NULL;
+        g_debug("%s: jaw_log_file is closed", G_STRFUNC);
+    }
+
+    g_debug("%s: Shutdown cleanup completed", G_STRFUNC);
+
     return 0;
 }
 
@@ -1618,36 +1644,6 @@ Java_org_GNOME_Accessibility_AtkWrapper_nativeCleanup(JNIEnv *jniEnv,
 
     if (jaw_main_context != NULL) {
         g_main_context_wakeup(jaw_main_context);
-    }
-
-    if (jaw_loop_thread != NULL) {
-        g_thread_join(jaw_loop_thread);
-        g_thread_unref(jaw_loop_thread);
-        jaw_loop_thread = NULL;
-        g_debug("%s: Loop thread joined and unref'd", G_STRFUNC);
-    }
-
-    if (jaw_main_loop != NULL) {
-        g_main_loop_unref(jaw_main_loop);
-        jaw_main_loop = NULL;
-        g_debug("%s: Main loop unref'd", G_STRFUNC);
-    }
-
-    if (jaw_main_context != NULL) {
-        g_main_context_unref(jaw_main_context);
-        jaw_main_context = NULL;
-        g_debug("%s: Main context unref'd", G_STRFUNC);
-    }
-
-    pthread_mutex_lock(&jaw_vdc_dup_mutex);
-    jaw_vdc_clear_last_ac(jniEnv);
-    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
-
-    jaw_cache_cleanup(jniEnv);
-
-    if (jaw_log_file != NULL) {
-        fclose(jaw_log_file);
-        jaw_log_file = NULL;
     }
 
     g_debug("%s: AtkWrapper cleanup finished", G_STRFUNC);
