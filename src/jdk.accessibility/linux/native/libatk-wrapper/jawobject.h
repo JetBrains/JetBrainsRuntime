@@ -53,7 +53,11 @@ struct _JawObject {
     const gchar *locale;
     AtkStateSet *state_set;
 
-    // Hash table for data. Does not destroy keys or values on cleanup.
+    /**
+     * Hash table for storing simple key-value pairs.
+     * Hash table for data. Does not destroy keys or values on cleanup -
+     * do not store dynamically allocated memory here.
+     */
     GHashTable *storedData;
 };
 
