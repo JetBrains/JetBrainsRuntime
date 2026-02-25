@@ -272,6 +272,11 @@ static gboolean jaw_component_contains(AtkComponent *component, gint x, gint y,
         component,
         FALSE); // create local JNI reference `jobject atk_component`
 
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean jcontains = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentContainsMethod, (jint)x, (jint)y,
         (jint)coord_type);
@@ -311,6 +316,11 @@ jaw_component_ref_accessible_at_point(AtkComponent *component, gint x, gint y,
 
     JAW_GET_COMPONENT(
         component, NULL); // create local JNI reference `jobject atk_component`
+
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, cachedComponentGetAccessibleAtPointMethod,
@@ -376,6 +386,11 @@ static void jaw_component_get_extents(AtkComponent *component, gint *x, gint *y,
     JAW_GET_COMPONENT(
         component, ); // create local JNI reference `jobject atk_component`
 
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     jobject jrectangle = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_component, cachedComponentGetExtentsMethod,
         (jint)coord_type);
@@ -440,6 +455,11 @@ static gboolean jaw_component_set_extents(AtkComponent *component, gint x,
         component,
         FALSE); // create local JNI reference `jobject atk_component`
 
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean assigned = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentSetExtentsMethod, (jint)x,
         (jint)y, (jint)width, (jint)height, (jint)coord_type);
@@ -478,6 +498,11 @@ static gboolean jaw_component_set_position(AtkComponent *component, gint x,
         component,
         FALSE); // create local JNI reference `jobject atk_component`
 
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean assigned = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentSetPositionMethod, (jint)x,
         (jint)y, (jint)coord_type);
@@ -514,6 +539,11 @@ static gboolean jaw_component_set_size(AtkComponent *component, gint width,
         component,
         FALSE); // create local JNI reference `jobject atk_component`
 
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean assigned = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentSetSizeMethod, (jint)width,
         (jint)height);
@@ -547,6 +577,11 @@ static gboolean jaw_component_grab_focus(AtkComponent *component) {
         component,
         FALSE); // create local JNI reference `jobject atk_component`
 
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_component, cachedComponentGrabFocusMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -578,6 +613,11 @@ static AtkLayer jaw_component_get_layer(AtkComponent *component) {
 
     JAW_GET_COMPONENT(component,
                       ATK_LAYER_INVALID); // create local JNI reference `jobject atk_component`
+
+    if (!jaw_component_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return ATK_LAYER_INVALID;
+    }
 
     jint jlayer = (*jniEnv)->CallIntMethod(jniEnv, atk_component,
                                            cachedComponentGetLayerMethod);

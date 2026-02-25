@@ -234,6 +234,11 @@ static AtkObject *jaw_table_cell_get_table(AtkTableCell *cell) {
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
 
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     jobject jac = (*jniEnv)->CallObjectMethod(jniEnv, jatk_table_cell,
                                               cachedTableCellGetTableMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jac == NULL) {
@@ -323,6 +328,11 @@ static gboolean jaw_table_cell_get_position(AtkTableCell *cell, gint *row,
     }
 
     JAW_GET_TABLECELL(cell, FALSE);
+
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
         return FALSE;
@@ -440,6 +450,11 @@ static gboolean jaw_table_cell_get_row_column_span(AtkTableCell *cell,
 
     JAW_GET_TABLECELL(cell, FALSE);
 
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     if (!getPosition(jniEnv, jatk_table_cell, row, column)) {
         g_warning("%s: getPosition failed", G_STRFUNC);
         return FALSE;
@@ -482,6 +497,11 @@ static gint jaw_table_cell_get_row_span(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, 0);
 
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
+
     gint row_span = 0;
     if (!getRowSpan(jniEnv, jatk_table_cell, &row_span)) {
         g_warning("%s: getRowSpan failed", G_STRFUNC);
@@ -515,6 +535,11 @@ static gint jaw_table_cell_get_column_span(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(cell, 0);
 
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
+
     gint column_span = 0;
     if (!getColumnSpan(jniEnv, jatk_table_cell, &column_span)) {
         g_warning("%s: getColumnSpan failed", G_STRFUNC);
@@ -545,6 +570,11 @@ static GPtrArray *jaw_table_cell_get_column_header_cells(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
+
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jobjectArray columnHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell,
@@ -625,6 +655,11 @@ static GPtrArray *jaw_table_cell_get_row_header_cells(AtkTableCell *cell) {
 
     JAW_GET_TABLECELL(
         cell, NULL); // create local JNI reference `jobject jatk_table_cell`
+
+    if (!jaw_table_cell_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jobjectArray rowHeaders = (jobjectArray)(*jniEnv)->CallObjectMethod(
         jniEnv, jatk_table_cell, cachedTableCellGetAccessibleRowHeaderMethod);

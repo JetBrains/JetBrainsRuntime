@@ -347,6 +347,11 @@ static gchar *jaw_text_get_text(AtkText *text, gint start_offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     jstring jstr =
         (*jniEnv)->CallObjectMethod(jniEnv, atk_text, cachedTextGetTextMethod,
                                     (jint)start_offset, (jint)end_offset);
@@ -381,6 +386,11 @@ static gunichar jaw_text_get_character_at_offset(AtkText *text, gint offset) {
     }
 
     JAW_GET_TEXT(text, 0); // create local JNI reference `jobject atk_text`
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
 
     jint jcodepoint = (*jniEnv)->CallIntMethod(
         jniEnv, atk_text, cachedTextGetCharacterAtOffsetMethod, (jint)offset);
@@ -429,6 +439,11 @@ static gchar *jaw_text_get_text_at_offset(AtkText *text, gint offset,
     }
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, cachedTextGetTextAtOffsetMethod, (jint)offset,
@@ -513,6 +528,11 @@ static gchar *jaw_text_get_string_at_offset(AtkText *text, gint offset,
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
 
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     jobject jStrSeq = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, cachedTextGetStringAtOffsetMethod, (jint)offset,
         (jint)granularity);
@@ -551,6 +571,11 @@ static gint jaw_text_get_caret_offset(AtkText *text) {
     }
 
     JAW_GET_TEXT(text, -1);
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return -1;
+    }
 
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text,
                                             cachedTextGetCaretOffsetMethod);
@@ -605,6 +630,11 @@ static void jaw_text_get_character_extents(AtkText *text, gint offset, gint *x,
 
     JAW_GET_TEXT(text, );
 
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     jobject jrect = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, cachedTextGetCharacterExtentsMethod, (jint)offset,
         (jint)coords);
@@ -654,6 +684,11 @@ static gint jaw_text_get_character_count(AtkText *text) {
 
     JAW_GET_TEXT(text, -1);
 
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return -1;
+    }
+
     jint jcount = (*jniEnv)->CallIntMethod(jniEnv, atk_text,
                                            cachedTextGetCharacterCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -691,6 +726,11 @@ static gint jaw_text_get_offset_at_point(AtkText *text, gint x, gint y,
     }
 
     JAW_GET_TEXT(text, -1);
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return -1;
+    }
 
     jint joffset = (*jniEnv)->CallIntMethod(jniEnv, atk_text,
                                             cachedTextGetOffsetAtPointMethod,
@@ -743,6 +783,11 @@ static void jaw_text_get_range_extents(AtkText *text, gint start_offset,
 
     JAW_GET_TEXT(text, );
 
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     jobject jrect = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_text, cachedTextGetRangeExtentsMethod, (jint)start_offset,
         (jint)end_offset, (jint)coord_type);
@@ -776,6 +821,11 @@ static gint jaw_text_get_n_selections(AtkText *text) {
     }
 
     JAW_GET_TEXT(text, -1);
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return -1;
+    }
 
     jint jselections = (*jniEnv)->CallIntMethod(jniEnv, atk_text,
                                                 cachedTextGetNSelectionsMethod);
@@ -819,6 +869,11 @@ static gchar *jaw_text_get_selection(AtkText *text, gint selection_num,
     }
 
     JAW_GET_TEXT(text, NULL); // create local JNI reference `jobject atk_text`
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     // Java AccessibleText only supports a single selection, so selection_num is
     // not used.
@@ -871,6 +926,11 @@ static gboolean jaw_text_add_selection(AtkText *text, gint start_offset,
 
     JAW_GET_TEXT(text, FALSE);
 
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, cachedTextAddSelectionMethod, (jint)start_offset,
         (jint)end_offset);
@@ -906,6 +966,11 @@ static gboolean jaw_text_remove_selection(AtkText *text, gint selection_num) {
     }
 
     JAW_GET_TEXT(text, FALSE);
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, cachedTextRemoveSelectionMethod, (jint)selection_num);
@@ -945,6 +1010,11 @@ static gboolean jaw_text_set_selection(AtkText *text, gint selection_num,
     }
 
     JAW_GET_TEXT(text, FALSE);
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, cachedTextSetSelectionMethod, (jint)selection_num,
@@ -993,6 +1063,11 @@ static gboolean jaw_text_set_caret_offset(AtkText *text, gint offset) {
     }
 
     JAW_GET_TEXT(text, FALSE);
+
+    if (!jaw_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_text, cachedTextSetCaretOffsetMethod, (jint)offset);

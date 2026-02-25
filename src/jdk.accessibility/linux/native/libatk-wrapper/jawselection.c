@@ -227,6 +227,11 @@ static gboolean jaw_selection_add_selection(AtkSelection *selection, gint i) {
         selection,
         FALSE); // create local JNI reference `jobject atk_selection`
 
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionAddSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -260,6 +265,11 @@ static gboolean jaw_selection_clear_selection(AtkSelection *selection) {
     JAW_GET_SELECTION(
         selection,
         FALSE); // create local JNI reference `jobject atk_selection`
+
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionClearSelectionMethod);
@@ -297,6 +307,11 @@ static AtkObject *jaw_selection_ref_selection(AtkSelection *selection, gint i) {
 
     JAW_GET_SELECTION(
         selection, NULL); // create local JNI reference `jobject atk_selection`
+
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jobject child_ac = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_selection, cachedSelectionRefSelectionMethod, (jint)i);
@@ -339,6 +354,11 @@ static gint jaw_selection_get_selection_count(AtkSelection *selection) {
     JAW_GET_SELECTION(selection,
                       0); // create local JNI reference `jobject atk_selection`
 
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
+
     jint jcount = (*jniEnv)->CallIntMethod(
         jniEnv, atk_selection, cachedSelectionGetSelectionCountMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -372,6 +392,11 @@ static gboolean jaw_selection_is_child_selected(AtkSelection *selection,
     JAW_GET_SELECTION(
         selection,
         FALSE); // create local JNI reference `jobject atk_selection`
+
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionIsChildSelectedMethod, (jint)i);
@@ -409,6 +434,11 @@ static gboolean jaw_selection_remove_selection(AtkSelection *selection,
         selection,
         FALSE); // create local JNI reference `jobject atk_selection`
 
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionRemoveSelectionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -441,6 +471,11 @@ static gboolean jaw_selection_select_all_selection(AtkSelection *selection) {
     JAW_GET_SELECTION(
         selection,
         FALSE); // create local JNI reference `jobject atk_selection`
+
+    if (!jaw_selection_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
 
     jboolean jbool = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_selection, cachedSelectionSelectAllSelectionMethod);

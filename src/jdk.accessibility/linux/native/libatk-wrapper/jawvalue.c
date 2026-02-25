@@ -289,6 +289,11 @@ static void jaw_value_get_current_value(AtkValue *obj, GValue *value) {
 
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
 
+    if (!jaw_value_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     jobject jnumber = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_value, cachedValueGetCurrentValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -334,6 +339,11 @@ static void jaw_value_set_value(AtkValue *obj, const gdouble value) {
     }
 
     JAW_GET_VALUE(obj, ); // create local JNI reference `jobject atk_value`
+
+    if (!jaw_value_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
 
     jobject jdoubleValue = (*jniEnv)->NewObject(
         jniEnv, cachedValueDoubleClass, cachedValueDoubleConstructorMethod,
@@ -401,6 +411,11 @@ static AtkRange *jaw_value_get_range(AtkValue *obj) {
 
     JAW_GET_VALUE(obj, NULL);
 
+    if (!jaw_value_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     jobject jmin = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_value, cachedValueGetMinimumValueMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -460,6 +475,11 @@ static gdouble jaw_value_get_increment(AtkValue *obj) {
     }
 
     JAW_GET_VALUE(obj, 0);
+
+    if (!jaw_value_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
 
     gdouble ret = (*jniEnv)->CallDoubleMethod(jniEnv, atk_value,
                                               cachedValueGetIncrementMethod);

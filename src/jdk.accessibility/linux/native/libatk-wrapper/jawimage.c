@@ -244,6 +244,11 @@ static void jaw_image_get_image_position(AtkImage *image, gint *x, gint *y,
 
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
 
+    if (!jaw_image_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     (*x) = -1;
     (*y) = -1;
 
@@ -282,6 +287,11 @@ static const gchar *jaw_image_get_image_description(AtkImage *image) {
 
     JAW_GET_IMAGE(image,
                   NULL); // create local JNI reference `jobject atk_image`
+
+    if (!jaw_image_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_image, cachedImageGetImageDescriptionMethod);
@@ -350,6 +360,11 @@ static void jaw_image_get_image_size(AtkImage *image, gint *width,
     }
 
     JAW_GET_IMAGE(image, ); // create local JNI reference `jobject atk_image`
+
+    if (!jaw_image_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
 
     (*width) = -1;
     (*height) = -1;

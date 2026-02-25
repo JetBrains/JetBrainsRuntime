@@ -267,6 +267,11 @@ static gboolean jaw_action_do_action(AtkAction *action, gint i) {
     JAW_GET_ACTION(action,
                    FALSE); // create local JNI reference `jobject atk_action`
 
+    if (!jaw_action_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jboolean jresult = (*jniEnv)->CallBooleanMethod(
         jniEnv, atk_action, cachedActionDoActionMethod, (jint)i);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -301,6 +306,11 @@ static gint jaw_action_get_n_actions(AtkAction *action) {
     JAW_GET_ACTION(action,
                    0); // create local JNI reference `jobject atk_action`
 
+    if (!jaw_action_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
+
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_action,
                                               cachedActionGetNActionsMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -333,6 +343,11 @@ static const gchar *jaw_action_get_description(AtkAction *action, gint i) {
 
     JAW_GET_ACTION(action,
                    NULL); // create local JNI reference `jobject atk_action`
+
+    if (!jaw_action_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_action, cachedActionGetDescriptionMethod, (jint)i);
@@ -399,6 +414,11 @@ static gboolean jaw_action_set_description(AtkAction *action, gint i,
     JAW_GET_ACTION(action,
                    FALSE); // create local JNI reference `jobject atk_action`
 
+    if (!jaw_action_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return FALSE;
+    }
+
     jstring jdescription = (*jniEnv)->NewStringUTF(jniEnv, description);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jdescription == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -438,6 +458,11 @@ static const gchar *jaw_action_get_localized_name(AtkAction *action, gint i) {
 
     JAW_GET_ACTION(action,
                    NULL); // create local JNI reference `jobject atk_action`
+
+    if (!jaw_action_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
 
     jstring jstr = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_action, cachedActionGetLocalizedNameMethod, (jint)i);

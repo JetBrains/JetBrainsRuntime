@@ -212,6 +212,11 @@ static AtkHyperlink *jaw_hypertext_get_link(AtkHypertext *hypertext,
     JAW_GET_HYPERTEXT(
         hypertext, NULL); // create local JNI reference `jobject atk_hypertext`
 
+    if (!jaw_hypertext_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return NULL;
+    }
+
     jobject jhyperlink = (*jniEnv)->CallObjectMethod(
         jniEnv, atk_hypertext, cachedHypertextGetLinkMethod, (jint)link_index);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jhyperlink == NULL) {
@@ -252,6 +257,11 @@ static gint jaw_hypertext_get_n_links(AtkHypertext *hypertext) {
     JAW_GET_HYPERTEXT(hypertext,
                       0); // create local JNI reference `jobject atk_hypertext`
 
+    if (!jaw_hypertext_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return 0;
+    }
+
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
                                               cachedHypertextGetNLinksMethod);
     if ((*jniEnv)->ExceptionCheck(jniEnv)) {
@@ -286,6 +296,11 @@ static gint jaw_hypertext_get_link_index(AtkHypertext *hypertext,
 
     JAW_GET_HYPERTEXT(hypertext,
                       -1); // create local JNI reference `jobject atk_hypertext`
+
+    if (!jaw_hypertext_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return -1;
+    }
 
     gint ret = (gint)(*jniEnv)->CallIntMethod(jniEnv, atk_hypertext,
                                               cachedHypertextGetLinkIndexMethod,

@@ -229,6 +229,11 @@ void jaw_editable_text_set_text_contents(AtkEditableText *text,
     JAW_GET_EDITABLETEXT(
         text, ); // creates local JNI reference `jobject atk_editable_text`
 
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     jstring jstr = jaw_util_utf8_gchar_to_jstring(jniEnv, string);
     if ((*jniEnv)->ExceptionCheck(jniEnv) || jstr == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -273,6 +278,11 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
     }
 
     JAW_GET_EDITABLETEXT(text, ); // create local JNI reference `jobject atk_editable_text`
+
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
 
     const gchar *buf = string;
     gssize buf_len = -1;
@@ -346,6 +356,11 @@ void jaw_editable_text_copy_text(AtkEditableText *text, gint start_pos,
     JAW_GET_EDITABLETEXT(
         text, ); // create local JNI reference `jobject atk_editable_text`
 
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextCopyTextMethod, (jint)start_pos,
                               (jint)end_pos);
@@ -378,6 +393,11 @@ void jaw_editable_text_cut_text(AtkEditableText *text, gint start_pos,
     JAW_GET_EDITABLETEXT(
         text, ); // create local JNI reference `jobject atk_editable_text`
 
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextCutTextMethod, (jint)start_pos,
                               (jint)end_pos);
@@ -409,6 +429,11 @@ void jaw_editable_text_delete_text(AtkEditableText *text, gint start_pos,
     JAW_GET_EDITABLETEXT(
         text, ); // create local JNI reference `jobject atk_editable_text`
 
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
+
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextDeleteTextMethod,
                               (jint)start_pos, (jint)end_pos);
@@ -437,6 +462,11 @@ void jaw_editable_text_paste_text(AtkEditableText *text, gint position) {
 
     JAW_GET_EDITABLETEXT(
         text, ); // create local JNI reference `jobject atk_editable_text`
+
+    if (!jaw_editable_text_init_jni_cache(jniEnv)) {
+        g_warning("%s: Failed to initialize JNI cache", G_STRFUNC);
+        return;
+    }
 
     (*jniEnv)->CallVoidMethod(jniEnv, atk_editable_text,
                               cachedEditableTextPasteTextMethod,
