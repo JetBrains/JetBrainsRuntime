@@ -25,6 +25,7 @@
 
 package sun.awt.screencast;
 
+import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.java2d.pipe.Region;
 
@@ -111,6 +112,11 @@ public final class ScreencastHelper {
     );
 
     private static List<Rectangle> getSystemScreensBounds() {
+        // On pure Wayland GraphicsConfiguration always returns a logical size for bounds.
+        // This is exactly what the compositor reports to the XDG Desktop Portal. So we don't need to scale.
+        boolean applyScale = !(Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
+                sunToolkit.isRunningOnWayland() &&
+                !sunToolkit.isRunningOnXWayland());
         return Arrays
                 .stream(GraphicsEnvironment
                         .getLocalGraphicsEnvironment()
@@ -119,14 +125,18 @@ public final class ScreencastHelper {
                     GraphicsConfiguration gc =
                             graphicsDevice.getDefaultConfiguration();
                     Rectangle screen = gc.getBounds();
-                    AffineTransform tx = gc.getDefaultTransform();
 
-                    return new Rectangle(
-                            Region.clipRound(screen.x * tx.getScaleX()),
-                            Region.clipRound(screen.y * tx.getScaleY()),
-                            Region.clipRound(screen.width * tx.getScaleX()),
-                            Region.clipRound(screen.height * tx.getScaleY())
-                    );
+                    if (applyScale) {
+                        AffineTransform tx = gc.getDefaultTransform();
+                        return new Rectangle(
+                                Region.clipRound(screen.x * tx.getScaleX()),
+                                Region.clipRound(screen.y * tx.getScaleY()),
+                                Region.clipRound(screen.width * tx.getScaleX()),
+                                Region.clipRound(screen.height * tx.getScaleY())
+                        );
+                    }
+
+                    return screen;
                 })
                 .toList();
     }
