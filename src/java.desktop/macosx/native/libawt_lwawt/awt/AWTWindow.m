@@ -1038,9 +1038,15 @@ AWT_ASSERT_APPKIT_THREAD;
     }
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "(Z)V");
-    (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
-    CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, platformWindow);
+    @try {
+        (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
+        (*env)->DeleteLocalRef(env, platformWindow);
+        CHECK_EXCEPTION();
+    } @catch (NSException *e) {
+        NSLog(@"WARNING: suppressed exception from CPlatformWindow.displayChanged() in [AWTWindow _displayChanged]");
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:e forProcess:processInfo];
+    }
 }
 
 - (void) _deliverMoveResizeEvent {
@@ -1068,15 +1074,20 @@ AWT_ASSERT_APPKIT_THREAD;
 
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
-    (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
-                      (jint)frame.origin.x,
-                      (jint)frame.origin.y,
-                      (jint)frame.size.width,
-                      (jint)frame.size.height,
-                      (jboolean)[self.nsWindow inLiveResize]);
-    CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, platformWindow);
-
+    @try {
+        (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
+                          (jint)frame.origin.x,
+                          (jint)frame.origin.y,
+                          (jint)frame.size.width,
+                          (jint)frame.size.height,
+                          (jboolean)[self.nsWindow inLiveResize]);
+        (*env)->DeleteLocalRef(env, platformWindow);
+        CHECK_EXCEPTION();
+    } @catch (NSException *e) {
+        NSLog(@"WARNING: suppressed exception from CPlatformWindow.deliverMoveResizeEvent() in [AWTWindow _deliverMoveResizeEvent]");
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:e forProcess:processInfo];
+    }
     [AWTWindow synthesizeMouseEnteredExitedEventsForAllWindows];
 
     [self updateFullScreenButtons];
