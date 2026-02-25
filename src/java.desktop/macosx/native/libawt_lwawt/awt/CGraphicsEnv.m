@@ -33,7 +33,11 @@
 
 #define MAX_DISPLAYS 64
 
-static const BOOL TRACE_DISPLAY_CALLBACKS = NO;
+#ifdef DEBUG
+    static const BOOL TRACE_DISPLAY_CALLBACKS = YES;
+#else
+    static const BOOL TRACE_DISPLAY_CALLBACKS = NO;
+#endif
 
 extern void dumpDisplayInfo(jint displayID);
 
@@ -119,16 +123,16 @@ AWT_ASSERT_APPKIT_THREAD;
 JNIEnv *env = [ThreadUtilities getJNIEnv];
 JNI_COCOA_ENTER(env);
 
-    if (TRACE_DISPLAY_CALLBACKS) {
-        NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, userInfo: %p)",
-              displayId, flags, userInfo);
-    }
-
     /*
      * RunLoop interactions with callbacks means several RunLoop iterations may be needed to run these callbacks
      * within dispatch_queue (RunLoopBeforeSources -> RunLoopExit)
      */
     const jobject cgeRef = (jobject)userInfo;
+
+    if (TRACE_DISPLAY_CALLBACKS) {
+        NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, cgeRef: %p)",
+              displayId, flags, cgeRef);
+    }
 
     if (flags == kCGDisplayBeginConfigurationFlag) {
         /*
@@ -152,6 +156,10 @@ JNI_COCOA_ENTER(env);
         [ThreadUtilities registerMainThreadRunLoopCallback:MAIN_CALLBACK_CGDISPLAY_RECONFIGURE
                                                      block:^()
         {
+            if (TRACE_DISPLAY_CALLBACKS) {
+                NSLog(@"CGraphicsEnv::displaycb_handle(cgeRef: %p) - _displayReconfigurationFinished()",
+                      cgeRef);
+            }
             @try {
                 jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
                 if (graphicsEnv == NULL) return; // ref already GC'd
@@ -164,6 +172,11 @@ JNI_COCOA_ENTER(env);
             } @finally {
                 // Allow LWCToolkit.invokeAndWait() once Finished callbacks:
                 [ThreadUtilities setBlockingMainThread:false];
+
+                if (TRACE_DISPLAY_CALLBACKS) {
+                    NSLog(@"CGraphicsEnv::displaycb_handle(cgeRef: %p) - _displayReconfigurationFinished() done.",
+                          cgeRef);
+                }
             }
         }];
     }
@@ -182,6 +195,11 @@ JNI_COCOA_ENTER(env);
                                (jint) displayId, (jint) flags);
         (*env)->DeleteLocalRef(env, graphicsEnv);
         CHECK_EXCEPTION();
+
+        if (TRACE_DISPLAY_CALLBACKS) {
+            NSLog(@"CGraphicsEnv::displaycb_handle(displayId: %d, flags: %d, cgeRef: %p) - _displayReconfiguration() done.",
+                  displayId, flags, cgeRef);
+        }
     }
 JNI_COCOA_EXIT(env);
 }
