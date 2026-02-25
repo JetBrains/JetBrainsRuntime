@@ -271,12 +271,6 @@ void jaw_editable_text_insert_text(AtkEditableText *text, const gchar *string,
         return;
     }
 
-    JNIEnv *jniEnv = jaw_util_get_jni_env();
-    if (jniEnv == NULL) {
-        g_warning("%s: jniEnv is NULL", G_STRFUNC);
-        return;
-    }
-
     JAW_GET_EDITABLETEXT(text, ); // create local JNI reference `jobject atk_editable_text`
 
     if (!jaw_editable_text_init_jni_cache(jniEnv)) {
