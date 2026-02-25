@@ -160,6 +160,21 @@
 
 /*********       EXCEPTION_HANDLING    *********/
 
+JNIEXPORT void JNIUTIL_init();
+JNIEXPORT BOOL JNIUTIL_isLogJNIException();
+JNIEXPORT BOOL JNIUTIL_isAppkitTrace();
+JNIEXPORT BOOL JNIUTIL_isUseCocoaException();
+
+#define __JNI_LOG_JAVA_EXCEPTION(env, exc) \
+     NSLog(@"Java Exception (%s:%d %s): %@\nCallstack: %@", \
+         __FILE__, __LINE__, __FUNCTION__, \
+         ThrowableToNSString(env, exc), [NSThread callStackSymbols])
+
+#define __JNI_LOG_EXCEPTION(exception) \
+     NSLog(@"Apple AWT Cocoa Exception (%s:%d %s): %@\nCallstack: %@", \
+         __FILE__, __LINE__, __FUNCTION__, \
+         [exception description], [exception callStackSymbols])
+
 /*
  * Some explanation to set context of the bigger picture.
  * Before returning to Java from JNI, NSExceptions are caught - so long as
@@ -186,19 +201,19 @@
 #define CHECK_EXCEPTION_IN_ENV(env) { \
     jthrowable exc = (*(env))->ExceptionOccurred(env); \
     if (exc != NULL) { \
-        if ([NSThread isMainThread] == YES) { \
-            if (getenv("JNU_APPKIT_TRACE")) { \
+        if ([NSThread isMainThread]) { \
+            if (JNIUTIL_isAppkitTrace()) { \
                 (*(env))->ExceptionDescribe(env); \
-                NSLog(@"%@",[NSThread callStackSymbols]); \
-              } else { \
-                  (*(env))->ExceptionClear(env); \
-              } \
-         }  \
-        if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) {\
+                NSLog(@"%@", [NSThread callStackSymbols]); \
+            } \
+        } \
+        (*(env))->ExceptionClear(env); \
+        if (JNIUTIL_isLogJNIException()) { \
+            __JNI_LOG_JAVA_EXCEPTION(env, exc); \
+        } \
+        if (JNIUTIL_isUseCocoaException()) { \
             [NSException raise:NSGenericException \
                         format:@"%@", ThrowableToNSString(env, exc)]; \
-        } else { \
-            (*(env))->ExceptionClear(env); \
         } \
     } \
 };
@@ -222,9 +237,8 @@
  */
 #define JNI_COCOA_EXIT(env) \
  } \
- @catch (NSException *e) {  \
-     NSLog(@"Apple AWT Cocoa Exception: %@", [e description]); \
-     NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]); \
+ @catch (NSException *exception) { \
+     __JNI_LOG_EXCEPTION(exception); \
  } \
  @finally { \
      [pool drain]; \
@@ -235,10 +249,9 @@
  */
 #define JNI_COCOA_EXIT_WITH_ACTION(env, action) \
  } \
- @catch (NSException *e) { \
+ @catch (NSException *exception) { \
      { action; }; \
-     NSLog(@"Apple AWT Cocoa Exception: %@", [e description]); \
-     NSLog(@"Apple AWT Cocoa Exception callstack: %@", [e callStackSymbols]); \
+     __JNI_LOG_EXCEPTION(exception); \
  } \
  @finally { \
      [pool drain]; \
