@@ -170,11 +170,9 @@ class G1HeapRegionAttrBiasedMappedArray : public G1BiasedMappedArray<G1HeapRegio
     set_by_index(index, G1HeapRegionAttr(G1HeapRegionAttr::Young, true, is_pinned));
   }
 
-  void set_in_old(uintptr_t index, bool remset_is_tracked) {
+  void set_in_old(uintptr_t index, bool remset_is_tracked, bool region_is_pinned) {
     assert(get_by_index(index).is_default(),
            "Region attributes at index " INTPTR_FORMAT " should be default but is %s", index, get_by_index(index).get_type_str());
-    // We do not select regions with pinned objects into the collection set.
-    const bool region_is_pinned = false;
     set_by_index(index, G1HeapRegionAttr(G1HeapRegionAttr::Old, remset_is_tracked, region_is_pinned));
   }
 
