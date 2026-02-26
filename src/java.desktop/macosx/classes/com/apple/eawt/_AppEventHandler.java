@@ -275,11 +275,10 @@ class _AppEventHandler {
                     logger.fine("NOTIFY_SCREEN_CHANGE_PARAMETERS");
                 }
                 if (AppContext.getAppContext() != null) {
-                    CGraphicsDevice.DisplayConfiguration displayConfiguration = CGraphicsDevice.DisplayConfiguration.get();
                     EventQueue.invokeLater(() -> {
                         for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
-                            if (gd instanceof CGraphicsDevice) {
-                                ((CGraphicsDevice) gd).updateDisplayParameters(displayConfiguration);
+                            if (gd instanceof CGraphicsDevice cgd) {
+                                cgd.displayParametersChanged();
                             }
                         }
                     });
