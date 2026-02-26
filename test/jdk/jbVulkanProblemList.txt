@@ -1,4 +1,9 @@
+java/awt/Component/NoUpdateUponShow/NoUpdateUponShow.java JBR-9561 linux-all
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 fedora-plasma,fedora-kde
+java/awt/event/MouseEvent/MenuDragMouseEventAbsoluteCoordsTest/MenuDragMouseEventAbsoluteCoordsTest.java JBR-9561 linux-all
+java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.java JBR-9561 linux-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
+java/awt/GraphicsDevice/CloneConfigsTest.java JBR-9024 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java.UpdateGCTest
@@ -7,10 +12,12 @@ java/awt/image/DrawImage/BlitRotateClippedArea.java JBR-9026 linux-all
 java/awt/image/DrawImage/EABlitTest.java JBR-9027 linux-all
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.8.0-1043-aws,linux-6.8.0-1044-aws,linux-6.14.9-arch1-1
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928 linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.8.0-1043-aws,linux-6.8.0-1044-aws
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-all
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928 linux-all
+javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-all
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-9321 linux-6.14.9-arch1-1
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 linux-6.14.9-arch1-1
+javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all

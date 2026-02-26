@@ -1,27 +1,33 @@
 java/awt/Button/DisabledButtonPress.java JBR-5799,JBR-8858 windows-aarch64,windows-x64
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5398 linux-all,windows-all
+java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-9840 windows-10.0
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java JBR-6294 linux-all
+java/awt/dnd/DragExitBeforeDropTest.java 8242805,JBR-10045 macosx-all,windows-10.0
 java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
+java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java JBR-5442,JBR-10020 linux-all,windows-10.0
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/Focus/FocusKeepTest.java JBR-8874 windows-x64
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-9846 windows-10.0
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,macosx-aarch64,windows-10.0,linux-aarch64
+java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-9887 windows-10.0
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8400 linux-x64
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JBR-8905 windows-x64
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-10046 windows-10.0
+java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id0 JBR-8577 windows-10.0
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id1 JBR-5442 linux-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/MouseInfo/MultiscreenPointerInfo.java JBR-5442 linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184,JBR-5442 windows-all,linux-all
-java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442,JBR-6058 linux-all,windows-all
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442,JBR-6058,JBR-9390 linux-all,windows-all,macosx-26.0,macosx-26.1,macosx-26.2,macosx-26.3
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531,JBR-5442 macosx-all,linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-5442 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8259913,JBR-7035,JBR-5442,JBR-7079 windows-all,macosx-all,linux-all,linux-x64
@@ -34,18 +40,18 @@ java/awt/Robot/RobotMoveMultiscreen.java JBR-5442 linux-all
 java/awt/Toolkit/AWTEventListenerProxyTest/AWTEventListenerProxyTest.java JBR-6065 windows-all
 java/awt/Window/SlowMotion/SlowMotion.java JBR-5442 linux-all
 java/awt/Window/WindowSizeDifferentScreens/WindowSizeDifferentScreens.java JBR-5442 linux-all
-java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java JBR-5442 linux-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java JBR-6065 windows-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5442 linux-all
 
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-5442 linux-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-9583 windows-x64
+javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java windows-x64
 javax/swing/JInternalFrame/Test6325652.java JBR-6065 windows-all
 javax/swing/JMenu/4692443/bug4692443.java JBR-6065 windows-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-6065 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-6065 windows-all
 javax/swing/JTable/7124218/SelectEditTableCell.java JBR-5442 linux-all
-javax/swing/JTextArea/8149849/DNDTextToScaledArea.java JBR-6296 linux-all
+javax/swing/JTextArea/8149849/DNDTextToScaledArea.java 8253184,JBR-6296 windows-all,linux-all
 javax/swing/JTextField/8036819/bug8036819.java JBR-6065 windows-all
 javax/swing/JTree/4927934/bug4927934.java JBR-6065 windows-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-5442 linux-all
@@ -93,6 +99,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8158801 windows-all
+java/awt/Modal/BlockedMouseInputTest2.java JBR-9841 windows-10.0
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java 8066259,8253184 macosx-all,windows-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184 windows-all
@@ -105,20 +112,31 @@ javax/swing/JButton/8151303/PressedIconTest.java JBR-5210 windows-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184 windows-all
 javax/swing/JFileChooser/4400728/JFileChooserDefaultDirectoryTest.java JBR-8534 windows-x64
-javax/swing/JFileChooser/4847375/bug4847375.java JBR-8534 windows-x64
+javax/swing/JFileChooser/4525475/JFileChooserReadOnlyTest.java JBR-9863 windows-x64
+javax/swing/JFileChooser/4847375/bug4847375.java JBR-8534,JBR-9863 windows-x64
 javax/swing/JFileChooser/4966171/bug4966171.java JBR-8534 windows-x64
+javax/swing/JFileChooser/6342301/bug6342301.java JBR-9863 windows-x64
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7413 windows-x64
+javax/swing/JFileChooser/7199708/bug7199708.java JBR-9863 windows-x64
+javax/swing/JFileChooser/8010718/bug8010718.java JBR-8534 windows-x64
 javax/swing/JFileChooser/8013442/Test8013442.java JBR-8534 windows-x64
 javax/swing/JFileChooser/FileChooserListenerLeak.java JBR-8534 windows-x64
-javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8534 windows-x64
+javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8534,JBR-9863 windows-x64
+javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-6999 macosx-aarch64,macosx-x64,windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184 windows-all
+javax/swing/JMenu/bug4342646.java JBR-8727 windows-x64
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184 windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184 macosx-all,windows-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184 windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184 windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5951 windows-x64
 
+jb/java/awt/CustomTitleBar/HitTestClientArea.java JBR-9883 windows-10.0
+jb/java/awt/Focus/ModalDialogOverSiblingTest.java JBR-9885 windows-10.0
 jb/java/awt/Focus/RequestFocusInParent.java JBR-9843 windows-10.0
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-9886 windows-10.0
+
+jdk/editpad/EditPadTest.java JBR-9839 windows-10.0
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312 windows-all,macosx-all
 sanity/client/SwingSet/src/FileChooserDemoTest.java JBR-8534 windows-x64

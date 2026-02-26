@@ -11,6 +11,7 @@ java/awt/event/ComponentEvent/ListItemEventsTest.java JBR-8750 linux-all
 java/awt/event/MouseEvent/DragMouseEventTest.java JBR-8751 linux-all
 java/awt/FileDialog/MoveToTrashTest.java JBR-8752 linux-all
 java/awt/Focus/6401036/InputVerifierTest2.java JBR-9142 linux-aarch64
+java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java linux-aarch64
 java/awt/Focus/TestWindowsLFFocus.java JBR-8759 linux-all
 java/awt/font/Emoji/ComplexEmoji.java JBR-9661 linux-all
 java/awt/font/Emoji/EmojiVariation.java JBR-8717 linux-all
@@ -25,7 +26,6 @@ java/awt/font/TextLayout/VisibleAdvance.java JBR-8766 linux-all
 java/awt/FontMetrics/ExtremeFontSizeTest.java JBR-7823 linux-all
 java/awt/Graphics2D/DrawString/IgnoredWhitespaceTest.java JBR-9086 linux-all
 java/awt/Graphics2D/DrawString/RotTransText.java JBR-8767 linux-all
-java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-x64
 java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/image/DrawImage/SimpleManagedImage.java JBR-8769 linux-all
 java/awt/image/DrawImage/SimpleUnmanagedImage.java JBR-8769 linux-all
