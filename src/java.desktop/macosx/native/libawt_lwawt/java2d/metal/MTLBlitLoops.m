@@ -39,8 +39,11 @@
 #import <Accelerate/Accelerate.h>
 
 #ifdef DEBUG
-#define TRACE_ISOBLIT
-#define TRACE_BLIT
+/** uncomment only in (dev) mode */
+/*
+    #define TRACE_ISOBLIT
+    #define TRACE_BLIT
+*/
 #endif //DEBUG
 //#define DEBUG_ISOBLIT
 //#define DEBUG_BLIT

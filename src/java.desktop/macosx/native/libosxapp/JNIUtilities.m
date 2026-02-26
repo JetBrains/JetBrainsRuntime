@@ -31,7 +31,7 @@
     static int dst_var = -1; \
     if (dst_var == -1) { \
         dst_var = (getenv(key) != NULL) ? present : absent; \
-        if (__JNI_LOG_PROP) NSLog(@"%s[env prop: %s]: %d", #dst_var, key, dst_var); \
+        if (__JNIUTIL_LOG_PROP) NSLog(@"%s[env prop: %s]: %d", #dst_var, key, dst_var); \
     } \
     return (BOOL)dst_var; \
 }
@@ -57,7 +57,10 @@ BOOL JNIUTIL_isUseCocoaException() {
 }
 
 void JNIUTIL_init() {
-    /* early initialization of runtime flags (to dump their state) */
+    /* early initialization of runtime flags (dump to the console) */
+#ifdef DEBUG
+    NSLog(@"DEBUG: 1");
+#endif
     JNIUTIL_isLogJNIException();
     JNIUTIL_isAppkitTrace();
     JNIUTIL_isUseCocoaException();
