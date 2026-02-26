@@ -31,6 +31,19 @@
 
 #import <Cocoa/Cocoa.h>
 
+/********        TEST DEBUGGING SUPPORT    *********/
+/** uncomment only in (dev) mode */
+/*
+#define DEBUG 1
+*/
+/***/
+
+#ifdef DEBUG
+    #define __JNIUTIL_LOG_PROP 1
+#else
+    #define __JNIUTIL_LOG_PROP 0
+#endif
+
 /********        LOGGING SUPPORT    *********/
 
 #define LOG_NULL(dst_var, name) \

@@ -30,12 +30,6 @@
 
 #import <Cocoa/Cocoa.h>
 
-#ifdef DEBUG
-    #define __JNI_LOG_PROP 1
-#else
-    #define __JNI_LOG_PROP 0
-#endif
-
 #define DECLARE_BOOL_SYS_PROP_RETURN(dst_var, key, def) \
 { \
     static int dst_var = -1; \
@@ -45,7 +39,7 @@
         NSString* sysProp = [PropertiesUtilities javaSystemPropertyForKey:key withEnv:env]; \
         dst_var = ((def == 0) && (sysProp != nil)) ? \
                       ([@"true" isCaseInsensitiveLike:sysProp] ? 1 : 0) : def; \
-        if (__JNI_LOG_PROP) NSLog(@"%s[sys prop: %@]: %d", #dst_var, key, dst_var); \
+        if (__JNIUTIL_LOG_PROP) NSLog(@"%s[sys prop: %@]: %d", #dst_var, key, dst_var); \
     } \
     return (BOOL)dst_var; \
 }
