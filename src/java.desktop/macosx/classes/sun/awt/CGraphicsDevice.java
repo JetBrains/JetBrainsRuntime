@@ -34,15 +34,12 @@ import java.awt.Window;
 import java.awt.geom.Rectangle2D;
 import java.awt.peer.WindowPeer;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
-import sun.lwawt.macosx.CThreading;
 import sun.util.logging.PlatformLogger;
 
 import static java.awt.peer.ComponentPeer.SET_BOUNDS;
@@ -70,7 +67,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     private DisplayMode originalMode;
     private DisplayMode initialMode;
 
-    public CGraphicsDevice(final int displayID, DisplayConfiguration config) {
+    public CGraphicsDevice(final int displayID) {
         this.displayID = displayID;
         this.initialMode = getDisplayMode();
         StringBuilder errorMessage = new StringBuilder();
@@ -94,7 +91,7 @@ public final class CGraphicsDevice extends GraphicsDevice
         }
 
         // [JBR] we don't call displayChanged after creating a device, so call it here.
-        updateDevice(config);
+        displayChanged();
     }
 
     int getDisplayID() {
@@ -177,6 +174,8 @@ public final class CGraphicsDevice extends GraphicsDevice
         yResolution = nativeGetYResolution(displayID);
         isMirroring = nativeIsMirroring(displayID);
         bounds = nativeGetBounds(displayID).getBounds(); //does integer rounding
+        screenInsets = nativeGetScreenInsets(displayID);
+        initScaleFactor();
         resizeFSWindow(getFullScreenWindow(), bounds);
         //TODO configs?
     }
@@ -184,40 +183,22 @@ public final class CGraphicsDevice extends GraphicsDevice
     /**
      * @return false if display parameters were changed, so we need to recreate the device.
      */
-    boolean updateDevice(DisplayConfiguration config) {
+    boolean updateDevice() {
         int s = scale;
         double xr = xResolution, yr = yResolution;
         boolean m = isMirroring;
         var b = bounds;
-        updateDisplayParameters(config);
         displayChanged();
         return s == scale && xr == xResolution && yr == yResolution && m == isMirroring && b.equals(bounds);
     }
 
-    public void updateDisplayParameters(DisplayConfiguration config) {
-        Descriptor desc = config.getDescriptor(displayID);
-        if (desc == null) return;
-        if (!desc.screenInsets.equals(screenInsets)) {
+    public void displayParametersChanged() {
+        Insets newScreenInsets = nativeGetScreenInsets(displayID);
+        if (!newScreenInsets.equals(screenInsets)) {
             if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                logger.fine("Screen insets for display(" + displayID + ") changed " +
-                        "[top="  + screenInsets.top + ",left=" + screenInsets.left +
-                        ",bottom=" + screenInsets.bottom + ",right=" + screenInsets.right +
-                        "]->[top="  + desc.screenInsets.top + ",left=" + desc.screenInsets.left +
-                        ",bottom=" + desc.screenInsets.bottom + ",right=" + desc.screenInsets.right +
-                        "]");
+                logger.fine("Screen insets for display(" + displayID + ") changed " + screenInsets + "->" + newScreenInsets);
             }
-            screenInsets = desc.screenInsets;
-        }
-        int newScale = 1;
-        if (SunGraphicsEnvironment.isUIScaleEnabled()) {
-            double debugScale = SunGraphicsEnvironment.getDebugScale();
-            newScale = (int) (debugScale >= 1 ? Math.round(debugScale) : (int) desc.scale);
-        }
-        if (newScale != scale) {
-            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-                logger.fine("Scale for display(" + displayID + ") changed " + scale + "->" + newScale);
-            }
-            scale = newScale;
+            screenInsets = newScreenInsets;
         }
     }
 
@@ -367,6 +348,23 @@ public final class CGraphicsDevice extends GraphicsDevice
         }
     }
 
+    private void initScaleFactor() {
+        int _scale = scale;
+        if (SunGraphicsEnvironment.isUIScaleEnabled()) {
+            double debugScale = SunGraphicsEnvironment.getDebugScale();
+            scale = (int) (debugScale >= 1
+                    ? Math.round(debugScale)
+                    : nativeGetScaleFactor(displayID));
+        } else {
+            scale = 1;
+        }
+        if (_scale != scale && logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("current scale = " + _scale + ", new scale = " + scale + " (" + this + ")");
+        }
+    }
+
+    private static native double nativeGetScaleFactor(int displayID);
+
     private static native void nativeResetDisplayMode();
 
     private static native void nativeSetDisplayMode(int displayID, int w, int h, int bpp, int refrate);
@@ -381,38 +379,7 @@ public final class CGraphicsDevice extends GraphicsDevice
 
     private static native boolean nativeIsMirroring(int displayID);
 
+    private static native Insets nativeGetScreenInsets(int displayID);
+
     private static native Rectangle2D nativeGetBounds(int displayID);
-
-    private static native void nativeGetDisplayConfiguration(DisplayConfiguration config);
-
-    public static final class DisplayConfiguration {
-        private final Map<Integer, Descriptor> map = new HashMap<>();
-        private void addDescriptor(int displayID, int top, int left, int bottom, int right, double scale) {
-            map.put(displayID, new Descriptor(new Insets(top, left, bottom, right), scale));
-        }
-        public Descriptor getDescriptor(int displayID) {
-            return map.getOrDefault(displayID, Descriptor.DEFAULT);
-        }
-        public static DisplayConfiguration get() {
-            try {
-                return CThreading.executeOnAppKit(() -> {
-                    DisplayConfiguration config = new DisplayConfiguration();
-                    nativeGetDisplayConfiguration(config);
-                    return config;
-                });
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    private static final class Descriptor {
-        private static final Descriptor DEFAULT = new Descriptor(new Insets(0, 0, 0, 0), 1.0);
-        private final Insets screenInsets;
-        private final double scale;
-        private Descriptor(Insets screenInsets, double scale) {
-            this.screenInsets = screenInsets;
-            this.scale = scale;
-        }
-    }
 }

@@ -365,6 +365,47 @@ Java_sun_awt_CGraphicsDevice_nativeGetBounds
 
 /*
  * Class:     sun_awt_CGraphicsDevice
+ * Method:    nativeGetScreenInsets
+ * Signature: (I)D
+ */
+JNIEXPORT jobject JNICALL
+Java_sun_awt_CGraphicsDevice_nativeGetScreenInsets
+  (JNIEnv *env, jclass class, jint displayID)
+{
+    jobject ret = NULL;
+    __block NSRect frame = NSZeroRect;
+    __block NSRect visibleFrame = NSZeroRect;
+JNI_COCOA_ENTER(env);
+
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        NSArray *screens = [NSScreen screens];
+        for (NSScreen *screen in screens) {
+            NSDictionary *screenInfo = [screen deviceDescription];
+            NSNumber *screenID = [screenInfo objectForKey:@"NSScreenNumber"];
+            if ([screenID unsignedIntValue] == displayID){
+                frame = [screen frame];
+                visibleFrame = [screen visibleFrame];
+                break;
+            }
+        }
+    }];
+    // Convert between Cocoa's coordinate system and Java.
+    jint bottom = visibleFrame.origin.y - frame.origin.y;
+    jint top = frame.size.height - visibleFrame.size.height - bottom;
+    jint left = visibleFrame.origin.x - frame.origin.x;
+    jint right = frame.size.width - visibleFrame.size.width - left;
+
+    DECLARE_CLASS_RETURN(jc_Insets, "java/awt/Insets", ret);
+    DECLARE_METHOD_RETURN(jc_Insets_ctor, jc_Insets, "<init>", "(IIII)V", ret);
+    ret = (*env)->NewObject(env, jc_Insets, jc_Insets_ctor, top, left, bottom, right);
+
+JNI_COCOA_EXIT(env);
+
+    return ret;
+}
+
+/*
+ * Class:     sun_awt_CGraphicsDevice
  * Method:    nativeResetDisplayMode
  * Signature: ()V
  */
@@ -516,40 +557,31 @@ Java_sun_awt_CGraphicsDevice_nativeGetDisplayModes
 
 /*
  * Class:     sun_awt_CGraphicsDevice
- * Method:    nativeGetDisplayConfiguration
- * Signature: (Lsun/awt/CGraphicsDevice$DisplayConfiguration;)V
+ * Method:    nativeGetScaleFactor
+ * Signature: (I)D
  */
-JNIEXPORT void JNICALL
-Java_sun_awt_CGraphicsDevice_nativeGetDisplayConfiguration
-(JNIEnv *env, jclass class, jobject config) {
-AWT_ASSERT_APPKIT_THREAD;
+JNIEXPORT jdouble JNICALL
+Java_sun_awt_CGraphicsDevice_nativeGetScaleFactor
+(JNIEnv *env, jclass class, jint displayID)
+{
+    __block jdouble ret = 1.0f;
+
 JNI_COCOA_ENTER(env);
 
-    DECLARE_CLASS(jc_DisplayConfiguration, "sun/awt/CGraphicsDevice$DisplayConfiguration");
-    DECLARE_METHOD(jc_DisplayConfiguration_addDescriptor, jc_DisplayConfiguration, "addDescriptor", "(IIIIID)V");
-
-    NSArray *screens = [NSScreen screens];
-    for (NSScreen *screen in screens) {
-        NSDictionary *screenInfo = [screen deviceDescription];
-        NSNumber *screenID = [screenInfo objectForKey:@"NSScreenNumber"];
-
-        jint displayID = [screenID unsignedIntValue];
-        jdouble scale = 1.0;
-        if ([screen respondsToSelector:@selector(backingScaleFactor)]) {
-            scale = [screen backingScaleFactor];
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+        NSArray *screens = [NSScreen screens];
+        for (NSScreen *screen in screens) {
+            NSDictionary *screenInfo = [screen deviceDescription];
+            NSNumber *screenID = [screenInfo objectForKey:@"NSScreenNumber"];
+            if ([screenID unsignedIntValue] == displayID){
+                if ([screen respondsToSelector:@selector(backingScaleFactor)]) {
+                    ret = [screen backingScaleFactor];
+                }
+                break;
+            }
         }
-        NSRect frame = [screen frame];
-        NSRect visibleFrame = [screen visibleFrame];
-        // Convert between Cocoa's coordinate system and Java.
-        jint bottom = visibleFrame.origin.y - frame.origin.y;
-        jint top = frame.size.height - visibleFrame.size.height - bottom;
-        jint left = visibleFrame.origin.x - frame.origin.x;
-        jint right = frame.size.width - visibleFrame.size.width - left;
-
-        (*env)->CallVoidMethod(env, config, jc_DisplayConfiguration_addDescriptor,
-            displayID, top, left, bottom, right, scale);
-        CHECK_EXCEPTION();
-    }
+    }];
 
 JNI_COCOA_EXIT(env);
+    return ret;
 }
