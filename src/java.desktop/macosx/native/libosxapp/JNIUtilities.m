@@ -31,32 +31,33 @@
     static int dst_var = -1; \
     if (dst_var == -1) { \
         dst_var = (getenv(key) != NULL) ? present : absent; \
-        if (LOG_PROP) NSLog(@"%s[env prop: %s]: %d", #dst_var, key, dst_var); \
+        if (__JNI_LOG_PROP) NSLog(@"%s[env prop: %s]: %d", #dst_var, key, dst_var); \
     } \
     return (BOOL)dst_var; \
 }
 
+#ifdef DEBUG
+    #define __JNI_LOG_JNI_EXCEPTION  1
+#else
+    #define __JNI_LOG_JNI_EXCEPTION  0
+#endif
 
 BOOL JNIUTIL_isLogJNIException() {
     DECLARE_BOOL_SYS_PROP_RETURN(logJNIException, @"sun.awt.mac.exception.log",
-#if defined DEBUG
-    1
-#else
-    0
-#endif
-    );
+                                 __JNI_LOG_JNI_EXCEPTION);
 }
+#undef __JNI_LOG_JNI_EXCEPTION
 
 BOOL JNIUTIL_isAppkitTrace() {
-    DECLARE_ENV_PROP_RETURN(envAppkitTrace, "JNU_APPKIT_TRACE", 1, 0); // has
+    DECLARE_ENV_PROP_RETURN(envAppkitTrace, "JNU_APPKIT_TRACE", 1, 0); // has env prop set
 }
 
 BOOL JNIUTIL_isUseCocoaException() {
-    DECLARE_ENV_PROP_RETURN(envUseCocoaException, "JNU_NO_COCOA_EXCEPTION", 0, 1); // has not
+    DECLARE_ENV_PROP_RETURN(envUseCocoaException, "JNU_NO_COCOA_EXCEPTION", 0, 1); // has not env prop set
 }
 
 void JNIUTIL_init() {
-    /* early initialization of runtime flags (to dump state) */
+    /* early initialization of runtime flags (to dump their state) */
     JNIUTIL_isLogJNIException();
     JNIUTIL_isAppkitTrace();
     JNIUTIL_isUseCocoaException();
