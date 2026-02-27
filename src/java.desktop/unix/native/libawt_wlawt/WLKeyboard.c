@@ -659,7 +659,7 @@ convertXKBModifiersToJavaModifiers(xkb_mod_mask_t mask) {
         result |= java_awt_event_InputEvent_ALT_DOWN_MASK;
     }
 
-    // NOTE: we do not set META_DOWN_MASK, the xkb "meta" modifier is the same as alt, 
+    // NOTE: we do not set META_DOWN_MASK, the xkb "meta" modifier is the same as alt,
     // the xkb "super" modifier (the Windows key) doesn't set META_DOWN_MASK on XToolkit,
     // so for consistency neither do we.
 
@@ -1174,4 +1174,14 @@ wlSetModifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t g
     if (group != oldLayoutIndex) {
         onKeyboardLayoutChanged();
     }
+}
+
+int
+wlConvertJavaCodeToKeysym(jint javaKeyCode) {
+    for (const struct KeysymToJavaKeycodeMapItem *item = keysymtoJavaKeycodeMap; item->keysym; ++item) {
+        if (item->keycode == javaKeyCode) {
+            return (int) item->keysym;
+        }
+    }
+    return 0;
 }
