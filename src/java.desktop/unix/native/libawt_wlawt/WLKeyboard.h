@@ -49,5 +49,6 @@ void wlSetKeyState(long serial, long timestamp, uint32_t keycode, bool isPressed
 void wlSetRepeatInfo(int charsPerSecond, int delayMillis);
 void wlSetModifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group);
 void wlPostKeyEvent(const struct WLKeyEvent* event);
+int wlConvertJavaCodeToKeysym(jint javaKeyCode);
 
 #endif
