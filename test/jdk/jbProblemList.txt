@@ -192,6 +192,7 @@ java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java JB
 java/awt/Focus/ComponentLostFocusTest.java JBR-7909 generic-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 windows-all
 java/awt/Focus/ConsumedTabKeyTest.java JBR-5833 windows-all
+java/awt/Focus/ContainerFocusAutoTransferTest/ContainerFocusAutoTransferTest.java JBR-8556 ubuntu-22.04-aarch64
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java JBR-5210 windows-all
 java/awt/Focus/KeyStrokeTest.java JBR-7914 windows-all
 java/awt/Focus/ModalDialogInFocusEventTest.java JBR-7818 linux-all
@@ -363,7 +364,7 @@ java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
 java/awt/font/Emoji/ComplexEmoji.java JBR-9701 fedora-42-plasma-gnome,fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
-java/awt/font/Emoji/EmojiVariation.java JBR-9806 fedora-43-plasma,fedora-43-kde
+java/awt/font/Emoji/EmojiVariation.java JBR-9806 fedora-43-plasma,fedora-43-kde,fedora-43-gnome
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8437 linux-aarch64
 java/awt/font/JNICheck/JNICheck.sh JBR-5011 linux-all
 java/awt/font/TextLayout/ArabicDiacriticTest.java JBR-6760 linux-i386
@@ -786,6 +787,13 @@ java/awt/Dialog/ModalDialogPermission/ModalDialogPermission.java JBR-5225 window
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java JBR-5082 linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 linux-all,windows-all
 
+# Wayland related
+
+java/awt/FullScreen/SetFullScreenTest.java 8332155 linux-x64
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 linux-aarch64
+sun/java2d/ClassCastExceptionForInvalidSurface.java 8354097 linux-x64
+sun/java2d/GdiRendering/ClipShapeRendering.java 8354097 linux-x64
+
 ############################################################################
 
 # jdk_beans
@@ -965,7 +973,7 @@ sun/security/smartcardio/TestExclusive.java                     8039280 generic-
 sun/security/smartcardio/TestMultiplePresent.java               8039280 generic-all
 sun/security/smartcardio/TestPresent.java                       8039280 generic-all
 sun/security/smartcardio/TestTransmit.java                      8039280 generic-all
-sun/security/ssl/SSLSessionImpl/MultiNSTClient.java JBR-9058 macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1
+sun/security/ssl/SSLSessionImpl/MultiNSTClient.java JBR-9058 macosx-aarch64
 com/sun/crypto/provider/Cipher/DES/PerformanceTest.java         8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Default.java 8039280 generic-all
 com/sun/security/auth/callback/TextCallbackHandler/Password.java 8039280 generic-all
@@ -1106,7 +1114,7 @@ javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java JBR-5799,JBR-6306 windows-all,linux-all
 javax/swing/JMenu/bug4140643.java JBR-8489 windows-all
-javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056 windows-aarch64,windows-x64
+javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056,JBR-9660 windows-aarch64,windows-x64,generic-all
 javax/swing/JMenuBar/TestMenuMnemonic.java JBR-7301 windows-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-6094 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-6112 windows-all
@@ -1174,6 +1182,7 @@ javax/swing/JTabbedPane/TestJTabbedPaneBackgroundColor.java JBR-8493 macosx-15.4
 javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
+javax/swing/JToolTip/bug5047379.java JBR-9722 linux-all
 javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java 8160720 generic-all
 javax/swing/system/6799345/TestShutdown.java JBR-6881 generic-all
 javax/swing/text/AbstractDocument/8190763/TestCCEOnEditEvent.java JBR-5799,JBR-8290 windows-all,linux-all
@@ -1286,6 +1295,8 @@ com/sun/jdi/SetLocalWhileThreadInNative.java JBR-8537 generic-all
 ############################################################################
 
 # jdk_util
+java/util/concurrent/BlockingQueue/ProducerConsumerLoops.java JBR-10070 windows-aarch64
+java/util/zip/CloseInflaterDeflaterTest.java  8339216 linux-s390x
 
 ############################################################################
 
@@ -1453,6 +1464,7 @@ jb/java/awt/Font/Font467.java                                                   
 jb/java/awt/image/BufferedFontRenderingTest.java JBR-6493 generic-all
 jb/java/awt/keyboard/AltGrMustGenerateAltGrModifierTest4207.java                    JBR-4207 windows-all
 jb/java/awt/Toolkit/AWTThreadingTest.java                                           JBR-4350 macosx-all
+jb/java/awt/Toolkit/DetectingOSThemeTest.java JBR-9088 fedora-kde,fedora-plasma
 jb/java/awt/Toolkit/LWCToolkitInvokeAndWaitTest.java                                JBR-4896,JBR-5163 macosx-all,
 
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java JBR-4250 windows-all

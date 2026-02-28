@@ -59,7 +59,7 @@ java/awt/Scrollbar/UnitIncrementTest.java JBR-8733 windows-all
 java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184,JBR-9387 windows-all,fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
 java/awt/TextField/GetTextTest/GetTextTest.java JBR-8734 windows-all
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java JBR-9705 fedora-42-gnome
+java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 8013450,8253184,JBR-9705 fedora-42-gnome,macosx-all,windows-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
@@ -72,7 +72,7 @@ javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
-javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 linux-6.8.0-1033-aws,linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.8.0-1043-aws,linux-6.8.0-1044-aws,linux-6.8.0-1045-aws
+javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 ubuntu-22.04-aarch64,ubuntu-22.04-x64
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8747 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all

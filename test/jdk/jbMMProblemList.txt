@@ -9,7 +9,7 @@ java/awt/dnd/MissedDragEnterTest.java JBR-6091 windows-all
 java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java JBR-5442,JBR-10020 linux-all,windows-10.0
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-x64
 java/awt/Focus/FocusKeepTest.java JBR-8874 windows-x64
-java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-9846 windows-10.0
+java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-9846 windows-10.0,ubuntu-22.04-aarch64,ubuntu-22.04-x64
 java/awt/Frame/FramesGC/FramesGC.java 8079069,JBR-6057 macosx-all,windows-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117,JBR-6509 linux-all,macosx-aarch64,windows-10.0,linux-aarch64
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-9887 windows-10.0
@@ -99,6 +99,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8158801 windows-all
+java/awt/Mixing/MixingOnDialog.java JBR-10084 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-9841 windows-10.0
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java 8066259,8253184 macosx-all,windows-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184 macosx-all,windows-all

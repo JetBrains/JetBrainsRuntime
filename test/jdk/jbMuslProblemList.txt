@@ -132,6 +132,7 @@ javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-9670 lin
 javax/swing/UIDefaults/6302464/bug6302464.java JBR-9671 linux-all
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
+jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-10064 linux-all
 jb/java/awt/Toolkit/DetectingOSThemeTest.java JBR-9088 linux-all
 jb/java/io/IoOverNio/ErrorMessageTest.java JBR-8865 linux-all
 jb/java/io/IoOverNio/FileTest.java JBR-8723 linux-all

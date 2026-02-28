@@ -3,6 +3,8 @@ java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 fedo
 java/awt/event/MouseEvent/MenuDragMouseEventAbsoluteCoordsTest/MenuDragMouseEventAbsoluteCoordsTest.java JBR-9561 linux-all
 java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.java JBR-9561 linux-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
+java/awt/FullScreen/SetFullScreenTest.java JBR-8400 ubuntu-24.04-x64
+java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/GraphicsDevice/CloneConfigsTest.java JBR-9024 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
@@ -10,14 +12,23 @@ java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java.UpdateGCTest
 
 java/awt/image/DrawImage/BlitRotateClippedArea.java JBR-9026 linux-all
 java/awt/image/DrawImage/EABlitTest.java JBR-9027 linux-all
+
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 linux-all
-javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928 linux-all
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 arch-gnome
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341,JBR-9707 linux-all
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928,JBR-9707 linux-all
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 linux-all
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
-javax/swing/JFormattedTextField/bug4741926.java JBR-9321 linux-6.14.9-arch1-1
-javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 linux-6.14.9-arch1-1
-javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 linux-6.14.9-arch1-1
+javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome,fedora-gnome
+javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
+javax/swing/JRadioButton/bug4823809.java JBR-9333 fedora-gnome,fedora-gnome,arch-gnome
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all
+
+jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/ImageTransformTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/RobotGetOOBPixelsTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/RobotGetPixelsTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/RobotGetPixelTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/VulkanMaskFillTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
