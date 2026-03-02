@@ -103,6 +103,10 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
        return device.getEffectiveScale();
     }
 
+    public boolean isFractionalScalingDisabled() {
+        return device.isFractionalScalingDisabled();
+    }
+
     public abstract SurfaceType getSurfaceType();
     public abstract SurfaceData createSurfaceData(WLComponentPeer peer);
     public abstract SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height);

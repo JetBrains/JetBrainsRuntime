@@ -115,6 +115,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
      */
     private volatile double effectiveScale;
 
+    private volatile boolean isFractionalScalingDisabled;
+
     private volatile GraphicsConfiguration[] configs;
     private volatile WLGraphicsConfig defaultConfig; // A reference to the configs array
 
@@ -130,7 +132,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
                              int width, int height,
                              int widthLogical, int heightLogical,
                              int widthMm, int heightMm,
-                             int displayScale) {
+                             int displayScale,
+                             boolean isFractionalScalingDisabled) {
         assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
         assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
         assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
@@ -148,6 +151,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.heightMm = heightMm;
         this.displayScale = displayScale;
         this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(displayScale);
+        this.isFractionalScalingDisabled = isFractionalScalingDisabled;
 
         makeGC();
     }
@@ -178,7 +182,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
                              int width, int height,
                              int widthLogical, int heightLogical,
                              int widthMm, int heightMm,
-                             int scale) {
+                             int scale,
+                             boolean isFractionalScalingDisabled) {
         assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
         assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
         assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
@@ -195,6 +200,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.heightMm = heightMm;
         this.displayScale = scale;
         this.effectiveScale =  WLGraphicsEnvironment.effectiveScaleFrom(scale);
+        this.isFractionalScalingDisabled = isFractionalScalingDisabled;
 
         // It is necessary to create new config objects whenever this device changes
         // as GraphicsConfiguration identity is used to detect changes in scale, among other things.
@@ -238,15 +244,18 @@ public class WLGraphicsDevice extends GraphicsDevice {
                 similarDevice.heightLogical,
                 similarDevice.widthMm,
                 similarDevice.heightMm,
-                similarDevice.displayScale);
+                similarDevice.displayScale,
+                similarDevice.isFractionalScalingDisabled);
     }
 
     public static WLGraphicsDevice createWithConfiguration(int id, String name,
                                                            int x, int y,
                                                            int width, int height, int widthLogical, int heightLogical,
                                                            int widthMm, int heightMm,
-                                                           int scale) {
-        return new WLGraphicsDevice(id, name, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm, scale);
+                                                           int scale,
+                                                           boolean isFractionalScalingDisabled) {
+        return new WLGraphicsDevice(id, name, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm,
+                scale, isFractionalScalingDisabled);
     }
 
     boolean hasSameNameAs(WLGraphicsDevice otherDevice) {
@@ -306,6 +315,10 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     double getEffectiveScale() {
         return effectiveScale;
+    }
+
+    boolean isFractionalScalingDisabled() {
+        return isFractionalScalingDisabled;
     }
 
     int getResolution() {
