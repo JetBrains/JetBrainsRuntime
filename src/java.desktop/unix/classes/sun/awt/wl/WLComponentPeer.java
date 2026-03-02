@@ -121,6 +121,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     protected LWMouseEventDispatcher mouseEventDispatcher;
 
+    private final String kwinAppId; // non-null only when WLToolkit.useKWinWindowLocation() is set
+
     private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
     private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
             System.getProperty("sun.awt.wl.NativeModality", "false"));
@@ -138,6 +140,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     protected WLComponentPeer(Component target, boolean dropShadow) {
         this.target = target;
+        this.kwinAppId = WLToolkit.useKWinWindowLocation() ? WLToolkit.generateKWinWindowAppID() : null;
         this.background = target.isBackgroundSet() ? target.getBackground() : SystemColor.window;
         Dimension size = constrainSize(target.getBounds().getSize());
         final WLGraphicsConfig config = (WLGraphicsConfig) target.getGraphicsConfiguration();
@@ -459,12 +462,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                             thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
                     stage = 1;
                 } else {
+                    String appId = kwinAppId != null ? kwinAppId : WLToolkit.getApplicationID();
                     nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
-                            isModal, isMaximized, isMinimized, title, WLToolkit.getApplicationID());
+                            isModal, isMaximized, isMinimized, title, appId);
                     stage = 1;
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
-                    WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
+                    setLocation(xNative, yNative);
                 }
 
                 notifyNativeWindowCreated(nativePtr);
@@ -728,7 +732,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // but not top-level windows. So we can only ask robot to do that.
             int newXNative = javaUnitsToSurfaceUnits(newX);
             int newYNative = javaUnitsToSurfaceUnits(newY);
-            performLocked(() -> WLRobotPeer.setLocationOfWLSurface(wlSurface, newXNative, newYNative));
+            performLocked(() -> setLocation(newXNative, newYNative));
         }
 
         if ((positionChanged || sizeChanged) && isPopup && visible) {
@@ -824,7 +828,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private Point getFakeLocationOnScreen() {
-        // If we can't learn the real location from WLRobotPeer, we can at least
+        if (WLToolkit.useKWinWindowLocation()) {
+            Point location = WLKdotool.getWindowLocation(kwinAppId);
+            if (location != null) {
+                return location;
+            }
+        }
+        // If we can't learn the real location from KDotool or WLRobotPeer, we can at least
         // return a reasonable fake. This fake location places all windows in the top-left
         // corner of their respective screen and popups at the offset from
         // their parents' fake screen location.
@@ -849,6 +859,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             } else {
                 return new Point();
             }
+        }
+    }
+
+    private void setLocation(int xNative, int yNative) {
+        if (WLToolkit.useKWinWindowLocation()) {
+            WLKdotool.setWindowLocation(kwinAppId, xNative, yNative);
+        } else {
+            WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
         }
     }
 

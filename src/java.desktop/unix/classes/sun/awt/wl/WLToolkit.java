@@ -100,6 +100,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * On events handling: the WLToolkit class creates a thread named "AWT-Wayland"
@@ -1259,5 +1260,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     @Override
     public PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer) {
         return () -> {};
+    }
+
+
+    private static final boolean useKWinWindowLocation =
+            Boolean.parseBoolean(System.getProperty("sun.awt.wl.UseKWinWindowLocation", "false"));
+    private static final AtomicInteger kwinWindowIdCounter = new AtomicInteger(0);
+
+    static boolean useKWinWindowLocation() {
+        return useKWinWindowLocation;
+    }
+
+    static String generateKWinWindowAppID() {
+        return useKWinWindowLocation ? "jbr-kwin-window-" + kwinWindowIdCounter.incrementAndGet() : null;
     }
 }
