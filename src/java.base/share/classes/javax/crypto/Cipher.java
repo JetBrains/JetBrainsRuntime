@@ -505,10 +505,8 @@ public class Cipher {
      * requirements of your application.
      *
      * @implNote
-     * The JDK Reference Implementation additionally uses the following
-     * security properties:
-     * <ul>
-     * <li>the {@code jdk.security.provider.preferred}
+     * The JDK Reference Implementation additionally uses the
+     * {@code jdk.security.provider.preferred}
      * {@link Security#getProperty(String) Security} property to determine
      * the preferred provider order for the specified algorithm. This
      * may be different than the order of providers returned by
@@ -516,14 +514,6 @@ public class Cipher {
      * See also the Cipher Transformations section of the {@extLink
      * security_guide_jdk_providers JDK Providers} document for information
      * on the transformation defaults used by JDK providers.
-     * </li>
-     * <li>the {@code jdk.crypto.disabledAlgorithms}
-     * {@link Security#getProperty(String) Security} property to determine
-     * if the specified algorithm is allowed. If the
-     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
-     * the security property value.
-     * </li>
-     * </ul>
      *
      * @param transformation the name of the transformation, e.g.,
      * <i>AES/CBC/PKCS5Padding</i>.
@@ -622,14 +612,6 @@ public class Cipher {
      * security_guide_jdk_providers JDK Providers} document for information
      * on the transformation defaults used by JDK providers.
      *
-     * @implNote
-     * The JDK Reference Implementation additionally uses
-     * the {@code jdk.crypto.disabledAlgorithms}
-     * {@link Security#getProperty(String) Security} property to determine
-     * if the specified algorithm is allowed. If the
-     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
-     * the security property value.
-     *
      * @param transformation the name of the transformation,
      * e.g., <i>AES/CBC/PKCS5Padding</i>.
      * See the Cipher section in the <a href=
@@ -701,14 +683,6 @@ public class Cipher {
      * See the Cipher Transformations section of the {@extLink
      * security_guide_jdk_providers JDK Providers} document for information
      * on the transformation defaults used by JDK providers.
-     *
-     * @implNote
-     * The JDK Reference Implementation additionally uses
-     * the {@code jdk.crypto.disabledAlgorithms}
-     * {@link Security#getProperty(String) Security} property to determine
-     * if the specified algorithm is allowed. If the
-     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
-     * the security property value.
      *
      * @param transformation the name of the transformation,
      * e.g., <i>AES/CBC/PKCS5Padding</i>.
