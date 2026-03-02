@@ -30,6 +30,7 @@ import sun.awt.UNIXToolkit;
 import sun.java2d.pipe.Region;
 
 import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -112,33 +113,34 @@ public final class ScreencastHelper {
     );
 
     private static List<Rectangle> getSystemScreensBounds() {
+        return Arrays
+                .stream(GraphicsEnvironment
+                        .getLocalGraphicsEnvironment()
+                        .getScreenDevices())
+                .map(ScreencastHelper::getScreenBounds)
+                .toList();
+    }
+
+    private static Rectangle getScreenBounds(GraphicsDevice graphicsDevice) {
         // On pure Wayland GraphicsConfiguration always returns a logical size for bounds.
         // This is exactly what the compositor reports to the XDG Desktop Portal. So we don't need to scale.
         boolean applyScale = !(Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
                 sunToolkit.isRunningOnWayland() &&
                 !sunToolkit.isRunningOnXWayland());
-        return Arrays
-                .stream(GraphicsEnvironment
-                        .getLocalGraphicsEnvironment()
-                        .getScreenDevices())
-                .map(graphicsDevice -> {
-                    GraphicsConfiguration gc =
-                            graphicsDevice.getDefaultConfiguration();
-                    Rectangle screen = gc.getBounds();
+        GraphicsConfiguration gc =
+                graphicsDevice.getDefaultConfiguration();
+        Rectangle screen = gc.getBounds();
 
-                    if (applyScale) {
-                        AffineTransform tx = gc.getDefaultTransform();
-                        return new Rectangle(
-                                Region.clipRound(screen.x * tx.getScaleX()),
-                                Region.clipRound(screen.y * tx.getScaleY()),
-                                Region.clipRound(screen.width * tx.getScaleX()),
-                                Region.clipRound(screen.height * tx.getScaleY())
-                        );
-                    }
-
-                    return screen;
-                })
-                .toList();
+        if (applyScale) {
+            AffineTransform tx = gc.getDefaultTransform();
+            return new Rectangle(
+                    Region.clipRound(screen.x * tx.getScaleX()),
+                    Region.clipRound(screen.y * tx.getScaleY()),
+                    Region.clipRound(screen.width * tx.getScaleX()),
+                    Region.clipRound(screen.height * tx.getScaleY())
+            );
+        }
+        return screen;
     }
 
     private static synchronized native void closeSession();
