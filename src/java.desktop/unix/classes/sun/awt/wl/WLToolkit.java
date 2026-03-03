@@ -716,9 +716,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public CanvasPeer createCanvas(Canvas target) {
-        WLCanvasPeer peer = new WLCanvasPeer(target);
-        targetCreatedPeer(target, peer);
-        return peer;
+        return LWToolkit.createCanvas(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
