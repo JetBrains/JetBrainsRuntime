@@ -40,6 +40,17 @@ public class WLMouseInfoPeer implements MouseInfoPeer, SunToolkit.RelativePointe
         WLInputState inputState = WLToolkit.getInputState();
         // NB: these are surface-local coordinates
         point.setLocation(inputState.getPointerX(), inputState.getPointerY());
+        // Make the best effort to fulfill the peer's promise that
+        //   "coordinates are calculated in the coordinate system of the screen
+        //    device where the pointer is located."
+        var peerUnderMouse = getPeerUnderMouse();
+        if (peerUnderMouse != null) {
+            var gc = peerUnderMouse.getGraphicsConfiguration();
+            if (gc != null) {
+                var screenLocation = gc.getBounds().getLocation();
+                point.translate(screenLocation.x, screenLocation.y);
+            }
+        }
         return 0;
     }
 
