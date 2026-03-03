@@ -32,6 +32,7 @@
 #include "screencast_pipewire.h"
 
 #include "screencast_portal.h"
+#include "screencast_scale.h"
 
 extern volatile bool isGtkMainThread;
 extern gboolean isRemoteDesktop;
@@ -184,6 +185,9 @@ gboolean rebuildScreenData(GVariantIter *iterStreams, gboolean isTheOnlyMon) {
                 ) {
             hasFailures = TRUE;
         }
+
+        screencast_toDeviceSpaceBounds(&screen->bounds.x, &screen->bounds.y,
+                                       &screen->bounds.width, &screen->bounds.height);
 
         DEBUG_SCREENCAST("-----------------------\n", NULL);
         DEBUG_SCREEN(screen);
