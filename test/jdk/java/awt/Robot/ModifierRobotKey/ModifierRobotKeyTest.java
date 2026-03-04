@@ -45,7 +45,13 @@ import static jdk.test.lib.Asserts.assertTrue;
  * @library /lib/client
  * @library /test/lib
  * @build ExtendedRobot
- * @run main ModifierRobotKeyTest
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      ModifierRobotKeyTest
  */
 
 public class ModifierRobotKeyTest extends KeyAdapter {

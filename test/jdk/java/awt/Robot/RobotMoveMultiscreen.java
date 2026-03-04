@@ -39,6 +39,16 @@ import java.awt.Robot;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 
+/**
+ * @test
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      RobotMoveMultiscreen
+ */
 public class RobotMoveMultiscreen {
     static volatile int x_dest = 20;
     static volatile int y_dest = 20;
