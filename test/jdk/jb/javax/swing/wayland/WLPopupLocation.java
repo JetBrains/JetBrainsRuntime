@@ -75,8 +75,9 @@ public class WLPopupLocation {
         pause(robot);
 
         try {
+            Point p = frame.getLocationOnScreen();
             int w1 = 150, h1 = 200;
-            int x1 = 100, y1 = 100;
+            int x1 = p.x + 100, y1 = p.y + 100;
             System.out.printf("Action: locate to (%d, %d), set size (%d, %d)\n", x1, y1, w1, h1);
             SwingUtilities.invokeAndWait(() -> {
                 popup.setVisible(true);
@@ -104,7 +105,7 @@ public class WLPopupLocation {
                 throw new RuntimeException(String.format("Wrong location (via getBounds()) after robot's wait for idle: (%d, %d). Expected: (%d, %d)", popup.getBounds().x, popup.getBounds().y, x1, y1));
             }
 
-            int x2 = 200, y2 = 200;
+            int x2 = p.x + 200, y2 = p.y + 200;
             System.out.printf("Action: set popup location to (%d, %d)\n", x2, y2);
             SwingUtilities.invokeAndWait(() -> {
                 popup.setLocation(x2, y2);
