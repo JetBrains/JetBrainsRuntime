@@ -30,6 +30,7 @@
  * @run main/othervm -Dsun.java2d.uiScale=1 ScreenCaptureTest
  * @run main/othervm -Dsun.java2d.uiScale=2 ScreenCaptureTest
  */
+import javax.imageio.ImageIO;
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
@@ -46,6 +47,17 @@ import java.awt.Graphics;
 import java.awt.Panel;
 import java.awt.Robot;
 import java.util.List;
+
+/**
+ * @test
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      ScreenCaptureTest
+ */
 
 public class ScreenCaptureTest {
 
@@ -87,6 +99,9 @@ public class ScreenCaptureTest {
         int w = frame.getWidth();
         int h = frame.getHeight();
 
+        System.out.println("Creating screen capture of " + frame.getBounds());
+        BufferedImage screenCapture = robot.createScreenCapture(frame.getBounds());
+        ImageIO.write(screenCapture, "png", new java.io.File("ScreenCapture.png"));
         // getPixelColor Test
         // Check pixel color in first quardant GREEN; x=100, y=100
         if (!robot.getPixelColor(w / 4, h / 4).equals(COLORS[0])) {
