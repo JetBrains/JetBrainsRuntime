@@ -83,8 +83,8 @@ public class WLPopupResize {
 
         try {
             int tolerance = getTolerance();
-
-            int x = 10, y = 20, w = 120, h = 80;
+            Point p = frame.getLocationOnScreen();
+            int x = p.x + 10, y = p.y + 20, w = 120, h = 80;
             System.out.println("Set popup size to (120, 80)");
             SwingUtilities.invokeAndWait(() -> {
                 popup.setBounds(x, y, w, h);
