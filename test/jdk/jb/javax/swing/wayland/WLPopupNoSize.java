@@ -56,6 +56,7 @@ public class WLPopupNoSize {
         popup.setType(Window.Type.POPUP);
         sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
+        popup.setLocation(frame.getLocationOnScreen());
     }
 
     public static void main(String[] args) throws Exception {
