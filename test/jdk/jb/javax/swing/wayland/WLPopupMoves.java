@@ -72,14 +72,7 @@ public class WLPopupMoves {
 
         Robot robot = new Robot();
 
-        // If popup is placed near screen's edge, its location may be distorted by the server.
-        // Having the popup's parent fill the entire screen will reduce the risk of that.
-        // NB: the popup cannot be located outside parent's bounds; this is enforced by the toolkit.
         frameSize = toolkit.getScreenSize();
-        if (frameSize.width < 200 || frameSize.height < 200) {
-            System.out.printf("The screen '%s' is too small for this test. Exiting...", frameSize);
-            return;
-        }
 
         SwingUtilities.invokeAndWait(WLPopupMoves::createAndShowUI);
         pause(robot);
@@ -93,43 +86,55 @@ public class WLPopupMoves {
         int tolerance = getTolerance();
 
         try {
+            Point p = frame.getLocationOnScreen();
             int w = 120, h = 200;
-            System.out.println("Set popup to (50, 50)");
-            SwingUtilities.invokeAndWait(() -> {
-                popup.setBounds(50, 50, w, h);
-                popup.setVisible(true);
-            });
-            verifyBounds("Popup position after setting to (50, 50)\n", 50, 50, w, h, tolerance);
-            pause(robot);
-            verifyBounds("Popup position (50, 50) after robot's pause\n", 50, 50, w, h, tolerance);
+            {
+                int x = p.x + 50, y = p.y + 50;
+                System.out.printf("Set popup to (%d, %d)%n", x, y);
+                SwingUtilities.invokeAndWait(() -> {
+                    popup.setBounds(x, y, w, h);
+                    popup.setVisible(true);
+                });
+                verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x, y), x, y, w, h, tolerance);
+                pause(robot);
+                verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x, y), x, y, w, h, tolerance);
+            }
 
-            System.out.println("Set popup to (100, 100)");
-            SwingUtilities.invokeAndWait(() -> {
-                popup.setBounds(100, 100, w, h);
-            });
-            verifyBounds("Popup position after setting to (100, 100)\n", 100, 100, w, h, tolerance);
-            pause(robot);
-            verifyBounds("Popup position (100, 100) after robot's pause\n", 100, 100, w, h, tolerance);
+            {
+                int x = p.x + 100;
+                int y = p.y + 100;
+                System.out.printf("Set popup to (%d, %d)%n", x, y);
+                SwingUtilities.invokeAndWait(() -> {
+                    popup.setBounds(x, y, w, h);
+                });
+                verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x, y), x, y, w, h, tolerance);
+                pause(robot);
+                verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x, y), x, y, w, h, tolerance);
+            }
 
-            int x1 = (int) (frameSize.width / (2 * uiScale));
-            int y1 = (int) (frameSize.height / (2 * uiScale));
-            System.out.printf("Set popup to (%d, %d)\n", x1, y1);
-            SwingUtilities.invokeAndWait(() -> {
-                popup.setBounds(x1, y1, w, h);
-            });
-            verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x1, y1), x1, y1, w, h, tolerance);
-            pause(robot);
-            verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x1, y1), x1, y1, w, h, tolerance);
+            {
+                int x = p.x + (int) (frameSize.width / (2 * uiScale));
+                int y = p.y + (int) (frameSize.height / (2 * uiScale));
+                System.out.printf("Set popup to (%d, %d)\n", x, y);
+                SwingUtilities.invokeAndWait(() -> {
+                    popup.setBounds(x, y, w, h);
+                });
+                verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x, y), x, y, w, h, tolerance);
+                pause(robot);
+                verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x, y), x, y, w, h, tolerance);
+            }
 
-            int x2 = (int) (frameSize.width / uiScale - 10 - w);
-            int y2 = (int) (frameSize.height / uiScale - 10 - h);
-            System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x2, y2);
-            SwingUtilities.invokeAndWait(() -> {
-                popup.setBounds(x2, y2, w, h);
-            });
-            verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x2, y2), x2, y2, w, h, tolerance);
-            pause(robot);
-            verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x2, y2), x2, y2, w, h, tolerance);
+            {
+                int x = p.x + (int) (frameSize.width / uiScale - 10 - w);
+                int y = p.y + (int) (frameSize.height / uiScale - 10 - h);
+                System.out.printf("Set popup to (%d, %d). (to the bottom right corner) \n", x, y);
+                SwingUtilities.invokeAndWait(() -> {
+                    popup.setBounds(x, y, w, h);
+                });
+                verifyBounds(String.format("Popup position after setting to (%d, %d)\n", x, y), x, y, w, h, tolerance);
+                pause(robot);
+                verifyBounds(String.format("Popup position (%d, %d) after robot's pause\n", x, y), x, y, w, h, tolerance);
+            }
         } finally {
             SwingUtilities.invokeAndWait(frame::dispose);
         }
