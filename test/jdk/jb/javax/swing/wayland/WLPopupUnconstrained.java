@@ -66,7 +66,7 @@ public class WLPopupUnconstrained {
         label.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) {
-                    popup.setLocation(e.getX(), e.getY());
+                    popup.setLocation(e.getXOnScreen(), e.getYOnScreen());
                     popup.setVisible(true);
                 } else {
                     popup.setVisible(false);
