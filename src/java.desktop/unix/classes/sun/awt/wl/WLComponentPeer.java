@@ -345,18 +345,19 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         assert what.intersects(where) : String.format("Failed to move %s to overlap %s", what, where);
     }
 
-    Point nativeLocationForPopup(Window popup, Component popupParent, Window toplevel) {
+    Point nativeLocationForPopup(Window popup, Window toplevel) {
+        Objects.requireNonNull(popup);
+        Objects.requireNonNull(toplevel);
         // NB: all the coordinates are in the "surface" space as consumed by Wayland,
         //     not in pixels and not in the Java units.
 
-        // We need to provide popup's "parent" location relative to the surface this parent is painted upon:
-        Point parentLocation = javaUnitsToSurfaceUnits(getRelativeLocation(popupParent, toplevel));
-
-        // Offset is relative to the top-left corner of the "parent".
-        Point offsetFromParent = javaUnitsToSurfaceUnits(popup.getLocation());
+        Point popupOnScreen = popup.getLocation();
+        Point toplevelOnScreen = toplevel.getLocationOnScreen();
+        Point popupOnToplevel = new Point(popupOnScreen.x - toplevelOnScreen.x, popupOnScreen.y - toplevelOnScreen.y);
+        Point offsetFromToplevel = javaUnitsToSurfaceUnits(popupOnToplevel);
         var popupBounds = new Rectangle(
-                parentLocation.x + offsetFromParent.x,
-                parentLocation.y + offsetFromParent.y,
+                offsetFromToplevel.x,
+                offsetFromToplevel.y,
                 wlSize.getSurfaceWidth(),
                 wlSize.getSurfaceHeight());
         var safeToplevelBounds = toplevel.getSize();
@@ -372,7 +373,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // go outside the parent surface's bounds.
             moveToOverlap(popupBounds, safePopupBounds);
         }
-        return popupBounds.getLocation();
+        return popupBounds.getLocation(); // This is offset relative to the top-left corner of the toplevel
     }
 
     private boolean isPopupPositionUnconstrained() {
@@ -454,7 +455,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     Window popup = (Window) target;
                     Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
                     Window toplevel = getToplevelFor(popupParent);
-                    Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
+                    Point nativeLocation = nativeLocationForPopup(popup, toplevel);
                     nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
                             thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
                     stage = 1;
@@ -518,7 +519,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
      * Returns true if our target should be treated as a popup in Wayland's sense,
      * i.e. it has to have a parent to position relative to.
      */
-    protected boolean targetIsWlPopup() {
+    protected final boolean targetIsWlPopup() {
         return target instanceof Window window && isWlPopup(window);
     }
 
@@ -588,7 +589,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             Window popup = (Window) target;
             final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
             final Window toplevel = getToplevelFor(popupParent);
-            Point nativeLocation = nativeLocationForPopup(popup, popupParent, toplevel);
+            Point nativeLocation = nativeLocationForPopup(popup, toplevel);
             boolean isUnconstrained = isPopupPositionUnconstrained();
             nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
         }
@@ -830,18 +831,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         // their parents' fake screen location.
         if (targetIsWlPopup()) {
             Window popup = (Window) target;
-            Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-            Window toplevel = getToplevelFor(popupParent);
-            Point popupOffset = popup.getLocation(); // popup's offset from its parent
-            if (toplevel != null) {
-                Point parentOffset = getRelativeLocation(popupParent, toplevel);
-                Point thisLocation = toplevel.getLocationOnScreen();
-                thisLocation.translate(parentOffset.x, parentOffset.y);
-                thisLocation.translate(popupOffset.x, popupOffset.y);
-                return thisLocation;
-            } else {
-                return popupOffset;
-            }
+            // Popup's Window location is the "location on screen"
+            return popup.getLocation();
         } else {
             GraphicsConfiguration graphicsConfig = target.getGraphicsConfiguration();
             if (graphicsConfig != null) {
@@ -1784,14 +1775,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             int newX = surfaceUnitsToJavaUnits(newSurfaceX);
             int newY = surfaceUnitsToJavaUnits(newSurfaceY);
 
-            // The popup itself stores its location relative to its parent, but what we've got is
+            // The popup location is in it toplevel's screen coordinate system, but what we've got is
             // the location relative to the toplevel. Let's convert:
             Window popup = (Window) target;
             Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
             Window toplevel = getToplevelFor(popupParent);
-            Point parentLocation = getRelativeLocation(popupParent, toplevel);
-            Point locationRelativeToParent = new Point(newX - parentLocation.x, newY - parentLocation.y);
-            resetTargetLocationTo(locationRelativeToParent.x, locationRelativeToParent.y);
+            Point toplevelOnScreen = toplevel == null // highly unlikely, if at all possible
+                    ? target.getGraphicsConfiguration().getBounds().getLocation()
+                    : toplevel.getLocationOnScreen();
+            resetTargetLocationTo(newX + toplevelOnScreen.x, newY + toplevelOnScreen.y);
         }
 
         // From xdg-shell.xml: "If the width or height arguments are zero,
@@ -1869,7 +1861,22 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             if (oldDevice != newDevice) {
                 oldDevice.removeWindow(this);
                 newDevice.addWindow(this);
+
+                if (targetIsWlPopup()) {
+                    Point loc = target.getLocation();
+                    Point oldScreenLocation = oldDevice.getBounds().getLocation();
+                    loc.translate(-oldScreenLocation.x, -oldScreenLocation.y);
+                    Point newScreenLocation = newDevice.getBounds().getLocation();
+                    loc.translate(newScreenLocation.x, newScreenLocation.y);
+                    resetTargetLocationTo(loc.x, loc.y);
+                } else {
+                    // A window has been moved to another screen. Since windows are assumed to be located at (0, 0)
+                    // on their respective screens, update the location to reflect that.
+                    Point newLocation = newDevice.getBounds().getLocation();
+                    resetTargetLocationTo(newLocation.x, newLocation.y);
+                }
             }
+
             performUnlocked(() -> {
                 var acc = AWTAccessor.getComponentAccessor();
                 acc.setGraphicsConfiguration(target, gc);
