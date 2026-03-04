@@ -95,6 +95,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java 8158801 windows-all
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java 8158801 windows-all
+java/awt/Mixing/MixingOnDialog.java JBR-10084 windows-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java 8066259,8253184 macosx-all,windows-all
 java/awt/Modal/MultipleDialogs/MultipleDialogs4Test.java 8198665,8253184 macosx-all,windows-all
 java/awt/Paint/PaintNativeOnUpdate.java 8253184 windows-all

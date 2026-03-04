@@ -195,7 +195,7 @@ java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-5505 windows-
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-5505 windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-5505 macosx-all,windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-5505 windows-all
-java/awt/Mixing/MixingOnDialog.java JBR-5505 windows-all
+java/awt/Mixing/MixingOnDialog.java JBR-10084 windows-all
 java/awt/Mixing/MixingOnShrinkingHWButton.java JBR-5505 windows-all
 java/awt/Mixing/OpaqueTest.java JBR-5707,JBR-5505 linux-all,windows-all
 java/awt/Mixing/OverlappingButtons.java JBR-5707,JBR-5505 linux-all,windows-all
