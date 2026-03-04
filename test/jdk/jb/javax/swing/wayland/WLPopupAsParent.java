@@ -21,15 +21,8 @@
  * questions.
  */
 
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JWindow;
-import javax.swing.SwingUtilities;
-import java.awt.Color;
-import java.awt.Robot;
-import java.awt.Toolkit;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
@@ -39,7 +32,6 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
  *          itself is a popup
  * @requires os.family == "linux"
  * @key headful
- * @modules java.desktop/sun.awt
  * @run main WLPopupAsParent
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupAsParent
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupAsParent
@@ -48,7 +40,7 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
  */
 public class WLPopupAsParent {
     private static JFrame frame;
-    private static JWindow popup1;
+    private static Popup popup1;
 
     private static void createAndShowUI() {
         frame = new JFrame("WLPopupAsParent Test");
@@ -58,25 +50,23 @@ public class WLPopupAsParent {
     }
 
     private static void showPopup1() {
-        JPanel popupContents = new JPanel();
-        popupContents.add(new JLabel("test popup"));
-        popup1 = new JWindow(frame);
-        popup1.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup1, frame);
-        popup1.setBounds(15, 33, 100, 50);
-        popup1.add(popupContents);
-        popup1.setVisible(true);
+        Point p = frame.getLocationOnScreen();
+        popup1 = PopupFactory.getSharedInstance().getPopup(
+                frame,
+                new JLabel("test popup"),
+                p.x + 15,
+                p.y + 33);
+        popup1.show();
     }
 
     private static void showPopup2() {
-        JPanel popupContents = new JPanel();
-        popupContents.add(new JLabel("second-level popup"));
-        JWindow popup2 = new JWindow(popup1);
-        popup2.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup2, popup1);
-        popup2.setBounds(85, 267, 200, 100);
-        popup2.add(popupContents);
-        popup2.setVisible(true);
+        Point p = frame.getLocationOnScreen();
+        Popup popup2 = PopupFactory.getSharedInstance().getPopup(
+                frame,
+                new JLabel("second-level popup"),
+                p.x + 85,
+                p.y + 267);
+        popup2.show();
     }
 
     public static void main(String[] args) throws Exception {

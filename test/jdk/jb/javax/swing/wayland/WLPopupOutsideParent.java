@@ -27,10 +27,7 @@ import javax.swing.JPanel;
 import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import java.awt.Color;
-import java.awt.Robot;
-import java.awt.Toolkit;
-import java.awt.Window;
+import java.awt.*;
 
 /**
  * @test
@@ -114,10 +111,12 @@ public class WLPopupOutsideParent {
 
     private static void showPopupAt(int x, int y) throws Exception {
         int w = 100, h = 100;
-        System.out.printf("Action: show popup at (%d, %d), set the size to (%d, %d)\n", x, y, w, h);
+        Point p = frame.getLocationOnScreen();
+        System.out.printf("Action: show popup at (%d, %d) (offset (%d, %d)), set the size to (%d, %d)%n",
+                p.x + x, p.y + y, x, y, w, h);
         SwingUtilities.invokeAndWait(() -> {
             popup.setSize(w, h);
-            popup.setLocation(x, y);
+            popup.setLocation(p.x + x, p.y + y);
             popup.setVisible(true);
         });
     }
@@ -128,7 +127,7 @@ public class WLPopupOutsideParent {
 
             // Pause to let the popup_done event get delivered if it was actually sent by the server.
             pause(robot);
-            System.out.printf("The real location after a pause: %s\n", popup.getLocation());
+            System.out.printf("The real location after a pause: %s\n", popup.getLocationOnScreen());
             // NB: we don't check the location, just the fact that the popup is visible because the real
             //     location might be affected by the server in a completely unpredictable way.
             if (!popup.isVisible()) {
@@ -140,13 +139,14 @@ public class WLPopupOutsideParent {
     }
 
     private static void testMovePopupTo(Robot robot, int x, int y) throws Exception {
-        System.out.printf("Action: move popup to (%d, %d)\n", x, y);
+        Point p = frame.getLocationOnScreen();
+        System.out.printf("Action: move popup to (%d, %d) (offset (%d, %d))\n", p.x + x, p.y + y, x, y);
         SwingUtilities.invokeAndWait(() -> {
-            popup.setLocation(x, y);
+            popup.setLocation(p.x + x, p.y + y);
         });
         // Pause to let the popup_done event get delivered if it was actually sent by the server.
         pause(robot);
-        System.out.printf("The real location after a pause: %s\n", popup.getLocation());
+        System.out.printf("The real location after a pause: %s\n", popup.getLocationOnScreen());
         // NB: we don't check the location, just the fact that the popup is visible because the real
         //     location might be affected by the server in a completely unpredictable way.
         if (!popup.isVisible()) {

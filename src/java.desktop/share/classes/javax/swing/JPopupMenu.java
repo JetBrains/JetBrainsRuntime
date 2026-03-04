@@ -348,9 +348,7 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     Point adjustPopupLocationToFitScreen(int xPosition, int yPosition) {
         Point popupLocation = new Point(xPosition, yPosition);
 
-        if(popupPositionFixDisabled
-                || GraphicsEnvironment.isHeadless()
-                || PopupFactory.isPopupPositionedRelatively()) {
+        if(popupPositionFixDisabled || GraphicsEnvironment.isHeadless()) {
             return popupLocation;
         }
 
@@ -1004,7 +1002,7 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
             }
         }
         Point invokerOrigin;
-        if (invoker != null && !PopupFactory.isPopupPositionedRelatively()) {
+        if (invoker != null) {
             invokerOrigin = invoker.getLocationOnScreen();
 
             // To avoid integer overflow
