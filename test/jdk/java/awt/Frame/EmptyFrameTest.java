@@ -38,7 +38,13 @@ import javax.imageio.ImageIO;
  * @bug 4237529
  * @key headful
  * @summary Test repainting of an empty frame
- * @run main EmptyFrameTest
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      EmptyFrameTest
  */
 
 public class EmptyFrameTest {

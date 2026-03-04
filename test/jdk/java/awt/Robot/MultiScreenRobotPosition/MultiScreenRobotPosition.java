@@ -33,6 +33,13 @@ import java.awt.event.MouseEvent;
  * @test
  * @key headful
  * @bug 8176009
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      MultiScreenRobotPosition
  */
 public class MultiScreenRobotPosition {
 

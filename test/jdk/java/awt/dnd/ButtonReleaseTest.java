@@ -65,7 +65,16 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-
+/**
+ * @test
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      ButtonReleaseTest
+ */
 public class ButtonReleaseTest {
 
     static volatile ButtonPanelFrame buttonPanelFrame;

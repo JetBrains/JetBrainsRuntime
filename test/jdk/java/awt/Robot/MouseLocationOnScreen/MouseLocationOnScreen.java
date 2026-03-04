@@ -35,6 +35,13 @@ import java.awt.Robot;
  * @key headful
  * @bug 8196030
  * @summary checks that Robot and MouseInfo use the same coordinates
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      MouseLocationOnScreen
  */
 public final class MouseLocationOnScreen {
 

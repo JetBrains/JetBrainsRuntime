@@ -37,7 +37,13 @@ import jdk.test.lib.Platform;
  * @author bchristi: area=Robot
  * @library /test/lib
  * @build jdk.test.lib.Platform
- * @run main RobotWheelTest
+ * @run main/othervm
+ *      -Dawt.toolkit.name=WLToolkit
+ *      -Dawt.robot.screenshotMethod=dbusRemoteDesktop
+ *      -Dsun.awt.wl.UseRemoteDesktopRobot=true
+ *      -Dawt.robot.screenshotDebug=true
+ *      -Dsun.awt.wl.UseKWinWindowLocation=true
+ *      RobotWheelTest
  */
 public class RobotWheelTest {
 
