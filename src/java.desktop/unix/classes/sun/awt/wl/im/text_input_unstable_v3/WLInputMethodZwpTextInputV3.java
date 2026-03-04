@@ -51,13 +51,37 @@ import java.util.Objects;
 
 
 final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
+    // Threading specification:
+    //   * Since all the public API (from InputMethod and InputMethodAdapter) gets executed as a part of the common AWT,
+    //     invocations may happen on any thread, not EDT only.
+    //   * Incoming Wayland events (zwp_text_input_v3_on*) are currently dispatched on EDT only,
+    //     it's a guarantee from the WLToolkit.
+    //
+    //   Therefore:
+    //   1. The internal state of WLInputMethodZwpTextInputV3 must only be accessed in a thread-safe manner.
+    //      Currently, it's implemented via _mutual_ exclusion access which, however, can be "delegated" to another thread
+    //      if the current thread is performing a blocking call to that thread. The access is delegated strictly for the
+    //      duration of the blocking call.
+    //      This mechanics is implemented in InputMethodThreading and is utilized here via the field "threading".
+    //   2. The concurrency between incoming Wayland events tied to native Wayland contexts and the routines
+    //      of creating/destroying those contexts must be given special care.
+
 
     // See java.text.MessageFormat for the formatting syntax
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.im.text_input_unstable_v3.WLInputMethodZwpTextInputV3");
 
 
     public WLInputMethodZwpTextInputV3() throws AWTException {
-        wlInitializeContext();
+        try {
+            wlInitializeContext();
+        } catch (Exception err) {
+            if (err instanceof AWTException awtErr) {
+                throw awtErr;
+            }
+            final var wrapped = new AWTException(err.getMessage());
+            wrapped.initCause(err);
+            throw wrapped;
+        }
     }
 
 
@@ -284,16 +308,23 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispose() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("dispose(): this={0}.", this);
-        }
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("dispose(): this={0}.", this);
+            }
 
-        awtActivationStatus = AWTActivationStatus.DEACTIVATED;
-        awtNativeImIsExplicitlyDisabled = false;
-        awtCurrentClientLatestPostedPreeditString = null;
-        awtPreviousClientComponent = null;
-        awtClientComponentCaretPositionTracker.stopTrackingCurrentComponent();
-        wlDisposeContext();
+            awtActivationStatus = AWTActivationStatus.DEACTIVATED;
+            awtNativeImIsExplicitlyDisabled = false;
+            awtCurrentClientLatestPostedPreeditString = null;
+            awtPreviousClientComponent = null;
+            awtClientComponentCaretPositionTracker.stopTrackingCurrentComponent();
+
+            wlDisposeContext();
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("dispose()", err);
+        }
     }
 
     @Override
@@ -322,20 +353,25 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /* Implementation details section */
 
-    // Since WLToolkit dispatches (almost) all native Wayland events on EDT, not on its thread,
-    //   there's no need for this class to think about multithreading issues - all of its parts may only be executed
-    //   on EDT.
-    // If WLToolkit dispatched native Wayland events on its thread {@link sun.awt.wl.WLToolkit#isToolkitThread},
-    //   this class would require the following modifications:
-    //     - Guarding access to the fields with some synchronization primitives
-    //     - Taking into account that zwp_text_input_v3_on* callbacks may even be called when the constructor doesn't
-    //       even return yet (in the current implementation)
-    //     - Reworking the implementation of {@link #disposeNativeContext(long)} so that it prevents
-    //       use-after-free access errors to the destroyed native context from the native handlers of
-    //       zwp_text_input_v3 native events.
-
     static {
         initIDs();
+    }
+
+
+    /* Shared state section */
+
+    private final InputMethodThreading threading = new InputMethodThreading();
+    private static final int EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS = 5000;
+
+
+    /* Shared methods section */
+
+    private static RuntimeException logAndRethrowAsUnchecked(
+        String invokingMethodName,
+        InputMethodThreading.ExclusiveAccessException e
+    ) {
+        log.warning(String.format("%s: failed to obtain the exclusive access to this.", invokingMethodName), e);
+        throw new RuntimeException(e);
     }
 
 
@@ -818,41 +854,63 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     // The methods in this section implement the core logic of working with the "text-input-unstable-v3" protocol.
 
-    private void wlInitializeContext() throws AWTException {
-        assert wlInputContextState == null : "Must not initialize input context twice";
-        assert wlPendingChanges == null : "Must not initialize pending changes twice";
-        assert wlBeingCommittedChanges == null : "Must not initialize being-committed changes twice";
-        assert wlIncomingChanges == null : "Must not initialize incoming changes twice";
+    private void wlInitializeContext() throws Exception {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            assert wlInputContextState == null : "Must not initialize input context twice";
+            assert wlPendingChanges == null : "Must not initialize pending changes twice";
+            assert wlBeingCommittedChanges == null : "Must not initialize being-committed changes twice";
+            assert wlIncomingChanges == null : "Must not initialize incoming changes twice";
 
-        long nativeCtxPtr = 0;
+            // Making sure the context is being created on EDT to prevent concurrency between
+            //   this routine and the context's native Wayland events.
+            // Prevention is working as long as the native events are guaranteed to be dispatched on EDT only.
+            wlInputContextState = ea.computeBlockingOnEdt(() -> {
+                long nativeCtxPtr = 0;
 
-        try {
-            nativeCtxPtr = createNativeContext();
-            if (nativeCtxPtr == 0) {
-                throw new AWTException("nativeCtxPtr == 0");
-            }
+                try {
+                    nativeCtxPtr = createNativeContext();
+                    if (nativeCtxPtr == 0) {
+                        throw new AWTException("nativeCtxPtr == 0");
+                    }
 
-            wlInputContextState = new InputContextState(nativeCtxPtr);
-        } catch (Throwable err) {
-            if (nativeCtxPtr != 0) {
-                disposeNativeContext(nativeCtxPtr);
-                nativeCtxPtr = 0;
-            }
+                    return new InputContextState(nativeCtxPtr);
+                } catch (Throwable err) {
+                    if (nativeCtxPtr != 0) {
+                        disposeNativeContext(nativeCtxPtr);
+                        nativeCtxPtr = 0;
+                    }
 
-            throw err;
+                    throw err;
+                }
+            });
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlInitializeContext()", err);
         }
     }
 
     private void wlDisposeContext() {
-        final var ctxToDispose = this.wlInputContextState;
+        final InputContextState ctxToDispose;
 
-        wlInputContextState = null;
-        wlPendingChanges = null;
-        wlBeingCommittedChanges = null;
-        wlIncomingChanges = null;
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ctxToDispose = this.wlInputContextState;
+
+            this.wlInputContextState = null;
+            this.wlPendingChanges = null;
+            this.wlBeingCommittedChanges = null;
+            this.wlIncomingChanges = null;
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlDisposeContext()", err);
+        }
 
         if (ctxToDispose != null && ctxToDispose.nativeContextPtr != 0) {
-            disposeNativeContext(ctxToDispose.nativeContextPtr);
+            // Making sure the context is being destroyed on EDT to prevent concurrency between
+            //   the destruction of the context and its incoming native events.
+            // Prevention is working as long as the native events are guaranteed to be dispatched on EDT only.
+            InputMethodThreading.invokeOnEdtNowOrLater(() -> {
+                disposeNativeContext(ctxToDispose.nativeContextPtr);
+            });
         }
     }
 
