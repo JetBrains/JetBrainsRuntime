@@ -262,57 +262,49 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             Point location;
             Rectangle sBounds = null;
 
-            boolean isTooltipPositionedAbsolutely = !isTooltipPositionedRelatively();
-            if (isTooltipPositionedAbsolutely) {
-                Point toFind;
-                if (preferredLocation != null) {
-                    toFind = new Point(screenLocation.x + preferredLocation.x,
-                            screenLocation.y + preferredLocation.y);
-                } else {
-                    if (mouseEvent != null) {
-                        toFind = mouseEvent.getLocationOnScreen();
-                    } else {
-                        toFind = screenLocation;
-                    }
-                }
-
-                GraphicsConfiguration gc = getDrawingGC(toFind);
-                if (gc == null) {
-                    if (mouseEvent != null) {
-                        toFind = mouseEvent.getLocationOnScreen();
-                        gc = getDrawingGC(toFind);
-                    }
-                    if (gc == null) {
-                        gc = insideComponent.getGraphicsConfiguration();
-                    }
-                }
-
-                sBounds = gc.getBounds();
-                Insets screenInsets = Toolkit.getDefaultToolkit()
-                        .getScreenInsets(gc);
-                // Take into account screen insets, decrease viewport
-                sBounds.x += screenInsets.left;
-                sBounds.y += screenInsets.top;
-                sBounds.width -= (screenInsets.left + screenInsets.right);
-                sBounds.height -= (screenInsets.top + screenInsets.bottom);
-
-                if (preferredLocation != null) {
-                    location = toFind;
-                } else {
-                    if (mouseEvent != null) {
-                        location = new Point(screenLocation.x + mouseEvent.getX(),
-                                screenLocation.y + mouseEvent.getY() + 20);
-                    } else {
-                        location = screenLocation;
-                    }
-                }
+            Point toFind;
+            if (preferredLocation != null) {
+                toFind = new Point(screenLocation.x + preferredLocation.x,
+                        screenLocation.y + preferredLocation.y);
             } else {
                 if (mouseEvent != null) {
-                    location = new Point(mouseEvent.getX(), mouseEvent.getY() + 20);
+                    toFind = mouseEvent.getLocationOnScreen();
+                } else {
+                    toFind = screenLocation;
+                }
+            }
+
+            GraphicsConfiguration gc = getDrawingGC(toFind);
+            if (gc == null) {
+                if (mouseEvent != null) {
+                    toFind = mouseEvent.getLocationOnScreen();
+                    gc = getDrawingGC(toFind);
+                }
+                if (gc == null) {
+                    gc = insideComponent.getGraphicsConfiguration();
+                }
+            }
+
+            sBounds = gc.getBounds();
+            Insets screenInsets = Toolkit.getDefaultToolkit()
+                    .getScreenInsets(gc);
+            // Take into account screen insets, decrease viewport
+            sBounds.x += screenInsets.left;
+            sBounds.y += screenInsets.top;
+            sBounds.width -= (screenInsets.left + screenInsets.right);
+            sBounds.height -= (screenInsets.top + screenInsets.bottom);
+
+            if (preferredLocation != null) {
+                location = toFind;
+            } else {
+                if (mouseEvent != null) {
+                    location = new Point(screenLocation.x + mouseEvent.getX(),
+                            screenLocation.y + mouseEvent.getY() + 20);
                 } else {
                     location = screenLocation;
                 }
             }
+
             boolean leftToRight
                     = SwingUtilities.isLeftToRight(insideComponent);
             // Just to be paranoid
@@ -335,18 +327,16 @@ public final class ToolTipManager extends MouseAdapter implements MouseMotionLis
             popupRect.setBounds(location.x, location.y,
                     size.width, size.height);
 
-            if (isTooltipPositionedAbsolutely) {
-                // Fit as much of the tooltip on screen as possible
-                if (location.x < sBounds.x) {
-                    location.x = sBounds.x;
-                } else if (location.x - sBounds.x + size.width > sBounds.width) {
-                    location.x = sBounds.x + Math.max(0, sBounds.width - size.width);
-                }
-                if (location.y < sBounds.y) {
-                    location.y = sBounds.y;
-                } else if (location.y - sBounds.y + size.height > sBounds.height) {
-                    location.y = sBounds.y + Math.max(0, sBounds.height - size.height);
-                }
+            // Fit as much of the tooltip on screen as possible
+            if (location.x < sBounds.x) {
+                location.x = sBounds.x;
+            } else if (location.x - sBounds.x + size.width > sBounds.width) {
+                location.x = sBounds.x + Math.max(0, sBounds.width - size.width);
+            }
+            if (location.y < sBounds.y) {
+                location.y = sBounds.y;
+            } else if (location.y - sBounds.y + size.height > sBounds.height) {
+                location.y = sBounds.y + Math.max(0, sBounds.height - size.height);
             }
 
             PopupFactory popupFactory = PopupFactory.getSharedInstance();
