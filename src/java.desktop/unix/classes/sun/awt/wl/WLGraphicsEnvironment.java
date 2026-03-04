@@ -141,8 +141,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         if (widthLogical <= 0) widthLogical = width;
         if (heightLogical <= 0) heightLogical = height;
 
-        boolean isFractionalScalingDisabled = widthLogical == width && heightLogical == height && scale > 1;
-        if (correctLogicalSize && isFractionalScalingDisabled) {
+        if (correctLogicalSize && widthLogical == width && heightLogical == height && scale > 1) {
             // With fractional scale OFF, logical and physical sizes are reported as equal.
             // "Convert" the logical size to logical units to maintain Java promise of
             // always abstracting out the physical size.
@@ -164,12 +163,11 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         if (gd != null) {
             // Some properties of an existing device have changed; update the existing device and
             // let all the windows it hosts know about the change.
-            gd.updateConfiguration(humanID, x, y, width, height, widthLogical, heightLogical,
-                    widthMm, heightMm, scale, isFractionalScalingDisabled);
+            gd.updateConfiguration(humanID, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm, scale);
         } else {
             WLGraphicsDevice newGD = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
                     x, y, width, height, widthLogical, heightLogical,
-                    widthMm, heightMm, scale, isFractionalScalingDisabled);
+                    widthMm, heightMm, scale);
             synchronized (devices) {
                 devices.add(newGD);
             }
