@@ -583,7 +583,7 @@ public class AtkText {
         return sb.toString();
     }
 
-    private record StringSequence(String text, int startCodePoint, int endCodePoint) {
+    private record StringSequence(String str, int start_offset, int end_offset) {
     }
 
     // JNI upcalls section
