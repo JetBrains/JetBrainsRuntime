@@ -173,10 +173,6 @@ public class Popup {
                 pack();
             }
         }
-
-        if (c instanceof Window window) {
-            AWTAccessor.getWindowAccessor().setPopupParent(window, owner);
-        }
     }
 
 
@@ -243,7 +239,6 @@ public class Popup {
             super(parent);
             setFocusableWindowState(false);
             setType(Window.Type.POPUP);
-            AWTAccessor.getWindowAccessor().setPopupParent(this, target);
 
             // Popups are typically transient and most likely won't benefit
             // from true double buffering.  Turn it off here.
