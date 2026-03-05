@@ -21,8 +21,20 @@
  * questions.
  */
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.Window;
 import java.awt.geom.AffineTransform;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
@@ -32,7 +44,6 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
  * @summary Verifies that the popup-style window can move under Wayland
  * @requires os.family == "linux"
  * @key headful
- * @modules java.desktop/sun.awt
  * @run main/othervm WLPopupMoves
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupMoves
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupMoves
@@ -57,7 +68,6 @@ public class WLPopupMoves {
         popupContents.add(new JLabel("test popup"));
         popup = new JWindow(frame);
         popup.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
         popup.getRootPane()
             .putClientProperty("wlawt.popup_position_unconstrained", Boolean.TRUE);

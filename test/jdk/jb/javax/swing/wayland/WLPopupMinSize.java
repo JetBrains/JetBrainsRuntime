@@ -36,7 +36,6 @@ import java.awt.Window;
  *           immediately after it has been made visible under Wayland
  * @requires os.family == "linux"
  * @key headful
- * @modules java.desktop/sun.awt
  * @run main/othervm WLPopupMinSize
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupMinSize
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupMinSize
@@ -88,7 +87,6 @@ public class WLPopupMinSize {
     static void createAndShowPopup() {
         popup = new JWindow(frame);
         popup.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.setSize(50, 50);
         popup.setVisible(true);
 
