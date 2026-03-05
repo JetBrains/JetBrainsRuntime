@@ -121,7 +121,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     protected LWMouseEventDispatcher mouseEventDispatcher;
 
-    private final String kwinAppId; // non-null only when WLToolkit.useKWinWindowLocation() is set
+    private final String kwinAppId; // non-null only when WLKwinHelper.isEnabled() is set
 
     private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
     private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
@@ -140,7 +140,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     protected WLComponentPeer(Component target, boolean dropShadow) {
         this.target = target;
-        this.kwinAppId = WLToolkit.useKWinWindowLocation() ? WLToolkit.generateKWinWindowAppID() : null;
+        this.kwinAppId = WLKWinHelper.isEnabled() ? WLKWinHelper.generateAppID() : null;
         this.background = target.isBackgroundSet() ? target.getBackground() : SystemColor.window;
         Dimension size = constrainSize(target.getBounds().getSize());
         final WLGraphicsConfig config = (WLGraphicsConfig) target.getGraphicsConfiguration();
@@ -828,13 +828,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private Point getFakeLocationOnScreen() {
-        if (WLToolkit.useKWinWindowLocation()) {
-            Point location = WLKdotool.getWindowLocation(kwinAppId);
+        if (WLKWinHelper.isEnabled()) {
+            Point location = WLKWinHelper.getWindowLocation(kwinAppId);
             if (location != null) {
                 return location;
             }
         }
-        // If we can't learn the real location from KDotool or WLRobotPeer, we can at least
+        // If we can't learn the real location from WLRobotPeer, we can at least
         // return a reasonable fake. This fake location places all windows in the top-left
         // corner of their respective screen and popups at the offset from
         // their parents' fake screen location.
@@ -863,8 +863,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private void setLocation(int xNative, int yNative) {
-        if (WLToolkit.useKWinWindowLocation()) {
-            WLKdotool.setWindowLocation(kwinAppId, xNative, yNative);
+        if (WLKWinHelper.isEnabled()) {
+            WLKWinHelper.setWindowLocation(kwinAppId, xNative, yNative);
         } else {
             WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
         }
