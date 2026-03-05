@@ -109,7 +109,6 @@ public class WLPopupOutsideParent {
         popup = new JWindow(frame);
         popupContents.setBackground(Color.WHITE);
         popup.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
     }
 
