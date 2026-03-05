@@ -144,7 +144,7 @@ public class AtkKeyEvent {
             }
         }
 
-        keycode = keyInfo != null ? keyInfo.gdkKeyCode() : e.getKeyCode();
+        keycode = keyInfo != null ? keyInfo.gdkKeyCode() : 0;
         timestamp = e.getWhen();
 
         String nonAlphaNumericString = nonAlphaNumericMap.get(tempString);
