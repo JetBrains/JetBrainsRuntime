@@ -306,12 +306,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         return null;
     }
 
-    private static Component realParentFor(Component c) {
-        return (c instanceof Window window && isWlPopup(window))
-                ? AWTAccessor.getWindowAccessor().getPopupParent(window)
-                : c.getParent();
-    }
-
     public static Point getRelativeLocation(Component c, Window toplevel) {
         Objects.requireNonNull(c);
 
@@ -323,7 +317,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         while (c != null && c != toplevel) {
             x += c.getX();
             y += c.getY();
-            c = realParentFor(c);
+            c = c.getParent();
         }
 
         return new Point(x, y);
@@ -402,6 +396,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             int thisHeight = javaUnitsToSurfaceSize(getHeight());
             boolean isModal = targetIsModal();
 
+            if (isWlPopup && (target.getParent() == null || !target.getParent().isShowing())) {
+                // Note: PopupFactory.getPopup(null, ...) cannot be supported because
+                // Wayland popups require parent's wl_surface.
+                return;
+            }
             int state = (target instanceof Frame frame)
                     ? frame.getExtendedState()
                     : Frame.NORMAL;
@@ -415,8 +414,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
                     Window popup = (Window) target;
-                    Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-                    Window toplevel = getToplevelFor(popupParent);
+                    Window toplevel = getToplevelFor(popup.getParent());
                     Point nativeLocation = nativeLocationForPopup(popup, toplevel);
                     nativeCreatePopup(nativePtr, getNativePtrFor(toplevel), wlSurfacePtr,
                             thisWidth, thisHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
@@ -475,8 +473,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     static boolean isWlPopup(Window window) {
-        return window.getType() == Window.Type.POPUP
-                && AWTAccessor.getWindowAccessor().getPopupParent(window) != null;
+        return window.getType() == Window.Type.POPUP;
     }
 
     private boolean targetIsModal() {
@@ -538,8 +535,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // Since popup's reposition request includes both its size and location, the request
             // needs to be in sync with all the other sizes this method is responsible for updating.
             Window popup = (Window) target;
-            final Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-            final Window toplevel = getToplevelFor(popupParent);
+            Window toplevel = getToplevelFor(popup.getParent());
             Point nativeLocation = nativeLocationForPopup(popup, toplevel);
             boolean isUnconstrained = isPopupPositionUnconstrained();
             nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
@@ -1729,8 +1725,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // The popup location is in it toplevel's screen coordinate system, but what we've got is
             // the location relative to the toplevel. Let's convert:
             Window popup = (Window) target;
-            Component popupParent = AWTAccessor.getWindowAccessor().getPopupParent(popup);
-            Window toplevel = getToplevelFor(popupParent);
+            Window toplevel = getToplevelFor(popup.getParent());
             Point toplevelOnScreen = toplevel == null // highly unlikely, if at all possible
                     ? target.getGraphicsConfiguration().getBounds().getLocation()
                     : toplevel.getLocationOnScreen();
