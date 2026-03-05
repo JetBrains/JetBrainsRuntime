@@ -38,7 +38,6 @@ import java.util.concurrent.CompletableFuture;
  * @summary Verifies popups can be located regardless of the screen edge proximity
  * @requires os.family == "linux"
  * @key headful
- * @modules java.desktop/sun.awt
  * @run main/manual WLPopupUnconstrained
  */
 public class WLPopupUnconstrained {
@@ -59,7 +58,6 @@ public class WLPopupUnconstrained {
         popupContents.add(new JLabel("test popup"));
         JWindow popup = new JWindow(frame);
         popup.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, label);
         popup.getRootPane().putClientProperty("wlawt.popup_position_unconstrained", Boolean.TRUE);
         popup.setSize(300, 250);
         popup.add(popupContents);
