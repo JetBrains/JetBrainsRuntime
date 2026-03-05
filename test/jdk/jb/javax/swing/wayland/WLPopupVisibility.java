@@ -21,8 +21,14 @@
  * questions.
  */
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.Window;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
@@ -54,7 +60,6 @@ public class WLPopupVisibility {
         popup = new JWindow(frame);
         popup.setType(Window.Type.POPUP);
         popup.setSize(100, 100);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
     }
 
@@ -132,5 +137,4 @@ public class WLPopupVisibility {
         robot.waitForIdle();
         robot.delay(500);
     }
-
 }
