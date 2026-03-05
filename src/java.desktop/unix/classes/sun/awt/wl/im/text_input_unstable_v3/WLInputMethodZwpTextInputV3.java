@@ -918,9 +918,15 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * This method determines whether any of the pending state changes can be sent and committed.
      */
     private boolean wlCanSendChangesNow() {
-        return wlInputContextState != null &&
-               wlInputContextState.nativeContextPtr != 0 &&
-               wlBeingCommittedChanges == null;
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+
+            return wlInputContextState != null &&
+                   wlInputContextState.nativeContextPtr != 0 &&
+                   wlBeingCommittedChanges == null;
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlCanSendChangesNow()", err);
+        }
     }
 
     /**
@@ -928,64 +934,75 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *   followed by a {@code zwp_text_input_v3::commit} request.
      */
     private void wlSendPendingChangesNow() {
-        assert wlCanSendChangesNow() : "Must be able to send pending changes now";
+        // The exclusive access is required during the entire call to prevent the native context from being
+        //   destroyed while it's being used here for sending requests or to prevent sending two independent
+        //   piles of requests simultaneously.
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            assert wlCanSendChangesNow() : "Must be able to send pending changes now";
 
-        final OutgoingChanges changesToSend = wlPendingChanges;
-        wlPendingChanges = null;
+            final OutgoingChanges changesToSend = wlPendingChanges;
+            wlPendingChanges = null;
 
-        if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
-            // "After leave event, compositor must ignore requests from any text input instances until next enter event."
-            // Thus, it doesn't make sense to send any requests, let's drop the change set.
+            if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
+                // "After leave event, compositor must ignore requests from any text input instances until next enter event."
+                // Thus, it doesn't make sense to send any requests, let's drop the change set.
 
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("wlSendPendingChangesNow(): wlInputContextState.getCurrentWlSurfacePtr()=0. Dropping the change set {0}. this={1}.", changesToSend, this);
-            }
-
-            return;
-        }
-
-        if (log.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("wlSendPendingChangesNow(): sending the change set {0}. this={1}.", changesToSend, this);
-        }
-
-        if (changesToSend != null) {
-            if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
-                if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
-                    throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus=" + this.awtActivationStatus);
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("wlSendPendingChangesNow(): wlInputContextState.getCurrentWlSurfacePtr()=0. Dropping the change set {0}. this={1}.",
+                             changesToSend, this);
                 }
-                if (this.awtNativeImIsExplicitlyDisabled) {
-                    throw new IllegalStateException("Attempt to enable an input context while it must stay disabled.");
+
+                return;
+            }
+
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("wlSendPendingChangesNow(): sending the change set {0}. this={1}.", changesToSend, this);
+            }
+
+            if (changesToSend != null) {
+                if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
+                    if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+                        throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus="
+                                                        + this.awtActivationStatus);
+                    }
+                    if (this.awtNativeImIsExplicitlyDisabled) {
+                        throw new IllegalStateException("Attempt to enable an input context while it must stay disabled.");
+                    }
+                    zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
                 }
-                zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
+
+                if (changesToSend.getTextChangeCause() != null) {
+                    zwp_text_input_v3_set_text_change_cause(wlInputContextState.nativeContextPtr,
+                                                            changesToSend.getTextChangeCause().intValue);
+                }
+
+                if (changesToSend.getContentTypeHint() != null && changesToSend.getContentTypePurpose() != null) {
+                    zwp_text_input_v3_set_content_type(wlInputContextState.nativeContextPtr,
+                                                       changesToSend.getContentTypeHint(),
+                                                       changesToSend.getContentTypePurpose().intValue);
+                }
+
+                if (changesToSend.getCursorRectangle() != null) {
+                    zwp_text_input_v3_set_cursor_rectangle(wlInputContextState.nativeContextPtr,
+                                                           changesToSend.getCursorRectangle().x,
+                                                           changesToSend.getCursorRectangle().y,
+                                                           changesToSend.getCursorRectangle().width,
+                                                           changesToSend.getCursorRectangle().height);
+                }
+
+                if (Boolean.FALSE.equals(changesToSend.getEnabledState())) {
+                    zwp_text_input_v3_disable(wlInputContextState.nativeContextPtr);
+                }
             }
 
-            if (changesToSend.getTextChangeCause() != null) {
-                zwp_text_input_v3_set_text_change_cause(wlInputContextState.nativeContextPtr,
-                                                        changesToSend.getTextChangeCause().intValue);
-            }
+            zwp_text_input_v3_commit(wlInputContextState.nativeContextPtr);
 
-            if (changesToSend.getContentTypeHint() != null && changesToSend.getContentTypePurpose() != null) {
-                zwp_text_input_v3_set_content_type(wlInputContextState.nativeContextPtr,
-                                                   changesToSend.getContentTypeHint(),
-                                                   changesToSend.getContentTypePurpose().intValue);
-            }
+            wlBeingCommittedChanges = wlInputContextState.syncWithCommittedOutgoingChanges(changesToSend);
 
-            if (changesToSend.getCursorRectangle() != null) {
-                zwp_text_input_v3_set_cursor_rectangle(wlInputContextState.nativeContextPtr,
-                                                       changesToSend.getCursorRectangle().x,
-                                                       changesToSend.getCursorRectangle().y,
-                                                       changesToSend.getCursorRectangle().width,
-                                                       changesToSend.getCursorRectangle().height);
-            }
-
-            if (Boolean.FALSE.equals(changesToSend.getEnabledState())) {
-                zwp_text_input_v3_disable(wlInputContextState.nativeContextPtr);
-            }
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlSendPendingChangesNow()", err);
         }
-
-        zwp_text_input_v3_commit(wlInputContextState.nativeContextPtr);
-
-        wlBeingCommittedChanges = wlInputContextState.syncWithCommittedOutgoingChanges(changesToSend);
     }
 
     /**
@@ -995,15 +1012,21 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * @see #wlCanSendChangesNow()
      */
     private void wlScheduleContextNewChanges(final OutgoingChanges newOutgoingChanges) {
-        if (log.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("wlScheduleContextNewChanges(): scheduling the new change set {0}. this={1}.", newOutgoingChanges, this);
-        }
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("wlScheduleContextNewChanges(): scheduling the new change set {0}. this={1}.", newOutgoingChanges, this);
+            }
 
-        if (newOutgoingChanges == null) {
-            return;
-        }
+            if (newOutgoingChanges == null) {
+                return;
+            }
 
-        this.wlPendingChanges = newOutgoingChanges.appendChangesFrom(this.wlPendingChanges);
+            this.wlPendingChanges = newOutgoingChanges.appendChangesFrom(this.wlPendingChanges);
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlScheduleContextNewChanges()", err);
+        }
     }
 
 
