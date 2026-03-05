@@ -21,8 +21,14 @@
  * questions.
  */
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JWindow;
+import javax.swing.SwingUtilities;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.Window;
 
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
@@ -31,7 +37,6 @@ import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
  * @summary Verifies that the popup-style window with no size specified can change its visibility
  * @requires os.family == "linux"
  * @key headful
- * @modules java.desktop/sun.awt
  * @run main/othervm WLPopupNoSize
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.0 WLPopupNoSize
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.uiScale=1.25 WLPopupNoSize
@@ -54,7 +59,6 @@ public class WLPopupNoSize {
         popupContents.add(new JLabel("test popup"));
         popup = new JWindow(frame);
         popup.setType(Window.Type.POPUP);
-        sun.awt.AWTAccessor.getWindowAccessor().setPopupParent(popup, frame);
         popup.add(popupContents);
         popup.setLocation(frame.getLocationOnScreen());
     }
