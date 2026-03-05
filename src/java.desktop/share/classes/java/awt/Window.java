@@ -4183,14 +4183,6 @@ public class Window extends Container implements Accessible {
                 window.updateWindow();
             }
 
-            public void setPopupParent(Window window, Component component) {
-                window.popupParent = component;
-            }
-
-            public Component getPopupParent(Window window) {
-                return window.popupParent;
-            }
-
             public void setLWRequestStatus(Window changed, boolean status) {
                 changed.syncLWRequests = status;
             }
