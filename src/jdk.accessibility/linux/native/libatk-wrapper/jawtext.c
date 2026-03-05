@@ -55,9 +55,7 @@ static jclass cachedTextAtkTextClass = NULL;
 static jmethodID cachedTextCreateAtkTextMethod = NULL;
 static jmethodID cachedTextGetTextMethod = NULL;
 static jmethodID cachedTextGetCharacterAtOffsetMethod = NULL;
-static jmethodID cachedTextGetTextAfterOffsetMethod = NULL;
 static jmethodID cachedTextGetTextAtOffsetMethod = NULL;
-static jmethodID cachedTextGetTextBeforeOffsetMethod = NULL;
 static jmethodID cachedTextGetStringAtOffsetMethod = NULL;
 static jmethodID cachedTextGetCaretOffsetMethod = NULL;
 static jmethodID cachedTextGetCharacterExtentsMethod = NULL;
@@ -1094,6 +1092,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         return TRUE;
     }
 
+    jclass localClassStringSeq = NULL;
     jclass localClassAtkText =
         (*jniEnv)->FindClass(jniEnv, "org/GNOME/Accessibility/AtkText");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassAtkText == NULL) {
@@ -1122,16 +1121,8 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
     cachedTextGetCharacterAtOffsetMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTextAtkTextClass, "get_character_at_offset", "(I)I");
 
-    cachedTextGetTextAfterOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTextAtkTextClass, "get_text_after_offset",
-        "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
-
     cachedTextGetTextAtOffsetMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedTextAtkTextClass, "get_text_at_offset",
-        "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
-
-    cachedTextGetTextBeforeOffsetMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedTextAtkTextClass, "get_text_before_offset",
         "(II)Lorg/GNOME/Accessibility/AtkText$StringSequence;");
 
     cachedTextGetStringAtOffsetMethod = (*jniEnv)->GetMethodID(
@@ -1178,9 +1169,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         cachedTextCreateAtkTextMethod == NULL ||
         cachedTextGetTextMethod == NULL ||
         cachedTextGetCharacterAtOffsetMethod == NULL ||
-        cachedTextGetTextAfterOffsetMethod == NULL ||
         cachedTextGetTextAtOffsetMethod == NULL ||
-        cachedTextGetTextBeforeOffsetMethod == NULL ||
         cachedTextGetStringAtOffsetMethod == NULL ||
         cachedTextGetCaretOffsetMethod == NULL ||
         cachedTextGetCharacterExtentsMethod == NULL ||
@@ -1201,7 +1190,7 @@ static gboolean jaw_text_init_jni_cache(JNIEnv *jniEnv) {
         goto cleanup_and_fail;
     }
 
-    jclass localClassStringSeq = (*jniEnv)->FindClass(
+    localClassStringSeq = (*jniEnv)->FindClass(
         jniEnv, "org/GNOME/Accessibility/AtkText$StringSequence");
     if ((*jniEnv)->ExceptionCheck(jniEnv) || localClassStringSeq == NULL) {
         jaw_jni_clear_exception(jniEnv);
@@ -1260,9 +1249,7 @@ cleanup_and_fail:
     cachedTextCreateAtkTextMethod = NULL;
     cachedTextGetTextMethod = NULL;
     cachedTextGetCharacterAtOffsetMethod = NULL;
-    cachedTextGetTextAfterOffsetMethod = NULL;
     cachedTextGetTextAtOffsetMethod = NULL;
-    cachedTextGetTextBeforeOffsetMethod = NULL;
     cachedTextGetStringAtOffsetMethod = NULL;
     cachedTextGetCaretOffsetMethod = NULL;
     cachedTextGetCharacterExtentsMethod = NULL;
@@ -1303,9 +1290,7 @@ void jaw_text_cache_cleanup(JNIEnv *jniEnv) {
     cachedTextCreateAtkTextMethod = NULL;
     cachedTextGetTextMethod = NULL;
     cachedTextGetCharacterAtOffsetMethod = NULL;
-    cachedTextGetTextAfterOffsetMethod = NULL;
     cachedTextGetTextAtOffsetMethod = NULL;
-    cachedTextGetTextBeforeOffsetMethod = NULL;
     cachedTextGetStringAtOffsetMethod = NULL;
     cachedTextGetCaretOffsetMethod = NULL;
     cachedTextGetCharacterExtentsMethod = NULL;

@@ -532,10 +532,6 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
     cachedEditableTextPasteTextMethod = (*jniEnv)->GetMethodID(
         jniEnv, cachedEditableTextAtkEditableTextClass, "paste_text", "(I)V");
 
-    cachedEditableTextSetRunAttributesMethod = (*jniEnv)->GetMethodID(
-        jniEnv, cachedEditableTextAtkEditableTextClass, "set_run_attributes",
-        "(Ljavax/swing/text/AttributeSet;II)Z");
-
     if ((*jniEnv)->ExceptionCheck(jniEnv) ||
         cachedEditableTextCreateAtkEditableTextMethod == NULL ||
         cachedEditableTextSetTextContentsMethod == NULL ||
@@ -543,8 +539,7 @@ static gboolean jaw_editable_text_init_jni_cache(JNIEnv *jniEnv) {
         cachedEditableTextCopyTextMethod == NULL ||
         cachedEditableTextCutTextMethod == NULL ||
         cachedEditableTextDeleteTextMethod == NULL ||
-        cachedEditableTextPasteTextMethod == NULL ||
-        cachedEditableTextSetRunAttributesMethod == NULL) {
+        cachedEditableTextPasteTextMethod == NULL) {
 
         jaw_jni_clear_exception(jniEnv);
 
