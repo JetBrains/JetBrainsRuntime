@@ -262,15 +262,10 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     public void updateWindow() {
-        commitToServer();
-    }
-
-    @Override
-    void paintPeer(Graphics g) {
         if (roundedCornersRequested() && canPaintRoundedCorners()) {
             paintRoundCorners();
         }
-        super.paintPeer(g);
+        commitToServer();
     }
 
     @Override
