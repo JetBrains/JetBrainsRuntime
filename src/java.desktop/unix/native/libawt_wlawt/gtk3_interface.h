@@ -187,6 +187,7 @@ typedef void GdkDrawable;
 typedef void GdkGC;
 typedef void GdkPixmap;
 typedef void GtkStyleContext;
+typedef void GSettings;
 typedef void GtkFixed;
 typedef void GtkMenuItem;
 typedef void GtkMenuShell;
@@ -612,6 +613,10 @@ static void (*fp_gtk_widget_path_iter_set_object_name)(GtkWidgetPath *path, gint
 static void (*fp_gtk_style_context_set_path)(GtkStyleContext *context, GtkWidgetPath *path);
 static void (*fp_gtk_widget_path_unref) (GtkWidgetPath *path);
 static GtkStyleContext* (*fp_gtk_style_context_new) (void);
+
+static GSettings*   (*fp_g_settings_new)(const gchar *schema_id);
+static gchar*       (*fp_g_settings_get_string)(GSettings *settings, const gchar *key);
+
 
 
 // ---------- fp_g_dbus_* ----------

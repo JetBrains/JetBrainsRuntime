@@ -289,3 +289,13 @@ Java_com_sun_java_swing_plaf_gtk_GTKEngine_nativeSetRangeValue(
     gtk->gdk_threads_leave();
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_sun_java_swing_plaf_gtk_GTKLookAndFeel_applyThemeIfNeeded(JNIEnv *env, jobject this)
+{
+    jboolean res;
+    gtk->gdk_threads_enter();
+    res = gtk->apply_theme_if_needed();
+    gtk->gdk_threads_leave();
+    return res;
+}
+
