@@ -71,12 +71,15 @@ javax/swing/JFrame/JFrameBackgroundRefreshTest.java JBR-7471 linux-all
 javax/swing/JMenu/4213634/bug4213634.java JBR-8056 linux-aarch64
 javax/swing/JMenu/bug4146588.java JBR-9132 linux-all
 javax/swing/JMenu/TestDisabledMenuForegroundColor.java initial_runs generic-all
+javax/swing/JMenuItem/bug4327146.java JBR-9623 generic-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JPopupMenu/bug4187004.java JBR-9625 linux-all
 javax/swing/JPopupMenu/bug4966109.java JBR-9133 linux-all
 javax/swing/JRadioButton/bug4823809.java JBR-7788 linux-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java initial_runs generic-all
 javax/swing/JScrollPane/HorizontalMouseWheelOnShiftPressed/HorizontalMouseWheelOnShiftPressed.java initial_runs generic-all
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java initial_runs generic-all
+javax/swing/JTabbedPane/bug4273320.java JBR-9629 linux-all
 javax/swing/JTable/6263446/bug6263446.java initial_runs generic-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java initial_runs generic-all
 javax/swing/JTextArea/JTextAreaOrientationTest.java initial_runs generic-all
