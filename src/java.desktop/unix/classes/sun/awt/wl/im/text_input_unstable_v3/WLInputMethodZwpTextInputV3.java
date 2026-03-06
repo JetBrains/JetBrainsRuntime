@@ -1494,7 +1494,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        try {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("zwp_text_input_v3_onEnter(enteredWlSurfacePtr=0x{0}): this={1}.", Long.toHexString(enteredWlSurfacePtr), this);
             }
@@ -1507,6 +1507,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
                 wlEnableContextNow();
             }
+
+            ea.suppressUnusedWarning();
         } catch (Exception err) {
             log.severe("Failed to handle a zwp_text_input_v3::enter event (enteredWlSurfacePtr=0x" + Long.toHexString(enteredWlSurfacePtr) + ").", err);
         }
@@ -1516,7 +1518,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        try {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("zwp_text_input_v3_onLeave(leftWlSurfacePtr=0x{0}). this={1}.", Long.toHexString(leftWlSurfacePtr), this);
             }
@@ -1530,6 +1532,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
             wlInputContextState.setCurrentWlSurfacePtr(0);
             wlHandleContextGotDisabled();
+
+            ea.suppressUnusedWarning();
         } catch (Exception err) {
             log.severe("Failed to handle a zwp_text_input_v3::leave event (leftWlSurfacePtr=0x" + Long.toHexString(leftWlSurfacePtr) + ").", err);
         }
@@ -1539,7 +1543,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        try {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("zwp_text_input_v3_onPreeditString(cursorBeginUtf8Byte={0}, cursorEndUtf8Byte={1}, preeditStrUtf8={2}): this={3}.",
                          cursorBeginUtf8Byte, cursorEndUtf8Byte, Arrays.toString(preeditStrUtf8), this);
@@ -1550,6 +1554,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             if (log.isLoggable(PlatformLogger.Level.FINEST)) {
                 log.finest("zwp_text_input_v3_onPreeditString(...): this.wlIncomingChanges={0}.", this.wlIncomingChanges);
             }
+
+            ea.suppressUnusedWarning();
         } catch (Exception err) {
             log.severe("Failed to handle a zwp_text_input_v3::preedit_string event.", err);
         }
@@ -1559,7 +1565,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        try {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("zwp_text_input_v3_onCommitString(commitStrUtf8={0}): this={1}.",
                          Arrays.toString(commitStrUtf8), this);
@@ -1570,6 +1576,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             if (log.isLoggable(PlatformLogger.Level.FINEST)) {
                 log.finest("zwp_text_input_v3_onCommitString(...): this.wlIncomingChanges={0}.", this.wlIncomingChanges);
             }
+
+            ea.suppressUnusedWarning();
         } catch (Exception err) {
             log.severe("Failed to handle a zwp_text_input_v3::commit_string event.", err);
         }
@@ -1598,7 +1606,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     private void zwp_text_input_v3_onDone(long doneSerial) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        try {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("zwp_text_input_v3_onDone(doneSerial={0}): this={1}.", doneSerial, this);
             }
@@ -1737,6 +1745,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             if (wlPendingChanges != null && wlInputContextState.getCurrentWlSurfacePtr() != 0 && wlCanSendChangesNow()) {
                 wlSendPendingChangesNow();
             }
+
+            ea.suppressUnusedWarning();
         } catch (Exception err) {
             log.severe("Failed to handle a zwp_text_input_v3::done event (doneSerial=" + doneSerial + ").", err);
         }
