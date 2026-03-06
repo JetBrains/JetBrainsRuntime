@@ -97,12 +97,22 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     protected Component getClientComponent() {
-        return super.getClientComponent();
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+            return super.getClientComponent();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("getClientComponent()", err);
+        }
     }
 
     @Override
     protected boolean haveActiveClient() {
-        return super.haveActiveClient();
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+            return super.haveActiveClient();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("haveActiveClient()", err);
+        }
     }
 
     @Override
@@ -111,7 +121,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         //     just getClientComponent.
         //     There's a difference between the current client component and the focussed component -
         //       check sun.awt.im.InputContext#currentClientComponent and #awtFocussedComponent respectively.
-        super.setAWTFocussedComponent(component);
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+            super.setAWTFocussedComponent(component);
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("setAWTFocussedComponent()", err);
+        }
     }
 
     @Override
@@ -178,7 +193,12 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public String getNativeInputMethodInfo() {
-        return wlInputContextState == null ? "" : "zwp_text_input_v3@0x" + Long.toHexString(wlInputContextState.nativeContextPtr);
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+            return wlInputContextState == null ? "" : "zwp_text_input_v3@0x" + Long.toHexString(wlInputContextState.nativeContextPtr);
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("getNativeInputMethodInfo()", err);
+        }
     }
 
 
@@ -244,11 +264,17 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void dispatchEvent(AWTEvent event) {
-        if (log.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("dispatchEvent(event={0}): this={1}.", event, this);
-        }
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("dispatchEvent(event={0}): this={1}.", event, this);
+            }
 
-        awtClientComponentCaretPositionTracker.onIMDispatchEvent(event);
+            awtClientComponentCaretPositionTracker.onIMDispatchEvent(event);
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("dispatchEvent()", err);
+        }
     }
 
     @Override
@@ -306,18 +332,24 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void hideWindows() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("hideWindows(): this={0}.", this);
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("hideWindows(): this={0}.", this);
+            }
+
+            // "The method is only called when the input method is inactive."
+            assert this.awtActivationStatus != AWTActivationStatus.ACTIVATED : "The method is called when the IM is active";
+
+            // The protocol doesn't provide a separate method for hiding the IM window(s),
+            //   but this effect can be achieved by disabling the native context.
+            // Actually, it should have already been disabled (because the IM is inactive),
+            //   so disabling here is performed just in case.
+            wlDisableContextNow();
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("hideWindows()", err);
         }
-
-        // "The method is only called when the input method is inactive."
-        assert this.awtActivationStatus != AWTActivationStatus.ACTIVATED : "The method is called when the IM is active";
-
-        // The protocol doesn't provide a separate method for hiding the IM window(s),
-        //   but this effect can be achieved by disabling the native context.
-        // Actually, it should have already been disabled (because the IM is inactive),
-        //   so disabling here is performed just in case.
-        wlDisableContextNow();
     }
 
     @Override
@@ -340,19 +372,25 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void endComposition() {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("endComposition(): this={0}.", this);
-        }
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("endComposition(): this={0}.", this);
+            }
 
-        // Deleting the current preedit text
-        awtPostIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
+            // Deleting the current preedit text
+            awtPostIMESafely(JavaPreeditString.EMPTY, JavaCommitString.EMPTY);
 
-        // Ending the composition on the native IM's side: the protocol doesn't provide a separate method for this,
-        //   but we can achieve this by disabling + enabling back the native context.
+            // Ending the composition on the native IM's side: the protocol doesn't provide a separate method for this,
+            //   but we can achieve this by disabling + enabling back the native context.
 
-        wlDisableContextNow();
-        if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
-            wlEnableContextNow();
+            wlDisableContextNow();
+            if (wlContextHasToBeEnabled() && wlContextCanBeEnabledNow()) {
+                wlEnableContextNow();
+            }
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("endComposition()", err);
         }
     }
 
@@ -387,17 +425,23 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder(1024);
-        sb.append("WLInputMethodZwpTextInputV3@").append(System.identityHashCode(this));
-        sb.append('{');
-        sb.append("awtActivationStatus=").append(awtActivationStatus);
-        sb.append(", awtCurrentClientLatestPostedPreeditString=").append(awtCurrentClientLatestPostedPreeditString);
-        sb.append(", wlInputContextState=").append(wlInputContextState);
-        sb.append(", wlPendingChanges=").append(wlPendingChanges);
-        sb.append(", wlBeingCommittedChanges=").append(wlBeingCommittedChanges);
-        sb.append(", wlIncomingChanges=").append(wlIncomingChanges);
-        sb.append('}');
-        return sb.toString();
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+
+            final StringBuilder sb = new StringBuilder(1024);
+            sb.append("WLInputMethodZwpTextInputV3@").append(System.identityHashCode(this));
+            sb.append('{');
+            sb.append("awtActivationStatus=").append(awtActivationStatus);
+            sb.append(", awtCurrentClientLatestPostedPreeditString=").append(awtCurrentClientLatestPostedPreeditString);
+            sb.append(", wlInputContextState=").append(wlInputContextState);
+            sb.append(", wlPendingChanges=").append(wlPendingChanges);
+            sb.append(", wlBeingCommittedChanges=").append(wlBeingCommittedChanges);
+            sb.append(", wlIncomingChanges=").append(wlIncomingChanges);
+            sb.append('}');
+            return sb.toString();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("toString()", err);
+        }
     }
 
 
@@ -622,14 +666,18 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      *         or its closest ancestor meeting these requirements.
      */
     private static Window awtGetWlSurfaceComponentOf(Component component) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
-
         return WLComponentPeer.getToplevelFor(component);
     }
 
 
     private Component getPreviousClientComponent() {
-        return awtPreviousClientComponent == null ? null : awtPreviousClientComponent.get();
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+
+            return awtPreviousClientComponent == null ? null : awtPreviousClientComponent.get();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("getPreviousClientComponent()", err);
+        }
     }
 
 
@@ -639,14 +687,14 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     // See https://youtrack.jetbrains.com/issue/IJPL-212367 for more info.
     /** @return {@code true} if a new InputMethodEvent has been successfully made and posted, {@code false} otherwise. */
     private boolean awtPostIMESafely(JavaPreeditString preeditString, JavaCommitString commitString) {
-        if (log.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("awtPostIMESafely(preeditString={0}, commitString={1}): this={2}.", preeditString, commitString, this);
-        }
-
         assert preeditString != null : "Pre-edit string must be present";
         assert commitString != null : "Commit string must be present";
 
-        try {
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("awtPostIMESafely(preeditString={0}, commitString={1}): this={2}.", preeditString, commitString, this);
+            }
+
             if (awtActivationStatus != AWTActivationStatus.ACTIVATED) {
                 // Supposing an input method shouldn't interact with UI when not activated.
 
@@ -674,7 +722,21 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
             // Check out https://docs.oracle.com/javase/8/docs/technotes/guides/imf/spec.html#client-somponents
             //   for the info about "active" and "passive" clients.
-            final var haveActiveClient = clientComponent.getInputMethodRequests() != null;
+            final boolean haveActiveClient;
+            {
+                boolean temp = false;
+                try {
+                    temp = ea.computeBlockingOnEdt(() -> {
+                        return clientComponent.getInputMethodRequests() != null;
+                    });
+                } catch (Exception err) {
+                    if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                        log.warning("awtPostIMESafely(preeditString={0}, commitString={1}): failed to compute the value for haveActiveClient, assuming false.", preeditString, commitString);
+                    }
+                } finally {
+                    haveActiveClient = temp;
+                }
+            }
 
             // Don't dispatch preedit (a.k.a. composed) text to passive clients.
             //
@@ -789,6 +851,8 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             this.awtCurrentClientLatestPostedPreeditString = preeditString;
 
             return true;
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("awtPostIMESafely()", err);
         } catch (Exception err) {
             log.severe("Error occurred during constructing or posting a new InputMethodEvent.", err);
         }
@@ -796,7 +860,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         return false;
     }
 
-    private void awtInstallIMHighlightingInto(
+    private static void awtInstallIMHighlightingInto(
         final AttributedString imText,
         final int preeditTextBegin,
         final int preeditTextLength,
@@ -1373,14 +1437,20 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     }
 
     private IncomingChanges wlGetIncomingChanges() {
-        if (wlIncomingChanges == null) {
-            wlIncomingChanges = new IncomingChanges();
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            ea.suppressUnusedWarning();
+
+            if (wlIncomingChanges == null) {
+                wlIncomingChanges = new IncomingChanges();
+            }
+            return wlIncomingChanges;
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlGetIncomingChanges()", err);
         }
-        return wlIncomingChanges;
     }
 
 
-    private JavaPreeditString wlFixPreeditStringIfBroken(final JavaPreeditString preeditString) {
+    private static JavaPreeditString wlFixPreeditStringIfBroken(final JavaPreeditString preeditString) {
         if (preeditString == null) {
             return null;
         }
