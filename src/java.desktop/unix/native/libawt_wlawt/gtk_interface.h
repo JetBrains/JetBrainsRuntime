@@ -534,6 +534,7 @@ typedef struct GtkApi {
     void (*flush_event_loop)();
     gchar* (*gtk_check_version)(guint required_major, guint required_minor, guint required_micro);
     jobject (*get_setting)(JNIEnv *env, Setting property);
+    gboolean (*apply_theme_if_needed)(void);
 
     void (*paint_arrow)(WidgetType widget_type, GtkStateType state_type,
         GtkShadowType shadow_type, const gchar *detail,
