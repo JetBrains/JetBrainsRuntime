@@ -73,6 +73,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     public WLInputMethodZwpTextInputV3() throws AWTException {
         try {
+            this.threading = new InputMethodThreading();
+            this.awtClientComponentCaretPositionTracker = new ClientComponentCaretPositionTracker(this);
+
             wlInitializeContext();
         } catch (Exception err) {
             if (err instanceof AWTException awtErr) {
@@ -82,6 +85,11 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             wrapped.initCause(err);
             throw wrapped;
         }
+    }
+
+
+    public final InputMethodThreading getThreading() {
+        return this.threading;
     }
 
 
@@ -128,11 +136,17 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     @Override
     public void notifyClientWindowChange(Rectangle location) {
-        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-            log.finest("notifyClientWindowChange(location={0}): this={1}.", location, this);
-        }
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest("notifyClientWindowChange(location={0}): this={1}.", location, this);
+            }
 
-        awtClientComponentCaretPositionTracker.onIMNotifyClientWindowChange(location);
+            awtClientComponentCaretPositionTracker.onIMNotifyClientWindowChange(location);
+
+            ea.suppressUnusedWarning();
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("notifyClientWindowChange()", err);
+        }
     }
 
     @Override
@@ -360,7 +374,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /* Shared state section */
 
-    private final InputMethodThreading threading = new InputMethodThreading();
+    private final InputMethodThreading threading;
     private static final int EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS = 5000;
 
 
@@ -404,7 +418,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
      * Use {@link #getPreviousClientComponent()} to read the field.
      */
     private WeakReference<Component> awtPreviousClientComponent = null;
-    private final ClientComponentCaretPositionTracker awtClientComponentCaretPositionTracker = new ClientComponentCaretPositionTracker(this);
+    private final ClientComponentCaretPositionTracker awtClientComponentCaretPositionTracker;
 
 
     /* AWT-side methods section */
@@ -1302,63 +1316,67 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called by {@link ClientComponentCaretPositionTracker} */
     boolean wlUpdateCursorRectangle(final boolean forceUpdate) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
-
-        if (log.isLoggable(PlatformLogger.Level.FINER)) {
-            log.finer("wlUpdateCursorRectangle(): forceUpdate={0}, this={1}.", forceUpdate, this);
-        }
-
-        if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
-            return false;
-        }
-        final var contextStateOfEnabled = wlInputContextState.getCurrentStateOfEnabled();
-        if (contextStateOfEnabled == null) {
-            // Equal to !wlInputContextState.isEnabled()
-            return false;
-        }
-
-        final var currentClient = getClientComponent();
-        if (currentClient == null) {
-            return false;
-        }
-
-        final Rectangle newCursorRectangle;
-        try {
-            newCursorRectangle = awtGetWlCursorRectangleOf(currentClient);
-        } catch (Exception err) {
-            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
-                log.warning(String.format("Failed to obtain the caret position inside %s.", currentClient), err);
-            }
-            return false;
-        }
-
-        final boolean newCursorRectangleDiffers =
-            (wlBeingCommittedChanges != null && wlBeingCommittedChanges.changeSet().getCursorRectangle() != null)
-            ? !wlBeingCommittedChanges.changeSet().getCursorRectangle().equals(newCursorRectangle)
-            : !Objects.equals(contextStateOfEnabled.cursorRectangle(), newCursorRectangle);
-
-        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-            log.finest("wlUpdateCursorRectangle(): newCursorRectangle={0}, newCursorRectangleDiffers={1}.", newCursorRectangle, newCursorRectangleDiffers);
-        }
-
-        if ( newCursorRectangle != null && (forceUpdate || newCursorRectangleDiffers) ) {
-            wlScheduleContextNewChanges(new OutgoingChanges().setCursorRectangle(newCursorRectangle));
-            if (wlCanSendChangesNow()) {
-                wlSendPendingChangesNow();
+        try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
+            if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                log.finer("wlUpdateCursorRectangle(): forceUpdate={0}, this={1}.", forceUpdate, this);
             }
 
-            return true;
-        }
-
-        // Dismiss the outdated data.
-        if (wlPendingChanges != null && wlPendingChanges.getCursorRectangle() != null) {
-            wlPendingChanges.setCursorRectangle(null);
-            if (wlPendingChanges.isEmpty()) {
-                wlPendingChanges = null;
+            if (wlInputContextState.getCurrentWlSurfacePtr() == 0) {
+                return false;
             }
-        }
+            final var contextStateOfEnabled = wlInputContextState.getCurrentStateOfEnabled();
+            if (contextStateOfEnabled == null) {
+                // Equal to !wlInputContextState.isEnabled()
+                return false;
+            }
 
-        return false;
+            final var currentClient = getClientComponent();
+            if (currentClient == null) {
+                return false;
+            }
+
+            final Rectangle newCursorRectangle;
+            try {
+                newCursorRectangle = ea.computeBlockingOnEdt(() -> {
+                    return awtGetWlCursorRectangleOf(currentClient);
+                });
+            } catch (Exception err) {
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning(String.format("Failed to obtain the caret position inside %s.", currentClient), err);
+                }
+                return false;
+            }
+
+            final boolean newCursorRectangleDiffers =
+                (wlBeingCommittedChanges != null && wlBeingCommittedChanges.changeSet().getCursorRectangle() != null)
+                ? !wlBeingCommittedChanges.changeSet().getCursorRectangle().equals(newCursorRectangle)
+                : !Objects.equals(contextStateOfEnabled.cursorRectangle(), newCursorRectangle);
+
+            if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+                log.finest("wlUpdateCursorRectangle(): newCursorRectangle={0}, newCursorRectangleDiffers={1}.", newCursorRectangle, newCursorRectangleDiffers);
+            }
+
+            if ( newCursorRectangle != null && (forceUpdate || newCursorRectangleDiffers) ) {
+                wlScheduleContextNewChanges(new OutgoingChanges().setCursorRectangle(newCursorRectangle));
+                if (wlCanSendChangesNow()) {
+                    wlSendPendingChangesNow();
+                }
+
+                return true;
+            }
+
+            // Dismiss the outdated data.
+            if (wlPendingChanges != null && wlPendingChanges.getCursorRectangle() != null) {
+                wlPendingChanges.setCursorRectangle(null);
+                if (wlPendingChanges.isEmpty()) {
+                    wlPendingChanges = null;
+                }
+            }
+
+            return false;
+        } catch (InputMethodThreading.ExclusiveAccessException err) {
+            throw logAndRethrowAsUnchecked("wlUpdateCursorRectangle()", err);
+        }
     }
 
 
