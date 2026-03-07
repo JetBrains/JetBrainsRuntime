@@ -594,9 +594,11 @@ void C2_MacroAssembler::count_positives(Register src, Register cnt, Register res
 
   bind(Lslow);                    // Fallback to slow version.
   subf(tmp0, src, result);        // Bytes known positive.
-  subf_(tmp0, tmp0, cnt);         // Remaining Bytes.
+  clrldi(tmp1, cnt, 32);          // Clear garbage from upper 32 bits.
+  subf_(tmp0, tmp0, tmp1);        // Remaining Bytes.
   beq(CCR0, Ldone);
   mtctr(tmp0);
+
   bind(Lloop);
   lbz(tmp0, 0, result);
   andi_(tmp0, tmp0, 0x80);
