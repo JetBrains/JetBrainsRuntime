@@ -165,6 +165,16 @@ ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += $(A11Y_JAWS_ANNOUNCING_CFLAGS)
 endif
 
+# Setup speech-dispatcher a11y announcer for Linux XAWT/WLAWT
+A11Y_SPEECHD_ANNOUNCING_CFLAGS :=
+ifeq ($(call isTargetOs, linux), true)
+  ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
+    A11Y_SPEECHD_ANNOUNCING_CFLAGS := $(SPEECHD_CFLAGS)
+  else
+    A11Y_SPEECHD_ANNOUNCING_CFLAGS := $(SPEECHD_CFLAGS) -DNO_A11Y_SPEECHD_ANNOUNCING
+  endif
+endif
+
 # Setup Vulkan
 ifeq ($(VULKAN_ENABLED), true)
   LIBAWT_EXTRA_SRC += common/font common/java2d/vulkan
@@ -306,16 +316,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(CUPS_CFLAGS) \
         #
 
-    # Setup speech-dispatcher a11y announcer for Linux xawt
-    ifeq ($(call isTargetOs, linux), true)
-      ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
-        A11Y_SPEECHD_ANNOUNCING_CFLAGS := $(SPEECHD_CFLAGS)
-      else
-        A11Y_SPEECHD_ANNOUNCING_CFLAGS := $(SPEECHD_CFLAGS) -DNO_A11Y_SPEECHD_ANNOUNCING
-      endif
-
-      LIBAWT_XAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
-    endif
+    LIBAWT_XAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
     ifeq ($(call isTargetOs, linux), true)
       ifeq ($(DISABLE_XRENDER), true)
@@ -424,16 +425,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(VULKAN_FLAGS) \
         $(CUPS_CFLAGS)
 
-    # Setup speech-dispatcher a11y announcer for Linux wlawt
-    ifeq ($(call isTargetOs, linux), true)
-      ifeq ($(A11Y_SPEECHD_ANNOUNCING_ENABLED), true)
-        A11Y_SPEECHD_ANNOUNCING_CFLAGS_WLAWT := $(SPEECHD_CFLAGS)
-      else
-        A11Y_SPEECHD_ANNOUNCING_CFLAGS_WLAWT := $(SPEECHD_CFLAGS) -DNO_A11Y_SPEECHD_ANNOUNCING
-      endif
-
-      LIBAWT_WLAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS_WLAWT)
-    endif
+    LIBAWT_WLAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
     LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
