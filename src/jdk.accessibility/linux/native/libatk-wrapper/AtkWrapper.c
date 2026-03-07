@@ -115,6 +115,31 @@ static void jaw_vdc_clear_last_ac(JNIEnv *jniEnv) {
     jaw_vdc_last_ac = NULL;
 }
 
+static void jaw_cleanup_common(JNIEnv *jniEnv) {
+    atomic_flag_clear_explicit(&jaw_loop_running, memory_order_release);
+
+    if (jaw_main_loop != NULL) {
+        g_main_loop_unref(jaw_main_loop);
+        jaw_main_loop = NULL;
+        g_debug("%s: Main loop unref'd", G_STRFUNC);
+    }
+
+#if ATSPI_CHECK_VERSION(2, 33, 1)
+    if (jaw_main_context != NULL) {
+        atk_bridge_set_event_context(NULL);
+        g_main_context_unref(jaw_main_context);
+        jaw_main_context = NULL;
+        g_debug("%s: Main context unref'd", G_STRFUNC);
+    }
+#endif
+
+    pthread_mutex_lock(&jaw_vdc_dup_mutex);
+    jaw_vdc_clear_last_ac(jniEnv);
+    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+
+    atk_bridge_adaptor_cleanup();
+}
+
 gboolean jaw_accessibility_init(void) {
     JAW_DEBUG("");
     if (atk_bridge_adaptor_init(NULL, NULL) < 0) {
@@ -146,21 +171,7 @@ static gpointer jaw_loop_callback(void *data) {
 
     g_debug("%s: Main loop exiting due to shutdown request", G_STRFUNC);
 
-    if (jaw_main_loop != NULL) {
-        g_main_loop_unref(jaw_main_loop);
-        jaw_main_loop = NULL;
-        g_debug("%s: Main loop unref'd", G_STRFUNC);
-    }
-
-    if (jaw_main_context != NULL) {
-        g_main_context_unref(jaw_main_context);
-        jaw_main_context = NULL;
-        g_debug("%s: Main context unref'd", G_STRFUNC);
-    }
-
-    pthread_mutex_lock(&jaw_vdc_dup_mutex);
-    jaw_vdc_clear_last_ac(jniEnv);
-    pthread_mutex_unlock(&jaw_vdc_dup_mutex);
+    jaw_cleanup_common(jniEnv);
 
     jaw_cache_cleanup(jniEnv);
 
@@ -264,22 +275,8 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env,
                               &err);
     if (jaw_loop_thread == NULL) {
         g_warning("%s: g_thread_try_new failed: %s", G_STRFUNC, err->message);
-
-        g_main_loop_unref(jaw_main_loop);
-        atomic_flag_clear_explicit(&jaw_loop_running, memory_order_release);
-
-#if ATSPI_CHECK_VERSION(2, 33, 1)
-        atk_bridge_set_event_context(NULL); // set default context
-        g_main_context_unref(jaw_main_context);
-#endif
-
+        jaw_cleanup_common(env);
         g_error_free(err);
-
-        pthread_mutex_lock(&jaw_vdc_dup_mutex);
-        jaw_vdc_clear_last_ac(env);
-        pthread_mutex_unlock(&jaw_vdc_dup_mutex);
-
-        atk_bridge_adaptor_cleanup();
 
         return JNI_FALSE;
     }
