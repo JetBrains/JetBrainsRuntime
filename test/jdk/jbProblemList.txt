@@ -277,7 +277,6 @@ java/awt/datatransfer/HTMLTransferConsoleOutputTest.java 8237254,8354505 macosx-
 java/awt/datatransfer/ImageTransferCrashTest.java 8237253,8354505 macosx-all,generic-all
 java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java 8079268 linux-all
 java/awt/datatransfer/ClipboardPerformanceTest.java 8029022 windows-all
-java/awt/datatransfer/ImageTransferCrashTest.java 8237253 macosx-all
 java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java JBR-6393 ResizeableResourceHashtable
 java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux-all
 java/awt/LightweightComponent/LightweightDragTest.java JBR-6557 windows-all
