@@ -1282,7 +1282,7 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
     default:
         break;
     case org_GNOME_Accessibility_AtkSignal_OBJECT_CHILDREN_CHANGED_ADD: {
-        jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1);
+        jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 1); // will be deleted automatically when the function returns
         if (child_ac == NULL) {
             g_warning("%s: GetObjectArrayElement failed for child_ac",
                       G_STRFUNC);
@@ -1290,7 +1290,6 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
             return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
-        (*jniEnv)->DeleteLocalRef(jniEnv, child_ac);
         if (child_impl == NULL) {
             g_warning("%s: child_impl == NULL, return NULL", G_STRFUNC);
             free_callback_para(para);
@@ -1301,14 +1300,13 @@ JNIEXPORT void JNICALL Java_org_GNOME_Accessibility_AtkWrapper_emitSignal(
         break;
     }
     case org_GNOME_Accessibility_AtkSignal_OBJECT_ACTIVE_DESCENDANT_CHANGED: {
-        jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0);
+        jobject child_ac = (*jniEnv)->GetObjectArrayElement(jniEnv, args, 0); // will be deleted automatically when the function returns
         if (child_ac == NULL) {
             g_warning("%s: child_ac == NULL, return NULL", G_STRFUNC);
             free_callback_para(para);
             return;
         }
         JawImpl *child_impl = jaw_impl_find_instance(jniEnv, child_ac);
-        (*jniEnv)->DeleteLocalRef(jniEnv, child_ac);
         if (child_impl == NULL) {
             g_warning("%s: child_impl == NULL, return NULL", G_STRFUNC);
             free_callback_para(para);
