@@ -411,6 +411,7 @@ java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java JBR-495 macosx-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469,8273617 windows-all,macosx-aarch64
 java/awt/print/PrinterJob/GetUserNameTest.java JBR-5225 windows-all
 java/awt/print/PrinterJob/PageDialogCancelTest.java JBR-7538 windows-all
+java/awt/print/PrinterJob/PageRangesAuto.java JBR-8909 generic-all
 java/awt/print/PrinterJob/PrintNullString.java JBR-8909 generic-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
@@ -437,8 +438,9 @@ java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
 java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210,JBR-9444 windows-all,ubuntu-24.04-aarch64,ubuntu-24.04-x64
-java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210,JBR-9770 windows-all,ubuntu-24.04-aarch64
+java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210,JBR-9770 windows-all,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
+java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880,JBR-9783 windows-all,ubuntu-24.04-aarch64
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
 java/awt/Robot/InfiniteLoopException.java 8342638 windows-all,linux-all
 java/awt/Robot/NonEmptyErrorStream.java JBR-8299,JBR-9259 linux-aarch64
@@ -1408,6 +1410,7 @@ java/awt/print/PrinterJob/PrintCrashTest.java                                   
 java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
 java/awt/PrintJob/PrinterException.java                                             nobug generic-all
 java/awt/PrintJob/Security/SecurityDialogTest.java JBR-5225 windows-all
+java/awt/PrintJob/TestPrintNoException.java JBR-10129 windows-aarch64
 javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
 javax/print/CheckDupFlavor.java                                                     nobug generic-all
 javax/print/PrintSE/PrintSE.sh                                                      nobug generic-all
@@ -1450,7 +1453,6 @@ java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880,JBR-5
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
 java/awt/event/KeyEvent/KeyPressedModifiers.java JBR-8647 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
-java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/mlib/MlibOpsTest.java JBR-5225 windows-all
