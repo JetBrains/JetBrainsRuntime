@@ -28,6 +28,7 @@
 #include <atk-bridge.h>
 #include <glib.h>
 #include <jni.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,7 +69,11 @@ static GMainLoop *jaw_main_loop;
 static GMainContext *jaw_main_context;
 static GThread *jaw_loop_thread = NULL;
 
-static volatile gboolean jaw_loop_exit_requested = FALSE;
+/*
+ * True -- main loop should continue running.
+ * False -- shutdown requested.
+ */
+static atomic_flag jaw_loop_running = ATOMIC_FLAG_INIT;
 
 static jclass cachedWrapperIntegerClass = NULL;
 static jmethodID cachedWrapperIntValueMethod = NULL;
@@ -129,7 +134,7 @@ static gpointer jaw_loop_callback(void *data) {
         return 0;
     }
 
-    while (!jaw_loop_exit_requested) {
+    while (atomic_flag_test_and_set_explicit(&jaw_loop_running, memory_order_acquire)) {
         if ((*jniEnv)->PushLocalFrame(jniEnv, G_MAIN_LOOP_LOCAL_FRAME_SIZE) < 0) {
             g_warning("%s: PushLocalFrame failed", G_STRFUNC);
             break;
@@ -252,15 +257,22 @@ Java_org_GNOME_Accessibility_AtkWrapper_loadAtkBridge(JNIEnv *env,
     jaw_main_loop = g_main_loop_new(NULL, FALSE);
 #endif
 
+    atomic_flag_test_and_set_explicit(&jaw_loop_running,
+                                      memory_order_release);
+
     jaw_loop_thread = g_thread_try_new(message, jaw_loop_callback, (void *)jaw_main_loop,
                               &err);
     if (jaw_loop_thread == NULL) {
         g_warning("%s: g_thread_try_new failed: %s", G_STRFUNC, err->message);
+
         g_main_loop_unref(jaw_main_loop);
+        atomic_flag_clear_explicit(&jaw_loop_running, memory_order_release);
+
 #if ATSPI_CHECK_VERSION(2, 33, 1)
         atk_bridge_set_event_context(NULL); // set default context
         g_main_context_unref(jaw_main_context);
 #endif
+
         g_error_free(err);
 
         pthread_mutex_lock(&jaw_vdc_dup_mutex);
@@ -1638,7 +1650,7 @@ Java_org_GNOME_Accessibility_AtkWrapper_nativeCleanup(JNIEnv *jniEnv,
     JAW_DEBUG("%p, %p", jniEnv, jClass);
     g_debug("%s: AtkWrapper native cleanup called", G_STRFUNC);
 
-    jaw_loop_exit_requested = TRUE;
+    atomic_flag_clear_explicit(&jaw_loop_running, memory_order_release);
 
     if (jaw_main_context != NULL) {
         g_main_context_wakeup(jaw_main_context);
