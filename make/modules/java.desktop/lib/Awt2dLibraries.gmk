@@ -288,6 +288,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt \
         common/java2d \
         common/font \
+        common/awt/AccessibleAnnouncer \
         #
 
     LIBAWT_XAWT_EXCLUDES := medialib debug wl $(VULKAN_EXCLUDES)
@@ -301,7 +302,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
         include \
         common/awt/debug \
         common/awt/systemscale \
-        common/awt/AccessibleAnnouncer \
         common/font \
         common/java2d/opengl \
         common/java2d/x11
@@ -395,6 +395,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d \
         common/font \
         common/wayland \
+        common/awt/AccessibleAnnouncer \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11 $(VULKAN_EXCLUDES)
@@ -407,7 +408,6 @@ ifeq ($(call isTargetOs, windows macosx), false)
         include \
         common/awt/debug \
         common/awt/systemscale \
-        common/awt/AccessibleAnnouncer \
         common/font \
         common/java2d \
         common/java2d/wl \
