@@ -150,6 +150,7 @@ java/awt/Frame/DisposeParentGC/DisposeParentGC.java JBR-7300 linux-all
 java/awt/Frame/DisposeTest.java JBR-7937,JBR-7938 macosx-aarch64,windows-x64
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java JBR-8534 macosx-all
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 macosx-aarch64,windows-10.0,linux-aarch64
+java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509 macosx-all
@@ -164,7 +165,7 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java 8060176 
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8060176,8204200 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java 8204200 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java 8204200 windows-all,macosx-all,linux-all
-java/awt/event/MouseWheelEvent/WheelModifier/MouseWheelOnBackgroundComponent.java JBR-7772 linux-aarch64
+java/awt/event/MouseWheelEvent/WheelModifier/MouseWheelOnBackgroundComponent.java JBR-7772,8342800 linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java JBR-94 windows-x64,linux-all
 java/awt/dnd/DropActionChangeTest.java JBR-8308 windows-all
 java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-all
@@ -274,7 +275,7 @@ java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java JBR-5812 linux-all
 java/awt/Toolkit/SecurityTest/SecurityTest2.java JBR-5225 windows-all
 java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-5051 windows-all
 java/awt/Toolkit/RealSync/Test.java 8072110 linux-all,windows-all
-java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050 windows-all,macosx-all
+java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-8313 windows-all,macosx-all,linux-all
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-8146 windows-x64
 java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-8092 linux-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java JBR-6633 linux-all,windows-all
@@ -683,10 +684,10 @@ java/awt/Modal/OnTop/OnTopAppModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopAppModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184 windows-all
+java/awt/Modal/OnTop/OnTopDocModal1Test.java 8253184,JBR-7778 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopDocModal2Test.java 8253184,JBR-7778 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopDocModal3Test.java 8253184,JBR-7778 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopDocModal4Test.java 8253184,JBR-7778 windows-all,linux-all
 java/awt/Modal/OnTop/OnTopDocModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopDocModal6Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal1Test.java 8253184 windows-all
@@ -695,12 +696,12 @@ java/awt/Modal/OnTop/OnTopModal3Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal4Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal5Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopModal6Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless1Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless2Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless3Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless4Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless5Test.java 8253184 windows-all
-java/awt/Modal/OnTop/OnTopModeless6Test.java 8253184 windows-all
+java/awt/Modal/OnTop/OnTopModeless1Test.java 8253184,JBR-7778,8342800 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopModeless2Test.java 8253184,JBR-7778,8342800 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopModeless3Test.java 8253184,JBR-7778,8342800 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopModeless4Test.java 8253184,JBR-7778,8342800 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopModeless5Test.java 8253184,JBR-7778,8342800 windows-all,linux-all
+java/awt/Modal/OnTop/OnTopModeless6Test.java 8253184,JBR-7778,8342800 windows-all,linux-all
 java/awt/Modal/OnTop/OnTopTKModal1Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal2Test.java 8253184 windows-all
 java/awt/Modal/OnTop/OnTopTKModal3Test.java 8253184 windows-all
@@ -747,7 +748,7 @@ java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-al
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-5312 windows-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529 windows-x64
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java 8257529,JBR-7780 windows-x64,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-5210 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java JBR-5210 windows-all
@@ -922,6 +923,7 @@ java/nio/channels/DatagramChannel/Unref.java                    8233437 generic-
 java/nio/channels/FileChannel/LargeGatheringWrite.java JBR-9316 fedora-x64
 java/nio/channels/Selector/LotsOfInterrupts.java#virtual JBR-8940 windows-aarch64
 java/nio/channels/Selector/Wakeup.java                          6963118 windows-all
+java/nio/channels/unixdomain/IOExchanges.java JBR-9585 windows-x64
 
 java/nio/file/FileStore/Basic.java JBR-9500 fedora-all
 java/nio/file/WatchService/JNIChecks.java JBR-8457 generic-all
@@ -1212,13 +1214,14 @@ javax/swing/JEditorPane/6917744/bug6917744.java 8213124 macosx-all
 javax/swing/JEditorPane/8195095/ImageViewTest.java 8253184,JBR-6283 windows-all,macosx-all
 javax/swing/JRootPane/4670486/bug4670486.java JBR-6631 windows-all
 javax/swing/JRootPane/DefaultButtonTest.java JBR-5739 windows-all,linux-all
+javax/swing/RepaintManager/IconifyTest/IconifyTest.java JBR-9729 fedora-gnome
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java JBR-5210 windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java JBR-899 windows-all
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id0 JBR-5799 windows-all
 javax/swing/plaf/metal/MetalBorders/ScaledMetalBorderTest.java#id1 JBR-5779 linux-all,macosx-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java 8253184 windows-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java 8253184,JBR-803 windows-all,linux-all,macosx-all
-javax/swing/plaf/synth/7158712/bug7158712.java 8322653 macosx-all
+javax/swing/plaf/synth/7158712/bug7158712.java 8322653,JBR-9618 macosx-all,linux-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java 8253184 windows-all
 javax/swing/plaf/synth/Test6660049.java JBR-8397 windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184 windows-all
