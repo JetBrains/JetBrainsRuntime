@@ -31,7 +31,7 @@
               os.arch == "aarch64" | os.arch == "ppc64" | os.arch == "ppc64le" | os.arch == "riscv64"
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm --enable-native-access=ALL-UNNAMED -XX:+UnlockDiagnosticVMOptions
+ * @run main/native/othervm --enable-native-access=ALL-UNNAMED -XX:+UnlockDiagnosticVMOptions
  *                   -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive TestLinkToNativeRBP
  *
  */
