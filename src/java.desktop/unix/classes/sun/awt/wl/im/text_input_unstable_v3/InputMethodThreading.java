@@ -107,7 +107,7 @@ final class InputMethodThreading {
             if (err instanceof ExclusiveAccessException eaErr) {
                 throw eaErr;
             } else {
-                throw new ExclusiveAccessException(err.getCause());
+                throw new ExclusiveAccessException(err);
             }
         }
     }
