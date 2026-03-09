@@ -46,7 +46,7 @@ class WLKWinHelper {
 
     private static final boolean enabled =
             Boolean.parseBoolean(System.getProperty("sun.awt.wl.UseKWinWindowLocation", "false"));
-    private static final AtomicInteger windowIdCounter = new AtomicInteger(0);
+    private static final AtomicInteger windowIdCounter = new AtomicInteger((int) System.currentTimeMillis());
 
     static boolean isEnabled() {
         return enabled;
