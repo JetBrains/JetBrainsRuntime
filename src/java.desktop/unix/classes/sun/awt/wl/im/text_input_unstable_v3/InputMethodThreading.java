@@ -126,11 +126,14 @@ final class InputMethodThreading {
                 if (stacktrace != null) {
                     unexpected.addSuppressed(stacktrace);
                 }
-                log.warning(
-                    String.format("invokeOnEdtNowOrLater: unexpected exception on EDT from the following runnable: %s.",
-                                  runnable),
-                    unexpected
-                );
+
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    log.warning(
+                        String.format("invokeOnEdtNowOrLater: unexpected exception on EDT from the following runnable: %s.",
+                                      runnable),
+                        unexpected
+                    );
+                }
 
                 throw unexpected;
             }
@@ -321,10 +324,12 @@ final class InputMethodThreading {
                 success = false;
 
                 fails = Math.min(fails + 1, 6);
-                if (fails < 5) {
-                    log.warning("recallEmittedInheritedAccessPermitFromThisThread: failed acquireSemaphorePermitsUninterruptibly call.", err);
-                } else if (fails == 5) {
-                    log.warning("recallEmittedInheritedAccessPermitFromThisThread: 5 failed acquireSemaphorePermitsUninterruptibly calls in a row. Subsequent fails will not be logged.", err);
+                if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                    if (fails < 5) {
+                        log.warning("recallEmittedInheritedAccessPermitFromThisThread: failed acquireSemaphorePermitsUninterruptibly call.", err);
+                    } else if (fails == 5) {
+                        log.warning("recallEmittedInheritedAccessPermitFromThisThread: 5 failed acquireSemaphorePermitsUninterruptibly calls in a row. Subsequent fails will not be logged.", err);
+                    }
                 }
             }
         } while (!success);
@@ -421,11 +426,12 @@ final class InputMethodThreading {
                         // Avoiding breaking the loop at all costs.
 
                         fails = Math.min(fails + 1, 6);
-                        if (fails < 5) {
-                            ++fails;
-                            log.warning("computeBlockingOnEdtUnderInheritedAccess: failed Object.wait call.", err);
-                        } else if (fails == 5) {
-                            log.warning("computeBlockingOnEdtUnderInheritedAccess: 5 failed Object.wait calls in a row. Subsequent fails will not be logged.", err);
+                        if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                            if (fails < 5) {
+                                log.warning("computeBlockingOnEdtUnderInheritedAccess: failed Object.wait call.", err);
+                            } else if (fails == 5) {
+                                log.warning("computeBlockingOnEdtUnderInheritedAccess: 5 failed Object.wait calls in a row. Subsequent fails will not be logged.", err);
+                            }
                         }
                     }
                 } while (!asyncTaskResultContainer.taskIsFinished);

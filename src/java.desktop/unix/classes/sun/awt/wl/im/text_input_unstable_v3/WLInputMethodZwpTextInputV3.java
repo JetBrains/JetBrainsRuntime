@@ -464,7 +464,9 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         String invokingMethodName,
         InputMethodThreading.ExclusiveAccessException e
     ) {
-        log.warning(String.format("%s: failed to obtain the exclusive access to this.", invokingMethodName), e);
+        if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+            log.warning(String.format("%s: failed to obtain the exclusive access to this.", invokingMethodName), e);
+        }
         throw new RuntimeException(e);
     }
 
