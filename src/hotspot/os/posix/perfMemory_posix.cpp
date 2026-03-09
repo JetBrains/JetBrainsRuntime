@@ -111,6 +111,10 @@ static void save_memory_to_file(char* addr, size_t size) {
     result = ::close(fd);
     if (result == OS_ERR) {
       warning("Could not close %s: %s\n", destfile, os::strerror(errno));
+    } else {
+      if (!successful_write) {
+        remove(destfile);
+      }
     }
   }
   FREE_C_HEAP_ARRAY(char, destfile);
@@ -953,6 +957,7 @@ static int create_sharedmem_file(const char* dirname, const char* filename, size
         warning("Insufficient space for shared memory file: %s/%s\n", dirname, filename);
       }
       result = OS_ERR;
+      remove(filename);
       break;
     }
   }
