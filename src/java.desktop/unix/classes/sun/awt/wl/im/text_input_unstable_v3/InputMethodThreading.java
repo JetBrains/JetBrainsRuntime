@@ -152,6 +152,10 @@ final class InputMethodThreading {
      * @see #computeBlockingOnEdtUnderInheritedAccess
      */
     private static final int PERMITS_FOR_INHERITED_ACCESS = 1;
+    /**
+     * Don't use acquire / release operations directly,
+     *   use {@link #acquireSemaphorePermitsUninterruptibly(int, long)} / {@link #releaseSemaphorePermits} instead.
+     */
     private final Semaphore semaphore = new Semaphore(PERMITS_FOR_OWNING_ACCESS, true);
 
 
@@ -175,6 +179,71 @@ final class InputMethodThreading {
     private final ThreadLocal<ThreadAcquiredAccessInfo> threadAcquiredAccessInfo = ThreadLocal.withInitial(ThreadAcquiredAccessInfo::new);
 
 
+    /**
+     * Acquires {@code permits} number of permits from {@link #semaphore},
+     *   ignoring thread interruptions.
+     * <p>
+     * If the current thread is interrupted while waiting for permits then it will continue to wait.
+     * When the thread does return from this method its interrupted status will be set.
+     *
+     * @param permits number of permits to acquire; must be > 0
+     * @param timeoutMs values < 0 mean to wait for {@code permits} with no timeout
+     * @return {@code false} if and only if passed {@code timeoutMs} is >= 0 and the thread failed to acquire
+     *         the requisted number of permits within the provided timeout.
+     *         This is the only case when the function can return normally but not having acquired the permits.
+     */
+    private boolean acquireSemaphorePermitsUninterruptibly(int permits, long timeoutMs) {
+        if (permits < 1) {
+            throw new IllegalArgumentException("permits=" + permits + " < 1");
+        }
+
+        if (timeoutMs < 0) {
+            semaphore.acquireUninterruptibly(permits);
+            return true;
+        }
+
+        boolean result = false;
+        boolean interrupted = false;
+
+        long nowMs = System.currentTimeMillis();
+        do {
+            try {
+                if (semaphore.tryAcquire(permits, timeoutMs, TimeUnit.MILLISECONDS)) {
+                    result = true;
+                    break;
+                }
+            } catch (InterruptedException ignored) {
+                interrupted = true;
+            }
+
+            final long newNowMs = System.currentTimeMillis();
+            timeoutMs -= newNowMs - nowMs;
+            nowMs = newNowMs;
+        } while (timeoutMs >= 0);
+
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
+
+        return result;
+    }
+
+    private void acquireSemaphorePermitsUninterruptibly(int permits) {
+        boolean result = acquireSemaphorePermitsUninterruptibly(permits, -1);
+        if (!result) {
+            throw new RuntimeException("acquireSemaphorePermitsUninterruptibly with no timeout returned false");
+        }
+    }
+
+    private void releaseSemaphorePermits(int permits) {
+        if (permits < 1) {
+            throw new IllegalArgumentException("permits=" + permits + " < 1");
+        }
+
+        semaphore.release(permits);
+    }
+
+
     private void acquireReentrantOrOwningAccess(final long timeoutMs) throws Exception {
         final var accessInfo = threadAcquiredAccessInfo.get();
 
@@ -183,8 +252,8 @@ final class InputMethodThreading {
 
             assert accessInfo.accessReentrancyLevel == 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-            if (!semaphore.tryAcquire(PERMITS_FOR_OWNING_ACCESS, timeoutMs, TimeUnit.MILLISECONDS)) {
-                throw new ExclusiveAccessException("Semaphore.tryAcquire failed within given " + timeoutMs + " ms");
+            if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_OWNING_ACCESS, timeoutMs)) {
+                throw new ExclusiveAccessException("acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms");
             }
 
             accessInfo.accessType = ThreadAcquiredAccessInfo.AccessType.OWNING;
@@ -212,7 +281,7 @@ final class InputMethodThreading {
                 default -> throw new IllegalStateException("Unknown accessType=" + accessInfo.accessType);
             };
 
-            semaphore.release(permitsToRelease);
+            releaseSemaphorePermits(permitsToRelease);
 
             accessInfo.accessReentrancyLevel = 0;
             accessInfo.accessType = null;
@@ -232,7 +301,7 @@ final class InputMethodThreading {
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-        semaphore.release(PERMITS_FOR_INHERITED_ACCESS);
+        releaseSemaphorePermits(PERMITS_FOR_INHERITED_ACCESS);
     }
 
     private void recallEmittedInheritedAccessPermitFromThisThread() {
@@ -246,16 +315,16 @@ final class InputMethodThreading {
         int fails = 0;
         do {
             try {
-                semaphore.acquire(PERMITS_FOR_INHERITED_ACCESS);
+                acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_INHERITED_ACCESS);
                 success = true;
             } catch (Throwable err) {
                 success = false;
 
                 fails = Math.min(fails + 1, 6);
                 if (fails < 5) {
-                    log.warning("recallEmittedInheritedAccessPermitFromThisThread: failed Semaphore.acquire call.", err);
+                    log.warning("recallEmittedInheritedAccessPermitFromThisThread: failed acquireSemaphorePermitsUninterruptibly call.", err);
                 } else if (fails == 5) {
-                    log.warning("recallEmittedInheritedAccessPermitFromThisThread: 5 failed Semaphore.acquire calls in a row. Subsequent fails will not be logged.", err);
+                    log.warning("recallEmittedInheritedAccessPermitFromThisThread: 5 failed acquireSemaphorePermitsUninterruptibly calls in a row. Subsequent fails will not be logged.", err);
                 }
             }
         } while (!success);
@@ -271,8 +340,8 @@ final class InputMethodThreading {
         }
         assert accessInfo.accessReentrancyLevel == 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-        if (!semaphore.tryAcquire(PERMITS_FOR_INHERITED_ACCESS, timeoutMs, TimeUnit.MILLISECONDS)) {
-            throw new RuntimeException("Semaphore.tryAcquire failed within given " + timeoutMs + " ms");
+        if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_INHERITED_ACCESS, timeoutMs)) {
+            throw new ExclusiveAccessException("acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms");
         }
 
         accessInfo.accessType = ThreadAcquiredAccessInfo.AccessType.INHERITED;
