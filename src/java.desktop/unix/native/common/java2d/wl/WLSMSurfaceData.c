@@ -381,7 +381,6 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
                                            jint width,
                                            jint height,
-                                           jint backgroundRGB,
                                            jint wlShmFormat,
                                            jboolean perfCountersEnabled)
 {
@@ -409,7 +408,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
-    wsdo->bufferManager = WLSBM_Create(width, height, backgroundRGB, wlShmFormat,
+    wsdo->bufferManager = WLSBM_Create(width, height, wlShmFormat,
                                        surfaceDataWeakRef,
                                        perfCountersEnabled ? CountFrameSent : NULL,
                                        perfCountersEnabled ? CountFrameDropped : NULL,
