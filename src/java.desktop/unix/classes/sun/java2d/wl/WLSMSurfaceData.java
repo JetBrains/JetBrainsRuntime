@@ -171,11 +171,6 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     @Override
     public native void commit();
 
-    @Override
-    public void setBackground(Color background) {
-        nativeSetBackground(background.getRGB());
-    }
-
     public int getRGBPixelAt(int x, int y) {
         int pixel = pixelAt(x, y);
         return getSurfaceType().rgbFor(pixel, getColorModel());
@@ -218,7 +213,6 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WL
     }
 
     private native void nativeRevalidate(int width, int height, int scale);
-    private native void nativeSetBackground(int rgb);
     private native int pixelAt(int x, int y);
     private native int [] pixelsAt(int x, int y, int width, int height);
 }
