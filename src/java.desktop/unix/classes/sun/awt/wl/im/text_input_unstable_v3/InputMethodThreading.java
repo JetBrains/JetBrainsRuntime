@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 
 final class InputMethodThreading {
@@ -107,9 +108,18 @@ final class InputMethodThreading {
             if (err instanceof ExclusiveAccessException eaErr) {
                 throw eaErr;
             } else {
-                throw new ExclusiveAccessException(err);
+                String errMsg = err.getMessage();
+                if (errMsg == null) {
+                    errMsg = "caused by " + err.getClass().getName();
+                }
+
+                throw new ExclusiveAccessException(supplementExceptionMessage(errMsg), err);
             }
         }
+    }
+
+    public Thread getCurrentExclusiveAccessOwner() {
+        return currentExclusiveAccessOwner.get();
     }
 
 
@@ -160,6 +170,7 @@ final class InputMethodThreading {
      *   use {@link #acquireSemaphorePermitsUninterruptibly(int, long)} / {@link #releaseSemaphorePermits} instead.
      */
     private final Semaphore semaphore = new Semaphore(PERMITS_FOR_OWNING_ACCESS, true);
+    private final AtomicReference<Thread> currentExclusiveAccessOwner = new AtomicReference<>(null);
 
 
     private static class AsyncTaskResultContainer {
@@ -176,6 +187,8 @@ final class InputMethodThreading {
 
         public AccessType accessType = null;
         public int accessReentrancyLevel = 0;
+        /** Not null when accessType == INHERITED, points to the thread that has given the access to this thread */
+        public Thread inheritedAccessParent = null;
         public final ExclusiveAccessContext accessCtxCached = new ExclusiveAccessContext();
         public final AsyncTaskResultContainer asyncTaskResultContainerCached = new AsyncTaskResultContainer();
     }
@@ -256,11 +269,16 @@ final class InputMethodThreading {
             assert accessInfo.accessReentrancyLevel == 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
             if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_OWNING_ACCESS, timeoutMs)) {
-                throw new ExclusiveAccessException("acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms");
+                throw new ExclusiveAccessException(supplementExceptionMessage(
+                    "acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms"
+                ));
             }
 
             accessInfo.accessType = ThreadAcquiredAccessInfo.AccessType.OWNING;
             accessInfo.accessReentrancyLevel = 0;
+            accessInfo.inheritedAccessParent = null;
+
+            currentExclusiveAccessOwner.set(Thread.currentThread());
         }
 
         assert accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.OWNING || accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.INHERITED
@@ -273,21 +291,34 @@ final class InputMethodThreading {
         final var accessInfo = threadAcquiredAccessInfo.get();
 
         if (accessInfo.accessType == null) {
-            throw new IllegalStateException("Trying to release an access when not having any (accessType == null)");
+            throw new IllegalStateException(supplementExceptionMessage(
+                "Trying to release an access when not having any (accessType == null)"
+            ));
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
         if (accessInfo.accessReentrancyLevel < 2) {
-            final int permitsToRelease = switch (accessInfo.accessType) {
-                case OWNING -> PERMITS_FOR_OWNING_ACCESS;
-                case INHERITED -> PERMITS_FOR_INHERITED_ACCESS;
-                default -> throw new IllegalStateException("Unknown accessType=" + accessInfo.accessType);
-            };
+            final int permitsToRelease;
+            final Thread newExclusiveAccessOwner;
+            if (accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.OWNING) {
+                permitsToRelease = PERMITS_FOR_OWNING_ACCESS;
+                newExclusiveAccessOwner = null;
+            } else if (accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.INHERITED) {
+                permitsToRelease = PERMITS_FOR_INHERITED_ACCESS;
+                newExclusiveAccessOwner = accessInfo.inheritedAccessParent;
+            } else {
+                throw new IllegalStateException(supplementExceptionMessage(
+                    "Unknown accessType=" + accessInfo.accessType
+                ));
+            }
 
             releaseSemaphorePermits(permitsToRelease);
 
+            accessInfo.inheritedAccessParent = null;
             accessInfo.accessReentrancyLevel = 0;
             accessInfo.accessType = null;
+
+            currentExclusiveAccessOwner.compareAndSet(Thread.currentThread(), newExclusiveAccessOwner);
         } else {
             --accessInfo.accessReentrancyLevel;
         }
@@ -300,7 +331,9 @@ final class InputMethodThreading {
     private void emitInheritedAccessPermitFromThisThread() {
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType == null) {
-            throw new IllegalStateException("Trying to share an access when not having any (accessType == null)");
+            throw new IllegalStateException(supplementExceptionMessage(
+                "Trying to share an access when not having any (accessType == null)"
+            ));
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
@@ -310,7 +343,9 @@ final class InputMethodThreading {
     private void recallEmittedInheritedAccessPermitFromThisThread() {
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType == null) {
-            throw new IllegalStateException("Trying to take back an access when not having any (accessType == null)");
+            throw new IllegalStateException(supplementExceptionMessage(
+                "Trying to take back an access when not having any (accessType == null)"
+            ));
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
@@ -341,16 +376,21 @@ final class InputMethodThreading {
     private void catchInheritedAccessPermitInThisThread(final long timeoutMs) throws Exception {
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType != null) {
-            throw new IllegalStateException("This thread already has access=" + accessInfo.accessType);
+            throw new IllegalStateException(supplementExceptionMessage(
+                "This thread already has access=" + accessInfo.accessType
+            ));
         }
         assert accessInfo.accessReentrancyLevel == 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
         if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_INHERITED_ACCESS, timeoutMs)) {
-            throw new ExclusiveAccessException("acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms");
+            throw new ExclusiveAccessException(supplementExceptionMessage(
+                "acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms"
+            ));
         }
 
         accessInfo.accessType = ThreadAcquiredAccessInfo.AccessType.INHERITED;
         accessInfo.accessReentrancyLevel = 1;
+        accessInfo.inheritedAccessParent = currentExclusiveAccessOwner.getAndSet(Thread.currentThread());
     }
 
 
@@ -359,7 +399,9 @@ final class InputMethodThreading {
 
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType == null) {
-            throw new IllegalStateException("Trying to share an access for EDT when not owning any (accessType == null)");
+            throw new IllegalStateException(supplementExceptionMessage(
+                "Trying to share an access for EDT when not owning any (accessType == null)"
+            ));
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
@@ -456,5 +498,17 @@ final class InputMethodThreading {
         @SuppressWarnings("unchecked")
         final R result = (R)taskResultLocal;
         return result;
+    }
+
+    private String supplementExceptionMessage(String initialMessage) {
+        if (initialMessage == null) return null;
+        return String.format(
+            "%s. semaphore.availablePermits=[%d] ; current thread=[%s] ; the parent=[%s] ; the exclusive access owner=[%s]",
+            initialMessage,
+            semaphore.availablePermits(),
+            Thread.currentThread(),
+            threadAcquiredAccessInfo.get().inheritedAccessParent,
+            getCurrentExclusiveAccessOwner()
+        );
     }
 }
