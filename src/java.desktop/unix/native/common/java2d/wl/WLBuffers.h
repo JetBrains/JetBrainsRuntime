@@ -53,7 +53,7 @@ typedef void (*BufferEventCallback)(jobject);
 
 /**
  * Create a WayLand Surface Buffer Manager for a surface of size width x height
- * pixels with the given background 32-bit pixel value and wl_shm_format.
+ * pixels of wl_shm_format.
  *
  * At least two buffers are associated with the manager:
  * - a drawing buffer that SurfaceDataOps operate with (see WLSMSurfaceData.c) and
@@ -64,7 +64,7 @@ typedef void (*BufferEventCallback)(jobject);
  * the drawing to displaying buffer, synchronization, and sending
  * the appropriate notifications to Wayland.
  */
-WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint bgPixel, jint wlShmFormat,
+WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint wlShmFormat,
                                       jobject surfaceDataWeakRef,
                                       BufferEventCallback frameSentCallback,
                                       BufferEventCallback frameDroppedCallback,
