@@ -36,6 +36,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -61,6 +63,11 @@ class WLKWinHelper {
     private static final ConcurrentHashMap<String, Timer> setLocationTimers = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Point> pendingSetLocation = new ConcurrentHashMap<>();
     private static final int DEBOUNCE_MS = 200;
+    private static final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "WLKWinHelper");
+        t.setDaemon(true);
+        return t;
+    });
 
     // Python script that connects to session DBus, registers a callback object,
     // loads a KWin script to find the window and report its position, then prints "x,y" to stdout.
@@ -130,7 +137,7 @@ class WLKWinHelper {
 
     static Point getWindowLocation(String appId) {
         Timer timer = getLocationTimers.computeIfAbsent(appId, id -> {
-            Timer t = new Timer(DEBOUNCE_MS, e -> queryAndCacheWindowLocation(id));
+            Timer t = new Timer(DEBOUNCE_MS, e -> executor.submit(() -> queryAndCacheWindowLocation(id)));
             t.setRepeats(false);
             return t;
         });
@@ -185,7 +192,7 @@ class WLKWinHelper {
         locationCache.put(appId, Optional.of(target));
 
         Timer timer = setLocationTimers.computeIfAbsent(appId, id -> {
-            Timer t = new Timer(DEBOUNCE_MS, e -> flushSetWindowLocation(id));
+            Timer t = new Timer(DEBOUNCE_MS, e -> executor.submit(() -> flushSetWindowLocation(id)));
             t.setRepeats(false);
             return t;
         });
