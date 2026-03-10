@@ -64,11 +64,11 @@ final class InputMethodThreading {
         }
 
         public void performBlockingOnEdt(VoidSynchronousStep step) throws Exception {
-            InputMethodThreading.this.computeBlockingOnEdtUnderInheritedAccess(step);
+            InputMethodThreading.this.computeBlockingOnEdtUnderCurrentOrChildAccess(step);
         }
 
         public <R> R computeBlockingOnEdt(SynchronousStep<R> step) throws Exception {
-            return InputMethodThreading.this.computeBlockingOnEdtUnderInheritedAccess(step);
+            return InputMethodThreading.this.computeBlockingOnEdtUnderCurrentOrChildAccess(step);
         }
 
 
@@ -97,7 +97,7 @@ final class InputMethodThreading {
     // Reentrant
     public ExclusiveAccessContext withExclusiveAccess(long timeoutMilliseconds) throws ExclusiveAccessException {
         try {
-            acquireReentrantOrOwningAccess(timeoutMilliseconds);
+            acquireReentrantOrRootAccess(timeoutMilliseconds);
             try {
                 return Objects.requireNonNull(threadAcquiredAccessInfo.get().accessCtxCached, "accessCtxCached");
             } catch (Throwable err) {
@@ -160,16 +160,16 @@ final class InputMethodThreading {
     /**
      * @see #withExclusiveAccess
      */
-    private static final int PERMITS_FOR_OWNING_ACCESS = 2;
+    private static final int PERMITS_FOR_ROOT_ACCESS = 2;
     /**
-     * @see #computeBlockingOnEdtUnderInheritedAccess
+     * @see #computeBlockingOnEdtUnderCurrentOrChildAccess
      */
-    private static final int PERMITS_FOR_INHERITED_ACCESS = 1;
+    private static final int PERMITS_FOR_CHILD_ACCESS = 1;
     /**
      * Don't use acquire / release operations directly,
      *   use {@link #acquireSemaphorePermitsUninterruptibly(int, long)} / {@link #releaseSemaphorePermits} instead.
      */
-    private final Semaphore semaphore = new Semaphore(PERMITS_FOR_OWNING_ACCESS, true);
+    private final Semaphore semaphore = new Semaphore(PERMITS_FOR_ROOT_ACCESS, true);
     private final AtomicReference<Thread> currentExclusiveAccessOwner = new AtomicReference<>(null);
 
 
@@ -180,15 +180,15 @@ final class InputMethodThreading {
     }
 
     private class ThreadAcquiredAccessInfo {
-        public enum AccessType {
-            OWNING,
-            INHERITED
+        public enum ExclusiveAccessType {
+            ROOT,
+            CHILD
         }
 
-        public AccessType accessType = null;
+        public ExclusiveAccessType accessType = null;
         public int accessReentrancyLevel = 0;
-        /** Not null when accessType == INHERITED, points to the thread that has given the access to this thread */
-        public Thread inheritedAccessParent = null;
+        /** Not null when and only when accessType == CHILD, points to the thread that has given the access to this thread */
+        public Thread childAccessParent = null;
         public final ExclusiveAccessContext accessCtxCached = new ExclusiveAccessContext();
         public final AsyncTaskResultContainer asyncTaskResultContainerCached = new AsyncTaskResultContainer();
     }
@@ -260,7 +260,7 @@ final class InputMethodThreading {
     }
 
 
-    private void acquireReentrantOrOwningAccess(final long timeoutMs) throws Exception {
+    private void acquireReentrantOrRootAccess(final long timeoutMs) throws Exception {
         final var accessInfo = threadAcquiredAccessInfo.get();
 
         if (accessInfo.accessType == null) {
@@ -268,20 +268,20 @@ final class InputMethodThreading {
 
             assert accessInfo.accessReentrancyLevel == 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-            if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_OWNING_ACCESS, timeoutMs)) {
+            if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_ROOT_ACCESS, timeoutMs)) {
                 throw new ExclusiveAccessException(supplementExceptionMessage(
                     "acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms"
                 ));
             }
 
-            accessInfo.accessType = ThreadAcquiredAccessInfo.AccessType.OWNING;
+            accessInfo.accessType = ThreadAcquiredAccessInfo.ExclusiveAccessType.ROOT;
             accessInfo.accessReentrancyLevel = 0;
-            accessInfo.inheritedAccessParent = null;
+            accessInfo.childAccessParent = null;
 
             currentExclusiveAccessOwner.set(Thread.currentThread());
         }
 
-        assert accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.OWNING || accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.INHERITED
+        assert accessInfo.accessType == ThreadAcquiredAccessInfo.ExclusiveAccessType.ROOT || accessInfo.accessType == ThreadAcquiredAccessInfo.ExclusiveAccessType.CHILD
                : "Unknown accessType=" + accessInfo.accessType;
 
         accessInfo.accessReentrancyLevel = Math.max(accessInfo.accessReentrancyLevel + 1, 1);
@@ -300,12 +300,12 @@ final class InputMethodThreading {
         if (accessInfo.accessReentrancyLevel < 2) {
             final int permitsToRelease;
             final Thread newExclusiveAccessOwner;
-            if (accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.OWNING) {
-                permitsToRelease = PERMITS_FOR_OWNING_ACCESS;
+            if (accessInfo.accessType == ThreadAcquiredAccessInfo.ExclusiveAccessType.ROOT) {
+                permitsToRelease = PERMITS_FOR_ROOT_ACCESS;
                 newExclusiveAccessOwner = null;
-            } else if (accessInfo.accessType == ThreadAcquiredAccessInfo.AccessType.INHERITED) {
-                permitsToRelease = PERMITS_FOR_INHERITED_ACCESS;
-                newExclusiveAccessOwner = accessInfo.inheritedAccessParent;
+            } else if (accessInfo.accessType == ThreadAcquiredAccessInfo.ExclusiveAccessType.CHILD) {
+                permitsToRelease = PERMITS_FOR_CHILD_ACCESS;
+                newExclusiveAccessOwner = accessInfo.childAccessParent;
             } else {
                 throw new IllegalStateException(supplementExceptionMessage(
                     "Unknown accessType=" + accessInfo.accessType
@@ -314,7 +314,7 @@ final class InputMethodThreading {
 
             releaseSemaphorePermits(permitsToRelease);
 
-            accessInfo.inheritedAccessParent = null;
+            accessInfo.childAccessParent = null;
             accessInfo.accessReentrancyLevel = 0;
             accessInfo.accessType = null;
 
@@ -326,9 +326,9 @@ final class InputMethodThreading {
 
 
     /**
-     * Must always be paired with {@link #recallEmittedInheritedAccessPermitFromThisThread()}.
+     * Must always be paired with {@link #recallEmittedChildAccessPermitFromThisThread()}.
      */
-    private void emitInheritedAccessPermitFromThisThread() {
+    private void emitChildAccessPermitFromThisThread() {
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType == null) {
             throw new IllegalStateException(supplementExceptionMessage(
@@ -337,10 +337,10 @@ final class InputMethodThreading {
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-        releaseSemaphorePermits(PERMITS_FOR_INHERITED_ACCESS);
+        releaseSemaphorePermits(PERMITS_FOR_CHILD_ACCESS);
     }
 
-    private void recallEmittedInheritedAccessPermitFromThisThread() {
+    private void recallEmittedChildAccessPermitFromThisThread() {
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType == null) {
             throw new IllegalStateException(supplementExceptionMessage(
@@ -353,7 +353,7 @@ final class InputMethodThreading {
         int fails = 0;
         do {
             try {
-                acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_INHERITED_ACCESS);
+                acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_CHILD_ACCESS);
                 success = true;
             } catch (Throwable err) {
                 success = false;
@@ -361,9 +361,9 @@ final class InputMethodThreading {
                 fails = Math.min(fails + 1, 6);
                 if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                     if (fails < 5) {
-                        log.warning("recallEmittedInheritedAccessPermitFromThisThread: failed acquireSemaphorePermitsUninterruptibly call.", err);
+                        log.warning("recallEmittedChildAccessPermitFromThisThread(): failed acquireSemaphorePermitsUninterruptibly call.", err);
                     } else if (fails == 5) {
-                        log.warning("recallEmittedInheritedAccessPermitFromThisThread: 5 failed acquireSemaphorePermitsUninterruptibly calls in a row. Subsequent fails will not be logged.", err);
+                        log.warning("recallEmittedChildAccessPermitFromThisThread(): 5 failed acquireSemaphorePermitsUninterruptibly calls in a row. Subsequent fails will not be logged.", err);
                     }
                 }
             }
@@ -373,7 +373,7 @@ final class InputMethodThreading {
     /**
      * Must always be paired with {@link #releaseAccess()}.
      */
-    private void catchInheritedAccessPermitInThisThread(final long timeoutMs) throws Exception {
+    private void catchChildAccessPermitInThisThread(final long timeoutMs) throws Exception {
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType != null) {
             throw new IllegalStateException(supplementExceptionMessage(
@@ -382,19 +382,19 @@ final class InputMethodThreading {
         }
         assert accessInfo.accessReentrancyLevel == 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-        if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_INHERITED_ACCESS, timeoutMs)) {
+        if (!acquireSemaphorePermitsUninterruptibly(PERMITS_FOR_CHILD_ACCESS, timeoutMs)) {
             throw new ExclusiveAccessException(supplementExceptionMessage(
                 "acquireSemaphorePermitsUninterruptibly failed within given " + timeoutMs + " ms"
             ));
         }
 
-        accessInfo.accessType = ThreadAcquiredAccessInfo.AccessType.INHERITED;
+        accessInfo.accessType = ThreadAcquiredAccessInfo.ExclusiveAccessType.CHILD;
         accessInfo.accessReentrancyLevel = 1;
-        accessInfo.inheritedAccessParent = currentExclusiveAccessOwner.getAndSet(Thread.currentThread());
+        accessInfo.childAccessParent = currentExclusiveAccessOwner.getAndSet(Thread.currentThread());
     }
 
 
-    private <R> R computeBlockingOnEdtUnderInheritedAccess(SynchronousStep<R> step) throws Exception {
+    private <R> R computeBlockingOnEdtUnderCurrentOrChildAccess(SynchronousStep<R> step) throws Exception {
         Objects.requireNonNull(step, "step");
 
         final var accessInfo = threadAcquiredAccessInfo.get();
@@ -415,7 +415,7 @@ final class InputMethodThreading {
         // So, what's going on here:
         // By this point we're positive that:
         //   1. The current thread is not EDT
-        //   2. The current thread has either OWNING or INHERITED access
+        //   2. The current thread has either ROOT or CHILD access
         //
         // We want kind of "atomically" pass the access to EDT for the duration of the task we're about to post to there.
         // It's done via releasing 1 permit to the semaphore, but only 1. This way we guarantee no other thread can
@@ -429,7 +429,7 @@ final class InputMethodThreading {
         final Runnable wrappedStep = () -> {
             synchronized (asyncTaskResultContainer) {
                 try {
-                    catchInheritedAccessPermitInThisThread(5000);
+                    catchChildAccessPermitInThisThread(5000);
                     try {
                         asyncTaskResultContainer.result = step.execute();
                     } finally {
@@ -451,7 +451,7 @@ final class InputMethodThreading {
             asyncTaskResultContainer.result = null;
             asyncTaskResultContainer.error = null;
 
-            emitInheritedAccessPermitFromThisThread();
+            emitChildAccessPermitFromThisThread();
             try {
                 EventQueue.invokeLater(wrappedStep);
 
@@ -470,9 +470,9 @@ final class InputMethodThreading {
                         fails = Math.min(fails + 1, 6);
                         if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                             if (fails < 5) {
-                                log.warning("computeBlockingOnEdtUnderInheritedAccess: failed Object.wait call.", err);
+                                log.warning("computeBlockingOnEdtUnderCurrentOrChildAccess: failed Object.wait call.", err);
                             } else if (fails == 5) {
-                                log.warning("computeBlockingOnEdtUnderInheritedAccess: 5 failed Object.wait calls in a row. Subsequent fails will not be logged.", err);
+                                log.warning("computeBlockingOnEdtUnderCurrentOrChildAccess: 5 failed Object.wait calls in a row. Subsequent fails will not be logged.", err);
                             }
                         }
                     }
@@ -481,7 +481,7 @@ final class InputMethodThreading {
                 taskResultLocal = asyncTaskResultContainer.result;
                 taskErrorLocal = asyncTaskResultContainer.error;
             } finally {
-                recallEmittedInheritedAccessPermitFromThisThread();
+                recallEmittedChildAccessPermitFromThisThread();
 
                 asyncTaskResultContainer.taskIsFinished = false;
                 asyncTaskResultContainer.result = null;
@@ -507,7 +507,7 @@ final class InputMethodThreading {
             initialMessage,
             semaphore.availablePermits(),
             Thread.currentThread(),
-            threadAcquiredAccessInfo.get().inheritedAccessParent,
+            threadAcquiredAccessInfo.get().childAccessParent,
             getCurrentExclusiveAccessOwner()
         );
     }
