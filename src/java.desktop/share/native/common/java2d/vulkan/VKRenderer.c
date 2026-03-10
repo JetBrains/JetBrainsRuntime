@@ -737,7 +737,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
             .pendingCommands = VK_FALSE,
-            .pendingClear = VK_TRUE, // Clear the surface by default
+            .pendingClear = VK_FALSE,
     };
 
     // Initialize pipelines. They are cached until surface format changes.
@@ -843,10 +843,11 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
     }
 
     if (surface->renderPass->pendingClear) {
+        Color bgColor = VKUtil_DecodeJavaColor(0xFFFFFF, ALPHA_TYPE_STRAIGHT);
         VkClearAttachment clearAttachment = {
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
-                .clearValue = VKRenderer_GetRGBA(surface, surface->background).vkClearValue
+                .clearValue = VKRenderer_GetRGBA(surface, bgColor).vkClearValue
         };
         if (VKSD_IsOpaque(surface)) clearAttachment.clearValue.color.float32[3] = 1.0f;
         VkClearRect clearRect = {
