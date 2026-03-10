@@ -28,6 +28,7 @@ package sun.awt.screencast;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.wl.WLGraphicsConfig;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.pipe.Region;
 
 import java.awt.GraphicsConfiguration;
@@ -127,9 +128,8 @@ public final class ScreencastHelper {
 
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
                 sunToolkit.isRunningOnWayland() &&
-                !sunToolkit.isRunningOnXWayland() &&
-                gc instanceof WLGraphicsConfig wlGC) {
-            return wlGC.getRealBounds();
+                !sunToolkit.isRunningOnXWayland()) {
+            return SunGraphicsEnvironment.toDeviceSpaceAbs(gc.getBounds());
         }
 
         Rectangle screen = gc.getBounds();

@@ -405,8 +405,6 @@ wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height)
         return false;
     }
     if (match->scale != 1.0) {
-        *x = (int)(*x * match->scale);
-        *y = (int)(*y * match->scale);
         *width = match->width;
         *height = match->height;
     }

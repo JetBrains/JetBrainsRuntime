@@ -29,7 +29,7 @@
 #define _SCREENCAST_SCALE_H
 
 /**
- * Convert portal-reported logical bounds to device-space bounds in place.
+ * Convert portal-reported bounds to device-space bounds in place.
  *
  * Required for environments where XDG Desktop Portal reports logical bounds.
  */
