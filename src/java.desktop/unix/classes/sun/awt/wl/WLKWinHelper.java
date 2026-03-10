@@ -31,9 +31,6 @@ import sun.util.logging.PlatformLogger;
 import javax.swing.Timer;
 import java.awt.Point;
 import java.io.BufferedReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -72,7 +69,7 @@ class WLKWinHelper {
     // Python script that connects to session DBus, registers a callback object,
     // loads a KWin script to find the window and report its position, then prints "x,y" to stdout.
     private static final String GET_LOCATION_PYTHON_SCRIPT = """
-        import dbus, dbus.service, dbus.mainloop.glib, sys, tempfile, os
+        import dbus, dbus.service, dbus.mainloop.glib, sys, tempfile, os, traceback
         from gi.repository import GLib
 
         app_id = sys.argv[1]
@@ -115,6 +112,9 @@ class WLKWinHelper {
             GLib.timeout_add(2000, loop.quit)
             loop.run()
             kwin.unloadScript(plugin)
+        except Exception:
+            print("PYTHON_ERROR", flush=True)
+            traceback.print_exc()
         finally:
             os.unlink(path)
         if result[0]:
@@ -122,18 +122,66 @@ class WLKWinHelper {
         """;
     private static final Pattern POSITION_PATTERN = Pattern.compile("(\\d+),(\\d+)");
 
-    private static final String SET_LOCATION_JS_SCRIPT = """
-        var windows = workspace.windowList();
-        for (var i = 0; i < windows.length; i++) {
-            var w = windows[i];
-            if (w.resourceClass === "%s") {
-                var g = w.frameGeometry;
-                w.frameGeometry = {x: %d, y: %d, width: g.width, height: g.height};
-                break;
-            }
-        }
+    private static final String SET_LOCATION_PYTHON_SCRIPT = """
+        import dbus, dbus.service, dbus.mainloop.glib, sys, tempfile, os, traceback
+        from gi.repository import GLib
+
+        app_id = sys.argv[1]
+        target_x = sys.argv[2]
+        target_y = sys.argv[3]
+
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        bus = dbus.SessionBus()
+        my_name = bus.get_unique_name()
+
+        loop = GLib.MainLoop()
+
+        result = [None]
+        class H(dbus.service.Object):
+            @dbus.service.method('com.jbr.KWinHelper', in_signature='s', out_signature='')
+            def ReportResult(self, msg):
+                result[0] = msg
+                loop.quit()
+        _ = H(bus, '/p')
+
+        js = '''
+         var windows = workspace.windowList();
+         var found = false;
+         for (var i = 0; i < windows.length; i++) {
+             var w = windows[i];
+             if (w.resourceClass === "__APP_ID__") {
+                 var g = w.frameGeometry;
+                 w.frameGeometry = {x: __X__, y: __Y__, width: g.width, height: g.height};
+                 found = true;
+                 break;
+             }
+         }
+         if (found) {
+             callDBus("__BUS_NAME__", "/p", "com.jbr.KWinHelper", "ReportResult", "OK");
+         }
+        '''
+        js = js.replace('__BUS_NAME__', my_name).replace('__APP_ID__', app_id)
+        js = js.replace('__X__', target_x).replace('__Y__', target_y)
+        fd, path = tempfile.mkstemp(suffix='.js', prefix='jbr-kwin-set-location-')
+        os.write(fd, js.encode())
+        os.close(fd)
+
+        try:
+            kwin = dbus.Interface(bus.get_object('org.kde.KWin', '/Scripting'), 'org.kde.kwin.Scripting')
+            plugin = 'jbr-kwin-set-location-' + str(os.getpid())
+            sid = kwin.loadScript(path, plugin, signature='ss')
+            dbus.Interface(bus.get_object('org.kde.KWin', '/Scripting/Script' + str(sid)), 'org.kde.kwin.Script').run()
+            GLib.timeout_add(2000, loop.quit)
+            loop.run()
+            kwin.unloadScript(plugin)
+        except Exception:
+            print("PYTHON_ERROR", flush=True)
+            traceback.print_exc()
+        finally:
+            os.unlink(path)
+        if result[0]:
+            print(result[0], flush=True)
         """;
-    private static final Pattern SCRIPT_ID_PATTERN = Pattern.compile("int32\\s+(\\d+)");
 
     static Point getWindowLocation(String appId) {
         Timer timer = getLocationTimers.computeIfAbsent(appId, id -> {
@@ -185,6 +233,7 @@ class WLKWinHelper {
 
     static void setWindowLocation(String appId, int x, int y) {
         Point target = new Point(x, y);
+        logFine("setWindowLocation appId=" + appId + " target=" + x + "," + y);
         pendingSetLocation.put(appId, target);
         // Cache the value so that 'get location' calls see it immediately.
         // Note that this might in theory create a situation when 'get location' that came later
@@ -201,70 +250,40 @@ class WLKWinHelper {
 
     private static void flushSetWindowLocation(String appId) {
         Point target = pendingSetLocation.remove(appId);
-        String script = String.format(SET_LOCATION_JS_SCRIPT, appId, target.x, target.y);
-        if (runKWinScript(script)) {
-            locationCache.put(appId, Optional.of(target));
-        } else {
+        logFine("flushSetWindowLocation appId=" + appId + " target=" + target);
+        if (target == null) {
+            logWarning("flushSetWindowLocation: no pending target for appId=" + appId);
+            return;
+        }
+        try {
+            Process process = new ProcessBuilder(
+                    "python3", "-c", SET_LOCATION_PYTHON_SCRIPT,
+                    appId, String.valueOf(target.x), String.valueOf(target.y)
+            ).redirectErrorStream(true).start();
+            try {
+                String output;
+                try (BufferedReader reader = process.inputReader()) {
+                    output = reader.readAllAsString();
+                }
+                if (process.waitFor(2, TimeUnit.SECONDS) && process.exitValue() == 0 && output.contains("OK")) {
+                    logFine("setLocation succeeded for appId=" + appId + " target=" + target.x + "," + target.y);
+                    locationCache.put(appId, Optional.of(target));
+                } else {
+                    logWarning("setLocation failed for appId=" + appId + " target=" + target.x + "," + target.y + ": " + output);
+                    locationCache.put(appId, Optional.empty());
+                }
+            } finally {
+                process.destroyForcibly();
+            }
+        } catch (Exception e) {
+            logWarning("setLocation failed for appId=" + appId + ": " + e);
             locationCache.put(appId, Optional.empty());
-            logWarning("KWin script windowmove failed for appId=" + appId);
         }
     }
 
-    private static boolean runKWinScript(String script) {
-        Path scriptFile = null;
-        try {
-            scriptFile = Files.createTempFile("jbr-kwin-set-location", ".js");
-            Files.writeString(scriptFile, script);
-            String pluginName = scriptFile.getFileName().toString();
-
-            Process load = new ProcessBuilder(
-                    "dbus-send", "--session", "--dest=org.kde.KWin", "--print-reply",
-                    "/Scripting", "org.kde.kwin.Scripting.loadScript",
-                    "string:" + scriptFile.toAbsolutePath(), "string:" + pluginName
-            ).redirectErrorStream(true).start();
-            String loadOutput;
-            try (BufferedReader reader = load.inputReader()) {
-                loadOutput = reader.readAllAsString();
-            }
-            if (!(load.waitFor(2, TimeUnit.SECONDS) && load.exitValue() == 0)) {
-                load.destroyForcibly();
-                return false;
-            }
-
-            Matcher matcher = SCRIPT_ID_PATTERN.matcher(loadOutput);
-            if (!matcher.find()) {
-                return false;
-            }
-            String scriptId = matcher.group(1);
-
-            Process run = new ProcessBuilder(
-                    "dbus-send", "--session", "--dest=org.kde.KWin", "--print-reply",
-                    "/Scripting/Script" + scriptId, "org.kde.kwin.Script.run"
-            ).redirectErrorStream(true).start();
-            if (!(run.waitFor(2, TimeUnit.SECONDS) && run.exitValue() == 0)) {
-                run.destroyForcibly();
-                return false;
-            }
-
-            Process unload = new ProcessBuilder(
-                    "dbus-send", "--session", "--dest=org.kde.KWin", "--print-reply",
-                    "/Scripting", "org.kde.kwin.Scripting.unloadScript",
-                    "string:" + pluginName
-            ).redirectErrorStream(true).start();
-            if (!(unload.waitFor(2, TimeUnit.SECONDS) && unload.exitValue() == 0)) {
-                unload.destroyForcibly();
-            }
-
-            return true;
-        } catch (Exception e) {
-            logWarning("KWin script execution failed: " + e);
-            return false;
-        } finally {
-            if (scriptFile != null) {
-                try {
-                    Files.deleteIfExists(scriptFile);
-                } catch (IOException ignored) {}
-            }
+    private static void logFine(String msg) {
+        if (LOG.isLoggable(PlatformLogger.Level.FINE)) {
+            LOG.fine(msg);
         }
     }
 
