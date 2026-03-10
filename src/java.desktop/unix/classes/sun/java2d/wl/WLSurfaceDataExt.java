@@ -26,12 +26,10 @@
 
 package sun.java2d.wl;
 
-import java.awt.Color;
 import java.awt.GraphicsConfiguration;
 
 public interface WLSurfaceDataExt {
     void assignSurface(long surfacePtr);
     void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
-    void setBackground(Color background);
     void commit();
 }
