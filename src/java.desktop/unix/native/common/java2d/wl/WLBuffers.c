@@ -140,7 +140,7 @@ DamageList_Add(DamageList* list, jint x, jint y, jint width, jint height)
             l = l->next;
         }
     }
-    
+
     // Keep the list sorted so that adjacent areas follow one another
     // in memory in hope that this facilitates faster damage copying.
     l = list;
@@ -305,7 +305,6 @@ struct WLDrawBuffer {
 struct WLSurfaceBufferManager {
     struct wl_surface * wlSurface;         // only accessed under showLock
     bool                sendBufferASAP;    // only accessed under showLock
-    int                 bgPixel;           // the pixel value to be used to clear new buffers
     int                 format;            // one of enum wl_shm_format
 
     struct wl_callback* wl_frame_callback; // only accessed under showLock
@@ -1008,10 +1007,6 @@ DrawBufferResize(WLSurfaceBufferManager * manager)
         manager->bufferForDraw.data = data;
         manager->bufferForDraw.bytesAllocated = requiredSize;
     }
-
-    for (jint i = 0; i < DrawBufferSizeInPixels(manager); ++i) {
-        manager->bufferForDraw.data[i] = manager->bgPixel;
-    }
 }
 
 static void ResetBuffers(WLSurfaceBufferManager * manager) {
@@ -1053,7 +1048,6 @@ HaveEnoughMemoryForWindow(jint width, jint height)
 WLSurfaceBufferManager *
 WLSBM_Create(jint width,
              jint height,
-             jint bgPixel,
              jint wlShmFormat,
              jobject surfaceDataWeakRef,
              BufferEventCallback frameSentCallback,
@@ -1076,7 +1070,6 @@ WLSBM_Create(jint width,
 
     manager->bufferForDraw.width = width;
     manager->bufferForDraw.height = height;
-    manager->bgPixel = bgPixel;
     manager->format = wlShmFormat;
     manager->surfaceDataWeakRef = surfaceDataWeakRef;
     manager->frameSentCallback = frameSentCallback;
