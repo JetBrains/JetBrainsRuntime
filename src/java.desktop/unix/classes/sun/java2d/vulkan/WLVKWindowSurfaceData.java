@@ -44,7 +44,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     private final Component target; // optional
     private final WLSurfaceSizeListener sizeListener;
 
-    private native void initOps(int format, int backgroundRGB);
+    private native void initOps(int format);
 
     private native void assignWlSurface(long surfacePtr);
 
@@ -56,10 +56,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         this.width = peer.getBufferWidth();
         this.height = peer.getBufferHeight();
 
-        final int backgroundRGB = peer.getBackground() != null
-                ? peer.getBackground().getRGB()
-                : 0;
-        initOps(getFormat().getValue(getTransparency()), backgroundRGB);
+        initOps(getFormat().getValue(getTransparency()));
     }
 
     public WLVKWindowSurfaceData(WLSurfaceSizeListener sizeListener, int width, int height, WLVKGraphicsConfig gc) {
@@ -73,7 +70,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         Objects.requireNonNull(sizeListener);
         Objects.requireNonNull(gc);
 
-        initOps(getFormat().getValue(getTransparency()), 0);
+        initOps(getFormat().getValue(getTransparency()));
     }
 
     public SurfaceData getReplacement() {

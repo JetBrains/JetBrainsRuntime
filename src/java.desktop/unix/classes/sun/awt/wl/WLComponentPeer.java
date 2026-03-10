@@ -138,7 +138,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     protected WLComponentPeer(Component target, boolean dropShadow) {
         this.target = target;
-        this.background = target.getBackground();
+        this.background = target.isBackgroundSet() ? target.getBackground() : SystemColor.window;
         Dimension size = constrainSize(target.getBounds().getSize());
         final WLGraphicsConfig config = (WLGraphicsConfig) target.getGraphicsConfiguration();
         displayScale = config.getDisplayScale();
@@ -1007,7 +1007,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 return;
             }
             background = c;
-            // TODO: propagate this change to WLSurfaceData
         }
     }
 

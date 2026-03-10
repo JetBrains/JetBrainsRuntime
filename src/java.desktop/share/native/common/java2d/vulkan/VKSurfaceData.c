@@ -294,7 +294,7 @@ static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
     JNU_CallStaticMethodByName(env, NULL, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
 }
 
-JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format, jint backgroundRGB,
+JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format,
                                       VKWinSD_SurfaceResizeCallback resizeCallback) {
     VKSDOps* sd = (VKSDOps*)SurfaceData_InitOps(env, vksd,
         type == VKSD_WINDOW ? sizeof(VKWinSDOps) : sizeof(VKSDOps));
@@ -307,7 +307,6 @@ JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint
     sd->sdOps.Dispose = VKSD_OnDispose;
     sd->drawableType = type;
     sd->drawableFormat = format;
-    sd->background = VKUtil_DecodeJavaColor(backgroundRGB, ALPHA_TYPE_STRAIGHT);
     sd->lastTimestamp = 0;
     if (type == VKSD_WINDOW) {
         VKWinSDOps* winSD = (VKWinSDOps*) sd;
@@ -345,6 +344,6 @@ JNIEXPORT void VKSD_InitWindowSurface(JNIEnv* env, jobject vksd, VKWinSD_Surface
  * Signature: ()V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv* env, jobject vksd, jint format) {
-    VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, 0, NULL);
+    VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, NULL);
 }
 
