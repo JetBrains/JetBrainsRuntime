@@ -94,8 +94,8 @@ static void WLVK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
  * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_WLVKWindowSurfaceData_initOps(
-        JNIEnv *env, jobject vksd, jint format, jint backgroundRGB) {
-    VKSD_CreateSurface(env, vksd, VKSD_WINDOW, format, backgroundRGB, WLVK_OnSurfaceResize);
+        JNIEnv *env, jobject vksd, jint format) {
+    VKSD_CreateSurface(env, vksd, VKSD_WINDOW, format, WLVK_OnSurfaceResize);
 }
 
 /*
