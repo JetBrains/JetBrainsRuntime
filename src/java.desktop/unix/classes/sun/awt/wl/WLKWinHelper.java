@@ -193,9 +193,12 @@ class WLKWinHelper {
 
         Optional<Point> cached = locationCache.get(appId);
         if (cached != null) {
-            return cached.map(Point::new).orElse(null);
+            Point result = cached.map(Point::new).orElse(null);
+            logFine("getWindowLocation appId=" + appId + " cached=" + result);
+            return result;
         }
         // First call for this appId — must query synchronously.
+        logFine("getWindowLocation appId=" + appId + " cache miss, querying synchronously");
         Point location = queryAndCacheWindowLocation(appId);
         return location != null ? new Point(location) : null;
     }
@@ -207,6 +210,7 @@ class WLKWinHelper {
     }
 
     private static Point queryWindowLocation(String appId) {
+        logFine("queryWindowLocation appId=" + appId);
         try {
             Process process = new ProcessBuilder(
                     "python3", "-c", GET_LOCATION_PYTHON_SCRIPT, appId
@@ -217,16 +221,23 @@ class WLKWinHelper {
                     output = reader.readAllAsString();
                 }
                 if (process.waitFor(2, TimeUnit.SECONDS) && process.exitValue() == 0) {
+                    logFine("queryWindowLocation output: " + output);
                     Matcher m = POSITION_PATTERN.matcher(output);
                     if (m.find()) {
-                        return new Point(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)));
+                        Point p = new Point(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)));
+                        logFine("queryWindowLocation result=" + p.x + "," + p.y);
+                        return p;
+                    } else {
+                        logWarning("queryWindowLocation: no position in output for appId=" + appId + ": " + output);
                     }
+                } else {
+                    logWarning("queryWindowLocation: process failed for appId=" + appId + " exit=" + process.exitValue());
                 }
             } finally {
                 process.destroyForcibly();
             }
         } catch (Exception e) {
-            logWarning("KWin get location failed for appId=" + appId + ": " + e);
+            logWarning("queryWindowLocation failed for appId=" + appId + ": " + e);
         }
         return null;
     }
