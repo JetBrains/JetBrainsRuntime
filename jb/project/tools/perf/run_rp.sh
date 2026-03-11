@@ -80,9 +80,9 @@ for i in `seq $R` ; do
 #  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
 
   $JAVA $J2D_OPTS -DTRACE=$TRACE \
-  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1_${mode_param}_$i.log | grep -v "^#" | tail -n 1 | \
-  awk '{print $3 }'
-  if [ $i -ne $N ]; then
+  -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1_${mode_param}_$i.log | \
+  awk '/^'$1' /{print $3}'
+  if [ $i -ne $R ]; then
     sleep $ST
   fi
 done | $DATAMASH_CMD | expand -t12 | tee render_$1_${mode_param}.log
