@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #set -euo pipefail
-set -x
+#set -x
 
 BASE_DIR=$(dirname "$0")
 source $BASE_DIR/run_inc.sh
@@ -78,6 +78,21 @@ for i in `seq $R` ; do
 #  echo "[debug] " + "test run"
 #  $JAVA $J2D_OPTS -DTRACE=$TRACE \
 #  -jar $RENDERPERFTEST $OPTS 2>&1 | awk '/'$1'/{print $3 }' | tee test_run.log
+
+  echo "=== DEBUG run_rp.sh ===" >&2
+  echo "JAVA=[$JAVA]" >&2
+  echo "J2D_OPTS=[$J2D_OPTS]" >&2
+  echo "TRACE=[$TRACE]" >&2
+  echo "RENDERPERFTEST=[$RENDERPERFTEST]" >&2
+  echo "OPTS=[$OPTS]" >&2
+  echo "MODE=[$MODE]" >&2
+  echo "mode_param=[$mode_param]" >&2
+  echo "JAVA_TOOL_OPTIONS=[${JAVA_TOOL_OPTIONS:-}]" >&2
+  echo "JAVA_OPTS=[${JAVA_OPTS:-}]" >&2
+  echo "_JAVA_OPTIONS=[${_JAVA_OPTIONS:-}]" >&2
+  echo "JDK_JAVA_OPTIONS=[${JDK_JAVA_OPTIONS:-}]" >&2
+  echo "CMD: $JAVA $J2D_OPTS -DTRACE=$TRACE -jar $RENDERPERFTEST $OPTS -v" >&2
+  echo "======================" >&2
 
   $JAVA $J2D_OPTS -DTRACE=$TRACE \
   -jar $RENDERPERFTEST $OPTS -v 2>&1 | tee render_$1_${mode_param}_$i.log | \
