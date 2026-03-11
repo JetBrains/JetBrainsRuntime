@@ -749,6 +749,7 @@ ClassPathEntry* ClassLoader::create_class_path_entry(JavaThread* current,
 #if INCLUDE_CDS
       ClassLoaderExt::set_has_non_jar_in_classpath();
 #endif
+      log_info(class, path)("failed: %s, err: %s", path, error_msg);
       return nullptr;
     }
     log_info(class, path)("opened: %s", path);
