@@ -26,6 +26,7 @@ package sun.awt.wl;
 
 import sun.awt.SunToolkit;
 
+import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 import java.awt.Window;
 import java.awt.peer.MouseInfoPeer;
@@ -45,12 +46,12 @@ public class WLMouseInfoPeer implements MouseInfoPeer, SunToolkit.RelativePointe
         //    device where the pointer is located."
         var peerUnderMouse = getPeerUnderMouse();
         if (peerUnderMouse != null) {
-            var gc = peerUnderMouse.getGraphicsConfiguration();
-            if (gc != null) {
-                var screenLocation = gc.getBounds().getLocation();
-                point.translate(screenLocation.x, screenLocation.y);
-            }
+            point.setLocation(peerUnderMouse.relativePointToAbsolute(point));
+            var device = peerUnderMouse.getGraphicsConfiguration().getDevice();
+            var ge = (WLGraphicsEnvironment) GraphicsEnvironment.getLocalGraphicsEnvironment();
+            return ge.deviceNumberOf(device);
         }
+
         return 0;
     }
 
