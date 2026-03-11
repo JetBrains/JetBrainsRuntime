@@ -26,6 +26,7 @@
 
 package sun.awt.wl;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.Timer;
@@ -61,7 +62,7 @@ class WLKWinHelper {
     private static final ConcurrentHashMap<String, Point> pendingSetLocation = new ConcurrentHashMap<>();
     private static final int DEBOUNCE_MS = 200;
     private static final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "WLKWinHelper");
+        Thread t = InnocuousThread.newThread("WLKWinHelper", r);
         t.setDaemon(true);
         return t;
     });
