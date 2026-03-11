@@ -114,6 +114,28 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         }
     }
 
+    /**
+     * Returns the index of the given device in the GraphicsEnvironment.getScreenDevices() array.
+     * If the device is not found, returns the index of a similar device
+     * (see {@link #getSimilarDevice(WLGraphicsDevice)}). Returns 0 if all else fails.
+     */
+    public int deviceNumberOf(GraphicsDevice device) {
+        synchronized (devices) {
+            int i = 0;
+            for (var d: devices) {
+                if (d == device) return i;
+                i++;
+            }
+            i = 0;
+            var similarDevice = getSimilarDevice((WLGraphicsDevice) device);
+            for (var d: devices) {
+                if (d == similarDevice) return i;
+                i++;
+            }
+            return 0;
+        }
+    }
+
     @Override
     public boolean isDisplayLocal() {
         return true;
