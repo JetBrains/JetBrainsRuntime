@@ -73,19 +73,20 @@ public class WindowsCheckBoxMenuItemUI extends BasicCheckBoxMenuItemUI {
         super.paintBackground(g, menuItem, bgColor);
     }
 
-    /**
-     * Paint MenuItem.
-     */
+    @Override
     protected void paintMenuItem(Graphics g, JComponent c,
                                  Icon checkIcon, Icon arrowIcon,
                                  Color background, Color foreground,
                                  int defaultTextIconGap) {
         if (WindowsMenuItemUI.isVistaPainting()) {
-            WindowsMenuItemUI.paintMenuItem(accessor, g, c, checkIcon,
-                    arrowIcon, background, foreground,
-                    disabledForeground, acceleratorSelectionForeground,
-                    acceleratorForeground, defaultTextIconGap,
-                    menuItem, getPropertyPrefix());
+            WindowsMenuItemUI.paintMenuItem(accessor, g, c,
+                                            checkIcon, arrowIcon,
+                                            background, foreground,
+                                            disabledForeground,
+                                            acceleratorSelectionForeground,
+                                            acceleratorForeground,
+                                            defaultTextIconGap,
+                                            menuItem, getPropertyPrefix());
             return;
         }
         super.paintMenuItem(g, c, checkIcon, arrowIcon, background,
