@@ -1227,7 +1227,8 @@ WLSBM_SurfaceCommit(WLSurfaceBufferManager * manager)
 
     if (manager->wlSurface && !frameCallbackScheduled) {
         // Don't always send the frame immediately so as not to overwhelm Wayland
-        TrySendShowBufferToWayland(manager, manager->sendBufferASAP);
+        const bool hasSomethingToSend = (manager->bufferForDraw.damageList != NULL);
+        TrySendShowBufferToWayland(manager, manager->sendBufferASAP || hasSomethingToSend);
     }
     MUTEX_UNLOCK(manager->showLock);
 }
@@ -1267,10 +1268,10 @@ WLSBM_SizeChangeTo(WLSurfaceBufferManager * manager, jint width, jint height)
         manager->bufferForDraw.width  = width;
         manager->bufferForDraw.height = height;
         manager->bufferForDraw.resizePending = true;
-
-        // Send the buffer at the nearest commit as we want to make the change in size
-        // visible to the user.
-        manager->sendBufferASAP = true;
+        // Pretend the current buffer is empty as its scan line may be different
+        // making the existing content undisplayable anyway.
+        DamageList_FreeAll(manager->bufferForDraw.damageList);
+        manager->bufferForDraw.damageList = NULL;
 
         // Need to wait for WLSBM_SurfaceCommit() with the new content for
         // the buffer size, so there's no need for the frame event until then.
