@@ -474,6 +474,20 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
             shadow.updateSurfaceData();
         });
+
+        // When a Swing buffer strategy is active, it may blit a smaller backing buffer on
+        // a larger window during resize, leaving parts of the window untouched.
+        // So we must clear the window's surface data in case it gets shown.
+        clearWindow();
+    }
+
+    private void clearWindow() {
+        var g = getGraphics(surfaceData, null, background, null);
+        try {
+            g.clearRect(0, 0, getWidth(), getHeight());
+        } finally {
+            g.dispose();
+        }
     }
 
     public boolean isResizable() {
