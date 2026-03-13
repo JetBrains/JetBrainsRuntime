@@ -194,6 +194,11 @@ public class WLRobotPeer implements RobotPeer {
         }
     }
 
+    @Override
+    public boolean useAbsoluteCoordinates() {
+        return useRemoteDesktopRobotForCapture();
+    }
+
     /**
      * Retrieves the location in absolute coordinates of the Wayland
      * surface pointed to by the argument.
