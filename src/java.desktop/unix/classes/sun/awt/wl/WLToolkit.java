@@ -600,6 +600,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     }
 
     @Override
+    public boolean isRunningOnWayland() {
+        return true;
+    }
+
+    @Override
     protected boolean isDynamicLayoutSet() {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Not implemented: WLToolkit.isDynamicLayoutSet()");
