@@ -1259,6 +1259,14 @@ gboolean remoteDesktopMouseMove(int x, int y) {
                              x, y, relX, relY,
                              rect.x, rect.y, rect.width, rect.height);
 
+            int relXBefore = relX;
+            int relYBefore = relY;
+            screencast_toStreamSpaceCoords(&relX, &relY, rect.x, rect.y, rect.width, rect.height);
+            if (relX != relXBefore || relY != relYBefore) {
+                DEBUG_SCREENCAST("screenId#%i point %dx%d is mapped to stream space as %ix%i\n",
+                                 streamId, x, y, relX, relY);
+            }
+
             break;
         }
     }
