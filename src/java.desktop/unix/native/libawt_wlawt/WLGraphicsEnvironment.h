@@ -35,3 +35,6 @@ uint32_t WLOutputID(struct wl_output *wlOutput);
 struct wl_output* WLOutputByID(uint32_t id);
 void WLOutputXdgOutputManagerBecameAvailable(void);
 bool wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height);
+void wlToCompositorSpaceCoords(int *x, int *y,
+                             int boundsX, int boundsY,
+                             int boundsWidth, int boundsHeight);
