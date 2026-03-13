@@ -35,4 +35,13 @@
  */
 void screencast_toDeviceSpaceBounds(int *x, int *y, int *width, int *height);
 
+/**
+ * Convert a device-space point to the stream space logical coordinates in place.
+ *
+ * The point coordinates are relative to the given screen bounds.
+ * The screen bounds are used to identify the matching output and its scale.
+ * Required for environments where XDG Desktop Portal expects logical coordinates (e.g. NotifyPointerMotionAbsolute).
+ */
+void screencast_toStreamSpaceCoords(int *x, int *y, int boundsX, int boundsY, int boundsWidth, int boundsHeight);
+
 #endif /* _SCREENCAST_SCALE_H */
