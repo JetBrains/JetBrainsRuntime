@@ -25,10 +25,13 @@
 
 package sun.awt.screencast;
 
+import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.pipe.Region;
 
 import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -115,20 +118,28 @@ public final class ScreencastHelper {
                 .stream(GraphicsEnvironment
                         .getLocalGraphicsEnvironment()
                         .getScreenDevices())
-                .map(graphicsDevice -> {
-                    GraphicsConfiguration gc =
-                            graphicsDevice.getDefaultConfiguration();
-                    Rectangle screen = gc.getBounds();
-                    AffineTransform tx = gc.getDefaultTransform();
-
-                    return new Rectangle(
-                            Region.clipRound(screen.x * tx.getScaleX()),
-                            Region.clipRound(screen.y * tx.getScaleY()),
-                            Region.clipRound(screen.width * tx.getScaleX()),
-                            Region.clipRound(screen.height * tx.getScaleY())
-                    );
-                })
+                .map(ScreencastHelper::getScreenBounds)
                 .toList();
+    }
+
+    private static Rectangle getScreenBounds(GraphicsDevice graphicsDevice) {
+        GraphicsConfiguration gc = graphicsDevice.getDefaultConfiguration();
+
+        if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
+                sunToolkit.isRunningOnWayland() &&
+                !sunToolkit.isRunningOnXWayland()) {
+            Rectangle bounds = gc.getBounds();
+            return SunGraphicsEnvironment.toDeviceSpaceAbs(gc, bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+
+        Rectangle screen = gc.getBounds();
+        AffineTransform tx = gc.getDefaultTransform();
+        return new Rectangle(
+                Region.clipRound(screen.x * tx.getScaleX()),
+                Region.clipRound(screen.y * tx.getScaleY()),
+                Region.clipRound(screen.width * tx.getScaleX()),
+                Region.clipRound(screen.height * tx.getScaleY())
+        );
     }
 
     private static synchronized native void closeSession();
