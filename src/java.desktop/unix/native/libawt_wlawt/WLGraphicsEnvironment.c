@@ -411,4 +411,22 @@ wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height)
     return true;
 }
 
+void
+wlToCompositorSpaceCoords(int *x, int *y,
+                         int boundsX, int boundsY,
+                         int boundsWidth, int boundsHeight)
+{
+    for (WLOutput *cur = outputList; cur; cur = cur->next) {
+        if (cur->x == boundsX && cur->y == boundsY &&
+            cur->width == boundsWidth &&
+            cur->height == boundsHeight) {
+            if (cur->scale != 1) {
+                *x = *x / (int)cur->scale;
+                *y = *y / (int)cur->scale;
+            }
+            return;
+        }
+    }
+}
+
 #endif // #ifndef HEADLESS
