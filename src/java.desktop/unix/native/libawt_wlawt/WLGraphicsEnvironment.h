@@ -24,6 +24,9 @@
  */
 
 #include "jni.h"
+#include "wayland-client-protocol.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 jboolean WLGraphicsEnvironment_initIDs(JNIEnv *env, jclass clazz);
 void WLOutputRegister(struct wl_registry *wl_registry, uint32_t id);
@@ -31,3 +34,4 @@ void WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id);
 uint32_t WLOutputID(struct wl_output *wlOutput);
 struct wl_output* WLOutputByID(uint32_t id);
 void WLOutputXdgOutputManagerBecameAvailable(void);
+bool wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height);
