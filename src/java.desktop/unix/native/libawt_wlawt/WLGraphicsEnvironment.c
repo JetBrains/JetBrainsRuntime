@@ -33,6 +33,7 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
+#include "WLGraphicsEnvironment.h"
 
 typedef struct WLOutput {
     struct WLOutput *  next;
@@ -376,4 +377,38 @@ WLOutputByID(uint32_t id)
 
     return NULL;
 }
+
+bool
+wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height)
+{
+    WLOutput *match = NULL;
+
+    for (WLOutput *cur = outputList; cur; cur = cur->next) {
+        if (cur->x == *x && cur->y == *y &&
+            cur->width_logical == *width &&
+            cur->height_logical == *height) {
+            if (match != NULL) {
+                // Multiple outputs match the same logical bounds (e.g. mirrored).
+                // Cannot determine a unique scale; return false.
+#ifdef DEBUG
+                fprintf(stderr, "WLOutputToDeviceSpaceBounds: "
+                        "ambiguous match for (%d,%d,%d,%d)\n",
+                        logicalX, logicalY, logicalWidth, logicalHeight);
+#endif
+                return false;
+            }
+            match = cur;
+        }
+    }
+
+    if (match == NULL) {
+        return false;
+    }
+    if (match->scale != 1) {
+        *width = match->width;
+        *height = match->height;
+    }
+    return true;
+}
+
 #endif // #ifndef HEADLESS
