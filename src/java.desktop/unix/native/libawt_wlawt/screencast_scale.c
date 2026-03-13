@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, JetBrains s.r.o.. All rights reserved.
+ *
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,15 +25,13 @@
  * questions.
  */
 
-#include "jni.h"
-#include "wayland-client-protocol.h"
-#include <stdint.h>
-#include <stdbool.h>
+#ifdef HEADLESS
+#error This file should not be included in headless library
+#endif
 
-jboolean WLGraphicsEnvironment_initIDs(JNIEnv *env, jclass clazz);
-void WLOutputRegister(struct wl_registry *wl_registry, uint32_t id);
-void WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id);
-uint32_t WLOutputID(struct wl_output *wlOutput);
-struct wl_output* WLOutputByID(uint32_t id);
-void WLOutputXdgOutputManagerBecameAvailable(void);
-bool wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height);
+#include "screencast_scale.h"
+#include "WLGraphicsEnvironment.h"
+
+void screencast_toDeviceSpaceBounds(int *x, int *y, int *width, int *height) {
+    wlToDeviceSpaceBounds(x, y, width, height);
+}
