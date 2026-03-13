@@ -28,6 +28,7 @@ package sun.awt.wl;
 
 import sun.awt.SunToolkit;
 import sun.awt.screencast.XdgDesktopPortalRobot;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLPixelGrabberExt;
 
@@ -51,7 +52,8 @@ public class WLRobotPeer implements RobotPeer {
     @Override
     public void mouseMove(int x, int y) {
         if (useRemoteDesktopRobotForInput()) {
-            XdgDesktopPortalRobot.mouseMove(x, y);
+            Point p = SunGraphicsEnvironment.toDeviceSpaceAbs(x, y);
+            XdgDesktopPortalRobot.mouseMove(p.x, p.y);
             return;
         }
         checkExtensionPresent();
