@@ -32,3 +32,5 @@
 #include "screencast_scale.h"
 
 void screencast_toDeviceSpaceBounds(int *x, int *y, int *width, int *height) {}
+
+void screencast_toStreamSpaceCoords(int *x, int *y, int boundsX, int boundsY, int boundsWidth, int boundsHeight) {}
