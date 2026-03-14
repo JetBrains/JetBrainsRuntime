@@ -548,6 +548,7 @@ ifeq ($(call isTargetOs, macosx), true)
   LIBAWT_LWAWT_EXCLUDES := \
         $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/vulkan \
         $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
+        $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/screencast \
         #
 
   LIBAWT_LWAWT_STATIC_EXCLUDE_OBJS := systemScale.o
