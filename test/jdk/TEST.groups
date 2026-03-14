@@ -992,7 +992,6 @@ jdk_awt_wayland = \
     -java/awt/Focus/NonFocusableBlockedOwnerTest \
     -java/awt/Focus/NonFocusableResizableTooSmall \
     -java/awt/Focus/NonFocusableWindowTest \
-    -java/awt/Focus/NullActiveWindowOnFocusLost \
     -java/awt/Focus/OwnedWindowFocusIMECrashTest \
     -java/awt/Focus/QuickTypeTest.java \
     -java/awt/Focus/RemoveAfterRequest \
