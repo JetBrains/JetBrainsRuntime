@@ -391,9 +391,8 @@ wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height)
                 // Multiple outputs match the same logical bounds (e.g. mirrored).
                 // Cannot determine a unique scale; return false.
 #ifdef DEBUG
-                fprintf(stderr, "WLOutputToDeviceSpaceBounds: "
-                        "ambiguous match for (%d,%d,%d,%d)\n",
-                        logicalX, logicalY, logicalWidth, logicalHeight);
+                fprintf(stderr, "WLOutputToDeviceSpaceBounds: ambiguous match for (%d,%d,%d,%d)\n",
+                        x, y, width, height);
 #endif
                 return false;
             }
