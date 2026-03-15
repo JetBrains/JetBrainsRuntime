@@ -72,6 +72,7 @@ jb/java/awt/Focus/ChainOfPopupsFocusTest.java JBR-8407 windows-x64
 jb/java/awt/Focus/FrameAfterPopup.java JBR-9161 windows-x64
 jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
 jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-9426 windows-x64
+jb/java/awt/Focus/ModalDialogOverSiblingTest.java JBR-9885 windows-x64
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
 
 # VoiceOver on MacOS

@@ -118,15 +118,17 @@ java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all
 java/awt/GridBagLayout/ComponentShortage.java 8355280,JBR-9347 windows-all,linux-all,macosx-x64
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-7077 linux-all,windows-all
 java/awt/MenuItem/EnableTest.java JBR-8543 windows-all timeout
-java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64,linux-6.18.4-100.fc42.x86_64
+java/awt/Modal/MultipleDialogs/MixOfModalAndNonModalDialogs.java JBR-9317 fedora-42-x64-plasma,fedora-42-x64-kde
 java/awt/Robot/NonEmptyErrorStream.java JBR-6275,JBR-8299,JBR-9259 macosx-all,linux-aarch64
 
-javax/swing/border/TestTitledBorderLeak.java JBR-9272 macosx-14.8
+javax/print/PrintServiceLookup/FlushCustomClassLoader.java JBR-9272 macosx-aarch64
+
+javax/swing/border/TestTitledBorderLeak.java JBR-9272,JBR-10136 macosx-14.8,macosx-x64
 javax/swing/JButton/TestMnemonicAction.java JBR-6508 windows-all,linux-all,macosx-all
 javax/swing/JComboBox/8072767/bug8072767.java JBR-5540 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java JBR-7404 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-9446 macosx-all
-javax/swing/plaf/synth/7158712/bug7158712.java 8322653,JBR-9061 macosx-all,linux-6.8.0-1033-aws,linux-6.8.0-1036-aws,linux-6.8.0-1039-aws,linux-6.8.0-1040-aws,linux-6.8.0-1043-aws,linux-6.8.0-1044-aws
+javax/swing/plaf/synth/7158712/bug7158712.java 8322653,JBR-9061 macosx-all,ubuntu-22.04-x64,ubuntu-22.04-aarch64
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-all,macosx-all
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
