@@ -832,25 +832,30 @@ jlong os::elapsed_frequency() {
 }
 
 
-julong os::available_memory() {
-  return win32::available_memory();
+bool os::available_memory(size_t& value) {
+  return win32::available_memory(value);
 }
 
-julong os::free_memory() {
-  return win32::available_memory();
+bool os::free_memory(size_t& value) {
+  return win32::available_memory(value);
 }
 
-julong os::win32::available_memory() {
+bool os::win32::available_memory(size_t& value) {
   // Use GlobalMemoryStatusEx() because GlobalMemoryStatus() may return incorrect
   // value if total memory is larger than 4GB
   MEMORYSTATUSEX ms;
   ms.dwLength = sizeof(ms);
-  GlobalMemoryStatusEx(&ms);
-
-  return (julong)ms.ullAvailPhys;
+  BOOL res = GlobalMemoryStatusEx(&ms);
+  if (res == TRUE) {
+    value = static_cast<size_t>(ms.ullAvailPhys);
+    return true;
+  } else {
+    assert(false, "GlobalMemoryStatusEx failed in os::win32::available_memory(): %lu", ::GetLastError());
+    return false;
+  }
 }
 
-julong os::physical_memory() {
+size_t os::physical_memory() {
   return win32::physical_memory();
 }
 
@@ -4277,7 +4282,7 @@ int os::current_process_id() {
 int    os::win32::_processor_type            = 0;
 // Processor level is not available on non-NT systems, use vm_version instead
 int    os::win32::_processor_level           = 0;
-julong os::win32::_physical_memory           = 0;
+size_t os::win32::_physical_memory           = 0;
 
 bool   os::win32::_is_windows_server         = false;
 
@@ -4507,8 +4512,11 @@ void os::win32::initialize_system_info() {
 
   // also returns dwAvailPhys (free physical memory bytes), dwTotalVirtual, dwAvailVirtual,
   // dwMemoryLoad (% of memory in use)
-  GlobalMemoryStatusEx(&ms);
-  _physical_memory = ms.ullTotalPhys;
+  BOOL res = GlobalMemoryStatusEx(&ms);
+  if (res != TRUE) {
+    assert(false, "GlobalMemoryStatusEx failed in os::win32::initialize_system_info(): %lu", ::GetLastError());
+  }
+  _physical_memory = static_cast<size_t>(ms.ullTotalPhys);
 
   if (FLAG_IS_DEFAULT(MaxRAM)) {
     // Adjust MaxRAM according to the maximum virtual address space available.

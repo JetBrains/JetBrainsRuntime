@@ -161,7 +161,7 @@ enum CoredumpFilterBit {
 
 ////////////////////////////////////////////////////////////////////////////////
 // global variables
-julong os::Linux::_physical_memory = 0;
+size_t os::Linux::_physical_memory = 0;
 
 address   os::Linux::_initial_thread_stack_bottom = nullptr;
 uintptr_t os::Linux::_initial_thread_stack_size   = 0;
@@ -236,15 +236,16 @@ julong os::Linux::available_memory_in_container() {
   return avail_mem;
 }
 
-julong os::available_memory() {
-  return Linux::available_memory();
+bool os::available_memory(size_t& value) {
+  return Linux::available_memory(value);
 }
 
-julong os::Linux::available_memory() {
+bool os::Linux::available_memory(size_t& value) {
   julong avail_mem = available_memory_in_container();
   if (avail_mem != static_cast<julong>(-1L)) {
     log_trace(os)("available container memory: " JULONG_FORMAT, avail_mem);
-    return avail_mem;
+    value = static_cast<size_t>(avail_mem);
+    return true;
   }
 
   FILE *fp = os::fopen("/proc/meminfo", "r");
@@ -259,43 +260,52 @@ julong os::Linux::available_memory() {
     fclose(fp);
   }
   if (avail_mem == static_cast<julong>(-1L)) {
-    avail_mem = free_memory();
+    size_t free_mem = 0;
+    if (!free_memory(free_mem)) {
+      return false;
+    }
+    avail_mem = static_cast<julong>(free_mem);
   }
   log_trace(os)("available memory: " JULONG_FORMAT, avail_mem);
-  return avail_mem;
+  value = static_cast<size_t>(avail_mem);
+  return true;
 }
 
-julong os::free_memory() {
-  return Linux::free_memory();
+bool os::free_memory(size_t& value) {
+  return Linux::free_memory(value);
 }
 
-julong os::Linux::free_memory() {
+bool os::Linux::free_memory(size_t& value) {
   // values in struct sysinfo are "unsigned long"
   struct sysinfo si;
   julong free_mem = available_memory_in_container();
   if (free_mem != static_cast<julong>(-1L)) {
     log_trace(os)("free container memory: " JULONG_FORMAT, free_mem);
-    return free_mem;
+    value = static_cast<size_t>(free_mem);
+    return true;
   }
 
-  sysinfo(&si);
+  int ret = sysinfo(&si);
+  if (ret != 0) {
+    return false;
+  }
   free_mem = (julong)si.freeram * si.mem_unit;
   log_trace(os)("free memory: " JULONG_FORMAT, free_mem);
-  return free_mem;
+  value = static_cast<size_t>(free_mem);
+  return true;
 }
 
-julong os::physical_memory() {
-  jlong phys_mem = 0;
+size_t os::physical_memory() {
   if (OSContainer::is_containerized()) {
     jlong mem_limit;
     if ((mem_limit = OSContainer::memory_limit_in_bytes()) > 0) {
       log_trace(os)("total container memory: " JLONG_FORMAT, mem_limit);
-      return mem_limit;
+      return static_cast<size_t>(mem_limit);
     }
   }
 
-  phys_mem = Linux::physical_memory();
-  log_trace(os)("total system memory: " JLONG_FORMAT, phys_mem);
+  size_t phys_mem = Linux::physical_memory();
+  log_trace(os)("total system memory: %zu", phys_mem);
   return phys_mem;
 }
 
@@ -452,7 +462,7 @@ void os::Linux::initialize_system_info() {
       fclose(fp);
     }
   }
-  _physical_memory = (julong)sysconf(_SC_PHYS_PAGES) * (julong)sysconf(_SC_PAGESIZE);
+  _physical_memory = static_cast<size_t>(sysconf(_SC_PHYS_PAGES)) * static_cast<size_t>(sysconf(_SC_PAGESIZE));
   assert(processor_count() > 0, "linux error");
 }
 
@@ -2436,11 +2446,13 @@ void os::print_memory_info(outputStream* st) {
   // values in struct sysinfo are "unsigned long"
   struct sysinfo si;
   sysinfo(&si);
-
-  st->print(", physical " UINT64_FORMAT "k",
-            os::physical_memory() >> 10);
-  st->print("(" UINT64_FORMAT "k free)",
-            os::available_memory() >> 10);
+  size_t phys_mem = physical_memory();
+  st->print(", physical %zuk",
+            phys_mem >> 10);
+  size_t avail_mem = 0;
+  (void)os::available_memory(avail_mem);
+  st->print("(%zuk free)",
+            avail_mem >> 10);
   st->print(", swap " UINT64_FORMAT "k",
             ((jlong)si.totalswap * si.mem_unit) >> 10);
   st->print("(" UINT64_FORMAT "k free)",
