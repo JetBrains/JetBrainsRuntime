@@ -1841,12 +1841,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     Point newScreenLocation = newDevice.getBounds().getLocation();
                     loc.translate(newScreenLocation.x, newScreenLocation.y);
                     resetTargetLocationTo(loc.x, loc.y);
-                } else {
-                    // A window has been moved to another screen. Since windows are assumed to be located at (0, 0)
-                    // on their respective screens, update the location to reflect that.
-                    Point newLocation = newDevice.getBounds().getLocation();
-                    resetTargetLocationTo(newLocation.x, newLocation.y);
                 }
+            }
+
+            if (!targetIsWlPopup()) {
+                // Windows are assumed to be located at (0, 0) on their respective screens,
+                // update the location to reflect that.
+                Point newLocation = newDevice.getBounds().getLocation();
+                resetTargetLocationTo(newLocation.x, newLocation.y);
             }
 
             performUnlocked(() -> {
