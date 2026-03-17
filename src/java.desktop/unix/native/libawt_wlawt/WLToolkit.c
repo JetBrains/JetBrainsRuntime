@@ -51,15 +51,9 @@
 #include "awt.h"
 #include "sun_awt_wl_WLToolkit.h"
 #include "sun_awt_wl_WLDisplay.h"
-#include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
 #include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
-
-#ifdef WAKEFIELD_ROBOT
-#include "wakefield.h"
-#include "sun_awt_wl_WLRobotPeer.h"
-#endif
 
 #ifdef HAVE_GTK_SHELL1
 #include <gtk-shell.h>
@@ -703,25 +697,6 @@ registry_global(void *data, struct wl_registry *wl_registry,
             xdg_toplevel_icon_manager_v1_add_listener(xdg_toplevel_icon_manager, &xdg_toplevel_icon_manager_v1_listener, NULL);
         }
     }
-
-#ifdef WAKEFIELD_ROBOT
-    else if (strcmp(interface, wakefield_interface.name) == 0) {
-        wakefield = wl_registry_bind(wl_registry, name, &wakefield_interface, 1);
-        if (wakefield != NULL) {
-            wakefield_add_listener(wakefield, &wakefield_listener, NULL);
-            robot_queue = wl_display_create_queue(wl_display);
-            if (robot_queue == NULL) {
-                J2dTrace(J2D_TRACE_ERROR, "WLToolkit: Failed to create wakefield robot queue\n");
-                wakefield_destroy(wakefield);
-                wakefield = NULL;
-            } else {
-                wl_proxy_set_queue((struct wl_proxy*)wakefield, robot_queue);
-            }
-            // TODO: call before destroying the display:
-            //  wl_event_queue_destroy(robot_queue);
-        }
-    }
-#endif
 }
 
 static void
@@ -1053,28 +1028,6 @@ Java_sun_awt_wl_WLToolkit_flushImpl
   (JNIEnv *env, jobject obj)
 {
     (void) wlFlushToServer(env);
-}
-
-JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLToolkit_dispatchNonDefaultQueuesImpl
-  (JNIEnv *env, jobject obj)
-{
-#ifdef WAKEFIELD_ROBOT
-    if (!robot_queue) {
-        return;
-    }
-
-    int rc = 0;
-
-    while (rc >= 0) {
-        // Dispatch pending events on the wakefield queue
-        rc = wl_display_dispatch_queue(wl_display, robot_queue);
-    }
-
-    // Simply return in case of any error; the actual error reporting (exception)
-    // and/or shutdown will happen on the "main" toolkit thread AWT-Wayland,
-    // see readEvents() below.
-#endif
 }
 
 JNIEXPORT jint JNICALL
