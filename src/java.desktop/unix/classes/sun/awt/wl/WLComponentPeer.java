@@ -428,7 +428,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                             isModal, isMaximized, isMinimized, title, appId);
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
-                    setLocation(xNative, yNative);
+                    setLocationOfToplevel(xNative, yNative);
                 }
 
                 notifyNativeWindowCreated(nativePtr);
@@ -648,6 +648,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         acc.setLocation(target, newX, newY);
     }
 
+    private void resetTargetLocationTo(GraphicsConfiguration gc) {
+        var l = gc.getBounds().getLocation();
+        resetTargetLocationTo(l.x, l.y);
+    }
+
     private boolean popupNeedsReposition() {
         synchronized (getStateLock()) {
             return repositionPopup;
@@ -695,7 +700,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // but not top-level windows. So we can only ask robot to do that.
             int newXNative = javaUnitsToSurfaceUnits(newX);
             int newYNative = javaUnitsToSurfaceUnits(newY);
-            performLocked(() -> setLocation(newXNative, newYNative));
+            performLocked(() -> setLocationOfToplevel(newXNative, newYNative));
         }
 
         if ((positionChanged || sizeChanged) && isPopup && visible) {
@@ -805,9 +810,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    private void setLocation(int xNative, int yNative) {
+    private void setLocationOfToplevel(int xNative, int yNative) {
+        assert !targetIsWlPopup() : "Must not be used for popup-type windows";
+
         if (WLKWinHelperState.isEnabled()) {
             WLKWinHelper.setWindowLocation(kwinAppId, xNative, yNative);
+        } else {
+            // Toplevels are assumed to be always located at (0, 0) of their respective monitors.
+            resetTargetLocationTo(target.getGraphicsConfiguration());
         }
     }
 
@@ -1830,12 +1840,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     Point newScreenLocation = newDevice.getBounds().getLocation();
                     loc.translate(newScreenLocation.x, newScreenLocation.y);
                     resetTargetLocationTo(loc.x, loc.y);
-                } else {
-                    // A window has been moved to another screen. Since windows are assumed to be located at (0, 0)
-                    // on their respective screens, update the location to reflect that.
-                    Point newLocation = newDevice.getBounds().getLocation();
-                    resetTargetLocationTo(newLocation.x, newLocation.y);
                 }
+            }
+
+            if (!targetIsWlPopup()) {
+                // Toplevels are assumed to be always located at (0, 0) of their respective monitors.
+                resetTargetLocationTo(newDevice.getDefaultConfiguration());
             }
 
             performUnlocked(() -> {
