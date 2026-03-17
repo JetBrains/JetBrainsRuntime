@@ -32,15 +32,10 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "WLRobotPeer.h"
 #include "WLGraphicsEnvironment.h"
 
 #include "xdg-decoration-unstable-v1.h"
 #include <stdbool.h>
-
-#ifdef WAKEFIELD_ROBOT
-#include "wakefield.h"
-#endif
 
 #ifdef HAVE_GTK_SHELL1
 #include <gtk-shell.h>
