@@ -1112,7 +1112,6 @@ jdk_awt_wayland = \
     -java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java \
     -java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java \
     -java/awt/TrayIcon \
-    -java/awt/wakefield \
     -java/awt/Window \
     -java/awt/xembed
 
