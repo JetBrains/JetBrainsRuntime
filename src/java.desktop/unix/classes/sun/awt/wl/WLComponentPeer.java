@@ -776,26 +776,16 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public Point getLocationOnScreen() {
-        return performLocked(() -> {
-            if (wlSurface != null) {
-                try {
-                    return WLRobotPeer.getLocationOfWLSurface(wlSurface);
-                } catch (UnsupportedOperationException ignore) {
-                    return getFakeLocationOnScreen();
-                }
-            } else {
-                return getFakeLocationOnScreen();
-            }
-        }, this::getFakeLocationOnScreen);
-    }
-
-    private Point getFakeLocationOnScreen() {
         if (WLKWinHelperState.isEnabled()) {
             Point location = WLKWinHelper.getWindowLocation(kwinAppId);
             if (location != null) {
                 return location;
             }
         }
+        return getFakeLocationOnScreen();
+    }
+
+    private Point getFakeLocationOnScreen() {
         // If we can't learn the real location from WLRobotPeer, we can at least
         // return a reasonable fake. This fake location places all windows in the top-left
         // corner of their respective screen and popups at the offset from
@@ -817,8 +807,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private void setLocation(int xNative, int yNative) {
         if (WLKWinHelperState.isEnabled()) {
             WLKWinHelper.setWindowLocation(kwinAppId, xNative, yNative);
-        } else {
-            WLRobotPeer.setLocationOfWLSurface(wlSurface, xNative, yNative);
         }
     }
 
