@@ -198,7 +198,7 @@ public class WLRobotPeer implements RobotPeer {
 
     @Override
     public boolean useAbsoluteCoordinates() {
-        return true;
+        return useRemoteDesktopRobotForCapture();
     }
 
     /**
