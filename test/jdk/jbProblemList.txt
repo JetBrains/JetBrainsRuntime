@@ -764,9 +764,6 @@ java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java 8238720,8322653 windows-a
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java 8238720,8322653 windows-all,macosx-all
 java/awt/event/MouseEvent/FrameMouseEventAbsoluteCoordsTest/FrameMouseEventAbsoluteCoordsTest.java 8238720 windows-all
 
-java/awt/wakefield/RobotKeyboard.java JBR-5653 linux-all
-java/awt/wakefield/ScreenCapture.java JBR-5653 linux-all
-
 # Several tests which fail sometimes on macos11
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java 8265985 macosx-all
 java/awt/security/WarningWindowDisposeTest/WarningWindowDisposeCrashTest.java JBR-5225 windows-all

@@ -476,12 +476,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
       LIBAWT_WLAWT_EXTRA_HEADER_DIRS += libpipewire/include
     endif
 
-    # Enable 'wakefield' extension for java.awt.Robot support
-    WAKEFIELD_ROBOT_CFLAGS=-DWAKEFIELD_ROBOT
-
     LIBAWT_WLAWT_CFLAGS += -DWLAWT \
-        $(WAKEFIELD_ROBOT_CFLAGS) \
-        $(FONTCONFIG_CFLAGS) \
+        $(FONTCgONFIG_CFLAGS) \
         $(VULKAN_FLAGS) \
         $(WAYLAND_CFLAGS) \
         $(CUPS_CFLAGS) \

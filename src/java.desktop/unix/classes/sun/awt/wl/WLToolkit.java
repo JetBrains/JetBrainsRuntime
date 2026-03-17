@@ -186,10 +186,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             toolkitThread.setDaemon(true);
             toolkitThread.start();
 
-            final Thread toolkitSystemThread = InnocuousThread.newThread("AWT-Wayland-system-dispatcher", this::dispatchNonDefaultQueues);
-            toolkitSystemThread.setDaemon(true);
-            toolkitSystemThread.start();
-
             dataDevice = new WLDataDevice(0); // TODO: for multiseat support pass wl_seat pointer here
 
             registerShutdownHook();
@@ -296,15 +292,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             );
         }
         return result;
-    }
-
-
-    /**
-     * Wayland events coming to queues other that the default are handled here.
-     * The code is executed on a separate thread and must not call any user code.
-     */
-    private void dispatchNonDefaultQueues() {
-        dispatchNonDefaultQueuesImpl(); // does not return until error or server disconnect
     }
 
     private final Semaphore eventsQueued = new Semaphore(0);
