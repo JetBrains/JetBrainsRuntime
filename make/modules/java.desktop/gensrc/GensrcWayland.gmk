@@ -43,8 +43,7 @@ WAYLAND_BASIC_PROTOCOL_FILES := \
         #
 
 WAYLAND_PROTOCOL_FILES := \
-        $(WAYLAND_BASIC_PROTOCOL_FILES) \
-        $(MODULE_SRC)/share/native/libwakefield/protocol/wakefield.xml \
+        $(WAYLAND_BASIC_PROTOCOL_FILES)
         #
 
 $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/_the.generated_wayland_protocols: $(WAYLAND_PROTOCOL_FILES)
