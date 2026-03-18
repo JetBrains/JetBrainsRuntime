@@ -177,7 +177,7 @@ static void vmembk_print_on(outputStream* os);
 ////////////////////////////////////////////////////////////////////////////////
 // global variables (for a description see os_aix.hpp)
 
-size_t    os::Aix::_physical_memory = 0;
+physical_memory_size_type    os::Aix::_physical_memory = 0;
 
 pthread_t os::Aix::_main_thread = ((pthread_t)0);
 
@@ -265,29 +265,29 @@ static bool is_close_to_brk(address a) {
   return false;
 }
 
-bool os::free_memory(size_t& value) {
+bool os::free_memory(physical_memory_size_type& value) {
   return Aix::available_memory(value);
 }
 
-bool os::available_memory(size_t& value) {
+bool os::available_memory(physical_memory_size_type& value) {
   return Aix::available_memory(value);
 }
 
-bool os::Aix::available_memory(size_t& value) {
+bool os::Aix::available_memory(physical_memory_size_type& value) {
   // Avoid expensive API call here, as returned value will always be null.
   if (os::Aix::on_pase()) {
     return 0x0LL;
   }
   os::Aix::meminfo_t mi;
   if (os::Aix::get_meminfo(&mi)) {
-    value = static_cast<size_t>(mi.real_free);
+    value = static_cast<physical_memory_size_type>(mi.real_free);
     return true;
   } else {
     return false;
   }
 }
 
-size_t os::physical_memory() {
+physical_memory_size_type os::physical_memory() {
   return Aix::physical_memory();
 }
 
@@ -358,7 +358,7 @@ void os::Aix::initialize_system_info() {
   if (!os::Aix::get_meminfo(&mi)) {
     assert(false, "os::Aix::get_meminfo failed.");
   }
-  _physical_memory = static_cast<size_t>(mi.real_total);
+  _physical_memory = static_cast<physical_memory_size_type>(mi.real_total);
 }
 
 // Helper function for tracing page sizes.
@@ -2407,7 +2407,7 @@ jint os::init_2(void) {
   }
 
   trcVerbose("processor count: %d", os::_processor_count);
-  trcVerbose("physical memory: %zu", Aix::_physical_memory);
+  trcVerbose("physical memory: " PHYS_MEM_TYPE_FORMAT, Aix::_physical_memory);
 
   // Initially build up the loaded dll map.
   LoadedLibraries::reload();
