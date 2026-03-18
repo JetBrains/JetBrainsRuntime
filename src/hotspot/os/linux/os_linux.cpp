@@ -161,7 +161,7 @@ enum CoredumpFilterBit {
 
 ////////////////////////////////////////////////////////////////////////////////
 // global variables
-size_t os::Linux::_physical_memory = 0;
+physical_memory_size_type os::Linux::_physical_memory = 0;
 
 address   os::Linux::_initial_thread_stack_bottom = nullptr;
 uintptr_t os::Linux::_initial_thread_stack_size   = 0;
@@ -236,15 +236,15 @@ julong os::Linux::available_memory_in_container() {
   return avail_mem;
 }
 
-bool os::available_memory(size_t& value) {
+bool os::available_memory(physical_memory_size_type& value) {
   return Linux::available_memory(value);
 }
 
-bool os::Linux::available_memory(size_t& value) {
+bool os::Linux::available_memory(physical_memory_size_type& value) {
   julong avail_mem = available_memory_in_container();
   if (avail_mem != static_cast<julong>(-1L)) {
     log_trace(os)("available container memory: " JULONG_FORMAT, avail_mem);
-    value = static_cast<size_t>(avail_mem);
+    value = static_cast<physical_memory_size_type>(avail_mem);
     return true;
   }
 
@@ -260,28 +260,28 @@ bool os::Linux::available_memory(size_t& value) {
     fclose(fp);
   }
   if (avail_mem == static_cast<julong>(-1L)) {
-    size_t free_mem = 0;
+    physical_memory_size_type free_mem = 0;
     if (!free_memory(free_mem)) {
       return false;
     }
     avail_mem = static_cast<julong>(free_mem);
   }
   log_trace(os)("available memory: " JULONG_FORMAT, avail_mem);
-  value = static_cast<size_t>(avail_mem);
+  value = static_cast<physical_memory_size_type>(avail_mem);
   return true;
 }
 
-bool os::free_memory(size_t& value) {
+bool os::free_memory(physical_memory_size_type& value) {
   return Linux::free_memory(value);
 }
 
-bool os::Linux::free_memory(size_t& value) {
+bool os::Linux::free_memory(physical_memory_size_type& value) {
   // values in struct sysinfo are "unsigned long"
   struct sysinfo si;
   julong free_mem = available_memory_in_container();
   if (free_mem != static_cast<julong>(-1L)) {
     log_trace(os)("free container memory: " JULONG_FORMAT, free_mem);
-    value = static_cast<size_t>(free_mem);
+    value = static_cast<physical_memory_size_type>(free_mem);
     return true;
   }
 
@@ -291,21 +291,21 @@ bool os::Linux::free_memory(size_t& value) {
   }
   free_mem = (julong)si.freeram * si.mem_unit;
   log_trace(os)("free memory: " JULONG_FORMAT, free_mem);
-  value = static_cast<size_t>(free_mem);
+  value = static_cast<physical_memory_size_type>(free_mem);
   return true;
 }
 
-size_t os::physical_memory() {
+physical_memory_size_type os::physical_memory() {
   if (OSContainer::is_containerized()) {
     jlong mem_limit;
     if ((mem_limit = OSContainer::memory_limit_in_bytes()) > 0) {
       log_trace(os)("total container memory: " JLONG_FORMAT, mem_limit);
-      return static_cast<size_t>(mem_limit);
+      return static_cast<physical_memory_size_type>(mem_limit);
     }
   }
 
-  size_t phys_mem = Linux::physical_memory();
-  log_trace(os)("total system memory: %zu", phys_mem);
+  physical_memory_size_type phys_mem = Linux::physical_memory();
+  log_trace(os)("total system memory: " PHYS_MEM_TYPE_FORMAT, phys_mem);
   return phys_mem;
 }
 
@@ -462,7 +462,7 @@ void os::Linux::initialize_system_info() {
       fclose(fp);
     }
   }
-  _physical_memory = static_cast<size_t>(sysconf(_SC_PHYS_PAGES)) * static_cast<size_t>(sysconf(_SC_PAGESIZE));
+  _physical_memory = static_cast<physical_memory_size_type>(sysconf(_SC_PHYS_PAGES)) * static_cast<physical_memory_size_type>(sysconf(_SC_PAGESIZE));
   assert(processor_count() > 0, "linux error");
 }
 
@@ -2446,12 +2446,12 @@ void os::print_memory_info(outputStream* st) {
   // values in struct sysinfo are "unsigned long"
   struct sysinfo si;
   sysinfo(&si);
-  size_t phys_mem = physical_memory();
-  st->print(", physical %zuk",
+  physical_memory_size_type phys_mem = physical_memory();
+  st->print(", physical " PHYS_MEM_TYPE_FORMAT "k",
             phys_mem >> 10);
-  size_t avail_mem = 0;
+  physical_memory_size_type avail_mem = 0;
   (void)os::available_memory(avail_mem);
-  st->print("(%zuk free)",
+  st->print("(" PHYS_MEM_TYPE_FORMAT "k free)",
             avail_mem >> 10);
   st->print(", swap " UINT64_FORMAT "k",
             ((jlong)si.totalswap * si.mem_unit) >> 10);
