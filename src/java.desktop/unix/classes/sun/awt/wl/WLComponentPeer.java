@@ -541,11 +541,13 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private void clearWindow() {
-        var g = getGraphics(surfaceData, null, background, null);
-        try {
-            g.clearRect(0, 0, getWidth(), getHeight());
-        } finally {
-            g.dispose();
+        var g = getGraphics();
+        if (g != null) {
+            try {
+                g.clearRect(0, 0, getWidth(), getHeight());
+            } finally {
+                g.dispose();
+            }
         }
     }
 

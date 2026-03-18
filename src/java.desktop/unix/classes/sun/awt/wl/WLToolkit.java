@@ -288,13 +288,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                 shutDownAfterServerError();
                 break;
             } else {
-                AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
-
                 if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
+                    AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                     try {
                         dispatchEvents();
                     } catch (Exception e) {
-                        log.severe("Exception during events handling on the WL thread: " + e.getMessage());
+                        log.severe("Exception during events handling on the WL thread: ", e);
                     }
                 }
 
@@ -303,7 +302,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                     try {
                         task.run();
                     } catch (Exception e) {
-                        log.severe("Exception during task invocation on the WL thread: " + e.getMessage());
+                        log.severe("Exception during task invocation on the WL thread: ", e);
                     }
                     task = tasks.poll();
                 }
