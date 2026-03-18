@@ -1157,10 +1157,10 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(Old2N
       }
     }
 
-    size_t avail_mem = 0;
+    physical_memory_size_type avail_mem = 0;
     (void)os::available_memory(avail_mem);
     log_debug(redefine, class, load)
-      ("loading name=%s kind=%d (avail_mem=%zuK)",
+      ("loading name=%s kind=%d (avail_mem=" PHYS_MEM_TYPE_FORMAT "K)",
        the_class->external_name(), _class_load_kind, avail_mem >> 10);
 
     // class bytes...
@@ -1327,8 +1327,9 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions_single_step(Old2N
       _object_klass_redefined = true;
     }
 
+    (void)os::available_memory(avail_mem);
     log_debug(redefine, class, load)
-      ("loaded name=%s (avail_mem=%zuK)", the_class->external_name(), avail_mem >> 10);
+      ("loaded name=%s (avail_mem=" PHYS_MEM_TYPE_FORMAT "K)", the_class->external_name(), avail_mem >> 10);
   }
 
   return JVMTI_ERROR_NONE;
@@ -2388,10 +2389,10 @@ void VM_EnhancedRedefineClasses::redefine_single_class(Thread *current, Instance
     // direct and indirect subclasses of the_class
     increment_class_counter(current, new_class);
 
-    size_t avail_mem = 0;
+    physical_memory_size_type avail_mem = 0;
     (void)os::available_memory(avail_mem);
     log_info(redefine, class, load)
-      ("redefined name=%s, count=%d (avail_mem=%zuK)",
+      ("redefined name=%s, count=%d (avail_mem=" PHYS_MEM_TYPE_FORMAT "K)",
        new_class->external_name(), java_lang_Class::classRedefinedCount(new_class->java_mirror()), avail_mem >> 10);
     Events::log_redefinition(current, "redefined class name=%s, count=%d",
                              new_class->external_name(),
