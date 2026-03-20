@@ -1306,7 +1306,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             }
         }
 
-        if (e.hasAxisEvent()) {
+        // Processing everything related to scrolling
+        if (e.hasAnyAxisLikeEvents()) {
             convertPointerEventToMWEParameters(e, xAxisWheelRoundRotationsAccumulator, yAxisWheelRoundRotationsAccumulator, mweConversionInfo);
 
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
