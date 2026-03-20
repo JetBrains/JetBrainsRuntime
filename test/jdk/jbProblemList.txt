@@ -421,6 +421,7 @@ java/awt/Clipboard/LostOwnershipChainTest/SystemClipboard2ProcTest.java 8234140 
 java/awt/Clipboard/NoOwnerNoTargetsTest.java 8234140 macosx-all
 java/awt/Clipboard/NullContentsTest.java JBR-8494 linux-5.15.0-1084-aws
 java/awt/Clipboard/PasteNullToTextComponentsTest.java 8234140 macosx-all,windows-all
+java/awt/Choice/ChoiceConsumeMouseEvents.java JBR-6951 windows-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java JBR-64 windows-all
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java JBR-5799 windows-all
 java/awt/Choice/ChoiceFocusLostTest.java JBR-5799 windows-x64
@@ -1561,9 +1562,11 @@ javax/sound/sampled/Lines/SDLwrite.java JBR-4455 linux-aarch64
 javax/sound/sampled/spi/MixerProvider/ExpectedNPEOnNull.java JBR-4455 linux-aarch64
 javax/sound/sampled/Mixers/BogusMixers.java JBR-4455 linux-aarch64
 
-java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java 8310487 linux-all
+java/awt/Choice/GetSizeTest/GetSizeTest.java JBR-837 windows-all
+java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java 8310487,JBR-6950 linux-all,windows-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java JBR-5905 linux-all
 java/awt/Choice/SelectItem/SelectCurrentItemTest.java JBR-8788 windows-all
+java/awt/Choice/SelectItem/SelectNewItemTest.java JBR-8387 windows-all
 java/awt/Choice/SelectNewItemTest/SelectNewItemTest.java 8315733,8322653,8324782 macosx-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java 8049405 windows-all,linux-all
 java/awt/Mixing/LWComboBox.java JBR-7595 linux-all
