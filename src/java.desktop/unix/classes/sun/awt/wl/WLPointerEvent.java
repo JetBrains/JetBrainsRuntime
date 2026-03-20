@@ -46,6 +46,7 @@ class WLPointerEvent {
     private boolean has_leave_event;
     private boolean has_motion_event;
     private boolean has_button_event;
+    private boolean has_axis_source_event;
 
     private long    surface; /// 'struct wl_surface *' this event appertains to
     private long    serial;
@@ -56,6 +57,8 @@ class WLPointerEvent {
 
     private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
     private boolean isButtonPressed; // true if button was pressed, false if released
+
+    private int     axisSource;             // axis source type from axis_source event
 
     private boolean xAxis_hasVectorValue;   // whether xAxis_vectorValue is valid
     private boolean xAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
@@ -168,6 +171,32 @@ class WLPointerEvent {
         }
     }
 
+    /** The {@code wl_pointer::axis_source} enum (don't confuse with the event of the same name). */
+    public enum AxisSourceType {
+        WHEEL(0),
+        FINGER(1),
+        CONTINUOUS(2),
+        WHEEL_TILT(3),
+
+        ;
+
+        public final int rawValue;
+
+        AxisSourceType(int rawValue) {
+            this.rawValue = rawValue;
+        }
+
+        static AxisSourceType recognizedOrNull(final int rawValue) {
+            for (var e : values()) {
+                if (e.rawValue == rawValue) {
+                    return e;
+                }
+            }
+            return null;
+        }
+    }
+
+
     public boolean hasEnterEvent() {
         return has_enter_event;
     }
@@ -184,9 +213,13 @@ class WLPointerEvent {
         return has_button_event;
     }
 
+    public boolean hasAxisSourceEvent() {
+        return has_axis_source_event;
+    }
+
     /** {@code axis} / {@code axis_source} / {@code axis_stop} / {@code axis_discrete} / {@code axis_value120} / {@code axis_relative_direction}. */
     public boolean hasAnyAxisLikeEvents() {
-        return xAxisHasEvents() || yAxisHasEvents();
+        return hasAxisSourceEvent() || xAxisHasEvents() || yAxisHasEvents();
     }
 
     /**
@@ -253,6 +286,11 @@ class WLPointerEvent {
     public boolean getIsButtonPressed() {
         assert hasButtonEvent() : "Must have a button event to get the button state";
         return isButtonPressed;
+    }
+
+    public int getAxisSource() {
+        assert hasAxisSourceEvent() : "Must have an axis_source event to get the axis source";
+        return axisSource;
     }
 
     public boolean xAxisHasEvents() {
@@ -344,6 +382,12 @@ class WLPointerEvent {
 
         if (hasAnyAxisLikeEvents()) {
             builder.append(" axis");
+
+            if (hasAxisSourceEvent()) {
+                builder.append(" source: ").append(getAxisSource())
+                                           .append(" (AxisSourceType=").append(AxisSourceType.recognizedOrNull(getAxisSource())).append(')');
+            }
+
             if (yAxisHasEvents()) {
                 builder.append(" vertical-scroll:");
 

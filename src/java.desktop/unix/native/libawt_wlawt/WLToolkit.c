@@ -107,6 +107,7 @@ static jfieldID hasEnterEventFID;
 static jfieldID hasLeaveEventFID;
 static jfieldID hasMotionEventFID;
 static jfieldID hasButtonEventFID;
+static jfieldID hasAxisSourceEventFID;
 static jfieldID serialFID;
 static jfieldID surfaceFID;
 static jfieldID timestampFID;
@@ -114,6 +115,7 @@ static jfieldID surfaceXFID;
 static jfieldID surfaceYFID;
 static jfieldID buttonCodeFID;
 static jfieldID isButtonPressedFID;
+static jfieldID axisSourceFID;
 static jfieldID xAxis_hasVectorValueFID;
 static jfieldID xAxis_hasStopEventFID;
 static jfieldID xAxis_hasSteps120ValueFID;
@@ -300,6 +302,7 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetBooleanField(env, pointerEventRef, hasLeaveEventFID, pointer_event.has_leave_event);
     (*env)->SetBooleanField(env, pointerEventRef, hasMotionEventFID, pointer_event.has_motion_event);
     (*env)->SetBooleanField(env, pointerEventRef, hasButtonEventFID, pointer_event.has_button_event);
+    (*env)->SetBooleanField(env, pointerEventRef, hasAxisSourceEventFID, pointer_event.has_axis_source_event);
 
     (*env)->SetLongField(env, pointerEventRef, surfaceFID, (long)pointer_event.surface);
     (*env)->SetLongField(env, pointerEventRef, serialFID, pointer_event.serial);
@@ -311,6 +314,8 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetIntField(env, pointerEventRef, buttonCodeFID, (jint)pointer_event.button);
     (*env)->SetBooleanField(env, pointerEventRef, isButtonPressedFID,
                             (pointer_event.state == WL_POINTER_BUTTON_STATE_PRESSED));
+
+    (*env)->SetIntField(env, pointerEventRef, axisSourceFID, (jint)pointer_event.axis_source);
 
     (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasVectorValueFID,   pointer_event.axes[1].has_vector_value);
     (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasStopEventFID,     pointer_event.axes[1].has_stop_event);
@@ -791,6 +796,8 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                       JNI_FALSE);
     CHECK_NULL_RETURN(hasButtonEventFID = (*env)->GetFieldID(env, pointerEventClass, "has_button_event", "Z"),
                       JNI_FALSE);
+    CHECK_NULL_RETURN(hasAxisSourceEventFID = (*env)->GetFieldID(env, pointerEventClass, "has_axis_source_event", "Z"),
+                      JNI_FALSE);
 
     CHECK_NULL_RETURN(serialFID = (*env)->GetFieldID(env, pointerEventClass, "serial", "J"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceFID = (*env)->GetFieldID(env, pointerEventClass, "surface", "J"), JNI_FALSE);
@@ -799,6 +806,8 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(surfaceYFID = (*env)->GetFieldID(env, pointerEventClass, "surface_y", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
+
+    CHECK_NULL_RETURN(axisSourceFID = (*env)->GetFieldID(env, pointerEventClass, "axisSource", "I"), JNI_FALSE);
 
     CHECK_NULL_RETURN(xAxis_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasVectorValue", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(xAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasStopEvent", "Z"), JNI_FALSE);
