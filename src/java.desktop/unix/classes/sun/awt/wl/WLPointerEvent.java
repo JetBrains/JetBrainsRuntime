@@ -184,7 +184,8 @@ class WLPointerEvent {
         return has_button_event;
     }
 
-    public boolean hasAxisEvent() {
+    /** {@code axis} / {@code axis_source} / {@code axis_stop} / {@code axis_discrete} / {@code axis_value120} / {@code axis_relative_direction}. */
+    public boolean hasAnyAxisLikeEvents() {
         return xAxisHasEvents() || yAxisHasEvents();
     }
 
@@ -206,7 +207,10 @@ class WLPointerEvent {
      * @return true if this event's field 'timestamp' is valid.
      */
     public boolean hasTimestamp() {
-        return hasMotionEvent() || hasButtonEvent();
+        return hasMotionEvent() ||
+               hasButtonEvent() ||
+               xAxisHasVectorValue() || xAxisHasStopEvent() ||
+               yAxisHasVectorValue() || yAxisHasStopEvent();
     }
 
     /**
@@ -338,7 +342,7 @@ class WLPointerEvent {
             builder.append(getIsButtonPressed() ? "pressed" : "released");
         }
 
-        if (hasAxisEvent()) {
+        if (hasAnyAxisLikeEvents()) {
             builder.append(" axis");
             if (yAxisHasEvents()) {
                 builder.append(" vertical-scroll:");
