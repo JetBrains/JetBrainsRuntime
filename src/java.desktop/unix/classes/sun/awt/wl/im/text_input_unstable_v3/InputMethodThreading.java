@@ -25,6 +25,7 @@
 
 package sun.awt.wl.im.text_input_unstable_v3;
 
+import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.EventQueue;
@@ -63,12 +64,22 @@ final class InputMethodThreading {
             releaseAccess();
         }
 
+
         public void performBlockingOnEdt(VoidSynchronousStep step) throws Exception {
-            InputMethodThreading.this.computeBlockingOnEdtUnderCurrentOrChildAccess(step);
+            InputMethodThreading.this.computeBlockingOnAWTThreadUnderCurrentOrChildAccess(step, AWTThreadDescriptor.EDT);
         }
 
         public <R> R computeBlockingOnEdt(SynchronousStep<R> step) throws Exception {
-            return InputMethodThreading.this.computeBlockingOnEdtUnderCurrentOrChildAccess(step);
+            return InputMethodThreading.this.computeBlockingOnAWTThreadUnderCurrentOrChildAccess(step, AWTThreadDescriptor.EDT);
+        }
+
+
+        public void performBlockingOnWLThread(VoidSynchronousStep step) throws Exception {
+            InputMethodThreading.this.computeBlockingOnAWTThreadUnderCurrentOrChildAccess(step, AWTThreadDescriptor.WLThread);
+        }
+
+        public <R> R computeBlockingOnWLThread(SynchronousStep<R> step) throws Exception {
+            return InputMethodThreading.this.computeBlockingOnAWTThreadUnderCurrentOrChildAccess(step, AWTThreadDescriptor.WLThread);
         }
 
 
@@ -124,11 +135,20 @@ final class InputMethodThreading {
 
 
     public static void invokeOnEdtNowOrLater(final Runnable runnable) {
+        invokeOnAWTThreadNowOrLater(runnable, AWTThreadDescriptor.EDT);
+    }
+
+    public static void invokeOnWLThreadNowOrLater(final Runnable runnable) {
+        invokeOnAWTThreadNowOrLater(runnable, AWTThreadDescriptor.WLThread);
+    }
+
+    private static void invokeOnAWTThreadNowOrLater(final Runnable runnable, final AWTThreadDescriptor awtThreadDescriptor) {
         Objects.requireNonNull(runnable, "runnable");
+        Objects.requireNonNull(awtThreadDescriptor, "awtThreadDescriptor");
 
-        final boolean isFromEdt = EventQueue.isDispatchThread();
+        final boolean isFromTargetThread = awtThreadDescriptor.isCurrentThread();
 
-        final Throwable stacktrace = isFromEdt ? null : new Throwable("Invoked from here");
+        final Throwable stacktrace = isFromTargetThread ? null : new Throwable("Invoked from here");
         final Runnable wrapped = () -> {
             try {
                 runnable.run();
@@ -139,8 +159,8 @@ final class InputMethodThreading {
 
                 if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                     log.warning(
-                        String.format("invokeOnEdtNowOrLater: unexpected exception on EDT from the following runnable: %s.",
-                                      runnable),
+                        String.format("invokeOnAWTThreadNowOrLater: unexpected exception on %s from runnable: %s.",
+                                      awtThreadDescriptor, runnable),
                         unexpected
                     );
                 }
@@ -149,10 +169,10 @@ final class InputMethodThreading {
             }
         };
 
-        if (EventQueue.isDispatchThread()) {
+        if (isFromTargetThread) {
             wrapped.run();
         } else {
-            EventQueue.invokeLater(wrapped);
+            awtThreadDescriptor.invokeLater(wrapped);
         }
     }
 
@@ -162,7 +182,7 @@ final class InputMethodThreading {
      */
     private static final int PERMITS_FOR_ROOT_ACCESS = 2;
     /**
-     * @see #computeBlockingOnEdtUnderCurrentOrChildAccess
+     * @see #computeBlockingOnAWTThreadUnderCurrentOrChildAccess
      */
     private static final int PERMITS_FOR_CHILD_ACCESS = 1;
     /**
@@ -394,18 +414,62 @@ final class InputMethodThreading {
     }
 
 
-    private <R> R computeBlockingOnEdtUnderCurrentOrChildAccess(SynchronousStep<R> step) throws Exception {
+    private enum AWTThreadDescriptor {
+        EDT {
+            @Override
+            boolean isCurrentThread() {
+                return EventQueue.isDispatchThread();
+            }
+
+            @Override
+            void invokeLater(Runnable runnable) {
+                EventQueue.invokeLater(runnable);
+            }
+        },
+        WLThread {
+            @Override
+            boolean isCurrentThread() {
+                return WLToolkit.isWLThread();
+            }
+
+            @Override
+            void invokeLater(Runnable runnable) {
+                WLToolkit.performOnWLThread(runnable);
+            }
+        };
+
+        abstract boolean isCurrentThread();
+        abstract void invokeLater(Runnable runnable);
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ":" + name();
+        }
+    }
+
+    private <R> R computeBlockingOnAWTThreadUnderCurrentOrChildAccess(SynchronousStep<R> step, AWTThreadDescriptor awtThreadDescriptor) throws Exception {
+        if (log.isLoggable(PlatformLogger.Level.FINEST)) {
+            log.finest(
+                String.format(
+                    "computeBlockingOnAWTThreadUnderCurrentOrChildAccess(awtThreadDescriptor=%s).",
+                    awtThreadDescriptor
+                ),
+                new Throwable("Stacktrace")
+            );
+        }
+
         Objects.requireNonNull(step, "step");
+        Objects.requireNonNull(awtThreadDescriptor, "awtThreadDescriptor");
 
         final var accessInfo = threadAcquiredAccessInfo.get();
         if (accessInfo.accessType == null) {
             throw new IllegalStateException(supplementExceptionMessage(
-                "Trying to share an access for EDT when not owning any (accessType == null)"
+                "Trying to share an access for " + awtThreadDescriptor + " when not owning any (accessType == null)"
             ));
         }
         assert accessInfo.accessReentrancyLevel > 0 : "Unexpected accessReentrancyLevel=" + accessInfo.accessReentrancyLevel;
 
-        if (EventQueue.isDispatchThread()) {
+        if (awtThreadDescriptor.isCurrentThread()) {
             return step.execute();
         }
 
@@ -414,16 +478,16 @@ final class InputMethodThreading {
 
         // So, what's going on here:
         // By this point we're positive that:
-        //   1. The current thread is not EDT
+        //   1. The current thread is not the one we need to perform the task on
         //   2. The current thread has either ROOT or CHILD access
         //
-        // We want kind of "atomically" pass the access to EDT for the duration of the task we're about to post to there.
-        // It's done via releasing 1 permit to the semaphore, but only 1. This way we guarantee no other thread can
-        //   acquire the access via withExclusiveAccess, because 2 permits are required for that.
-        // Then, the EDT "catches" that 1 permit, executes the task and writes the result to asyncTaskResultContainer.
+        // We want kind of "atomically" pass the access to that thread for the duration of the task we're about to post to there.
+        // It's done via releasing 1 semaphore's permit, but only 1. This way we guarantee no other thread can
+        //   acquire the access via withExclusiveAccess, because that requires 2 permits.
+        // Then, the other thread "catches" that 1 permit, executes the task and writes the result to asyncTaskResultContainer.
         //
         // asyncTaskResultContainer acts as both a condition variable, which the current thread blocks on until the completion
-        //   of the EDT task, and a lightweight future-promise to pass the task's result, which can be either R
+        //   of the task, and a lightweight future-promise to pass the task's result, which can be either R
         //   or an exception.
 
         final Runnable wrappedStep = () -> {
@@ -453,11 +517,11 @@ final class InputMethodThreading {
 
             emitChildAccessPermitFromThisThread();
             try {
-                EventQueue.invokeLater(wrappedStep);
+                awtThreadDescriptor.invokeLater(wrappedStep);
 
                 // From now on, we MUST wait for the wrappedStep to finish and CANNOT proceed further in any other case
-                //   because it would immediately mean that both this thread and EDT have concurrent access to
-                //   the InputMethod instance.
+                //   because it would immediately mean that both the current thread and awtThreadDescriptor's one
+                //   have concurrent access to the InputMethod instance.
 
                 int fails = 0;
                 do {
@@ -470,9 +534,9 @@ final class InputMethodThreading {
                         fails = Math.min(fails + 1, 6);
                         if (log.isLoggable(PlatformLogger.Level.WARNING)) {
                             if (fails < 5) {
-                                log.warning("computeBlockingOnEdtUnderCurrentOrChildAccess: failed Object.wait call.", err);
+                                log.warning("computeBlockingOnAWTThreadUnderCurrentOrChildAccess: failed Object.wait call.", err);
                             } else if (fails == 5) {
-                                log.warning("computeBlockingOnEdtUnderCurrentOrChildAccess: 5 failed Object.wait calls in a row. Subsequent fails will not be logged.", err);
+                                log.warning("computeBlockingOnAWTThreadUnderCurrentOrChildAccess: 5 failed Object.wait calls in a row. Subsequent fails will not be logged.", err);
                             }
                         }
                     }
