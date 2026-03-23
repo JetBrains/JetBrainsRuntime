@@ -88,11 +88,8 @@ public class WLDataOffer {
         // Otherwise an exception should be thrown from native code
         assert fd != -1 : "An invalid file descriptor received from the native code";
 
-        FileDescriptor javaFD = new FileDescriptor();
-        jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaFD, fd);
-        try (var in = new FileInputStream(javaFD)) {
-            return WLDataDevice.readAllBytesFrom(in);
-        }
+        int timeoutMs = 100;
+        return WLDataDevice.readAllBytesFromFd(fd, timeoutMs);
     }
 
     public synchronized void accept(long serial, String mime) {
