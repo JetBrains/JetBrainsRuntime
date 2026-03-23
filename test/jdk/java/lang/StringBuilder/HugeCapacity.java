@@ -27,8 +27,8 @@
  * @summary Capacity should not get close to Integer.MAX_VALUE unless
  *          necessary
  * @requires (sun.arch.data.model == "64" & os.maxMemory >= 8G)
- * @run main/othervm -Xms6G -Xmx6G -XX:+CompactStrings HugeCapacity true
- * @run main/othervm -Xms6G -Xmx6G -XX:-CompactStrings HugeCapacity false
+ * @run main/othervm -Xms8G -Xmx8G -XX:-CompactStrings -Xlog:gc HugeCapacity false
+ * @run main/othervm -Xms8G -Xmx8G -XX:+CompactStrings -Xlog:gc HugeCapacity true
  */
 
 public class HugeCapacity {
