@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <sys/poll.h>
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
@@ -1019,6 +1020,26 @@ Java_sun_awt_wl_WLDataDevice_performDeletionsOnEDTImpl(JNIEnv *env, jclass clazz
     struct DataDevice *dataDevice = jlong_to_ptr(dataDeviceNativePtr);
     assert(dataDevice != NULL);
     DataDevice_drainOfferDeletionQueue(dataDevice, env);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLDataDevice_waitUntilReadableImpl(JNIEnv *env, jclass clazz, jint fd, jint timeoutMs)
+{
+    struct pollfd pollfd = {0};
+    pollfd.fd = fd;
+    pollfd.events = POLLIN | POLLERR;
+
+    while (1) {
+        int ret = poll(&pollfd, 1, timeoutMs);
+        if (ret == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return JNI_FALSE;
+        }
+
+        return !!(pollfd.revents & (POLLIN | POLLERR));
+    }
 }
 
 JNIEXPORT jlong JNICALL
