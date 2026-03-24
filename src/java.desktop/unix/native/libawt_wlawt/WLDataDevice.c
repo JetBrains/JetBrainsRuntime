@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <sys/poll.h>
+#include <poll.h>
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
