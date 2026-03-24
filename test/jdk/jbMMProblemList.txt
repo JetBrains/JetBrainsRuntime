@@ -124,6 +124,7 @@ javax/swing/text/html/CSS/4530474/bug4530474.java JBR-5951 windows-x64
 
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java JBR-9885 windows-10.0
 jb/java/awt/Focus/RequestFocusInParent.java JBR-9843 windows-10.0
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-9886 windows-10.0
 
 jdk/editpad/EditPadTest.java JBR-9839 windows-all
 

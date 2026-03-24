@@ -74,6 +74,7 @@ jb/java/awt/Focus/MaximizedCustomDecorationsTest.java JBR-9346 windows-x64
 jb/java/awt/Focus/ModalDialogFromMenuTest.java JBR-9426 windows-x64
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java JBR-9885 windows-x64
 jb/java/awt/Focus/NewFrameAfterDialogTest.java JBR-7387 windows-x64
+jb/java/awt/Window/ZOrderOnModalDialogActivation.java JBR-9886 windows-10.0
 
 # VoiceOver on MacOS
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java JBR-5397 macosx-all
@@ -174,6 +175,7 @@ java/awt/Component/NativeInLightShow/NativeInLightShow.java JBR-7715 windows-x64
 java/awt/Component/RepaintTest.java JBR-7754 windows-x64
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java JBR-5538 windows-x64
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
+java/awt/dnd/DragExitBeforeDropTest.java 8242805,JBR-10045 macosx-all,windows-10.0
 java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-x64
 java/awt/dnd/RecognizedActionTest/RecognizedActionTest.java JBR-8037 windows-x64
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-all
