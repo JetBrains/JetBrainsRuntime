@@ -2245,7 +2245,8 @@ void G1CollectedHeap::print_heap_regions() const {
 }
 
 void G1CollectedHeap::print_heap_on(outputStream* st) const {
-  size_t heap_used = Heap_lock->owned_by_self() ? used() : used_unlocked();
+  size_t heap_used = (Thread::current_or_null_safe() != nullptr &&
+                      Heap_lock->owned_by_self()) ? used() : used_unlocked();
   st->print("%-20s", "garbage-first heap");
   st->print(" total reserved %zuK, committed %zuK, used %zuK",
             _hrm.reserved().byte_size()/K, capacity()/K, heap_used/K);
