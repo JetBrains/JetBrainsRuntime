@@ -29,6 +29,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.awt.wl.WLComponentPeer;
+import sun.awt.wl.WLToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.AWTEvent;
@@ -54,15 +55,19 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
     // Threading specification:
     //   * Since all the public API (from InputMethod and InputMethodAdapter) gets executed as a part of the common AWT,
     //     invocations may happen on any thread, not EDT only.
-    //   * Incoming Wayland events (zwp_text_input_v3_on*) are currently dispatched on EDT only,
+    //   * Incoming Wayland events (zwp_text_input_v3_on*) are dispatched on WLToolkit dispatching thread only,
     //     it's a guarantee from the WLToolkit.
+    //   * Outcoming Wayland requests (zwp_text_input_v3_* except zwp_text_input_v3_on*) must only be sent from
+    //     the WLToolkit dispatching thread only (a requirement of the WLToolkit).
+    //   * Invoking invokeAndWait upon sun.awt.wl.WLToolkit#performOnWLThreadAndWait under java.awt.Component#getTreeLock as well as taking
+    //     the lock inside the performOnWLThreadAndWait's callback should be avoided at all costs.
     //
     //   Therefore:
     //   1. The internal state of WLInputMethodZwpTextInputV3 must only be accessed in a thread-safe manner.
     //      Currently, it's implemented via _mutual_ exclusion access which, however, can be "delegated" to another thread
     //      if the current thread is performing a blocking call to that thread. The access is delegated strictly for the
     //      duration of the blocking call.
-    //      This mechanics is implemented in InputMethodThreading and is utilized here via the field "threading".
+    //      This mechanism is implemented in InputMethodThreading and is utilized here via the field "threading".
     //   2. The concurrency between incoming Wayland events tied to native Wayland contexts and the routines
     //      of creating/destroying those contexts must be given special care.
 
@@ -977,10 +982,11 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
             assert wlBeingCommittedChanges == null : "Must not initialize being-committed changes twice";
             assert wlIncomingChanges == null : "Must not initialize incoming changes twice";
 
-            // Making sure the context is being created on EDT to prevent concurrency between
+            // Making sure the context is being created on the WLToolkit thread to prevent concurrency between
             //   this routine and the context's native Wayland events.
-            // Prevention is working as long as the native events are guaranteed to be dispatched on EDT only.
-            wlInputContextState = ea.computeBlockingOnEdt(() -> {
+            // Prevention is working as long as the native events are guaranteed to be dispatched on the
+            //   WLToolkit thread only.
+            wlInputContextState = ea.computeBlockingOnWLThread(() -> {
                 long nativeCtxPtr = 0;
 
                 try {
@@ -1021,10 +1027,11 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
         }
 
         if (ctxToDispose != null && ctxToDispose.nativeContextPtr != 0) {
-            // Making sure the context is being destroyed on EDT to prevent concurrency between
+            // Making sure the context is being destroyed on the WLToolkit thread to prevent concurrency between
             //   the destruction of the context and its incoming native events.
-            // Prevention is working as long as the native events are guaranteed to be dispatched on EDT only.
-            InputMethodThreading.invokeOnEdtNowOrLater(() -> {
+            // Prevention is working as long as the native events are guaranteed to be dispatched on the
+            //   WLToolkit thread only.
+            InputMethodThreading.invokeOnWLThreadNowOrLater(() -> {
                 disposeNativeContext(ctxToDispose.nativeContextPtr);
             });
         }
@@ -1075,47 +1082,62 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
                 log.finer("wlSendPendingChangesNow(): sending the change set {0}. this={1}.", changesToSend, this);
             }
 
-            if (changesToSend != null) {
-                if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
-                    if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
-                        throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus="
-                                                        + this.awtActivationStatus);
+            try {
+                // All Wayland requests must be performed on the WLToolkit thread only.
+                ea.performBlockingOnWLThread(() -> {
+                    if (changesToSend != null) {
+                        if (Boolean.TRUE.equals(changesToSend.getEnabledState())) {
+                            if (this.awtActivationStatus != AWTActivationStatus.ACTIVATED) {
+                                throw new IllegalStateException("Attempt to enable an input context while the owning WLInputMethodZwpTextInputV3 is not active. WLInputMethodZwpTextInputV3.awtActivationStatus="
+                                                                + this.awtActivationStatus);
+                            }
+                            if (this.awtNativeImIsExplicitlyDisabled) {
+                                throw new IllegalStateException("Attempt to enable an input context while it must stay disabled");
+                            }
+                            zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
+                        }
+
+                        if (changesToSend.getTextChangeCause() != null) {
+                            zwp_text_input_v3_set_text_change_cause(wlInputContextState.nativeContextPtr,
+                                                                    changesToSend.getTextChangeCause().intValue);
+                        }
+
+                        if (changesToSend.getContentTypeHint() != null && changesToSend.getContentTypePurpose() != null) {
+                            zwp_text_input_v3_set_content_type(wlInputContextState.nativeContextPtr,
+                                                               changesToSend.getContentTypeHint(),
+                                                               changesToSend.getContentTypePurpose().intValue);
+                        }
+
+                        if (changesToSend.getCursorRectangle() != null) {
+                            zwp_text_input_v3_set_cursor_rectangle(wlInputContextState.nativeContextPtr,
+                                                                   changesToSend.getCursorRectangle().x,
+                                                                   changesToSend.getCursorRectangle().y,
+                                                                   changesToSend.getCursorRectangle().width,
+                                                                   changesToSend.getCursorRectangle().height);
+                        }
+
+                        if (Boolean.FALSE.equals(changesToSend.getEnabledState())) {
+                            zwp_text_input_v3_disable(wlInputContextState.nativeContextPtr);
+                        }
                     }
-                    if (this.awtNativeImIsExplicitlyDisabled) {
-                        throw new IllegalStateException("Attempt to enable an input context while it must stay disabled.");
-                    }
-                    zwp_text_input_v3_enable(wlInputContextState.nativeContextPtr);
-                }
 
-                if (changesToSend.getTextChangeCause() != null) {
-                    zwp_text_input_v3_set_text_change_cause(wlInputContextState.nativeContextPtr,
-                                                            changesToSend.getTextChangeCause().intValue);
+                    zwp_text_input_v3_commit(wlInputContextState.nativeContextPtr);
+                });
+            } catch (Error internalErr) {
+                // Interfering with this class of exceptions as little as possible, so even logging is out
+                throw internalErr;
+            } catch (Throwable err) {
+                log.severe(
+                    String.format("wlSendPendingChangesNow(): failed to send the change set %s. this=%s.", changesToSend, this),
+                    err
+                );
+                if (err instanceof RuntimeException re) {
+                    throw re;
                 }
-
-                if (changesToSend.getContentTypeHint() != null && changesToSend.getContentTypePurpose() != null) {
-                    zwp_text_input_v3_set_content_type(wlInputContextState.nativeContextPtr,
-                                                       changesToSend.getContentTypeHint(),
-                                                       changesToSend.getContentTypePurpose().intValue);
-                }
-
-                if (changesToSend.getCursorRectangle() != null) {
-                    zwp_text_input_v3_set_cursor_rectangle(wlInputContextState.nativeContextPtr,
-                                                           changesToSend.getCursorRectangle().x,
-                                                           changesToSend.getCursorRectangle().y,
-                                                           changesToSend.getCursorRectangle().width,
-                                                           changesToSend.getCursorRectangle().height);
-                }
-
-                if (Boolean.FALSE.equals(changesToSend.getEnabledState())) {
-                    zwp_text_input_v3_disable(wlInputContextState.nativeContextPtr);
-                }
+                throw new RuntimeException(err);
             }
 
-            zwp_text_input_v3_commit(wlInputContextState.nativeContextPtr);
-
             wlBeingCommittedChanges = wlInputContextState.syncWithCommittedOutgoingChanges(changesToSend);
-
-            ea.suppressUnusedWarning();
         } catch (InputMethodThreading.ExclusiveAccessException err) {
             throw logAndRethrowAsUnchecked("wlSendPendingChangesNow()", err);
         }
@@ -1564,7 +1586,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::enter} events. */
     private void zwp_text_input_v3_onEnter(long enteredWlSurfacePtr) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be called on the WL thread";
 
         try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1588,7 +1610,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::leave} events. */
     private void zwp_text_input_v3_onLeave(long leftWlSurfacePtr) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be called on the WL thread";
 
         try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1613,7 +1635,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::preedit_string} events. */
     private void zwp_text_input_v3_onPreeditString(byte[] preeditStrUtf8, int cursorBeginUtf8Byte, int cursorEndUtf8Byte) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be called on the WL thread";
 
         try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1635,7 +1657,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::commit_string} events. */
     private void zwp_text_input_v3_onCommitString(byte[] commitStrUtf8) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be called on the WL thread";
 
         try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1657,7 +1679,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::delete_surrounding_text} events. */
     private void zwp_text_input_v3_onDeleteSurroundingText(long numberOfUtf8BytesBeforeToDelete, long numberOfUtf8BytesAfterToDelete) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be called on the WL thread";
 
         // TODO: support the surrounding text API (set_surrounding_text + set_text_change_cause | delete_surrounding text)
         //       at least for particular cases.
@@ -1676,7 +1698,7 @@ final class WLInputMethodZwpTextInputV3 extends InputMethodAdapter {
 
     /** Called in response to {@code zwp_text_input_v3::done} events. */
     private void zwp_text_input_v3_onDone(long doneSerial) {
-        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        assert WLToolkit.isWLThread() : "Method must only be called on the WL thread";
 
         try (final var ea = threading.withExclusiveAccess(EXCLUSIVE_ACCESS_OBTAINING_TIMEOUT_MS)) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
