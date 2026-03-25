@@ -288,7 +288,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/awt \
         common/java2d \
         common/font \
-        common/awt/AccessibleAnnouncer \
+        common/accessibility/AccessibleAnnouncer \
         #
 
     LIBAWT_XAWT_EXCLUDES := medialib debug wl $(VULKAN_EXCLUDES)
@@ -314,9 +314,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
     LIBAWT_XAWT_CFLAGS += -DXAWT -DXAWT_HACK \
         $(FONTCONFIG_CFLAGS) \
         $(CUPS_CFLAGS) \
+        $(A11Y_SPEECHD_ANNOUNCING_CFLAGS) \
         #
-
-    LIBAWT_XAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
     ifeq ($(call isTargetOs, linux), true)
       ifeq ($(DISABLE_XRENDER), true)
@@ -395,7 +394,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
         common/java2d \
         common/font \
         common/wayland \
-        common/awt/AccessibleAnnouncer \
+        common/accessibility/AccessibleAnnouncer \
         #
 
     LIBAWT_WLAWT_EXCLUDES := medialib debug opengl x11 $(VULKAN_EXCLUDES)
@@ -423,9 +422,8 @@ ifeq ($(call isTargetOs, windows macosx), false)
         $(WAKEFIELD_ROBOT_CFLAGS) \
         $(FONTCONFIG_CFLAGS) \
         $(VULKAN_FLAGS) \
-        $(CUPS_CFLAGS)
-
-    LIBAWT_WLAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
+        $(CUPS_CFLAGS) \
+        $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
 
     LIBAWT_WLAWT_LIBS := $(LIBM) -lawt $(WAYLAND_LIBS) $(LIBDL) -ljava -ljvm -lrt
 
