@@ -102,6 +102,10 @@ ifeq ($(DBUS_FOUND), true)
   LIBAWT_CFLAGS += -DDBUS_FOUND
 endif
 
+ifeq ($(ENABLE_HEADLESS_ONLY), true)
+  LIBAWT_CFLAGS += -DHEADLESS
+endif
+
 ifeq ($(call isTargetOs, windows), true)
   LIBAWT_CFLAGS += -EHsc -DUNICODE -D_UNICODE -DMLIB_OS64BIT
   LIBAWT_RCFLAGS ?= -I$(TOPDIR)/src/java.base/windows/native/launcher/icons
@@ -279,13 +283,17 @@ ifeq ($(call isTargetOs, windows macosx), false)
   LIBAWT_HEADLESS_EXCLUDE_FILES := \
       screencast_pipewire.c \
       screencast_portal.c \
+      GLXGraphicsConfig.c \
+      GLXSurfaceData.c \
+      X11PMBlitLoops.c \
+      X11Renderer.c \
+      X11SurfaceData.c \
       #
 
   LIBAWT_HEADLESS_EXTRA_HEADER_DIRS := \
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
       common/awt/debug \
       common/font \
-      common/java2d/opengl \
       java.base:libjvm \
       #
 
@@ -305,7 +313,7 @@ ifeq ($(call isTargetOs, windows macosx), false)
   $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_HEADLESS, \
       NAME := awt_headless, \
       EXTRA_SRC := $(LIBAWT_HEADLESS_EXTRA_SRC), \
-      EXCLUDES := medialib wl $(VULKAN_EXCLUDES), \
+      EXCLUDES := medialib opengl wl $(VULKAN_EXCLUDES), \
       EXCLUDE_FILES := $(LIBAWT_HEADLESS_EXCLUDE_FILES), \
       ONLY_EXPORTED := $(LIBAWT_HEADLESS_ONLY_EXPORTED), \
       OPTIMIZATION := LOW, \
