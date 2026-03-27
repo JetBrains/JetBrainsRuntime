@@ -206,10 +206,6 @@ if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
       log "Checking '$line':"
       codesign --verify --deep --strict --verbose=4 "$line"
     done
-
-    log "Create symlink for 'Chromium Embedded Framework.framework'..."
-    ln -s "../../../Chromium Embedded Framework.framework" "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework"
-    ls -l "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks"
 fi
 
 log "Signing whole app..."
@@ -230,6 +226,12 @@ else
 fi
 
 BUILD_NAME="$(basename "$APPLICATION_PATH")"
+
+if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
+    log "Create symlink for 'Chromium Embedded Framework.framework'..."
+    ln -s "../../../Chromium Embedded Framework.framework" "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework"
+    ls -l "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks"
+fi
 
 log "Creating $PKG_NAME..."
 rm -rf "$PKG_NAME"
