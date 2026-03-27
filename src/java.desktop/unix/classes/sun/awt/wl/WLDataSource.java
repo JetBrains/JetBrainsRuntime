@@ -29,7 +29,7 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 public class WLDataSource {
     // nativePtr will be reset to 0 after this object receives a "cancelled" event, and is destroyed.
@@ -58,7 +58,7 @@ public class WLDataSource {
 
         try {
             if (data != null) {
-                var mimes = new HashSet<String>();
+                var mimes = new LinkedHashSet<String>();
 
                 long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
                 for (long format : formats) {
