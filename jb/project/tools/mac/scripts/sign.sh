@@ -185,19 +185,15 @@ if [ "$JB_SIGN" = true ]; then for f in \
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \( -name '*.framework' -o -name '*.app' \) -maxdepth 1 | while read -r line
       do
-        if [ -L "$line" ]; then
-          log "Skip symlink signing: $line"
-        else
-          log "Signing '$line':"
-          tar -pczf tmp-to-sign.tar.gz -C "$(dirname "$line")" "$(basename "$line")"
-          "$SIGN_UTILITY" --timestamp \
-              -v -s "$JB_DEVELOPER_CERT" --options=runtime \
-              --force \
-              --entitlements "$SCRIPT_DIR/entitlements_jcef.xml" tmp-to-sign.tar.gz || exit 1
-          rm -rf "$line"
-          tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$line")"
-          rm -f tmp-to-sign.tar.gz
-        fi
+        log "Signing '$line':"
+        tar -pczf tmp-to-sign.tar.gz -C "$(dirname "$line")" "$(basename "$line")"
+        "$SIGN_UTILITY" --timestamp \
+            -v -s "$JB_DEVELOPER_CERT" --options=runtime \
+            --force \
+            --entitlements "$SCRIPT_DIR/entitlements_jcef.xml" tmp-to-sign.tar.gz || exit 1
+        rm -rf "$line"
+        tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$line")"
+        rm -f tmp-to-sign.tar.gz
       done
   fi
 done; fi
