@@ -23,6 +23,7 @@ set -x
 source jb/project/tools/common/scripts/common.sh
 
 JCEF_PATH=${JCEF_PATH:=./jcef_linux_aarch64}
+NO_SPEECHD=${NO_SPEECHD:=""}
 
 function do_configure {
 
@@ -32,6 +33,10 @@ function do_configure {
   if [ -e "$WAYLAND_PROTOCOLS_PATH" ]; then
     WITH_WAYLAND_PROTOCOLS="--with-wayland-protocols=$WAYLAND_PROTOCOLS_PATH"
   fi
+
+  WITH_SPEECHD_INCLUDE=
+
+  [[ -n "$NO_SPEECHD" ]] || WITH_SPEECHD_INCLUDE=--with-speechd-include=/usr/include/speech-dispatcher
 
   sh configure \
     $WITH_DEBUG_LEVEL \
@@ -50,6 +55,7 @@ function do_configure {
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     $WITH_BUNDLED_FREETYPE \
     $WITH_WAYLAND_PROTOCOLS \
+    $WITH_SPEECHD_INCLUDE \
     || do_exit $?
 }
 
