@@ -106,7 +106,6 @@ function create_image_bundle {
 
   if [ "$bundle_type" == "jcef" ]; then
     cat $JCEF_PATH/jcef.version >> "$JRE_CONTENTS/Home/release"
-    ln -s "../../../Chromium Embedded Framework.framework" "$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework"
   fi
 
   echo Creating "$JBR".tar.gz ...
