@@ -942,10 +942,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     public Dimension getMinimumSize() {
-        int shadowSize = shadow != null ? (int) Math.ceil(shadow.getSize() * 4) : 0;
-        return shadowSize == 0
-                ? new Dimension(MINIMUM_WIDTH, MINIMUM_HEIGHT)
-                : new Dimension(shadowSize, shadowSize);
+        return new Dimension(MINIMUM_WIDTH, MINIMUM_HEIGHT);
     }
 
     void showWindowMenu(long serial, int x, int y) {
@@ -2004,46 +2001,59 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // This is the size of the minimal square that fits a corner of the shadow
             int size = (int) Math.ceil(shadowSize * 2.5);
 
-            if ( width > 2 * size && height > 2 * size) {
+            if (width > 2 * size && height > 2 * size) {
                 g.setColor(color);
                 g.fillRect(size, size, width - 2 * size, height - 2 * size);
             }
 
+            int lsize = size; // shadow width on the left
+            int rsize = size; // shadow width on the right
+            int tsize = size; // shadow height at the top
+            int bsize = size; // shadow height at the bottom
+            if (width <= 2 * size) {
+                lsize = shadowSize + (width - 2 * shadowSize + 1) / 2;
+                rsize = shadowSize + (width - 2 * shadowSize) / 2;
+            }
+
+            if (height <= 2 * size) {
+                tsize = shadowSize + (height - 2 * shadowSize + 1) / 2;
+                bsize = shadowSize + (height - 2 * shadowSize) / 2;
+            }
+
             int shadowImageWidth = image.getWidth(null);
             int shadowImageHeight = image.getHeight(null);
+            int horizGap = width - lsize - rsize;
+            int vertGap = height - tsize - bsize;
 
             // top
-            g.copyImage(image, 0, 0, 0, 0, size, size, null, null);
-            int horizGap = width - 2 * size;
-            int vertGap = height - 2 * size;
-            g.clipRect(size, 0, horizGap, size);
+            g.copyImage(image, 0, 0, 0, 0, lsize, tsize, null, null);
+            g.clipRect(lsize, 0, horizGap, tsize);
             for (int i = 0; i < horizGap / shadowSize + 1; i++) {
-                g.copyImage(image, size + i * shadowSize, 0, size, 0, shadowSize, size, null, null);
+                g.copyImage(image, lsize + i * shadowSize, 0, size, 0, shadowSize, tsize, null, null);
             }
             g.setClip(null);
-
-            g.copyImage(image, width - size, 0, shadowImageWidth - size, 0, size, size, null, null);
+            g.copyImage(image, width - rsize, 0, shadowImageWidth - rsize, 0, rsize, tsize, null, null);
 
             // bottom
-            g.copyImage(image, 0, height - size, 0, shadowImageHeight - size, size, size, null, null);
-            g.clipRect(size, height - size, width - size * 2, size);
+            g.copyImage(image, 0, height - bsize, 0, shadowImageHeight - bsize, lsize, bsize, null, null);
+            g.clipRect(lsize, height - bsize, horizGap, bsize);
             for (int i = 0; i < horizGap / shadowSize + 1; i++) {
-                g.copyImage(image, size + i * shadowSize, height - size, size, shadowImageHeight - size, shadowSize, size, null, null);
+                g.copyImage(image, lsize + i * shadowSize, height - bsize, size, shadowImageHeight - bsize, shadowSize, bsize, null, null);
             }
             g.setClip(null);
-            g.copyImage(image, width - size, height - size, shadowImageWidth - size, shadowImageHeight - size, size, size, null, null);
+            g.copyImage(image, width - rsize, height - bsize, shadowImageWidth - rsize, shadowImageHeight - bsize, rsize, bsize, null, null);
 
             // left
-            g.clipRect(0, size, size, height - size * 2);
+            g.clipRect(0, tsize, lsize, vertGap);
             for (int i = 0; i < vertGap / shadowSize + 1; i++) {
-                g.copyImage(image, 0, size + shadowSize * i, 0, size, size, shadowSize, null, null);
+                g.copyImage(image, 0, tsize + shadowSize * i, 0, size, lsize, shadowSize, null, null);
             }
             g.setClip(null);
 
             // right
-            g.clipRect(width - size, size, size, height - size * 2);
+            g.clipRect(width - rsize, tsize, rsize, vertGap);
             for (int i = 0; i < vertGap / shadowSize + 1; i++) {
-                g.copyImage(image, width - size, size + shadowSize * i, shadowImageWidth - size, size, size, shadowSize, null, null);
+                g.copyImage(image, width - rsize, tsize + shadowSize * i, shadowImageWidth - rsize, size, rsize, shadowSize, null, null);
             }
             g.setClip(null);
         }
