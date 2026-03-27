@@ -29,7 +29,7 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 
 public class WLDataSource {
@@ -65,8 +65,7 @@ public class WLDataSource {
 
         try {
             if (data != null) {
-                var mimes = new HashSet<String>();
-                mimes.add(mimeTypeCookie);
+                var mimes = new LinkedHashSet<String>();
 
                 long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
                 if (formats.length > 0) {
@@ -83,6 +82,7 @@ public class WLDataSource {
                     }
                 }
 
+                mimes.add(mimeTypeCookie);
                 for (var mime : mimes) {
                     offerMimeImpl(nativePtr, mime);
                 }
