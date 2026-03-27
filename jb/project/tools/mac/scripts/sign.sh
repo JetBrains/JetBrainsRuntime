@@ -209,6 +209,7 @@ if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
 
     log "Create symlink for 'Chromium Embedded Framework.framework'..."
     ln -s "../../../Chromium Embedded Framework.framework" "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework"
+    ls -l "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks"
 fi
 
 log "Signing whole app..."
