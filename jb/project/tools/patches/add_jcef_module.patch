@@ -1,18 +1,18 @@
 diff --git modules.list modules.list
-index 89e3ae06c5cd..2c9e7e5c08c7 100644
+index aa62113195cb..7dcb16bd5889 100644
 --- modules.list
 +++ modules.list
-@@ -53,4 +53,7 @@ jdk.security.jgss,
- jdk.unsupported,
+@@ -54,4 +54,7 @@ jdk.unsupported,
  jdk.xml.dom,
  jdk.zipfs,
--jdk.hotspot.agent
-+jdk.hotspot.agent,
+ jdk.hotspot.agent,
+-jdk.jcmd
++jdk.jcmd,
 +jcef,
 +gluegen.rt,
 +jogl.all
 diff --git src/java.desktop/share/classes/module-info.java src/java.desktop/share/classes/module-info.java
-index 57392f71321b..0097573d141c 100644
+index 57392f71321b..5540a05219d6 100644
 --- src/java.desktop/share/classes/module-info.java
 +++ src/java.desktop/share/classes/module-info.java
 @@ -115,7 +115,11 @@
@@ -21,8 +21,8 @@ index 57392f71321b..0097573d141c 100644
      exports sun.awt to
 -        jdk.unsupported.desktop;
 +        jdk.unsupported.desktop,
-+            jcef,
-+            jogl.all;
++        jcef,
++        jogl.all;
 +
 +    exports java.awt.peer to jcef;
  
