@@ -69,6 +69,7 @@ javax/swing/JButton/bug4323121.java JBR-8924 windows-all
 javax/swing/JButton/bug4490179.java JBR-8925 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
+javax/swing/JInternalFrame/bug4215380.java JBR-9006 windows-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
 javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 ubuntu-22.04-x64,ubuntu-22.04-aarch64
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
