@@ -76,6 +76,7 @@ javax/swing/JMenuBar/TestMenuMnemonicLinuxAndMac.java JBR-8748 linux-all
 javax/swing/JMenuItem/bug4327146.java JBR-9623 linux-all
 javax/swing/JPasswordField/TestDisabledPasswordFieldForegroundColor.java JBR-8748 linux-all
 javax/swing/JPopupMenu/bug4187004.java JBR-9625 linux-all
+javax/swing/JPopupMenu/bug4966109.java JBR-9133 linux-all
 javax/swing/JPopupMenu/MouseDragPopupTest.java JBR-9624 linux-all
 javax/swing/JRadioButton/4314194/bug4314194.java JBR-9626 linux-all
 javax/swing/JRadioButton/8033699/bug8033699.java JBR-8748 linux-all
