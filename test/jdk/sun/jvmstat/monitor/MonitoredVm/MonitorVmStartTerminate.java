@@ -69,7 +69,7 @@ import sun.jvmstat.monitor.event.VmStatusChangeEvent;
  * @modules java.management
  *          jdk.internal.jvmstat/sun.jvmstat.monitor
  *          jdk.internal.jvmstat/sun.jvmstat.monitor.event
- * @run main/othervm MonitorVmStartTerminate
+ * @run main/othervm/timeout=240 MonitorVmStartTerminate
  */
 public final class MonitorVmStartTerminate {
 
