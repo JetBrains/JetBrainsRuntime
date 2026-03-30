@@ -79,6 +79,9 @@ import java.awt.image.Kernel;
 import java.awt.image.VolatileImage;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -115,12 +118,31 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean repositionPopup = false; // protected by stateLock
     private boolean resizePending = false; // protected by stateLock
 
-    private static final boolean shadowEnabled = Boolean.parseBoolean(System.getProperty("sun.awt.wl.Shadow", "true"));
+    private static final boolean shadowEnabled;
+
     private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
             System.getProperty("sun.awt.wl.NativeModality", "false"));
 
     static {
         initIDs();
+
+        String shadowProp = System.getProperty("sun.awt.wl.Shadow");
+        if (shadowProp != null) {
+            shadowEnabled = Boolean.parseBoolean(shadowProp);
+        } else {
+            boolean isWSL = System.getenv("WSL_INTEROP") != null || System.getenv("WSL_DISTRO_NAME") != null;
+            if (!isWSL) {
+                try {
+                    String osRelease = Files.readString(Path.of("/proc/sys/kernel/osrelease"));
+                    isWSL = osRelease.toLowerCase().contains("microsoft");
+                    if (!isWSL) {
+                        String procVersion = Files.readString(Path.of("/proc/version"));
+                        isWSL = procVersion.toLowerCase().contains("microsoft");
+                    }
+                } catch (IOException ignored) {}
+            }
+            shadowEnabled = !isWSL;
+        }
     }
 
     /**
