@@ -56,6 +56,11 @@ if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
   find "$APPLICATION_PATH/Contents/Frameworks" \
     -type f \( -name "*.dylib" -o -perm +111 \) \
     -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
+
+  LIBCEF_SANDBOX_DIR = "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries"
+  find "$LIBCEF_SANDBOX_DIR" \
+    -type f \( -name "*.dylib"\) \
+    -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
 fi
 
 log "Signing jmod files"
@@ -178,10 +183,30 @@ for f in \
   fi
 done
 
+log "Signing cef_server helper applications..."
+# shellcheck disable=SC2043
+if [ "$JB_SIGN" = true ]; then for f in \
+  "Contents/Frameworks/cef_server.app/Contents/Frameworks"; do
+  if [ -d "$APPLICATION_PATH/$f" ]; then
+    find "$APPLICATION_PATH/$f" \(-name '*.app' \) -maxdepth 1 | while read -r line
+      do
+        log "Signing '$line':"
+        tar -pczf tmp-to-sign.tar.gz -C "$(dirname "$line")" "$(basename "$line")"
+        "$SIGN_UTILITY" --timestamp \
+            -v -s "$JB_DEVELOPER_CERT" --options=runtime \
+            --force \
+            --entitlements "$SCRIPT_DIR/entitlements_jcef.xml" tmp-to-sign.tar.gz || exit 1
+        rm -rf "$line"
+        tar -xzf tmp-to-sign.tar.gz --directory "$(dirname "$line")"
+        rm -f tmp-to-sign.tar.gz
+      done
+  fi
+done; fi
+
 log "Signing whole frameworks..."
 # shellcheck disable=SC2043
 if [ "$JB_SIGN" = true ]; then for f in \
-  "Contents/Frameworks/cef_server.app/Contents/Frameworks" "Contents/Frameworks"; do
+  "Contents/Frameworks"; do
   if [ -d "$APPLICATION_PATH/$f" ]; then
     find "$APPLICATION_PATH/$f" \( -name '*.framework' -o -name '*.app' \) -maxdepth 1 | while read -r line
       do
