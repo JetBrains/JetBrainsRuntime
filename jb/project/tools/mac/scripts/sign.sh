@@ -57,18 +57,17 @@ if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
   find "$APPLICATION_PATH/Contents/Frameworks" \
     -type f \( -name "*.dylib" -o -perm +111 \) \
     -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
-
-  find "$LIBCEF_SANDBOX_DIR" \
-      -type f \( -name "*.dylib" \) \
-      -exec sh -c 'echo ' {} \;
-
-  find "$LIBCEF_SANDBOX_DIR" \
-      -type f \( -name "*.dylib" -o -perm +111 \) \
-      -exec sh -c 'echo ' {} \;
-
-  find "$LIBCEF_SANDBOX_DIR" \
-    -type f \( -name "*.dylib" \) \
-    -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
+#  find "$LIBCEF_SANDBOX_DIR" \
+#      -type f \( -name "*.dylib" \) \
+#      -exec sh -c 'echo ' {} \;
+#
+#  find "$LIBCEF_SANDBOX_DIR" \
+#      -type f \( -name "*.dylib" -o -perm +111 \) \
+#      -exec sh -c 'echo ' {} \;
+#
+#  find "$LIBCEF_SANDBOX_DIR" \
+#    -type f \( -name "*.dylib" \) \
+#    -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
 fi
 
 log "Signing jmod files"
@@ -196,7 +195,7 @@ log "Signing cef_server helper applications..."
 if [ "$JB_SIGN" = true ]; then for f in \
   "Contents/Frameworks/cef_server.app/Contents/Frameworks"; do
   if [ -d "$APPLICATION_PATH/$f" ]; then
-    find "$APPLICATION_PATH/$f" \(-name '*.app' \) -maxdepth 1 | while read -r line
+    find "$APPLICATION_PATH/$f" \( -name '*.app' \) -maxdepth 1 | while read -r line
       do
         log "Signing '$line':"
         tar -pczf tmp-to-sign.tar.gz -C "$(dirname "$line")" "$(basename "$line")"
