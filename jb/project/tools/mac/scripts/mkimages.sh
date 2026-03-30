@@ -99,14 +99,17 @@ function create_image_bundle {
     zip_native_debug_symbols $IMAGES_DIR/symbols "${JBR}_diz"
   fi
 
-  if [ "$bundle_type" == "jcef" ]; then
-    cat $JCEF_PATH/jcef.version >> "$JRE_CONTENTS/Home/release"
-  fi
-
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
   cp "$JSDK"/../Info.plist "$JRE_CONTENTS"
 
   [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)
+
+  if [ "$bundle_type" == "jcef" ]; then
+    cat $JCEF_PATH/jcef.version >> "$JRE_CONTENTS/Home/release"
+    CEF_LIB_DIR="$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries"
+    mkdir -p "$CEF_LIB_DIR"
+    cp "$JCEF_PATH/Frameworks/Chromium Embedded Framework.framework/Libraries/libcef_sandbox.dylib" "$CEF_LIB_DIR"
+  fi
 
   echo Creating "$JBR".tar.gz ...
   # Normalize timestamp
