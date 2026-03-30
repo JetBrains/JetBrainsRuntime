@@ -59,7 +59,15 @@ if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
     -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
 
   find "$LIBCEF_SANDBOX_DIR" \
-    -type f \( -name "*.dylib"\) \
+      -type f \( -name "*.dylib" \) \
+      -exec sh -c 'echo ' {} \;
+
+  find "$LIBCEF_SANDBOX_DIR" \
+      -type f \( -name "*.dylib" -o -perm +111 \) \
+      -exec sh -c 'echo ' {} \;
+
+  find "$LIBCEF_SANDBOX_DIR" \
+    -type f \( -name "*.dylib" \) \
     -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
 fi
 
