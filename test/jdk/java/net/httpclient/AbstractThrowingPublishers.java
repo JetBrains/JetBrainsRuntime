@@ -25,15 +25,6 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
 import jdk.test.lib.net.SimpleSSLContext;
-import org.testng.ITestContext;
-import org.testng.ITestResult;
-import org.testng.SkipException;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
@@ -52,7 +43,6 @@ import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -80,24 +70,31 @@ import static java.lang.System.out;
 import static java.net.http.HttpClient.Version.HTTP_1_1;
 import static java.net.http.HttpClient.Version.HTTP_2;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
+import org.junit.jupiter.api.AfterAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.extension.TestWatcher;
 
 public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
 
-    SSLContext sslContext;
-    HttpTestServer httpTestServer;    // HTTP/1.1    [ 4 servers ]
-    HttpTestServer httpsTestServer;   // HTTPS/1.1
-    HttpTestServer http2TestServer;   // HTTP/2 ( h2c )
-    HttpTestServer https2TestServer;  // HTTP/2 ( h2  )
-    String httpURI_fixed;
-    String httpURI_chunk;
-    String httpsURI_fixed;
-    String httpsURI_chunk;
-    String http2URI_fixed;
-    String http2URI_chunk;
-    String https2URI_fixed;
-    String https2URI_chunk;
+    static SSLContext sslContext;
+    static HttpTestServer httpTestServer;    // HTTP/1.1    [ 4 servers ]
+    static HttpTestServer httpsTestServer;   // HTTPS/1.1
+    static HttpTestServer http2TestServer;   // HTTP/2 ( h2c )
+    static HttpTestServer https2TestServer;  // HTTP/2 ( h2  )
+    static String httpURI_fixed;
+    static String httpURI_chunk;
+    static String httpsURI_fixed;
+    static String httpsURI_chunk;
+    static String http2URI_fixed;
+    static String http2URI_chunk;
+    static String https2URI_fixed;
+    static String https2URI_chunk;
 
     static final int ITERATION_COUNT = 1;
     // a shared executor helps reduce the amount of threads created by the test
@@ -115,8 +112,34 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         return String.format("[%d s, %d ms, %d ns] ", secs, mill, nan);
     }
 
-    final ReferenceTracker TRACKER = ReferenceTracker.INSTANCE;
-    private volatile HttpClient sharedClient;
+    final static class TestStopper implements TestWatcher, BeforeEachCallback {
+        final AtomicReference<String> failed = new AtomicReference<>();
+        TestStopper() { }
+        @Override
+        public void testFailed(ExtensionContext context, Throwable cause) {
+            if (stopAfterFirstFailure()) {
+                String msg = "Aborting due to: " + cause;
+                failed.compareAndSet(null, msg);
+                FAILURES.putIfAbsent(context.getDisplayName(), cause);
+                System.out.printf("%nTEST FAILED: %s%s%n\tAborting due to %s%n%n",
+                        now(), context.getDisplayName(), cause);
+                System.err.printf("%nTEST FAILED: %s%s%n\tAborting due to %s%n%n",
+                        now(), context.getDisplayName(), cause);
+            }
+        }
+
+        @Override
+        public void beforeEach(ExtensionContext context) {
+            String msg = failed.get();
+            Assumptions.assumeTrue(msg == null, msg);
+        }
+    }
+
+    @RegisterExtension
+    static final TestStopper stopper = new TestStopper();
+
+    static final ReferenceTracker TRACKER = ReferenceTracker.INSTANCE;
+    private static volatile HttpClient sharedClient;
 
     static class TestExecutor implements Executor {
         final AtomicLong tasks = new AtomicLong();
@@ -142,34 +165,12 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         }
     }
 
-    protected boolean stopAfterFirstFailure() {
+    protected static boolean stopAfterFirstFailure() {
         return Boolean.getBoolean("jdk.internal.httpclient.debug");
     }
 
-    final AtomicReference<SkipException> skiptests = new AtomicReference<>();
-    void checkSkip() {
-        var skip = skiptests.get();
-        if (skip != null) throw skip;
-    }
-    static String name(ITestResult result) {
-        var params = result.getParameters();
-        return result.getName()
-                + (params == null ? "()" : Arrays.toString(result.getParameters()));
-    }
-
-    @BeforeMethod
-    void beforeMethod(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            if (skiptests.get() == null) {
-                SkipException skip = new SkipException("some tests failed");
-                skip.setStackTrace(new StackTraceElement[0]);
-                skiptests.compareAndSet(null, skip);
-            }
-        }
-    }
-
-    @AfterClass
-    static final void printFailedTests(ITestContext context) {
+    @AfterAll
+    static final void printFailedTests() {
         out.println("\n=========================");
         try {
             // Exceptions should already have been added to FAILURES
@@ -193,7 +194,7 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         }
     }
 
-    private String[] uris() {
+    private static String[] uris() {
         return new String[] {
                 httpURI_fixed,
                 httpURI_chunk,
@@ -206,8 +207,7 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         };
     }
 
-    @DataProvider(name = "sanity")
-    public Object[][] sanity() {
+    public static Object[][] sanity() {
         String[] uris = uris();
         Object[][] result = new Object[uris.length * 2][];
         //Object[][] result = new Object[uris.length][];
@@ -238,7 +238,7 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         }
     }
 
-    private Object[][] variants(List<Thrower> throwers, Set<Where> whereValues) {
+    private static Object[][] variants(List<Thrower> throwers, Set<Where> whereValues) {
         String[] uris = uris();
         Object[][] result = new Object[uris.length * 2 * throwers.size()][];
         //Object[][] result = new Object[(uris.length/2) * 2 * 2][];
@@ -257,80 +257,52 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         return result;
     }
 
-    @DataProvider(name = "subscribeProvider")
-    public Object[][] subscribeProvider(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] subscribeProvider() {
         return  variants(List.of(
                 new UncheckedCustomExceptionThrower(),
                 new UncheckedIOExceptionThrower()),
                 EnumSet.of(Where.BEFORE_SUBSCRIBE, Where.AFTER_SUBSCRIBE));
     }
 
-    @DataProvider(name = "requestProvider")
-    public Object[][] requestProvider(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] requestProvider() {
         return  variants(List.of(
                 new UncheckedCustomExceptionThrower(),
                 new UncheckedIOExceptionThrower()),
                 EnumSet.of(Where.BEFORE_REQUEST, Where.AFTER_REQUEST));
     }
 
-    @DataProvider(name = "nextRequestProvider")
-    public Object[][] nextRequestProvider(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] nextRequestProvider() {
         return  variants(List.of(
                 new UncheckedCustomExceptionThrower(),
                 new UncheckedIOExceptionThrower()),
                 EnumSet.of(Where.BEFORE_NEXT_REQUEST, Where.AFTER_NEXT_REQUEST));
     }
 
-    @DataProvider(name = "beforeCancelProviderIO")
-    public Object[][] beforeCancelProviderIO(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] beforeCancelProviderIO() {
         return  variants(List.of(
                 new UncheckedIOExceptionThrower()),
                 EnumSet.of(Where.BEFORE_CANCEL));
     }
 
-    @DataProvider(name = "afterCancelProviderIO")
-    public Object[][] afterCancelProviderIO(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] afterCancelProviderIO() {
         return  variants(List.of(
                 new UncheckedIOExceptionThrower()),
                 EnumSet.of(Where.AFTER_CANCEL));
     }
 
-    @DataProvider(name = "beforeCancelProviderCustom")
-    public Object[][] beforeCancelProviderCustom(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] beforeCancelProviderCustom() {
         return  variants(List.of(
                 new UncheckedCustomExceptionThrower()),
                 EnumSet.of(Where.BEFORE_CANCEL));
     }
 
-    @DataProvider(name = "afterCancelProviderCustom")
-    public Object[][] afterCancelProvider(ITestContext context) {
-        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
-            return new Object[0][];
-        }
+    public static Object[][] afterCancelProviderCustom() {
         return  variants(List.of(
                 new UncheckedCustomExceptionThrower()),
                 EnumSet.of(Where.AFTER_CANCEL));
     }
 
-    private HttpClient makeNewClient() {
+    private static HttpClient makeNewClient() {
         clientCount.incrementAndGet();
         return TRACKER.track(HttpClient.newBuilder()
                 .proxy(HttpClient.Builder.NO_PROXY)
@@ -339,11 +311,11 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
                 .build());
     }
 
-    HttpClient newHttpClient(boolean share) {
+    static HttpClient newHttpClient(boolean share) {
         if (!share) return makeNewClient();
         HttpClient shared = sharedClient;
         if (shared != null) return shared;
-        synchronized (this) {
+        synchronized (AbstractThrowingPublishers.class) {
             shared = sharedClient;
             if (shared == null) {
                 shared = sharedClient = makeNewClient();
@@ -387,7 +359,7 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
             CompletableFuture<HttpResponse<String>> response = client.sendAsync(req, handler);
 
             String body = response.join().body();
-            assertEquals(body, Stream.of(BODY.split("\\|")).collect(Collectors.joining()));
+            assertEquals(Stream.of(BODY.split("\\|")).collect(Collectors.joining()), body);
             if (!sameClient) {
                 // Wait for the client to be garbage collected.
                 // we use the ReferenceTracker API rather than HttpClient::close here,
@@ -431,7 +403,6 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
                                     boolean async, Set<Where> whereValues)
             throws Exception
     {
-        checkSkip();
         out.printf("%n%s%s%n", now(), name);
         try {
             testThrowing(uri, sameClient, publishers, finisher, thrower, async, whereValues);
@@ -721,8 +692,11 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
     }
 
 
-    @BeforeTest
-    public void setup() throws Exception {
+    @BeforeAll
+    public static void setup() throws Exception {
+        System.out.println(now() + "setup");
+        System.err.println(now() + "setup");
+
         sslContext = new SimpleSSLContext().get();
         if (sslContext == null)
             throw new AssertionError("Unexpected null sslContext");
@@ -765,8 +739,11 @@ public abstract class AbstractThrowingPublishers implements HttpServerAdapters {
         https2TestServer.start();
     }
 
-    @AfterTest
-    public void teardown() throws Exception {
+    @AfterAll
+    public static void teardown() throws Exception {
+        System.out.println(now() + "teardown");
+        System.err.println(now() + "teardown");
+
         String sharedClientName =
                 sharedClient == null ? null : sharedClient.toString();
         sharedClient = null;
