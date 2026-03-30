@@ -659,9 +659,9 @@ convertXKBModifiersToJavaModifiers(xkb_mod_mask_t mask) {
         result |= java_awt_event_InputEvent_ALT_DOWN_MASK;
     }
 
-    // NOTE: we do not set META_DOWN_MASK, the xkb "meta" modifier is the same as alt,
-    // the xkb "super" modifier (the Windows key) doesn't set META_DOWN_MASK on XToolkit,
-    // so for consistency neither do we.
+    if ((mask & XKB_SUPER_MASK) != 0) {
+        result |= java_awt_event_InputEvent_META_DOWN_MASK;
+    }
 
     return result;
 }
