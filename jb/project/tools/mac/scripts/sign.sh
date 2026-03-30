@@ -52,12 +52,12 @@ for f in \
 done
 
 log "Signing JCEF libraries and executables..."
+LIBCEF_SANDBOX_DIR="$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries"
 if [ -d "$APPLICATION_PATH/Contents/Frameworks" ]; then
   find "$APPLICATION_PATH/Contents/Frameworks" \
     -type f \( -name "*.dylib" -o -perm +111 \) \
     -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
 
-  LIBCEF_SANDBOX_DIR = "$APPLICATION_PATH/Contents/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework/Libraries"
   find "$LIBCEF_SANDBOX_DIR" \
     -type f \( -name "*.dylib"\) \
     -exec sh -c '"$1" --timestamp -v -s "$2" --options=runtime --force --entitlements "$3" "$4" || exit 1' sh "$SIGN_UTILITY" "$JB_DEVELOPER_CERT" "$SCRIPT_DIR/entitlements_jcef.xml" {} \;
