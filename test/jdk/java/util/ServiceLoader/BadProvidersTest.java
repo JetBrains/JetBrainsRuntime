@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@
  * @modules java.base/jdk.internal.org.objectweb.asm
  *          jdk.compiler
  * @build jdk.test.lib.compiler.CompilerUtils
- * @run testng/othervm BadProvidersTest
+ * @run junit/othervm BadProvidersTest
  * @summary Basic test of ServiceLoader with bad provider and bad provider
  *          factories deployed on the module path
  */
@@ -51,15 +51,16 @@ import static jdk.internal.org.objectweb.asm.Opcodes.*;
 
 import jdk.test.lib.compiler.CompilerUtils;
 
-import org.testng.annotations.Test;
-import org.testng.annotations.DataProvider;
-import static org.testng.Assert.*;
+import org.junit.jupiter.api.Assertions;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Basic test of `provides S with PF` and `provides S with P` where the provider
  * factory or provider
  */
-
 public class BadProvidersTest {
 
     private static final String TEST_SRC = System.getProperty("test.src");
@@ -132,21 +133,10 @@ public class BadProvidersTest {
     }
 
 
-    @DataProvider(name = "badfactories")
-    public Object[][] createBadFactories() {
-        return new Object[][] {
-                { "classnotpublic",     null },
-                { "methodnotpublic",    null },
-                { "badreturntype",      null },
-                { "returnsnull",        null },
-                { "throwsexception",    null },
-        };
-    }
-
-
-    @Test(dataProvider = "badfactories",
-          expectedExceptions = ServiceConfigurationError.class)
-    public void testBadFactory(String testName, String ignore) throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = { "classnotpublic", "methodnotpublic", "badreturntype",
+            "returnsnull", "throwsexception" })
+    public void testBadFactory(String testName) throws Exception {
         Path mods = compileTest(TEST1_MODULE);
 
         // compile the bad factory
@@ -158,28 +148,18 @@ public class BadProvidersTest {
         // copy the compiled class into the module
         Path classFile = Paths.get("p", "ProviderFactory.class");
         Files.copy(output.resolve(classFile),
-                   mods.resolve(TEST1_MODULE).resolve(classFile),
-                   StandardCopyOption.REPLACE_EXISTING);
+               mods.resolve(TEST1_MODULE).resolve(classFile),
+               StandardCopyOption.REPLACE_EXISTING);
 
-        // load providers and instantiate each one
-        loadProviders(mods, TEST1_MODULE).forEach(Provider::get);
+        Assertions.assertThrows(ServiceConfigurationError.class,
+                // load providers and instantiate each one
+                () -> loadProviders(mods, TEST1_MODULE).forEach(Provider::get)
+        );
     }
 
-
-    @DataProvider(name = "badproviders")
-    public Object[][] createBadProviders() {
-        return new Object[][] {
-                { "notpublic",          null },
-                { "ctornotpublic",      null },
-                { "notasubtype",        null },
-                { "throwsexception",    null }
-        };
-    }
-
-
-    @Test(dataProvider = "badproviders",
-          expectedExceptions = ServiceConfigurationError.class)
-    public void testBadProvider(String testName, String ignore) throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = { "notpublic", "ctornotpublic", "notasubtype", "throwsexception" })
+    public void testBadProvider(String testName) throws Exception {
         Path mods = compileTest(TEST2_MODULE);
 
         // compile the bad provider
@@ -191,11 +171,13 @@ public class BadProvidersTest {
         // copy the compiled class into the module
         Path classFile = Paths.get("p", "Provider.class");
         Files.copy(output.resolve(classFile),
-                   mods.resolve(TEST2_MODULE).resolve(classFile),
-                   StandardCopyOption.REPLACE_EXISTING);
+               mods.resolve(TEST2_MODULE).resolve(classFile),
+               StandardCopyOption.REPLACE_EXISTING);
 
-        // load providers and instantiate each one
-        loadProviders(mods, TEST2_MODULE).forEach(Provider::get);
+        Assertions.assertThrows(ServiceConfigurationError.class,
+                // load providers and instantiate each one
+                () -> loadProviders(mods, TEST2_MODULE).forEach(Provider::get)
+        );
     }
 
 
@@ -203,7 +185,7 @@ public class BadProvidersTest {
      * Test a service provider that defines more than one no-args
      * public static "provider" method.
      */
-    @Test(expectedExceptions = ServiceConfigurationError.class)
+    @Test
     public void testWithTwoFactoryMethods() throws Exception {
         Path mods = compileTest(TEST1_MODULE);
 
@@ -257,8 +239,10 @@ public class BadProvidersTest {
                 .resolve("ProviderFactory.class");
         Files.write(classFile, cw.toByteArray());
 
-        // load providers and instantiate each one
-        loadProviders(mods, TEST1_MODULE).forEach(Provider::get);
+        Assertions.assertThrows(ServiceConfigurationError.class,
+                // load providers and instantiate each one
+                () -> loadProviders(mods, TEST1_MODULE).forEach(Provider::get)
+        );
     }
 
 }
