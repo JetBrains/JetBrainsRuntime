@@ -791,6 +791,7 @@ java/awt/Window/GetScreenLocation/GetScreenLocationTest.java 8225787,8253184 lin
 # Wayland related
 
 java/awt/FullScreen/SetFullScreenTest.java 8332155 linux-x64
+javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520 ubuntu-22.04-aarch64
 sun/java2d/ClassCastExceptionForInvalidSurface.java 8354097 linux-x64
 sun/java2d/GdiRendering/ClipShapeRendering.java 8354097 linux-x64
 
