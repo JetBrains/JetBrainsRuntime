@@ -56,6 +56,29 @@ abstract class ResolveSymbolsTestBase {
         return output;
     }
 
+    protected static boolean isDynamicExecutable(Path path) {
+        try {
+            Process process = Runtime.getRuntime().exec("readelf --section-headers " + path);
+            String output = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))
+                    .lines()
+                    .filter(line -> line.contains(".dynamic"))
+                    .findFirst()
+                    .orElse(null);
+            if (process.waitFor() != 0) {
+                throw new RuntimeException("Failed to run readelf --section-headers " + path);
+            }
+            if (output == null) {
+                return false;
+            }
+            // A dynamic executable would have a section called ".dynamic" of type DYNAMIC.
+            // A debuginfo shared object can still have the ".dynamic" section, but an empty one (type NOBITS).
+            return output.contains("DYNAMIC");
+        } catch (IOException | InterruptedException e) {
+            return false;
+        }
+    }
+
     /* Parses the output ofr linux readelf(binutils) that tools like:
      * $ readelf -W --dyn-syms myLib.so
      *
@@ -216,7 +239,8 @@ abstract class ResolveSymbolsTestBase {
         try (Stream<Path> walk = Files.walk(Paths.get(javaHome))) {
             binaries = walk
                     .filter(path -> !Files.isDirectory(path))
-                    .filter(path -> Files.isExecutable(path) || path.toString().endsWith(".so")).toList();
+                    .filter(path -> Files.isExecutable(path) || path.toString().endsWith(".so"))
+                    .filter(ResolveSymbolsTestBase::isDynamicExecutable).toList();
         }
         return binaries;
     }
