@@ -53,7 +53,6 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
                 return;
             }
             didSendFinishedEvent = true;
-            dataDevice.setCurrentDragSource(null);
 
             final int javaAction = didSucceed ? WLDataDevice.waylandActionsToJava(action) : 0;
             final int x = WLToolkit.getInputState().getPointerX();
@@ -147,9 +146,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         long eventSerial = WLToolkit.getInputState().pointerButtonSerial();
 
         dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
-        if (!source.hasSerializableFormats()) {
-            dataDevice.setCurrentDragSource(source);
-        }
+        SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(trans);
     }
 
     @Override
