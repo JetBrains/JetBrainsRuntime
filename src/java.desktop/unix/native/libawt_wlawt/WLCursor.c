@@ -30,6 +30,7 @@
 
 #include "WLToolkit.h"
 #include "WLGraphicsEnvironment.h"
+#include "cursor-shape-v1.h"
 
 #include "sun_awt_wl_WLCursorManager.h"
 
@@ -98,6 +99,37 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeDestroyPredefinedCu
 {
     struct WLCursor *cursor = jlong_to_ptr(cursorPtr);
     free(cursor);
+}
+
+JNIEXPORT jint JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetCursorWidth
+        (JNIEnv *env, jclass cls, jlong cursorPtr)
+{
+    struct WLCursor *cursor = jlong_to_ptr(cursorPtr);
+    return cursor ? (jint) cursor->width : 0;
+}
+
+JNIEXPORT jint JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetCursorHeight
+        (JNIEnv *env, jclass cls, jlong cursorPtr)
+{
+    struct WLCursor *cursor = jlong_to_ptr(cursorPtr);
+    return cursor ? (jint) cursor->height : 0;
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeSetCursorShape
+        (JNIEnv *env, jclass cls, jlong serial, jint shape)
+{
+    extern struct wp_cursor_shape_device_v1* wp_cursor_shape_device;
+    if (wp_cursor_shape_device != NULL) {
+        wp_cursor_shape_device_v1_set_shape(wp_cursor_shape_device, (uint32_t) serial, (uint32_t) shape);
+        wlFlushToServer(env);
+    }
+}
+
+JNIEXPORT jboolean JNICALL Java_sun_awt_wl_WLCursorManager_nativeHasCursorShapeSupport
+        (JNIEnv *env, jclass cls)
+{
+    extern struct wp_cursor_shape_device_v1* wp_cursor_shape_device;
+    return wp_cursor_shape_device != NULL ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor

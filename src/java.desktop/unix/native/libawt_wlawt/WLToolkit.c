@@ -24,6 +24,7 @@
  * questions.
  */
 
+#include "cursor-shape-v1.h"
 #include "relative-pointer-unstable-v1.h"
 #include "xdg-decoration-unstable-v1.h"
 #ifdef HEADLESS
@@ -78,6 +79,8 @@ struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
 struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
+struct wp_cursor_shape_manager_v1* wp_cursor_shape_manager; // optional, check for NULL before use
+struct wp_cursor_shape_device_v1* wp_cursor_shape_device; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
@@ -513,8 +516,16 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
                     zwp_relative_pointer_v1_add_listener(rptr, &relative_pointer_listener, NULL);
                 }
             }
+            if (wp_cursor_shape_manager != NULL) {
+                wp_cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(wp_cursor_shape_manager,
+                                                                                wl_pointer);
+            }
         }
     } else if (!has_pointer && wl_pointer != NULL) {
+        if (wp_cursor_shape_device != NULL) {
+            wp_cursor_shape_device_v1_destroy(wp_cursor_shape_device);
+            wp_cursor_shape_device = NULL;
+        }
         wl_pointer_release(wl_pointer);
         wl_pointer = NULL;
     }
@@ -690,6 +701,12 @@ registry_global(void *data, struct wl_registry *wl_registry,
         }
     } else if (strcmp(interface, zxdg_decoration_manager_v1_interface.name) == 0) {
         xdg_decoration_manager = wl_registry_bind(wl_registry, name, &zxdg_decoration_manager_v1_interface, 1);
+    } else if (strcmp(interface, wp_cursor_shape_manager_v1_interface.name) == 0) {
+        wp_cursor_shape_manager = wl_registry_bind(wl_registry, name, &wp_cursor_shape_manager_v1_interface, 1);
+        if (wp_cursor_shape_manager != NULL && wl_pointer != NULL && wp_cursor_shape_device == NULL) {
+            wp_cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(wp_cursor_shape_manager,
+                                                                            wl_pointer);
+        }
     } else if (strcmp(interface, xdg_toplevel_icon_manager_v1_interface.name) == 0) {
         xdg_toplevel_icon_manager = wl_registry_bind(wl_registry, name, &xdg_toplevel_icon_manager_v1_interface, 1);
         if (xdg_toplevel_icon_manager != NULL) {

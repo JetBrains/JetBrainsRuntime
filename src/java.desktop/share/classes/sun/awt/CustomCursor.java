@@ -37,6 +37,8 @@ import java.awt.image.*;
 public abstract class CustomCursor extends Cursor {
 
     protected Image image;
+    private Image cursorImage;
+    private Point hotSpot;
 
     public CustomCursor(Image cursor, Point hotSpot, String name)
             throws IndexOutOfBoundsException {
@@ -80,6 +82,9 @@ public abstract class CustomCursor extends Cursor {
             throw new IndexOutOfBoundsException("invalid hotSpot");
         }
 
+        cursorImage = cursor;
+        this.hotSpot = new Point(hotSpot);
+
         /* Extract ARGB array from image.
          *
          * A transparency mask can be created in native code by checking
@@ -96,10 +101,24 @@ public abstract class CustomCursor extends Cursor {
         } catch (InterruptedException e) {
         }
 
-        createNativeCursor(image, pixels, width, height, hotSpot.x, hotSpot.y);
+        createNativeCursor(cursorImage, pixels, width, height, hotSpot.x, hotSpot.y);
     }
 
     protected abstract void createNativeCursor(Image im,  int[] pixels,
                                                int width, int height,
                                                int xHotSpot, int yHotSpot);
+
+    /**
+     * Returns the image used to create the native cursor.
+     */
+    public Image getImage() {
+        return cursorImage;
+    }
+
+    /**
+     * Returns the hotspot used to create the native cursor.
+     */
+    public Point getHotSpot() {
+        return new Point(hotSpot);
+    }
 }

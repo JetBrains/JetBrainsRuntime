@@ -957,9 +957,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return MOUSE_BUTTONS_COUNT;
     }
 
+    private static final String DND_CURSOR_PREFIX = "DnD.Cursor.";
+
     @Override
     protected Object lazilyLoadDesktopProperty(String name) {
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+        if (name.startsWith(DND_CURSOR_PREFIX)) {
+            String cursorName = name.substring(DND_CURSOR_PREFIX.length()) + ".32x32";
+            try {
+                return Cursor.getSystemCustomCursor(cursorName);
+            } catch (AWTException awte) {
+                throw new RuntimeException("cannot load system cursor: " + cursorName, awte);
+            }
+        } else if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Not implemented: WLToolkit.lazilyLoadDesktopProperty()");
         }
         return null;

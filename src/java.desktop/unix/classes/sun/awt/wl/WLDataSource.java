@@ -137,22 +137,38 @@ public class WLDataSource {
 
         int width = image.getWidth(null);
         int height = image.getHeight(null);
-        int[] pixels = new int[width * height];
+        int paddedWidth = width;
+        int paddedHeight = height;
+        Image iconImage = image;
 
-        if (image instanceof BufferedImage) {
-            // NOTE: no need to ensure that the BufferedImage is TYPE_INT_ARGB,
-            // getRGB() does pixel format conversion automatically
-            ((BufferedImage) image).getRGB(0, 0, width, height, pixels, 0, width);
-        } else {
-            BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = bufferedImage.createGraphics();
-            g.drawImage(image, 0, 0, null);
-            g.dispose();
-
-            bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
+        if (scale > 1) {
+            paddedWidth = ((width + scale - 1) / scale) * scale;
+            paddedHeight = ((height + scale - 1) / scale) * scale;
+            if (paddedWidth != width || paddedHeight != height) {
+                BufferedImage paddedImage = new BufferedImage(paddedWidth, paddedHeight, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g = paddedImage.createGraphics();
+                g.drawImage(image, 0, 0, null);
+                g.dispose();
+                iconImage = paddedImage;
+            }
         }
 
-        setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
+        int[] pixels = new int[paddedWidth * paddedHeight];
+
+        if (iconImage instanceof BufferedImage) {
+            // NOTE: no need to ensure that the BufferedImage is TYPE_INT_ARGB,
+            // getRGB() does pixel format conversion automatically
+            ((BufferedImage) iconImage).getRGB(0, 0, paddedWidth, paddedHeight, pixels, 0, paddedWidth);
+        } else {
+            BufferedImage bufferedImage = new BufferedImage(paddedWidth, paddedHeight, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = bufferedImage.createGraphics();
+            g.drawImage(iconImage, 0, 0, null);
+            g.dispose();
+
+            bufferedImage.getRGB(0, 0, paddedWidth, paddedHeight, pixels, 0, paddedWidth);
+        }
+
+        setDnDIconImpl(nativePtr, scale, paddedWidth, paddedHeight, offsetX, offsetY, pixels);
     }
 
     public synchronized void destroy() {

@@ -26,17 +26,24 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+import sun.awt.CustomCursor;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.dnd.SunDropTargetContextPeer;
 
 import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Image;
+import java.awt.Point;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.DragGestureEvent;
+import java.awt.dnd.DragSource;
 import java.util.Map;
 
 public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
     private final WLDataDevice dataDevice;
+    private WLDragSource activeDragSource;
+    private boolean activeDragSourceUsesCursorFallback;
 
     private class WLDragSource extends WLDataSource {
         private int action;
@@ -49,7 +56,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             action = defaultAction;
         }
 
-        private void sendFinishedEvent() {
+        private synchronized void sendFinishedEvent() {
             if (didSendFinishedEvent) {
                 return;
             }
@@ -70,7 +77,11 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             // except for maybe action(dnd_ask), but since we do not announce support for dnd_ask,
             // we don't need to worry about it.
             if (!didSucceed) {
+                int previousAction = this.action;
                 this.action = action;
+                if (previousAction != action) {
+                    WLDragSourceContextPeer.this.handleSourceActionChanged(previousAction, action);
+                }
             }
         }
 
@@ -81,8 +92,8 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         @Override
         protected synchronized void handleDnDFinished() {
+            WLDragSourceContextPeer.this.finishDragSource(this);
             sendFinishedEvent();
-            destroy();
         }
 
         @Override
@@ -91,9 +102,9 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         }
 
         @Override
-        protected void handleCancelled() {
+        protected synchronized void handleCancelled() {
+            WLDragSourceContextPeer.this.finishDragSource(this);
             sendFinishedEvent();
-            super.handleCancelled();
         }
     }
 
@@ -122,6 +133,35 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         return null;
     }
 
+    private synchronized void activateDragSource(WLDragSource dragSource) {
+        activeDragSource = dragSource;
+    }
+
+    private synchronized void finishDragSource(WLDragSource dragSource) {
+        if (activeDragSource == dragSource) {
+            activeDragSource = null;
+            activeDragSourceUsesCursorFallback = false;
+        }
+        dragSource.destroy();
+    }
+
+    private void handleSourceActionChanged(int previousWaylandAction, int waylandAction) {
+        var inputState = WLToolkit.getInputState();
+        int x = inputState.getPointerX();
+        int y = inputState.getPointerY();
+        int modifiers = inputState.getModifiers();
+        int javaAction = WLDataDevice.waylandActionsToJava(waylandAction);
+        int previousJavaAction = WLDataDevice.waylandActionsToJava(previousWaylandAction);
+
+        if (previousJavaAction == 0 && javaAction != 0) {
+            postDragSourceDragEvent(javaAction, modifiers, x, y, DISPATCH_ENTER);
+        } else if (previousJavaAction != 0 && javaAction == 0) {
+            dragExit(x, y);
+        } else if (previousJavaAction != 0) {
+            postDragSourceDragEvent(javaAction, modifiers, x, y, DISPATCH_CHANGED);
+        }
+    }
+
     @Override
     protected void startDrag(Transferable trans, long[] formats, Map<Long, DataFlavor> formatMap) {
         var mainSurface = getSurface();
@@ -147,24 +187,151 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         source.setDnDActions(waylandActions);
 
+        int scale = mainSurface.getGraphicsDevice().getDisplayScale();
         var dragImage = getDragImage();
+        Point dragImageOffset = null;
+        boolean usesCursorFallback = false;
+        if (dragImage == null) {
+            dragImage = cursorToImage(getDragSourceContext().getCursor());
+            if (dragImage != null) {
+                dragImageOffset = cursorToDragImageOffset(getDragSourceContext().getCursor(), scale);
+                usesCursorFallback = true;
+            }
+        } else {
+            dragImageOffset = getDragImageOffset();
+        }
         if (dragImage != null) {
-            var dragImageOffset = getDragImageOffset();
             source.setDnDIcon(dragImage,
-                    mainSurface.getGraphicsDevice().getDisplayScale(),
+                    scale,
                     dragImageOffset.x, dragImageOffset.y);
         }
 
         long eventSerial = WLToolkit.getInputState().pointerButtonSerial();
 
-        dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
+        synchronized (this) {
+            activateDragSource(source);
+            activeDragSourceUsesCursorFallback = usesCursorFallback;
+        }
+        try {
+            dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
+        } catch (RuntimeException | Error e) {
+            finishDragSource(source);
+            throw e;
+        }
         if (!source.hasSerializableFormats()) {
             dataDevice.setCurrentDragSource(source);
         }
     }
 
+    private static int cursorToCursorShape(Cursor c) {
+        if (c == DragSource.DefaultCopyDrop) {
+            return WLCursorManager.CURSOR_SHAPE_COPY;
+        } else if (c == DragSource.DefaultMoveDrop) {
+            return WLCursorManager.CURSOR_SHAPE_MOVE;
+        } else if (c == DragSource.DefaultLinkDrop) {
+            return WLCursorManager.CURSOR_SHAPE_ALIAS;
+        } else if (c == DragSource.DefaultCopyNoDrop
+                || c == DragSource.DefaultMoveNoDrop
+                || c == DragSource.DefaultLinkNoDrop) {
+            return WLCursorManager.CURSOR_SHAPE_NO_DROP;
+        }
+        return -1;
+    }
+
+    private static Cursor waylandActionToDefaultCursor(int waylandAction) {
+        if ((waylandAction & WLDataDevice.DND_MOVE) != 0) {
+            return DragSource.DefaultMoveDrop;
+        } else if ((waylandAction & WLDataDevice.DND_COPY) != 0) {
+            return DragSource.DefaultCopyDrop;
+        }
+        return DragSource.DefaultCopyNoDrop;
+    }
+
     @Override
     protected void setNativeCursor(long nativeCtxt, Cursor c, int cType) {
-        // TODO: setting cursor here doesn't seem to be required on Wayland?
+        if (c == null) {
+            // null means "restore default cursor handling".
+            WLCursorManager.setDnDCursorShape(WLCursorManager.CURSOR_SHAPE_DEFAULT);
+
+            // In cursor-fallback mode, the drag icon is showing a custom
+            // cursor image that must be replaced immediately with the
+            // default DnD cursor for the current action.
+            synchronized (this) {
+                if (activeDragSource != null && activeDragSourceUsesCursorFallback) {
+                    Cursor defaultCursor = waylandActionToDefaultCursor(activeDragSource.action);
+                    Image image = cursorToImage(defaultCursor);
+                    if (image != null) {
+                        var mainSurface = getSurface();
+                        int scale = mainSurface != null ? mainSurface.getGraphicsDevice().getDisplayScale() : 1;
+                        Point offset = cursorToDragImageOffset(defaultCursor, scale);
+                        activeDragSource.setDnDIcon(image, scale, offset.x, offset.y);
+                    }
+                }
+            }
+            return;
+        }
+
+        // Built-in DnD cursors: use cursor-shape-v1 (best effort).
+        int shape = cursorToCursorShape(c);
+        if (shape >= 0) {
+            WLCursorManager.setDnDCursorShape(shape);
+        }
+
+        // Update the drag icon with cursor artwork when:
+        // - no app drag image was provided (cursor fallback mode), OR
+        // - the cursor is a custom (app-supplied) cursor
+        // The drag icon is the only cross-client visual feedback channel.
+        var mainSurface = getSurface();
+        int scale = mainSurface != null ? mainSurface.getGraphicsDevice().getDisplayScale() : 1;
+
+        synchronized (this) {
+            if (activeDragSource == null) {
+                return;
+            }
+            if (!activeDragSourceUsesCursorFallback) {
+                return;
+            }
+
+            Image image = cursorToImage(c);
+            if (image == null) {
+                return;
+            }
+
+            Point dragImageOffset = cursorToDragImageOffset(c, scale);
+            activeDragSource.setDnDIcon(image, scale, dragImageOffset.x, dragImageOffset.y);
+        }
+    }
+
+    private static Image cursorToImage(Cursor cursor) {
+        if (cursor instanceof CustomCursor cc) {
+            return cc.getImage();
+        }
+        return null;
+    }
+
+    private static Point cursorToDragImageOffset(Cursor cursor, int scale) {
+        if (!(cursor instanceof CustomCursor cc)) {
+            return new Point(0, 0);
+        }
+
+        // For app-supplied custom cursors, respect their declared hotspot.
+        if (cursorToCursorShape(cursor) < 0) {
+            Point hs = cc.getHotSpot();
+            return new Point(-hs.x / scale, -hs.y / scale);
+        }
+
+        // For built-in DnD cursors used as fallback drag icons, position
+        // away from the pointer so they don't overlap the compositor cursor.
+        Dimension cursorSize = WLCursorManager.getCursorSize(cursor, scale);
+        if (cursorSize == null) {
+            Image image = cc.getImage();
+            if (image != null) {
+                cursorSize = new Dimension(image.getWidth(null), image.getHeight(null));
+            }
+        }
+        if (cursorSize != null) {
+            return new Point(cursorSize.width / scale, cursorSize.height / scale);
+        }
+        return new Point(0, 0);
     }
 }

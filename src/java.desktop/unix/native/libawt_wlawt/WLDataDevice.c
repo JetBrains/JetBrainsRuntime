@@ -87,6 +87,8 @@ struct DataSource
 
     struct wl_surface* dragIcon;
     struct wl_buffer* dragIconBuffer;
+    int dragIconOffsetX;
+    int dragIconOffsetY;
 
     struct DataSource* nextDel;
 };
@@ -674,7 +676,10 @@ zwp_primary_selection_source_handle_cancelled(void *user,
 static void
 wl_data_offer_handle_offer(void *user, struct wl_data_offer *wl_data_offer, const char *mime)
 {
-    DataOffer_callOfferHandler((struct DataOffer *) user, mime);
+    struct DataOffer *offer = user;
+    assert(offer != NULL);
+
+    DataOffer_callOfferHandler(offer, mime);
 }
 
 static void
@@ -1170,6 +1175,14 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
    jint width, jint height, jint offsetX, jint offsetY, jintArray pixels)
 {
     struct DataSource *source = jlong_to_ptr(nativePtr);
+    bool updating_existing_icon = source->dragIcon != NULL;
+    struct wl_buffer *oldBuffer = source->dragIconBuffer;
+    // Drag-icon updates reuse the same wl_surface after start_drag().
+    // For that surface, wl_surface.offset (or pre-v5 nonzero attach offsets)
+    // is relative to the current buffer position, not an absolute placement.
+    // Keep the last requested absolute offset and send only the delta here.
+    int deltaOffsetX = offsetX - source->dragIconOffsetX;
+    int deltaOffsetY = offsetY - source->dragIconOffsetY;
 
     size_t pixelCount = (size_t)((*env)->GetArrayLength(env, pixels));
     size_t byteSize = pixelCount * 4U;
@@ -1197,11 +1210,14 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
 
     source->dragIconBuffer = wl_shm_pool_create_buffer(pool, 0, width, height, width * 4, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
+    munmap(shmPixels, byteSize);
     if (!source->dragIconBuffer) {
         return;
     }
 
-    source->dragIcon = wl_compositor_create_surface(wl_compositor);
+    if (!source->dragIcon) {
+        source->dragIcon = wl_compositor_create_surface(wl_compositor);
+    }
     if (!source->dragIcon) {
         wl_buffer_destroy(source->dragIconBuffer);
         source->dragIconBuffer = NULL;
@@ -1212,12 +1228,12 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
     int wl_compositor_version = wl_compositor_get_version(wl_compositor);
     if (wl_compositor_version >= 5) {
         wl_surface_attach(source->dragIcon, source->dragIconBuffer, 0, 0);
-        wl_surface_offset(source->dragIcon, offsetX, offsetY);
+        wl_surface_offset(source->dragIcon, deltaOffsetX, deltaOffsetY);
     } else {
-        wl_surface_attach(source->dragIcon, source->dragIconBuffer, offsetX, offsetY);
+        wl_surface_attach(source->dragIcon, source->dragIconBuffer, deltaOffsetX, deltaOffsetY);
     }
 #else
-    wl_surface_attach(source->dragIcon, source->dragIconBuffer, offsetX, offsetY);
+    wl_surface_attach(source->dragIcon, source->dragIconBuffer, deltaOffsetX, deltaOffsetY);
 #endif
 
     if (scale >= 1) {
@@ -1226,7 +1242,17 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
 
     wl_surface_damage_buffer(source->dragIcon, 0, 0, width, height);
 
-    // NOTE: we still need to commit the surface, this is done immediately after start_drag
+    if (oldBuffer) {
+        wl_buffer_destroy(oldBuffer);
+    }
+
+    source->dragIconOffsetX = offsetX;
+    source->dragIconOffsetY = offsetY;
+
+    if (updating_existing_icon) {
+        wl_surface_commit(source->dragIcon);
+        wlFlushToServer(env);
+    }
 }
 
 JNIEXPORT void JNICALL

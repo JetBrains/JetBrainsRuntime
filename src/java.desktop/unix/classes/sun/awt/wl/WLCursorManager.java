@@ -30,6 +30,7 @@ import sun.awt.AWTAccessor;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 
 public class WLCursorManager {
@@ -139,7 +140,71 @@ public class WLCursorManager {
         return 0;
     }
 
+    /**
+     * Returns the width and height in pixels of the given cursor at the
+     * specified display scale. Returns null if the cursor is unavailable.
+     */
+    public static Dimension getCursorSize(Cursor cursor, int scale) {
+        if (cursor == null) {
+            return null;
+        }
+
+        synchronized (instance) {
+            long pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
+            if (pData == 0 && cursor.getType() == Cursor.CUSTOM_CURSOR) {
+                pData = AWTAccessor.getCursorAccessor().getPData(cursor);
+            }
+            if (pData <= 0) {
+                return null;
+            }
+
+            int w = nativeGetCursorWidth(pData);
+            int h = nativeGetCursorHeight(pData);
+            if (w <= 0 || h <= 0) {
+                return null;
+            }
+            return new Dimension(w, h);
+        }
+    }
+
+    /**
+     * Sets the cursor shape using the cursor-shape-v1 Wayland protocol.
+     * Returns true if the compositor supports this protocol, false otherwise.
+     */
+    public static boolean setDnDCursorShape(int shape) {
+        if (!nativeHasCursorShapeSupport()) {
+            return false;
+        }
+        var inputState = WLToolkit.getInputState();
+        long serial = inputState.pointerEnterSerial();
+        if (serial == 0) {
+            return false;
+        }
+        synchronized (instance) {
+            nativeSetCursorShape(serial, shape);
+        }
+        return true;
+    }
+
+    public static boolean hasCursorShapeSupport() {
+        return nativeHasCursorShapeSupport();
+    }
+
+    // cursor-shape-v1 shape constants for DnD
+    public static final int CURSOR_SHAPE_DEFAULT = 1;
+    public static final int CURSOR_SHAPE_ALIAS = 11;
+    public static final int CURSOR_SHAPE_COPY = 12;
+    public static final int CURSOR_SHAPE_MOVE = 13;
+    public static final int CURSOR_SHAPE_NO_DROP = 14;
+    public static final int CURSOR_SHAPE_NOT_ALLOWED = 15;
+    public static final int CURSOR_SHAPE_GRAB = 16;
+    public static final int CURSOR_SHAPE_GRABBING = 17;
+
     private static native void nativeSetCursor(long pData, int scale, long pointerEnterSerial);
     private static native long nativeGetPredefinedCursor(String name, int scale);
     private static native void nativeDestroyPredefinedCursor(long pData);
+    private static native int nativeGetCursorWidth(long pData);
+    private static native int nativeGetCursorHeight(long pData);
+    private static native void nativeSetCursorShape(long serial, int shape);
+    private static native boolean nativeHasCursorShapeSupport();
 }
