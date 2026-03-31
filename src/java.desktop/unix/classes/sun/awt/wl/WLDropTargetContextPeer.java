@@ -70,7 +70,11 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         int dropAction = 0;
 
         if (hasTarget() && event != MouseEvent.MOUSE_EXITED) {
-            dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
+            if (currentJVMLocalSourceTransferable != null) {
+                dropAction = SunDragSourceContextPeer.convertModifiersToDropAction(WLToolkit.getInputState().getModifiers(), actions);
+            } else {
+                dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
+            }
         }
 
         postDropTargetEvent(
@@ -166,13 +170,6 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         }
 
         reset();
-
-        var currentSource = WLToolkit.getDataDevice().getCurrentDragSource();
-        if (currentSource != null && currentSource.isSourceFor(offer)) {
-            SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(currentSource.getData());
-        } else {
-            SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(null);
-        }
 
         currentTarget = peer.getTarget();
         currentX = x;
