@@ -40,7 +40,6 @@ import java.util.List;
  *   - JBR 25 build containing JBR-8664 with IoOverNioFileSystem enabled
  *     (i.e. built via mkimage_x64.sh)
  *   - Windows OS
- *   - Turkish locale (or -Duser.language=tr -Duser.region=TR)
  *
  * HOW IT WORKS:
  *   The test uses a custom DefaultFileSystemProvider (DelegatingProvider)
@@ -61,9 +60,8 @@ import java.util.List;
  * @requires (os.family == "windows")
  * @library /test/lib
  * @build TurkishBootstrapTest DelegatingProvider
- * @run main/othervm -Djava.nio.file.spi.DefaultFileSystemProvider=DelegatingProvider TurkishBootstrapTest
- * @run main/othervm -Djava.nio.file.spi.DefaultFileSystemProvider=DelegatingProvider -Djbr.java.io.use.nio=true TurkishBootstrapTest
- * @run main/othervm -Djava.nio.file.spi.DefaultFileSystemProvider=DelegatingProvider -Djbr.java.io.use.nio=false TurkishBootstrapTest
+ * @run main/othervm -Djava.nio.file.spi.DefaultFileSystemProvider=DelegatingProvider -Duser.language=tr -Duser.region=TR -Djbr.java.io.use.nio=true TurkishBootstrapTest
+ * @run main/othervm -Djava.nio.file.spi.DefaultFileSystemProvider=DelegatingProvider -Duser.language=tr -Duser.region=TR -Djbr.java.io.use.nio=false TurkishBootstrapTest
  */
 
 public class TurkishBootstrapTest {
