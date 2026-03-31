@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -1044,6 +1044,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
       DISABLED_WARNINGS_clang := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang), \
       DISABLED_WARNINGS_clang_png.c := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_clang), \
       DISABLED_WARNINGS_microsoft := $(LIBSPLASHSCREEN_DISABLED_WARNINGS_microsoft), \
+      DISABLED_WARNINGS_microsoft_pngread.c := 4146, \
       EXCLUDE_FILES := $(LIBSPLASHSCREEN_EXCLUDE_FILES), \
       EXCLUDES := $(LIBSPLASHSCREEN_EXCLUDES), \
       OPTIMIZATION := SIZE, \
