@@ -21,8 +21,6 @@
  * questions.
  */
 
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.SeekableByteChannel;
@@ -56,8 +54,7 @@ public class DelegatingProvider extends FileSystemProvider {
         return delegate.getFileSystem(uri);
     }
 
-    @NotNull
-    @Override public Path getPath(@NotNull URI uri) {
+    @Override public Path getPath(URI uri) {
         return delegate.getPath(uri);
     }
 
