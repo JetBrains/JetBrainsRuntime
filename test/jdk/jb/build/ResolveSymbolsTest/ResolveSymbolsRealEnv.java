@@ -34,6 +34,7 @@ import java.util.Objects;
  * @summary ResolveSymbolsTest verifies that all JBR symbols are successfully resolved in the environment where
  *          the test is run
  * @requires (os.family == "linux")
+ * @compile ResolveSymbolsTestBase.java
  * @run main ResolveSymbolsRealEnv
  */
 
