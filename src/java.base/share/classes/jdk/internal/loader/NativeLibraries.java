@@ -119,7 +119,7 @@ public final class NativeLibraries {
         String name = findBuiltinLib(file.getName());
         boolean isBuiltin = (name != null);
         if (!isBuiltin) {
-            try {
+            try (var ignored = IoOverNio.disableInThisThread()) {
                 if (loadLibraryOnlyIfPresent && !file.exists()) {
                     return null;
                 }
