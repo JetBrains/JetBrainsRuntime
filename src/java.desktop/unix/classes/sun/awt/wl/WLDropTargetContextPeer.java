@@ -31,6 +31,7 @@ import sun.awt.dnd.SunDropTargetContextPeer;
 import sun.awt.dnd.SunDropTargetEvent;
 
 import java.awt.Component;
+import java.awt.dnd.DnDConstants;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
 
@@ -67,10 +68,18 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         var x = peer.surfaceUnitsToJavaUnits((int) currentX);
         var y = peer.surfaceUnitsToJavaUnits((int) currentY);
         var actions = WLDataDevice.waylandActionsToJava(currentOffer.getSourceActions());
-        int dropAction = 0;
+        int dropAction = DnDConstants.ACTION_NONE;
 
         if (hasTarget() && event != MouseEvent.MOUSE_EXITED) {
+            // For intra-JVM transfers, the Wayland-level action negotiation
+            // may fail (no matching MIME types for Java object flavors).
+            // Fall back to the source actions directly.
             dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
+            if (dropAction == DnDConstants.ACTION_NONE
+                    && currentJVMLocalSourceTransferable != null) {
+                dropAction = SunDragSourceContextPeer.convertModifiersToDropAction(
+                        WLToolkit.getInputState().getModifiers(), actions);
+            }
         }
 
         postDropTargetEvent(

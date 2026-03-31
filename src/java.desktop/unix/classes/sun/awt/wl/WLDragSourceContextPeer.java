@@ -32,7 +32,9 @@ import sun.awt.dnd.SunDropTargetContextPeer;
 import java.awt.Cursor;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureEvent;
+import java.util.HashSet;
 import java.util.Map;
 
 public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
@@ -56,7 +58,9 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             didSendFinishedEvent = true;
             dataDevice.setCurrentDragSource(null);
 
-            final int javaAction = didSucceed ? WLDataDevice.waylandActionsToJava(action) : 0;
+            final int javaAction = didSucceed
+                    ? WLDataDevice.waylandActionsToJava(action)
+                    : DnDConstants.ACTION_NONE;
             final int x = WLToolkit.getInputState().getPointerX();
             final int y = WLToolkit.getInputState().getPointerY();
             WLDragSourceContextPeer.this.dragDropFinished(didSucceed, javaAction, x, y);
@@ -122,6 +126,30 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         return null;
     }
 
+    private void offerJavaFlavorMimes(WLDragSource source, Transferable trans) {
+        var transferer = (WLDataTransferer) WLDataTransferer.getInstance();
+        var flavorTable = transferer.getFlavorTable();
+        var extraMimes = new HashSet<String>();
+        var flavors = trans.getTransferDataFlavors();
+
+        if (flavors == null) {
+            return;
+        }
+
+        for (DataFlavor flavor : flavors) {
+            if (flavor == null) {
+                continue;
+            }
+            for (String nativeName : flavorTable.getNativesForFlavor(flavor)) {
+                if (nativeName != null
+                        && nativeName.startsWith("JAVA_DATAFLAVOR:")
+                        && extraMimes.add(nativeName)) {
+                    source.offerExtraMime(nativeName);
+                }
+            }
+        }
+    }
+
     @Override
     protected void startDrag(Transferable trans, long[] formats, Map<Long, DataFlavor> formatMap) {
         var mainSurface = getSurface();
@@ -144,6 +172,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         // formats and formatMap are unused, because WLDataSource already references the same DataTransferer singleton
         var source = new WLDragSource(trans, defaultAction);
+        offerJavaFlavorMimes(source, trans);
 
         source.setDnDActions(waylandActions);
 
@@ -157,7 +186,13 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         long eventSerial = WLToolkit.getInputState().pointerButtonSerial();
 
-        dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
+        try {
+            SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(trans);
+            dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
+        } catch (RuntimeException | Error e) {
+            SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(null);
+            throw e;
+        }
         if (!source.hasSerializableFormats()) {
             dataDevice.setCurrentDragSource(source);
         }
