@@ -1047,6 +1047,8 @@ void *os::Bsd::dlopen_helper(const char *filename, int mode, char *ebuf, int ebu
   assert(rtn == 0, "fegetenv must succeed");
 #endif // IA32
 
+  Events::log_dll_message(nullptr, "Attempting to load shared library %s", filename);
+
   void* result;
   JFR_ONLY(NativeLibraryLoadEvent load_event(filename, &result);)
   result = ::dlopen(filename, RTLD_LAZY);
