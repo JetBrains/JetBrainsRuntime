@@ -66,7 +66,7 @@ abstract class ResolveSymbolsTestBase {
                     .findFirst()
                     .orElse(null);
             if (process.waitFor() != 0) {
-                throw new RuntimeException("Failed to run readelf --section-headers " + path);
+                return false; // when invoked on a non-ELF file
             }
             if (output == null) {
                 return false;
