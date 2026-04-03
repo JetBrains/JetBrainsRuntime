@@ -10564,18 +10564,29 @@ public abstract class Component implements ImageObserver, MenuContainer,
             throw new IllegalArgumentException("The size must be positive");
         }
 
+        var insets = window.getInsets();
+        int clientWidth = window.getWidth() - insets.left - insets.right;
+        int clientHeight = window.getHeight() - insets.top - insets.bottom;
+        if (x >= clientWidth) {
+            throw new IllegalArgumentException(String.format("x coordinate (%d) is out of bounds (%d)", x, clientWidth));
+        }
+        if (y >= clientHeight) {
+            throw new IllegalArgumentException(String.format("y coordinate (%d) is out of bounds (%d)", y, clientHeight));
+        }
+
         Image fullBackbuffer = window.getBackBuffer();
         if (fullBackbuffer == null) {
             return null;
         }
 
+        // Note: the buffer may be of different size than the window when the window has been resized very recently.
         var bufferWidth = fullBackbuffer.getWidth(null);
         var bufferHeight = fullBackbuffer.getHeight(null);
-        if (x >= width) {
+        if (x >= bufferWidth) {
             throw new IllegalArgumentException(String.format("x coordinate (%d) is out of bounds (%d)", x, bufferWidth));
         }
 
-        if (y >= height) {
+        if (y >= bufferHeight) {
             throw new IllegalArgumentException(String.format("y coordinate (%d) is out of bounds (%d)", y, bufferHeight));
         }
 
