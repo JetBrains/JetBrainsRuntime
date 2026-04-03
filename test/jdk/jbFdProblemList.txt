@@ -131,7 +131,6 @@ javax/swing/JFileChooser/6342301/bug6342301.java JBR-9863 windows-x64
 javax/swing/JFileChooser/7199708/bug7199708.java JBR-9863 windows-x64
 javax/swing/JFileChooser/JFileChooserFontReset.java JBR-9863 windows-x64
 javax/swing/JTable/7055065/bug7055065.java JBR-9413 windows-x64
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java JBR-7404 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-9446 macosx-all
 javax/swing/plaf/synth/7158712/bug7158712.java 8322653,JBR-9061 macosx-all,linux-all
 javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-5952,JBR-6274 windows-all,macosx-all

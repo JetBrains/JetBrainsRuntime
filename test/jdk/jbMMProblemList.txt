@@ -1,5 +1,5 @@
 java/awt/Button/DisabledButtonPress.java JBR-5799,JBR-8858 windows-aarch64,windows-x64
-java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5398 linux-all,windows-all
+java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java JBR-5398,JBR-6857 linux-all,windows-all,macosx-all
 java/awt/Component/SetComponentsBounds/SetComponentsBounds.java JBR-9840 windows-10.0
 java/awt/datatransfer/Clipboard/GetContentsInterruptedTest.java JBR-5086 linux-5.15.0-46-generic Ubuntu 20.04
 java/awt/Debug/X11Trace.java JBR-5442 linux-all
@@ -126,7 +126,7 @@ javax/swing/JFileChooser/JFileChooserFontReset.java JBR-8534,JBR-9863 windows-x6
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java 8274106,JBR-6999 macosx-aarch64,macosx-x64,windows-x64
 javax/swing/JInternalFrame/5066752/bug5066752.java 8253184 windows-all
 javax/swing/JMenu/bug4342646.java JBR-8727 windows-x64
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184 windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-7404 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184 macosx-all,windows-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java 8253184 windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184 windows-all

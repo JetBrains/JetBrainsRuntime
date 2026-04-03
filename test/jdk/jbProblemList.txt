@@ -128,7 +128,7 @@ java/awt/event/StressTest/MouseAndKeyEventStressTest.java JBR-6479 generic-all
 java/awt/FileDialog/8003399/bug8003399.java JBR-6930 windows-all
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/EmptyWindowKeyTest.java JBR-7913 windows-all
-java/awt/Focus/FocusKeepTest.java JBR-9487 linux-6.8.0-1040-aws,linux-6.8.0-1043-aws,linux-6.8.0-1044-aws,linux-6.8.0-1045-aws
+java/awt/Focus/FocusKeepTest.java JBR-9487 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
@@ -152,7 +152,7 @@ java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.j
 java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509 macosx-aarch64,windows-10.0,linux-aarch64
 java/awt/Frame/HideMaximized/HideMaximized.java JBR-8310 linux-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
-java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all
+java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064 linux-all,macosx-aarch64
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509 macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340374,JBR-7947 macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340374,JBR-7947 macosx-all
@@ -938,6 +938,7 @@ java/nio/file/WatchService/JNIChecks.java JBR-8457 generic-all
 
 # jdk_rmi
 
+java/rmi/server/RemoteServer/AddrInUse.java 8213699 windows-10.0
 java/rmi/server/Unreferenced/finiteGCLatency/FiniteGCLatency.java 7140992 generic-all
 
 java/rmi/transport/rapidExportUnexport/RapidExportUnexport.java 7146541 linux-all
@@ -1144,7 +1145,7 @@ javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java 8266085 wind
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8266085 windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481 linux-all,windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all,macosx-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184 windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-7404 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-8217 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-6515 macosx-all,windows-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450,8253184 macosx-all,windows-all

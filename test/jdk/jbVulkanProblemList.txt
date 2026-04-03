@@ -6,6 +6,7 @@ java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8400 ubuntu-24.04-x64
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/GraphicsDevice/CloneConfigsTest.java JBR-9024 linux-all
+java/awt/GraphicsEnvironment/LoadLock/GE_init3.java JBR-9561 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java.UpdateGCTest
@@ -26,9 +27,9 @@ javax/swing/JRadioButton/bug4823809.java JBR-9333 fedora-gnome,fedora-gnome,arch
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all
 
-jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
-jb/java/awt/wayland/vulkan/ImageTransformTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-9659,JBR-10160 fedora-gnome,arch-gnome,ubuntu-24.04-aarch64,ubuntu-24.04-x64
+jb/java/awt/wayland/vulkan/ImageTransformTest.java JBR-9659,JBR-10160 fedora-gnome,arch-gnome,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 jb/java/awt/wayland/vulkan/RobotGetOOBPixelsTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
-jb/java/awt/wayland/vulkan/RobotGetPixelsTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
-jb/java/awt/wayland/vulkan/RobotGetPixelTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
-jb/java/awt/wayland/vulkan/VulkanMaskFillTest.java JBR-9659 fedora-gnome,fedora-gnome,arch-gnome
+jb/java/awt/wayland/vulkan/RobotGetPixelsTest.java JBR-9659,JBR-10160 fedora-gnome,arch-gnome,ubuntu-24.04-aarch64,ubuntu-24.04-x64
+jb/java/awt/wayland/vulkan/RobotGetPixelTest.java JBR-9659,JBR-10160 fedora-gnome,arch-gnome,ubuntu-24.04-aarch64,ubuntu-24.04-x64
+jb/java/awt/wayland/vulkan/VulkanMaskFillTest.java JBR-9659,JBR-10160 fedora-gnome,arch-gnome,ubuntu-24.04-aarch64,ubuntu-24.04-x64
