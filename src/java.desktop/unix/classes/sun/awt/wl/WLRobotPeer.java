@@ -116,6 +116,10 @@ public class WLRobotPeer implements RobotPeer {
         WLToolkit.awtLock();
         try {
             checkPeerForPixelGrab(peer);
+            var sdBounds = peer.surfaceData.getBounds();
+            if (!sdBounds.contains(loc)) {
+                throw new ArrayIndexOutOfBoundsException("Requested point (" + loc.x + ", " + loc.y + ") is outside of the surface bounds (" + sdBounds + ")");
+            }
             return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelAt(loc.x, loc.y);
         } finally {
             WLToolkit.awtUnlock();
@@ -129,6 +133,10 @@ public class WLRobotPeer implements RobotPeer {
         WLToolkit.awtLock();
         try {
             checkPeerForPixelGrab(peer);
+            var sdBounds = peer.surfaceData.getBounds();
+            if (!sdBounds.intersects(bounds)) {
+                throw new ArrayIndexOutOfBoundsException("Requested area (" + bounds + ") is outside of the surface bounds (" + sdBounds + ")");
+            }
             return SurfaceData.convertTo(WLPixelGrabberExt.class, peer.surfaceData).getRGBPixelsAt(adjustedBounds);
         } finally {
             WLToolkit.awtUnlock();
