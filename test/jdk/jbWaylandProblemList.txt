@@ -16,6 +16,7 @@ javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341,JBR-9707 ubuntu-22.04-aarch64,ubuntu-22.04-x64,arch-gnome,fedora-gnome
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928,JBR-9341 ubuntu-22.04-aarch64,ubuntu-22.04-x64,arch-gnome,fedora-gnome
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
+javax/swing/JFileChooser/6520101/bug6520101.java JBR-10159 ubuntu-24.04-x64
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530,JBR-9321 linux-all,arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome,fedora-42-gnome,fedora-43-gnome
 javax/swing/JRadioButton/bug4823809.java JBR-9333 fedora-42-gnome,fedora-43-gnome,arch-gnome

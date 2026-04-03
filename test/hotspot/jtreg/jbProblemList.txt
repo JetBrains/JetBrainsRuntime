@@ -180,6 +180,7 @@ runtime/StackGuardPages/TestStackGuardPages.java 8303612 linux-all 8293452
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
 runtime/stringtable/StringTableCorruptionTest.java JBR-8524 windows-aarch64
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
+runtime/ErrorHandling/PrintVMInfoAtExitTest.java 8371320 macosx-aarch64
 runtime/ErrorHandling/TestAbortVmOnException.java JBR-8514 windows-aarch64
 runtime/ErrorHandling/UncaughtNativeExceptionTest.java JBR-8515 windows-aarch64
 runtime/NMT/CheckForProperDetailStackTrace.java JBR-8914 linux-all
