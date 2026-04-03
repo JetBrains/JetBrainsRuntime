@@ -75,9 +75,12 @@ public class SetFullScreenTest {
                 height = gd.getFullScreenWindow().getHeight();
             });
 
-            if (!robot.getPixelColor(width / 2, height / 2).equals(Color.RED)) {
-                System.err.println("Actual color: " + robot.getPixelColor(width / 2, height / 2)
-                                    + " Expected color: " + Color.RED);
+            var bounds = gd.getDefaultConfiguration().getBounds();
+            int x = bounds.x + width / 2;
+            int y = bounds.y + height / 2;
+            if (!robot.getPixelColor(x, y).equals(Color.RED)) {
+                System.err.printf("Actual color: %s at (%d, %d), expected color: %s%n",
+                    robot.getPixelColor(x, y), x, y, Color.RED);
                 throw new RuntimeException("Test Failed! Window not in full screen mode");
             }
         } finally {
