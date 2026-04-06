@@ -227,7 +227,7 @@ size_t G1FullGCCompactTask::G1CompactRegionClosureDcevm::apply(oop obj) {
       Klass *new_version = obj->klass()->new_version();
       if (new_version->update_information() == nullptr) {
         Copy::aligned_conjoint_words(obj_addr, destination, size);
-        cast_to_oop(destination)->set_klass(new_version);
+        DcevmSharedGC::set_object_klass(cast_to_oop(destination), new_version);
       } else {
         DcevmSharedGC::update_fields(obj, cast_to_oop(destination));
       }

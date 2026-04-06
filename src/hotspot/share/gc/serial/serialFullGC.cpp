@@ -308,7 +308,7 @@ class Compacter {
       Klass *new_version = obj->klass()->new_version();
       if (new_version->update_information() == nullptr) {
         Copy::aligned_conjoint_words(addr, new_addr, obj_size);
-        cast_to_oop(new_addr)->set_klass(new_version);
+        DcevmSharedGC::set_object_klass(cast_to_oop(new_addr), new_version);
       } else {
         DcevmSharedGC::update_fields(obj, cast_to_oop(new_addr));
       }

@@ -24,6 +24,7 @@
 
 #include "gc/shared/dcevmSharedGC.hpp"
 #include "oops/compressedOops.inline.hpp"
+#include "oops/compressedKlass.inline.hpp"
 #include "oops/instanceKlass.inline.hpp"
 #include "gc/shared/fullGCForwarding.inline.hpp"
 #include "utilities/copy.hpp"
@@ -41,6 +42,24 @@ void DcevmSharedGC::destroy_static_instance() {
     delete _static_instance;
     _static_instance = nullptr;
   }
+}
+
+
+// (DCEVM) Update an object's class. With compact headers, preserve the mark
+// word and rewrite only the narrow klass.
+void DcevmSharedGC::set_object_klass(oop obj, Klass* new_klass) {
+  assert(obj != nullptr, "sanity");
+  assert(new_klass != nullptr && new_klass->is_klass(), "incorrect Klass");
+
+  if (UseCompactObjectHeaders) {
+    assert(UseCompressedClassPointers, "compact object headers require compressed klass pointers");
+    DEBUG_ONLY(assert(CompressedKlassPointers::is_encodable(new_klass), "must be encodable");)
+    obj->set_mark(obj->mark().set_narrow_klass(CompressedKlassPointers::encode_not_null(new_klass)));
+  } else {
+    obj->set_klass(new_klass);
+  }
+
+  assert(obj->klass() == new_klass, "klass update failed");
 }
 
 void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new) {
@@ -66,7 +85,7 @@ void DcevmSharedGC::copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_
         if (new_klass->update_information() != nullptr) {
           DcevmSharedGC::update_fields(rescued_obj, new_obj);
         } else {
-          rescued_obj->set_klass(new_klass);
+          DcevmSharedGC::set_object_klass(rescued_obj, new_klass);
           Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(rescued_obj), cast_from_oop<HeapWord*>(new_obj), size);
         }
       } else {
@@ -127,7 +146,7 @@ void DcevmSharedGC::update_fields(oop q, oop new_location) {
     }
   }
 
-  q->set_klass(new_klass_oop);
+  DcevmSharedGC::set_object_klass(q, new_klass_oop);
   int *cur = new_klass_oop->update_information();
   assert(cur != nullptr, "just checking");
   _static_instance->update_fields(new_location, q, cur, false);
