@@ -94,6 +94,8 @@ public:
   static void create_static_instance();
   static void destroy_static_instance();
 
+  static void set_object_klass(oop obj, Klass* new_klass);
+
   static void copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, bool must_be_new);
   static void copy_rescued_objects_back(GrowableArray<HeapWord*>* rescued_oops, int from, int to, bool must_be_new);
   static void clear_rescued_objects_resource(GrowableArray<HeapWord*>* rescued_oops);

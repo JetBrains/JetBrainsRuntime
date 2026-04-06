@@ -617,13 +617,13 @@ public:
             copy_to_tmp(obj);
             src = _tmp_obj;
           }
-          src->set_klass(obj->klass()->new_version());
+          DcevmSharedGC::set_object_klass(src, obj->klass()->new_version());
           //  FIXME: instance updates...
           //guarantee(false, "instance updates!");
           _dcevm_shared_gc->update_fields(obj, src, new_klass->update_information(), true);
         }
       } else {
-        obj->set_klass(obj->klass()->new_version());
+        DcevmSharedGC::set_object_klass(obj, obj->klass()->new_version());
       }
     }
   }
