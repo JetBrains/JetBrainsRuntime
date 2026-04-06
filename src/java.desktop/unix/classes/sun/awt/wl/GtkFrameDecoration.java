@@ -77,7 +77,8 @@ public class GtkFrameDecoration extends FullFrameDecorationHelper {
     public void paint(Graphics g) {
         // Determine buttons' bounds, etc.
         nativePrePaint(nativePtr, peer.getWidth(), peer.getHeight());
-        if (peer.getWidth() >= titleBarMinWidth && peer.getHeight() >= titleBarHeight) {
+        if (titleBarHeight > 0
+                && peer.getWidth() >= titleBarMinWidth && peer.getHeight() >= titleBarHeight) {
             super.paint(g);
         }
     }
