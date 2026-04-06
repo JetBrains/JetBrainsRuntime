@@ -719,7 +719,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePrePaint(JNIEnv 
     (*env)->SetIntField(env, obj, TitleBarHeightFID, pref_height);
     (*env)->SetIntField(env, obj, TitleBarMinWidthFID, min_width);
 
-    if (width < min_width || height < pref_height) {
+    if (width < min_width || height < pref_height || pref_height <= 0) {
         // Avoid gtk warnings in case of insufficient space
         p_gdk_threads_leave();
         return;
