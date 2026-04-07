@@ -56,6 +56,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     private final Dimension totalDisplayBounds = new Dimension();
 
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
+    private WLGraphicsDevice lastDeviceStanding = null; // guarded by devices
 
     @SuppressWarnings("restricted")
     private static void loadAwt() {
@@ -86,6 +87,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     @Override
     protected int getNumScreens() {
         synchronized (devices) {
+            if (devices.isEmpty()) return 1;
             return devices.size();
         }
     }
@@ -93,6 +95,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     @Override
     protected GraphicsDevice makeScreenDevice(int screenNum) {
         synchronized (devices) {
+            if (devices.isEmpty()) return lastDeviceStanding;
             return devices.get(screenNum);
         }
     }
@@ -101,7 +104,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     public GraphicsDevice getDefaultScreenDevice() {
         synchronized (devices) {
             if (devices.isEmpty()) {
-                throw new AWTError("no screen devices");
+                return lastDeviceStanding;
             }
             return devices.getFirst();
         }
@@ -110,6 +113,9 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     @Override
     public synchronized GraphicsDevice[] getScreenDevices() {
         synchronized (devices) {
+            if (devices.isEmpty()) {
+                return new GraphicsDevice[]{lastDeviceStanding};
+            }
             return devices.toArray(new GraphicsDevice[0]);
         }
     }
@@ -191,6 +197,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
                     widthMm, heightMm, scale);
             synchronized (devices) {
                 devices.add(newGD);
+                lastDeviceStanding = null; // no longer needed/relevant
             }
         }
 
@@ -260,6 +267,9 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
             }
             synchronized (devices) {
                 devices.remove(gd);
+                if (devices.isEmpty()) {
+                    lastDeviceStanding = gd;
+                }
             }
             final WLGraphicsDevice similarDevice = getSimilarDevice(gd);
             if (similarDevice != null) gd.invalidate(similarDevice);
