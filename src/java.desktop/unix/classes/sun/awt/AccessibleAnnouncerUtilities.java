@@ -27,6 +27,8 @@
 package sun.awt;
 
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
@@ -34,9 +36,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import sun.util.logging.PlatformLogger;
+
 class AccessibleAnnouncerUtilities {
     private final static String GENERAL_KEY = "general";
-    private final static String ENABLE_SPEECH_KEY = "enableSpeech";
     private final static String ACTIVE_PROFILE_KEY = "activeProfile";
     private final static String PROFILES_KEY = "profiles";
     private final static String SPEECH_SERVER_INFO_KEY = "speechServerInfo";
@@ -51,6 +54,52 @@ class AccessibleAnnouncerUtilities {
     private final static String GAIN_KEY = "gain";
     private final static String VERBALIZE_PUNCTUATION_STYLE_KEY = "verbalizePunctuationStyle";
     private final static String DEFAULT_KEY = "default";
+    private final static String ORCA_PROCESS_NAME = "orca";
+    private static final PlatformLogger LOG = PlatformLogger.getLogger("sun.awt.AccessibleAnnouncerUtilities");
+
+    private static boolean isOrcaRunning() {
+        try {
+            return ProcessHandle.allProcesses().anyMatch(process -> {
+                ProcessHandle.Info info = process.info();
+
+                String commandName = fileName(info.command().orElse(null));
+                if (ORCA_PROCESS_NAME.equals(commandName)) {
+                    return true;
+                }
+
+                String[] args = info.arguments().orElse(null);
+                return args != null && args.length > 0
+                        && isPythonCommand(commandName)
+                        && ORCA_PROCESS_NAME.equals(fileName(args[0]));
+            });
+        } catch (UnsupportedOperationException e) {
+            if (LOG.isLoggable(PlatformLogger.Level.FINE)) {
+                LOG.fine("Failed to make snapshot of processes: ProcessHandle.allProcesses() is not supported", e);
+            }
+            return false;
+        } catch (SecurityException e) {
+            if (LOG.isLoggable(PlatformLogger.Level.FINE)) {
+                LOG.fine("Failed to make snapshot of processes: access denied", e);
+            }
+            return false;
+        }
+    }
+
+    private static String fileName(String path) {
+        if (path == null) {
+            return null;
+        }
+        try {
+            Path fileName = Path.of(path).getFileName();
+            return fileName == null ? null : fileName.toString();
+        } catch (InvalidPathException e) {
+            return null;
+        }
+    }
+
+    private static boolean isPythonCommand(String name) {
+        return "python".equals(name) || (name != null && name.startsWith("python3"));
+    }
 
     private static Object getOrcaConf() {
         try {
@@ -191,16 +240,6 @@ class AccessibleAnnouncerUtilities {
         if (val != null)
             return val;
         return -1;
-    }
-
-    private static boolean getEnableSpeech(Object conf) {
-        if (conf == null)
-            return false;
-
-        Boolean val = JSONParser.getBooleanValue(conf, GENERAL_KEY, ENABLE_SPEECH_KEY);
-        if (val != null)
-            return val;
-        return false;
     }
 
     private static class JSONParser {
