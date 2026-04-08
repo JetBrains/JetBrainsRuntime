@@ -159,11 +159,11 @@ return;\
 }\
 }\
 
-#define GET_getEnableSpeech(ret)\
+#define GET_isOrcaRunning(ret)\
 GET_AccessibleAnnouncerUtilitiesReturn(ret);\
-if (jsm_getEnableSpeech == NULL) {\
-jsm_getEnableSpeech = (*env)->GetStaticMethodID(env, jc_AccessibleAnnouncerUtilities, "getEnableSpeech", "(Ljava/lang/Object;)Z");\
-if (jsm_getEnableSpeech == NULL) {\
+if (jsm_isOrcaRunning == NULL) {\
+jsm_isOrcaRunning = (*env)->GetStaticMethodID(env, jc_AccessibleAnnouncerUtilities, "isOrcaRunning", "()Z");\
+if (jsm_isOrcaRunning == NULL) {\
 return ret;\
 }\
 }\
