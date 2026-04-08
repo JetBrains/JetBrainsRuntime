@@ -46,12 +46,20 @@ static jmethodID jsm_getEstablished = NULL;
 static jmethodID jsm_getActiveProfile = NULL;
 static jmethodID jsm_getVerbalizePunctuationStyle = NULL;
 static jmethodID jsm_getOnlySpeakDisplayedText = NULL;
-static jmethodID jsm_getEnableSpeech = NULL;
+static jmethodID jsm_isOrcaRunning = NULL;
 
 int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
 {
     DASSERT(env != NULL);
     DASSERT(str != NULL)
+
+    if (OrcaIsRunning(env) <= 0)
+    {
+#ifdef DEBUG
+        fprintf(stderr, "Orca is not running\n");
+#endif
+        return -1;
+    }
 
     jobject conf = OrcaGetConf(env);
     if (conf == NULL)
@@ -59,15 +67,6 @@ int OrcaAnnounce(JNIEnv *env, jstring str, jint priority)
 #ifdef DEBUG
         fprintf(stderr, "Failed to read Orca configuration file\n");
 #endif
-        return -1;
-    }
-
-    if (OrcaGetEnableSpeech(env, conf) <= 0)
-    {
-#ifdef DEBUG
-        fprintf(stderr, "Speech is disable\n");
-#endif
-        (*env)->DeleteLocalRef(env, conf);
         return -1;
     }
 
@@ -254,12 +253,12 @@ void OrcaSetLanguage(JNIEnv *env, SPDConnection *connection, jobject conf)
     (*env)->DeleteLocalRef(env, jStr);
 }
 
-int OrcaGetEnableSpeech(JNIEnv *env, jobject conf)
+int OrcaIsRunning(JNIEnv *env)
 {
-    GET_getEnableSpeech(-1);
-    int es = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_getEnableSpeech, conf);
+    GET_isOrcaRunning(-1);
+    int running = (*env)->CallStaticBooleanMethod(env, jc_AccessibleAnnouncerUtilities, jsm_isOrcaRunning);
     JNU_CHECK_EXCEPTION_RETURN(env, -1);
-    return es;
+    return running;
 }
 
 void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
