@@ -42,7 +42,7 @@ void OrcaSetSynthesisVoice(JNIEnv *env, SPDConnection *connection, jobject conf)
 void OrcaSetVoiceRate(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetVoicePitch(JNIEnv *env, SPDConnection *connection, jobject conf);
 void OrcaSetVolume(JNIEnv *env, SPDConnection *connection, jobject conf);
-int OrcaGetEnableSpeech(JNIEnv *env, jobject conf);
+int OrcaIsRunning(JNIEnv *env);
 
 #endif // #ifndef NO_A11Y_SPEECHD_ANNOUNCING
 
