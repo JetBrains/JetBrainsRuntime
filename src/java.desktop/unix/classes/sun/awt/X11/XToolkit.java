@@ -2182,6 +2182,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     static void setupModifierMap() {
         final int metaL = keysymToPrimaryKeycode(XKeySymConstants.XK_Meta_L);
         final int metaR = keysymToPrimaryKeycode(XKeySymConstants.XK_Meta_R);
+        final int superL = keysymToPrimaryKeycode(XKeySymConstants.XK_Super_L);
+        final int superR = keysymToPrimaryKeycode(XKeySymConstants.XK_Super_R);
         final int altL = keysymToPrimaryKeycode(XKeySymConstants.XK_Alt_L);
         final int altR = keysymToPrimaryKeycode(XKeySymConstants.XK_Alt_R);
         final int numLock = keysymToPrimaryKeycode(XKeySymConstants.XK_Num_Lock);
@@ -2218,7 +2220,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                         break;
                     }
                     if (metaMask == 0 &&
-                        (keycode == metaL || keycode == metaR))
+                        (keycode == metaL || keycode == metaR ||
+                         keycode == superL || keycode == superR))
                     {
                         metaMask = modmask[modn];
                         break;
