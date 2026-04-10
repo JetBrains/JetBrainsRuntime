@@ -38,7 +38,9 @@ endif
 include gensrc/GensrcSwing.gmk
 
 ifeq ($(call isTargetOs, windows macosx), false)
-  include gensrc/GensrcWayland.gmk
+  ifeq ($(ENABLE_HEADLESS_ONLY), false)
+   include gensrc/GensrcWayland.gmk
+  endif
 endif
 
 ################################################################################
