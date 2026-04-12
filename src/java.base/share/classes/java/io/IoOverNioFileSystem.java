@@ -502,7 +502,7 @@ class IoOverNioFileSystem extends FileSystem {
     private String resolve0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
-            String initialPath = f.toString();
+            String initialPath = f.getPath();
             if (getSeparator() == '\\' && prefixLength(initialPath) == 2 && initialPath.charAt(0) == '\\') {
                 // This behavior is covered by `test/jdk/java/io/File/GetAbsolutePath.java`.
                 // If this condition passed through Path.toAbsolutePath, an additional excessive slash
