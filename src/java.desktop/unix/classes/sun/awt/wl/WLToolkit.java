@@ -143,6 +143,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static final int MOUSE_BUTTONS_COUNT = 7;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
+    private static final int AWT_MULTICLICK_MOUSE_MOVE_THRESHOLD_PX = 5;
 
     private static boolean initialized = false;
     private static Thread toolkitThread;
@@ -354,6 +355,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     static int getMulticlickTime() {
         /* TODO: get from the system somehow */
         return AWT_MULTICLICK_DEFAULT_TIME_MS;
+    }
+
+    static int getMulticlickMouseMoveThresholdPx() {
+        return AWT_MULTICLICK_MOUSE_MOVE_THRESHOLD_PX;
     }
 
     private static WLInputState inputState = WLInputState.initialState();

@@ -254,9 +254,11 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 final boolean clickedQuickly
                         = (pointerEvent.getTimestamp() - pointerButtonPressedEvent.timestamp)
                         <= WLToolkit.getMulticlickTime();
-                final boolean mouseDidNotMove =
-                        newEventWithPosition.getSurfaceX() == pointerButtonPressedEvent.surfaceX &&
-                        newEventWithPosition.getSurfaceY() == pointerButtonPressedEvent.surfaceY;
+                final int mouseDeltaX = newEventWithPosition.getSurfaceX() - pointerButtonPressedEvent.surfaceX;
+                final int mouseDeltaY = newEventWithPosition.getSurfaceY() - pointerButtonPressedEvent.surfaceY;
+                final int mouseDeltaSquared = mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY;
+                final int mouseDeltaThreshold = WLToolkit.getMulticlickMouseMoveThresholdPx();
+                final boolean mouseDidNotMove = mouseDeltaSquared <= (mouseDeltaThreshold * mouseDeltaThreshold);
                 if (clickedSameSurface && clickedQuickly && mouseDidNotMove) {
                     clickCount = pointerButtonPressedEvent.clickCount + 1;
                 }
