@@ -28,16 +28,19 @@
  *          as a provider should always use the default patterns added in the
  *          FormatData.java resource bundle
  * @modules jdk.localedata
- * @run testng/othervm -Djava.locale.providers=COMPAT TestWithCompatProvider
+ * @run junit/othervm -Djava.locale.providers=COMPAT TestWithCompatProvider
  */
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Locale;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TestWithCompatProvider {
 
     private static final NumberFormat FORMAT_DZ_SHORT = NumberFormat
@@ -46,7 +49,6 @@ public class TestWithCompatProvider {
     private static final NumberFormat FORMAT_EN_US_SHORT = NumberFormat
             .getCompactNumberInstance(Locale.US, NumberFormat.Style.SHORT);
 
-    @DataProvider(name = "format")
     Object[][] compactFormatData() {
         return new Object[][]{
             {FORMAT_DZ_SHORT, 1000.09, "1K"},
@@ -61,7 +63,6 @@ public class TestWithCompatProvider {
             {FORMAT_EN_US_SHORT, new BigDecimal("12345678901234567890.89"), "12345679T"},};
     }
 
-    @DataProvider(name = "parse")
     Object[][] compactParseData() {
         return new Object[][]{
             {FORMAT_DZ_SHORT, "1K", 1000L},
@@ -72,13 +73,15 @@ public class TestWithCompatProvider {
             {FORMAT_EN_US_SHORT, "12345679T", 1.2345679E19},};
     }
 
-    @Test(dataProvider = "format")
+    @ParameterizedTest
+    @MethodSource("compactFormatData")
     public void testFormat(NumberFormat cnf, Object number,
             String expected) {
         CompactFormatAndParseHelper.testFormat(cnf, number, expected);
     }
 
-    @Test(dataProvider = "parse")
+    @ParameterizedTest
+    @MethodSource("compactParseData")
     public void testParse(NumberFormat cnf, String parseString,
             Number expected) throws ParseException {
         CompactFormatAndParseHelper.testParse(cnf, parseString, expected, null, null);
