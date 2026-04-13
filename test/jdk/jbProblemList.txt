@@ -214,7 +214,6 @@ java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-5210,JBR-6126 
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184 macosx-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java JBR-4880 windows-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
-java/awt/MenuBar/8007006/bug8007006.java JBR-9213 macosx-26.0,macosx-26.1,macosx-26.2,macosx-26.3
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-9207 fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java 8049405,8253184 generic-all
 java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java 8049405,8253184 generic-all
