@@ -454,9 +454,7 @@ public final class FipsModeTLS12 extends SecmodTest {
         disabledAlgorithms += "RSASSA-PSS";
         Security.setProperty("jdk.tls.disabledAlgorithms", disabledAlgorithms);
 
-        if (initSecmod() == false) {
-            return;
-        }
+        initSecmod();
         String configName = BASE + SEP + "nss.cfg";
         sunPKCS11NSSProvider = getSunPKCS11(configName);
         System.out.println("SunPKCS11 provider: " + sunPKCS11NSSProvider);
