@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
  * @test
  * @bug 8246774
  * @summary Basic tests for SUID in the serial stream
- * @run testng SerialVersionUIDTest
- * @run testng/othervm/java.security.policy=empty_security.policy SerialVersionUIDTest
+ * @run junit SerialVersionUIDTest
+ * @run junit/othervm/java.security.policy=empty_security.policy SerialVersionUIDTest
  */
 
 import java.io.ByteArrayInputStream;
@@ -40,13 +40,16 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.LongStream;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
 import static java.io.ObjectStreamConstants.*;
 import static java.lang.System.out;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class SerialVersionUIDTest {
 
     record R1 () implements Serializable {
@@ -65,7 +68,6 @@ public class SerialVersionUIDTest {
         private static final long serialVersionUID = 5678L;
     }
 
-    @DataProvider(name = "recordObjects")
     public Object[][] recordObjects() {
         return new Object[][] {
             new Object[] { new R1(),        1L    },
@@ -79,7 +81,8 @@ public class SerialVersionUIDTest {
     /**
      * Tests that a declared SUID for a record class is inserted into the stream.
      */
-    @Test(dataProvider = "recordObjects")
+    @ParameterizedTest
+    @MethodSource("recordObjects")
     public void testSerialize(Object objectToSerialize, long expectedUID)
         throws Exception
     {
@@ -91,17 +94,16 @@ public class SerialVersionUIDTest {
         DataInputStream dis = new DataInputStream(bais);
 
         // sanity
-        assertEquals(dis.readShort(), STREAM_MAGIC);
-        assertEquals(dis.readShort(), STREAM_VERSION);
-        assertEquals(dis.readByte(), TC_OBJECT);
-        assertEquals(dis.readByte(), TC_CLASSDESC);
-        assertEquals(dis.readUTF(), objectToSerialize.getClass().getName());
+        assertEquals(STREAM_MAGIC, dis.readShort());
+        assertEquals(STREAM_VERSION, dis.readShort());
+        assertEquals(TC_OBJECT, dis.readByte());
+        assertEquals(TC_CLASSDESC, dis.readByte());
+        assertEquals(objectToSerialize.getClass().getName(), dis.readUTF());
 
         // verify that the UID is as expected
-        assertEquals(dis.readLong(), expectedUID);
+        assertEquals(expectedUID, dis.readLong());
     }
 
-    @DataProvider(name = "recordClasses")
     public Object[][] recordClasses() {
         List<Object[]> list = new ArrayList<>();
         List<Class<?>> recordClasses = List.of(R1.class, R2.class, R3.class, R4.class, R5.class);
@@ -116,14 +118,15 @@ public class SerialVersionUIDTest {
      * Tests that matching of the serialVersionUID values ( stream value
      * and runtime class value ) is waived for record classes.
      */
-    @Test(dataProvider = "recordClasses")
+    @ParameterizedTest
+    @MethodSource("recordClasses")
     public void testSerializeFromClass(Class<? extends Record> cl, long suid)
         throws Exception
     {
         out.println("\n---");
         byte[] bytes = byteStreamFor(cl.getName(), suid);
         Object obj = deserialize(bytes);
-        assertEquals(obj.getClass(), cl);
+        assertEquals(cl, obj.getClass());
         assertTrue(obj.getClass().isRecord());
     }
 
