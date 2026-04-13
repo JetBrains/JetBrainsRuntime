@@ -53,9 +53,7 @@ public class AddTrustedCert extends SecmodTest {
                     BASE + File.separator + args[1]);
         }
 
-        if (initSecmod() == false) {
-            return;
-        }
+        initSecmod();
 
         X509Certificate cert;
         try (InputStream in = new FileInputStream(BASE + SEP + "anchor.cer")) {
