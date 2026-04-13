@@ -10638,6 +10638,7 @@ instruct reinterpretHF2S(rRegI dst, regF src)
   format %{ "vmovw $dst, $src" %}
   ins_encode %{
     __ vmovw($dst$$Register, $src$$XMMRegister);
+    __ narrow_subword_type($dst$$Register, T_SHORT);
   %}
   ins_pipe(pipe_slow);
 %}
