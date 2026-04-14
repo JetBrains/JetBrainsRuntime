@@ -40,6 +40,8 @@
 
 # gtest
 
+gtest/ArrayTests.java#no-coops JBR-4027 generic-all
+gtest/ArrayTests.java#with-coops JBR-4027 generic-all
 gtest/AsyncLogGtest.java JBR-4027 generic-all
 gtest/LockStackGtests.java JBR-4027 generic-all
 gtest/LargePageGtests.java#use-large-pages-sysV initial_run linux-all
@@ -61,6 +63,12 @@ gtest/NativeHeapTrimmerGtest.java JBR-4027 generic-all
 gtest/NMTGtests.java#nmt-detail JBR-4027 generic-all
 gtest/NMTGtests.java#nmt-off JBR-4027 generic-all
 gtest/NMTGtests.java#nmt-summary JBR-4027 generic-all
+gtest/ObjArrayTests.java#no-coops JBR-4027 generic-all
+gtest/ObjArrayTests.java#no-coops-large-align JBR-4027 generic-all
+gtest/ObjArrayTests.java#with-coops JBR-4027 generic-all
+gtest/ObjArrayTests.java#with-coops-large-align JBR-4027 generic-all
+gtest/TestSpinPauseAArch64.java#default_armv8_0 JBR-4027 generic-all
+gtest/TestSpinPauseAArch64.java#sb_armv8_5 JBR-4027 generic-all
 gtest/WindowsProcessorGroups.java JBR-4027 generic-all
 
 gc/stress/TestReclaimStringsLeaksMemory.java initial_run windows-all
