@@ -254,12 +254,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 final boolean clickedQuickly
                         = (pointerEvent.getTimestamp() - pointerButtonPressedEvent.timestamp)
                         <= WLToolkit.getMulticlickTime();
-                final int mouseDeltaX = newEventWithPosition.getSurfaceX() - pointerButtonPressedEvent.surfaceX;
-                final int mouseDeltaY = newEventWithPosition.getSurfaceY() - pointerButtonPressedEvent.surfaceY;
-                final int mouseDeltaSquared = mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY;
-                final int mouseDeltaThreshold = WLToolkit.getMulticlickMouseMoveThresholdPx();
-                final boolean mouseDidNotMove = mouseDeltaSquared <= (mouseDeltaThreshold * mouseDeltaThreshold);
-                if (clickedSameSurface && clickedQuickly && mouseDidNotMove) {
+                if (clickedSameSurface && clickedQuickly && multiclickMouseDidNotMove(newEventWithPosition)) {
                     clickCount = pointerButtonPressedEvent.clickCount + 1;
                 }
             }
@@ -274,6 +269,17 @@ record WLInputState(WLPointerEvent eventWithSurface,
         }
 
         return pointerButtonPressedEvent;
+    }
+
+    private boolean multiclickMouseDidNotMove(WLPointerEvent newEvent) {
+        final int mouseSurfaceDeltaX = newEvent.getSurfaceX() - pointerButtonPressedEvent.surfaceX;
+        final int mouseSurfaceDeltaY = newEvent.getSurfaceY() - pointerButtonPressedEvent.surfaceY;
+        final WLComponentPeer peer = peerForPointerEvents();
+        final int mouseDeltaX = peer != null ? peer.surfaceUnitsToJavaUnits(mouseSurfaceDeltaX) : mouseSurfaceDeltaX;
+        final int mouseDeltaY = peer != null ? peer.surfaceUnitsToJavaUnits(mouseSurfaceDeltaY) : mouseSurfaceDeltaY;
+        final int mouseDeltaSquared = mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY;
+        final int mouseDeltaThreshold = WLToolkit.getMulticlickMouseMoveThresholdJavaUnits();
+        return mouseDeltaSquared <= (mouseDeltaThreshold * mouseDeltaThreshold);
     }
 
     private int getNewModifiers(WLPointerEvent pointerEvent) {
