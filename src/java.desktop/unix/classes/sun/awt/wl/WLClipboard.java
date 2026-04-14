@@ -31,17 +31,21 @@ import sun.util.logging.PlatformLogger;
 import java.awt.datatransfer.FlavorTable;
 import java.awt.datatransfer.Transferable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
 public final class WLClipboard extends SunClipboard {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLClipboard");
 
-    private static final String plainTextUtf8 = "text/plain;charset=utf-8";
-    private static final String utf8String = "UTF8_STRING";
-
+    // These are ordered in order of preference, with more standardized spellings first
+    private static final List<String> utf8Mimes = Arrays.asList(
+            "text/plain;charset=utf-8",
+            "UTF8_STRING",
+            "text/plain;charset=UTF-8"
+    );
 
     private final WLDataDevice dataDevice;
 
@@ -201,12 +205,14 @@ public final class WLClipboard extends SunClipboard {
             mimes = clipboardDataOfferedToUs.getMimes();
         }
 
-        var formatsSet = new HashSet<Long>();
+        var formatsSet = new LinkedHashSet<Long>();
         for (var mime : mimes) {
-            formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(mime));
-            if (mime.equalsIgnoreCase(plainTextUtf8)) {
-                // some compositors (WSLg) don't advertise UTF8_STRING
-                formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(utf8String));
+            if (utf8Mimes.contains(mime)) {
+                for (String utf8Mime : utf8Mimes) {
+                    formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(utf8Mime));
+                }
+            } else {
+                formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(mime));
             }
         }
 
@@ -223,8 +229,14 @@ public final class WLClipboard extends SunClipboard {
     @Override
     protected byte[] getClipboardData(long format) throws IOException {
         final WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
-        final long utf8StringFormat = wlDataTransferer.getFormatForNativeAsLong(utf8String);
         WLDataOffer offer = null;
+        boolean isUtf8Format = false;
+        for (String utf8Mime : utf8Mimes) {
+            if (wlDataTransferer.getFormatForNativeAsLong(utf8Mime) == format) {
+                isUtf8Format = true;
+                break;
+            }
+        }
 
         try {
             synchronized (dataLock) {
@@ -232,16 +244,30 @@ public final class WLClipboard extends SunClipboard {
             }
 
             // Iterate over all mime types, since the mapping between mime types and java formats might not be 1:1
-            // Also treat text/plain;charset=utf-8 as UTF8_STRING
-            for (var mime : offer.getMimes()) {
+            List<String> suitableMimes = new ArrayList<>();
+            for (String mime : offer.getMimes()) {
                 long curFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
-                boolean isUtf8String = mime.equalsIgnoreCase(plainTextUtf8) && utf8StringFormat == format;
+                boolean isUtf8String = isUtf8Format && utf8Mimes.contains(mime);
                 if (curFormat == format || isUtf8String) {
-                    return offer.receiveData(mime);
+                    suitableMimes.add(mime);
                 }
             }
 
-            throw new IOException("No appropriate mime type found for WLClipboard.getClipboardData with format = " + format);
+            if (suitableMimes.isEmpty()) {
+                throw new IOException("No appropriate mime type found for WLClipboard.getClipboardData with format = " + format);
+            }
+
+            if (isUtf8Format) {
+                // Prefer certain, more standardized spellings of "a UTF-8 string" over others
+                // This is a workaround for several issues (JBR-8912, JBR-10230)
+                for (String utf8Mime : utf8Mimes) {
+                    if (suitableMimes.contains(utf8Mime)) {
+                        return offer.receiveData(utf8Mime);
+                    }
+                }
+            }
+
+            return offer.receiveData(suitableMimes.getFirst());
         } finally {
             if (offer != null) {
                 offer.unref();
