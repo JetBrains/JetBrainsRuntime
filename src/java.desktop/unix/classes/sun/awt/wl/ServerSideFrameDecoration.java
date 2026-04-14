@@ -24,10 +24,12 @@
  */
 package sun.awt.wl;
 
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Insets;
 import java.awt.Rectangle;
+import java.awt.event.MouseEvent;
 
 /**
  * Decorations based on the xdg-decoration-unstable-v1 protocol.
@@ -66,6 +68,15 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
+    }
+
+    @Override
+    boolean processMouseEvent(MouseEvent e) {
+        return false;
+    }
+
+    public Cursor cursorAt(int x, int y) {
+        return null;
     }
 
     @Override
