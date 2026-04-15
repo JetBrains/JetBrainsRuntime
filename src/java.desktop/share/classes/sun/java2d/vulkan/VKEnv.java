@@ -26,11 +26,13 @@
 
 package sun.java2d.vulkan;
 
+import sun.awt.SunToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Toolkit;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public final class VKEnv {
@@ -66,16 +68,34 @@ public final class VKEnv {
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
-    private static native long initPlatform(long nativePtr);
+    public static native long initPlatformWayland(long nativePtr);
+    private static native long initPlatformX11Native(long nativePtr);
     private static native VKGPU[] initNative(long platformData);
 
-    public static synchronized void init(long nativePtr) {
+    static class VKInitializationException extends RuntimeException {
+        private static final long serialVersionUID = 7476713504086007145L;
+        VKInitializationException(String message) {
+            super(message);
+        }
+    }
+
+    public static long initPlatformX11(long nativePtr) {
+        String forceOnXWaylandProperty = System.getProperty("sun.java2d.vulkan.forceOnXWayland", "false");
+        boolean forceOnXWayland = forceOnXWaylandProperty.equalsIgnoreCase("true");
+        if (!forceOnXWayland && Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit && sunToolkit.isRunningOnXWayland()) {
+            // Due to an XWayland bug (no workaround in java2d yet), Java windows would be presented with a titlebar-height shift
+            throw new VKInitializationException("Vulkan is currently not supported on XWayland due to a known bug");
+        }
+        return initPlatformX11Native(nativePtr);
+    }
+
+
+    public static synchronized void init(Supplier<Long> getPlatformData) {
         if (state > INITIALIZING) return;
         int newState = DISABLED;
         if (Options.vulkan) {
             try {
-                long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
-                devices = initNative(platformData);
+                devices = initNative(getPlatformData.get());
                 if (devices != null) {
                     newState = ENABLED;
                     if (Options.accelsd) newState |= ACCELSD_BIT;
@@ -94,7 +114,7 @@ public final class VKEnv {
                     VKMaskFill.register();
                     VKMaskBlit.register();
                 }
-            } catch (UnsatisfiedLinkError e) {
+            } catch (UnsatisfiedLinkError | VKInitializationException e) {
                 newState = DISABLED;
                 if (Options.verbose) {
                     System.err.println("Vulkan backend is not available");
@@ -140,7 +160,7 @@ public final class VKEnv {
                 Toolkit.getDefaultToolkit();
             }
             // Still not initialized? Init without platform data.
-            if (state == INITIALIZING) init(0);
+            if (state == INITIALIZING) init(() -> 0L);
         }
     }
 

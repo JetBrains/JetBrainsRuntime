@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +23,36 @@
  * questions.
  */
 
-package sun.java2d.wl;
+package sun.awt;
 
-import java.awt.GraphicsConfiguration;
+import java.awt.Component;
+import java.awt.Window;
 
-public interface WLSurfaceDataExt {
-    void assignSurface(long surfacePtr);
-    void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
+public class AWTUtilities {
+    /**
+     * Get the closest window ancestor of a component (including, potentially, the component itself).
+     *
+     * @param c The component.
+     * @return The closest Window ancestor of the given Component (including itself), or null if none.
+     */
+    public static Window getWindowThisOrAncestor(Component c) {
+        for(; c != null; c = c.getParent()) {
+            if (c instanceof Window w) {
+                return w;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Call updateWindow() on the closest window ancestor of a component (including, potentially, the component itself).
+     *
+     * @param c The component.
+     */
+    public static void updateWindowThisOrAncestor(Component c) {
+        Window w = getWindowThisOrAncestor(c);
+        if (w != null) {
+            AWTAccessor.getWindowAccessor().updateWindow(w);
+        }
+    }
 }
