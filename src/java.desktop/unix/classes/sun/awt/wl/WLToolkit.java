@@ -29,6 +29,7 @@ package sun.awt.wl;
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAutoShutdown;
+import sun.awt.AWTUtilities;
 import sun.awt.LightweightFrame;
 import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
@@ -46,7 +47,6 @@ import sun.lwawt.PlatformWindow;
 import sun.lwawt.ToolkitAPI;
 import sun.util.logging.PlatformLogger;
 
-import javax.swing.SwingUtilities;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.dnd.DragGestureEvent;
@@ -167,7 +167,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         if (!GraphicsEnvironment.isHeadless()) {
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
-            VKEnv.init(display);
+            VKEnv.init(() -> VKEnv.initPlatformWayland(display));
             initIDs(display);
         }
         String desktop = System.getenv("XDG_CURRENT_DESKTOP");
@@ -1237,14 +1237,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public void flushOnscreenGraphics(Component context) {
-        if (context == null) {
-            return;
-        }
-        Window window = context instanceof Window w ? w : SwingUtilities.getWindowAncestor(context);
-        if (window == null) {
-            return;
-        }
-        AWTAccessor.getWindowAccessor().updateWindow(window);
+        AWTUtilities.updateWindowThisOrAncestor(context);
     }
 
     @Override
