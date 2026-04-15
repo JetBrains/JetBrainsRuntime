@@ -66,15 +66,15 @@ public final class VKEnv {
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
-    private static native long initPlatform(long nativePtr);
+    public static native long initPlatformWayland(long nativePtr);
+    public static native long initPlatformX11(long nativePtr);
     private static native VKGPU[] initNative(long platformData);
 
-    public static synchronized void init(long nativePtr) {
+    public static synchronized void init(long platformData) {
         if (state > INITIALIZING) return;
         int newState = DISABLED;
         if (Options.vulkan) {
             try {
-                long platformData = nativePtr == 0 ? 0 : initPlatform(nativePtr);
                 devices = initNative(platformData);
                 if (devices != null) {
                     newState = ENABLED;

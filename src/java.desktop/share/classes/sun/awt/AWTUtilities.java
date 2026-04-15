@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +23,26 @@
  * questions.
  */
 
-package sun.java2d.wl;
+package sun.awt;
 
-import java.awt.GraphicsConfiguration;
+import javax.swing.SwingUtilities;
+import java.awt.Component;
+import java.awt.Window;
 
-public interface WLSurfaceDataExt {
-    void assignSurface(long surfacePtr);
-    void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
+public class AWTUtilities {
+    public static Window getWindowThisOrAncestor(Component c) {
+        if (c == null) {
+            return null;
+        }
+        return c instanceof Window ? (Window)c : SwingUtilities.getWindowAncestor(c);
+    }
+
+    // TODO: this is duplicated in the WL impl of ToolkitAPI, should probably reuse there
+    // (not doing it for now to prevent merge conflicts)
+    public static void updateWindowThisOrAncestor(Component c) {
+        Window w = getWindowThisOrAncestor(c);
+        if (w != null) {
+            AWTAccessor.getWindowAccessor().updateWindow(w);
+        }
+    }
 }
