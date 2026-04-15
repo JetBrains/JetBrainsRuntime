@@ -41,6 +41,7 @@ import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
+import java.util.Objects;
 
 import sun.awt.X11ComponentPeer;
 import sun.awt.X11GraphicsConfig;

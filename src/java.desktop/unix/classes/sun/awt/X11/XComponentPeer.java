@@ -62,6 +62,7 @@ import java.util.Set;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
+import sun.awt.AWTUtilities;
 import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.event.IgnorePaintEvent;
@@ -69,7 +70,6 @@ import sun.awt.image.SunVolatileImage;
 import sun.java2d.BackBufferCapsProvider;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
-
 
 public class XComponentPeer extends XWindow implements ComponentPeer, DropTargetPeer,
     BackBufferCapsProvider
@@ -585,7 +585,10 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
               // Skip all painting while layouting and all UPDATEs
               // while waiting for native paint
               if (!isLayouting && !paintPending) {
+                  // FIXME: why is shouldClearRectBeforePaint=true in WLComponentPeer, but false here?
                   paintArea.paint(target,false);
+
+                  AWTUtilities.updateWindowThisOrAncestor(target);
               }
               return;
           case FocusEvent.FOCUS_LOST:

@@ -41,7 +41,11 @@ import sun.awt.IconInfo;
 import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
+import sun.java2d.CommittableSurfaceDataExt;
+import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.X11VKGraphicsConfig;
+import sun.java2d.vulkan.X11VKWindowSurfaceData;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.JPopupMenu;
@@ -2522,7 +2526,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     @Override
     public void updateWindow() {
-        // no-op
+        SurfaceData.convertTo(CommittableSurfaceDataExt.class, ((XContentWindow) getContentXWindow()).getSurfaceData()).commit();
+        SurfaceData.convertTo(CommittableSurfaceDataExt.class, surfaceData).commit();
     }
 
     boolean isTopMostWindow() {

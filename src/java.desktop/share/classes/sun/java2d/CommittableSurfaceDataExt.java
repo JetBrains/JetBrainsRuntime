@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +23,33 @@
  * questions.
  */
 
-package sun.java2d.wl;
+package sun.java2d;
 
-import java.awt.GraphicsConfiguration;
+import sun.java2d.pipe.RenderBuffer;
+import sun.java2d.vulkan.VKRenderQueue;
 
-public interface WLSurfaceDataExt {
-    void assignSurface(long surfacePtr);
-    void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
+
+public interface CommittableSurfaceDataExt {
+    public void commit();
+
+    public interface VulkanMixin extends CommittableSurfaceDataExt {
+        @Override
+        public default void commit() {
+            synchronized (this) {
+                VKRenderQueue rq = VKRenderQueue.getInstance();
+                rq.lock();
+                try {
+                    RenderBuffer buf = rq.getBuffer();
+                    rq.ensureCapacityAndAlignment(12, 4);
+                    buf.putInt(FLUSH_BUFFER);
+                    buf.putLong(((SurfaceData) this).getNativeOps());
+
+                    rq.flushNow();
+                } finally {
+                    rq.unlock();
+                }
+            }
+        }
+    }
 }

@@ -109,22 +109,6 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         configure();
     }
 
-    @Override
-    public synchronized void commit() {
-        VKRenderQueue rq = VKRenderQueue.getInstance();
-        rq.lock();
-        try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(12, 4);
-            buf.putInt(FLUSH_BUFFER);
-            buf.putLong(getNativeOps());
-
-            rq.flushNow();
-        } finally {
-            rq.unlock();
-        }
-    }
-
     private void bufferAttached() {
         // Called from the native code when a buffer has just been attached to this surface
         // but the surface has not been committed yet.
