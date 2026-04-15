@@ -76,7 +76,7 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
     protected int revalidate(VKGraphicsConfig gc) {
         int result = super.revalidate(gc);
         if (result != VolatileImage.IMAGE_INCOMPATIBLE) {
-            scale = gc.getScale();
+            scale = gc.getFractionalScale();
             width = (int) Math.ceil(scale * userWidth);
             height = (int) Math.ceil(scale * userHeight);
         }

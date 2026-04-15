@@ -42,6 +42,7 @@ import java.util.Objects;
 import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
+import sun.java2d.CommittableSurfaceDataExt;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
@@ -51,7 +52,7 @@ import sun.util.logging.PlatformLogger;
 /**
  * SurfaceData for shared memory buffers.
  */
-public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt, WLPixelGrabberExt {
+public class WLSMSurfaceData extends SurfaceData implements CommittableSurfaceDataExt, WLSurfaceDataExt, WLPixelGrabberExt {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSMSurfaceData");
     private final Component target; // optional
     private final WLSurfaceSizeListener sizeListener;

@@ -32,6 +32,7 @@ import sun.awt.PaintEventDispatcher;
 import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
+import sun.java2d.CommittableSurfaceDataExt;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
@@ -637,7 +638,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             if (wlSurface != null) {
                 shadow.paint();
                 shadow.commitSurfaceData();
-                SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).commit();
+                SurfaceData.convertTo(CommittableSurfaceDataExt.class, surfaceData).commit();
             }
         });
         ((WLToolkit) Toolkit.getDefaultToolkit()).flush();
@@ -2166,7 +2167,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
 
         public void commitSurfaceData() {
-            SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).commit();
+            SurfaceData.convertTo(CommittableSurfaceDataExt.class, shadowSurfaceData).commit();
         }
 
         public void notifyConfigured(boolean active, boolean maximized, boolean fullscreen) {
