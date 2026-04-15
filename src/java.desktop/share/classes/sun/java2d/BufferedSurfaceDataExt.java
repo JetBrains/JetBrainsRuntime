@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright 2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +23,11 @@
  * questions.
  */
 
-package sun.java2d.wl;
+package sun.java2d;
 
-import java.awt.GraphicsConfiguration;
-
-public interface WLSurfaceDataExt {
-    void assignSurface(long surfacePtr);
-    void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
+public interface BufferedSurfaceDataExt {
+    /**
+     * Applies any 'pending' paint commands to the surface.
+     */
+    void commit();
 }
