@@ -1853,6 +1853,11 @@ public abstract class SunToolkit extends Toolkit
         return false;
     }
 
+    /**
+     * Similar to needUpdateWindow, but this
+     * returns whether the native system requires using the peer.updateWindow()
+     * method to update the contents of ANY window, even an opaque one.
+     */
     public boolean needUpdateWindowAfterPaint() {
         return false;
     }
