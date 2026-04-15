@@ -69,7 +69,7 @@ public final class Win32VKGraphicsConfig extends Win32GraphicsConfig implements 
     }
 
     @Override
-    public double getScale() {
+    public double getFractionalScale() {
         return getDevice().getDefaultScaleX();
     }
 
