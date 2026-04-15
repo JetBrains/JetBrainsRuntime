@@ -372,9 +372,7 @@ public abstract class WComponentPeer extends WObjectPeer
                 if (!isLayouting && ! paintPending) {
                     paintArea.paint(target,shouldClearRectBeforePaint());
                 }
-                if (surfaceData instanceof D3DSurfaceData.D3DWindowSurfaceData d3DWindowSurfaceData) {
-                    d3DWindowSurfaceData.displayContent(0, 0, 0, 0);
-                } else if (surfaceData instanceof BufferedSurfaceDataExt bufferedSurfaceData) {
+                if (surfaceData instanceof BufferedSurfaceDataExt bufferedSurfaceData) {
                     bufferedSurfaceData.commit();
                 }
                 return;

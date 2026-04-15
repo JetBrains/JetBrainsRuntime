@@ -23,37 +23,11 @@
  * questions.
  */
 
-package sun.awt;
+package sun.java2d;
 
-import javax.swing.SwingUtilities;
-import java.awt.Component;
-import java.awt.Window;
-
-public class AWTUtilities {
+public interface BufferedSurfaceDataExt {
     /**
-     * Get the closest window ancestor of a component (including, potentially, the component itself).
-     *
-     * @param c The component.
-     * @return The closest Window ancestor of the given Component (including itself), or null if none.
+     * Applies any 'pending' paint commands to the surface.
      */
-    public static Window getWindowThisOrAncestor(Component c) {
-        for(; c != null; c = c.getParent()) {
-            if (c instanceof Window w) {
-                return w;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Call updateWindow() on the closest window ancestor of a component (including, potentially, the component itself).
-     *
-     * @param c The component.
-     */
-    public static void updateWindowThisOrAncestor(Component c) {
-        Window w = getWindowThisOrAncestor(c);
-        if (w != null) {
-            AWTAccessor.getWindowAccessor().updateWindow(w);
-        }
-    }
+    void commit();
 }
