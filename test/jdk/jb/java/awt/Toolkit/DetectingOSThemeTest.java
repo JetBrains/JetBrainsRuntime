@@ -66,6 +66,10 @@ public class DetectingOSThemeTest {
     private static String currentTheme = null;
 
     public static void main(String[] args) throws Exception {
+        System.out.println("DBUS_SESSION_BUS_ADDRESS=" + System.getenv("DBUS_SESSION_BUS_ADDRESS"));
+        System.out.println("XDG_RUNTIME_DIR=" + System.getenv("XDG_RUNTIME_DIR"));
+        System.out.println("XDG_CURRENT_DESKTOP=" + System.getenv("XDG_CURRENT_DESKTOP"));
+
         isKDE = "KDE".equals(System.getenv("XDG_CURRENT_DESKTOP"));
         currentTheme = currentTheme();
         if (currentTheme.equals(UNDEFINED_THEME_NAME)) {
