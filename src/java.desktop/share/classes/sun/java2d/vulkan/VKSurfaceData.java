@@ -29,6 +29,7 @@ package sun.java2d.vulkan;
 import java.awt.AlphaComposite;
 import sun.awt.SunHints;
 import sun.awt.image.PixelConverter;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
@@ -50,13 +51,14 @@ import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.awt.image.VolatileImage;
 
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 
 
 public abstract class VKSurfaceData extends SurfaceData
-        implements AccelSurface {
+        implements BufferedSurfaceDataExt, AccelSurface {
 
     // We want non-premultiplied alpha to prevent precision loss, so use PixelConverter.Argb
     // See also VKUtil_DecodeJavaColor.
@@ -122,6 +124,7 @@ public abstract class VKSurfaceData extends SurfaceData
         return (GraphicsConfiguration) gc;
     }
 
+    @Override
     public void flush() {
         invalidate();
         VKRenderQueue rq = VKRenderQueue.getInstance();
@@ -133,6 +136,22 @@ public abstract class VKSurfaceData extends SurfaceData
             buf.putLong(getNativeOps());
 
             // this call is expected to complete synchronously, so flush now
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    @Override
+    public void commit() {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(getNativeOps());
+
             rq.flushNow();
         } finally {
             rq.unlock();
