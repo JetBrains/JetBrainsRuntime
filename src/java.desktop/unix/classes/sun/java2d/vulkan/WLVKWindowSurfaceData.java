@@ -33,8 +33,6 @@ import java.util.Objects;
 
 import sun.awt.wl.WLComponentPeer;
 import sun.java2d.SurfaceData;
-import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
-import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.wl.WLPixelGrabberExt;
 import sun.java2d.wl.WLSurfaceDataExt;
 import sun.java2d.wl.WLSurfaceSizeListener;
@@ -107,22 +105,6 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         this.scale = scale;
         revalidate((VKGraphicsConfig) gc);
         configure();
-    }
-
-    @Override
-    public synchronized void commit() {
-        VKRenderQueue rq = VKRenderQueue.getInstance();
-        rq.lock();
-        try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(12, 4);
-            buf.putInt(FLUSH_BUFFER);
-            buf.putLong(getNativeOps());
-
-            rq.flushNow();
-        } finally {
-            rq.unlock();
-        }
     }
 
     private void bufferAttached() {
