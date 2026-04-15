@@ -58,6 +58,8 @@ import sun.awt.IconInfo;
 import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsDevice;
 import sun.awt.X11GraphicsEnvironment;
+import sun.java2d.BufferedSurfaceDataExt;
+import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
@@ -2541,7 +2543,12 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     @Override
     public void updateWindow() {
-        // no-op
+        // In decorated frames, we use the surfaceData of the content window.
+        // For undecorated frames, getContentXWindow() is the same as `this`.
+        SurfaceData contentSurfaceData = ((XWindow) getContentXWindow()).getSurfaceData();
+        if (contentSurfaceData instanceof BufferedSurfaceDataExt csd) {
+            csd.commit();
+        }
     }
 
     boolean isTopMostWindow() {

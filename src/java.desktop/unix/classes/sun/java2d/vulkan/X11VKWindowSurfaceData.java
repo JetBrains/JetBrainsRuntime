@@ -25,33 +25,47 @@
 
 package sun.java2d.vulkan;
 
-import java.awt.Image;
-import java.awt.Rectangle;
-import java.awt.image.VolatileImage;
-
+import sun.awt.X11ComponentPeer;
+import sun.awt.X11GraphicsConfig;
 import sun.java2d.SurfaceData;
 
-/**
- * SurfaceData object representing an off-screen buffer
- */
-public class VKOffScreenSurfaceData extends VKSurfaceData {
+import java.awt.*;
 
-    private final Image offscreenImage;
-    private final int userWidth, userHeight; // In logical units.
+public class X11VKWindowSurfaceData extends VKSurfaceData {
+    private native void initOps(int vkFormat);
+    private native void initAsReplacement(X11VKWindowSurfaceData oldSD);
+    private native void assignWindow(long window);
 
-    private native void initOps(int format);
+    private final X11ComponentPeer peer;
 
-    public VKOffScreenSurfaceData(Image image, VKFormat format, int transparency, int type, int width, int height) {
-        super(format, transparency, type);
-        this.userWidth = width;
-        this.userHeight = height;
-        offscreenImage = image;
-        initOps(format.getValue(transparency));
+    X11VKWindowSurfaceData(X11ComponentPeer peer) {
+        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(), peer.getColorModel().getTransparency(), WINDOW);
+
+        X11GraphicsConfig x11gc = (X11GraphicsConfig) peer.getGraphicsConfiguration();
+        int x11Scale = x11gc.getScale();
+
+        this.gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
+        this.peer = peer;
+        Rectangle bounds = peer.getBounds();
+        this.width = bounds.width * x11Scale;
+        this.height = bounds.height * x11Scale;
+        this.scale = x11Scale;
+
+        SurfaceData oldSurfaceData = peer.getSurfaceData();
+        if (oldSurfaceData instanceof X11VKWindowSurfaceData) {
+            initAsReplacement((X11VKWindowSurfaceData) oldSurfaceData);
+        } else {
+            initOps(gc.getFormat().getValue(peer.getColorModel().getTransparency()));
+            assignWindow(peer.getWindow());
+        }
+
+        revalidate(gc);
+        configure();
     }
 
     @Override
     public SurfaceData getReplacement() {
-        return restoreContents(offscreenImage);
+        return peer.getSurfaceData();
     }
 
     @Override
@@ -64,22 +78,8 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
         return new Rectangle(width, height);
     }
 
-    /**
-     * Returns destination Image associated with this SurfaceData.
-     */
     @Override
     public Object getDestination() {
-        return offscreenImage;
-    }
-
-    @Override
-    protected int revalidate(VKGraphicsConfig gc) {
-        int result = super.revalidate(gc);
-        if (result != VolatileImage.IMAGE_INCOMPATIBLE) {
-            scale = gc.getFractionalScale();
-            width = (int) Math.ceil(scale * userWidth);
-            height = (int) Math.ceil(scale * userHeight);
-        }
-        return result;
+        return peer.getTarget();
     }
 }
