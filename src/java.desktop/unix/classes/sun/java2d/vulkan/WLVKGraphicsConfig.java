@@ -58,7 +58,7 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
     }
 
     @Override
-    public double getScale() {
+    public double getFractionalScale() {
         return getEffectiveScale();
     }
 
