@@ -237,6 +237,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 int visNum = getConfigVisualId(i, screen);
                 int depth = getConfigDepth (i, screen);
                 if (!vulkanGCs.isEmpty()) {
+                    // FIXME: we should probably match the visual's format with the vulkan format here.
+                    // Otherwise, some configs might be broken; need to check on 'real' X11 (not Xwayland).
                     ret[i] = X11VKGraphicsConfig.getConfig(vulkanGCs.getFirst(), this, visNum);
                 }
                 if (ret[i] == null && glxSupported) {

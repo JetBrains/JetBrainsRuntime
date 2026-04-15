@@ -218,7 +218,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             device = (X11GraphicsDevice) localEnv.getDefaultScreenDevice();
             display = device.getDisplay();
             setupModifierMap();
-            VKEnv.init(VKEnv.initPlatformX11(getDisplay()));
+            VKEnv.init(() -> VKEnv.initPlatformX11(display));
             initIDs();
             setBackingStoreType();
         }
@@ -262,12 +262,12 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean needUpdateWindow() {
-        return true; // TODO: should really be true iff using vulkan
+        return VKEnv.isVulkanEnabled();
     }
 
     @Override
     public boolean needUpdateWindowAfterPaint() {
-        return true; // TODO: should really be true iff using vulkan
+        return VKEnv.isVulkanEnabled();
     }
 
 

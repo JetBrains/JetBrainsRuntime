@@ -38,7 +38,7 @@ import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 public class X11VKWindowSurfaceData extends VKSurfaceData {
     private native void initOps(int vkFormat);
     private native void initAsReplacement(X11VKWindowSurfaceData oldSD);
-    private native void assignWindow(int window);
+    private native void assignWindow(long window);
 
     private final X11ComponentPeer peer;
 
@@ -53,7 +53,7 @@ public class X11VKWindowSurfaceData extends VKSurfaceData {
         Rectangle bounds = peer.getBounds();
         this.width = bounds.width * x11Scale;
         this.height = bounds.height * x11Scale;
-        this.scale = gc.getFractionalScale();
+        this.scale = x11Scale;
 
         SurfaceData oldSurfaceData = peer.getSurfaceData();
         if (oldSurfaceData instanceof X11VKWindowSurfaceData) {
@@ -61,7 +61,7 @@ public class X11VKWindowSurfaceData extends VKSurfaceData {
             initAsReplacement((X11VKWindowSurfaceData) oldSurfaceData);
         } else {
             initOps(gc.getFormat().getValue(peer.getColorModel().getTransparency()));
-            assignWindow((int) peer.getWindow());
+            assignWindow(peer.getWindow());
         }
 
         revalidate(gc);
@@ -70,7 +70,7 @@ public class X11VKWindowSurfaceData extends VKSurfaceData {
 
     @Override
     public SurfaceData getReplacement() {
-        return null;
+        return peer.getSurfaceData();
     }
 
     @Override

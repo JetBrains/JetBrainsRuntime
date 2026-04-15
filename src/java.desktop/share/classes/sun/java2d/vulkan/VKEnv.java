@@ -68,7 +68,6 @@ public final class VKEnv {
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
-    private static native long initPlatformX11Native(long nativePtr);
     public static native long initPlatformX11(long nativePtr);
     public static native long initPlatformWin32();
     private static native VKGPU[] initNative(long platformData);

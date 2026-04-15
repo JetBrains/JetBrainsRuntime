@@ -84,7 +84,7 @@ static void X11VK_InitSurfaceData(VKWinSDOps* surface, void* data) {
 
 /*
  * Class:     sun_java2d_vulkan_VKEnv
- * Method:    initPlatformX11
+ * Method:    initPlatformX11Native
  * Signature: (J)J
  */
 JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKEnv_initPlatformX11
@@ -96,7 +96,7 @@ JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKEnv_initPlatformX11
 /*
  * Class:     sun_java2d_vulkan_X11VKWindowSurfaceData
  * Method:    initOps
- * Signature: (II)V
+ * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_X11VKWindowSurfaceData_initOps
   (JNIEnv* env, jobject vksd, jint format) {
@@ -130,9 +130,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_X11VKWindowSurfaceData_initAsRepla
 /*
  * Class:     sun_java2d_vulkan_X11VKWindowSurfaceData
  * Method:    assignWindow
- * Signature: (I)V
+ * Signature: (J)V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_X11VKWindowSurfaceData_assignWindow
-  (JNIEnv* env, jobject vksd, jint window) {
-    VKSD_InitWindowSurface(env, vksd, X11VK_InitSurfaceData, (void*)((uintptr_t)window));
+  (JNIEnv* env, jobject vksd, jlong window) {
+    VKSD_InitWindowSurface(env, vksd, X11VK_InitSurfaceData, (void*)(window));
 }

@@ -571,6 +571,10 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
                   paintArea.paint(target,true);
 
                   AWTUtilities.updateWindowThisOrAncestor(target);
+                  if (((XToolkit) XToolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
+                      SunToolkit.executeOnEventHandlerThread(getTarget(),
+                              () -> AWTUtilities.updateWindowThisOrAncestor(target));
+                  }
               }
               return;
           case FocusEvent.FOCUS_LOST:
