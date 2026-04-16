@@ -40,13 +40,18 @@ AC_DEFUN_ONCE([LIB_SETUP_DBUS],
       DBUS_FOUND=true
       DBUS_CFLAGS=""
       for include in $with_dbus_includes; do
-        DBUS_CFLAGS="${DBUS_CFLAGS}-I${include} "
+        if test -d "${include}"; then
+          DBUS_CFLAGS="${DBUS_CFLAGS}-I${include} "
+        else
+          AC_MSG_ERROR([Can't find ${include} given with the --with-dbus-includes option.])
+          DBUS_FOUND=false
+        fi
       done
     else
-      PKG_CHECK_MODULES(DBUS, dbus-1, [DBUS_FOUND=true], [
-        DBUS_FOUND=false
-        AC_MSG_NOTICE([Can't find dbus-1 library. This library is needed to use some features. You can install dbus-1 library or specify include directories manually by giving --with-dbus-includes option.])
-      ])
+      PKG_CHECK_MODULES(DBUS, dbus-1, [DBUS_FOUND=true], [DBUS_FOUND=false])
+      if test "x${DBUS_FOUND}" = "xfalse"; then
+        AC_MSG_ERROR([dbus-1 headers are required for AWT, but dbus-1 was not found!])
+      fi
     fi
   fi
 
