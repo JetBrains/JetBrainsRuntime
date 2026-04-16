@@ -66,6 +66,8 @@ public class DetectingOSThemeTest {
     private static String currentTheme = null;
 
     public static void main(String[] args) throws Exception {
+        checkDesktopPortalStatus();
+
         isKDE = "KDE".equals(System.getenv("XDG_CURRENT_DESKTOP"));
         currentTheme = currentTheme();
         if (currentTheme.equals(UNDEFINED_THEME_NAME)) {
@@ -98,6 +100,34 @@ public class DetectingOSThemeTest {
             }
         } finally {
             setOsDarkTheme(initialTheme);
+        }
+    }
+
+    private static void checkDesktopPortalStatus() throws Exception {
+        System.out.println("Checking desktop portal status...");
+        try (Process p = new ProcessBuilder(
+                "dbus-send",
+                "--session",
+                "--print-reply",
+                "--dest=org.freedesktop.portal.Desktop",
+                "/org/freedesktop/portal/desktop",
+                "org.freedesktop.portal.Settings.Read",
+                "string:org.freedesktop.appearance",
+                "string:color-scheme").redirectErrorStream(true).start()) {
+
+            String output = new String(p.getInputStream().readAllBytes());
+            System.out.printf("dbus-send output:%n%s%n", output);
+            int exit = p.waitFor();
+            if (exit != 0) {
+                // Check 'systemctl --user status xdg-desktop-portal'
+                // The output must include "Active: active (running)"
+                throw new RuntimeException("Failed to check desktop portal status: dbus-send exit code is non-zero " + exit);
+            }
+
+            // Expected output "variant       variant          uint32 1"
+            if (!output.contains("variant")) {
+                throw new RuntimeException("Failed to check desktop portal status: " + output);
+            }
         }
     }
 }
