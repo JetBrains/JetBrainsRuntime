@@ -2273,7 +2273,7 @@ void VMError::record_oome_stack(const char *message) {
   }
 
   {
-    MutexLocker ml(OOMEStacks_lock);
+    MutexLocker ml(OOMEStacks_lock, Mutex::_no_safepoint_check_flag);
     ResourceMark rm;
 
     stringStream st(_oome_stacktrace[_oome_free_index], OOME_STACKTRACE_BUFSIZE);
