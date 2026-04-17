@@ -53,7 +53,6 @@
         }                                       \
     } while(0)                                  \
 
-struct gtk_shell1;
 
 extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
@@ -63,9 +62,6 @@ extern struct wl_subcompositor *wl_subcompositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct wp_viewporter *wp_viewporter;
 extern struct xdg_activation_v1 *xdg_activation_v1; // optional, check for NULL before use
-#ifdef HAVE_GTK_SHELL1
-extern struct gtk_shell1* gtk_shell1; // optional, check for NULL before use
-#endif
 extern struct wl_cursor_theme *wl_cursor_theme;
 extern struct wl_data_device_manager *wl_ddm;
 extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm; // optional, check for NULL before use
