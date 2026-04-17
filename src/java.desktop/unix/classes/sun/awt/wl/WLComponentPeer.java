@@ -127,8 +127,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private final String kwinAppId; // non-null only when WLKwinHelper.isEnabled() is set
 
     private static final boolean shadowEnabled;
-    private static final boolean nativeModalityEnabled = Boolean.parseBoolean(
-            System.getProperty("sun.awt.wl.NativeModality", "false"));
 
     static {
         initIDs();
@@ -418,7 +416,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             boolean isWlPopup = targetIsWlPopup();
             int thisWidth = javaUnitsToSurfaceSize(getWidth());
             int thisHeight = javaUnitsToSurfaceSize(getHeight());
-            boolean isModal = targetIsModal();
 
             if (isWlPopup && (target.getParent() == null || !target.getParent().isShowing())) {
                 // Note: PopupFactory.getPopup(null, ...) cannot be supported because
@@ -445,7 +442,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 } else {
                     String appId = kwinAppId != null ? kwinAppId : WLToolkit.getApplicationID();
                     nativeCreateWindow(nativePtr, getParentNativePtr(target), wlSurfacePtr,
-                            isModal, isMaximized, isMinimized, title, appId);
+                            isMaximized, isMinimized, title, appId);
                     int xNative = javaUnitsToSurfaceUnits(target.getX());
                     int yNative = javaUnitsToSurfaceUnits(target.getY());
                     setLocationOfToplevel(xNative, yNative);
@@ -499,15 +496,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     static boolean isWlPopup(Window window) {
         return window.getType() == Window.Type.POPUP;
-    }
-
-    private boolean targetIsModal() {
-        if (nativeModalityEnabled) {
-            return target instanceof Dialog dialog
-                    && (dialog.getModalityType() == Dialog.ModalityType.APPLICATION_MODAL
-                    || dialog.getModalityType() == Dialog.ModalityType.TOOLKIT_MODAL);
-        }
-        return false;
     }
 
     void updateSurfaceData() {
@@ -1228,7 +1216,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     protected native long nativeCreateFrame();
 
     protected native void nativeCreateWindow(long ptr, long parentPtr, long wlSurfacePtr,
-                                                boolean isModal, boolean isMaximized, boolean isMinimized,
+                                                boolean isMaximized, boolean isMinimized,
                                                 String title, String appID);
 
     protected native void nativeCreatePopup(long ptr, long parentPtr, long wlSurfacePtr,

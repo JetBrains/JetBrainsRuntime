@@ -55,10 +55,6 @@
 #include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
 
-#ifdef HAVE_GTK_SHELL1
-#include <gtk-shell.h>
-#endif
-
 #define CHECK_WL_INTERFACE(var, name) if (!(var)) { JNU_ThrowByName(env, "java/awt/AWTError", "Can't bind to the " name " interface"); }
 
 extern JavaVM *jvm;
@@ -71,9 +67,6 @@ struct xdg_wm_base *xdg_wm_base = NULL;
 struct wp_viewporter *wp_viewporter = NULL;
 struct xdg_activation_v1 *xdg_activation_v1 = NULL; // optional, check for NULL before use
 struct wl_seat     *wl_seat = NULL;
-#ifdef HAVE_GTK_SHELL1
-struct gtk_shell1* gtk_shell1 = NULL;
-#endif
 struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
@@ -660,11 +653,6 @@ registry_global(void *data, struct wl_registry *wl_registry,
     else if (strcmp(interface, zwp_relative_pointer_manager_v1_interface.name) == 0) {
         relative_pointer_manager = wl_registry_bind(wl_registry, name, &zwp_relative_pointer_manager_v1_interface, 1);
     }
-#ifdef HAVE_GTK_SHELL1
-    else if (strcmp(interface, gtk_shell1_interface.name) == 0) {
-        gtk_shell1 = wl_registry_bind(wl_registry, name, &gtk_shell1_interface, 1);
-    }
-#endif
     else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
       wl_ddm = wl_registry_bind(wl_registry, name,&wl_data_device_manager_interface, 3);
     } else if (strcmp(interface, zwp_primary_selection_device_manager_v1_interface.name) == 0) {
