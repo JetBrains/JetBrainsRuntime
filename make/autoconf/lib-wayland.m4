@@ -38,8 +38,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       [specify directory for the wayland library files])])
   AC_ARG_WITH(wayland-protocols, [AS_HELP_STRING([--with-wayland-protocols],
       [specify the root directory for the wayland protocols xml files])])
-  AC_ARG_WITH(gtk-shell1-protocol, [AS_HELP_STRING([--with-gtk-shell1-protocol],
-      [specify the path to the gtk-shell1 Wayland protocol xml file])])
   AC_ARG_WITH(xkbcommon, [AS_HELP_STRING([--with-xkbcommon],
       [specify prefix directory for the xkbcommon package
       (expecting the headers under PATH/include)])])
@@ -103,17 +101,6 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       AC_MSG_RESULT([yes])
     else
       AC_MSG_ERROR([Can't find 'wayland-protocols' under $WAYLAND_PROTOCOLS_ROOT.])
-    fi
-    GTK_SHELL1_PROTOCOL_PATH=
-    if test "x${with_gtk_shell1_protocol}" != x && test "x${with_gtk_shell1_protocol}" != xno; then
-      AC_MSG_CHECKING([for the gtk-shell1 Wayland protocol])
-      if test -s "${with_gtk_shell1_protocol}"; then
-        WAYLAND_DEFINES="${WAYLAND_DEFINES} -DHAVE_GTK_SHELL1"
-        GTK_SHELL1_PROTOCOL_PATH="${with_gtk_shell1_protocol}"
-        AC_MSG_RESULT([yes])
-      else
-        AC_MSG_ERROR([Can't find gtk-shell1 protocol in ${with_gtk_shell1_protocol} given with the --with-gtk-shell1-protocol option.])
-      fi
     fi
     if test "x${with_wayland_lib}" != x; then
       WAYLAND_LIBS="-L${with_wayland_lib} -lwayland-client -lwayland-cursor"
@@ -185,5 +172,4 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
   AC_SUBST(WAYLAND_PROTOCOLS_ROOT)
-  AC_SUBST(GTK_SHELL1_PROTOCOL_PATH)
 ])
