@@ -13,7 +13,6 @@ java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-5117 linux-a
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java JBR-9887 windows-10.0
 java/awt/FullScreen/CurrentDisplayModeTest/CurrentDisplayModeTest.java JBR-5059 linux-all
 java/awt/FullScreen/MultimonFullscreenTest/MultimonDeadlockTest.java JBR-4379 windows-all
-java/awt/FullScreen/SetFullScreenTest.java JBR-8400 linux-x64
 java/awt/GraphicsDevice/DisplayModes/CompareToXrandrTest.java JBR-5062 linux-all
 java/awt/GraphicsDevice/DisplayModes/UnknownRefrshRateTest.java JBR-6336 macosx-all
 java/awt/GraphicsDevice/IncorrectDisplayModeExitFullscreen.java JBR-6336 macosx-all
