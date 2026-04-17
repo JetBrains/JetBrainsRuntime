@@ -26,21 +26,11 @@ JCEF_PATH=${JCEF_PATH:=./jcef_linux_aarch64}
 
 function do_configure {
 
-  GTK_SHELL_PATH=/gtk-shell.xml
   WAYLAND_PROTOCOLS_PATH=/opt/wayland-protocols
   WITH_WAYLAND_PROTOCOLS=
 
   if [ -e "$WAYLAND_PROTOCOLS_PATH" ]; then
     WITH_WAYLAND_PROTOCOLS="--with-wayland-protocols=$WAYLAND_PROTOCOLS_PATH"
-  fi
-
-  if [ ! -e $GTK_SHELL_PATH ]; then
-    echo $GTK_SHELL_PATH" does not exist"
-    GTK_SHELL_PATH=`pwd`/gtk-shell.xml
-    if [ ! -e $GTK_SHELL_PATH ]; then
-      echo $GTK_SHELL_PATH" does not exist"
-      curl -O https://raw.githubusercontent.com/GNOME/gtk/refs/heads/main/gdk/wayland/protocol/gtk-shell.xml
-    fi
   fi
 
   sh configure \
@@ -53,7 +43,6 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
-    --with-gtk-shell1-protocol=$GTK_SHELL_PATH \
     --with-vulkan \
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
