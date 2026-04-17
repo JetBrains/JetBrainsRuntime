@@ -37,10 +37,6 @@
 #include "xdg-decoration-unstable-v1.h"
 #include <stdbool.h>
 
-#ifdef HAVE_GTK_SHELL1
-#include <gtk-shell.h>
-#endif
-
 static jmethodID postWindowClosingMID; // WLWindowPeer.postWindowClosing
 static jmethodID notifyConfiguredMID;
 static jmethodID notifyPopupDoneMID;
@@ -48,7 +44,6 @@ static jmethodID notifyPopupDoneMID;
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
     struct xdg_surface *xdg_surface;
-    struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
     jboolean toplevel;
@@ -337,7 +332,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
       (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jlong wlSurfacePtr,
-       jboolean isModal, jboolean isMaximized, jboolean isMinimized,
+       jboolean isMaximized, jboolean isMinimized,
        jstring title, jstring appid)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
@@ -346,12 +341,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
 
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
-#ifdef HAVE_GTK_SHELL1
-    if (gtk_shell1 != NULL) {
-        frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, wl_surface);
-        CHECK_NULL(frame->gtk_surface);
-    }
-#endif
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_TRUE;
     frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
@@ -372,12 +361,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
     if (parentFrame && parentFrame->toplevel) {
         xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
     }
-
-#ifdef HAVE_GTK_SHELL1
-    if (isModal && frame->gtk_surface != NULL) {
-        gtk_surface1_set_modal(frame->gtk_surface);
-    }
-#endif
 }
 
 static struct xdg_positioner *
@@ -461,17 +444,11 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
     } else {
         xdg_popup_destroy(frame->xdg_popup);
     }
-#ifdef HAVE_GTK_SHELL1
-    if (frame->gtk_surface != NULL) {
-        gtk_surface1_destroy(frame->gtk_surface);
-    }
-#endif
     xdg_surface_destroy(frame->xdg_surface);
 
     frame->xdg_surface = NULL;
     frame->xdg_toplevel = NULL;
     frame->xdg_popup = NULL;
-    frame->gtk_surface = NULL;
     frame->toplevel = JNI_FALSE;
 }
 
