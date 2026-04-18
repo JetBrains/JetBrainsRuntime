@@ -55,7 +55,46 @@ public class WLCursorManager {
             {"move"}, // MOVE_CURSOR
     };
 
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT = 1;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CONTEXT_MENU = 2;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_HELP = 3;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER = 4;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_PROGRESS = 5;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT = 6;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CELL = 7;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR = 8;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT = 9;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_VERTICAL_TEXT = 10;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ALIAS = 11;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_COPY = 12;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_MOVE = 13;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NO_DROP = 14;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NOT_ALLOWED = 15;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRAB = 16;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_GRABBING = 17;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_E_RESIZE = 18;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_N_RESIZE = 19;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE = 20;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE = 21;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_S_RESIZE = 22;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SE_RESIZE = 23;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SW_RESIZE = 24;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_W_RESIZE = 25;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_EW_RESIZE = 26;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NS_RESIZE = 27;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NESW_RESIZE = 28;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NWSE_RESIZE = 29;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_COL_RESIZE = 30;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ROW_RESIZE = 31;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ALL_SCROLL = 32;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_IN = 33;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_OUT = 34;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DND_ASK = 35;
+    private static final int WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ALL_RESIZE = 36;
+
     private static final WLCursorManager instance = new WLCursorManager();
+
+    private final boolean isCursorShapeSupported; // Is wp_cursor_shape_manager_v1 supported?
 
     private Cursor currentCursor; // accessed under the 'instance' lock
 
@@ -64,6 +103,7 @@ public class WLCursorManager {
     }
 
     private WLCursorManager() {
+        isCursorShapeSupported = nativeIsCursorShapeSupported();
     }
 
     public void reset() {
@@ -105,25 +145,75 @@ public class WLCursorManager {
             if (cursor == currentCursor) return;
             currentCursor = cursor;
 
-            long pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
-            if (pData == 0) {
-                // TODO: instead of destroying and creating a new cursor after changing the scale caching could be used
+            boolean isCustomCursor = cursor.getType() == Cursor.CUSTOM_CURSOR;
+            if (isCursorShapeSupportedFor(cursor)) {
                 long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
                 if (oldPData != 0 && oldPData != -1) {
+                    // Note: this shouldn't normally happen, but in case a predefined cursor
+                    // was previously used, this is the only chance to clean up.
+                    assert !isCustomCursor : "This code is only meant for predefined cursors cleanup";
+                    AWTAccessor.getCursorAccessor().setPData(cursor, 0);
                     nativeDestroyPredefinedCursor(oldPData);
                 }
+                int shape = getCursorShapeFor(cursor);
+                nativeSetCursorShape(shape, serial);
+            } else {
+                long pData = 0;
+                if (isCustomCursor) {
+                    pData = AWTAccessor.getCursorAccessor().getPData(cursor);
+                    assert pData != 0 : "Custom cursor should have been created before or set to -1 on failure";
+                    if (pData == -1) {
+                        log.warning("Custom cursor '" + cursor.getName() + "' is unavailable, using invisible cursor instead");
+                    }
+                } else {
+                    pData = AWTAccessor.getCursorAccessor().getPData(cursor, scale);
+                    if (pData == 0) {
+                        // TODO: instead of destroying and creating a new cursor after changing the scale caching could be used
+                        long oldPData = AWTAccessor.getCursorAccessor().getPData(cursor);
+                        if (oldPData != 0 && oldPData != -1) {
+                            nativeDestroyPredefinedCursor(oldPData);
+                        }
 
-                pData = createNativeCursor(cursor.getType(), scale);
-                if (pData == 0) {
-                    pData = createNativeCursor(Cursor.DEFAULT_CURSOR, scale);
+                        pData = createNativeCursor(cursor.getType(), scale);
+                        if (pData == 0) {
+                            log.warning("Failed to create native cursor for type: " + cursor.getType()
+                                    + ", using default cursor instead");
+                            pData = createNativeCursor(Cursor.DEFAULT_CURSOR, scale);
+                        }
+                        if (pData == 0) {
+                            log.warning("Failed to create default cursor, using invisible cursor instead");
+                            pData = -1; // mark as unavailable
+                        }
+                        AWTAccessor.getCursorAccessor().setPData(cursor, scale, pData);
+                    }
                 }
-                if (pData == 0) {
-                    pData = -1; // mark as unavailable
-                }
-                AWTAccessor.getCursorAccessor().setPData(cursor, scale, pData);
+                nativeSetCursor(pData, scale, serial);
             }
-            nativeSetCursor(pData, scale, serial);
         }
+    }
+
+    private boolean isCursorShapeSupportedFor(Cursor cursor) {
+        return isCursorShapeSupported && cursor.getType() != Cursor.CUSTOM_CURSOR;
+    }
+
+    private int getCursorShapeFor(Cursor cursor) {
+        return switch (cursor.getType()) {
+            case Cursor.DEFAULT_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+            case Cursor.CROSSHAIR_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_CROSSHAIR;
+            case Cursor.TEXT_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_TEXT;
+            case Cursor.WAIT_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_WAIT;
+            case Cursor.SW_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SW_RESIZE;
+            case Cursor.SE_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_SE_RESIZE;
+            case Cursor.NW_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NW_RESIZE;
+            case Cursor.NE_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NE_RESIZE;
+            case Cursor.N_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_N_RESIZE;
+            case Cursor.W_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_W_RESIZE;
+            case Cursor.S_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_S_RESIZE;
+            case Cursor.E_RESIZE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_E_RESIZE;
+            case Cursor.HAND_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_POINTER;
+            case Cursor.MOVE_CURSOR -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_MOVE;
+            default -> WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_DEFAULT;
+        };
     }
 
     private long createNativeCursor(int type, int scale) {
@@ -139,7 +229,9 @@ public class WLCursorManager {
         return 0;
     }
 
+    private static native boolean nativeIsCursorShapeSupported();
     private static native void nativeSetCursor(long pData, int scale, long pointerEnterSerial);
     private static native long nativeGetPredefinedCursor(String name, int scale);
     private static native void nativeDestroyPredefinedCursor(long pData);
+    private static native void nativeSetCursorShape(int shape, long serial);
 }
