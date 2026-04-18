@@ -82,6 +82,8 @@ struct zxdg_output_manager_v1 *zxdg_output_manager_v1 = NULL; // optional, check
 struct zwp_text_input_manager_v3 *zwp_text_input_manager = NULL; // optional, check for NULL before use
 struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager; // optional, check for NULL before use
 
+struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, check for NULL before use
+
 static uint32_t num_of_outstanding_sync = 0;
 static bool waiting_for_xdg_toplevel_icon_manager_done = false;
 
@@ -684,6 +686,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
             waiting_for_xdg_toplevel_icon_manager_done = true;
             xdg_toplevel_icon_manager_v1_add_listener(xdg_toplevel_icon_manager, &xdg_toplevel_icon_manager_v1_listener, NULL);
         }
+    } else if(strcmp(interface, wp_cursor_shape_manager_v1_interface.name) == 0) {
+        wp_cursor_shape_manager = wl_registry_bind(wl_registry, name, &wp_cursor_shape_manager_v1_interface, 1);
     }
 }
 
