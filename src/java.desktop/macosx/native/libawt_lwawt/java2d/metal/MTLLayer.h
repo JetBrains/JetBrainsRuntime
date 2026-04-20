@@ -29,9 +29,10 @@
 #import <QuartzCore/CAMetalLayer.h>
 #include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
+#import "MTLContext.h"
 
 #define TRACE_DISPLAY_ENABLED   1
-#define TRACE_DISPLAY_CHANGED   1
+#define TRACE_DISPLAY_CHANGED   0
 
 #define TRACE_DISPLAY_ON        (TRACE_DISPLAY_ENABLED == 1)
 
@@ -45,7 +46,18 @@
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
+
 @property (readwrite, atomic) int redrawCount;
+/* avoid reentrance in startRedraw (main thread) (async) */
+@property (readwrite, atomic) BOOL willRedraw;
+/* reference frame time (only 1 display / blit) */
+@property (readwrite, atomic) CFTimeInterval redrawTime;
+/* avoid reentrance in CAMetalLayer.display (main thread) --- SYNC ---> blitTexture(RQ lock) */
+@property (readwrite, atomic) BOOL willDisplay;
+/* redraw version acts like a transaction ID to ensure last version displayed */
+@property (readwrite, atomic) int redrawVersion;
+@property (readwrite, atomic) int blitVersion;
+
 @property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 
 #if TRACE_DISPLAY_ON
@@ -66,7 +78,6 @@
 - (void) blitCallback;
 - (void) display;
 - (void) startRedraw;
-- (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;
 - (void) stopRedraw:(MTLContext*)mtlc displayID:(jint)displayID force:(BOOL)force;
 - (void) flushBuffer;
@@ -75,6 +86,8 @@
 - (void) addStatCallback:(int)type value:(double)value;
 - (void) countFramePresentedCallback;
 - (void) countFrameDroppedCallback;
+
+- (NSString*) getRedrawInfo;
 @end
 
 #endif /* MTLLayer_h_Included */

@@ -24,6 +24,7 @@
  */
 
 #include <stdlib.h>
+#include <mach/mach_time.h>
 #import <ThreadUtilities.h>
 
 #include "sun_java2d_SunGraphics2D.h"
@@ -54,6 +55,8 @@
 // use separate command queue for blitting.
 #define REDRAW_COUNT 1
 
+#define REDRAW_COUNT_INIT 5 // Use 5 redraws to ensure initial window is presented !
+
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern BOOL isDisplaySyncEnabled();
 extern BOOL MTLLayer_isExtraRedrawEnabled();
@@ -61,10 +64,11 @@ extern void dumpDisplayInfo(jint displayID);
 extern BOOL isValidDisplayMode(CGDisplayModeRef mode);
 
 #define STATS_CVLINK        1
+#define TRACE_CVLINK_STATS  1
 
-#define TRACE_NOTIF         1
+#define TRACE_NOTIF         0
 
-#define TRACE_CVLINK        1
+#define TRACE_CVLINK        0
 #define TRACE_CVLINK_WARN   0
 #define TRACE_CVLINK_DEBUG  0
 
@@ -102,9 +106,11 @@ typedef struct {
     jint                redrawCount;
     jint                failCount;
 
+    jint                willRedraw;
+    CFTimeInterval      redrawTime;
     jint                avgDisplayLinkSamples;
     CFTimeInterval      lastRedrawTime;
-    CFTimeInterval      lastDisplayLinkTime;
+    CFTimeInterval      lastDisplayLinkTime; // current DL tick time (now)
     CFTimeInterval      avgDisplayLinkTime;
     CFTimeInterval      lastStatTime;
 } MTLDisplayLinkState;
@@ -553,6 +559,8 @@ extern void initSamplers(id<MTLDevice> device);
 
             dlState->redrawCount = 0;
             dlState->failCount = 0;
+            dlState->willRedraw = 0;
+            dlState->redrawTime = 0.0;
             dlState->avgDisplayLinkSamples = 0;
             dlState->lastRedrawTime = 0.0;
             dlState->lastDisplayLinkTime = 0.0;
@@ -758,7 +766,7 @@ extern void initSamplers(id<MTLDevice> device);
         return NULL;
     }
 
-    J2dTraceLn(J2D_TRACE_VERBOSE,
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                "MTLContext_SetSurfaces: bsrc=%p (tex=%p type=%d), bdst=%p (tex=%p type=%d)",
                srcOps, srcOps->pTexture, srcOps->drawableType,
                dstOps, dstOps->pTexture, dstOps->drawableType);
@@ -1016,6 +1024,15 @@ extern void initSamplers(id<MTLDevice> device);
     if (layer != nil) {
         [layer commitCommandBuffer:self wait:waitUntilCompleted display:updateDisplay];
     } else {
+        // TODO: fix parallel rendering
+        if (1) {
+            waitUntilCompleted = YES;
+        }
+
+        if (TRACE_DISPLAY) {
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLContext_commitCommandBuffer[ctx = %p] wait: %d updateDisplay: %d",
+                CACurrentMediaTime(), self, waitUntilCompleted, updateDisplay);
+        }
         MTLCommandBufferWrapper * cbwrapper = [self pullCommandBufferWrapper];
         if (cbwrapper != nil) {
             id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
@@ -1038,13 +1055,34 @@ extern void initSamplers(id<MTLDevice> device);
     if (dlState == nil) {
         return;
     }
+
+    // allow one redraw scheduled on the main thread (coalesing):
+    // TODO: Race condition(willRedraw)
+    dlState->willRedraw = 0;
+
+    if (TRACE_CVLINK_DEBUG) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext_redraw[displayID: %d]: layers.count=%d redrawCount=%d",
+                        displayID, _layers.count, dlState->redrawCount);
+    }
+
+    // Get the reference frame time:
+    const CFTimeInterval frameRedrawTime = dlState->redrawTime;
+
     /*
      * Avoid repeated invocations by UIKit Main Thread
      * if blocked while many mtlDisplayLinkCallback() are dispatched
      */
+    /* TODO: KILL */
     const CFTimeInterval now = CACurrentMediaTime();
+    if (TRACE_CVLINK) {
+        NSLog(@"MTLContext_redraw[displayID: %d]: latency(t0) = %.3lf ms",
+              displayID, TO_MS(now - frameRedrawTime));
+    }
+
     const CFTimeInterval elapsed = (dlState->lastRedrawTime != 0.0) ? (now - dlState->lastRedrawTime) : -1.0;
 
+    /* not reliable if stats disabled (STATS_CVLINK = 1) */
+    // TODO: use CVDL frameRate (more robust):
     CFTimeInterval threshold = (dlState->avgDisplayLinkSamples >= 10) ?
             (dlState->avgDisplayLinkTime / 20.0) : KEEP_ALIVE_MIN_INTERVAL;
 
@@ -1059,30 +1097,59 @@ extern void initSamplers(id<MTLDevice> device);
         }
         return;
     }
+    dlState->lastRedrawTime = now;
+
     if (TRACE_CVLINK_DEBUG) {
         NSLog(@"MTLContext_redraw[displayID: %d]: elapsed: %.3f ms (> %.3f)",
               displayID, TO_MS(elapsed), TO_MS(threshold));
     }
-    dlState->lastRedrawTime = now;
+
+    // Check if layers need to be redrawn:
+    bool hasLayers = false;
 
     // Process layers:
     for (MTLLayer *layer in _layers) {
+        // if layer is present: layer.redrawCount > 0:
         if (layer.displayID == displayID) {
-            [layer setNeedsDisplay];
-        }
-    }
-    if (dlState->redrawCount > 0) {
-        dlState->redrawCount--;
-    } else {
-        // dlState->redrawCount == 0:
-        if (_layers.count > 0) {
-            for (MTLLayer *layer in _layers.allObjects) {
-                if (layer.displayID == displayID) {
-                    [_layers removeObject:layer];
+            hasLayers = true;
+
+            // check reentrancy between redraw calls (ASYNC display() call):
+            if (layer.willDisplay) {
+                if (TRACE_CVLINK_DEBUG) {
+                    NSLog(@"MTLContext_redraw[displayID: %d]: %@ skipped setNeedsDisplay",
+                        displayID, [layer getRedrawInfo]);
                 }
+            } else {
+                // set flag willDisplay
+                // will be reset in layer display/blitTexture:
+                layer.willDisplay = YES;
+                if (TRACE_CVLINK_DEBUG) {
+                    NSLog(@"MTLContext_redraw[displayID: %d]: %@ before setNeedsDisplay",
+                        displayID, [layer getRedrawInfo]);
+                }
+
+                // set reference frame time for the layer:
+                layer.redrawTime = frameRedrawTime;
+
+                // call display() ASYNC:
+                [layer setNeedsDisplay];
             }
         }
-        [self handleDisplayLink:NO displayID:displayID source:"redraw"];
+    }
+
+    // Should terminate only if no layer left:
+    if (!hasLayers) {
+        if (TRACE_CVLINK) {
+            NSLog(@"MTLContext_redraw[displayID: %d]: redrawCount = %d",
+                  displayID, dlState->redrawCount);
+        }
+        // if 4 calls then remove all (may be possible if long setNeedsDisplay)
+        if (dlState->redrawCount > 0) {
+            dlState->redrawCount--;
+        } else {
+            // imply dlState->redrawCount == 0:
+            [self handleDisplayLink:NO displayID:displayID source:"redraw"];
+        }
     }
 }
 
@@ -1102,21 +1169,48 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
     const jint displayID = dlState->displayID;
 
     if (STATS_CVLINK) {
+        const uint64_t timeCallback = mach_absolute_time();
         const CFTimeInterval now = outputTime->videoTime / (double) outputTime->videoTimeScale; // seconds
         const CFTimeInterval delta = (dlState->lastDisplayLinkTime != 0.0) ? (now - dlState->lastDisplayLinkTime)
                                                                            : -1.0;
-        dlState->lastDisplayLinkTime = now;
+        dlState->lastDisplayLinkTime = now; // outputTime (future)
+
+        if (0) {
+            const double frameRate = ((double)outputTime->videoTimeScale) / outputTime->videoRefreshPeriod;
+
+            NSLog(@"[displayID: %d] frame rate: %.3lf hz", displayID, frameRate);
+
+            if (0) {
+                const CFTimeInterval t0 = nowTime->videoTime / (double) nowTime->videoTimeScale; // seconds
+
+                const uint64_t t0_abs = nowTime->hostTime;
+                const uint64_t t1_abs = outputTime->hostTime;
+
+                static CFTimeInterval machtimeFactor = 0.0;
+                if (machtimeFactor == 0.0) {
+                    mach_timebase_info_data_t timebase_info;
+                    mach_timebase_info(&timebase_info);
+                    machtimeFactor = ((double)timebase_info.numer) / ((double)timebase_info.denom);
+                }
+
+                NSLog(@"delta (outputTime - nowTime): %.3lf ms", TO_MS(now - t0));
+                NSLog(@"latency(nowTime): %.3lf ms", (timeCallback - t0_abs) * machtimeFactor * 1e-6);
+                NSLog(@"remaining(outputTime): %.3lf ms", (t1_abs - timeCallback) * machtimeFactor * 1e-6);
+            }
+        }
 
         dlState->avgDisplayLinkSamples++;
         dlState->avgDisplayLinkTime = EXP_AVG_WEIGHT * delta + EXP_INV_WEIGHT * dlState->avgDisplayLinkTime;
 
-        if (dlState->lastStatTime == 0.0) {
-            dlState->lastStatTime = now;
-        } else if ((now - dlState->lastStatTime) > 1.0) {
-            dlState->lastStatTime = now;
-            // dump stats:
-            NSLog(@"mtlDisplayLinkCallback[displayID: %d]: avg interval = %.3lf ms (%.1lf fps) on %d samples", displayID,
-                  TO_MS(dlState->avgDisplayLinkTime), TO_FPS(dlState->avgDisplayLinkTime), dlState->avgDisplayLinkSamples);
+        if (TRACE_CVLINK_STATS) {
+            if (dlState->lastStatTime == 0.0) {
+                dlState->lastStatTime = now;
+            } else if ((now - dlState->lastStatTime) > 1.0) {
+                dlState->lastStatTime = now;
+                // dump stats:
+                NSLog(@"mtlDisplayLinkCallback[displayID: %d]: avg interval = %.3lf ms (%.1lf fps) on %d samples", displayID,
+                      TO_MS(dlState->avgDisplayLinkTime), TO_FPS(dlState->avgDisplayLinkTime), dlState->avgDisplayLinkSamples);
+            }
         }
     }
 
@@ -1129,33 +1223,56 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         return kCVReturnError;
     }
 
+    // ensure only one redraw scheduled on the main thread (coalesing):
+    // TODO: Race condition(willRedraw)
+    if (dlState->willRedraw == 0) {
+        // TODO: use pthread_mutex (barrier)
+        dlState->willRedraw = 1;
+    } else {
+        // skip this display link tick:
+        if (TRACE_CVLINK_DEBUG) {
+            NSLog(@"MTLContext_mtlDisplayLinkCallback[displayID: %d]: skip redraw (willRedraw = 1)", displayID);
+        }
+        return kCVReturnSuccess;
+    }
+
+    // As latency to be here is very small = (timeCallback - t0_abs) ~ 0.001 ms
+    // using current CA time is simpler ie latency = 0.0
+    // or add offset = (timeCallback - t0_abs) in sec:
+    dlState->redrawTime = CACurrentMediaTime();
+
+    // Note: main thread may be busy so redraw callbacks may be postponed (ASYNC):
     [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
                            waitUntilDone:NO useJavaModes:NO]; // critical
+
     return kCVReturnSuccess;
 }
 
 - (void)startRedraw:(MTLLayer*)layer {
     AWT_ASSERT_APPKIT_THREAD;
-    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p layer=%p", self, layer);
     const jint displayID = layer.displayID;
+    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_startRedraw: ctx=%p displayID=%d layer=%p",
+        self, displayID, layer);
     MTLDisplayLinkState *dlState = [self getDisplayLinkState:displayID];
     if (dlState == nil) {
         return;
     }
     dlState->redrawCount = KEEP_ALIVE_COUNT;
 
-    layer.redrawCount = REDRAW_COUNT;
+    layer.redrawCount = (layer.redrawCount == -1) ? REDRAW_COUNT_INIT : REDRAW_COUNT;
+    // increment version to force redraw
+    layer.redrawVersion++;
     [_layers addObject:layer];
 
     if (MTLLayer_isExtraRedrawEnabled()) {
         // Request for redraw before starting display link to avoid rendering problem on M2 processor
         [layer setNeedsDisplay];
     }
+    if (TRACE_CVLINK_DEBUG) {
+        NSLog(@"MTLContext_startRedraw: ctx=%p %@",
+            self, [layer getRedrawInfo]);
+    }
     [self handleDisplayLink:YES displayID:displayID source:"startRedraw"];
-}
-
-- (void)stopRedraw:(MTLLayer*) layer {
-    [self stopRedraw:layer.displayID layer:layer];
 }
 
 - (void)stopRedraw:(jint)displayID layer:(MTLLayer*)layer {
@@ -1178,6 +1295,10 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
                 break;
             }
         }
+    }
+    if (TRACE_CVLINK_DEBUG) {
+        NSLog(@"MTLContext_stopRedraw: ctx=%p %@ hasLayers=%d",
+                   self, [layer getRedrawInfo], hasLayers);
     }
     if (!hasLayers && (dlState->redrawCount == 0)) {
         [self handleDisplayLink:NO displayID:displayID source:"stopRedraw"];

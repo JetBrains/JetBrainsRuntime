@@ -41,6 +41,8 @@
 
 #define TRACE_OP    0
 
+#define TRACE_FLUSH 0
+
 /**
  * References to the "current" context and destination surface.
  */
@@ -160,6 +162,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     unsigned char *b, *end;
     J2dTraceLn(J2D_TRACE_INFO,
                "MTLRenderQueue_flushBuffer: limit=%d", limit);
+
+    if (TRACE_FLUSH) J2dRlsTraceLn(J2D_TRACE_INFO,
+               "MTLRenderQueue_flushBuffer: start: limit=%d", limit);
 
     b = (unsigned char *)jlong_to_ptr(buf);
     if (b == NULL) {
@@ -954,6 +959,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         } // while op
 
     RENDER_LOOP_EXIT(env, "MTLRenderQueue");
+
+    if (TRACE_FLUSH) J2dRlsTraceLn(J2D_TRACE_INFO,
+               "MTLRenderQueue_flushBuffer: exit");
 }
 
 /**

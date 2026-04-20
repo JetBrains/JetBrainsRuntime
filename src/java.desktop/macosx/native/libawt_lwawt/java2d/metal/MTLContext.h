@@ -263,7 +263,6 @@ typedef enum {
 - (id<MTLCommandBuffer>)createBlitCommandBuffer;
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 - (void)startRedraw:(MTLLayer*)layer;
-- (void)stopRedraw:(MTLLayer*)layer;
 - (void)stopRedraw:(jint)displayID layer:(MTLLayer*)layer;
 - (void)haltRedraw;
 @end
