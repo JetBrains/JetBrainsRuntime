@@ -171,7 +171,7 @@ public final class RenderPerfTest {
     private static int TEXT_SIZE_DEFAULT = 12;
     private static int TEXT_SIZE_LARGE = 32;
 
-    private final static int COUNT = 600 * TIME_SCALE;
+    private final static int COUNT = 60 * TIME_SCALE; /* 600 */
     private final static int MIN_COUNT = 20;
     private final static int MAX_SAMPLE_COUNT = 2 * COUNT;
 
@@ -960,6 +960,9 @@ public final class RenderPerfTest {
                         frame.getContentPane().revalidate();
                     }
                 });
+                if (true) {
+                    hideFrameAndWait();
+                }
             }
         }
 
@@ -2390,6 +2393,11 @@ public final class RenderPerfTest {
                 } catch (Throwable th) {
                     System.err.println("Exception occurred in RenderPerfThread[" + threadId + "]:");
                     th.printStackTrace(System.err);
+                } finally {
+                    if (DELAY_START) {
+                        System.out.println("Waiting 5s before stopping benchmark...");
+                        RenderPerfTest.sleep(5000);
+                    }
                 }
             }
         };
