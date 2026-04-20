@@ -1037,9 +1037,14 @@ AWT_ASSERT_APPKIT_THREAD;
     }
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_displayChanged, jc_CPlatformWindow, "displayChanged", "(Z)V");
+    @try {
     (*env)->CallVoidMethod(env, platformWindow, jm_displayChanged, profileOnly);
+        (*env)->DeleteLocalRef(env, platformWindow);
     CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, platformWindow);
+    } @catch (NSException *exception) {
+        NSLog(@"WARNING: suppressed exception from CPlatformWindow.displayChanged() in [AWTWindow _displayChanged]");
+        NSAPP_AWT_LOG_EXCEPTION(exception);
+    }
 }
 
 - (void) _deliverMoveResizeEvent {
@@ -1066,15 +1071,19 @@ AWT_ASSERT_APPKIT_THREAD;
 
     GET_CPLATFORM_WINDOW_CLASS();
     DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
-    (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
-                      (jint)frame.origin.x,
-                      (jint)frame.origin.y,
-                      (jint)frame.size.width,
-                      (jint)frame.size.height,
-                      (jboolean)[self.nsWindow inLiveResize]);
+    @try {
+        (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
+                          (jint)frame.origin.x,
+                          (jint)frame.origin.y,
+                          (jint)frame.size.width,
+                          (jint)frame.size.height,
+                          (jboolean)[self.nsWindow inLiveResize]);
+        (*env)->DeleteLocalRef(env, platformWindow);
     CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, platformWindow);
-
+    } @catch (NSException *exception) {
+        NSLog(@"WARNING: suppressed exception from CPlatformWindow.deliverMoveResizeEvent() in [AWTWindow _deliverMoveResizeEvent]");
+        NSAPP_AWT_LOG_EXCEPTION(exception);
+    }
     [AWTWindow synthesizeMouseEnteredExitedEventsForAllWindows];
 }
 
