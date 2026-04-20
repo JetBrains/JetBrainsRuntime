@@ -738,9 +738,7 @@ JNI_COCOA_ENTER(env);
     // Convert NSString* to JavaString
     NSString* result = [ThreadUtilities getThreadTraceContexts];
 
-    jstring javaString = (*env)->NewStringUTF(env, result.UTF8String);
-    [result release];
-    return javaString;
+    return (*env)->NewStringUTF(env, result.UTF8String);
 
 JNI_COCOA_EXIT(env);
 }

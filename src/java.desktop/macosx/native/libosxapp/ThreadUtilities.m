@@ -139,14 +139,14 @@ static NSArray<NSString*> *javaModes = nil;
 static NSArray<NSString*> *allModesExceptJava = nil;
 
 /* Traceability data */
-static const BOOL forceTracing = YES;
+static const BOOL forceTracing = NO;
 static const BOOL enableTracing = NO || forceTracing;
 static const BOOL enableTracingLog = NO;
 static const BOOL enableTracingNSLog = YES && enableTracingLog;
 static const BOOL enableCallStacks = YES;
 
 /* Traceability data */
-static const int TRACE_BLOCKING_FLAGS = 2; /* TEST */
+static const int TRACE_BLOCKING_FLAGS = 0; /* TEST */
 
 /* RunLoop traceability identifier generators */
 static atomic_long mainThreadActionId = 0L;
@@ -278,10 +278,9 @@ static void logThreadJNIEnv(JNIEnv* env, const char* callerName) {
         return;
     }
 
-    NSString *callerStack = [ThreadUtilities getCallerStack:@"logThreadJNIEnv"];
-
     NSLog(@"%s (native thread=[%@], javaThread=['%s' id: %ld]): jniEnv = %p\n CallStack:\n%@",
-          callerName, [NSThread currentThread], c_str, tid, env, callerStack
+          callerName, [NSThread currentThread], c_str, tid, env,
+          [ThreadUtilities getCallerStack:@"logThreadJNIEnv"]
     );
 
     // and make sure to release allocated memory before leaving JNI
@@ -355,7 +354,7 @@ static NSMutableArray*      _threads;
     });
     if (_threads.count != 0) {
         NSString* caller = (TRACE_JNI_THREAD) ?
-            [[NSString stringWithFormat:@"(%s:%d %s)", file, line, function] autorelease] : nil;
+            [NSString stringWithFormat:@"(%s:%d %s)", file, line, function] : nil;
 
         CallbackJNIBlock* cbBlock = [[CallbackJNIBlock alloc] init:caller block:Block_copy(block)];
 
@@ -441,7 +440,6 @@ static NSMutableArray*      _threads;
 - (id) init:(NSString*) caller block:(void (^)())block {
     self = [super init];
     if (self) {
-        [caller retain];
         self.caller = caller;
         self.blockOp = block;
     }
@@ -490,7 +488,7 @@ static BOOL _blockingMainThread = NO;
             blockCopy();
         } @finally {
             Block_release(blockCopy);
-#if (CHECK_PENDING_EXCEPTION == 1)
+#if (CHECK_PENDING_JNI_EXCEPTION == 1)
             __JNI_CHECK_PENDING_EXCEPTION([ThreadUtilities getJNIEnvUncached]);
 #endif
         }
@@ -648,7 +646,7 @@ AWT_ASSERT_APPKIT_THREAD;
          NSString* symbol = symbols[i];
          if (![symbol containsString: @"performOnMainThread"]
              && ((prefixSymbol == nil) || ![symbol containsString: prefixSymbol])) {
-             return [symbol retain];
+             return symbol; // autoreleased ?
          }
     }
     return nil;
@@ -669,7 +667,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if (pos != -1) {
         const NSRange theRange = NSMakeRange(pos, symbols.count - pos);
         const NSArray<NSString*> *filteredSymbols = [symbols subarrayWithRange:theRange];
-        return [[filteredSymbols componentsJoinedByString:@"\n"] retain];
+        return [filteredSymbols componentsJoinedByString:@"\n"]; // autoreleased ?
     }
     return nil;
 }
@@ -971,11 +969,10 @@ AWT_ASSERT_APPKIT_THREAD;
 {
     ThreadTraceContext *thCtx = [ThreadUtilities getTraceContext];
 
-    // Record stack trace:
-    NSString *caller = [ThreadUtilities getCaller:prefix];
-    NSString *callStack = (enableCallStacks) ? [ThreadUtilities getCallerStack:prefix] : nil;
     // update recorded thread state:
-    [thCtx set:actionId operation:pOperation useJavaModes:useJavaModes caller:caller callstack:callStack];
+    [thCtx set:actionId operation:pOperation useJavaModes:useJavaModes
+        caller:[ThreadUtilities getCaller:prefix]
+     callstack:(enableCallStacks) ? [ThreadUtilities getCallerStack:prefix] : nil];
 
     // Record thread stack now and return another copy (auto-released):
     return [[thCtx copy] autorelease];
@@ -1015,7 +1012,6 @@ AWT_ASSERT_APPKIT_THREAD;
         [dump appendString:@"\n] \n"];
     }
     [dump appendString:@"]"];
-    [dump retain];
     return dump;
 }
 @end
@@ -1172,7 +1168,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 - (void)processQueuedCallbacks {
     const NSUInteger count = [self.queue count];
     if (count != 0) {
-#if (CHECK_PENDING_EXCEPTION == 1)
+#if (CHECK_PENDING_JNI_EXCEPTION == 1)
         JNIEnv *env = [ThreadUtilities getJNIEnv];
 #endif
         for (NSUInteger i = 0; i < count; i++) {
@@ -1238,6 +1234,9 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 }
 
 - (void)dealloc {
+    [self.threadName release];
+    [self.caller release];
+    [self.callStack release];
     [super dealloc];
 }
 
@@ -1258,9 +1257,7 @@ useJavaModes:(BOOL) pUseJavaModes
     self.operation = pOperation;
 
     self.caller = pCaller;
-    [pCaller release];
     self.callStack = pCallStack;
-    [pCallStack release];
 }
 
 - (const char*)identifier {

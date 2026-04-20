@@ -32,9 +32,20 @@
 #import <Cocoa/Cocoa.h>
 
 /* Define to 1 to check for pending exceptions in JNI_COCOA_EXIT */
-#define CHECK_PENDING_EXCEPTION     1
+#define CHECK_PENDING_JNI_EXCEPTION     1
 
-#define FORCE_LOG_EXCEPTION         1
+/********        TEST DEBUGGING SUPPORT    *********/
+/** uncomment only in (dev) mode */
+/*
+#define DEBUG 1
+*/
+/***/
+
+#ifdef DEBUG
+    #define __JNIUTIL_LOG_PROP 1
+#else
+    #define __JNIUTIL_LOG_PROP 0
+#endif
 
 /********        LOGGING SUPPORT    *********/
 
@@ -164,6 +175,32 @@
 
 /*********       EXCEPTION_HANDLING    *********/
 
+JNIEXPORT void JNIUTIL_init();
+JNIEXPORT BOOL JNIUTIL_isLogJNIException();
+JNIEXPORT BOOL JNIUTIL_isAppkitTrace();
+JNIEXPORT BOOL JNIUTIL_isUseCocoaException();
+
+#define __JNI_LOG_JAVA_EXCEPTION(env, exc) \
+     NSLog(@"Java Exception (%s:%d %s): %@\nCallstack: %@", \
+         __FILE__, __LINE__, __FUNCTION__, \
+         ThrowableToNSString(env, exc), [NSThread callStackSymbols])
+
+#define __JNI_LOG_EXCEPTION(exception) \
+     NSLog(@"Apple AWT Cocoa Exception (%s:%d %s): %@\nCallstack: %@", \
+         __FILE__, __LINE__, __FUNCTION__, \
+         [exception description], [exception callStackSymbols])
+
+#if (CHECK_PENDING_JNI_EXCEPTION == 1)
+    #define __JNI_CHECK_PENDING_EXCEPTION(env) \
+        @try { \
+            CHECK_EXCEPTION_IN_ENV(env); \
+        } @catch (NSException *exception) { \
+            __JNI_LOG_EXCEPTION(exception); \
+        }
+#else
+    #define __JNI_CHECK_PENDING_EXCEPTION(env) {}
+#endif
+
 /*
  * Some explanation to set context of the bigger picture.
  * Before returning to Java from JNI, NSExceptions are caught - so long as
@@ -190,20 +227,17 @@
 #define CHECK_EXCEPTION_IN_ENV(env) { \
     jthrowable exc = (*(env))->ExceptionOccurred(env); \
     if (exc != NULL) { \
-        if (FORCE_LOG_EXCEPTION) { \
-            /* report exception in stderr */ \
-            (*(env))->ExceptionDescribe(env); \
-            /* TODO: use unified logging */ \
-            NSLog(@"%@", [NSThread callStackSymbols]); \
-        } \
         if ([NSThread isMainThread]) { \
-            if (getenv("JNU_APPKIT_TRACE")) { \
+            if (JNIUTIL_isAppkitTrace()) { \
                 (*(env))->ExceptionDescribe(env); \
                 NSLog(@"%@", [NSThread callStackSymbols]); \
             } \
         } \
-        (*env)->ExceptionClear(env); \
-        if (getenv("JNU_NO_COCOA_EXCEPTION") == NULL) { \
+        (*(env))->ExceptionClear(env); \
+        if (JNIUTIL_isLogJNIException()) { \
+            __JNI_LOG_JAVA_EXCEPTION(env, exc); \
+        } \
+        if (JNIUTIL_isUseCocoaException()) { \
             [NSException raise:NSGenericException \
                         format:@"%@", ThrowableToNSString(env, exc)]; \
         } \
@@ -233,23 +267,7 @@
     CHECK_EXCEPTION(); \
     if ((x) == NULL) { \
        return y; \
-    }
-
-#define __JNI_LOG_EXCEPTION(exception) \
-     NSLog(@"Apple AWT Cocoa Exception (%s:%d %s): %@\nCallstack: %@", \
-         __FILE__, __LINE__, __FUNCTION__, \
-         [exception description], [exception callStackSymbols])
-
-#if (CHECK_PENDING_EXCEPTION == 1)
-    #define __JNI_CHECK_PENDING_EXCEPTION(env) \
-        @try { \
-            CHECK_EXCEPTION_IN_ENV(env); \
-        } @catch (NSException *exception) { \
-            __JNI_LOG_EXCEPTION(exception); \
-        }
-#else
-    #define __JNI_CHECK_PENDING_EXCEPTION(env) {}
-#endif
+    };
 
 /* Create a pool and initiate a try block to catch any exception */
 #define JNI_COCOA_ENTER(env) \
@@ -273,8 +291,8 @@
  */
 #define JNI_COCOA_EXIT_WITH_ACTION(env, action) \
  } @catch (NSException *exception) { \
-     __JNI_LOG_EXCEPTION(exception); \
      { action; }; \
+     __JNI_LOG_EXCEPTION(exception); \
  } @finally { \
      __JNI_CHECK_PENDING_EXCEPTION(env); \
      [pool drain]; \

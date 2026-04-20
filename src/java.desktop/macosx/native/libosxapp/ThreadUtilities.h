@@ -170,7 +170,7 @@ __attribute__((visibility("default")))
 - (void) dealloc;
 
 @property (readwrite, atomic, retain) NSString* caller;
-@property (copy) void(^blockOp)(void);
+@property (assign) void(^blockOp)(void);
 
 @end
 
@@ -267,6 +267,7 @@ __attribute__((visibility("default")))
 + (void)dumpThreadTraceContext:(const char*)pOperation;
 
 + (NSString*)getThreadTraceContexts;
++ (NSString*)getCaller:(NSString*)prefixSymbol;
 + (NSString*)getCallerStack:(NSString*)prefixSymbol;
 @end
 
