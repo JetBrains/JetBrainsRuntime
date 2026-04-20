@@ -106,17 +106,7 @@ function create_image_bundle {
   cp -R "$JSDK"/../MacOS "$JRE_CONTENTS"
   cp "$JSDK"/../Info.plist "$JRE_CONTENTS"
 
-  if [ "$bundle_type" == "jcef" ]; then
-    mkdir -p "$JRE_CONTENTS/Frameworks"
-    cp -a $JCEF_PATH/Frameworks/cef_server.app                          "$JRE_CONTENTS/Frameworks" || do_exit $?
-    cp -a "$JCEF_PATH/Frameworks/Chromium Embedded Framework.framework" "$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks" || do_exit $?
-    cp -a "$JCEF_PATH/Frameworks/jcef Helper (GPU).app"                 "$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks" || do_exit $?
-    cp -a "$JCEF_PATH/Frameworks/jcef Helper (Plugin).app"              "$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks" || do_exit $?
-    cp -a "$JCEF_PATH/Frameworks/jcef Helper (Renderer).app"            "$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks" || do_exit $?
-    cp -a "$JCEF_PATH/Frameworks/jcef Helper.app"                       "$JRE_CONTENTS/Frameworks/cef_server.app/Contents/Frameworks" || do_exit $?
-  else
-    [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)
-  fi
+  [ -n "$bundle_type" ] && (cp -a $JCEF_PATH/Frameworks "$JRE_CONTENTS" || do_exit $?)
 
   echo Creating "$JBR".tar.gz ...
   # Normalize timestamp
