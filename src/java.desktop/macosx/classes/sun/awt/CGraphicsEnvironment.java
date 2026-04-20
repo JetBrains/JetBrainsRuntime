@@ -190,6 +190,9 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * @param flags CGDisplayChangeSummaryFlags flags as integer
      */
     void _displayReconfiguration(int displayId, int flags) {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfiguration({}): enter", displayId);
+        }
         try {
             // See CGDisplayChangeSummaryFlags
             LogDisplay log = !LogDisplay.ENABLED ? null :
@@ -205,21 +208,15 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             // switched to/from the discrete video card, so we should try to map the
             // old to the new devices.
             initDevices();
-
-            if (false) {
-                throw new IllegalStateException("_displayReconfiguration: test throw RuntimeException !");
-            }
-
             if (log != null && log != LogDisplay.REMOVED) {
                 CGraphicsDevice gd = devices.get(displayId);
                 log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
             }
         } catch (RuntimeException re) {
             logger.severe("CGraphicsEnvironment._displayReconfiguration: exception occurred: ", re);
-
-            if (false) {
-                throw re;
             }
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfiguration({}): exit", displayId);
         }
     }
 
@@ -232,8 +229,8 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
         try {
             doNotifyListeners();
-        } catch (Exception e) {
-            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", e);
+        } catch (RuntimeException re) {
+            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", re);
         } finally {
             // notify the metal pipeline after processing listeners:
             if (CGraphicsEnvironment.usingMetalPipeline()) {
@@ -241,7 +238,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             }
         }
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
-            logger.fine("_displayReconfigurationFinished(): exit");
+            logger.fine("CGraphicsEnvironment._displayReconfigurationFinished(): exit");
         }
     }
 
@@ -261,16 +258,10 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * (Re)create all CGraphicsDevices, reuses a devices if it is possible.
      */
     private synchronized void initDevices() {
-        logger.info("initDevices: enter");
-
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
-        logger.info("initDevices: old: " + old);
         devices.clear();
         mainDisplayID = getMainDisplayID();
-        logger.info("initDevices: mainDisplayID: " + mainDisplayID);
-        logger.info("initDevices: before CGraphicsDevice.DisplayConfiguration.get() by " + Thread.currentThread());
         CGraphicsDevice.DisplayConfiguration config = CGraphicsDevice.DisplayConfiguration.get();
-        logger.info("initDevices: after CGraphicsDevice.DisplayConfiguration.get()");
 
         // initialization of the graphics device may change list of displays on
         // hybrid systems via an activation of discrete video.
@@ -288,8 +279,6 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
 
         int[] displayIDs = getDisplayIDs();
-        logger.info("initDevices: displayIDs = "+ java.util.Arrays.toString(displayIDs));
-
         if (displayIDs.length == 0) {
             // we could throw AWTError in this case.
             displayIDs = new int[]{mainDisplayID};
@@ -307,8 +296,6 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                 }
             });
         }
-        logger.info("initDevices: old=> " + old);
-
         // fetch the main display again, the old value might be outdated
         mainDisplayID = getMainDisplayID();
 
@@ -317,7 +304,6 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         if (!devices.containsKey(mainDisplayID)) {
             mainDisplayID = displayIDs[0]; // best we can do
         }
-        logger.info("initDevices: mainDisplayID => "+ mainDisplayID);
         // if a device was not reused it should be invalidated
         for (CGraphicsDevice gd : old.values()) {
             oldDevices.add(new WeakReference<>(gd));
@@ -341,7 +327,6 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                 it.remove();
             }
         }
-        logger.info("initDevices: exit: devices = "+devices+" oldDevices = "+oldDevices);
     }
 
     private CGraphicsDevice getSimilarDevice(CGraphicsDevice old) {
