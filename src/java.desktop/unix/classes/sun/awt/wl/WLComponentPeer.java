@@ -52,7 +52,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -1193,22 +1192,21 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     }
 
     private static long getSerialForActivation() {
-        long serial;
+        WLInputSerial serial = WLInputSerial.INVALID;
         if (WLToolkit.isKDE()) {
             serial = WLToolkit.getInputState().latestInputSerial();
         } else {
             serial = WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
-            if (serial == 0) { // may have just left one surface and not yet entered another
-                serial = WLToolkit.getInputState().keySerial(); // an input event
-            }
-            if (serial == 0) {
-                // The pointer button serial seems to not work with Mutter but may work
-                // with other implementations, so let's keep it as an input event serial
-                // of the last resort.
-                serial = WLToolkit.getInputState().pointerButtonSerial();
-            }
+
+            // may have just left one surface and not yet entered another
+            serial = serial.freshOrElse(WLToolkit.getInputState().keySerial());
+
+            // The pointer button serial seems to not work with Mutter but may work
+            // with other implementations, so let's keep it as an input event serial
+            // of the last resort.
+            serial = serial.freshOrElse(WLToolkit.getInputState().pointerButtonSerial());
         }
-        return serial;
+        return serial.serial();
     }
 
     private static native void initIDs();
