@@ -88,7 +88,7 @@ public abstract class FrameDecoration {
             Point point = getPointInFrame(e);
             int resizeSide = getResizeEdges(point.x, point.y);
             if (resizeSide != 0) {
-                peer.startResize(WLToolkit.getInputState().pointerButtonSerial(), resizeSide);
+                peer.startResize(WLToolkit.getInputState().pointerButtonSerial().serial(), resizeSide);
                 // workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/2523
                 WLToolkit.resetPointerInputState();
                 return true;
