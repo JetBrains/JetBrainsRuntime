@@ -154,9 +154,9 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
                     dragImageOffset.x, dragImageOffset.y);
         }
 
-        long eventSerial = WLToolkit.getInputState().pointerButtonSerial();
+        WLInputSerial eventSerial = WLToolkit.getInputState().pointerButtonSerial();
 
-        dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial);
+        dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial.serial());
         SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(trans);
     }
 
