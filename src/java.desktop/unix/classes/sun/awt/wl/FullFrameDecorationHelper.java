@@ -218,7 +218,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
 
         Point point = getPointInFrame(e);
         if (isRMBPressed && getTitleBarBounds().contains(point.x, point.y)) {
-            peer.showWindowMenu(WLToolkit.getInputState().pointerButtonSerial(), point.x, point.y);
+            peer.showWindowMenu(WLToolkit.getInputState().pointerButtonSerial().serial(), point.x, point.y);
             return true;
         }
 
@@ -272,7 +272,7 @@ public abstract class FullFrameDecorationHelper extends FrameDecoration {
         }
         if (changed) peer.notifyClientDecorationsChanged();
 
-        peer.startDrag(WLToolkit.getInputState().pointerButtonSerial());
+        peer.startDrag(WLToolkit.getInputState().pointerButtonSerial().serial());
     }
 
     private void toggleMaximizedState() {
