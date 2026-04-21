@@ -61,7 +61,7 @@ public class UITesting {
         this.laxLineEndings = laxLineEndings;
     }
 
-    protected void doRunTest(Test test) throws Exception {
+    protected void doRunTest(UITest test) throws Exception {
         // turn on logging of launch failures
         Logger.getLogger("jdk.jshell.execution").setLevel(Level.ALL);
 
@@ -127,7 +127,7 @@ public class UITesting {
         }
     }
 
-    protected interface Test {
+    protected interface UITest {
         public void test(Writer inputSink, StringBuilder out) throws Exception;
     }
 
