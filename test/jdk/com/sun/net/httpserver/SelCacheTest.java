@@ -62,9 +62,10 @@ public class SelCacheTest extends Test {
     private static final String TEMP_FILE_PREFIX =
             HttpServer.class.getPackageName() + '-' + SelCacheTest.class.getSimpleName() + '-';
 
-    static SSLContext ctx;
+    private static SSLContext ctx;
 
     public static void main(String[] args) throws Exception {
+        ctx = SimpleSSLContext.findSSLContext();
         HttpServer s1 = null;
         HttpsServer s2 = null;
         ExecutorService executor=null;
@@ -87,7 +88,6 @@ public class SelCacheTest extends Test {
             executor = Executors.newCachedThreadPool();
             s1.setExecutor(executor);
             s2.setExecutor(executor);
-            ctx = new SimpleSSLContext().get();
             s2.setHttpsConfigurator(new HttpsConfigurator(ctx));
             s1.start();
             s2.start();
