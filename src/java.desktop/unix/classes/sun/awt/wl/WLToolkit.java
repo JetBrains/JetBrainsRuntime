@@ -478,12 +478,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         if (peer != null) {
             Dialog blocker = peer.getBlockerDialog();
             if (blocker != null) { // Modality support
-                long activationSerial = serial;
+                WLInputSerial activationSerial = new WLInputSerial(serial);
                 if (WLToolkit.isKDE()) {
-                    activationSerial = inputState.latestInputSerial();
+                    activationSerial = inputState.latestInputSerial().freshOrElse(activationSerial);
                 }
                 WLWindowPeer blockerPeer = AWTAccessor.getComponentAccessor().getPeer(blocker);
-                blockerPeer.reactivate(activationSerial, surfacePtr);
+                blockerPeer.reactivate(activationSerial.serial(), surfacePtr);
             } else {
                 Window window = peer.getTarget();
                 Window winToFocus = window;
