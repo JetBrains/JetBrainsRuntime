@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1512,6 +1512,7 @@ InitializeJVM(JavaVM **pvm, JNIEnv **penv, InvocationFunctions *ifn)
 
     r = ifn->CreateJavaVM(pvm, (void **)penv, &args);
     JLI_MemFree(options);
+    options = NULL;
     return r == JNI_OK;
 }
 
@@ -2199,6 +2200,7 @@ FreeKnownVMs()
         knownVMs[i].name = NULL;
     }
     JLI_MemFree(knownVMs);
+    knownVMs = NULL;
 }
 
 /*
@@ -2272,8 +2274,9 @@ ShowSplashScreen()
     (void)UnsetEnv(SPLASH_JAR_ENV_ENTRY);
 
     JLI_MemFree(splash_jar_entry);
+    splash_jar_entry = NULL;
     JLI_MemFree(splash_file_entry);
-
+    splash_file_entry = NULL;
 }
 
 static const char* GetFullVersion()
