@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
  * @bug 8182270
  * @summary test non-eval Snippet analysis
  * @build KullaTesting TestingInputStream
- * @run testng AnalyzeSnippetTest
+ * @run junit AnalyzeSnippetTest
  */
 
 import java.io.ByteArrayOutputStream;
@@ -34,15 +34,12 @@ import java.io.PrintStream;
 import java.util.List;
 import jdk.jshell.Snippet;
 import jdk.jshell.DeclarationSnippet;
-import org.testng.annotations.Test;
 
 import jdk.jshell.JShell;
 import jdk.jshell.MethodSnippet;
-import static org.testng.Assert.assertFalse;
-import static org.testng.Assert.assertTrue;
-import static org.testng.Assert.assertEquals;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import jdk.jshell.ErroneousSnippet;
 import jdk.jshell.ExpressionSnippet;
 import jdk.jshell.ImportSnippet;
@@ -52,14 +49,16 @@ import jdk.jshell.StatementSnippet;
 import jdk.jshell.TypeDeclSnippet;
 import jdk.jshell.VarSnippet;
 import static jdk.jshell.Snippet.SubKind.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-@Test
 public class AnalyzeSnippetTest {
 
     JShell state;
     SourceCodeAnalysis sca;
 
-    @BeforeMethod
+    @BeforeEach
     public void setUp() {
         state = JShell.builder()
                 .out(new PrintStream(new ByteArrayOutputStream()))
@@ -69,7 +68,7 @@ public class AnalyzeSnippetTest {
         sca = state.sourceCodeAnalysis();
     }
 
-    @AfterMethod
+    @AfterEach
     public void tearDown() {
         if (state != null) {
             state.close();
@@ -78,55 +77,61 @@ public class AnalyzeSnippetTest {
         sca = null;
     }
 
+    @Test
     public void testImport() {
         ImportSnippet sn = (ImportSnippet) assertSnippet("import java.util.List;",
                 SubKind.SINGLE_TYPE_IMPORT_SUBKIND);
-        assertEquals(sn.name(), "List");
+        assertEquals("List", sn.name());
         sn = (ImportSnippet) assertSnippet("import static java.nio.file.StandardOpenOption.CREATE;",
                 SubKind.SINGLE_STATIC_IMPORT_SUBKIND);
         assertTrue(sn.isStatic());
     }
 
+    @Test
     public void testClass() {
         TypeDeclSnippet sn = (TypeDeclSnippet) assertSnippet("class C {}",
                 SubKind.CLASS_SUBKIND);
-        assertEquals(sn.name(), "C");
+        assertEquals("C", sn.name());
         sn = (TypeDeclSnippet) assertSnippet("enum EE {A, B , C}",
                 SubKind.ENUM_SUBKIND);
     }
 
+    @Test
     public void testMethod() {
         MethodSnippet sn = (MethodSnippet) assertSnippet("int m(int x) { return x + x; }",
                 SubKind.METHOD_SUBKIND);
-        assertEquals(sn.name(), "m");
-        assertEquals(sn.signature(), "(int)int");
+        assertEquals("m", sn.name());
+        assertEquals("(int)int", sn.signature());
     }
 
+    @Test
     public void testVar() {
         VarSnippet sn = (VarSnippet) assertSnippet("int i;",
                 SubKind.VAR_DECLARATION_SUBKIND);
-        assertEquals(sn.name(), "i");
-        assertEquals(sn.typeName(), "int");
+        assertEquals("i", sn.name());
+        assertEquals("int", sn.typeName());
         sn = (VarSnippet) assertSnippet("int jj = 6;",
                 SubKind.VAR_DECLARATION_WITH_INITIALIZER_SUBKIND);
         sn = (VarSnippet) assertSnippet("2 + 2",
                 SubKind.TEMP_VAR_EXPRESSION_SUBKIND);
     }
 
+    @Test
     public void testExpression() {
         state.eval("int aa = 10;");
         ExpressionSnippet sn = (ExpressionSnippet) assertSnippet("aa",
                 SubKind.VAR_VALUE_SUBKIND);
-        assertEquals(sn.name(), "aa");
-        assertEquals(sn.typeName(), "int");
+        assertEquals("aa", sn.name());
+        assertEquals("int", sn.typeName());
         sn = (ExpressionSnippet) assertSnippet("aa;",
                 SubKind.VAR_VALUE_SUBKIND);
-        assertEquals(sn.name(), "aa");
-        assertEquals(sn.typeName(), "int");
+        assertEquals("aa", sn.name());
+        assertEquals("int", sn.typeName());
         sn = (ExpressionSnippet) assertSnippet("aa = 99",
                 SubKind.ASSIGNMENT_SUBKIND);
     }
 
+    @Test
     public void testStatement() {
         StatementSnippet sn = (StatementSnippet) assertSnippet("System.out.println(33)",
                 SubKind.STATEMENT_SUBKIND);
@@ -134,6 +139,7 @@ public class AnalyzeSnippetTest {
                 SubKind.STATEMENT_SUBKIND);
     }
 
+    @Test
     public void testErroneous() {
         ErroneousSnippet sn = (ErroneousSnippet) assertSnippet("+++",
                 SubKind.UNKNOWN_SUBKIND);
