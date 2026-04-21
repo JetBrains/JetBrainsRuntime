@@ -34,10 +34,10 @@ import java.awt.event.InputEvent;
  * pressed. WLInputState maintains this information.
  *
  * @param eventWithSurface null or the latest WLPointerEvent such that hasSurface() == true
- * @param pointerEnterSerial zero or the serial of the latest wl_pointer::enter event
- * @param pointerButtonSerial zero or the serial of the latest wl_pointer::button event
- * @param keyboardEnterSerial zero or the serial of the latest wl_keyboard::enter event
- * @param keySerial zero or the serial of the latest wl_keyboard::key event
+ * @param pointerEnterSerial the serial of the latest wl_pointer::enter event
+ * @param pointerButtonSerial the serial of the latest wl_pointer::button event
+ * @param keyboardEnterSerial the serial of the latest wl_keyboard::enter event
+ * @param keySerial the serial of the latest wl_keyboard::key event
  * @param eventWithTimestamp null or the latest WLPointerEvent such that hasTimestamp() == true
  * @param eventWithCoordinates null or the latest WLPointerEvent such that hasCoordinates() == true
  * @param pointerButtonPressedEvent null or the latest PointerButtonEvent such that getIsButtonPressed() == true
@@ -47,17 +47,17 @@ import java.awt.event.InputEvent;
  * @param latestInputSerial the serial of the latest input event (key or pointer button press)
  */
 record WLInputState(WLPointerEvent eventWithSurface,
-                    long pointerEnterSerial,
-                    long pointerButtonSerial,
-                    long keyboardEnterSerial,
-                    long keySerial,
+                    WLInputSerial pointerEnterSerial,
+                    WLInputSerial pointerButtonSerial,
+                    WLInputSerial keyboardEnterSerial,
+                    WLInputSerial keySerial,
                     WLPointerEvent eventWithTimestamp,
                     WLPointerEvent eventWithCoordinates,
                     PointerButtonEvent pointerButtonPressedEvent,
                     int modifiers,
                     long surfaceForKeyboardInput,
                     boolean isPointerOverSurface,
-                    long latestInputSerial) {
+                    WLInputSerial latestInputSerial) {
     /**
      * Groups together information about a mouse pointer button event.
      * @param surface 'struct wl_surface*' the button was pressed over
@@ -77,8 +77,19 @@ record WLInputState(WLPointerEvent eventWithSurface,
             int surfaceY) {}
 
     static WLInputState initialState() {
-        return new WLInputState(null, 0, 0, 0, 0, null, null,
-                null, 0, 0, false, 0);
+        return new WLInputState(
+                null,
+                WLInputSerial.INVALID,
+                WLInputSerial.INVALID,
+                WLInputSerial.INVALID,
+                WLInputSerial.INVALID,
+                null,
+                null,
+                null,
+                0,
+                0,
+                false,
+                WLInputSerial.INVALID);
     }
 
     /**
@@ -87,10 +98,10 @@ record WLInputState(WLPointerEvent eventWithSurface,
     WLInputState updatedFromPointerEvent(WLPointerEvent pointerEvent) {
         final WLPointerEvent newEventWithSurface = pointerEvent.hasSurface()
                 ? pointerEvent : eventWithSurface;
-        final long newPointerEnterSerial = pointerEvent.hasEnterEvent()
-                ? pointerEvent.getSerial() : pointerEnterSerial;
-        final long newPointerButtonSerial = pointerEvent.hasButtonEvent()
-                ? pointerEvent.getSerial() : pointerButtonSerial;
+        final WLInputSerial newPointerEnterSerial = pointerEvent.hasEnterEvent()
+                ? new WLInputSerial(pointerEvent.getSerial()) : pointerEnterSerial;
+        final WLInputSerial newPointerButtonSerial = pointerEvent.hasButtonEvent()
+                ? new WLInputSerial(pointerEvent.getSerial()) : pointerButtonSerial;
         final WLPointerEvent newEventWithTimestamp = pointerEvent.hasTimestamp()
                 ? pointerEvent : eventWithTimestamp;
         final WLPointerEvent newEventWithCoordinates = pointerEvent.hasCoordinates()
@@ -104,8 +115,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
         boolean newPointerOverSurface = (pointerEvent.hasEnterEvent() || isPointerOverSurface)
                 && !pointerEvent.hasLeaveEvent();
 
-        final long newLatestInputEventSerial = pointerEvent.hasButtonEvent()
-                ? pointerEvent.getSerial() : latestInputSerial;
+        final WLInputSerial newLatestInputEventSerial = pointerEvent.hasButtonEvent()
+                ? new WLInputSerial(pointerEvent.getSerial()) : latestInputSerial;
 
         return new WLInputState(
                 newEventWithSurface,
@@ -128,14 +139,14 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 pointerEnterSerial,
                 pointerButtonSerial,
                 keyboardEnterSerial,
-                serial,
+                new WLInputSerial(serial),
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 modifiers,
                 surfaceForKeyboardInput,
                 isPointerOverSurface,
-                serial);
+                new WLInputSerial(serial));
     }
 
     public WLInputState updatedFromKeyboardEnterEvent(long serial, long surfacePtr) {
@@ -144,8 +155,8 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 eventWithSurface,
                 pointerEnterSerial,
                 pointerButtonSerial,
-                serial,
-                0,
+                new WLInputSerial(serial),
+                keySerial.makeStale(),
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
@@ -187,9 +198,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return new WLInputState(
                 eventWithSurface,
                 pointerEnterSerial,
-                0,
-                0,
-                0,
+                pointerButtonSerial.makeStale(),
+                keyboardEnterSerial.makeStale(),
+                keySerial.makeStale(),
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
