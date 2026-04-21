@@ -123,7 +123,7 @@ public class WLCursorManager {
     private void setCursorTo(Cursor c, int scale) {
         var inputState = WLToolkit.getInputState();
 
-        long serial = inputState.pointerEnterSerial();
+        long serial = inputState.pointerEnterSerial().serial();
         if (serial == 0) {
             if (log.isLoggable(PlatformLogger.Level.FINE)) {
                 log.fine("setCursor aborted due to missing event serial");
