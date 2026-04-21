@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,7 @@ import jdk.httpclient.test.lib.http2.Http2TestServer;
  */
 public class SANTest implements HttpServerAdapters {
 
-    static SSLContext ctx;
+    private static SSLContext ctx;
 
     static HttpServer getHttpsServer(InetSocketAddress addr, Executor exec, SSLContext ctx) throws Exception {
         HttpsServer server = HttpsServer.create(addr, 0);
@@ -99,6 +99,8 @@ public class SANTest implements HttpServerAdapters {
     }
 
     public static void main (String[] args) throws Exception {
+        ctx = SimpleSSLContext.findSSLContext();
+
         // Http/1.1 servers
         HttpTestServer h1s1 = null;
         HttpTestServer h1s2 = null;
@@ -110,7 +112,6 @@ public class SANTest implements HttpServerAdapters {
         ExecutorService executor=null;
         try {
             System.out.print ("SANTest: ");
-            ctx = new SimpleSSLContext().get();
             executor = Executors.newCachedThreadPool();
 
             InetAddress l1 = InetAddress.getByName("::1");
