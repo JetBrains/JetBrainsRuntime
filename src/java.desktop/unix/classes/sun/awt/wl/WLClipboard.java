@@ -125,18 +125,20 @@ public final class WLClipboard extends SunClipboard {
         // so the following is a speculation based on experiments.
         // The worst case is that a "wrong" serial will be silently ignored, and our clipboard
         // will be out of sync with the real one that Wayland maintains.
-        long eventSerial = isPrimary
-                ? WLToolkit.getInputState().pointerButtonSerial()
-                : WLToolkit.getInputState().keySerial();
-        if (!isPrimary && eventSerial == 0) {
-            // The "regular" clipboard's content can be changed with either a mouse click
-            // (like on a menu item) or with the keyboard (Ctrl-C).
+        WLInputSerial eventSerial = WLInputSerial.INVALID;
+
+        if (isPrimary) {
             eventSerial = WLToolkit.getInputState().pointerButtonSerial();
+        } else {
+            eventSerial = WLToolkit.getInputState().keySerial().freshOrElse(WLToolkit.getInputState().pointerButtonSerial());
         }
+
+        eventSerial = eventSerial.freshOrElse(WLToolkit.getInputState().latestInputSerial());
+
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: About to offer new contents using Wayland event serial " + eventSerial);
         }
-        if (eventSerial != 0) {
+        if (eventSerial.isValid()) {
             WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
             long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(contents, flavorTable);
 
@@ -167,7 +169,7 @@ public final class WLClipboard extends SunClipboard {
                         ourDataSource.destroy();
                     }
                     ourDataSource = newOffer;
-                    dataDevice.setSelection(getProtocol(), newOffer, eventSerial);
+                    dataDevice.setSelection(getProtocol(), newOffer, eventSerial.serial());
                 }
             }
         } else {
