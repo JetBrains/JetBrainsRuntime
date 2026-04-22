@@ -57,6 +57,10 @@ public class WLDataDevice {
 
     public static final int DATA_TRANSFER_PROTOCOL_WAYLAND = 1;
     public static final int DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION = 2;
+    public static final int DATA_TRANSFER_PROTOCOL_DATA_CONTROL = 3;
+
+    public static final int CLIPBOARD_SELECTION_DEFAULT = 1;
+    public static final int CLIPBOARD_SELECTION_PRIMARY = 2;
 
     WLDataDevice(long wlSeatNativePtr) {
         nativePtr = initNative(wlSeatNativePtr);
@@ -71,7 +75,7 @@ public class WLDataDevice {
         queueThread.start();
 
         systemClipboard = new WLClipboard(this, "System", false);
-        if (isProtocolSupported(DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION)) {
+        if (isProtocolSupported(DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) || isProtocolSupported(DATA_TRANSFER_PROTOCOL_DATA_CONTROL)) {
             primarySelectionClipboard = new WLClipboard(this, "Selection", true);
         } else {
             primarySelectionClipboard = null;
@@ -86,7 +90,7 @@ public class WLDataDevice {
     private native long initNative(long wlSeatNativePtr);
     private static native boolean isProtocolSupportedImpl(long nativePtr, int protocol);
     private static native void dispatchDataSourceQueueImpl(long nativePtr);
-    private static native void setSelectionImpl(int protocol, long nativePtr, long dataOfferNativePtr, long serial);
+    private static native void setSelectionImpl(long nativePtr, int protocol, int selectionType, long dataOfferNativePtr, long serial);
     private static native void startDragImpl(long nativePtr, long dataOfferNativePtr,
                                              long originSurfaceNativePtr, long serial);
     private static native void performDeletionsOnEDTImpl(long nativePtr);
@@ -96,8 +100,8 @@ public class WLDataDevice {
         return isProtocolSupportedImpl(nativePtr, protocol);
     }
 
-    public void setSelection(int protocol, WLDataSource source, long serial) {
-        setSelectionImpl(protocol, nativePtr, (source == null) ? 0 : source.getNativePtr(), serial);
+    public void setSelection(int protocol, int selectionType, WLDataSource source, long serial) {
+        setSelectionImpl(nativePtr, protocol, selectionType, (source == null) ? 0 : source.getNativePtr(), serial);
     }
 
     public void startDrag(WLDataSource source, long originSurfaceNativePtr, long serial) {
@@ -278,11 +282,20 @@ public class WLDataDevice {
         WLDropTargetContextPeer.getInstance().handleDrop();
     }
 
-    private void handleSelection(WLDataOffer offer /* nullable */, int protocol) {
-        WLClipboard clipboard = (protocol == DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION) ? primarySelectionClipboard : systemClipboard;
+    private void handleSelection(WLDataOffer offer /* nullable */, int protocol, int selection) {
+        if (protocol != DATA_TRANSFER_PROTOCOL_DATA_CONTROL) {
+            if (selection == CLIPBOARD_SELECTION_PRIMARY && primarySelectionClipboard != null) {
+                primarySelectionClipboard.handleClipboardOffer(offer);
+                return;
+            }
 
-        if (clipboard != null) {
-            clipboard.handleClipboardOffer(offer);
+            if (selection == CLIPBOARD_SELECTION_DEFAULT && systemClipboard != null) {
+                systemClipboard.handleClipboardOffer(offer);
+                return;
+            }
         }
+
+        // we ignore this offer, destroy it
+        offer.unref();
     }
 }
