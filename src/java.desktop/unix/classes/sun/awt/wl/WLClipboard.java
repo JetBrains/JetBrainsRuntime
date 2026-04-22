@@ -81,8 +81,18 @@ public final class WLClipboard extends SunClipboard {
         }
     }
 
-    private int getProtocol() {
+    private int getClipboardSelectionType() {
         if (isPrimary) {
+            return WLDataDevice.CLIPBOARD_SELECTION_PRIMARY;
+        } else {
+            return WLDataDevice.CLIPBOARD_SELECTION_DEFAULT;
+        }
+    }
+
+    private int getProtocol() {
+        if (dataDevice.isProtocolSupported(WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL)) {
+            return WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL;
+        } else if (isPrimary) {
             return WLDataDevice.DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
         } else {
             return WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND;
@@ -126,6 +136,8 @@ public final class WLClipboard extends SunClipboard {
         // The worst case is that a "wrong" serial will be silently ignored, and our clipboard
         // will be out of sync with the real one that Wayland maintains.
         WLInputSerial eventSerial = WLInputSerial.INVALID;
+        int protocol = getProtocol();
+        int selectionType = getClipboardSelectionType();
 
         if (isPrimary) {
             eventSerial = WLToolkit.getInputState().pointerButtonSerial();
@@ -136,9 +148,9 @@ public final class WLClipboard extends SunClipboard {
         eventSerial = eventSerial.freshOrElse(WLToolkit.getInputState().latestInputSerial());
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Clipboard: About to offer new contents using Wayland event serial " + eventSerial);
+            log.fine("Clipboard: About to offer new contents using Wayland event serial " + eventSerial + ", protocol " + protocol);
         }
-        if (eventSerial.isValid()) {
+        if (protocol == WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL || eventSerial.isValid()) {
             WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
             long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(contents, flavorTable);
 
@@ -152,7 +164,7 @@ public final class WLClipboard extends SunClipboard {
                     log.fine("Clipboard: Offering new contents (" + contents + ")");
                 }
 
-                WLDataSource newOffer = new WLDataSource(dataDevice, getProtocol(), contents) {
+                WLDataSource newOffer = new WLDataSource(dataDevice, protocol, contents) {
                     @Override
                     protected void handleCancelled() {
                         synchronized (dataLock) {
@@ -169,7 +181,7 @@ public final class WLClipboard extends SunClipboard {
                         ourDataSource.destroy();
                     }
                     ourDataSource = newOffer;
-                    dataDevice.setSelection(getProtocol(), newOffer, eventSerial.serial());
+                    dataDevice.setSelection(protocol, selectionType, newOffer, eventSerial.serial());
                 }
             }
         } else {
