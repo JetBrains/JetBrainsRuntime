@@ -113,8 +113,7 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     private static final String uiClassID = "PopupMenuUI";
 
     /** Bug#4425878-Property javax.swing.adjustPopupLocationToFit introduced */
-    static boolean popupPositionFixDisabled =
-         System.getProperty("javax.swing.adjustPopupLocationToFit","").equals("false");
+    static boolean popupPositionFixDisabled;
 
     transient  Component invoker;
     transient  Popup popup;
@@ -150,9 +149,12 @@ public class JPopupMenu extends JComponent implements Accessible,MenuElement {
     private static boolean defaultLWPopupEnabled = true;
 
     static {
+        popupPositionFixDisabled =
+                System.getProperty("javax.swing.adjustPopupLocationToFit","").equals("false");
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         if (toolkit != null && "sun.awt.wl.WLToolkit".equals(toolkit.getClass().getName())) {
             JPopupMenu.setDefaultLightWeightPopupEnabled(false);
+            popupPositionFixDisabled = true;
         }
     }
 
