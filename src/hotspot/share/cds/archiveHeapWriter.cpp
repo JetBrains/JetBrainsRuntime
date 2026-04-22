@@ -754,8 +754,15 @@ void ArchiveHeapWriter::compute_ptrmap(ArchiveHeapInfo* heap_info) {
     Metadata** buffered_field_addr = requested_addr_to_buffered_addr(requested_field_addr);
     Metadata* native_ptr = *buffered_field_addr;
     guarantee(native_ptr != nullptr, "sanity");
-    guarantee(ArchiveBuilder::current()->has_been_buffered((address)native_ptr),
-              "Metadata %p should have been archived", native_ptr);
+
+    if (!ArchiveBuilder::current()->has_been_archived((address)native_ptr)) {
+      ResourceMark rm;
+      LogStreamHandle(Error, aot) log;
+      log.print("Marking native pointer for oop %p (type = %s, offset = %d)",
+                cast_from_oop<void*>(src_obj), src_obj->klass()->external_name(), field_offset);
+      src_obj->print_on(&log);
+      fatal("Metadata %p should have been archived", native_ptr);
+    }
 
     address buffered_native_ptr = ArchiveBuilder::current()->get_buffered_addr((address)native_ptr);
     address requested_native_ptr = ArchiveBuilder::current()->to_requested(buffered_native_ptr);
