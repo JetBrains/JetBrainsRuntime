@@ -36,6 +36,7 @@
 #include "xdg-decoration-unstable-v1.h"
 #include "xdg-toplevel-icon-v1.h"
 #include "cursor-shape-v1.h"
+#include "ext-data-control-v1.h"
 
 #include "jvm_md.h"
 #include "jni_util.h"
@@ -74,6 +75,7 @@ extern struct zwp_text_input_manager_v3 *zwp_text_input_manager; // optional, ch
 extern struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
 extern struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager; // optional, check for NULL before use
 extern struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, check for NULL before use
+extern struct ext_data_control_manager_v1 *ext_data_control_manager; // optional, check for NULL before use
 
 JNIEnv *getEnv();
 
