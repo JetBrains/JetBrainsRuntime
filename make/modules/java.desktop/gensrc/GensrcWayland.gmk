@@ -41,6 +41,7 @@ WAYLAND_BASIC_PROTOCOL_FILES := \
         $(WAYLAND_PROTOCOLS_ROOT)/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/staging/cursor-shape/cursor-shape-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/stable/tablet/tablet-v2.xml \
+        $(WAYLAND_PROTOCOLS_ROOT)/staging/ext-data-control/ext-data-control-v1.xml \
         #
 
 WAYLAND_PROTOCOL_FILES := \
