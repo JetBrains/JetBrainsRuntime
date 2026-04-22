@@ -550,6 +550,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         MotifColorUtilities.loadSystemColors(systemColors);
     }
 
+    @Override
+    public boolean needUpdateWindow() {
+        return true; // TODO: should really be true iff using vulkan
+    }
+
+    @Override
+    public boolean needUpdateWindowAfterPaint() {
+        return true; // TODO: should really be true iff using vulkan
+    }
 
 
     static void initUIDefaults() {
