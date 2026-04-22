@@ -27,7 +27,7 @@ public class WLWindowMoveService implements WindowMoveService {
         ComponentPeer peer = acc.getPeer(window);
         if (peer instanceof WLComponentPeer wlPeer) {
             WLInputSerial serial = WLToolkit.getInputState().pointerButtonSerial();
-            serial = serial.getWithFallback(WLToolkit.getInputState().keySerial());
+            serial = serial.freshOrElse(WLToolkit.getInputState().keySerial());
             if (serial.isValid()) {
                 wlPeer.startDrag(serial.serial());
             }

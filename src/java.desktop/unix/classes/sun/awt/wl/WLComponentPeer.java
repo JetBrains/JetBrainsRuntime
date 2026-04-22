@@ -1200,12 +1200,12 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             serial = WLToolkit.getInputState().keyboardEnterSerial(); // a focus event
 
             // may have just left one surface and not yet entered another
-            serial = serial.getWithFallback(WLToolkit.getInputState().keySerial());
+            serial = serial.freshOrElse(WLToolkit.getInputState().keySerial());
 
             // The pointer button serial seems to not work with Mutter but may work
             // with other implementations, so let's keep it as an input event serial
             // of the last resort.
-            serial = serial.getWithFallback(WLToolkit.getInputState().pointerButtonSerial());
+            serial = serial.freshOrElse(WLToolkit.getInputState().pointerButtonSerial());
         }
         return serial.serial();
     }

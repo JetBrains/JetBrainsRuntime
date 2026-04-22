@@ -130,10 +130,10 @@ public final class WLClipboard extends SunClipboard {
         if (isPrimary) {
             eventSerial = WLToolkit.getInputState().pointerButtonSerial();
         } else {
-            eventSerial = WLToolkit.getInputState().keySerial().getWithFallback(WLToolkit.getInputState().pointerButtonSerial());
+            eventSerial = WLToolkit.getInputState().keySerial().freshOrElse(WLToolkit.getInputState().pointerButtonSerial());
         }
 
-        eventSerial = eventSerial.getWithFallback(WLToolkit.getInputState().latestInputSerial());
+        eventSerial = eventSerial.freshOrElse(WLToolkit.getInputState().latestInputSerial());
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: About to offer new contents using Wayland event serial " + eventSerial);

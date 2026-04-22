@@ -480,7 +480,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             if (blocker != null) { // Modality support
                 WLInputSerial activationSerial = new WLInputSerial(serial);
                 if (WLToolkit.isKDE()) {
-                    activationSerial = inputState.latestInputSerial().getWithFallback(activationSerial);
+                    activationSerial = inputState.latestInputSerial().freshOrElse(activationSerial);
                 }
                 WLWindowPeer blockerPeer = AWTAccessor.getComponentAccessor().getPeer(blocker);
                 blockerPeer.reactivate(activationSerial.serial(), surfacePtr);
