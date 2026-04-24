@@ -111,11 +111,23 @@ ifeq ($(call isTargetOs, aix), true)
   LIBAWT_CFLAGS += -I$(TOPDIR)/src/java.base/aix/native/include
 endif
 
+# Setup Vulkan
+ifeq ($(VULKAN_ENABLED), true)
+  LIBAWT_EXTRA_SRC += common/font common/java2d/vulkan
+  LIBAWT_EXTRA_HEADER_DIRS += common/font common/java2d/vulkan common/java2d
+  LIBAWT_CFLAGS += $(VULKAN_FLAGS)
+  LIBAWT_EXTRA_FILES += $(TOPDIR)/src/$(MODULE)/share/native/common/java2d/AccelTexturePool.c
+  VULKAN_EXCLUDES := vulkan
+else
+  VULKAN_EXCLUDES := vulkan java2d/vulkan
+endif
+
 # -fgcse-after-reload improves performance of MaskFill in Java2D by 20% for
 # some gcc
 $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     NAME := awt, \
     EXTRA_SRC := $(LIBAWT_EXTRA_SRC), \
+    EXTRA_FILES := $(LIBAWT_EXTRA_FILES), \
     EXCLUDE_FILES := $(LIBAWT_EXCLUDE_FILES), \
     OPTIMIZATION := HIGHEST, \
     CFLAGS := $(LIBAWT_CFLAGS) $(X_CFLAGS), \
@@ -158,6 +170,35 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     EXTRA_RCFLAGS := $(LIBAWT_RCFLAGS), \
     STATIC_LIB_EXCLUDE_OBJS := $(LIBAWT_STATIC_EXCLUDE_OBJS), \
 ))
+
+
+# Compile Vulkan shaders
+define compile-spirv
+  $(call MakeTargetDir)
+  $(VULKAN_SHADER_COMPILER) -D$(call uppercase,$(patsubst .%,STAGE_%,$(suffix $<))) -o '$(call DecodeSpace, $@)' '$(call DecodeSpace, $<)'
+endef
+spirv-name = $(strip $1).h
+
+ifeq ($(VULKAN_ENABLED), true)
+  $(eval $(call SetupCopyFiles, COMPILE_VULKAN_SHADERS, \
+      SRC := $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan, \
+      FILES := $(filter-out %.glsl, $(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan)), \
+      DEST := $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/spirv, \
+      MACRO := compile-spirv, \
+      NAME_MACRO := spirv-name, \
+  ))
+  VULKAN_SHADER_LIST = $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/shader_list.h
+  $(VULKAN_SHADER_LIST): $(COMPILE_VULKAN_SHADERS)
+	> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(foreach f, $(patsubst $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan/%,%,$(filter-out %.glsl, $(call FindFiles, $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan))), \
+	$(ECHO) SHADER_ENTRY\($(subst .,$(COMMA),$(subst /,_,$f))\) >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) '#ifdef INCLUDE_BYTECODE' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) '#include "spirv/$f.h"' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) BYTECODE_END >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+	$(ECHO) '#endif' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
+  )
+  $(BUILD_LIBAWT_TARGET_DEPS): $(VULKAN_SHADER_LIST)
+endif
 
 TARGETS += $(BUILD_LIBAWT)
 
@@ -204,12 +245,13 @@ ifeq ($(call isTargetOs, windows macosx), false)
   $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_HEADLESS, \
       NAME := awt_headless, \
       EXTRA_SRC := $(LIBAWT_HEADLESS_EXTRA_SRC), \
-      EXCLUDES := medialib opengl, \
+      EXCLUDES := medialib opengl $(VULKAN_EXCLUDES), \
       EXCLUDE_FILES := $(LIBAWT_HEADLESS_EXCLUDE_FILES), \
       ONLY_EXPORTED := $(LIBAWT_HEADLESS_ONLY_EXPORTED), \
       OPTIMIZATION := LOW, \
       CFLAGS := -DHEADLESS=true $(CUPS_CFLAGS) $(FONTCONFIG_CFLAGS) \
           $(X_CFLAGS), \
+      CXXFLAGS := $(CXXFLAGS_JDKLIB), \
       EXTRA_HEADER_DIRS := $(LIBAWT_HEADLESS_EXTRA_HEADER_DIRS), \
       DISABLED_WARNINGS_gcc := unused-variable, \
       DISABLED_WARNINGS_clang := unused-variable, \
@@ -244,6 +286,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       common/awt/systemscale \
       common/font \
       common/java2d/opengl \
+      common/java2d/vulkan \
       common/java2d/x11 \
       java.base:libjvm \
       #
@@ -271,7 +314,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       NAME := awt_xawt, \
       EXTRA_SRC := $(LIBAWT_XAWT_EXTRA_SRC), \
       EXTRA_HEADER_DIRS := $(LIBAWT_XAWT_EXTRA_HEADER_DIRS), \
-      EXCLUDES := medialib debug, \
+      EXCLUDES := medialib debug $(VULKAN_EXCLUDES), \
       OPTIMIZATION := LOW, \
       CFLAGS := -DXAWT -DXAWT_HACK $(LIBAWT_XAWT_CFLAGS) \
           $(FONTCONFIG_CFLAGS) $(CUPS_CFLAGS) $(X_CFLAGS), \

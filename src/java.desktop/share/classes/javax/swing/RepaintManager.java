@@ -705,28 +705,24 @@ public class RepaintManager
     }
 
     private void updateWindows(Map<Component,Rectangle> dirtyComponents) {
-        Toolkit toolkit = Toolkit.getDefaultToolkit();
-        if (!(toolkit instanceof SunToolkit &&
-              ((SunToolkit)toolkit).needUpdateWindow()))
-        {
-            return;
-        }
 
-        Set<Window> windows = new HashSet<Window>();
-        Set<Component> dirtyComps = dirtyComponents.keySet();
-        for (Component dirty : dirtyComps) {
-            Window window = dirty instanceof Window ?
-                (Window)dirty :
-                SwingUtilities.getWindowAncestor(dirty);
-            if (window != null &&
-                !window.isOpaque())
-            {
-                windows.add(window);
+        if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit &&
+                sunToolkit.needUpdateWindow()) {
+            Set<Window> windows = new HashSet<Window>();
+            Set<Component> dirtyComps = dirtyComponents.keySet();
+            for (Component dirty : dirtyComps) {
+                Window window = dirty instanceof Window ?
+                        (Window) dirty :
+                        SwingUtilities.getWindowAncestor(dirty);
+                if (window != null &&
+                        (!window.isOpaque() || sunToolkit.needUpdateWindowAfterPaint())) {
+                    windows.add(window);
+                }
             }
-        }
 
-        for (Window window : windows) {
-            AWTAccessor.getWindowAccessor().updateWindow(window);
+            for (Window window : windows) {
+                AWTAccessor.getWindowAccessor().updateWindow(window);
+            }
         }
     }
 
@@ -1128,8 +1124,15 @@ public class RepaintManager
                     GraphicsConfiguration gc = gd.getDefaultConfiguration();
                     virtualBounds = virtualBounds.union(gc.getBounds());
                 }
-                doubleBufferMaxSize = new Dimension(virtualBounds.width,
-                                                    virtualBounds.height);
+                doubleBufferMaxSize =
+                        // Sometimes underlying desktop environment reports
+                        // incorrect gc bounds (w=0,h=0). Replace them with
+                        // maximum values (as we do for headless mode)
+                    new Dimension(
+                            virtualBounds.width == 0 ?
+                                    Integer.MAX_VALUE : virtualBounds.width,
+                            virtualBounds.height == 0 ?
+                                    Integer.MAX_VALUE : virtualBounds.height);
             } catch (HeadlessException e) {
                 doubleBufferMaxSize = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
             }
@@ -1241,6 +1244,13 @@ public class RepaintManager
                                 x, y, w, h)) {
             g.setClip(x, y, w, h);
             paintingComponent.paintToOffscreen(g, x, y, w, h, x + w, y + h);
+        }
+
+        if (Toolkit.getDefaultToolkit() instanceof SunToolkit tk) {
+            final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
+            if (window != null && tk.needUpdateWindowAfterPaint()) {
+                AWTAccessor.getWindowAccessor().updateWindow(window);
+            }
         }
     }
 
