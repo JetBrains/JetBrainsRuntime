@@ -27,6 +27,7 @@ package sun.font;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
+import java.lang.annotation.Native;
 
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -127,6 +128,11 @@ public final class StrikeCache {
         ADDRESS.withName("cellInfo"),    // 24+8=32
         ADDRESS.withName("image")        // 32+8=40
      );
+
+    @Native public static final byte PIXEL_FORMAT_UNKNOWN   = -1;
+    @Native public static final byte PIXEL_FORMAT_GREYSCALE = 1;
+    @Native public static final byte PIXEL_FORMAT_LCD       = 3;
+    @Native public static final byte PIXEL_FORMAT_BGRA      = 4;
 
    private static final long GLYPHIMAGESIZE = GlyphImageLayout.byteSize();
 

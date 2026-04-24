@@ -25,6 +25,7 @@
 
 package java.awt;
 
+import java.awt.geom.AffineTransform;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.AdjustmentEvent;
@@ -339,6 +340,13 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @see #getGraphicsConfiguration
      */
     private transient volatile GraphicsConfiguration graphicsConfig;
+
+    /**
+     * Last observed value of {@code graphicsConfig.getDefaultTransform()}.
+     * Used for firing 'graphicsContextScaleTransform' property change,
+     * as values returned by {@link #graphicsConfig} may change over time.
+     */
+    private transient volatile AffineTransform lastGraphicsConfigTransform;
 
     /**
      * A reference to a {@code BufferStrategy} object
@@ -1162,7 +1170,19 @@ public abstract class Component implements ImageObserver, MenuContainer,
         if (graphicsConfig == gc) {
             return false;
         }
+
+        AffineTransform tx = lastGraphicsConfigTransform;
+        AffineTransform newTx = gc != null ? gc.getDefaultTransform() : new AffineTransform();
         graphicsConfig = gc;
+        // We cannot rely on graphicsConfig.getDefaultTransform(),
+        // because its device might have been invalidated and now
+        // reports different scale than it did before.
+        if (!newTx.equals(lastGraphicsConfigTransform))
+        {
+            lastGraphicsConfigTransform = newTx;
+            firePropertyChange("graphicsContextScaleTransform",
+                    tx != null ? tx : new AffineTransform(), newTx);
+        }
 
         ComponentPeer peer = this.peer;
         if (peer != null) {
