@@ -1803,7 +1803,7 @@ private:
 
 public:
   MemoryReleaserW(WCHAR * object_ptr) : _object_ptr(object_ptr) {}
-  ~MemoryReleaserW() { if (_object_ptr != nullptr) FREE_C_HEAP_ARRAY(WCHAR, _object_ptr); }
+  ~MemoryReleaserW() { if (_object_ptr != nullptr) FREE_C_HEAP_ARRAY(_object_ptr); }
 };
 
 class MemoryReleaser : public StackObj {
@@ -1812,7 +1812,7 @@ private:
 
 public:
   MemoryReleaser(CHAR * object_ptr) : _object_ptr(object_ptr) {}
-  ~MemoryReleaser() { if (_object_ptr != nullptr) FREE_C_HEAP_ARRAY(CHAR, _object_ptr); }
+  ~MemoryReleaser() { if (_object_ptr != nullptr) FREE_C_HEAP_ARRAY(_object_ptr); }
 };
 
 // Loads .dll/.so and
