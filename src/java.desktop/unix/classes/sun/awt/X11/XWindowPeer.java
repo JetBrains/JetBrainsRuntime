@@ -2526,8 +2526,13 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
     @Override
     public void updateWindow() {
-        SurfaceData.convertTo(CommittableSurfaceDataExt.class, ((XContentWindow) getContentXWindow()).getSurfaceData()).commit();
-        SurfaceData.convertTo(CommittableSurfaceDataExt.class, surfaceData).commit();
+        // In the case this is a decorated XFrame, `this.surfaceData` is not used by the Vulkan renderer,
+        // the surfaceData of the content window is used instead.
+        // In the undecorated case, getContextXWindow() will simply return `this`.
+        SurfaceData contentSurfaceData = ((XWindow) getContentXWindow()).getSurfaceData();
+        if (contentSurfaceData instanceof CommittableSurfaceDataExt csd) {
+            csd.commit();
+        }
     }
 
     boolean isTopMostWindow() {
