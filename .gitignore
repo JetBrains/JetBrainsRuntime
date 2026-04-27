@@ -23,5 +23,3 @@ NashornProfile.txt
 /.gdbinit
 /.lldbinit
 **/core.[0-9]*
-*.rej
-*.orig
