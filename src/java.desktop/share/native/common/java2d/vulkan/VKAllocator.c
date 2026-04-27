@@ -508,7 +508,7 @@ void VKAllocator_Free(VKAllocator* allocator, VKMemory memory) {
                         p->sharedPageData->nextPageIndex = data->nextPageIndex;
                         break;
                     }
-                    assert(p->sharedPageData->nextPageIndex != 0);
+                    assert(p->sharedPageData->nextPageIndex != NO_PAGE_INDEX);
                     p = &allocator->pages.data[p->sharedPageData->nextPageIndex];
                 }
                 VKAllocator_FreePage(allocator, page, handle.page);
