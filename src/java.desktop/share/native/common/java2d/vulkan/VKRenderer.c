@@ -1094,7 +1094,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                                                                     acquireSemaphore, acquireFence, &imageIndex);
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): vkAcquireNextImageKHR, result = %d, acquireFence = %p, imageIndex = %u",
                 surface, acquireImageResult, acquireFence, imageIndex);
-        if (acquireImageResult != VK_SUCCESS) {
+        if (acquireImageResult != VK_SUCCESS && acquireImageResult != VK_SUBOPTIMAL_KHR) { // TODO: why has this become a problem? tsarn sync patch?
             // TODO possible suboptimal conditions
             VK_IF_ERROR(acquireImageResult) {
                 // Failed, try again later.
