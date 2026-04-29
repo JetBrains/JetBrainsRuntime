@@ -122,6 +122,7 @@ static jfieldID yAxis_hasSteps120ValueFID;
 static jfieldID yAxis_vectorValueFID;
 static jfieldID yAxis_steps120ValueFID;
 
+static jmethodID handleProtocolErrorMID;
 static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
 static jmethodID dispatchKeyboardEnterEventMID;
@@ -794,6 +795,10 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(yAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_vectorValue", "D"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_steps120Value", "I"), JNI_FALSE);
 
+    CHECK_NULL_RETURN(handleProtocolErrorMID = (*env)->GetStaticMethodID(env, tkClass,
+                                                                              "handleProtocolError",
+                                                                              "(Ljava/lang/String;IJ)V"),
+                      JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
                                                                                 "(JJ)V"),
@@ -954,6 +959,34 @@ Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
     checkInterfacesPresent(env);
 }
 
+static bool wlCheckProtocolError(JNIEnv *env)
+{
+    assert(env != NULL);
+    if (errno != EPROTO) {
+        return false;
+    }
+
+    const struct wl_interface *interface = NULL;
+    uint32_t object_id = 0;
+    uint32_t error_code = wl_display_get_protocol_error(wl_display, &interface, &object_id);
+
+    jstring interfaceJavaString = NULL;
+    if (interface != NULL) {
+        interfaceJavaString = (*env)->NewStringUTF(env, interface->name);
+        EXCEPTION_CLEAR(env);
+    }
+
+    // This will throw an exception
+    (*env)->CallStaticVoidMethod(env, tkClass, handleProtocolErrorMID, interfaceJavaString, (jint)error_code, (jlong)object_id);
+    bool result = (*env)->ExceptionCheck(env) == JNI_TRUE;
+
+    if (interfaceJavaString != NULL) {
+        (*env)->DeleteLocalRef(env, interfaceJavaString);
+    }
+
+    return result;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_wl_WLToolkit_isSSDAvailableImpl
   (JNIEnv *env, jobject cls)
@@ -968,7 +1001,9 @@ Java_sun_awt_wl_WLToolkit_dispatchEventsOnEDT
     // Dispatch all the events on the display's default event queue.
     // The handlers of those events will be called from here, i.e. on EDT,
     // and therefore must not block indefinitely.
-    wl_display_dispatch_pending(wl_display);
+    if (wl_display_dispatch_pending(wl_display) == -1) {
+        wlCheckProtocolError(env);
+    }
 }
 
 /**
@@ -1008,6 +1043,11 @@ wlFlushToServer(JNIEnv *env)
             JNU_ThrowByName(env, "java/awt/AWTError", "Wayland display error polling out to the server");
             return sun_awt_wl_WLToolkit_READ_RESULT_ERROR;
         }
+    }
+
+    if (rc < 0 && wlCheckProtocolError(env)) {
+        // an exception was thrown by wlCheckProtocolError
+        return sun_awt_wl_WLToolkit_READ_RESULT_ERROR;
     }
 
     if (rc < 0 && errno != EPIPE) {
