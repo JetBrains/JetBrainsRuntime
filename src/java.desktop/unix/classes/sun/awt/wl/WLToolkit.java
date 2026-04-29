@@ -212,6 +212,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         Runtime.getRuntime().addShutdownHook(shutdownThread);
     }
 
+    // called from native
+    private static void handleProtocolError(String interfaceName, int code, long objectId) {
+        throw new AWTError("Wayland protocol error, interface = " + interfaceName + ", error code = " + code + ", object ID = " + objectId);
+    }
+
     public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
         if (sunAwtDisableGtkFileDialogs == null) {
             sunAwtDisableGtkFileDialogs = Boolean.getBoolean("sun.awt.disableGtkFileDialogs");
