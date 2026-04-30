@@ -225,6 +225,20 @@ public final class OutputAnalyzer {
     }
 
     /**
+     * Returns true if stderr contains the given string
+     */
+    public boolean stderrContains(String expectedString) {
+        return getStderr().contains(expectedString);
+    }
+
+    /**
+     * Returns true if either stdout or stderr contains the given string
+     */
+    public boolean contains(String expectedString) {
+        return stdoutContains(expectedString) || stderrContains(expectedString);
+    }
+
+    /**
      * Verify that the stdout and stderr contents of output buffer contains the string
      *
      * @param expectedString String that buffer should contain

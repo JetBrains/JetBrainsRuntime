@@ -37,6 +37,7 @@ import javax.security.auth.DestroyFailedException;
 import javax.security.auth.callback.*;
 
 import sun.security.util.Debug;
+import sun.security.util.CryptoAlgorithmConstraints;
 
 /**
  * This class represents a storage facility for cryptographic
@@ -842,7 +843,7 @@ public class KeyStore {
      * The JDK Reference Implementation additionally uses the
      * {@code jdk.security.provider.preferred}
      * {@link Security#getProperty(String) Security} property to determine
-     * the preferred provider order for the specified algorithm. This
+     * the preferred provider order for the specified keystore type. This
      * may be different from the order of providers returned by
      * {@link Security#getProviders() Security.getProviders()}.
      *
@@ -866,6 +867,11 @@ public class KeyStore {
         throws KeyStoreException
     {
         Objects.requireNonNull(type, "null type name");
+
+        if (!CryptoAlgorithmConstraints.permits("KEYSTORE", type)) {
+            throw new KeyStoreException(type + " is disabled");
+        }
+
         try {
             Object[] objs = Security.getImpl(type, "KeyStore", (String)null);
             return new KeyStore((KeyStoreSpi)objs[0], (Provider)objs[1], type);
@@ -913,8 +919,15 @@ public class KeyStore {
         throws KeyStoreException, NoSuchProviderException
     {
         Objects.requireNonNull(type, "null type name");
-        if (provider == null || provider.isEmpty())
+
+        if (provider == null || provider.isEmpty()) {
             throw new IllegalArgumentException("missing provider");
+        }
+
+        if (!CryptoAlgorithmConstraints.permits("KEYSTORE", type)) {
+            throw new KeyStoreException(type + " is disabled");
+        }
+
         try {
             Object[] objs = Security.getImpl(type, "KeyStore", provider);
             return new KeyStore((KeyStoreSpi)objs[0], (Provider)objs[1], type);
@@ -958,8 +971,15 @@ public class KeyStore {
         throws KeyStoreException
     {
         Objects.requireNonNull(type, "null type name");
-        if (provider == null)
+
+        if (provider == null) {
             throw new IllegalArgumentException("missing provider");
+        }
+
+        if (!CryptoAlgorithmConstraints.permits("KEYSTORE", type)) {
+            throw new KeyStoreException(type + " is disabled");
+        }
+
         try {
             Object[] objs = Security.getImpl(type, "KeyStore", provider);
             return new KeyStore((KeyStoreSpi)objs[0], (Provider)objs[1], type);
@@ -1802,8 +1822,12 @@ public class KeyStore {
                                     kdebug.println(s.getAlgorithm()
                                             + " keystore detected: " + file);
                                 }
-                                keystore = new KeyStore(impl, p, s.getAlgorithm());
-                                break;
+                                String ksAlgo = s.getAlgorithm();
+                                if (CryptoAlgorithmConstraints.permits(
+                                        "KEYSTORE", ksAlgo)) {
+                                    keystore = new KeyStore(impl, p, ksAlgo);
+                                    break;
+                                }
                             }
                         } catch (NoSuchAlgorithmException e) {
                             // ignore
