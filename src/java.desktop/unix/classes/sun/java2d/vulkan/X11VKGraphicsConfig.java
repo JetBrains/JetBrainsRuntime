@@ -25,9 +25,11 @@
 
 package sun.java2d.vulkan;
 
+import sun.awt.X11.XContentWindow;
 import sun.awt.X11ComponentPeer;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.X11GraphicsDevice;
+import sun.java2d.NullSurfaceData;
 import sun.java2d.SurfaceData;
 
 import java.awt.BufferCapabilities;
@@ -100,6 +102,10 @@ public class X11VKGraphicsConfig extends X11GraphicsConfig implements VKGraphics
 
     @Override
     public SurfaceData createSurfaceData(X11ComponentPeer peer) {
+        if (peer.getContentWindow() != peer.getWindow()) {
+            // We don't need surfaceData for decorated frames when they have a child content window.
+            return NullSurfaceData.theInstance; // TODO: can we get away with null here?
+        }
         return new X11VKWindowSurfaceData(peer);
     }
 }
