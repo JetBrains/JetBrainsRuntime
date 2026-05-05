@@ -91,6 +91,7 @@ struct VKWinSDOps {
     VKWinSDCleanupQueue pendingCleanup;
 
     ARRAY(VkFence)     fencePool;
+    VkBool32           isSuboptimal;
 };
 
 /**

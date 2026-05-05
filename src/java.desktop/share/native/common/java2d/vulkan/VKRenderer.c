@@ -643,9 +643,15 @@ void VKRenderer_Flush(VKRenderer* renderer) {
         }
         VkResult presentResult = device->vkQueuePresentKHR(device->queue, &presentInfo);
         if (presentResult != VK_SUCCESS) {
-            // TODO check individual result codes in renderer->pendingPresentation.results
-            // TODO possible suboptimal conditions
-            VK_IF_ERROR(presentResult) {}
+            if (presentResult == VK_SUBOPTIMAL_KHR) {
+                for (size_t i = 0; i < pendingPresentations; ++i) {
+                    renderer->pendingPresentation.windows[i]->isSuboptimal = VK_TRUE;
+                }
+            } else {
+                // TODO check individual result codes in renderer->pendingPresentation.results
+                // TODO possible suboptimal conditions
+                VK_IF_ERROR(presentResult) {}
+            }
         }
         for (size_t i = 0; i < pendingPresentations; ++i) {
             VKWinSDOps* win = renderer->pendingPresentation.windows[i];
@@ -1094,13 +1100,16 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                                                                     acquireSemaphore, acquireFence, &imageIndex);
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): vkAcquireNextImageKHR, result = %d, acquireFence = %p, imageIndex = %u",
                 surface, acquireImageResult, acquireFence, imageIndex);
-        if (acquireImageResult != VK_SUCCESS && acquireImageResult != VK_SUBOPTIMAL_KHR) { // TODO: why has this become a problem? tsarn sync patch?
-            // TODO possible suboptimal conditions
-            VK_IF_ERROR(acquireImageResult) {
-                // Failed, try again later.
-                surface->renderPass->pendingFlush = VK_TRUE;
-                return;
-	    }
+        if (acquireImageResult != VK_SUCCESS) {
+            if (acquireImageResult == VK_SUBOPTIMAL_KHR) {
+                win->isSuboptimal = VK_TRUE;
+            } else {
+                VK_IF_ERROR(acquireImageResult) {
+                    // Failed, try again later.
+                    surface->renderPass->pendingFlush = VK_TRUE;
+                    return;
+                }
+            }
         }
 
         if (acquireFence != VK_NULL_HANDLE) {

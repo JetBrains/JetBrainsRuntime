@@ -215,6 +215,7 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
         vkwinsdo->swapchain = VK_NULL_HANDLE;
         vkwinsdo->surface = VK_NULL_HANDLE;
         vkwinsdo->swapchainDevice = NULL;
+        vkwinsdo->isSuboptimal = VK_FALSE;
     }
 }
 
@@ -278,9 +279,11 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
     // Check for changes.
-    if (vkwinsdo->swapchain != VK_NULL_HANDLE && vkwinsdo->swapchainDevice == vkwinsdo->vksdOps.device &&
+    if (!vkwinsdo->isSuboptimal &&
+            vkwinsdo->swapchain != VK_NULL_HANDLE && vkwinsdo->swapchainDevice == vkwinsdo->vksdOps.device &&
             vkwinsdo->swapchainExtent.width == vkwinsdo->vksdOps.image->extent.width &&
             vkwinsdo->swapchainExtent.height == vkwinsdo->vksdOps.image->extent.height) return VK_TRUE;
+    vkwinsdo->isSuboptimal = VK_FALSE;
     // Check that surface is ready.
     if (vkwinsdo->surface == VK_NULL_HANDLE) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): surface is not ready", vkwinsdo);
