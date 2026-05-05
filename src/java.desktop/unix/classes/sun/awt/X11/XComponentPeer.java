@@ -586,7 +586,7 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
               // while waiting for native paint
               if (!isLayouting && !paintPending) {
                   // FIXME: why is shouldClearRectBeforePaint=true in WLComponentPeer, but false here?
-                  paintArea.paint(target,false);
+                  paintArea.paint(target,true);
 
                   AWTUtilities.updateWindowThisOrAncestor(target);
               }
