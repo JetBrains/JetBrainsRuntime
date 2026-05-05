@@ -58,7 +58,7 @@ public abstract class WLDecoratedPeer extends WLWindowPeer {
     }
 
     public WLDecoratedPeer(Window target, boolean isUndecorated, boolean showMinimize, boolean showMaximize) {
-        super(target, decorationType != DecorationTypePreference.SERVER);
+        super(target, isUndecorated || decorationType != DecorationTypePreference.SERVER);
         this.isUndecorated = isUndecorated;
         this.showMinimize = showMinimize;
         this.showMaximize = showMaximize;
