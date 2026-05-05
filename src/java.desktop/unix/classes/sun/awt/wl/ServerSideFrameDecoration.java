@@ -98,16 +98,15 @@ public class ServerSideFrameDecoration extends FrameDecoration {
 
     @Override
     public void notifyNativeWindowToBeHidden(long nativePtr) {
-        if (nativeDecorPtr != 0) {
-            disposeImpl(nativeDecorPtr);
-            nativeDecorPtr = 0;
-        }
+        dispose();
     }
 
     @Override
     public void dispose() {
-        // Native resources must have been already disposed when the window was hidden
-        assert nativeDecorPtr == 0 : "Native resources must have been already disposed";
+        if (nativeDecorPtr != 0) {
+            disposeImpl(nativeDecorPtr);
+            nativeDecorPtr = 0;
+        }
     }
 
     private native long createToplevelDecorationImpl(long nativeFramePtr);
