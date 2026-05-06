@@ -28,6 +28,7 @@ package sun.java2d.opengl;
 import java.awt.Composite;
 import sun.font.GlyphList;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.pipe.BufferedTextPipe;
 import sun.java2d.pipe.RenderQueue;
@@ -48,8 +49,9 @@ class OGLTextRenderer extends BufferedTextPipe {
     @Override
     protected void validateContext(SunGraphics2D sg2d, Composite comp) {
         // assert rq.lock.isHeldByCurrentThread();
-        OGLSurfaceData oglDst = (OGLSurfaceData)sg2d.surfaceData;
-        OGLContext.validateContext(oglDst, oglDst,
+        OGLSurfaceData dstData = SurfaceData.convertTo(OGLSurfaceData.class,
+                sg2d.surfaceData);
+        OGLContext.validateContext(dstData, dstData,
                                    sg2d.getCompClip(), comp,
                                    null, sg2d.paint, sg2d,
                                    OGLContext.NO_CONTEXT_FLAGS);
