@@ -68,6 +68,7 @@ static void X11VK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
     // FIXME: resize breaks everything currently!!!
     // This `onResize` method looks like it never existed, we should probably adapt some Wayland onSurfaceResize code to fit here.
     // JNU_CallMethodByName(env, NULL, surface->vksdOps.sdOps.sdObject, "onResize", "()V");
+    surface->isSuboptimal = VK_TRUE;
 }
 
 static void X11VK_InitSurfaceData(VKWinSDOps* surface, void* data) {
