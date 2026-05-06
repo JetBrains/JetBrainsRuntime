@@ -571,7 +571,7 @@ void ShenandoahHeapRegion::recycle_internal() {
   heap->marking_context()->reset_top_at_mark_start(this);
   set_update_watermark(bottom());
   if (ZapUnusedHeapArea) {
-    SpaceMangler::mangle_region(MemRegion(bottom(), end()));
+    SpaceMangler::mangle_region(MemRegion(bottom(), top()));
   }
 
   make_empty();
