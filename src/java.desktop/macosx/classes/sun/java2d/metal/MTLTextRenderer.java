@@ -27,6 +27,7 @@ package sun.java2d.metal;
 
 import sun.font.GlyphList;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.pipe.BufferedTextPipe;
 import sun.java2d.pipe.RenderQueue;
@@ -49,8 +50,9 @@ class MTLTextRenderer extends BufferedTextPipe {
     @Override
     protected void validateContext(SunGraphics2D sg2d, Composite comp) {
         // assert rq.lock.isHeldByCurrentThread();
-        MTLSurfaceData mtlDst = (MTLSurfaceData)sg2d.surfaceData;
-        MTLContext.validateContext(mtlDst, mtlDst,
+        MTLSurfaceData dstData = SurfaceData.convertTo(MTLSurfaceData.class,
+                sg2d.surfaceData);
+        MTLContext.validateContext(dstData, dstData,
                 sg2d.getCompClip(), comp,
                 null, sg2d.paint, sg2d,
                 MTLContext.NO_CONTEXT_FLAGS);
