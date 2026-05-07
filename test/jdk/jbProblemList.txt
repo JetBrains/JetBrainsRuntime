@@ -135,11 +135,10 @@ java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809 linux-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java JBR-5210 windows-all
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
-java/awt/Focus/InactiveFocusRace.java 8023263,JBR-8586 linux-all,windows-x64
+java/awt/Focus/InactiveFocusRace.java JBR-8586 windows-x64
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 ubuntu-22.04-aarch64
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
-java/awt/Frame/BogusFocusableWindowState/BogusFocusableWindowState.java 8361521 linux-all
 java/awt/Focus/LabelScrollBarFocus.java JBR-8027 linux-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
 java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
@@ -358,21 +357,12 @@ java/awt/Window/Grab/GrabTest.java 8253184 windows-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all
 java/awt/FontClass/FontAccess.java JBR-5225 windows-all
+java/awt/font/GlyphVector/GlyphVectorGsubTest.java JBR-8655 generic-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8437 linux-aarch64
 java/awt/font/JNICheck/JNICheck.sh JBR-5011 linux-all
-java/awt/font/TextLayout/ArabicDiacriticTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/DecorationBoundsTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/FontLayoutStressTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/HitTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/MissingCodePointLayoutTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/StyledFontLayoutTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/TestGetPixelBounds.java JBR-6760 linux-i386
 java/awt/font/TextLayout/TestJustification.html 8250791 macosx-all
 java/awt/font/TextLayout/TestSinhalaChar.java JBR-5103 generic-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
-java/awt/font/TextLayout/TextLayoutEqualsTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/UnderlinePositionTest.java JBR-6760 linux-i386
-java/awt/font/TextLayout/VisibleAdvance.java JBR-6760 linux-i386
 java/awt/image/BufferedImage/ICMColorDataTest/ICMColorDataTest.java 8233028 generic-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java 8056077 linux-all
 java/awt/image/multiresolution/Corrupted2XImageTest.java 8264053 macosx-all
@@ -387,6 +377,9 @@ sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 
 sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.java JBR-5393 windows-aarch64
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180,8252812 windows-all,macosx-all,linux-all
+sun/java2d/OpenGL/DrawBitmaskImage.java#id0 8369561 linux-all
+sun/java2d/OpenGL/OpaqueDest.java#id1 8367574 macosx-all
+sun/java2d/OpenGL/ScaleParamsOOB.java#id0 8377908 linux-all
 
 java/awt/Graphics/GDIResourceExhaustionTest.java JBR-8719 linux-5.18.2-arch1-1
 java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-aarch64,linux-5.18.2-arch1-1
@@ -436,7 +429,7 @@ java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
 java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
-java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
+java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210,JBR-9770 windows-all,linux-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
 java/awt/Robot/InfiniteLoopException.java 8342638 windows-all,linux-all
@@ -731,6 +724,8 @@ java/awt/xembed/server/RunTestXEmbed.java 7034201 linux-all
 java/awt/Modal/ModalFocusTransferTests/FocusTransferDialogsDocModalTest.java 8164473 linux-all
 java/awt/Frame/DecoratedFrameInsets/DecoratedFrameInsetsTest.java JBR-5205,JBR-9204 linux-5.4.0-1103-aws,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64,linux-6.18.4-100.fc42.x86_64
 java/awt/Frame/DynamicLayout/DynamicLayout.java JBR-9205 linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64,linux-6.18.4-100.fc42.x86_64
+java/awt/Frame/NonEDT_GUI_DeadlockTest/NonEDT_GUI_Deadlock.java JBR-9838 linux-all
+java/awt/Frame/NormalToIconified/NormalToIconifiedTest.java JBR-10158 ubuntu-24.04-aarch64,ubuntu-24.04-x64
 
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-all,linux-all,windows-all
 java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384 macosx-all
@@ -834,9 +829,6 @@ java/io/Serializable/font/FontSerialization.java JBR-8452 macosx-all,windows-all
 
 # jdk_management
 
-com/sun/management/OperatingSystemMXBean/GetProcessCpuLoad.java 8030957 aix-all
-com/sun/management/OperatingSystemMXBean/GetSystemCpuLoad.java  8030957 aix-all
-
 java/lang/management/ThreadMXBean/ThreadMXBeanStateTest.java    8247426 generic-all
 
 sun/management/jdp/JdpDefaultsTest.java                         8241865,JBR-9229 linux-aarch64,macosx-all,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.x86_64,linux-6.18.4-100.fc42.x86_64
@@ -850,8 +842,6 @@ sun/management/jmxremote/bootstrap/RmiBootstrapTest.java#id1 JBR-8707 windows-al
 ############################################################################
 
 # jdk_jmx
-
-javax/management/MBeanServer/OldMBeanServerTest.java            8030957 aix-all
 
 javax/management/remote/mandatory/notif/NotifReconnectDeadlockTest.java 8042215 generic-all
 
@@ -906,8 +896,6 @@ java/nio/file/WatchService/JNIChecks.java JBR-8457 generic-all
 java/rmi/server/Unreferenced/finiteGCLatency/FiniteGCLatency.java 7140992 generic-all
 
 java/rmi/transport/rapidExportUnexport/RapidExportUnexport.java 7146541 linux-all
-
-java/rmi/transport/checkLeaseInfoLeak/CheckLeaseLeak.java       7191877 generic-all
 
 java/rmi/activation/Activatable/extLoadedImpl/ext.sh            8062724 generic-all
 
@@ -969,8 +957,6 @@ javax/sound/sampled/DataLine/LongFramePosition.java                  8055097 gen
 javax/sound/sampled/Clip/Drain/ClipDrain.java          7062792 generic-all
 javax/sound/sampled/Clip/SetPositionHang.java JBR-4969 linux-aarch64
 
-javax/sound/sampled/Mixers/DisabledAssertionCrash.java 7067310 generic-all
-
 javax/sound/midi/Sequencer/Recording.java 8167580,8265485 linux-all,macosx-aarch64
 javax/sound/midi/Sequencer/Looping.java 8136897 generic-all
 javax/sound/sampled/Clip/ClipIsRunningAfterStop.java 8307574,JBR-4455 linux-x64,linux-aarch64
@@ -1031,7 +1017,7 @@ javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,win
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184 windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-8300 windows-all,macosx-all
-javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 windows-all,
+javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
 javax/swing/plaf/windows/6921687/bug6921687.java 8253184 windows-all
 javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java JBR-4372 windows-all
@@ -1194,7 +1180,7 @@ javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java JBR-6546 wind
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879,JBR-6512 windows-all,linux-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8253184,JBR-900 macosx-aarch64,windows-all
 javax/swing/text/DefaultEditorKit/4278839/bug4278839.java CODETOOLS-7901623 windows-all
-javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896,JBR-6760 windows-all,linux-i386
+javax/swing/text/GlyphPainter2/6427244/bug6427244.java JBR-896 windows-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java CODETOOLS-7901623,JBR-5386 windows-all,linux-all
 javax/swing/text/JTextComponent/6361367/bug6361367.java JBR-521 windows-all
 javax/swing/text/View/8014863/bug8014863.java JBR-5541 windows-all,linux-all
@@ -1275,11 +1261,6 @@ com/sun/jdi/SetLocalWhileThreadInNative.java JBR-8537 generic-all
 sun/tools/jhsdb/HeapDumpTest.java                               8269881 windows-all
 sun/tools/jstatd/TestJstatdRmiPort.java                         8251259,8293577 windows-all,generic-all
 
-sun/tools/jstat/jstatLineCounts1.sh                             8268211 linux-aarch64
-sun/tools/jstat/jstatLineCounts2.sh                             8268211 linux-aarch64
-sun/tools/jstat/jstatLineCounts3.sh                             8268211 linux-aarch64
-sun/tools/jstat/jstatLineCounts4.sh                             8268211 linux-aarch64
-
 ############################################################################
 
 # jdk_other
@@ -1342,11 +1323,10 @@ java/awt/Modal/WsDisabledStyle/CloseBlocker/CloseBlocker.java 7187741 linux-all,
 java/awt/xembed/server/TestXEmbedServerJava.java 8001150,8004031 generic-all
 javax/swing/JFileChooser/6698013/bug6698013.java 8024419 macosx-all
 javax/swing/JColorChooser/8065098/bug8065098.java 8065647 macosx-all
-java/awt/Modal/PrintDialogsTest/PrintDialogsTest.java 8068378 generic-all
 javax/swing/JTabbedPane/4666224/bug4666224.html 8144124  macosx-all
 javax/swing/JTextArea/7049024/bug7049024.java JBR-5836 linux-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java 8253184 windows-all
-java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java 8162380,JBR-4207 generic-all,windows-all
+java/awt/event/MouseEvent/AltGraphModifierTest/AltGraphModifierTest.java JBR-4207 windows-all
 java/awt/image/VolatileImage/VolatileImageConfigurationTest.java 8171069 macosx-all,linux-all
 java/awt/Modal/InvisibleParentTest/InvisibleParentTest.java 8172245 linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184 windows-all
@@ -1461,7 +1441,7 @@ javax/swing/JTable/7124218/SelectEditTableCell.java JBR-6679 windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64
 javax/swing/JTable/BugCellEditorListener.java JBR-6678 windows-all
 javax/swing/JTable/JTableOrientationNavTest/JTableOrientationNavTest.java JBR-6836 linux-all
-javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880,JBR-6760 windows-all,linux-i386
+javax/swing/text/AbstractDocument/6968363/Test6968363.java JBR-4880 windows-all
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
 javax/swing/text/html/7189299/bug7189299.java JBR-4880 windows-all
 javax/swing/ToolTipManager/Test6256140.java JBR-9517 windows-10.0
@@ -1537,40 +1517,3 @@ jb/java/awt/Focus/TitleBarClickTest.java JBR-6394 linux-5.18.2-arch1-1
 com/sun/java/swing/plaf/gtk/bug6492108.java JBR-8021 linux-all
 com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java JBR-8570 linux-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java JBR-5765 macosx-all
-
-java/awt/font/DoubleAntialiasTest.java JBR-6760 linux-i386
-java/awt/Paint/RepaintOnAWTShutdown.java JBR-6760 linux-i386
-java/awt/Graphics2D/DrawString/RotTransText.java JBR-6760 linux-i386
-java/awt/Graphics2D/DrawString/DrawStrSuper.java JBR-6760 linux-i386
-java/awt/FontClass/NaNTransform.java JBR-6760 linux-i386
-java/awt/FontClass/NonInvertibleTransformTextTest.java JBR-6760 linux-i386
-java/awt/font/Rotate/RotatedItalicsTest.java JBR-6760 linux-i386
-java/awt/font/Rotate/RotatedFontTest.java JBR-6760 linux-i386
-java/awt/font/Outline/OutlineInvarianceTest.java JBR-6760 linux-i386
-java/awt/font/GlyphVector/TestLayoutFlags.java JBR-6760 linux-i386
-java/awt/font/GlyphVector/GetGlyphCharIndexTest.java JBR-6760 linux-i386
-java/awt/font/GlyphVector/GlyphVectorGsubTest.java JBR-8655 generic-all
-java/awt/font/LineBreakMeasurer/FRCTest.java JBR-6760 linux-i386
-java/awt/font/LineBreakMeasurer/AllFontsLBM.java JBR-6760 linux-i386
-java/awt/font/LineBreakMeasurer/TestLineBreakWithFontSub.java JBR-6760 linux-i386
-java/awt/font/LineBreakMeasurer/LineBreakWithTrackingAuto.java JBR-6760 linux-i386
-
-javax/swing/JTextArea/JTextAreaOrientationTest.java JBR-6760 linux-i386
-javax/swing/JTextArea/TextViewOOM/TextViewOOM.java JBR-6760 linux-i386
-javax/swing/tree/DefaultTreeCellEditor/bug4480602.java JBR-6760 linux-i386
-javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-6760 linux-i386
-javax/swing/JSpinner/8008657/bug8008657.java JBR-6760 linux-i386
-javax/swing/JSpinner/6532833/bug6532833.java JBR-6760 linux-i386
-javax/swing/JFileChooser/FCPopupMenuOrientationTest.java JBR-6760 linux-i386
-javax/swing/Headless/HeadlessJColorChooser.java JBR-6760 linux-i386
-javax/swing/Headless/HeadlessJTextArea.java JBR-6760 linux-i386
-javax/swing/Headless/HeadlessJSpinner.java JBR-6760 linux-i386
-javax/swing/Headless/HeadlessJTextField.java JBR-6760 linux-i386
-javax/swing/Headless/HeadlessJEditorPane.java JBR-6760 linux-i386
-javax/swing/text/html/parser/Parser/6836089/bug6836089.java JBR-6760 linux-i386
-javax/swing/text/DevanagariEditor.java JBR-6760 linux-i386
-javax/swing/JLabel/6501991/bug6501991.java JBR-6760 linux-i386
-javax/swing/JTextField/bug4300552.java JBR-6760 linux-i386
-javax/swing/JTextField/SwingUnicodeTest.java JBR-6760 linux-i386
-javax/swing/JTextField/I18NViewNoWrapMinSpan/I18NViewNoWrapMinSpan.java JBR-6760 linux-i386
-javax/swing/JComponent/4337267/bug4337267.java JBR-6760 linux-i386
