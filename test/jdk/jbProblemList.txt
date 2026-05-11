@@ -157,6 +157,7 @@ java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java JBR-7509 macosx-al
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340374,JBR-7947 macosx-all
 java/awt/Frame/MaximizedToMaximized/MaximizedToMaximized.java 8340374,JBR-7947 macosx-all
 java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5303 windows-all
+java/awt/Frame/ResizeAfterSetFont/ResizeAfterSetFont.java JBR-9971 ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
 java/awt/Frame/InitialIconifiedTest.java 7144049,8203920 macosx-all,linux-all
 java/awt/Frame/InitialMaximizedTest/InitialMaximizedTest.java JBR-8093 macosx-all
@@ -397,6 +398,9 @@ sun/java2d/DirectX/OnScreenRenderingResizeTest/OnScreenRenderingResizeTest.java 
 sun/java2d/DirectX/OpaqueImageToSurfaceBlitTest/OpaqueImageToSurfaceBlitTest.java JBR-5393 windows-aarch64
 sun/java2d/DirectX/OverriddenInsetsTest/OverriddenInsetsTest.java 8196102 generic-all
 sun/java2d/DirectX/RenderingToCachedGraphicsTest/RenderingToCachedGraphicsTest.java 8196180,8252812 windows-all,macosx-all,linux-all
+sun/java2d/OpenGL/DrawBitmaskImage.java#id0 8369561 linux-all
+sun/java2d/OpenGL/OpaqueDest.java#id1 8367574 macosx-all
+sun/java2d/OpenGL/ScaleParamsOOB.java#id0 8377908 linux-all
 
 java/awt/Graphics/GDIResourceExhaustionTest.java JBR-8719 linux-5.18.2-arch1-1
 java/awt/Graphics/NativeWin32Clear.java JBR-8689 linux-all
@@ -445,7 +449,7 @@ java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
 java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
 java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
-java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
+java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210,JBR-9445 windows-all,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
