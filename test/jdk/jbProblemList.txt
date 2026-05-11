@@ -148,6 +148,7 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
+java/awt/Focus/InitialFocusTest/InitialFocusTest1.java 8367784 windows-x64
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-x86
 java/awt/Focus/KeyStrokeTest.java JBR-7914 windows-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
@@ -171,7 +172,9 @@ java/awt/Frame/MaximizedToOppositeScreen/MaximizedToOppositeScreenBig.java JBR-5
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731 linux-all
 java/awt/Frame/MinimumSizeTest.java JBR-8298 linux-all
+java/awt/Frame/NonEDT_GUI_DeadlockTest/NonEDT_GUI_Deadlock.java JBR-9838 linux-all
 java/awt/Frame/RestoreToOppositeScreen/RestoreToOppositeScreen.java 8286840 linux-all
+java/awt/Frame/ResizeAfterSetFont/ResizeAfterSetFont.java JBR-9971 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/CustomDragCursorTest.java 8242805 macosx-all
 java/awt/dnd/DnDClipboardDeadlockTest.java JBR-6442 linux-all
@@ -282,7 +285,7 @@ java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux
 java/awt/LightweightComponent/LightweightDragTest.java JBR-6557 windows-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252,JBR-5050,JBR-8313 windows-all,macosx-all,linux-all
 java/awt/LightweightComponent/MultipleAddNotifyTest/MultipleAddNotifyTest.java JBR-8092 linux-all
-java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-8146 windows-x64
+java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java JBR-8146 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java JBR-6633 linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636,JBR-4211 macosx-all,linux-all
 java/awt/EventDispatchThread/PropertyPermissionOnEDT/PropertyPermissionOnEDT.java JBR-5225 windows-all
@@ -440,7 +443,7 @@ java/awt/Clipboard/ClipboardSecurity.java 8054809 macosx-all
 java/awt/Clipboard/GetAltContentsTest/SystemClipboardTest.java 8234140 macosx-all
 java/awt/Clipboard/ImageTransferTest.java 8030710 generic-all
 java/awt/Clipboard/NoDataConversionFailureTest.java 8234140 macosx-all
-java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210 windows-all
+java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java JBR-5210,JBR-9445,JBR-10339 windows-all,linux-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java JBR-5210 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8266244,JBR-5786 macosx-aarch64,generic-all
@@ -1064,6 +1067,7 @@ javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
 javax/swing/JComboBox/bug5029504.java JBR-5799 windows-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java JBR-5210 windows-all
+javax/swing/JComboBox/EditableComboBoxPopupPos.java JBR-8793 windows-all
 javax/swing/JComboBox/TestComboBoxComponentRendering.java JBR-8270 linux-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
 javax/swing/JDialog/Transparency/TransparencyTest.java 8253184 windows-all
@@ -1080,7 +1084,7 @@ javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java JBR-5799,JBR-6306 windows-all,linux-all
 javax/swing/JMenu/bug4140643.java JBR-8489 windows-all
-javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056 windows-aarch64,windows-x64
+javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056,JBR-9660 windows-aarch64,windows-x64,linux-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-6094 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-6112 windows-all
 javax/swing/JMenuItem/4654927/bug4654927.java JBR-164,JBR-4337 windows-all,linux-all
