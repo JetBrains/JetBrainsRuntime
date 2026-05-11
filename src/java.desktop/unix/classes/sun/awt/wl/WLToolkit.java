@@ -520,14 +520,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
         keyboard.onLostFocus();
 
-        Window ow = WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow();
         WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
         WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
 
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
         final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
-            final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS, ow);
+            final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             postPriorityEvent(winLostFocusEvent);
         }
         inputState = newInputState;
