@@ -70,7 +70,7 @@ public class ContentLengthHeaderTest implements HttpServerAdapters {
     static HttpTestServer testContentLengthServerH1;
     static HttpTestServer testContentLengthServerH2;
     static PrintStream testLog = System.err;
-    static SSLContext sslContext;
+    private static final SSLContext sslContext = SimpleSSLContext.findSSLContext();
 
     HttpClient hc;
     URI testContentLengthURIH1;
@@ -78,7 +78,6 @@ public class ContentLengthHeaderTest implements HttpServerAdapters {
 
     @BeforeTest
     public void setup() throws IOException, URISyntaxException {
-        sslContext = new SimpleSSLContext().get();
         testContentLengthServerH1 = HttpTestServer.create(HTTP_1_1);
         testContentLengthServerH2 = HttpTestServer.create(HTTP_2, sslContext);
 
