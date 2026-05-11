@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,9 +21,28 @@
  * questions.
  */
 
-/*
- * @test
- * @compile/module=java.net.http ../../../../../../lib/jdk/test/lib/net/SimpleSSLContext.java
- * @modules java.net.http/jdk.internal.net.http
- * @run testng java.net.http/jdk.internal.net.http.FlowTest
+package jdk.internal.net.http;
+
+import jdk.test.lib.net.SimpleSSLContext;
+
+import javax.net.ssl.SSLContext;
+
+/**
+ * Adapter for {@link SimpleSSLContext} for whitebox tests.
  */
+public final class SimpleSSLContextWhiteboxAdapter {
+
+    private SimpleSSLContextWhiteboxAdapter() {}
+
+    /**
+     * {@return a new {@link SSLContext} instance by searching for a key store
+     * file path, and loading the first found one}
+     *
+     * @throws RuntimeException if no key store file can be found or the found
+     * one cannot be loaded
+     */
+    public static SSLContext findSSLContext() {
+        return SimpleSSLContext.findSSLContext("../../../../../lib/jdk/test/lib/net/testkeys", "TLS");
+    }
+
+}

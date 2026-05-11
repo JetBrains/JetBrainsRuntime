@@ -106,7 +106,7 @@ public class UserAuthWithAuthenticator {
         HttpClient client = null;
         ExecutorService ex=null;
         try {
-            ctx = new SimpleSSLContext().get();
+            ctx = SimpleSSLContext.findSSLContext();
             ex = Executors.newCachedThreadPool();
             InetAddress addr = InetAddress.getLoopbackAddress();
 

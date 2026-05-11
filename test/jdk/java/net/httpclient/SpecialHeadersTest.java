@@ -99,7 +99,7 @@ import static org.testng.Assert.assertTrue;
 
 public class SpecialHeadersTest implements HttpServerAdapters {
 
-    SSLContext sslContext;
+    private static final SSLContext sslContext = SimpleSSLContext.findSSLContext();
     HttpTestServer httpTestServer;         // HTTP/1.1    [ 4 servers ]
     HttpTestServer httpsTestServer;        // HTTPS/1.1
     HttpTestServer http2TestServer;        // HTTP/2 ( h2c )
@@ -554,9 +554,6 @@ public class SpecialHeadersTest implements HttpServerAdapters {
     @BeforeTest
     public void setup() throws Exception {
         out.println("--- Starting setup " + now());
-        sslContext = new SimpleSSLContext().get();
-        if (sslContext == null)
-            throw new AssertionError("Unexpected null sslContext");
 
         HttpTestHandler handler = new HttpUriStringHandler();
         httpTestServer = HttpTestServer.create(HTTP_1_1);

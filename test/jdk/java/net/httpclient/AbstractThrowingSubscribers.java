@@ -76,7 +76,7 @@ import org.junit.jupiter.api.extension.TestWatcher;
 
 public abstract class AbstractThrowingSubscribers implements HttpServerAdapters {
 
-    static SSLContext sslContext;
+    private static final SSLContext sslContext = SimpleSSLContext.findSSLContext();
     static HttpTestServer httpTestServer;    // HTTP/1.1    [ 4 servers ]
     static HttpTestServer httpsTestServer;   // HTTPS/1.1
     static HttpTestServer http2TestServer;   // HTTP/2 ( h2c )
@@ -758,10 +758,6 @@ public abstract class AbstractThrowingSubscribers implements HttpServerAdapters 
     public static void setup() throws Exception {
         System.out.println(now() + "setup");
         System.err.println(now() + "setup");
-
-        sslContext = new SimpleSSLContext().get();
-        if (sslContext == null)
-            throw new AssertionError("Unexpected null sslContext");
 
         // HTTP/1.1
         HttpTestHandler h1_fixedLengthHandler = new HTTP_FixedLengthHandler();
