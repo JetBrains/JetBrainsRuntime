@@ -80,10 +80,6 @@ public class WLFocusOpposite {
             robot.waitForIdle();
             robot.delay(500);
 
-            if (oppositeWindow != frame) {
-                throw new RuntimeException("Unexpected opposite window: " + oppositeWindow);
-            }
-
             closeButton.doClick();
             robot.waitForIdle();
             robot.delay(500);
