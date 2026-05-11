@@ -99,15 +99,7 @@ class HttpResponseLimitingTest {
 
     private record ServerClientPair(HttpTestServer server, HttpClient client, HttpRequest request) {
 
-        private static final SSLContext SSL_CONTEXT = createSslContext();
-
-        private static SSLContext createSslContext() {
-            try {
-                return new SimpleSSLContext().get();
-            } catch (IOException exception) {
-                throw new UncheckedIOException(exception);
-            }
-        }
+        private static final SSLContext SSL_CONTEXT = SimpleSSLContext.findSSLContext();
 
         private ServerClientPair {
             try {
