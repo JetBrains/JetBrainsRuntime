@@ -2237,8 +2237,8 @@ void VMError::record_oome_stack(const char *message) {
     int i;
     {
       MutexLocker ml(OOMEStacks_lock, Mutex::_no_safepoint_check_flag);
-      _oome_free_index = (_oome_free_index + 1) % OOME_STACKTRACE_COUNT;
       i = _oome_free_index;
+      _oome_free_index = (_oome_free_index + 1) % OOME_STACKTRACE_COUNT;
     }
     stringStream st(_oome_stacktrace[i], OOME_STACKTRACE_BUFSIZE);
     st.print_cr("OutOfMemoryError(\"%s\") on the thread \"%s\"", message, thread->name());
