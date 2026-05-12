@@ -25,6 +25,7 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
+| 2026.2      | [25.0.3-b475.60](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b475.60)  | 12-May-2026   |
 | 2026.1      | [25.0.2-b329.72](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.2b329.72)  | 03-Mar-2026   |
 | 2025.3      | [25-b176.4](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25b176.4)            | 23-Oct-2025   |
 
