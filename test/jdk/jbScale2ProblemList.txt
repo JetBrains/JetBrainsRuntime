@@ -74,6 +74,7 @@ javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all,windows-all
 javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 ubuntu-22.04-aarch64,ubuntu-22.04-x64
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
+javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java JBR-8450 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8747 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 
@@ -94,6 +95,7 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285 generic-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java JBR-6685 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id0 JBR-9835 linux-all,windows-all
 
 #
 # the below tests are not intended to be executed in S2 configurations because

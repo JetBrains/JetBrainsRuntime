@@ -27,7 +27,7 @@ java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java#id1 JBR-5442 
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java 8253184,JBR-5442 windows-all,linux-all
 java/awt/MouseInfo/MultiscreenPointerInfo.java JBR-5442 linux-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java 8253184,JBR-5442 windows-all,linux-all
-java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442,JBR-6058,JBR-9390 linux-all,windows-all,macosx-26.0,macosx-26.1,macosx-26.2,macosx-26.3
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java JBR-5442,JBR-6058,JBR-9390 linux-all,windows-all,macosx-all
 java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java JBR-5531,JBR-5442 macosx-all,linux-all
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java JBR-5442 linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8259913,JBR-7035,JBR-5442,JBR-7079 windows-all,macosx-all,linux-all,linux-x64
