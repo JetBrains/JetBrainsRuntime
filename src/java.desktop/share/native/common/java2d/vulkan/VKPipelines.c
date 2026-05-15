@@ -277,6 +277,26 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_frag }};
             break;
+        case SHADER_GRADIENT_LINEAR_PUSH:
+            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_linear_push_frag }};
+            break;
+        case SHADER_GRADIENT_LINEAR_PUSH | SHADER_MASK:
+            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_linear_push_frag }};
+            break;
+        case SHADER_GRADIENT_RADIAL_PUSH:
+            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_radial_push_frag }};
+            break;
+        case SHADER_GRADIENT_RADIAL_PUSH | SHADER_MASK:
+            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_radial_push_frag }};
+            break;
         case SHADER_BLIT:
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;

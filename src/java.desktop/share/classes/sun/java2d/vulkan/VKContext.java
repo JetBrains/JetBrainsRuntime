@@ -80,7 +80,7 @@ final class VKContext extends BufferedContext {
         public static final VKContextCaps CONTEXT_CAPS = new VKContextCaps(
                 CAPS_PS30 | CAPS_PS20 | CAPS_RT_TEXTURE_ALPHA |
                 CAPS_RT_TEXTURE_OPAQUE | CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 |
-                CAPS_TEXNONSQUARE, null);
+                CAPS_TEXNONSQUARE | CAPS_EXT_GRAD_SHADER, null);
 
         public static final ImageCapabilities IMAGE_CAPS = new ImageCapabilities(true) {
             @Override

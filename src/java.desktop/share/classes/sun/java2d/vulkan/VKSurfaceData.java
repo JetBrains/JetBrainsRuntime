@@ -34,6 +34,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
+import sun.java2d.loops.MaskFill;
 import sun.java2d.loops.SurfaceType;
 import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
@@ -50,6 +51,7 @@ import java.awt.image.Raster;
 import java.awt.image.VolatileImage;
 
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
+import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 
 
@@ -279,6 +281,30 @@ public abstract class VKSurfaceData extends SurfaceData
 
         // always override the image pipe with the specialized VK pipe
         sg2d.imagepipe = vkImagePipe;
+    }
+
+    @Override
+    protected MaskFill getMaskFill(SunGraphics2D sg2d) {
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            /*
+             * We can only accelerate non-Color MaskFill operations if
+             * all of the following conditions hold true:
+             *   - there is an implementation for the given paintState
+             *   - the current Paint can be accelerated for this destination
+             *   - multitexturing is available (since we need to modulate
+             *     the alpha mask texture with the paint texture)
+             *
+             * In all other cases, we return null, in which case the
+             * validation code will choose a more general software-based loop.
+             */
+            if (!VKPaints.isValid(sg2d) ||
+                    !gc.isCapPresent(CAPS_MULTITEXTURE))
+            {
+                return null;
+            }
+        }
+        return super.getMaskFill(sg2d);
+
     }
 
     // TODO this is only used for caps checks, refactor and remove this method
