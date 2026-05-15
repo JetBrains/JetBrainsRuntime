@@ -94,6 +94,7 @@ javax/swing/LookAndFeel/8145547/DemandGTK2.sh initial_runs generic-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh initial_runs generic-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java initial_runs generic-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java initial_runs generic-all
+javax/swing/plaf/basic/BasicHTML/bug4248210.java JBR-9674 linux-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java initial_runs generic-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java initial_runs generic-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java initial_runs generic-all

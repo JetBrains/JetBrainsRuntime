@@ -141,6 +141,7 @@ java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-a
 java/awt/FlowLayout/PreferredLayoutSize.java JBR-6349 linux-all
 java/awt/Focus/ComponentLostFocusTest.java JBR-7909 generic-all
 java/awt/Focus/EmptyWindowKeyTest.java JBR-7913 windows-all
+java/awt/Focus/FocusKeepTest.java JBR-9487 linux-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java JBR-5809,JBR-9214 linux-all,macosx-26.0,macosx-26.1
@@ -148,7 +149,7 @@ java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayout
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/InactiveFocusRace.java 8023263 linux-all
-java/awt/Focus/InitialFocusTest/InitialFocusTest1.java 8367784 windows-x64
+java/awt/Focus/InitialFocusTest/InitialFocusTest1.java 8367784,JBR-10348 windows-x64,windows-aarch64
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java JBR-7311 linux-x86
 java/awt/Focus/KeyStrokeTest.java JBR-7914 windows-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
@@ -178,7 +179,7 @@ java/awt/Frame/ResizeAfterSetFont/ResizeAfterSetFont.java JBR-9971 linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java JBR-4880,JBR-6683 windows-all,linux-all
 java/awt/dnd/CustomDragCursorTest.java 8242805 macosx-all
 java/awt/dnd/DnDClipboardDeadlockTest.java JBR-6442 linux-all
-java/awt/dnd/DnDCursorCrashTest.java 8242805,JBR-7966 macosx-all,windows-all
+java/awt/dnd/DnDCursorCrashTest.java 8242805,JBR-7966 macosx-all,windows-all,linux-all
 java/awt/dnd/DnDRemoveFocusOwnerCrashTest.java 8242805 macosx-all
 java/awt/dnd/DragExitBeforeDropTest.java 8242805 macosx-all
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-8150 windows-x64
@@ -1036,6 +1037,7 @@ javax/swing/plaf/basic/BasicTableHeaderUI/6394566/bug6394566.java JBR-5846 windo
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all,windows-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java 8253184 linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java 8253184 windows-all
+javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java JBR-6485 windows-all
 javax/swing/plaf/nimbus/8057791/bug8057791.java 8253184,JBR-8300 windows-all,macosx-all
 javax/swing/plaf/nimbus/TestNimbusBGColor.java JBR-6464 windows-all,linux-all,windows-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java 8253184,JBR-5829 windows-all,linux-all
@@ -1061,7 +1063,7 @@ javax/swing/JComboBox/4743225/bug4743225.java JBR-5210 windows-all
 javax/swing/JComboBox/6236162/bug6236162.java JBR-5210 windows-all
 javax/swing/JComboBox/6406264/bug6406264.java JBR-5210 windows-all
 javax/swing/JComboBox/6607130/bug6607130.java JBR-5799 windows-x64
-javax/swing/JComboBox/bug4530952.java JBR-8670 windows-x64
+javax/swing/JComboBox/bug4530952.java JBR-8670 windows-all
 javax/swing/JComboBox/bug4530953.java JBR-8688 windows-x64
 javax/swing/JComboBox/bug4890345.java JBR-5799 windows-all
 javax/swing/JComboBox/bug4924758.java JBR-5846 windows-all
@@ -1084,7 +1086,7 @@ javax/swing/JMenu/6470128/bug6470128.java 8253184,JBR-6307 windows-all,linux-all
 javax/swing/JMenu/6538132/bug6538132.java JBR-894 windows-all
 javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java JBR-5799,JBR-6306 windows-all,linux-all
 javax/swing/JMenu/bug4140643.java JBR-8489 windows-all
-javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056,JBR-9660 windows-aarch64,windows-x64,linux-all
+javax/swing/JMenu/PopupReferenceMemoryLeak.java JBR-5890,JBR-6056,JBR-9660 windows-aarch64,windows-x64,generic-all
 javax/swing/JMenuBar/4750590/bug4750590.java JBR-6094 windows-all
 javax/swing/JMenuItem/4171437/bug4171437.java JBR-6112 windows-all
 javax/swing/JMenuItem/4654927/bug4654927.java JBR-164,JBR-4337 windows-all,linux-all
@@ -1122,6 +1124,7 @@ javax/swing/JTree/TestTreeBackgroundColor.java JBR-8748 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8233582,JBR-6481 linux-all,windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8233582,JBR-6360 linux-all,windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8253184,JBR-7404 windows-all,macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-8217 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java 8194128,8253184,JBR-6515 macosx-all,windows-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java 8013450,8253184 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java 8024627,8253184 macosx-all,windows-all
@@ -1276,6 +1279,7 @@ tools/jpackage/windows/Win8301247Test.java JBR-8708 windows-all
 tools/launcher/Arrrghs.java JBR-8466 generic-all
 tools/launcher/ChangeDataModel.java JBR-8467 generic-all
 tools/launcher/HelpFlagsTest.java JBR-2053,JBR-8614 windows-all
+tools/launcher/InstanceMainTest.java JBR-10349 windows-aarch64
 tools/launcher/MultipleJRERemoved.java JBR-8468 generic-all
 tools/launcher/Settings.java JBR-8469 generic-all
 tools/launcher/TestSpecialArgs.java JBR-8782 windows-all,linux-all
@@ -1483,7 +1487,7 @@ java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880,JBR-5
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
 java/awt/event/KeyEvent/KeyPressedModifiers.java JBR-8647 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
-java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
+java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880,JBR-9783 windows-all,linux-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/mlib/MlibOpsTest.java JBR-5225 windows-all,windows-aarch64

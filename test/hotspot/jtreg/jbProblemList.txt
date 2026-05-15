@@ -159,6 +159,8 @@ runtime/os/windows/TestAvailableProcessors.java JBR-8182 windows-all
 runtime/ErrorHandling/CreateCoredumpOnCrash.java 8267433,initial_run macosx-x64,windows-aarch64
 runtime/CompressedOops/CompressedClassPointers.java 8305765 generic-all
 runtime/StackGuardPages/TestStackGuardPagesNative.java 8303612 linux-all
+runtime/stack/Stack002.java JBR-10350 windows-x64
+runtime/stack/Stack016.java JBR-10350 windows-x64
 runtime/ErrorHandling/TestDwarf.java 8305489 linux-all
 runtime/ErrorHandling/MachCodeFramesInErrorFile.java 8313315,JBR-6289 linux-ppc64le,windows-aarch64
 runtime/ErrorHandling/UncaughtNativeExceptionTest.java 8338353 windows-aarch64
