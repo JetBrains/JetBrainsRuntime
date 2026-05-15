@@ -39,6 +39,8 @@ typedef enum {
     // Base shaders.
     SHADER_COLOR,
     SHADER_GRADIENT,
+    SHADER_LINEAR_GRADIENT,
+    SHADER_RADIAL_GRADIENT,
     SHADER_BLIT,
     SHADER_CLIP,
     NO_SHADER = 0x7FFFFFFF,
@@ -92,6 +94,8 @@ struct VKPipelineContext {
     VkPipelineLayout            texturePipelineLayout;
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
     VkPipelineLayout            maskFillPipelineLayout;
+    VkDescriptorSetLayout       gradientDescriptorSetLayout;
+    VkPipelineLayout            gradientSupportingMaskFillPipelineLayout;
 
     VKSamplers                  samplers;
     struct VKShaders*           shaders;

@@ -700,7 +700,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_LINEAR_GRADIENT_PAINT:
             {
-                jboolean useMask = NEXT_BOOLEAN(b);
+                jboolean useMask = NEXT_BOOLEAN(b); // Unused.
                 jboolean linear  = NEXT_BOOLEAN(b);
                 jint cycleMethod = NEXT_INT(b);
                 jint numStops    = NEXT_INT(b);
@@ -712,11 +712,11 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 pixels    = b; SKIP_BYTES(b, numStops * sizeof(jint));
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_LINEAR_GRADIENT_PAINT");
-            }
+                VKRenderer_SetLinearGradientPaint(linear, cycleMethod, numStops, p0, p1, p3, fractions, pixels);}
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_RADIAL_GRADIENT_PAINT:
             {
-                jboolean useMask = NEXT_BOOLEAN(b);
+                jboolean useMask = NEXT_BOOLEAN(b); // Unused.
                 jboolean linear  = NEXT_BOOLEAN(b);
                 jint numStops    = NEXT_INT(b);
                 jint cycleMethod = NEXT_INT(b);
@@ -732,6 +732,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 pixels    = b; SKIP_BYTES(b, numStops * sizeof(jint));
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                            "VKRenderQueue_flushBuffer: SET_RADIAL_GRADIENT_PAINT");
+                VKRenderer_SetRadialGradientPaint(linear, cycleMethod, numStops, m00, m01, m02, m10, m11, m12, focusX, fractions, pixels);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_TEXTURE_PAINT:

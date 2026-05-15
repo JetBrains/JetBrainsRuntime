@@ -141,6 +141,16 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                           float sx1, float sy1, float sx2, float sy2,
                           float dx1, float dy1, float dx2, float dy2);
 
+void VKRenderer_SetLinearGradientPaint(jboolean linear, jint cycleMethod, jint numStops,
+                                       float p0, float p1, float p3,
+                                       void* fractions, void* pixels);
+
+void VKRenderer_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint numStops,
+                                       float m00, float m01, float m02,
+                                       float m10, float m11, float m12,
+                                       float focusX,
+                                       void* fractions, void* pixels);
+
 VKRenderingContext* VKRenderer_GetContext();
 VKTexturePool* VKRenderer_GetTexturePool(VKRenderer* );
 

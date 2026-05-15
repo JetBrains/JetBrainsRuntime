@@ -46,6 +46,12 @@ struct VKTexelBuffer {
     VkDescriptorSet descriptorSet;
 };
 
+struct VKUniformBuffer
+{
+    VKBuffer buffer;
+    VkDescriptorSet descriptorSet;
+};
+
 typedef struct {
     void* data;
     size_t x1, y1, w, h;
@@ -54,10 +60,10 @@ typedef struct {
 } VKBuffer_RasterInfo;
 
 /**
- * Create buffers, allocate a memory page and bind them together.
+ * Create buffers, allocate a memory page, and bind them together.
  * 'pageSize' can be 0, meaning that page size is calculated based on buffer memory requirements.
- * It returns allocated memory page, or VK_NULL_HANDLE on failure.
- * 'bufferCount' is updated with actual number of created buffers.
+ * It returns the allocated memory page, or VK_NULL_HANDLE on failure.
+ * 'bufferCount' is updated with the actual number of created buffers.
  * Created buffers are written in 'buffers'.
  */
 VKMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
@@ -66,14 +72,19 @@ VKMemory VKBuffer_CreateBuffers(VKDevice* device, VkBufferUsageFlags usageFlags,
                                 uint32_t* bufferCount, VKBuffer* buffers);
 
 /**
- * Create texel buffers from existing array of buffers.
- * It returns created descriptor pool, or VK_NULL_HANDLE on failure.
+ * Create texel buffers from an existing array of buffers.
+ * It returns the created descriptor pool, or VK_NULL_HANDLE on failure.
  * Created texel buffers are written in 'texelBuffers',
  * original buffers are taken from 'buffers'.
  */
 VkDescriptorPool VKBuffer_CreateTexelBuffers(VKDevice* device, VkFormat format,
                                              VkDescriptorType descriptorType, VkDescriptorSetLayout descriptorSetLayout,
                                              uint32_t bufferCount, VKBuffer* buffers, VKTexelBuffer* texelBuffers);
+/**
+ * TODO
+ */
+VkDescriptorPool VKBuffer_CreateUniformBuffers(VKDevice* device, VkDescriptorType descriptorType, VkDescriptorSetLayout descriptorSetLayout,
+                                              uint32_t bufferCount, VKBuffer* buffers, VKUniformBuffer* uniformBuffers);
 
 // TODO usage of this function is suboptimal, we need to avoid creating individual buffers.
 VKBuffer* VKBuffer_Create(VKDevice* device, VkDeviceSize size,

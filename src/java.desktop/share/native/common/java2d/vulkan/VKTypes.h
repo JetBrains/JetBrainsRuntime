@@ -76,6 +76,7 @@ typedef struct VKRenderingContext VKRenderingContext;
 typedef struct VKPipelineContext VKPipelineContext;
 typedef struct VKRenderPassContext VKRenderPassContext;
 typedef struct VKTexelBuffer VKTexelBuffer;
+typedef struct VKUniformBuffer VKUniformBuffer;
 typedef struct VKBuffer VKBuffer;
 typedef struct VKImage VKImage;
 typedef struct VKSDOps VKSDOps;

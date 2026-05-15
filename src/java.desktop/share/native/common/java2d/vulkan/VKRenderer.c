@@ -100,6 +100,7 @@ struct VKRenderer {
     POOL(VkCommandBuffer,   secondaryCommandBufferPool);
     POOL(VkSemaphore,       semaphorePool);
     POOL(VKBuffer,          vertexBufferPool);
+    POOL(VKUniformBuffer,   uniformBufferPool);
     POOL(VKTexelBuffer,     maskFillBufferPool);
     POOL(VKCleanupEntry,    cleanupQueue);
     ARRAY(VKMemory)         bufferMemoryPages;
@@ -151,6 +152,7 @@ struct VKRenderPass {
     VKRenderPassContext*       context;
     ARRAY(VkMappedMemoryRange) flushRanges;
     ARRAY(VKBuffer)            vertexBuffers;
+    ARRAY(VKUniformBuffer)     uniformBuffers;
     ARRAY(VKTexelBuffer)       maskFillBuffers;
     ARRAY(VKCleanupEntry)      cleanupQueue;
     ARRAY(VKSDOps*)            usedSurfaces;
@@ -162,6 +164,7 @@ struct VKRenderPass {
     uint32_t           vertexCount;
     BufferWritingState vertexBufferWriting;
     BufferWritingState maskFillBufferWriting;
+    BufferWritingState uniformBufferWriting;
 
     VKPipelineDescriptor state;
     uint64_t             constantsModCount; // Just a tag to detect when constants were changed.
@@ -227,9 +230,58 @@ static VkBool32 VKRenderer_CheckPoolDrain(void* pool, void* entry) {
     return VK_FALSE;
 }
 
+#define GRADIENT_MAX_FRACTIONS 12
+
+// Yep, 1 float takes up 4 times the space to be in a std140 float array :(
+typedef struct {
+    float data;
+    char padding[3 * sizeof(float)];
+} VKStd140FloatArrayMember;
+
+typedef struct {
+    VKStd140FloatArrayMember fractions[GRADIENT_MAX_FRACTIONS];
+    RGBA colors[GRADIENT_MAX_FRACTIONS];
+} VKGradientStops;
+static_assert(sizeof(VKGradientStops) == 2 * 4 * sizeof(float) * GRADIENT_MAX_FRACTIONS,
+    "VKGradientStops must match the expected std140 layout");
+
+
+typedef struct {
+    alignas(16) float p0;
+    float p1;
+    float p3;
+    char padding1[sizeof(float)];
+
+    VKGradientStops stops;
+} VKLinearGradientUniformBufferObject;
+static_assert(sizeof(VKLinearGradientUniformBufferObject) == 4 * sizeof(float) + sizeof(VKGradientStops),
+    "VKLinearGradientUniformBufferObject must match the expected std140 layout");
+
+typedef struct {
+    alignas(16) float m00;
+    float m01;
+    float m02;
+    char padding1[sizeof(float)];
+
+    float m10, m11, m12;
+    char padding2[sizeof(float)];
+
+    float precalc_x, precalc_y, precalc_Z;
+    char padding3[sizeof(float)];
+
+    VKGradientStops stops;
+} VKRadialGradientUniformBufferObject;
+static_assert(sizeof(VKRadialGradientUniformBufferObject) == 3 * 4 * sizeof(float) + sizeof(VKGradientStops),
+    "VKRadialGradientUniformBufferObject must match the expected std140 layout");
+
+typedef union {
+    VKLinearGradientUniformBufferObject linearGradient;
+    VKRadialGradientUniformBufferObject radialGradient;
+} VKUniformBufferObjects;
+
 #define VERTEX_BUFFER_SIZE (128 * 1024) // 128KiB - enough to draw 1820 quads (6 verts) with VKVertex.
 #define VERTEX_BUFFER_PAGE_SIZE (1 * 1024 * 1024) // 1MiB - fits 8 buffers.
-static void VKRenderer_FindVertexBufferMemoryType(VKMemoryRequirements* requirements) {
+static void VKRenderer_FindHostVisibleMemoryType(VKMemoryRequirements* requirements) {
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT,
                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
@@ -241,12 +293,50 @@ static VKBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE;
     VKBuffer buffers[bufferCount];
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                           VKRenderer_FindVertexBufferMemoryType,
+                                           VKRenderer_FindHostVisibleMemoryType,
                                            VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);
     VK_RUNTIME_ASSERT(page);
     ARRAY_PUSH_BACK(renderer->bufferMemoryPages) = page;
     for (uint32_t i = 1; i < bufferCount; i++) POOL_INSERT(renderer, vertexBufferPool, buffers[i]);
     return buffers[0];
+}
+
+#define UNIFORM_BUFFER_SIZE 16384 // 16KiB - lowest maxUniformBufferRange guaranteed by the Vulkan spec
+#define UNIFORM_BUFFER_PAGE_SIZE (1 * 1024 * 1024) // 1MiB - fits 64 uniform buffers
+static VKUniformBuffer VKRenderer_GetUniformBuffer(VKRenderer* renderer)
+{
+    VKUniformBuffer buffer = { .buffer.handle = VK_NULL_HANDLE };
+    POOL_TAKE(renderer, uniformBufferPool, buffer);
+    if (buffer.buffer.handle != VK_NULL_HANDLE) {
+        return buffer;
+    }
+
+    static const uint32_t MAX_BUFFER_COUNT = UNIFORM_BUFFER_PAGE_SIZE / UNIFORM_BUFFER_SIZE;
+    VKBuffer buffers[MAX_BUFFER_COUNT];
+
+    uint32_t bufferCount = MAX_BUFFER_COUNT;
+    VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+        VKRenderer_FindHostVisibleMemoryType,
+        UNIFORM_BUFFER_SIZE, UNIFORM_BUFFER_PAGE_SIZE, &bufferCount, buffers);
+    VK_RUNTIME_ASSERT(page);
+
+    VKUniformBuffer* uniformBuffers = malloc(bufferCount * sizeof(VKUniformBuffer));
+    VK_RUNTIME_ASSERT(uniformBuffers);
+
+    VkDescriptorPool descriptorPool = VKBuffer_CreateUniformBuffers(
+        renderer->device, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, renderer->pipelineContext->gradientDescriptorSetLayout,
+        bufferCount, buffers, uniformBuffers);
+    VK_RUNTIME_ASSERT(descriptorPool);
+
+    for (uint32_t i = 1; i < bufferCount; ++i) {
+        POOL_INSERT(renderer, uniformBufferPool, uniformBuffers[i]);
+    }
+    ARRAY_PUSH_BACK(renderer->bufferMemoryPages) = page;
+    ARRAY_PUSH_BACK(renderer->descriptorPools) = descriptorPool;
+
+    VKUniformBuffer firstBuffer = uniformBuffers[0];
+    free(uniformBuffers);
+    return firstBuffer;
 }
 
 #define MASK_FILL_BUFFER_SIZE (256 * 1024) // 256KiB = 256 typical MASK_FILL tiles
@@ -612,6 +702,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     renderPass->vertexCount = 0;
     renderPass->vertexBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
     renderPass->maskFillBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
+    renderPass->uniformBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
     if (ARRAY_SIZE(renderPass->flushRanges) > 0) {
         VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
             ARRAY_SIZE(renderPass->flushRanges), renderPass->flushRanges)) {}
@@ -1370,13 +1461,16 @@ VkBool32 VKRenderer_Validate(VKShader shader, VKShaderVariant shaderVariant, VkP
         surface->device->vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.pipeline);
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
+        renderPass->uniformBufferWriting.bound = VK_FALSE;
 
         // If pipeline uses mask fill layout, but the shader is not actually a MASK one, that must be a generic-layout pipeline.
         // In that case, we need to bind a mask buffer, even if we won't ever use it.
         // We could use VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT or nullDescriptor, but those require
         // optional features or extensions, so don't bother for now...
         // TODO this is ugly, do something with it.
-        if (pipelineInfo.layout == surface->device->renderer->pipelineContext->maskFillPipelineLayout && !(shader & SHADER_MASK)) {
+        if ((pipelineInfo.layout == surface->device->renderer->pipelineContext->maskFillPipelineLayout ||
+            pipelineInfo.layout == surface->device->renderer->pipelineContext->gradientSupportingMaskFillPipelineLayout
+            ) && !(shader & SHADER_MASK)) {
             VKRenderer_AllocateMaskFillBytes(0);
         }
     }
@@ -1530,6 +1624,88 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
     vs[1] = (VKTxVertex) {dx2, dy1, sx2, sy1};
     vs[2] = (VKTxVertex) {dx1, dy2, sx1, sy2};
     vs[3] = (VKTxVertex) {dx2, dy2, sx2, sy2};
+}
+
+static void* VKRenderer_PrepareGradientUniformBuffer(jboolean isRadial)
+{
+    VKSDOps* surface = context.surface;
+
+    BufferWritingState state = VKRenderer_AllocateBufferData(
+            surface, &surface->renderPass->uniformBufferWriting, 1,
+            isRadial ? sizeof(VKRadialGradientUniformBufferObject) : sizeof(VKLinearGradientUniformBufferObject), sizeof(VKUniformBufferObjects)).state;
+    if (!state.bound)
+    {
+        if (state.data == NULL)
+        {
+            VKUniformBuffer buffer = VKRenderer_GetUniformBuffer(surface->device->renderer);
+            ARRAY_PUSH_BACK(surface->renderPass->uniformBuffers) = buffer;
+            ARRAY_PUSH_BACK(surface->renderPass->flushRanges) = buffer.buffer.range;
+            surface->renderPass->uniformBufferWriting.data = state.data = buffer.buffer.data;
+        }
+        // TODO: assert(ARRAY_SIZE(surface->renderPass->maskFillBuffers) > 0);
+
+        surface->device->vkCmdBindDescriptorSets(surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            surface->device->renderer->pipelineContext->gradientSupportingMaskFillPipelineLayout,
+            1, 1, &ARRAY_LAST(surface->renderPass->uniformBuffers).descriptorSet, 0, NULL);
+    }
+    state.data = (char*)state.data + state.offset; // TODO: ???
+    return state.data;
+}
+
+static void VKRenderer_FillMultiGradientStops(VKGradientStops* out, jint numStops, void* fractions, void* pixels)
+{
+    assert(2 <= numStops && numStops <= GRADIENT_MAX_FRACTIONS);
+
+    for (jint i = 0; i < numStops; ++i)
+    {
+        memcpy(&out->fractions[i].data, (jfloat*)fractions + i, sizeof(jfloat));
+
+        jint pixel; memcpy(&pixel, (jint*)pixels + i, sizeof(jint));
+        out->colors[i] = VKUtil_GetRGBA(VKUtil_DecodeJavaColor(pixel, ALPHA_TYPE_PRE_MULTIPLIED), ALPHA_TYPE_PRE_MULTIPLIED);
+    }
+}
+
+void VKRenderer_SetLinearGradientPaint(jboolean linear, jint cycleMethod,
+                                       jint numStops, float p0,
+                                       float p1, float p3, void* fractions, void* pixels)
+{
+    context.inAlphaType = ALPHA_TYPE_PRE_MULTIPLIED;
+    context.shader = SHADER_LINEAR_GRADIENT;
+    context.shaderVariant = cycleMethod | (linear << 2);
+
+    VKLinearGradientUniformBufferObject linearGradient;
+    linearGradient.p0 = p0;
+    linearGradient.p1 = p1;
+    linearGradient.p3 = p3;
+    VKRenderer_FillMultiGradientStops(&linearGradient.stops, numStops, fractions, pixels);
+
+    void* buffer = VKRenderer_PrepareGradientUniformBuffer(false);
+    VKRenderer_GetContext()->constantsModCount++;
+    memcpy(buffer, &linearGradient, sizeof(linearGradient));
+}
+
+void VKRenderer_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint numStops, float m00,
+    float m01, float m02, float m10, float m11, float m12, float focusX, void* fractions, void* pixels)
+{
+    context.inAlphaType = ALPHA_TYPE_PRE_MULTIPLIED;
+    context.shader = SHADER_RADIAL_GRADIENT;
+    context.shaderVariant = cycleMethod | (linear << 2);
+
+    VKRadialGradientUniformBufferObject radialGradient;
+    radialGradient.m00 = m00;
+    radialGradient.m01 = m01;
+    radialGradient.m02 = m02;
+    radialGradient.m10 = m10;
+    radialGradient.m11 = m11;
+    radialGradient.m12 = m12;
+    radialGradient.precalc_x = focusX;
+    radialGradient.precalc_y = 1.0f - focusX * focusX;
+    radialGradient.precalc_Z = 1.0f / radialGradient.precalc_y;
+    VKRenderer_FillMultiGradientStops(&radialGradient.stops, numStops, fractions, pixels);
+
+    void* buffer = VKRenderer_PrepareGradientUniformBuffer(true);
+    VKRenderer_GetContext()->constantsModCount++;
+    memcpy(buffer, &radialGradient, sizeof(radialGradient));
 }
 
 void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {

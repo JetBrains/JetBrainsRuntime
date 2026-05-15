@@ -277,6 +277,26 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_frag }};
             break;
+        case SHADER_LINEAR_GRADIENT:
+            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_linear_frag }};
+            break;
+        case SHADER_LINEAR_GRADIENT | SHADER_MASK:
+            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
+            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_linear_frag }};
+            break;
+        case SHADER_RADIAL_GRADIENT:
+            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_radial_frag }};
+            break;
+        case SHADER_RADIAL_GRADIENT | SHADER_MASK:
+            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
+            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_radial_frag }};
+            break;
         case SHADER_BLIT:
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;
@@ -488,6 +508,31 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     createInfo.setLayoutCount = SARRAY_COUNT_OF(textureDescriptorSetLayouts);
     createInfo.pSetLayouts = textureDescriptorSetLayouts;
     result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
+    VK_IF_ERROR(result) return result;
+
+    // Gradient pipeline.
+    VkDescriptorSetLayoutBinding gradientLayoutBinding = {
+        .binding = 0,
+        .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount = 1,
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .pImmutableSamplers = NULL
+    };
+    VkDescriptorSetLayoutCreateInfo gradientDescriptorSetLayoutCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindings = &gradientLayoutBinding
+    };
+    result = device->vkCreateDescriptorSetLayout(device->handle, &gradientDescriptorSetLayoutCreateInfo, NULL, &pipelines->gradientDescriptorSetLayout);
+    VK_IF_ERROR(result) return result;
+    
+    VkDescriptorSetLayout gradientDescriptorSetLayouts[] = {
+        pipelines->maskFillDescriptorSetLayout,
+        pipelines->gradientDescriptorSetLayout
+    };
+    createInfo.setLayoutCount = SARRAY_COUNT_OF(gradientDescriptorSetLayouts);
+    createInfo.pSetLayouts = gradientDescriptorSetLayouts;
+    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->gradientSupportingMaskFillPipelineLayout);
     VK_IF_ERROR(result) return result;
 
     return VK_SUCCESS;
