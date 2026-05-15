@@ -1536,6 +1536,46 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
     vs[3] = (VKTxVertex) {dx2, dy2, sx2, sy2};
 }
 
+void VKRenderer_SetLinearGradientPaint(jboolean linear, jint cycleMethod,
+                                       jint numStops, float p0,
+                                       float p1, float p3, void* fractions, void* pixels)
+{
+    assert(numStops <= MULTI_MAX_FRACTIONS_VK_LINEAR);
+
+
+    context.inAlphaType = ALPHA_TYPE_PRE_MULTIPLIED;
+    context.shaderVariant = cycleMethod | (linear << 2);
+    context.shader = SHADER_GRADIENT_LINEAR_PUSH;
+    VKLinearGradientPaintConstants* constants = &context.constants.shader.linearGradientPaint;
+    *constants = (VKLinearGradientPaintConstants) {
+        .p0 = p0, .p1 = p1, .p3 = p3
+    };
+    memcpy(constants->fractions, fractions, numStops * sizeof(float));
+    memcpy(constants->sRGBPackedColors, pixels, numStops * sizeof(uint32_t));
+    context.constantsModCount++;
+}
+
+void VKRenderer_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint numStops, float m00,
+    float m01, float m02, float m10, float m11, float m12, float focusX, void* fractions, void* pixels)
+{
+    assert(numStops <= MULTI_MAX_FRACTIONS_VK_RADIAL);
+
+    context.inAlphaType = ALPHA_TYPE_PRE_MULTIPLIED;
+    context.shaderVariant = cycleMethod | (linear << 2);
+    context.shader = SHADER_GRADIENT_RADIAL_PUSH;
+    VKRadialGradientPaintConstants* constants = &context.constants.shader.radialGradientPaint;
+    *constants = (VKRadialGradientPaintConstants) {
+        .m00 = m00, .m01 = m01, .m02 = m02,
+        .m10 = m10, .m11 = m11, .m12 = m12,
+        .precalc_x = focusX,
+        .precalc_y = 1.0f - focusX * focusX
+    };
+    constants->precalc_z = 1.0f / constants->precalc_y;
+    memcpy(constants->fractions, fractions, numStops * sizeof(float));
+    memcpy(constants->sRGBPackedColors, pixels, numStops * sizeof(uint32_t));
+    context.constantsModCount++;
+}
+
 void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {
     assert(src != NULL);
     assert(dst != NULL);
