@@ -277,25 +277,25 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_frag }};
             break;
-        case SHADER_LINEAR_GRADIENT:
+        case SHADER_GRADIENT_LINEAR_PUSH:
             createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
-            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_linear_frag }};
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_linear_push_frag }};
             break;
-        case SHADER_LINEAR_GRADIENT | SHADER_MASK:
+        case SHADER_GRADIENT_LINEAR_PUSH | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
-            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_linear_frag }};
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_linear_push_frag }};
             break;
-        case SHADER_RADIAL_GRADIENT:
+        case SHADER_GRADIENT_RADIAL_PUSH:
             createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
-            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_radial_frag }};
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_radial_push_frag }};
             break;
-        case SHADER_RADIAL_GRADIENT | SHADER_MASK:
+        case SHADER_GRADIENT_RADIAL_PUSH | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
-            createInfos[i].layout = pipelineContext->gradientSupportingMaskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_radial_frag }};
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_radial_push_frag }};
             break;
         case SHADER_BLIT:
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
@@ -525,7 +525,7 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     };
     result = device->vkCreateDescriptorSetLayout(device->handle, &gradientDescriptorSetLayoutCreateInfo, NULL, &pipelines->gradientDescriptorSetLayout);
     VK_IF_ERROR(result) return result;
-    
+
     VkDescriptorSetLayout gradientDescriptorSetLayouts[] = {
         pipelines->maskFillDescriptorSetLayout,
         pipelines->gradientDescriptorSetLayout
