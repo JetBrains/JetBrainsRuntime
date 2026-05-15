@@ -31,16 +31,17 @@ import sun.java2d.loops.CompositeType;
 
 import java.awt.LinearGradientPaint;
 import java.awt.MultipleGradientPaint;
+import java.awt.RadialGradientPaint;
 import java.awt.TexturePaint;
 
 import java.awt.MultipleGradientPaint.ColorSpaceType;
 import java.awt.MultipleGradientPaint.CycleMethod;
 import java.awt.image.BufferedImage;
+import java.lang.annotation.Native;
 import java.util.HashMap;
 import java.util.Map;
 
 import static sun.java2d.vulkan.VKContext.VKContextCaps.CAPS_EXT_GRAD_SHADER;
-import static sun.java2d.pipe.BufferedPaints.MULTI_MAX_FRACTIONS;
 
 abstract class VKPaints {
 
@@ -143,6 +144,14 @@ abstract class VKPaints {
         protected MultiGradient() {}
 
         /**
+         * Note that these numbers are lower than the MULTI_MAX_FRACTIONS
+         * defined in the superclass.
+         * The current Vulkan shader only uses push constants to pass
+         * gradient stops, and this is all it can fit.
+         */
+        @Native public static final int MULTI_MAX_FRACTIONS_VK_LINEAR = 10;
+        @Native public static final int MULTI_MAX_FRACTIONS_VK_RADIAL = 7;
+        /**
          * Returns true if the given MultipleGradientPaint instance can be
          * used by the accelerated Paints.MultiGradient implementation.
          * A MultipleGradientPaint is considered valid if the following
@@ -155,7 +164,10 @@ abstract class VKPaints {
             MultipleGradientPaint paint = (MultipleGradientPaint)sg2d.paint;
             // REMIND: ugh, this creates garbage; would be nicer if
             // we had a MultipleGradientPaint.getNumStops() method...
-            if (paint.getFractions().length > MULTI_MAX_FRACTIONS) {
+            int numStops = paint.getFractions().length;
+            boolean maxFractionsOk = (paint instanceof LinearGradientPaint && numStops <= MULTI_MAX_FRACTIONS_VK_LINEAR) ||
+                    (paint instanceof RadialGradientPaint && numStops <= MULTI_MAX_FRACTIONS_VK_RADIAL);
+            if (!maxFractionsOk) {
                 return false;
             }
 
