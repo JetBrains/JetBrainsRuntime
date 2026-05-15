@@ -62,6 +62,13 @@ vec4 decodeColor(uint srgb) {
     return vec4((uvec4(srgb) >> uvec4(16, 8, 0, 24)) & 0xFFU) / 255.0;
 }
 
+// Convert a color vec3 from linear to sRGB.
+// Implementation matching Metal's fromLinear3.
+vec3 fromLinear3(vec3 c) {
+    // Use approximated calculations to match software rendering
+    return 1.055 * pow(c, vec3(0.416667)) - 0.055;
+}
+
 #ifdef STAGE_FRAG
 // Before outputting the color, some post-processing is needed:
 // - For alpha composite, apply extra alpha.
