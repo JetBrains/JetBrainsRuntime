@@ -1861,6 +1861,7 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
 
 void * os::dll_load(const char *name, char *ebuf, int ebuflen) {
   log_info(os)("attempting shared library load of %s", name);
+  Events::log_dll_message(nullptr, "Attempting to load shared library %s", name);
 
   void * result = LoadLibrary(name);
   if (result != nullptr) {
