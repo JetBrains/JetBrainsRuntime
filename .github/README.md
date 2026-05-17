@@ -25,15 +25,14 @@ can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntim
 
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
-| 2026.2      | [25.0.3-b475.60](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b475.60)  | 12-May-2026   |
-| 2026.1      | [25.0.2-b329.72](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.2b329.72)  | 03-Mar-2026   |
-| 2025.3      | [25-b176.4](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25b176.4)            | 23-Oct-2025   |
+| 2026.2      | [25.0.3-b480.61](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b480.61)  | 17-May-2026   |
+| 2026.1      | [25.0.3-b329.124](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b329.124)| 15-May-2026   |
 
 ## Releases based on JDK 21
 
 | IDE Version | Latest JBR                                                                                              | Date Released |
 |-------------|---------------------------------------------------------------------------------------------------------|---------------|
-| 2025.3      | [21.0.10-b1163.110](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.10b1163.110)| 11-Mar-2026   |
+| 2025.3      | [21.0.11-b1163.116](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.11b1163.116)| 15-May-2026   |
 | 2025.2      | [21.0.9-b1038.78](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b1038.78)| 03-Dec-2025   |
 | 2025.1      | [21.0.9-b895.149](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.9b895.149)| 03-Dec-2025   |
 | 2024.3      | [21.0.6-b631.52](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-21.0.7b631.52)  | 15-May-2025   |
