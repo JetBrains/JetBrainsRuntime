@@ -1842,6 +1842,8 @@ void * os::Linux::dlopen_helper(const char *filename, char *ebuf,
   assert(rtn == 0, "fegetenv must succeed");
 #endif // IA32
 
+  Events::log_dll_message(nullptr, "Attempting to load shared library %s", filename);
+
   void * result = ::dlopen(filename, RTLD_LAZY);
   if (result == nullptr) {
     const char* error_report = ::dlerror();
