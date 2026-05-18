@@ -1063,23 +1063,30 @@ AWT_ASSERT_APPKIT_THREAD;
         NSLog(@"WARNING: suppressed exception from ConvertNSScreenRect() in [AWTWindow _deliverMoveResizeEvent]");
         NSProcessInfo *processInfo = [NSProcessInfo processInfo];
         [NSApplicationAWT logException:e forProcess:processInfo];
+        (*env)->DeleteLocalRef(env, platformWindow);
         return;
     }
 
-    GET_CPLATFORM_WINDOW_CLASS();
-    DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
-    (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
-                      (jint)frame.origin.x,
-                      (jint)frame.origin.y,
-                      (jint)frame.size.width,
-                      (jint)frame.size.height,
-                      (jboolean)[self.nsWindow inLiveResize]);
-    CHECK_EXCEPTION();
-    (*env)->DeleteLocalRef(env, platformWindow);
+    @try {
+        GET_CPLATFORM_WINDOW_CLASS();
+        DECLARE_METHOD(jm_deliverMoveResizeEvent, jc_CPlatformWindow, "deliverMoveResizeEvent", "(IIIIZ)V");
+        (*env)->CallVoidMethod(env, platformWindow, jm_deliverMoveResizeEvent,
+                          (jint)frame.origin.x,
+                          (jint)frame.origin.y,
+                          (jint)frame.size.width,
+                          (jint)frame.size.height,
+                          (jboolean)[self.nsWindow inLiveResize]);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, platformWindow);
 
-    [AWTWindow synthesizeMouseEnteredExitedEventsForAllWindows];
+        [AWTWindow synthesizeMouseEnteredExitedEventsForAllWindows];
 
-    [self updateFullScreenButtons];
+        [self updateFullScreenButtons];
+    } @catch (NSException *e) {
+        NSLog(@"WARNING: suppressed NSException from [AWTWindow _deliverMoveResizeEvent] post-JNI: %@", e);
+        NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+        [NSApplicationAWT logException:e forProcess:processInfo];
+    }
 }
 
 - (void)windowDidMove:(NSNotification *)notification {

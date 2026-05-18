@@ -161,6 +161,8 @@ JNI_COCOA_ENTER(env);
                 (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfigurationFinished);
                 (*env)->DeleteLocalRef(env, graphicsEnv);
                 CHECK_EXCEPTION();
+            } @catch (NSException *e) {
+                NSLog(@"WARNING: suppressed NSException in CGraphicsEnv displayReconfigure callback: %@", e);
             } @finally {
                 // Allow LWCToolkit.invokeAndWait() once Finished callbacks:
                 [ThreadUtilities setBlockingMainThread:false];
@@ -173,15 +175,19 @@ JNI_COCOA_ENTER(env);
 
     // braces to reduce variable scope
     {
-        jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
-        if (graphicsEnv == NULL) return; // ref already GC'd
-        DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
-        DECLARE_METHOD(jm_displayReconfiguration,
-                jc_CGraphicsEnvironment, "_displayReconfiguration","(II)V");
-        (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfiguration,
-                               (jint) displayId, (jint) flags);
-        (*env)->DeleteLocalRef(env, graphicsEnv);
-        CHECK_EXCEPTION();
+        @try {
+            jobject graphicsEnv = (*env)->NewLocalRef(env, cgeRef);
+            if (graphicsEnv == NULL) return; // ref already GC'd
+            DECLARE_CLASS(jc_CGraphicsEnvironment, "sun/awt/CGraphicsEnvironment");
+            DECLARE_METHOD(jm_displayReconfiguration,
+                    jc_CGraphicsEnvironment, "_displayReconfiguration","(II)V");
+            (*env)->CallVoidMethod(env, graphicsEnv, jm_displayReconfiguration,
+                                   (jint) displayId, (jint) flags);
+            (*env)->DeleteLocalRef(env, graphicsEnv);
+            CHECK_EXCEPTION();
+        } @catch (NSException *e) {
+            NSLog(@"WARNING: suppressed NSException in CGraphicsEnv displayReconfiguration: %@", e);
+        }
     }
 JNI_COCOA_EXIT(env);
 }
