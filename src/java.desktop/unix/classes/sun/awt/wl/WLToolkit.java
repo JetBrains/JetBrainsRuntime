@@ -147,6 +147,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private static boolean initialized = false;
     private static Thread toolkitThread;
     private static WLDataDevice dataDevice;
+    private static WLDragSourceContextPeer dragSourceContextPeer;
 
     private static Boolean sunAwtDisableGtkFileDialogs = null;
 
@@ -187,10 +188,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             toolkitThread.start();
 
             dataDevice = new WLDataDevice(0); // TODO: for multiseat support pass wl_seat pointer here
+            dragSourceContextPeer = new WLDragSourceContextPeer(dataDevice);
 
             registerShutdownHook();
         } else {
             dataDevice = null;
+            dragSourceContextPeer = null;
         }
     }
 
@@ -636,7 +639,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     @Override
     public DragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) throws InvalidDnDOperationException {
-        return new WLDragSourceContextPeer(dge, dataDevice);
+        return dragSourceContextPeer.createDragSourceContextPeer(dge);
     }
 
     @Override
