@@ -36,6 +36,16 @@ import java.awt.dnd.DragGestureEvent;
 import java.util.Map;
 
 public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
+    WLDragSourceContextPeer(WLDataDevice dataDevice) {
+        super(null);
+        this.dataDevice = dataDevice;
+    }
+
+    public WLDragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) {
+        setTrigger(dge);
+        return this;
+    }
+
     private final WLDataDevice dataDevice;
 
     private class WLDragSource extends WLDataSource {
@@ -49,7 +59,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             action = defaultAction;
         }
 
-        private void sendFinishedEvent() {
+        private synchronized void sendFinishedEvent() {
             if (didSendFinishedEvent) {
                 return;
             }
@@ -90,15 +100,10 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         }
 
         @Override
-        protected void handleCancelled() {
+        protected synchronized void handleCancelled() {
             sendFinishedEvent();
             super.handleCancelled();
         }
-    }
-
-    public WLDragSourceContextPeer(DragGestureEvent dge, WLDataDevice dataDevice) {
-        super(dge);
-        this.dataDevice = dataDevice;
     }
 
     private WLComponentPeer getPeer() {
