@@ -25,8 +25,6 @@
 
 package sun.awt.wl;
 
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +42,7 @@ public class WLDataOffer {
     private EventListener listener;
     private int refcount = 1;
 
-    private static native void destroyImpl(long nativePtr);
+    private static native void disposeImpl(long nativePtr);
 
     private static native void acceptImpl(long nativePtr, long serial, String mime);
 
@@ -65,7 +63,7 @@ public class WLDataOffer {
         if (nativePtr != 0 && refcount > 0) {
             --refcount;
             if (refcount == 0) {
-                destroyImpl(nativePtr);
+                disposeImpl(nativePtr);
                 nativePtr = 0;
             }
         }

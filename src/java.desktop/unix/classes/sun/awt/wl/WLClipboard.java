@@ -171,14 +171,14 @@ public final class WLClipboard extends SunClipboard {
                             if (ourDataSource == this) {
                                 ourDataSource = null;
                             }
-                            destroy();
+                            dispose();
                         }
                     }
                 };
 
                 synchronized (dataLock) {
                     if (ourDataSource != null) {
-                        ourDataSource.destroy();
+                        ourDataSource.dispose();
                     }
                     ourDataSource = newOffer;
                     dataDevice.setSelection(protocol, selectionType, newOffer, eventSerial.serial());

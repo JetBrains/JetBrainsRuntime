@@ -48,7 +48,7 @@ public class WLDataSource {
 
     private static native void offerMimeImpl(long nativePtr, String mime);
 
-    private static native void destroyImpl(long nativePtr);
+    private static native void disposeImpl(long nativePtr);
 
     private static native void setDnDActionsImpl(long nativePtr, int actions);
 
@@ -88,7 +88,7 @@ public class WLDataSource {
                 }
             }
         } catch (Throwable e) {
-            destroyImpl(nativePtr);
+            disposeImpl(nativePtr);
             throw e;
         }
 
@@ -161,9 +161,9 @@ public class WLDataSource {
         setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
     }
 
-    public synchronized void destroy() {
+    public synchronized void dispose() {
         if (nativePtr != 0) {
-            destroyImpl(nativePtr);
+            disposeImpl(nativePtr);
             nativePtr = 0;
         }
     }
@@ -175,7 +175,7 @@ public class WLDataSource {
     }
 
     protected void handleCancelled() {
-        destroy();
+        dispose();
     }
 
     protected void handleTargetAcceptsMime(String mime) {}

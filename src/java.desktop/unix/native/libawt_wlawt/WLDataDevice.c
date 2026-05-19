@@ -458,7 +458,7 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
         return NULL;
     }
 
-    // Cleared in DataOffer.destroy()
+    // Cleared in DataOffer.dispose()
     jobject globalRef = (*env)->NewGlobalRef(env, obj);
 
     EXCEPTION_CLEAR(env);
@@ -1347,7 +1347,7 @@ Java_sun_awt_wl_WLDataSource_offerMimeImpl(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLDataSource_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+Java_sun_awt_wl_WLDataSource_disposeImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
 {
     struct DataSource *source = jlong_to_ptr(nativePtr);
     if (source == NULL) {
@@ -1438,7 +1438,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLDataSource_setDnDIconImpl
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLDataOffer_destroyImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+Java_sun_awt_wl_WLDataOffer_disposeImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
 {
     assert(env != NULL);
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
