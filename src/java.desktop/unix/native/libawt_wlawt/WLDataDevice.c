@@ -410,12 +410,13 @@ DataSource_handleSend(struct DataSource *source, const char *mime, int fd)
     assert(env != NULL);
 
     jstring mimeJavaString = (*env)->NewStringUTF(env, mime);
-    EXCEPTION_CLEAR(env);
-    if (mimeJavaString != NULL) {
-        (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleSendMID, mimeJavaString, fd);
-        EXCEPTION_CLEAR(env);
-        (*env)->DeleteLocalRef(env, mimeJavaString);
+    if (wlListenerCheckException(env) || mimeJavaString == NULL) {
+        return;
     }
+
+    (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleSendMID, mimeJavaString, fd);
+    wlListenerCheckException(env);
+    (*env)->DeleteLocalRef(env, mimeJavaString);
 }
 
 static void
@@ -431,7 +432,7 @@ DataSource_handleCancelled(struct DataSource *source)
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleCancelledMID);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static struct DataOffer *
@@ -450,10 +451,7 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
 
     jobject obj = (*env)->NewObject(env, wlDataOfferClass, wlDataOfferConstructorMID, ptr_to_jlong(offer));
 
-    // Can't throw Java exceptions during Wayland event dispatch
-    EXCEPTION_CLEAR(env);
-
-    if (obj == NULL) {
+    if (wlListenerCheckException(env) || obj == NULL) {
         free(offer);
         return NULL;
     }
@@ -461,8 +459,7 @@ DataOffer_create(struct DataDevice *dataDevice, enum DataTransferProtocol protoc
     // Cleared in DataOffer.destroy()
     jobject globalRef = (*env)->NewGlobalRef(env, obj);
 
-    EXCEPTION_CLEAR(env);
-    if (globalRef == NULL) {
+    if (wlListenerCheckException(env) || globalRef == NULL) {
         (*env)->DeleteLocalRef(env, obj);
         free(offer);
         return NULL;
@@ -541,12 +538,13 @@ DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime)
     assert(env != NULL);
 
     jstring mimeJavaString = (*env)->NewStringUTF(env, mime);
-    EXCEPTION_CLEAR(env);
-    if (mimeJavaString != NULL) {
-        (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleOfferMimeMID, mimeJavaString);
-        EXCEPTION_CLEAR(env);
-        (*env)->DeleteLocalRef(env, mimeJavaString);
+    if (wlListenerCheckException(env) || mimeJavaString == NULL) {
+        return;
     }
+
+    (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleOfferMimeMID, mimeJavaString);
+    wlListenerCheckException(env);
+    (*env)->DeleteLocalRef(env, mimeJavaString);
 }
 
 static void
@@ -565,7 +563,7 @@ DataOffer_callSelectionHandler(struct DataDevice *dataDevice, struct DataOffer *
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleSelectionMID, offerObject, protocol, selection);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -650,12 +648,13 @@ wl_data_source_handle_target(void *user, struct wl_data_source *wl_data_source, 
     assert(env != NULL);
 
     jstring mimeJavaString = (*env)->NewStringUTF(env, mime);
-    EXCEPTION_CLEAR(env);
-    if (mimeJavaString != NULL) {
-        (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleTargetAcceptsMimeMID, mimeJavaString);
-        EXCEPTION_CLEAR(env);
-        (*env)->DeleteLocalRef(env, mimeJavaString);
+    if (wlListenerCheckException(env) || mimeJavaString == NULL) {
+        return;
     }
+
+    (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleTargetAcceptsMimeMID, mimeJavaString);
+    wlListenerCheckException(env);
+    (*env)->DeleteLocalRef(env, mimeJavaString);
 }
 
 static void
@@ -686,7 +685,7 @@ wl_data_source_handle_dnd_drop_performed(void *user, struct wl_data_source *wl_d
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleDnDDropPerformedMID);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -703,7 +702,7 @@ wl_data_source_handle_dnd_finished(void *user, struct wl_data_source *wl_data_so
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleDnDFinishedMID);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -720,7 +719,7 @@ wl_data_source_handle_action(void *user, struct wl_data_source *wl_data_source, 
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, source->javaObject, wlDataSourceHandleDnDActionMID, action);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -778,7 +777,7 @@ wl_data_offer_handle_source_actions(void *user, struct wl_data_offer *wl_data_of
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleSourceActionsMID, (jint) source_actions);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -795,7 +794,7 @@ wl_data_offer_handle_action(void *user, struct wl_data_offer *wl_data_offer, uin
     assert(env != NULL);
 
     (*env)->CallVoidMethod(env, offer->javaObject, wlDataOfferHandleActionMID, (jint) action);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -856,7 +855,7 @@ wl_data_device_handle_enter(void *user,
     (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDEnterMID, offer->javaObject,
                            (jlong) serial,
                            ptr_to_jlong(surface), wl_fixed_to_double(x), wl_fixed_to_double(y));
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -868,7 +867,7 @@ wl_data_device_handle_leave(void *user, struct wl_data_device *wl_data_device)
     JNIEnv *env = getEnv();
     assert(env != NULL);
     (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDLeaveMID);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -883,7 +882,7 @@ wl_data_device_handle_motion(
     (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDMotionMID, (jlong) time,
                            wl_fixed_to_double(x),
                            wl_fixed_to_double(y));
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -895,7 +894,7 @@ wl_data_device_handle_drop(void *user, struct wl_data_device *wl_data_device)
     JNIEnv *env = getEnv();
     assert(env != NULL);
     (*env)->CallVoidMethod(env, dataDevice->javaObject, wlDataDeviceHandleDnDDropMID);
-    EXCEPTION_CLEAR(env);
+    wlListenerCheckException(env);
 }
 
 static void

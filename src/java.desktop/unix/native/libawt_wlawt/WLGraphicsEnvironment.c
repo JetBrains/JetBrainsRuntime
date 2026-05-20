@@ -152,12 +152,21 @@ NotifyOutputConfigured(WLOutput* output)
 {
     JNIEnv *env = getEnv();
     jobject obj = (*env)->CallStaticObjectMethod(env, geClass, getSingleInstanceMID);
-    JNU_CHECK_EXCEPTION(env);
-    CHECK_NULL_THROW_IE(env, obj, "WLGraphicsEnvironment.getSingleInstance() returned null");
+    if (wlListenerCheckException(env)) {
+        return;
+    }
+    if (obj == NULL) {
+        wlListenerThrowInternalError(env, "WLGraphicsEnvironment.getSingleInstance() returned null");
+        return;
+    }
     jstring name = output->name ? JNU_NewStringPlatform(env, output->name) : NULL;
     jstring make = output->make ? JNU_NewStringPlatform(env, output->make) : NULL;
     jstring model = output->model ? JNU_NewStringPlatform(env, output->model) : NULL;
-    JNU_CHECK_EXCEPTION(env);
+
+    if (wlListenerCheckException(env)) {
+        return;
+    }
+
     (*env)->CallVoidMethod(env, obj, notifyOutputConfiguredMID,
                            name,
                            make,
@@ -174,7 +183,9 @@ NotifyOutputConfigured(WLOutput* output)
                            (jint)output->subpixel,
                            (jint)output->transform,
                            (jint)output->scale);
-    JNU_CHECK_EXCEPTION(env);
+    if (wlListenerCheckException(env)) {
+        return;
+    }
 
     output->offset_known = false;
 }
@@ -349,9 +360,15 @@ WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id)
 
     JNIEnv *env = getEnv();
     jobject obj = (*env)->CallStaticObjectMethod(env, geClass, getSingleInstanceMID);
-    CHECK_NULL_THROW_IE(env, obj, "WLGraphicsEnvironment.getSingleInstance() returned null");
+    if (wlListenerCheckException(env)) {
+        return;
+    }
+    if (obj == NULL) {
+        wlListenerThrowInternalError(env, "WLGraphicsEnvironment.getSingleInstance() returned null");
+        return;
+    }
     (*env)->CallVoidMethod(env, obj, notifyOutputDestroyedMID, id);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 uint32_t
