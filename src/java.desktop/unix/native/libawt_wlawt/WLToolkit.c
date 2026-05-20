@@ -123,6 +123,7 @@ static jfieldID yAxis_vectorValueFID;
 static jfieldID yAxis_steps120ValueFID;
 
 static jmethodID handleProtocolErrorMID;
+static jmethodID handleExceptionFromEventHandlerMID;
 static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
 static jmethodID dispatchKeyboardEnterEventMID;
@@ -332,14 +333,18 @@ wl_pointer_frame(void *data, struct wl_pointer *wl_pointer)
     jobject pointerEventRef = (*env)->CallStaticObjectMethod(env,
                                                              pointerEventClass,
                                                              pointerEventFactoryMID);
-    JNU_CHECK_EXCEPTION(env);
+    if (wlListenerCheckException(env)) {
+        return;
+    }
 
     fillJavaPointerEvent(env, pointerEventRef);
     (*env)->CallStaticVoidMethod(env,
                                  tkClass,
                                  dispatchPointerEventMID,
                                  pointerEventRef);
-    JNU_CHECK_EXCEPTION(env);
+    if (wlListenerCheckException(env)) {
+        return;
+    }
 
     resetPointerEvent(&pointer_event);
 }
@@ -365,13 +370,13 @@ wl_keyboard_keymap(void *data, struct wl_keyboard *wl_keyboard, uint32_t format,
 {
     JNIEnv* env = getEnv();
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
-        JNU_ThrowInternalError(env, "wl_keyboard_keymap supplied unknown keymap format");
+        wlListenerThrowInternalError(env, "wl_keyboard_keymap supplied unknown keymap format");
         return;
     }
 
     char *serializedKeymap = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
     if (serializedKeymap == MAP_FAILED) {
-        JNU_ThrowInternalError(env, "wl_keyboard_keymap: failed to memory-map keymap");
+        wlListenerThrowInternalError(env, "wl_keyboard_keymap: failed to memory-map keymap");
         return;
     }
 
@@ -390,7 +395,7 @@ wl_keyboard_enter(void *data, struct wl_keyboard *wl_keyboard,
                                  tkClass,
                                  dispatchKeyboardEnterEventMID,
                                  serial, jlong_to_ptr(surface));
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -411,7 +416,7 @@ wl_keyboard_leave(void *data, struct wl_keyboard *wl_keyboard,
                                  dispatchKeyboardLeaveEventMID,
                                  serial,
                                  jlong_to_ptr(surface));
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -428,7 +433,7 @@ wl_keyboard_modifiers(void *data, struct wl_keyboard *wl_keyboard,
                                  tkClass,
                                  dispatchKeyboardModifiersEventMID,
                                  serial);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -455,7 +460,7 @@ wlPostKeyEvent(const struct WLKeyEvent* event)
             event->keyChar,
             event->modifiers
     );
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static const struct wl_keyboard_listener wl_keyboard_listener = {
@@ -485,7 +490,7 @@ wl_relative_motion(void *data,
                                  tkClass,
                                  dispatchRelativePointerEventMID,
                                  ddx, ddy);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static const struct zwp_relative_pointer_v1_listener relative_pointer_listener = {
@@ -578,7 +583,7 @@ xdg_toplevel_icon_manager_icon_size(void *data,
     }
 
     (*env)->CallStaticVoidMethod(env, tkClass, handleToplevelIconSizeMID, size);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void
@@ -799,6 +804,8 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                                                               "handleProtocolError",
                                                                               "(Ljava/lang/String;IJ)V"),
                       JNI_FALSE);
+    CHECK_NULL_RETURN(handleExceptionFromEventHandlerMID = (*env)->GetStaticMethodID(
+        env, tkClass,"handleExceptionFromEventHandler", "(Ljava/lang/Throwable;)V"), JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
                                                                                 "(JJ)V"),
@@ -985,6 +992,33 @@ static bool wlCheckProtocolError(JNIEnv *env)
     }
 
     return result;
+}
+
+bool wlListenerCheckException(JNIEnv *env)
+{
+    jthrowable exception = (*env)->ExceptionOccurred(env);
+    if (exception == NULL) {
+        return false;
+    }
+
+    // 'exception' is a local ref at this point, it's okay to call ExceptionClear
+    (*env)->ExceptionClear(env);
+
+    (*env)->CallStaticVoidMethod(env, tkClass, handleExceptionFromEventHandlerMID, exception);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+    }
+
+    (*env)->DeleteLocalRef(env, exception);
+
+    return true;
+}
+
+void wlListenerThrowInternalError(JNIEnv *env, const char *message)
+{
+    JNU_ThrowInternalError(env, message);
+    wlListenerCheckException(env);
 }
 
 JNIEXPORT jboolean JNICALL
