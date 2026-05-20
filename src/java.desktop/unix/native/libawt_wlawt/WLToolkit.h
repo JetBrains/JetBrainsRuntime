@@ -23,6 +23,8 @@
  * questions.
  */
 
+#include <stdbool.h>
+
 #include <wayland-client.h>
 #include <wayland-cursor.h>
 
@@ -78,6 +80,10 @@ extern struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, 
 extern struct ext_data_control_manager_v1 *ext_data_control_manager; // optional, check for NULL before use
 
 JNIEnv *getEnv();
+
+// Utilities for managing exceptions in Wayland callbacks, where we can't throw
+bool wlListenerCheckException(JNIEnv *env);
+void wlListenerThrowInternalError(JNIEnv *env, const char *message);
 
 int wlFlushToServer(JNIEnv* env);
 struct wl_cursor_theme *getCursorTheme(int scale);
