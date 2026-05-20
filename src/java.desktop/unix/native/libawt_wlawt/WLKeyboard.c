@@ -1131,14 +1131,14 @@ wlSetKeymap(const char *serializedKeymap) {
             keyboard.context, serializedKeymap, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
 
     if (!newKeymap) {
-        JNU_ThrowInternalError(getEnv(), "Failed to create XKB keymap");
+        wlListenerThrowInternalError(getEnv(), "Failed to create XKB keymap");
         return;
     }
 
     struct xkb_state *newState = xkb_state_new(newKeymap);
     struct xkb_state *newTmpState = xkb_state_new(newKeymap);
     if (!newState || !newTmpState) {
-        JNU_ThrowInternalError(getEnv(), "Failed to create XKB state");
+        wlListenerThrowInternalError(getEnv(), "Failed to create XKB state");
         return;
     }
 
@@ -1162,7 +1162,7 @@ void
 wlSetRepeatInfo(int charsPerSecond, int delayMillis) {
     JNIEnv *env = getEnv();
     (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, setRepeatInfoMID, charsPerSecond, delayMillis);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 void
