@@ -27,6 +27,7 @@
  * @summary Test the clhsdb commands 'printmdo', 'printall', 'jstack' on a CDS enabled corefile.
  * @requires vm.cds
  * @requires vm.hasSA
+ * @requires !vm.ubsan
  * @requires vm.flavor == "server"
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
