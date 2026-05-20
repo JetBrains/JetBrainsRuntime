@@ -219,7 +219,7 @@ static void IMContext_zwp_text_input_v3_onEnter(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnEnter, ptr_to_jlong(surface));
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void IMContext_zwp_text_input_v3_onLeave(
@@ -240,7 +240,7 @@ static void IMContext_zwp_text_input_v3_onLeave(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnLeave, ptr_to_jlong(surface));
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 
@@ -329,7 +329,7 @@ static void IMContext_zwp_text_input_v3_onPreeditString(
         "IMContext_zwp_text_input_v3_onPreeditString: failed to allocate a new Java byte array"
     );
 
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+    if (wlListenerCheckException(env)) {
         return;
     }
 
@@ -341,7 +341,7 @@ static void IMContext_zwp_text_input_v3_onPreeditString(
         (jint)cursorBeginUtf8Byte,
         (jint)cursorEndUtf8Byte
     );
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void IMContext_zwp_text_input_v3_onCommitString(
@@ -372,12 +372,12 @@ static void IMContext_zwp_text_input_v3_onCommitString(
         "IMContext_zwp_text_input_v3_onCommitString: failed to allocate a new Java byte array"
     );
 
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+    if (wlListenerCheckException(env)) {
         return;
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnCommitString, commitStringUtf8Bytes);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void IMContext_zwp_text_input_v3_onDeleteSurroundingText(
@@ -398,7 +398,7 @@ static void IMContext_zwp_text_input_v3_onDeleteSurroundingText(
         return;
     }
 
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+    if (wlListenerCheckException(env)) {
         return;
     }
 
@@ -409,7 +409,7 @@ static void IMContext_zwp_text_input_v3_onDeleteSurroundingText(
        (jlong)numberOfUtf8BytesBeforeToDelete,
        (jlong)numberOfUtf8BytesAfterToDelete
     );
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 
 static void IMContext_zwp_text_input_v3_onDone(
@@ -430,7 +430,7 @@ static void IMContext_zwp_text_input_v3_onDone(
     }
 
     (*env)->CallVoidMethod(env, imContext->wlInputMethodOwner, jniIDs.mID_tiOnDone, (jlong)serial);
-    JNU_CHECK_EXCEPTION(env);
+    wlListenerCheckException(env);
 }
 // ============================================= END of IMContext section =============================================
 
