@@ -296,6 +296,8 @@ public class WLDataDevice {
         }
 
         // we ignore this offer, destroy it
-        offer.unref();
+        if (offer != null) {
+            offer.unref();
+        }
     }
 }
