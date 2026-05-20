@@ -120,8 +120,8 @@ wl_surface_entered_output
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, sd->javaSurface);
     if (nativeFramePeer) {
         (*env)->CallVoidMethod(env, nativeFramePeer, notifyEnteredOutputMID, wlOutputID);
+        wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
     }
 }
 
@@ -138,8 +138,8 @@ wl_surface_left_output
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, sd->javaSurface);
     if (nativeFramePeer) {
         (*env)->CallVoidMethod(env, nativeFramePeer, notifyLeftOutputMID, wlOutputID);
+        wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
     }
 }
 
