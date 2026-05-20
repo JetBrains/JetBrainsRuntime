@@ -61,6 +61,9 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
             requestWindowFocus();
         }
         super.wlSetVisible(v);
+        if (v) {
+            updateIconImages();
+        }
         final AWTAccessor.ComponentAccessor acc = AWTAccessor.getComponentAccessor();
         for (Component c : getWindow().getComponents()) {
             ComponentPeer cPeer = acc.getPeer(c);
