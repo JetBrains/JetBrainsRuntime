@@ -84,8 +84,8 @@ xdg_surface_configure(void *data,
                                    wlFrame->configuredX, wlFrame->configuredY,
                                    wlFrame->configuredWidth, wlFrame->configuredHeight,
                                    wlFrame->configuredActive, wlFrame->configuredMaximized, wlFrame->configuredFullscreen);
+            wlListenerCheckException(env);
             (*env)->DeleteLocalRef(env, nativeFramePeer);
-            JNU_CHECK_EXCEPTION(env);
         }
     }
 }
@@ -166,8 +166,8 @@ xdg_toplevel_close(void *data,
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
     if (nativeFramePeer) { // a reference to WLWinowPeer or its descendant
         (*env)->CallVoidMethod(env, nativeFramePeer, postWindowClosingMID);
+        wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
     }
 }
 
@@ -181,8 +181,8 @@ xdg_popup_done(void *data,
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
     if (nativeFramePeer) {
         (*env)->CallVoidMethod(env, nativeFramePeer, notifyPopupDoneMID);
+        wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
     }
 }
 
