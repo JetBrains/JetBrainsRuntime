@@ -25,14 +25,17 @@
  */
 
 #include <assert.h>
+#include <math.h>
 #include <string.h>
 #include "sun_java2d_vulkan_VKGPU.h"
+#include "fontscalerdefs.h"
 #include "VKUtil.h"
 #include "VKAllocator.h"
 #include "VKBuffer.h"
 #include "VKDevice.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
+#include "VKRenderQueue.h"
 #include "VKSurfaceData.h"
 
 /**
@@ -1544,5 +1547,99 @@ void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {
     }
     if (dst->renderPass->usedSurfaces.size == 0 || ARRAY_LAST(dst->renderPass->usedSurfaces) != src) {
         ARRAY_PUSH_BACK(dst->renderPass->usedSurfaces) = src;
+    }
+}
+
+void VKRenderer_DrawGlyphList(jint numGlyphs,
+    jfloat glyphListOrigX, jfloat glyphListOrigY,
+    jboolean usePositions, unsigned char* images, unsigned char* positions) {
+
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                  "VKRenderQueue_flushBuffer: DRAW_GLYPH_LIST");
+    // TODO this is a quick and dirty implementation of greyscale-AA text rendering over MASK_FILL. Need to do better.
+    jfloat glyphx, glyphy;
+    for (int i = 0; i < numGlyphs; i++) {
+        GlyphInfo* ginfo = jlong_to_ptr(NEXT_LONG(images));
+        if (usePositions) {
+            jfloat posx = NEXT_FLOAT(positions);
+            jfloat posy = NEXT_FLOAT(positions);
+            glyphx = glyphListOrigX + posx + ginfo->topLeftX;
+            glyphy = glyphListOrigY + posy + ginfo->topLeftY;
+        } else {
+            glyphx = glyphListOrigX + ginfo->topLeftX;
+            glyphy = glyphListOrigY + ginfo->topLeftY;
+            glyphListOrigX += ginfo->advanceX;
+            glyphListOrigY += ginfo->advanceY;
+        }
+
+        if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE)
+            continue;
+
+        if (ginfo->height * ginfo->rowBytes == 0) continue;
+
+        // Calculate subpixel offset.
+        int rx = ginfo->subpixelResolutionX, ry = ginfo->subpixelResolutionY;
+        int x = floor(glyphx), y = floor(glyphy);
+        int xOffset, yOffset;
+        if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
+            xOffset = yOffset = 0;
+        } else {
+            xOffset = (int)((glyphx - (float)x) * (float)rx);
+            yOffset = (int)((glyphy - (float)y) * (float)ry);
+        }
+
+        VKRenderer_MaskFill(x, y,
+                            ginfo->width, ginfo->height,
+                            0, ginfo->rowBytes,
+                            ginfo->height * ginfo->rowBytes,
+                            ginfo->image + (ginfo->rowBytes * ginfo->height) * (
+                                xOffset + yOffset * rx));
+    }
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKTextRenderer
+ * Method:    drawGlyphList
+ * Signature: (IZZZIFF[J[F)V
+ */
+JNIEXPORT void JNICALL
+Java_sun_java2d_vulkan_VKTextRenderer_drawGlyphList
+    (JNIEnv *env, jobject self,
+     jint totalGlyphs,
+     jboolean usePositions,
+     jboolean subPixPos,
+     jboolean rgbOrder,
+     jint lcdContrast,
+     jfloat glyphListOrigX,
+     jfloat glyphListOrigY,
+     jlongArray glyphImages,
+     jfloatArray glyphPositions)
+{
+    unsigned char *images = NULL;
+    
+    J2dTraceLn(J2D_TRACE_INFO, "VKTextRenderer_drawGlyphList");
+
+    images = (unsigned char *)(*env)->GetPrimitiveArrayCritical(env, glyphImages, NULL);
+    if (images != NULL) {
+        if (usePositions) {
+            unsigned char *positions =
+                (*env)->GetPrimitiveArrayCritical(env, glyphPositions, NULL);
+            if (positions != NULL) {
+                VKRenderer_DrawGlyphList(totalGlyphs,
+                                         glyphListOrigX,
+                                         glyphListOrigY,
+                                         usePositions,
+                                         images,
+                                         positions);
+                (*env)->ReleasePrimitiveArrayCritical(env, glyphPositions, positions, JNI_ABORT);
+            }
+        } else {
+            VKRenderer_DrawGlyphList(totalGlyphs,
+                                         glyphListOrigX,
+                                         glyphListOrigY,
+                                         usePositions,
+                                         images, NULL);
+        }
+        (*env)->ReleasePrimitiveArrayCritical(env, glyphImages, images, JNI_ABORT);
     }
 }
