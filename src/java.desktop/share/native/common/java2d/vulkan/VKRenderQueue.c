@@ -28,7 +28,6 @@
 #include "sun_font_StrikeCache.h"
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
-#include "sun_java2d_pipe_BufferedTextPipe.h"
 #include "sun_java2d_vulkan_VKBlitLoops.h"
 #include "fontscalerdefs.h"
 #include "Trace.h"
@@ -37,26 +36,8 @@
 #include "VKSurfaceData.h"
 #include "VKEnv.h"
 #include "VKRenderer.h"
+#include "VKRenderQueue.h"
 #include "VKUtil.h"
-
-/*
- * The following macros are used to pick values (of the specified type) off
- * the queue.
- */
-#define NEXT_VAL(buf, type) (((type *)((buf) = ((unsigned char*)(buf)) + sizeof(type)))[-1])
-#define NEXT_BYTE(buf)      NEXT_VAL(buf, unsigned char)
-#define NEXT_INT(buf)       NEXT_VAL(buf, jint)
-#define NEXT_FLOAT(buf)     NEXT_VAL(buf, jfloat)
-#define NEXT_BOOLEAN(buf)   (jboolean)NEXT_INT(buf)
-#define NEXT_LONG(buf)      NEXT_VAL(buf, jlong)
-#define NEXT_DOUBLE(buf)    NEXT_VAL(buf, jdouble)
-#define NEXT_SURFACE(buf)    ((SurfaceDataOps*) jlong_to_ptr(NEXT_LONG(buf)))
-#define NEXT_VK_SURFACE(buf) ((VKSDOps*) NEXT_SURFACE(buf))
-
-/*
- * Increments a pointer (buf) by the given number of bytes.
- */
-#define SKIP_BYTES(buf, numbytes) (buf) = ((unsigned char*)(buf)) + (numbytes)
 
 /*
  * Extracts a value at the given offset from the provided packed value.
@@ -76,13 +57,6 @@
     sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_SCANLINE
 #define BYTES_PER_SPAN \
     sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_SPAN
-
-#define BYTES_PER_GLYPH_IMAGE \
-    sun_java2d_pipe_BufferedTextPipe_BYTES_PER_GLYPH_IMAGE
-#define BYTES_PER_GLYPH_POSITION \
-    sun_java2d_pipe_BufferedTextPipe_BYTES_PER_GLYPH_POSITION
-#define BYTES_PER_POSITIONED_GLYPH \
-    (BYTES_PER_GLYPH_IMAGE + BYTES_PER_GLYPH_POSITION)
 
 #define OFFSET_CONTRAST  sun_java2d_pipe_BufferedTextPipe_OFFSET_CONTRAST
 #define OFFSET_RGBORDER  sun_java2d_pipe_BufferedTextPipe_OFFSET_RGBORDER
@@ -282,12 +256,13 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jfloat glyphListOrigY = NEXT_FLOAT(b);
                 jboolean usePositions = EXTRACT_BOOLEAN(packedParams,
                                                         OFFSET_POSITIONS);
+                /* TODO: implement subpixel positioning and lcd text
                 jboolean subPixPos    = EXTRACT_BOOLEAN(packedParams,
                                                         OFFSET_SUBPIXPOS);
                 jboolean rgbOrder     = EXTRACT_BOOLEAN(packedParams,
                                                         OFFSET_RGBORDER);
                 jint lcdContrast      = EXTRACT_BYTE(packedParams,
-                                                     OFFSET_CONTRAST);
+                                                     OFFSET_CONTRAST);*/
                 unsigned char *images = b;
                 unsigned char *positions;
                 jint bytesPerGlyph;
@@ -298,42 +273,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     positions = NULL;
                     bytesPerGlyph = BYTES_PER_GLYPH_IMAGE;
                 }
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: DRAW_GLYPH_LIST");
-                // TODO this is a quick and dirty implementation of greyscale-AA text rendering over MASK_FILL. Need to do better.
-                jfloat glyphx, glyphy;
-                for (int i = 0; i < numGlyphs; i++) {
-                    GlyphInfo *ginfo = (GlyphInfo *)jlong_to_ptr(NEXT_LONG(images));
-                    if (usePositions) {
-                        jfloat posx = NEXT_FLOAT(positions);
-                        jfloat posy = NEXT_FLOAT(positions);
-                        glyphx = glyphListOrigX + posx + ginfo->topLeftX;
-                        glyphy = glyphListOrigY + posy + ginfo->topLeftY;
-                    } else {
-                        glyphx = glyphListOrigX + ginfo->topLeftX;
-                        glyphy = glyphListOrigY + ginfo->topLeftY;
-                        glyphListOrigX += ginfo->advanceX;
-                        glyphListOrigY += ginfo->advanceY;
-                    }
-                    if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) continue;
-                    if (ginfo->height*ginfo->rowBytes == 0) continue;
-
-                    // Calculate subpixel offset.
-                    int rx = ginfo->subpixelResolutionX, ry = ginfo->subpixelResolutionY;
-                    int x = floor(glyphx), y = floor(glyphy);
-                    int xOffset, yOffset;
-                    if ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0) {
-                        xOffset = yOffset = 0;
-                    } else {
-                        xOffset = (int) ((glyphx - (float) x) * (float) rx);
-                        yOffset = (int) ((glyphy - (float) y) * (float) ry);
-                    }
-
-                    VKRenderer_MaskFill(x, y,
-                                        ginfo->width, ginfo->height,
-                                        0, ginfo->rowBytes,
-                                        ginfo->height * ginfo->rowBytes,
-                                        ginfo->image + (ginfo->rowBytes * ginfo->height) * (xOffset + yOffset * rx));
-                }
+                VKRenderer_DrawGlyphList(numGlyphs,
+                    glyphListOrigX, glyphListOrigY,
+                    usePositions, images, positions);
                 SKIP_BYTES(b, numGlyphs * bytesPerGlyph);
             }
             break;
