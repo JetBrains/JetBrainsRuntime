@@ -840,6 +840,11 @@ wl_data_device_handle_enter(void *user,
                             wl_fixed_t y,
                             struct wl_data_offer *id)
 {
+    if (id == NULL) {
+        // The offer can be NULL as per protocol spec, but there's nothing sensible to do in this case
+        return;
+    }
+
     struct DataDevice *dataDevice = user;
     assert(dataDevice != NULL);
     struct DataOffer *offer = (struct DataOffer *) wl_data_offer_get_user_data(id);
