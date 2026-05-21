@@ -787,10 +787,7 @@ public class CLDRConverter {
             String tzKey = Optional.ofNullable((String)handlerSupplMeta.get(tzid))
                                    .orElse(tzid);
             // Follow link, if needed
-            String tzLink = null;
-            for (var k = tzKey; tzdbLinks.containsKey(k);) {
-                k = tzLink = tzdbLinks.get(k);
-            }
+            String tzLink = getTZDBLink(tzKey);
             if (tzLink == null && tzdbLinks.containsValue(tzKey)) {
                 // reverse link search
                 // this is needed as in tzdb, "America/Buenos_Aires" links to
@@ -810,6 +807,13 @@ public class CLDRConverter {
                 data = map.get(TIMEZONE_ID_PREFIX + tzLink);
             }
 
+            String meta = handlerMetaZones.get(tzKey);
+            if (meta == null && tzLink != null) {
+                // Check for tzLink
+                meta = handlerMetaZones.get(tzLink);
+            }
+            String metaKey = meta != null ? METAZONE_ID_PREFIX + meta : null;
+
             if (data instanceof String[] tznames) {
                 // Hack for UTC. UTC is an alias to Etc/UTC in CLDR
                 if (tzid.equals("Etc/UTC") && !map.containsKey(TIMEZONE_ID_PREFIX + "UTC")) {
@@ -819,24 +823,16 @@ public class CLDRConverter {
                 } else {
                     // TZDB short names
                     tznames = Arrays.copyOf(tznames, tznames.length);
-                    fillTZDBShortNames(tzid, tznames);
+                    fillTZDBShortNames(tzKey, tznames);
                     names.put(tzid, tznames);
+                    if (meta != null && map.get(metaKey) instanceof String[] metaNames) {
+                        recordMetazone(names, meta, tzKey, metaNames);
+                    }
                 }
             } else {
-                String meta = handlerMetaZones.get(tzKey);
-                if (meta == null && tzLink != null) {
-                    // Check for tzLink
-                    meta = handlerMetaZones.get(tzLink);
-                }
                 if (meta != null) {
-                    String metaKey = METAZONE_ID_PREFIX + meta;
-                    data = map.get(metaKey);
-                    if (data instanceof String[] tznames) {
-                        // TZDB short names
-                        tznames = Arrays.copyOf((String[])names.getOrDefault(metaKey, tznames), 6);
-                        fillTZDBShortNames(tzid, tznames);
-                        // Keep the metazone prefix here.
-                        names.putIfAbsent(metaKey, tznames);
+                    if (map.get(metaKey) instanceof String[] metaNames) {
+                        recordMetazone(names, meta, tzKey, metaNames);
                         names.put(tzid, meta);
                         if (tzLink != null && availableIds.contains(tzLink)) {
                             names.put(tzLink, meta);
@@ -1484,12 +1480,12 @@ public class CLDRConverter {
      * Fill the TZDB short names if there is no name provided by the CLDR
      */
     private static void fillTZDBShortNames(String tzid, String[] names) {
-        var val = tzdbShortNamesMap.get(tzdbLinks.getOrDefault(tzid, tzid));
+        var val = tzdbShortNamesMap.getOrDefault(tzid, tzdbShortNamesMap.get(getTZDBLink(tzid)));
         if (val != null) {
             var format = val.split(NBSP)[0];
             var rule = val.split(NBSP)[1];
             IntStream.of(1, 3, 5).forEach(i -> {
-                if (names[i] == null) {
+                if (names[i] == null || names[i].isEmpty()) {
                     if (format.contains("%s")) {
                         names[i] = switch (i) {
                             case 1 -> format.formatted(tzdbSubstLetters.get(rule + NBSP + STD));
@@ -1509,6 +1505,28 @@ public class CLDRConverter {
                 }
             });
         }
+    }
+
+    private static void recordMetazone(Map<String, Object> names, String meta, String tzid, String[] tznames) {
+        String zone001 = handlerMetaZones.zidMap().get(meta);
+        var tzLink = getTZDBLink(tzid);
+
+        // Record the metazone names only from the default
+        // (001) zone, with short names filled from TZDB
+        if (canonicalTZMap.getOrDefault(tzid, tzid).equals(zone001) ||
+            tzLink != null && canonicalTZMap.getOrDefault(tzLink, tzLink).equals(zone001)) {
+            tznames = Arrays.copyOf(tznames, tznames.length);
+            fillTZDBShortNames(tzid, tznames);
+            names.put(METAZONE_ID_PREFIX + meta, tznames);
+        }
+    }
+
+    private static String getTZDBLink(String tzid) {
+        String tzLink = null;
+        for (var k = tzid; tzdbLinks.containsKey(k);) {
+            k = tzLink = tzdbLinks.get(k);
+        }
+        return tzLink;
     }
 
     /*
