@@ -65,6 +65,7 @@ import java.awt.geom.Path2D;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.List;
 
 public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber, LWWindowPeerAPI {
@@ -215,37 +216,57 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     @Override
     public void updateIconImages() {
         List<Image> iconImages = getWindow().getIconImages();
-        if (iconImages == null || iconImages.isEmpty()) {
-            setIcon(0, null);
+        List<Image> suitableIconImages = new ArrayList<Image>();
+
+        if (iconImages != null) {
+            for (Image image : iconImages) {
+                if (image == null) {
+                    continue;
+                }
+                int width = image.getWidth(null);
+                int height = image.getHeight(null);
+                if (width > 0 && height > 0 && width == height) {
+                    suitableIconImages.add(image);
+                }
+            }
+        }
+
+        if (suitableIconImages.isEmpty()) {
+            setIcon(null, null);
             return;
         }
 
-        Image image = iconImages.stream()
-                .filter(x -> x.getWidth(null) > 0 && x.getHeight(null) > 0)
-                .filter(x -> x.getWidth(null) == x.getHeight(null))
-                .max((a, b) -> Integer.compare(a.getWidth(null), b.getWidth(null)))
-                .orElse(null);
-        if (image == null) {
-            return;
+        int imageCount = suitableIconImages.size();
+        int pixelCount = 0;
+        for (Image image : suitableIconImages) {
+            int dim = image.getWidth(null); // width == height
+            pixelCount += dim * dim;
         }
 
-        int width = image.getWidth(null);
-        int height = image.getHeight(null);
-        int size = width;
+        int[] dims = new int[imageCount];
+        int[] pixels = new int[pixelCount];
 
-        BufferedImage bufferedImage;
-        if (image instanceof BufferedImage && ((BufferedImage) image).getType() == BufferedImage.TYPE_INT_ARGB) {
-            bufferedImage = (BufferedImage) image;
-        } else {
-            bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = bufferedImage.createGraphics();
-            g.drawImage(image, 0, 0, null);
-            g.dispose();
+        int offset = 0;
+        for (int i = 0; i < imageCount; ++i) {
+            Image image = suitableIconImages.get(i);
+            int dim = image.getWidth(null); // width == height
+            dims[i] = dim;
+
+            BufferedImage bufferedImage;
+            if (image instanceof BufferedImage && ((BufferedImage) image).getType() == BufferedImage.TYPE_INT_ARGB) {
+                bufferedImage = (BufferedImage) image;
+            } else {
+                bufferedImage = new BufferedImage(dim, dim, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g = bufferedImage.createGraphics();
+                g.drawImage(image, 0, 0, null);
+                g.dispose();
+            }
+
+            bufferedImage.getRGB(0, 0, dim, dim, pixels, offset, dim);
+            offset += dim * dim;
         }
 
-        int[] pixels = new int[width * height];
-        bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
-        setIcon(size, pixels);
+        setIcon(dims, pixels);
     }
 
     @Override
