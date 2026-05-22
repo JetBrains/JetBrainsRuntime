@@ -36,6 +36,7 @@
 
 #include "xdg-decoration-unstable-v1.h"
 #include <stdbool.h>
+#include <sys/mman.h>
 
 static jmethodID postWindowClosingMID; // WLWindowPeer.postWindowClosing
 static jmethodID notifyConfiguredMID;
@@ -59,9 +60,6 @@ struct WLFrame {
     jboolean configuredActive;
     jboolean configuredMaximized;
     jboolean configuredFullscreen;
-
-    struct wl_buffer* iconBuffer;
-    struct wl_shm_pool* iconPool;
 };
 
 static void
@@ -556,56 +554,116 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_disposeImpl
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetIcon
-        (JNIEnv *env, jobject obj, jlong ptr, jint size, jobject pixelArray)
+        (JNIEnv *env, jobject obj, jlong ptr, jintArray dims, jintArray pixels)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame == NULL || !frame->toplevel || xdg_toplevel_icon_manager == NULL) {
         return;
     }
 
-    bool hasIcon = frame->iconBuffer != NULL;
-    bool willHaveIcon = size > 0 && pixelArray != NULL;
-    size_t iconByteSize = size * size * 4;
+    jsize dimCount = dims != NULL ? (*env)->GetArrayLength(env, dims) : 0;
+    jsize pixelCount = pixels != NULL ? (*env)->GetArrayLength(env, pixels) : 0;
+
+    bool willHaveIcon = dimCount > 0 && pixelCount > 0;
 
     if (!willHaveIcon) {
         xdg_toplevel_icon_manager_v1_set_icon(xdg_toplevel_icon_manager, frame->xdg_toplevel, NULL);
+        return;
     }
 
-    if (hasIcon) {
-        if (frame->iconBuffer != NULL) {
-            wl_buffer_destroy(frame->iconBuffer);
-            frame->iconBuffer = NULL;
-        }
-        if (frame->iconPool != NULL) {
-            wl_shm_pool_destroy(frame->iconPool);
-            frame->iconPool = NULL;
-        }
+    void* poolData = NULL;
+    size_t poolSize = pixelCount * sizeof(uint32_t);
+    struct wl_shm_pool* pool = CreateShmPool(poolSize, "toplevel_icon", &poolData, NULL);
+    if (pool == NULL) {
+        goto error_CreateShmPool;
     }
 
-    if (willHaveIcon) {
-        void* poolData = NULL;
-        struct wl_shm_pool* pool = CreateShmPool(iconByteSize, "toplevel_icon", &poolData, NULL);
-        if (pool == NULL) {
-            return;
-        }
-        (*env)->GetIntArrayRegion(env, pixelArray, 0, size * size, poolData);
-        struct wl_buffer* buffer = wl_shm_pool_create_buffer(pool, 0, size, size, size * 4, WL_SHM_FORMAT_ARGB8888);
+    (*env)->GetIntArrayRegion(env, pixels, 0, pixelCount, poolData);
+    EXCEPTION_CLEAR(env); // can't happen, pixelCount is precisely the length of the pixels array
+
+    // Convert in-place to little-endian ARGB with premultiplied alpha that Wayland expects
+    for (uint32_t *pixel = poolData; pixel != (uint32_t*)poolData + pixelCount; ++pixel) {
+        uint8_t alpha255_uint8 = (uint8_t)(*pixel >> 24);
+        float alpha255 = (float)alpha255_uint8;
+        float red = (float)((*pixel >> 16) & 0xFF) / 255.0f;
+        float green = (float)((*pixel >> 8) & 0xFF) / 255.0f;
+        float blue = (float)(*pixel & 0xFF) / 255.0f;
+
+        // it's legal to alias a uint32_t* with an unsigned char*
+        unsigned char *out = (unsigned char*)pixel;
+        out[0] = (unsigned char)(blue * alpha255 + 0.5f);
+        out[1] = (unsigned char)(green * alpha255 + 0.5f);
+        out[2] = (unsigned char)(red * alpha255 + 0.5f);
+        out[3] = alpha255_uint8;
+    }
+
+    munmap(poolData, poolSize);
+
+    jint* dimValues = calloc(dimCount, sizeof(jint));
+    if (dimValues == NULL) {
+        goto error_AllocateDimValues;
+    }
+
+    (*env)->GetIntArrayRegion(env, dims, 0, dimCount, dimValues);
+    EXCEPTION_CLEAR(env); // can't happen, dimCount is precisely the length of the dims array
+
+    struct wl_buffer** buffers = calloc(dimCount, sizeof(struct wl_buffer*));
+    if (buffers == NULL) {
+        goto error_AllocateBuffers;
+    }
+
+    struct xdg_toplevel_icon_v1* icon = xdg_toplevel_icon_manager_v1_create_icon(xdg_toplevel_icon_manager);
+    if (icon == NULL) {
+        goto error_CreateIcon;
+    }
+
+    int offset = 0;
+    for (int i = 0; i < dimCount; ++i) {
+        int dim = dimValues[i];
+        int stride = dim * (int32_t)sizeof(uint32_t);
+        int byteSize = dim * stride;
+
+        struct wl_buffer* buffer = wl_shm_pool_create_buffer(pool, offset, dim, dim, stride, WL_SHM_FORMAT_ARGB8888);
         if (buffer == NULL) {
-            wl_shm_pool_destroy(pool);
-            return;
+            goto error_CreateIconBuffer;
         }
-
-        struct xdg_toplevel_icon_v1* icon = xdg_toplevel_icon_manager_v1_create_icon(xdg_toplevel_icon_manager);
-        if (icon == NULL) {
-            wl_buffer_destroy(buffer);
-            wl_shm_pool_destroy(pool);
-            return;
-        }
+        buffers[i] = buffer;
+        offset += byteSize;
         xdg_toplevel_icon_v1_add_buffer(icon, buffer, 1);
-        xdg_toplevel_icon_manager_v1_set_icon(xdg_toplevel_icon_manager, frame->xdg_toplevel, icon);
-        xdg_toplevel_icon_v1_destroy(icon);
-
-        frame->iconPool = pool;
-        frame->iconBuffer = buffer;
     }
+
+    xdg_toplevel_icon_manager_v1_set_icon(xdg_toplevel_icon_manager, frame->xdg_toplevel, icon);
+    xdg_toplevel_icon_v1_destroy(icon);
+
+    for (int i = 0; i < dimCount; ++i) {
+        wl_buffer_destroy(buffers[i]);
+    }
+
+    free(buffers);
+    free(dimValues);
+    return;
+
+error_CreateIconBuffer:
+    for (int i = 0; i < dimCount; ++i) {
+        if (buffers[i] != NULL) {
+            wl_buffer_destroy(buffers[i]);
+        }
+    }
+    xdg_toplevel_icon_v1_destroy(icon);
+    icon = NULL;
+
+error_CreateIcon:
+    free(buffers);
+    buffers = NULL;
+
+error_AllocateBuffers:
+    free(dimValues);
+    dimValues = NULL;
+
+error_AllocateDimValues:
+    wl_shm_pool_destroy(pool);
+    pool = NULL;
+
+error_CreateShmPool:
+    return;
 }
