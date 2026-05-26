@@ -25,6 +25,8 @@
 
 package sun.awt.wl;
 
+import sun.util.logging.PlatformLogger;
+
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.Transferable;
@@ -33,6 +35,8 @@ import java.util.LinkedHashSet;
 import java.util.UUID;
 
 public class WLDataSource {
+    protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataSource");
+
     // nativePtr will be reset to 0 after this object receives a "cancelled" event, and is destroyed.
     // Reading from nativePtr doesn't need to be synchronized for methods that happen before announcing
     // this object as a selection, or a drag-and-drop source.
@@ -53,6 +57,20 @@ public class WLDataSource {
     private static native void setDnDActionsImpl(long nativePtr, int actions);
 
     private static native void setDnDIconImpl(long nativePtr, int scale, int width, int height, int offsetX, int offsetY, int[] pixels);
+
+    @Override
+    public synchronized String toString() {
+        return "WLDataSource{" +
+                "nativePtr=0x" + Long.toHexString(nativePtr) +
+                ", data=" + data +
+                ", mimeTypeCookie='" + mimeTypeCookie + '\'' +
+                ", anyMimesAnnounced=" + anyMimesAnnounced +
+                '}';
+    }
+
+    public synchronized String getID() {
+        return "0x" + Long.toHexString(nativePtr);
+    }
 
     WLDataSource(WLDataDevice dataDevice, int protocol, Transferable data) {
         var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
@@ -124,6 +142,7 @@ public class WLDataSource {
 
     // This method can only be called once before setting this object as a drag-and-drop source
     public void setDnDActions(int actions) {
+        log.fine("setDnDActions(), this = " + getID() + ", actions = " + actions);
         if (nativePtr == 0) {
             throw new IllegalStateException("Native pointer is null");
         }
@@ -131,6 +150,7 @@ public class WLDataSource {
     }
 
     public void setDnDIcon(Image image, int scale, int offsetX, int offsetY) {
+        log.fine("setDnDIcon(), this = " + getID() + ", image = " + image + ", scale = " + scale + ", offsetX = " + offsetX + ", offsetY = " + offsetY);
         if (nativePtr == 0) {
             throw new IllegalStateException("Native pointer is null");
         }
@@ -162,6 +182,9 @@ public class WLDataSource {
     }
 
     public synchronized void destroy() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("destroy(), this = " + getID());
+        }
         if (nativePtr != 0) {
             destroyImpl(nativePtr);
             nativePtr = 0;
@@ -171,18 +194,40 @@ public class WLDataSource {
     // Event handlers, called from native code on the data transferer dispatch thread
 
     protected void handleSend(String mime, int fd) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleSend(), this = " + getID() + ", mime = " + mime + ", fd = " + fd);
+        }
         WLDataDevice.transferContentsWithType(data, mime, fd);
     }
 
     protected void handleCancelled() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleCancelled(), this = " + getID());
+        }
         destroy();
     }
 
-    protected void handleTargetAcceptsMime(String mime) {}
+    protected void handleTargetAcceptsMime(String mime) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleTargetAcceptsMime(), this = " + getID());
+        }
+    }
 
-    protected void handleDnDDropPerformed() {}
+    protected void handleDnDDropPerformed() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDnDDropPerformed(), this = " + getID());
+        }
+    }
 
-    protected void handleDnDFinished() {}
+    protected void handleDnDFinished() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDnDFinished(), this = " + getID());
+        }
+    }
 
-    protected void handleDnDAction(int action) {}
+    protected void handleDnDAction(int action) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDnDAction(), this = " + getID() + ", action = " + action);
+        }
+    }
 }
