@@ -29,12 +29,16 @@ import sun.awt.AWTAccessor;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.dnd.SunDropTargetContextPeer;
 import sun.awt.dnd.SunDropTargetEvent;
+import sun.util.logging.PlatformLogger;
 
 import java.awt.Component;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDropTargetContextPeer");
+
     private WLDataOffer currentOffer;
     private Component currentTarget;
     private double currentX;
@@ -59,8 +63,22 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         return context != null;
     }
 
+    private static String eventToString(int event) {
+        return switch (event) {
+            case MouseEvent.MOUSE_CLICKED -> "MOUSE_CLICKED";
+            case MouseEvent.MOUSE_PRESSED -> "MOUSE_PRESSED";
+            case SunDropTargetEvent.MOUSE_DROPPED -> "MOUSE_DROPPED";
+            case MouseEvent.MOUSE_MOVED -> "MOUSE_MOVED";
+            case MouseEvent.MOUSE_ENTERED -> "MOUSE_ENTERED";
+            case MouseEvent.MOUSE_EXITED -> "MOUSE_EXITED";
+            case MouseEvent.MOUSE_DRAGGED -> "MOUSE_DRAGGED";
+            default -> "(unknown event enum value " + event + ")";
+        };
+    }
+
     private synchronized void postEvent(int event) {
         if (currentOffer == null || currentTarget == null) {
+            log.warning("postEvent(" + eventToString(event) + "): no current offer or current target, currentOffer = " + currentOffer + ", currentTarget = " + currentTarget);
             return;
         }
         var peer = (WLComponentPeer) AWTAccessor.getComponentAccessor().getPeer(currentTarget);
@@ -75,6 +93,12 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
             } else {
                 dropAction = WLDataDevice.waylandActionsToJava(currentOffer.getSelectedAction());
             }
+        }
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("postEvent(" + eventToString(event) + "): currentTarget = " + currentTarget + ", x = " + x +
+                    ", y = " + y + ", dropAction = " + dropAction + ", actions = " + actions + ", sourceFormats = " + Arrays.toString(sourceFormats) +
+                    ", lastPreferredAction = " + lastPreferredAction + ", lastActions = " + lastActions);
         }
 
         postDropTargetEvent(
@@ -94,6 +118,10 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         var dataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
 
         synchronized (this) {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("getNativeData(), format = " + format + ", currentOffer = " + currentOffer);
+            }
+
             if (currentOffer == null) {
                 return null;
             }
@@ -106,11 +134,17 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
             }
         }
 
+        log.warning("getNativeData(): unknown format, format = " + format + ", currentOffer = " + currentOffer);
+
         throw new IOException("Unknown format " + format + ", aka " + dataTransferer.getNativeForFormat(format));
     }
 
     @Override
     protected synchronized void doDropDone(boolean success, int dropAction, boolean isLocal) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("doDropDone(), success = " + success + ", dropAction = " + dropAction + ", isLocal = " + isLocal);
+        }
+
         if (success && currentOffer != null) {
             currentOffer.finishDnD();
         }
@@ -119,6 +153,7 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
 
     private synchronized void updateActions() {
         if (currentOffer == null) {
+            log.warning("updateActions(): currentOffer is null");
             return;
         }
 
@@ -132,6 +167,10 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
         int waylandActions = WLDataDevice.javaActionsToWayland(javaActions);
         int waylandPreferredAction = WLDataDevice.javaActionsToWayland(javaPreferredAction);
 
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("updateActions(), hasTarget = " + hasTarget() + ", waylandActions = " + waylandActions + ", waylandPreferredAction = " + waylandPreferredAction);
+        }
+
         if (waylandActions != lastActions || waylandPreferredAction != lastPreferredAction) {
             currentOffer.setDnDActions(waylandActions, waylandPreferredAction);
             lastActions = waylandActions;
@@ -140,6 +179,10 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     }
 
     private synchronized void reset() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("reset()");
+        }
+
         if (currentOffer != null) {
             currentOffer.unref();
         }
@@ -153,19 +196,30 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
 
     @Override
     public synchronized void acceptDrag(int dragOperation) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("acceptDrag(), dragOperation = " + dragOperation);
+        }
         super.acceptDrag(dragOperation);
         updateActions();
     }
 
     @Override
     public synchronized void rejectDrag() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("rejectDrag()");
+        }
         super.rejectDrag();
         updateActions();
     }
 
     public synchronized void handleEnter(WLDataOffer offer, long serial, long surfacePtr, double x, double y) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleEnter(), offer = " + offer + ", serial = " + serial + ", surfacePtr = 0x" + Long.toHexString(surfacePtr) + ", x = " + x + ", y = " + y);
+        }
+
         var peer = WLToolkit.peerFromSurface(surfacePtr);
         if (peer == null) {
+            log.warning("handleEnter(): no peer for surface 0x" +  Long.toHexString(surfacePtr));
             return;
         }
 
@@ -208,6 +262,9 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     }
 
     public synchronized void handleLeave() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleLeave(), didDrop = " + didDrop);
+        }
         if (!didDrop) {
             postEvent(MouseEvent.MOUSE_EXITED);
             reset();
@@ -215,6 +272,9 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     }
 
     public synchronized void handleMotion(long timestamp, double x, double y) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleMotion(), timestamp = " + timestamp + ", x = " + x + ", y = " + y);
+        }
         currentX = x;
         currentY = y;
         postEvent(MouseEvent.MOUSE_DRAGGED);
@@ -222,6 +282,9 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     }
 
     public synchronized void handleDrop() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDrop(), didDrop = " + didDrop + ", hasTarget = " + hasTarget());
+        }
         if (hasTarget()) {
             didDrop = true;
             postEvent(SunDropTargetEvent.MOUSE_DROPPED);
@@ -232,6 +295,11 @@ public class WLDropTargetContextPeer extends SunDropTargetContextPeer {
     }
 
     public synchronized void handleModifiersUpdate() {
-        updateActions();
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleModifiersUpdate()");
+        }
+        if (currentOffer != null) {
+            updateActions();
+        }
     }
 }
