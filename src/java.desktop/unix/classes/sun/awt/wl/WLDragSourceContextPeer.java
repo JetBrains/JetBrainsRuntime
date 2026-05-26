@@ -28,6 +28,7 @@ package sun.awt.wl;
 import sun.awt.AWTAccessor;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.dnd.SunDropTargetContextPeer;
+import sun.util.logging.PlatformLogger;
 
 import java.awt.Cursor;
 import java.awt.datatransfer.DataFlavor;
@@ -36,12 +37,17 @@ import java.awt.dnd.DragGestureEvent;
 import java.util.Map;
 
 public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDragSourceContextPeer");
+
     WLDragSourceContextPeer(WLDataDevice dataDevice) {
         super(null);
         this.dataDevice = dataDevice;
     }
 
     public WLDragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("createDragSourceContextPeer(), dge = " + dge);
+        }
         setTrigger(dge);
         return this;
     }
@@ -73,6 +79,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         @Override
         protected synchronized void handleDnDAction(int action) {
+            super.handleDnDAction(action);
             // This if statement is a workaround for a KWin bug.
             // KWin 6.5.1 may send an additional action(0) after dnd_drop_performed().
             // Spec says that after dnd_drop_performed(), no further action() events will be sent,
@@ -85,24 +92,30 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         @Override
         protected synchronized void handleDnDDropPerformed() {
+            super.handleDnDDropPerformed();
             didSucceed = action != 0 && mime != null;
         }
 
         @Override
         protected synchronized void handleDnDFinished() {
+            super.handleDnDFinished();
             sendFinishedEvent();
             destroy();
         }
 
         @Override
         protected synchronized void handleTargetAcceptsMime(String mime) {
+            super.handleTargetAcceptsMime(mime);
             this.mime = mime;
         }
 
         @Override
         protected synchronized void handleCancelled() {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("handleCancelled(), this = " + getID());
+            }
             sendFinishedEvent();
-            super.handleCancelled();
+            destroy();
         }
     }
 
@@ -128,8 +141,13 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
     @Override
     protected void startDrag(Transferable trans, long[] formats, Map<Long, DataFlavor> formatMap) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("startDrag(), trans = " + trans);
+        }
+
         var mainSurface = getSurface();
         if (mainSurface == null) {
+            log.warning("startDrag(): mainSurface is null");
             return;
         }
 
