@@ -65,7 +65,6 @@ public class CheckJBRModules {
                     "jdk.httpserver",
                     "jdk.internal.ed",
                     "jdk.internal.le",
-                    "jdk.internal.vm.ci",
                     "jdk.javadoc",
                     "jdk.jdi",
                     "jdk.jdwp.agent",
