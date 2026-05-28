@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,4 +138,11 @@ int childProcess(void *arg);
 void jtregSimulateCrash(pid_t child, int stage);
 #endif
 
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#define HAVE_PIPE2
+#else
+// Neither MacOS nor AIX support pipe2, unfortunately
+#undef HAVE_PIPE2
 #endif
+
+#endif /* CHILDPROC_MD_H */
