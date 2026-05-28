@@ -44,6 +44,8 @@
 #include <signal.h>
 #include <string.h>
 
+#include <fcntl.h>
+#include <unistd.h>
 #include <spawn.h>
 
 #include "childproc.h"
@@ -666,6 +668,28 @@ startChild(JNIEnv *env, jobject process, ChildStuff *c, const char *helperpath) 
     }
 }
 
+static int pipeSafely(int fd[2]) {
+    /* Pipe filedescriptors must be CLOEXEC as early as possible - ideally from the point of
+     * creation on - since at any moment a concurrent (third-party) fork() could inherit copies
+     * of these descriptors and accidentally keep the pipes open. That could cause the parent
+     * process to hang (see e.g. JDK-8377907).
+     * We use pipe2(2), if we have it. If we don't, we use pipe(2) + fcntl(2) immediately.
+     * The latter is still racy and can therefore still cause hangs as described in JDK-8377907,
+     * but at least the dangerous time window is as short as we can make it.
+     */
+    int rc = -1;
+#ifdef HAVE_PIPE2
+    rc = pipe2(fd, O_CLOEXEC);
+#else
+    rc = pipe(fd);
+    if (rc == 0) {
+        fcntl(fd[0], F_SETFD, FD_CLOEXEC);
+        fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+    }
+#endif /* HAVE_PIPE2 */
+    return rc;
+}
+
 JNIEXPORT jint JNICALL
 Java_java_lang_ProcessImpl_forkAndExec(JNIEnv *env,
                                        jobject process,
@@ -727,14 +751,33 @@ Java_java_lang_ProcessImpl_forkAndExec(JNIEnv *env,
     fds = (*env)->GetIntArrayElements(env, std_fds, NULL);
     if (fds == NULL) goto Catch;
 
-    if ((fds[0] == -1 && pipe(in)  < 0) ||
-        (fds[1] == -1 && pipe(out) < 0) ||
-        (fds[2] == -1 && pipe(err) < 0) ||
-        (pipe(childenv) < 0) ||
-        (pipe(fail) < 0)) {
-        throwInternalIOException(env, errno, "Bad file descriptor", mode);
-        goto Catch;
+    if (mode == MODE_FORK || mode == MODE_VFORK) {
+        /* We cannot downport the full breadth of JDK-8377907 to JDK 25 and earlier, since such
+         * a change (including prerequisites) would be far too invasive for LTS releases. We
+         * therefore only downport a very small part of it, namely the fix for the FORK/VFORK
+         * modes. Fixing FORK/VFORK just requires us to open pipes with CLOEXEC. Fixing the
+         * POSIX_SPAWN mode, otoh, would require rewriting large parts of the spawn layer
+         * (see JDK-8377907).
+         */
+        if ((fds[0] == -1 && pipeSafely(in)  < 0) ||
+            (fds[1] == -1 && pipeSafely(out) < 0) ||
+            (fds[2] == -1 && pipeSafely(err) < 0) ||
+            (pipeSafely(childenv) < 0) ||
+            (pipeSafely(fail) < 0)) {
+            throwInternalIOException(env, errno, "Bad file descriptor", mode);
+            goto Catch;
+        }
+    } else {
+        if ((fds[0] == -1 && pipe(in)  < 0) ||
+            (fds[1] == -1 && pipe(out) < 0) ||
+            (fds[2] == -1 && pipe(err) < 0) ||
+            (pipe(childenv) < 0) ||
+            (pipe(fail) < 0)) {
+            throwInternalIOException(env, errno, "Bad file descriptor", mode);
+            goto Catch;
+        }
     }
+
     c->fds[0] = fds[0];
     c->fds[1] = fds[1];
     c->fds[2] = fds[2];
