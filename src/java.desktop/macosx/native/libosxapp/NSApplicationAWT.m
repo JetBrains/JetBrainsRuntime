@@ -67,6 +67,8 @@ AWT_ASSERT_APPKIT_THREAD;
     dummyEventTimestamp = 0.0;
     seenDummyEventLock = nil;
 
+    // Ensure JNIUtilities flags are early initialized (log):
+    JNIUTIL_init();
 
     // NSApplication will call _RegisterApplication with the application's bundle, but there may not be one.
     // So, we need to call it ourselves to ensure the app is set up properly.
