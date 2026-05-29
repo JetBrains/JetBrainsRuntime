@@ -98,8 +98,6 @@ static VkBool32 debugCallback(
         void* pUserData
 ) {
     if (pCallbackData == NULL) return VK_FALSE;
-    // Here we can filter messages like this:
-    // if (std::strcmp(pCallbackData->pMessageIdName, "UNASSIGNED-BestPractices-DrawState-ClearCmdBeforeDraw") == 0) return VK_FALSE;
 
     int level = J2D_TRACE_OFF;
     if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) level = J2D_TRACE_VERBOSE;
