@@ -25,9 +25,24 @@
 
 #include "jni.h"
 #include "jni_util.h"
+#import "JNIUtilities.h"
+#import "ThreadUtilities.h"
 
 #import <Cocoa/Cocoa.h>
 
+#define DECLARE_BOOL_SYS_PROP_RETURN(dst_var, key, def) \
+{ \
+    static int dst_var = -1; \
+    if (dst_var == -1) { \
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached]; \
+        if (env == NULL) return def; \
+        NSString* sysProp = [PropertiesUtilities javaSystemPropertyForKey:key withEnv:env]; \
+        dst_var = ((def == 0) && (sysProp != nil)) ? \
+                      ([@"true" isCaseInsensitiveLike:sysProp] ? 1 : 0) : def; \
+        if (__JNIUTIL_LOG_PROP) NSLog(@"%s[sys prop: %@]: %d", #dst_var, key, dst_var); \
+    } \
+    return (BOOL)dst_var; \
+}
 
 JNIEXPORT @interface PropertiesUtilities : NSObject
 

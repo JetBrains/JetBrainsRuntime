@@ -24,6 +24,47 @@
  */
 
 #include "JNIUtilities.h"
+#import "PropertiesUtilities.h"
+
+#define DECLARE_ENV_PROP_RETURN(dst_var, key, present, absent) \
+{ \
+    static int dst_var = -1; \
+    if (dst_var == -1) { \
+        dst_var = (getenv(key) != NULL) ? present : absent; \
+        if (__JNIUTIL_LOG_PROP) NSLog(@"%s[env prop: %s]: %d", #dst_var, key, dst_var); \
+    } \
+    return (BOOL)dst_var; \
+}
+
+#ifdef DEBUG
+    #define __JNI_LOG_JNI_EXCEPTION  1
+#else
+    #define __JNI_LOG_JNI_EXCEPTION  0
+#endif
+
+BOOL JNIUTIL_isLogJNIException() {
+    DECLARE_BOOL_SYS_PROP_RETURN(logJNIException, @"sun.awt.mac.exception.log",
+                                 __JNI_LOG_JNI_EXCEPTION);
+}
+#undef __JNI_LOG_JNI_EXCEPTION
+
+BOOL JNIUTIL_isAppkitTrace() {
+    DECLARE_ENV_PROP_RETURN(envAppkitTrace, "JNU_APPKIT_TRACE", 1, 0); // has env prop set
+}
+
+BOOL JNIUTIL_isUseCocoaException() {
+    DECLARE_ENV_PROP_RETURN(envUseCocoaException, "JNU_NO_COCOA_EXCEPTION", 0, 1); // has not env prop set
+}
+
+void JNIUTIL_init() {
+    /* early initialization of runtime flags (dump to the console) */
+#ifdef DEBUG
+    NSLog(@"DEBUG: 1");
+#endif
+    JNIUTIL_isLogJNIException();
+    JNIUTIL_isAppkitTrace();
+    JNIUTIL_isUseCocoaException();
+}
 
 NSString* JavaStringToNSString(JNIEnv *env, jstring jstr) {
     if (jstr == NULL) {
@@ -115,7 +156,6 @@ jstring NormalizedPathJavaStringFromNSString(JNIEnv* env, NSString *str) {
 }
 
 NSString *ThrowableToNSString(JNIEnv *env, jthrowable exc) {
-    (*env)->ExceptionClear(env);
 
     if (JNU_IsInstanceOfByName(env, exc, "java/lang/OutOfMemoryError")) {
         static NSString* const OOMEDescr = @"OutOfMemoryError";
