@@ -783,18 +783,12 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
     const NSUInteger count = [self.queue count];
     if (count != 0) {
         for (NSUInteger i = 0; i < count; i++) {
-            NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-            @try {
+            JNI_COCOA_ENTER()
                 void (^blockCopy)(void) = (void (^)())[self.queue objectAtIndex: i];
                 // invoke callback:
                 [ThreadUtilities invokeBlockCopy:blockCopy];
-            } @catch (NSException *exception) {
-                // handle any exception to avoid crashing the main run loop:
-                NSLog(@"Apple AWT Cocoa Exception: %@", [exception description]);
-                NSLog(@"Apple AWT Cocoa Exception callstack: %@", [exception callStackSymbols]);
-            } @finally {
-                [pool drain];
-            }
+            // handle any exception to avoid crashing the main run loop:
+            JNI_COCOA_EXIT()
         }
         // reset queue anyway:
         [self reset];
