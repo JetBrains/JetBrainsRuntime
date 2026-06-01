@@ -126,6 +126,15 @@ public class WLDataDevice {
         return nativePtr;
     }
 
+    void onNewSerialAvailable() {
+        if (systemClipboard != null) {
+            systemClipboard.trySetPendingWaylandContents();
+        }
+        if (primarySelectionClipboard != null) {
+            primarySelectionClipboard.trySetPendingWaylandContents();
+        }
+    }
+
     static void transferContentsWithType(Transferable contents, String mime, int fd) {
         FileDescriptor javaDestFD = new FileDescriptor();
         jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, fd);
