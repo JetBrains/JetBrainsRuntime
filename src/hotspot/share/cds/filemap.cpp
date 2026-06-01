@@ -217,11 +217,13 @@ void FileMapHeader::populate(FileMapInfo *info, size_t core_region_alignment,
   _obj_alignment = ObjectAlignmentInBytes;
   _compact_strings = CompactStrings;
   _compact_headers = UseCompactObjectHeaders;
+#if INCLUDE_CDS_JAVA_HEAP
   if (CDSConfig::is_dumping_heap()) {
-    _narrow_oop_mode = CompressedOops::mode();
-    _narrow_oop_base = CompressedOops::base();
-    _narrow_oop_shift = CompressedOops::shift();
+    _narrow_oop_mode = ArchiveHeapWriter::narrow_oop_mode();
+    _narrow_oop_base = ArchiveHeapWriter::narrow_oop_base();
+    _narrow_oop_shift = ArchiveHeapWriter::narrow_oop_shift();
   }
+#endif
   _compressed_oops = UseCompressedOops;
   _compressed_class_ptrs = UseCompressedClassPointers;
   if (UseCompressedClassPointers) {
@@ -901,7 +903,7 @@ void FileMapInfo::write_region(int region, char* base, size_t size,
     assert(!CDSConfig::is_dumping_dynamic_archive(), "must be");
     requested_base = (char*)ArchiveHeapWriter::requested_address();
     if (UseCompressedOops) {
-      mapping_offset = (size_t)((address)requested_base - CompressedOops::base());
+      mapping_offset = (size_t)((address)requested_base - ArchiveHeapWriter::narrow_oop_base());
       assert((mapping_offset >> CompressedOops::shift()) << CompressedOops::shift() == mapping_offset, "must be");
     } else {
       mapping_offset = 0; // not used with !UseCompressedOops
@@ -1605,7 +1607,7 @@ address FileMapInfo::heap_region_requested_address() {
     // Runtime base = 0x4000 and shift is also 0. If we map this region at 0x5000, then
     // the value P can remain 0x1200. The decoded address = (0x4000 + (0x1200 << 0)) = 0x5200,
     // which is the runtime location of the referenced object.
-    return /*runtime*/ (address)((uintptr_t)CompressedOops::base() + r->mapping_offset());
+    return /*runtime*/ (address)((uintptr_t)ArchiveHeapWriter::narrow_oop_base() + r->mapping_offset());
   } else {
     // This was the hard-coded requested base address used at dump time. With uncompressed oops,
     // the heap range is assigned by the OS so we will most likely have to relocate anyway, no matter
