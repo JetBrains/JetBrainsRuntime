@@ -52,7 +52,7 @@
 
 GrowableArrayCHeap<u1, mtClassShared>* ArchiveHeapWriter::_buffer = nullptr;
 
-// The following are offsets from buffer_bottom()
+bool ArchiveHeapWriter::_is_writing_deterministic_heap = false;
 size_t ArchiveHeapWriter::_buffer_used;
 
 // Heap root segments
@@ -91,6 +91,45 @@ void ArchiveHeapWriter::init() {
     _source_objs = new GrowableArrayCHeap<oop, mtClassShared>(10000);
 
     guarantee(MIN_GC_REGION_ALIGNMENT <= G1HeapRegion::min_region_size_in_words() * HeapWordSize, "must be");
+
+    if (CDSConfig::old_cds_flags_used()) {
+      // With the old CDS workflow, we can guatantee determninistic output: given
+      // the same classlist file, we can generate the same static CDS archive.
+      // To ensure determinism, we always use the same compressed oop encoding
+      // (zero-based, no shift). See set_requested_address_range().
+      _is_writing_deterministic_heap = true;
+    } else {
+      // Determninistic output is not supported by the new AOT workflow, so
+      // we don't force the (zero-based, no shift) encoding. This way, it is more
+      // likely that we can avoid oop relocation in the production run.
+      _is_writing_deterministic_heap = false;
+    }
+  }
+}
+
+// For ArchiveHeapWriter::narrow_oop_{mode, base, shift}(), see comments
+// in ArchiveHeapWriter::set_requested_address_range(),
+CompressedOops::Mode ArchiveHeapWriter::narrow_oop_mode() {
+  if (is_writing_deterministic_heap()) {
+    return CompressedOops::UnscaledNarrowOop;
+  } else {
+    return CompressedOops::mode();
+  }
+}
+
+address ArchiveHeapWriter::narrow_oop_base() {
+  if (is_writing_deterministic_heap()) {
+    return (address)0;
+  } else {
+    return CompressedOops::base();
+  }
+}
+
+int ArchiveHeapWriter::narrow_oop_shift() {
+  if (is_writing_deterministic_heap()) {
+    return 0;
+  } else {
+    return CompressedOops::shift();
   }
 }
 
@@ -103,7 +142,7 @@ void ArchiveHeapWriter::write(GrowableArrayCHeap<oop, mtClassShared>* roots,
   assert(CDSConfig::is_dumping_heap(), "sanity");
   allocate_buffer();
   copy_source_objs_to_buffer(roots);
-  set_requested_address(heap_info);
+  set_requested_address_range(heap_info);
   relocate_embedded_oops(roots, heap_info);
 }
 
@@ -465,14 +504,55 @@ size_t ArchiveHeapWriter::copy_one_source_obj_to_buffer(oop src_obj) {
   return buffered_obj_offset;
 }
 
-void ArchiveHeapWriter::set_requested_address(ArchiveHeapInfo* info) {
+// Set the range [_requested_bottom, _requested_top), the requested address range of all
+// the archived heap objects in the production run.
+//
+// (1) UseCompressedOops == true && !is_writing_deterministic_heap()
+//
+//     The archived objects are stored using the COOPS encoding of the assembly phase.
+//     We pick a range within the heap used by the assembly phase.
+//
+//     In the production run, if different COOPS encodings are used:
+//         - The heap contents needs to be relocated.
+//
+// (2) UseCompressedOops == true && is_writing_deterministic_heap()
+//
+//     We always use zero-based, zero-shift encoding. _requested_top is aligned to 0x10000000.
+//
+// (3) UseCompressedOops == false:
+//
+//     In the production run, the heap range is usually picked (randomly) by the OS, so we
+//     will almost always need to perform relocation, regardless of how we pick the requested
+//     address range.
+//
+//     So we just hard code it to NOCOOPS_REQUESTED_BASE.
+//
+void ArchiveHeapWriter::set_requested_address_range(ArchiveHeapInfo* info) {
   assert(!info->is_used(), "only set once");
 
   size_t heap_region_byte_size = _buffer_used;
   assert(heap_region_byte_size > 0, "must archived at least one object!");
 
   if (UseCompressedOops) {
-    if (UseG1GC) {
+    if (is_writing_deterministic_heap()) {
+      // Pick a heap range so that requested addresses can be encoded with zero-base/no shift.
+      // We align the requested bottom to at least 1 MB: if the production run uses G1 with a small
+      // heap (e.g., -Xmx256m), it's likely that we can map the archived objects at the
+      // requested location to avoid relocation.
+      //
+      // For other collectors or larger heaps, relocation is unavoidable, but is usually
+      // quite cheap. If you really want to avoid relocation, use the AOT workflow instead.
+      address heap_end = (address)0x100000000;
+      size_t alignment = MAX2(MIN_GC_REGION_ALIGNMENT, 1024 * 1024);
+      if (align_up(heap_region_byte_size, alignment) >= (size_t)heap_end) {
+        log_error(aot, heap)("cached heap space is too large: %zu bytes", heap_region_byte_size);
+        MetaspaceShared::unrecoverable_writing_error();
+      }
+      _requested_bottom = align_down(heap_end - heap_region_byte_size, alignment);
+    } else if (UseG1GC) {
+      // For G1, pick the range at the top of the current heap. If the exact same heap sizes
+      // are used in the production run, it's likely that we can map the archived objects
+      // at the requested location to avoid relocation.
       address heap_end = (address)G1CollectedHeap::heap()->reserved().end();
       log_info(aot, heap)("Heap end = %p", heap_end);
       _requested_bottom = align_down(heap_end - heap_region_byte_size, G1HeapRegion::GrainBytes);
@@ -550,7 +630,14 @@ template <typename T> void ArchiveHeapWriter::relocate_field_in_buffer(T* field_
       assert(source_referent != nullptr, "must be");
     }
     oop request_referent = source_obj_to_requested_obj(source_referent);
-    store_requested_oop_in_buffer<T>(field_addr_in_buffer, request_referent);
+    if (UseCompressedOops && is_writing_deterministic_heap()) {
+      // We use zero-based, 0-shift encoding, so the narrowOop is just the lower
+      // 32 bits of request_referent
+      intptr_t addr = cast_from_oop<intptr_t>(request_referent);
+      *((narrowOop*)field_addr_in_buffer) = checked_cast<narrowOop>(addr);
+    } else {
+      store_requested_oop_in_buffer<T>(field_addr_in_buffer, request_referent);
+    }
     mark_oop_pointer<T>(field_addr_in_buffer, oopmap);
   }
 }
