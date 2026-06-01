@@ -388,7 +388,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
         final WLInputState oldInputState = inputState;
         final WLInputState newInputState = oldInputState.updatedFromPointerEvent(e);
-        inputState = newInputState;
+        setInputState(newInputState);
         if (e.hasLeaveEvent() || e.hasEnterEvent()) {
             // We've lost the control over the cursor, assume no knowledge about it
             getCursorManager().reset();
@@ -416,7 +416,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
         final long timestamp = System.currentTimeMillis();
 
-        inputState = inputState.updatedFromKeyEvent(serial);
+        setInputState(inputState.updatedFromKeyEvent(serial));
 
         final long surfacePtr = inputState.surfaceForKeyboardInput();
         final WLComponentPeer peer = peerFromSurface(surfacePtr);
@@ -472,7 +472,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchKeyboardModifiersEvent(long serial) {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
-        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers());
+        setInputState(inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers()));
         WLDropTargetContextPeer.getInstance().handleModifiersUpdate();
     }
 
@@ -513,7 +513,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                 postPriorityEvent(windowEnterEvent);
             }
         }
-        inputState = newInputState;
+        setInputState(newInputState);
     }
 
     private static void dispatchKeyboardLeaveEvent(long serial, long surfacePtr) {
@@ -536,7 +536,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
             postPriorityEvent(winLostFocusEvent);
         }
-        inputState = newInputState;
+        setInputState(newInputState);
     }
 
     /**
@@ -558,7 +558,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             wlSurfaceToPeerMap.remove(wlSurfacePtr);
         }
 
-        inputState = inputState.updatedFromUnregisteredSurface(wlSurfacePtr);
+        setInputState(inputState.updatedFromUnregisteredSurface(wlSurfacePtr));
     }
 
     static WLWindowPeer peerFromSurface(long wlSurfacePtr) {
@@ -1183,9 +1183,19 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return inputState;
     }
 
+    private static void setInputState(WLInputState newInputState) {
+        WLInputState oldInputState = inputState;
+        inputState = newInputState;
+
+        boolean hasNewSerial = oldInputState.latestInputSerial() != newInputState.latestInputSerial();
+        if (dataDevice != null && hasNewSerial) {
+            dataDevice.onNewSerialAvailable();
+        }
+    }
+
     // this emulates pointer leave event, which isn't sent sometimes by compositor
     static void resetPointerInputState() {
-        inputState = inputState.resetPointerState();
+        setInputState(inputState.resetPointerState());
     }
 
     static boolean isInitialized() {
