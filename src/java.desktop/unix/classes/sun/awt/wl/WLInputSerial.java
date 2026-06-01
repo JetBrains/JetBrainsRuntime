@@ -34,11 +34,11 @@ public record WLInputSerial(long serial, boolean isFresh) {
     public static final WLInputSerial INVALID = new WLInputSerial();
 
     public WLInputSerial() {
-        this(0, false);
+        this(-1, false);
     }
 
     public WLInputSerial(long serial) {
-        this(serial, serial != 0);
+        this(serial, serial != -1);
     }
 
     public boolean isStale() {
@@ -46,7 +46,7 @@ public record WLInputSerial(long serial, boolean isFresh) {
     }
 
     public boolean isValid() {
-        return serial != 0;
+        return serial != -1;
     }
 
     public WLInputSerial makeStale() {
@@ -58,5 +58,29 @@ public record WLInputSerial(long serial, boolean isFresh) {
             return this;
         }
         return isFresh ? this : fallback;
+    }
+
+    public boolean isNewerThan(WLInputSerial compare) {
+        if (!isValid()) {
+            return false;
+        }
+
+        if (!compare.isValid()) {
+            return true;
+        }
+
+        // a serial can theoretically wrap around its uint32 range
+        long delta = ((1L << 32) + serial - compare.serial) % (1L << 32);
+
+        // no wrap around, serial > compare.serial
+        return 0 < delta && delta < (1L << 31);
+    }
+
+    public WLInputSerial newerOrElse(WLInputSerial compare, WLInputSerial fallback) {
+        if (isNewerThan(compare)) {
+            return this;
+        } else {
+            return fallback;
+        }
     }
 }
