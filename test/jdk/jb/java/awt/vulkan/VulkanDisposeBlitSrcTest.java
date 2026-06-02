@@ -61,7 +61,7 @@ public class VulkanDisposeBlitSrcTest {
 
         // Dispose a
         WeakReference<SurfaceData> ref = new WeakReference<>(SurfaceManager.getManager(a).getPrimarySurfaceData());
-        MemorySegment vksd = MemorySegment.ofAddress(ref.get().getNativeOps()).reinterpret(160); // sizeof(VKSDOps)
+        MemorySegment vksd = MemorySegment.ofAddress(ref.get().getNativeOps()).reinterpret(144); // sizeof(VKSDOps)
         a = null;
         final int MAX_ITERATIONS = 1000;
         for (int i = 0; i < MAX_ITERATIONS && ref.get() != null; i++) System.gc();
