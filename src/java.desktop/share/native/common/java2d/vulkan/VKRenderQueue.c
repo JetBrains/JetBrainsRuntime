@@ -426,7 +426,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: END_SHAPE_CLIP");
-                VKRenderer_GetContext()->clipRect = NO_CLIP;
+                VKRenderer_GetContext()->clipRect = J2D_VK_NO_CLIP_RECT;
                 VKRenderer_GetContext()->clipModCount++;
             }
             break;
@@ -435,7 +435,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_CLIP");
                 ARRAY_RESIZE(VKRenderer_GetContext()->clipSpanVertices, 0);
-                VKRenderer_GetContext()->clipRect = NO_CLIP;
+                VKRenderer_GetContext()->clipRect = J2D_VK_NO_CLIP_RECT;
                 VKRenderer_GetContext()->clipModCount++;
             }
             break;
@@ -499,8 +499,8 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_TRANSFORM");
                 VKRenderingContext* context = VKRenderer_GetContext();
-                if (VK_IS_NEQ_TRANSFORM(&context->constants.transform, &VK_ID_TRANSFORM)) {
-                    context->constants.transform = VK_ID_TRANSFORM;
+                if (VK_IS_NEQ_TRANSFORM(&context->constants.transform, &J2D_VK_ID_TRANSFORM)) {
+                    context->constants.transform = J2D_VK_ID_TRANSFORM;
                     context->transformModCount++;
                 }
             }
