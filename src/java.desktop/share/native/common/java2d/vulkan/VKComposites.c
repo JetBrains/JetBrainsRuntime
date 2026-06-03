@@ -23,6 +23,8 @@
 
 #include "VKComposites.h"
 
+#include <stdbool.h>
+
 #define ALPHA_BLEND(NAME, SRC_COLOR, DST_COLOR, SRC_ALPHA, DST_ALPHA)           \
     VKComposites_AddState(&composites, ALPHA_COMPOSITE_ ## NAME, (VKCompositeState)    \
     {{ .blendEnable = VK_TRUE,                                                  \
