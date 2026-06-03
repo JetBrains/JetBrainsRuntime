@@ -31,7 +31,7 @@ import java.util.concurrent.CountDownLatch;
 
 /*
  * @test
- * @requires os.family == "linux"
+ * @requires os.family == "linux" | os.family == "windows"
  * @summary Verifies that Vulkan mask fill works
  * @modules java.desktop/sun.java2d.vulkan:+open
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True VulkanMaskFillTest

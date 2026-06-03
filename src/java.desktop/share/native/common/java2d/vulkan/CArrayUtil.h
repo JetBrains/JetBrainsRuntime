@@ -1,6 +1,25 @@
 #ifndef C_ARRAY_UTIL_H
 #define C_ARRAY_UTIL_H
 
+// Cross-platform VLA wrapper
+#if defined(_MSC_VER)
+
+#include <malloc.h>
+
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE* NAME = (TYPE*) _alloca(sizeof(TYPE) * SIZE)
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) \
+TYPE **NAME = _alloca(sizeof(TYPE*) * SIZE1);   \
+for (size_t i = 0; i < SIZE1; ++i) {            \
+NAME[i] = _alloca(sizeof(TYPE) * SIZE2);    \
+}
+
+#else
+
+#define DECL_ARRAY(TYPE, NAME, SIZE) TYPE NAME[SIZE]
+#define DECL_ARRAY_2D(TYPE, NAME, SIZE1, SIZE2) TYPE NAME[SIZE1][SIZE2]
+
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
