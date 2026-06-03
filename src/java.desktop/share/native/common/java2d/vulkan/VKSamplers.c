@@ -26,7 +26,7 @@
 #include "VKSamplers.h"
 
 VKSamplers VKSamplers_Create(VKDevice* device) {
-    VKSamplers result = {};
+    VKSamplers result = { 0 };
     // Create descriptor pool.
     uint32_t size = SAMPLER_FILTER_COUNT * SAMPLER_WRAP_COUNT;
     VkDescriptorPoolSize poolSize = {
@@ -40,7 +40,7 @@ VKSamplers VKSamplers_Create(VKDevice* device) {
         .maxSets = size
     };
     VK_IF_ERROR(device->vkCreateDescriptorPool(device->handle, &poolInfo, NULL, &result.descriptorPool)) {
-        return (VKSamplers) {};
+        return (VKSamplers) { 0 };
     }
     // Create descriptor set layout.
     VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {
@@ -57,7 +57,7 @@ VKSamplers VKSamplers_Create(VKDevice* device) {
     };
     VK_IF_ERROR(device->vkCreateDescriptorSetLayout(device->handle, &descriptorSetLayoutCreateInfo, NULL, &result.descriptorSetLayout)) {
         VKSamplers_Destroy(device, result);
-        return (VKSamplers) {};
+        return (VKSamplers) { 0 };
     }
     return result;
 }
