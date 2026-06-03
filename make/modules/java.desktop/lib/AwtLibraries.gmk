@@ -183,6 +183,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     NAME := awt, \
     EXTRA_SRC := $(LIBAWT_EXTRA_SRC), \
     EXTRA_FILES := $(LIBAWT_EXTRA_FILES), \
+    EXCLUDES := $(VULKAN_EXCLUDES), \
     EXCLUDE_FILES := $(LIBAWT_EXCLUDE_FILES), \
     OPTIMIZATION := HIGHEST, \
     CFLAGS := $(LIBAWT_CFLAGS) $(X_CFLAGS) $(DBUS_CFLAGS), \
@@ -242,7 +243,7 @@ endif
 # Compile Vulkan shaders
 define compile-spirv
   $(call MakeTargetDir)
-  $(VULKAN_SHADER_COMPILER) -D$(call uppercase,$(patsubst .%,STAGE_%,$(suffix $<))) -o '$(call DecodeSpace, $@)' '$(call DecodeSpace, $<)'
+  $(VULKAN_SHADER_COMPILER) -D$(call uppercase,$(patsubst .%,STAGE_%,$(suffix $<))) -o '$(call FixPath,$(call DecodeSpace,$@))' '$(call FixPath,$(call DecodeSpace,$<))'
 endef
 spirv-name = $(strip $1).h
 
