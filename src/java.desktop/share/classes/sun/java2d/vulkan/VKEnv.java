@@ -70,6 +70,7 @@ public final class VKEnv {
 
     public static native long initPlatformWayland(long nativePtr);
     private static native long initPlatformX11Native(long nativePtr);
+    public static native long initPlatformWin32();
     private static native VKGPU[] initNative(long platformData);
 
     static class VKInitializationException extends RuntimeException {
