@@ -68,6 +68,7 @@ public final class VKEnv {
 
     public static native long initPlatformWayland(long nativePtr);
     public static native long initPlatformX11(long nativePtr);
+    public static native long initPlatformWin32();
     private static native VKGPU[] initNative(long platformData);
 
     public static synchronized void init(long platformData) {
