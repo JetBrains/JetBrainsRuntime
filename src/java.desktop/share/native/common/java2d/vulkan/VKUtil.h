@@ -26,9 +26,10 @@
 #include <stdlib.h>
 #include <stdalign.h>
 #include <Trace.h>
-#include "awt.h"
 #include "jni_util.h"
 #include "VKTypes.h"
+
+extern JavaVM *jvm;
 
 // VK_DEBUG_RANDOM may be used to randomly tune some parameters and turn off some features,
 // which would allow to cover wider range of scenarios and catch configuration-specific errors early.
@@ -72,10 +73,12 @@ static inline VkBool32 VKUtil_CheckError(VkResult result, const char* errorMessa
 typedef ARRAY(pchar) pchar_array_t;
 typedef ARRAY(jint) jint_array_t;
 
-#define VK_ID_TRANSFORM ((VKTransform)\
-    {1.0f, 0.0f, 0.0f,                \
-     0.0f, 1.0f, 0.0f})
+#define J2D_VK_ID_TRANSFORM_INITIALIZER      \
+    {1.0f, 0.0f, 0.0f,  \
+     0.0f, 1.0f, 0.0f}
 //   0.0f, 0.0f, 1.0f  -- omitted values
+
+#define J2D_VK_ID_TRANSFORM ((VKTransform) J2D_VK_ID_TRANSFORM_INITIALIZER)
 
 #define VK_IS_NEQ_TRANSFORM(PA, PB) \
     ((PA)->m00 != (PB)->m00 ||     \
@@ -109,7 +112,7 @@ typedef enum {
  */
 typedef struct {
     VkFormat              aliases[FORMAT_ALIAS_COUNT];
-    uint                  bytes;
+    uint32_t              bytes;
     VkImageAspectFlagBits aspect;
 } FormatGroup;
 
