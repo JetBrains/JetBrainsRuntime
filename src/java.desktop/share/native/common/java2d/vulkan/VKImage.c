@@ -25,6 +25,8 @@
  */
 
 #include <assert.h>
+#include <stdbool.h>
+
 #include "VKUtil.h"
 #include "VKAllocator.h"
 #include "VKBuffer.h" // TODO refactor this
