@@ -35,7 +35,7 @@ import java.io.IOException;
 
 /*
  * @test
- * @requires os.family == "linux"
+ * @requires os.family == "linux" | os.family == "windows"
  * @summary Verifies that Vulkan blit works
  * @modules java.desktop/sun.java2d.vulkan:+open
  * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanBlitTest TRANSLUCENT
