@@ -22,13 +22,13 @@
 //
 
 // for JTwork/classes/0/test/lib/jdk/test/lib/net/SimpleSSLContext.class
-grant codeBase "file:${test.classes}/../../../../test/lib/-" {
+grant codeBase "file:${test.classes}/test/lib/-" {
     permission java.util.PropertyPermission "test.src.path", "read";
     permission java.io.FilePermission "${test.src}/../../../../lib/jdk/test/lib/net/testkeys", "read";
 };
 
 // for jdk/httpclient/test/lib/* classes
-grant codeBase "file:${test.classes}/../../../../test/jdk/java/net/httpclient/lib/-" {
+grant codeBase "file:${test.classes}/test/jdk/java/net/httpclient/lib/-" {
     permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.net.http.common";
     permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.net.http.frame";
     permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.net.http.hpack";

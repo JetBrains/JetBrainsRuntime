@@ -21,11 +21,6 @@
 // questions.
 //
 
-// for JTwork/classes/test/lib/jdk/test/lib/util/FileUtils.class
-grant codeBase "file:${test.classes}/../../../../../../test/lib/-" {
-    permission java.util.PropertyPermission "*", "read";
-};
-
 grant codeBase "file:${test.classes}/*" {
     permission java.net.URLPermission "http://localhost:*/*", "GET";
 

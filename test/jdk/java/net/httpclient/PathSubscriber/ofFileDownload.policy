@@ -22,7 +22,7 @@
 //
 
 // for test/lib library classes
-grant codeBase "file:${test.classes}/../../../../../test/lib/-" {
+grant codeBase "file:${test.classes}/test/lib/-" {
     permission java.util.PropertyPermission "java.vm.info", "read";
     permission java.util.PropertyPermission "jdk.debug", "read";
     permission java.util.PropertyPermission "sun.arch.data.model", "read";
@@ -39,7 +39,7 @@ grant codeBase "file:${test.classes}/../../../../../test/lib/-" {
 };
 
 // for jdk/httpclient/test/lib/* classes
-grant codeBase "file:${test.classes}/../../../../../test/jdk/java/net/httpclient/lib/-" {
+grant codeBase "file:${test.classes}/test/jdk/java/net/httpclient/lib/-" {
     permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.net.http.common";
     permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.net.http.frame";
     permission java.lang.RuntimePermission "accessClassInPackage.jdk.internal.net.http.hpack";
