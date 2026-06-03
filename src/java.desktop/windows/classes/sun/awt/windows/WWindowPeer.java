@@ -69,9 +69,11 @@ import sun.awt.TimedWindowEvent;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.Win32GraphicsEnvironment;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.pipe.Region;
 
 import sun.java2d.SunGraphics2D;
+import sun.java2d.vulkan.Win32VKWindowSurfaceData;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.SunGraphicsEnvironment.toUserSpace;
@@ -237,7 +239,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             this.isOpaque = true;
             setOpaque(((Window)target).isOpaque());
         }
-        
+
         if (target instanceof RootPaneContainer) {
             JRootPane rootpane = ((RootPaneContainer)target).getRootPane();
             if (rootpane != null) {
@@ -843,16 +845,21 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     private void updateWindow(boolean repaint) {
         Window w = (Window)target;
         synchronized (getStateLock()) {
-            if (isOpaque || !w.isVisible() ||
+            if (!w.isVisible() ||
                 (w.getWidth() <= 0) || (w.getHeight() <= 0))
             {
                 return;
             }
-            TranslucentWindowPainter currentPainter = painter;
-            if (currentPainter != null) {
-                currentPainter.updateWindow(repaint);
-            } else if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer("Translucent window painter is null in updateWindow");
+            if (!isOpaque) {
+                TranslucentWindowPainter currentPainter = painter;
+                if (currentPainter != null) {
+                    currentPainter.updateWindow(repaint);
+                } else if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                    log.finer("Translucent window painter is null in updateWindow");
+                }
+            }
+            if (surfaceData instanceof BufferedSurfaceDataExt csd) {
+                csd.commit();
             }
         }
     }
@@ -883,6 +890,16 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         Graphics g = super.getGraphics();
         if (!(g instanceof SunGraphics2D)) return g;
         SunGraphics2D sg = (SunGraphics2D)g;
+
+        // Decorated Vulkan windows' surface only covers the client area,
+        // so we undo java2d's translation that assumes otherwise.
+        if (surfaceData instanceof Win32VKWindowSurfaceData) {
+            Insets insets = ((Window) target).getInsets();
+            if (insets.left != 0 || insets.top != 0) {
+                sg.translate(-insets.left, -insets.top);
+            }
+            return sg; // In this case, we don't want to use the following correction.
+        }
 
         // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
         // to place [0, 0] of the client area in its correct device pixel.

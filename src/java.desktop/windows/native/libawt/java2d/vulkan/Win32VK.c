@@ -11,7 +11,6 @@ ENTRY(__VA_ARGS__, vkGetPhysicalDeviceWin32PresentationSupportKHR); \
 ENTRY(__VA_ARGS__, vkCreateWin32SurfaceKHR); \
 
 PLATFORM_FUNCTION_TABLE(DECL_PFN)
-static HWND hwnd;
 
 static VkBool32 Win32VK_InitFunctions(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     VkBool32 missingAPI = JNI_FALSE;
@@ -35,12 +34,11 @@ static VKPlatformData platformData = {
 
 /*
  * Class:     sun_java2d_vulkan_VKEnv
- * Method:    initPlatform
- * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
+ * Method:    initPlatformWin32
+ * Signature: ()J
  */
 JNIEXPORT jlong JNICALL
-Java_sun_java2d_vulkan_VKEnv_initPlatform(JNIEnv* env, jclass vkenv, jlong windowHandle) {
-    hwnd = (HWND)windowHandle;
+Java_sun_java2d_vulkan_VKEnv_initPlatformWin32(JNIEnv* env, jclass vkenv) {
     return ptr_to_jlong(&platformData);
 }
 
@@ -60,10 +58,7 @@ static void Win32VK_InitSurfaceData(VKWinSDOps* surface, void* data) {
 }
 
 static void Win32VK_OnSurfaceResize(VKWinSDOps* surface) {
-    // TODO: not sure if we need to do anything here
-    J2dRlsTraceLn(J2D_TRACE_WARNING, "Win32VK_OnSurfaceResize() called, but not implemented yet");
-    // JNIEnv* env = JNU_GetEnv(jvm, JNI_VERSION_1_2);
-    // JNU_CallMethodByName(env, NULL, surface->vksdOps.sdOps.sdObject, "bufferAttached", "()V");
+    // No-op
 }
 
 /*
@@ -74,4 +69,28 @@ static void Win32VK_OnSurfaceResize(VKWinSDOps* surface) {
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_Win32VKWindowSurfaceData_initOps(
         JNIEnv *env, jobject vksd, jint format) {
 VKSD_CreateSurface(env, vksd, VKSD_WINDOW, format, Win32VK_OnSurfaceResize);
+}
+
+/*
+ * Class:     sun_java2d_vulkan_Win32VKSurfaceData_Win32VKWindowSurfaceData
+ * Method:    assignWindow
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_Win32VKWindowSurfaceData_assignWindow(
+        JNIEnv *env, jobject vksd, jlong hwnd) {
+    VKSD_InitWindowSurface(env, vksd, Win32VK_InitSurfaceData, jlong_to_ptr(hwnd));
+}
+
+/*
+ * Class:     sun_java2d_vulkan_Win32VKWindowSurfaceData
+ * Method:    getClientAreaSizePackedIntoLong
+ * Signature: (J)J
+ */
+JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_Win32VKWindowSurfaceData_getClientAreaSizePackedIntoLong(
+        JNIEnv *env, jclass cls, jlong hwnd) {
+    RECT rect = {0}; // fields are 32-bit signed ints
+    // According to WinAPI, the worst thing that can happen is getting stale data here,
+    // and I don't think using SyncCall would help with that in any way...
+    GetClientRect(jlong_to_ptr(hwnd), &rect);
+    return ((jlong)rect.right << 32) | rect.bottom;
 }
