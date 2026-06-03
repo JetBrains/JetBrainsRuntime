@@ -192,7 +192,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
         return VK_FALSE;
     }
-    VkSurfaceFormatKHR formats[formatCount];
+    DECL_ARRAY(VkSurfaceFormatKHR, formats, formatCount);
     VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, formats)) {
         return VK_FALSE;
     }
@@ -218,7 +218,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
         return VK_FALSE;
     }
-    VkPresentModeKHR presentModes[presentModeCount];
+    DECL_ARRAY(VkPresentModeKHR, presentModes, presentModeCount);
     VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
         return VK_FALSE;
     }
