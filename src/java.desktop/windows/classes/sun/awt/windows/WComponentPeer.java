@@ -65,11 +65,13 @@ import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsEnvironment;
 import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.InvalidPipeException;
 import sun.java2d.ScreenUpdateManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.d3d.D3DSurfaceData;
 import sun.java2d.opengl.OGLSurfaceData;
+import sun.java2d.vulkan.Win32VKWindowSurfaceData;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
@@ -211,7 +213,7 @@ public abstract class WComponentPeer extends WObjectPeer
                 cont.validate();
 
                 if (surfaceData instanceof D3DSurfaceData.D3DWindowSurfaceData ||
-                    surfaceData instanceof OGLSurfaceData)
+                        surfaceData instanceof OGLSurfaceData || surfaceData instanceof Win32VKWindowSurfaceData)
                 {
                     // When OGL or D3D is enabled, it is necessary to
                     // replace the SurfaceData for each dynamic layout
@@ -372,6 +374,8 @@ public abstract class WComponentPeer extends WObjectPeer
                 }
                 if (surfaceData instanceof D3DSurfaceData.D3DWindowSurfaceData d3DWindowSurfaceData) {
                     d3DWindowSurfaceData.displayContent(0, 0, 0, 0);
+                } else if (surfaceData instanceof BufferedSurfaceDataExt bufferedSurfaceData) {
+                    bufferedSurfaceData.commit();
                 }
                 return;
             case FocusEvent.FOCUS_LOST:
@@ -475,13 +479,20 @@ public abstract class WComponentPeer extends WObjectPeer
                 if (pData == 0) {
                     return;
                 }
-                numBackBuffers = newNumBackBuffers;
-                ScreenUpdateManager mgr = ScreenUpdateManager.getInstance();
-                oldData = surfaceData;
-                mgr.dropScreenSurface(oldData);
-                createScreenSurface(true);
-                if (oldData != null) {
-                    oldData.invalidate();
+                if (surfaceData instanceof Win32VKWindowSurfaceData vksd) {
+                    vksd.revalidate();
+                    Rectangle bounds = getBounds();
+                    handlePaint(0, 0, bounds.width, bounds.height);
+                    numBackBuffers = 0;
+                } else {
+                    numBackBuffers = newNumBackBuffers;
+                    ScreenUpdateManager mgr = ScreenUpdateManager.getInstance();
+                    oldData = surfaceData;
+                    mgr.dropScreenSurface(oldData);
+                    createScreenSurface(true);
+                    if (oldData != null) {
+                        oldData.invalidate();
+                    }
                 }
 
                 oldBB = backBuffer;
