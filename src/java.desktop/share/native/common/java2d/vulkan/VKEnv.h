@@ -66,6 +66,6 @@ struct VKEnv {
     DEBUG_INSTANCE_FUNCTION_TABLE(DECL_PFN)
 };
 
-VKEnv* VKEnv_GetInstance();
+JNIEXPORT VKEnv* VKEnv_GetInstance();
 
 #endif //VKEnv_h_Included
