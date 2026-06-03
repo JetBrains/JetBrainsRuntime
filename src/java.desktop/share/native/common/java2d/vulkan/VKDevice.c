@@ -33,7 +33,14 @@
 #include "VKRenderer.h"
 #include "VKTexturePool.h"
 
-#define CAP_PRESENTABLE_BIT sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4146)
+#endif
+static const jint CAP_PRESENTABLE_BIT = sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT;
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define VK_LITTLE_ENDIAN
@@ -90,13 +97,13 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     // Query supported layers.
     uint32_t layerCount;
     VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, NULL)) return;
-    VkLayerProperties allLayers[layerCount];
+    DECL_ARRAY(VkLayerProperties, allLayers, layerCount);
     VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, allLayers)) return;
 
     // Query supported extensions.
     uint32_t extensionCount;
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL)) return;
-    VkExtensionProperties allExtensions[extensionCount];
+    DECL_ARRAY(VkExtensionProperties, allExtensions, extensionCount);
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, allExtensions)) return;
 
     // Check API version.
@@ -131,7 +138,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     // Query queue family properties.
     uint32_t queueFamilyCount = 0;
     vk->vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
-    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+    DECL_ARRAY(VkQueueFamilyProperties, queueFamilies, queueFamilyCount);
     vk->vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
 
     // Find a queue family.
@@ -157,7 +164,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
                 queueFamily = j;
             } else if (queueFamily == -1) {
                 // We have chosen no queue so far, choose this for now.
-                queueFamily = j;
+                queueFamily = (uint32_t)j;
             }
         }
     }
@@ -178,7 +185,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
 
     // Query supported formats.
     J2dRlsTraceLn(J2D_TRACE_INFO, "    Supported device formats:");
-    VKSampledSrcTypes sampledSrcTypes = {{}};
+    VKSampledSrcTypes sampledSrcTypes = {0};
     VKSampledSrcType* SRCTYPE_4BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_4BYTE];
     VKSampledSrcType* SRCTYPE_3BYTE = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_3BYTE];
     VKSampledSrcType* SRCTYPE_565 = &sampledSrcTypes.table[sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_565];
@@ -333,9 +340,9 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
         .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueCreateInfo,
-        .enabledLayerCount = device->enabledLayers.size,
+        .enabledLayerCount = (uint32_t)device->enabledLayers.size,
         .ppEnabledLayerNames = (const char *const *) device->enabledLayers.data,
-        .enabledExtensionCount = device->enabledExtensions.size,
+        .enabledExtensionCount = (uint32_t)device->enabledExtensions.size,
         .ppEnabledExtensionNames = (const char *const *) device->enabledExtensions.data,
         .pEnabledFeatures = &features10
     };
@@ -360,7 +367,7 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
 #define PFN_CALC_MISSING_NAMES_SIZE(_, NAME) if (device->NAME == NULL) size += sizeof(#NAME) + 1;
         DEVICE_FUNCTION_TABLE(PFN_CALC_MISSING_NAMES_SIZE)
         if (device->caps & CAP_PRESENTABLE_BIT) { SWAPCHAIN_DEVICE_FUNCTION_TABLE(PFN_CALC_MISSING_NAMES_SIZE) }
-        char message[size];
+        DECL_ARRAY(char, message, size);
         memcpy(message, REQUIRED_API_MISSING_MESSAGE, size = sizeof(REQUIRED_API_MISSING_MESSAGE) - 1);
 #define PFN_APPEND_MISSING_NAME(_, NAME) if (device->NAME == NULL) { \
         memcpy(message + size, #NAME ", ", sizeof(#NAME) + 1); size += sizeof(#NAME) + 1; }
