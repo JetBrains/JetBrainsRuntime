@@ -28,17 +28,30 @@ package sun.java2d.vulkan;
 import sun.awt.windows.WComponentPeer;
 import sun.java2d.SurfaceData;
 
-import java.awt.*;
+import java.awt.Rectangle;
 
 public class Win32VKWindowSurfaceData extends VKSurfaceData {
 
-    private WComponentPeer peer;
+    private final WComponentPeer peer;
 
     public Win32VKWindowSurfaceData(WComponentPeer peer) {
-        VKGraphicsConfig gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
-        super(gc.getFormat(), peer.getColorModel().getTransparency(), WINDOW);
+        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(),
+              peer.getColorModel().getTransparency(), WINDOW);
         this.peer = peer;
-        initOps(gc.getFormat().getValue(getTransparency()));
+        this.gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
+
+        long hwnd = peer.getHWnd();
+        updateBoundsFromNativeData(hwnd);
+        initOps(getFormat().getValue(getTransparency()));
+        assignWindow(hwnd);
+        configure();
+    }
+
+    public void revalidate() {
+        long hwnd = peer.getHWnd();
+        updateBoundsFromNativeData(hwnd);
+        revalidate((VKGraphicsConfig) peer.getGraphicsConfiguration());
+        configure();
     }
 
     @Override
@@ -53,9 +66,7 @@ public class Win32VKWindowSurfaceData extends VKSurfaceData {
 
     @Override
     public Rectangle getBounds() {
-        Rectangle bounds = peer.getBounds();
-        bounds.x = bounds.y = 0;
-        return bounds;
+        return new Rectangle(width, height);
     }
 
     @Override
@@ -64,4 +75,14 @@ public class Win32VKWindowSurfaceData extends VKSurfaceData {
     }
 
     private native void initOps(int format);
+
+    private native void assignWindow(long hwnd);
+
+    private static native long getClientAreaSizePackedIntoLong(long hwnd);
+
+    private void updateBoundsFromNativeData(long hwnd) {
+        long packedWidthHeight = getClientAreaSizePackedIntoLong(hwnd);
+        this.width = (int) (packedWidthHeight >>> 32);
+        this.height = (int) packedWidthHeight;
+    }
 }
