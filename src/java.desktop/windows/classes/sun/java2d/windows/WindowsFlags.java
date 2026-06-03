@@ -91,6 +91,7 @@ public final class WindowsFlags {
     private static boolean d3dOnScreenEnabled;
     private static boolean oglEnabled;
     private static boolean oglVerbose;
+    private static boolean vulkanEnabled;
     private static boolean magPresent;
     private static boolean setHighDPIAware;
     // TODO: other flags, including nopixfmt
@@ -190,6 +191,13 @@ public final class WindowsFlags {
                 oglEnabled = false;
             }
         }
+
+        vulkanEnabled = getBooleanProp("sun.java2d.vulkan", false);
+        if (vulkanEnabled) {
+            d3dEnabled = false;
+            oglEnabled = false;
+        }
+
         gdiBlitEnabled = getBooleanProp("sun.java2d.gdiBlit", true);
         d3dSet = getPropertySet("sun.java2d.d3d");
         if (d3dSet) {
@@ -256,5 +264,9 @@ public final class WindowsFlags {
 
     public static boolean isOGLVerbose() {
         return oglVerbose;
+    }
+
+    public static boolean isVulkanEnabled() {
+        return vulkanEnabled;
     }
 }
