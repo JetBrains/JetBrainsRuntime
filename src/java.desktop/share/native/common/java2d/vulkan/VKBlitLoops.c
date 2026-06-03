@@ -191,11 +191,11 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
 
             {
                 VkBufferMemoryBarrier bufferBarrier;
-                VKBarrierBatch bufferBatch = {};
+                VKBarrierBatch bufferBatch = { 0 };
                 VKBuffer_AddBarrier(&bufferBarrier, &bufferBatch, &buffer,
                                     VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
                 VkImageMemoryBarrier imageBarrier;
-                VKBarrierBatch imageBatch = {};
+                VKBarrierBatch imageBatch = { 0 };
                 VKImage_AddBarrier(&imageBarrier, &imageBatch, image,
                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
                                    VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -221,7 +221,7 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
             {
                 VkImageMemoryBarrier barrier;
-                VKBarrierBatch barrierBatch = {};
+                VKBarrierBatch barrierBatch = { 0 };
                 VKImage_AddBarrier(&barrier, &barrierBatch, image,
                                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                                    VK_ACCESS_SHADER_READ_BIT,
@@ -312,7 +312,7 @@ void VKBlitLoops_SurfaceToSwBlit(JNIEnv* env, VKSDOps* src, SurfaceDataOps* dst,
             VKRenderer_FlushRenderPass(src);
             {
                 VkImageMemoryBarrier barrier;
-                VKBarrierBatch barrierBatch = {};
+                VKBarrierBatch barrierBatch = { 0 };
                 VKImage_AddBarrier(&barrier, &barrierBatch, image,
                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
                                    VK_ACCESS_TRANSFER_READ_BIT,
