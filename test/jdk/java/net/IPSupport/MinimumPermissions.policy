@@ -21,7 +21,7 @@
 // questions.
 //
 
-grant codeBase "file:${test.classes}/../../../../test/lib/-" {
+grant codeBase "file:${test.classes}/test/lib/-" {
     permission java.net.SocketPermission "localhost:0", "listen,resolve";
     permission java.util.PropertyPermission "java.net.preferIPv4Stack", "read";
     permission java.util.PropertyPermission "java.net.preferIPv6Addresses", "read";
