@@ -188,11 +188,11 @@ static VKRenderingContext context = {
         .constantsModCount = 1,
         .transformModCount = 1,
         .constants = {
-            .transform = VK_ID_TRANSFORM,
+            .transform = J2D_VK_ID_TRANSFORM_INITIALIZER,
             .composite = { 0, 1.0f }
         },
         .clipModCount = 1,
-        .clipRect = NO_CLIP,
+        .clipRect = J2D_VK_NO_CLIP_RECT_INITIALIZER,
         .clipSpanVertices = { .as_untyped = {0} }
 };
 
@@ -243,7 +243,7 @@ static VKBuffer VKRenderer_GetVertexBuffer(VKRenderer* renderer) {
     POOL_TAKE(renderer, vertexBufferPool, buffer);
     if (buffer.handle != VK_NULL_HANDLE) return buffer;
     uint32_t bufferCount = VERTEX_BUFFER_PAGE_SIZE / VERTEX_BUFFER_SIZE;
-    VKBuffer buffers[bufferCount];
+    DECL_ARRAY(VKBuffer, buffers,bufferCount);
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                            VKRenderer_FindVertexBufferMemoryType,
                                            VERTEX_BUFFER_SIZE, VERTEX_BUFFER_PAGE_SIZE, &bufferCount, buffers);
@@ -265,12 +265,12 @@ static VKTexelBuffer VKRenderer_GetMaskFillBuffer(VKRenderer* renderer) {
     POOL_TAKE(renderer, maskFillBufferPool, buffer);
     if (buffer.buffer.handle != VK_NULL_HANDLE) return buffer;
     uint32_t bufferCount = MASK_FILL_BUFFER_PAGE_SIZE / MASK_FILL_BUFFER_SIZE;
-    VKBuffer buffers[bufferCount];
+    DECL_ARRAY(VKBuffer, buffers, bufferCount);
     VKMemory page = VKBuffer_CreateBuffers(renderer->device, VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT,
                                            VKRenderer_FindMaskFillBufferMemoryType,
                                            MASK_FILL_BUFFER_SIZE, MASK_FILL_BUFFER_PAGE_SIZE, &bufferCount, buffers);
     VK_RUNTIME_ASSERT(page);
-    VKTexelBuffer texelBuffers[bufferCount];
+    DECL_ARRAY(VKTexelBuffer, texelBuffers, bufferCount);
     VkDescriptorPool descriptorPool = VKBuffer_CreateTexelBuffers(
             renderer->device, VK_FORMAT_R8_UNORM, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
             renderer->pipelineContext->maskFillDescriptorSetLayout, bufferCount, buffers, texelBuffers);
@@ -300,7 +300,7 @@ static VkDescriptorSet VKRenderer_AllocateImageDescriptorSet(VKRenderer* rendere
 }
 void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set) {
     VKDevice* device = renderer->device;
-    for (int i = renderer->imageDescriptorPools.size - 1; i >= 0; i--) {
+    for (ptrdiff_t i = (ptrdiff_t)renderer->imageDescriptorPools.size - 1; i >= 0; i--) {
         *set = VKRenderer_AllocateImageDescriptorSet(renderer, renderer->imageDescriptorPools.data[i]);
         if (*set != VK_NULL_HANDLE) {
             *descriptorPool = renderer->imageDescriptorPools.data[i];
@@ -543,7 +543,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
             .pNext = &timelineSemaphoreSubmitInfo,
-            .waitSemaphoreCount = renderer->wait.semaphores.size,
+            .waitSemaphoreCount = (uint32_t)renderer->wait.semaphores.size,
             .pWaitSemaphores = renderer->wait.semaphores.data,
             .pWaitDstStageMask = renderer->wait.stages.data,
             .commandBufferCount = renderer->commandBuffer != VK_NULL_HANDLE ? 1 : 0,
@@ -563,7 +563,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                 .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &semaphores[1],
-                .swapchainCount = pendingPresentations,
+                .swapchainCount = (uint32_t)pendingPresentations,
                 .pSwapchains = renderer->pendingPresentation.swapchains.data,
                 .pImageIndices = renderer->pendingPresentation.indices.data,
                 .pResults = renderer->pendingPresentation.results.data
@@ -618,7 +618,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     renderPass->maskFillBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
     if (renderPass->flushRanges.size > 0) {
         VK_IF_ERROR(surface->device->vkFlushMappedMemoryRanges(surface->device->handle,
-            renderPass->flushRanges.size, renderPass->flushRanges.data)) {}
+            (uint32_t)renderPass->flushRanges.size, renderPass->flushRanges.data)) {}
         ARRAY_RESIZE(renderPass->flushRanges, 0);
     }
     size_t vertexBufferCount = renderPass->vertexBuffers.size;
@@ -911,7 +911,7 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
 
     // Insert barriers to prepare surface for rendering.
     VkImageMemoryBarrier barriers[2];
-    VKBarrierBatch barrierBatch = {};
+    VKBarrierBatch barrierBatch = { 0 };
     VKImage_AddBarrier(barriers, &barrierBatch, surface->image,
                        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -1251,7 +1251,7 @@ static void VKRenderer_SetupStencil() {
     renderPass->vertexBufferWriting.bound = VK_FALSE;
 
     // Rasterize clip spans.
-    uint32_t primitiveCount = context->clipSpanVertices.size / 3;
+    uint32_t primitiveCount = (uint32_t)(context->clipSpanVertices.size / 3);
     VKIntVertex* vs;
     for (uint32_t primitivesDrawn = 0; primitivesDrawn < primitiveCount;) {
         uint32_t currentDraw = VK_DRAW(vs, primitiveCount - primitivesDrawn, 3);
@@ -1508,7 +1508,7 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
     // Insert image barrier.
     {
         VkImageMemoryBarrier barrier;
-        VKBarrierBatch barrierBatch = {};
+        VKBarrierBatch barrierBatch = { 0 };
         VKImage_AddBarrier(&barrier, &barrierBatch, image,
                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
                            VK_ACCESS_SHADER_READ_BIT,
