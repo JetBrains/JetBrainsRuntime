@@ -140,7 +140,9 @@ public class LWMouseEventDispatcher {
                 // Cocoa dragged event has the information about which mouse
                 // button is being dragged. Use it to determine the peer that
                 // should receive the dragged event.
-                targetPeer = getMouseDownTarget(button);
+                if (windowPeer.needsDragEventCorrection()) {
+                    targetPeer = getMouseDownTarget(button);
+                }
                 mouseClickButtons &= ~modifiers;
             } else if (id == MouseEvent.MOUSE_RELEASED) {
                 // TODO: currently, mouse released event goes to the same component
@@ -148,7 +150,9 @@ public class LWMouseEventDispatcher {
                 // it's OK, however, we need to make sure that our behavior is consistent
                 // with 1.6 for cases where component in question have been
                 // hidden/removed in between of mouse pressed/released events.
-                targetPeer = getMouseDownTarget(button);
+                if (windowPeer.needsDragEventCorrection()) {
+                    targetPeer = getMouseDownTarget(button);
+                }
 
                 if ((modifiers & eventButtonMask) == 0) {
                     storeMouseDownTarget(button, null);
