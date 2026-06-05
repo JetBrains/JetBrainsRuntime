@@ -715,4 +715,9 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     @Override
     public void removeDropTarget(DropTarget dt) {
     }
+
+    @Override
+    public boolean needsDragEventCorrection() {
+        return false;
+    }
 }
