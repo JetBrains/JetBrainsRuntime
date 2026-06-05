@@ -192,4 +192,9 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
             WLToolkit.postEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
         }
     }
+
+    @Override
+    public boolean needsDragEventCorrection() {
+        return false;
+    }
 }
