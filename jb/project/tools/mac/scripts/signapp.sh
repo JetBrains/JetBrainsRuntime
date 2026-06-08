@@ -105,16 +105,11 @@ if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
   "$SCRIPT_DIR/notarize.sh" "$PKG_NAME"
 
-  log "Stapling..."
-  appStaplerOutput=$(xcrun stapler staple "$APPLICATION_PATH")
-  if [ $? -ne 0 ]; then
-    log "Stapling application failed"
-    echo "$appStaplerOutput"
-    exit 1
-  else
-    echo "$appStaplerOutput"
-  fi
-
+  # The runtime image is intentionally not a stapleable bundle (no CFBundleExecutable, so
+  # libjli.dylib is signed flat and survives being re-signed when bundled into an IDE).
+  # `xcrun stapler` cannot staple it (it is seen as a plain folder), so staple the .pkg installer
+  # only. The .tar.gz runtime is consumed by IDE builds (which notarize/staple the whole IDE) and
+  # by online clients; its binaries are notarized via the .pkg submission above.
   log "Stapling package..."
   pkgStaplerOutput=$(xcrun stapler staple "$PKG_NAME")
   if [ $? -ne 0 ]; then
@@ -127,10 +122,6 @@ if [ "$NOTARIZE" = "yes" ]; then
 
   # Verify stapling
   log "Verifying stapling..."
-  if ! stapler validate "$APPLICATION_PATH"; then
-    log "Stapling verification failed for application"
-    exit 1
-  fi
   if ! stapler validate "$PKG_NAME"; then
     log "Stapling verification failed for package"
     exit 1
