@@ -4,8 +4,11 @@
 <dict>
         <key>CFBundleDevelopmentRegion</key>
         <string>English</string>
-        <key>CFBundleExecutable</key>
-        <string>libjli.dylib</string>
+        <!-- CFBundleExecutable intentionally omitted: otherwise codesign seals
+             libjli.dylib as the bundle main-executable, binding it to _CodeSignature/CodeResources;
+             when the runtime is bundled into an IDE and re-signed/repacked, that seal dangles and
+             breaks notarization. Without it every Mach-O is signed flat and survives re-bundling.
+             Discovery still works via the JavaVM dict below; the .pkg remains stapleable. -->
         <key>CFBundleGetInfoString</key>
         <string>@@INFO@@</string>
         <key>CFBundleIdentifier</key>
