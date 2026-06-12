@@ -58,6 +58,10 @@ abstract public class CDSAppTester {
     private String whiteBoxJar = null;
     private boolean inOneStepTraining = false;
 
+    public String aotCacheFile() {
+        return this.aotCacheFile;
+    }
+
     /**
      * All files created in the CDS/AOT workflow will be name + extension. E.g.
      * - name.aot
