@@ -58,9 +58,11 @@ public class SimpleCDSAppTester {
     private String modulepath;
     private String[] appCommandLine;
     private String[] vmArgs = new String[] {};
+    private Tester tester;
 
     private SimpleCDSAppTester(String name) {
         this.name = name;
+        this.tester = new Tester(name);
     }
 
     public static SimpleCDSAppTester of(String name) {
@@ -181,17 +183,35 @@ public class SimpleCDSAppTester {
     }
 
     public SimpleCDSAppTester runStaticWorkflow() throws Exception {
-        (new Tester(name)).runStaticWorkflow();
+        tester.runStaticWorkflow();
         return this;
     }
 
     public SimpleCDSAppTester runAOTWorkflow() throws Exception {
-        (new Tester(name)).runAOTWorkflow();
+        tester.runAOTWorkflow();
         return this;
     }
 
     public SimpleCDSAppTester run(String args[])  throws Exception {
-        (new Tester(name)).run(args);
+        tester.run(args);
         return this;
+    }
+
+    public SimpleCDSAppTester rerunProduction(String... extraVmArgs) throws Exception {
+        tester.productionRun(extraVmArgs);
+        return this;
+    }
+
+    public SimpleCDSAppTester rerunProduction(String[] extraVmArgs, String... extraAppArgs) throws Exception {
+        tester.productionRun(extraVmArgs, extraAppArgs);
+        return this;
+    }
+
+    public String aotCacheFile() {
+        return tester.aotCacheFile();
+    }
+
+    public void setCheckExitValue(boolean b) {
+        tester.setCheckExitValue(b);
     }
 }
