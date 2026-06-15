@@ -41,7 +41,6 @@ import jdk.test.whitebox.WhiteBox;
  * @test
  * @key jfr
  * @requires vm.hasJFR & vm.gc.ZGenerational
- * @key jfr
  * @library /test/lib /test/jdk
  * @build jdk.test.whitebox.WhiteBox
  * @run driver jdk.test.lib.helpers.ClassFileInstaller jdk.test.whitebox.WhiteBox
