@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1364,7 +1364,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_CKeyPairGenerator_00024RSA_ge
                 PROV_RSA_FULL,
                 CRYPT_NEWKEYSET) == FALSE)
             {
-                ThrowException(env, KEY_EXCEPTION, GetLastError());
+                ThrowExceptionWithMessageAndErrcode(env, KEY_EXCEPTION, "CryptAcquireContext failure", GetLastError());
                 __leave;
             }
         }
@@ -1376,7 +1376,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_CKeyPairGenerator_00024RSA_ge
            dwFlags,
            &hKeyPair) == FALSE)
         {
-            ThrowException(env, KEY_EXCEPTION, GetLastError());
+            ThrowExceptionWithMessageAndErrcode(env, KEY_EXCEPTION, "CryptGenKey failure", GetLastError());
             __leave;
         }
 
