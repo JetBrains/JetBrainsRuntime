@@ -119,9 +119,14 @@ ifeq ($(call isTargetOs, windows macosx), false)
   EXCLUDE_FILES += sun/awt/AWTCharset.java
 endif
 
-ifneq ($(VULKAN_ENABLED), true)
+ifeq ($(call isTargetOs, windows linux), false)
+# Using VULKAN_ENABLED to exclude Java classes would cause
+# ClassDefNotFound with -XX:+UnlockDiagnosticVMOptions -XX:+BytecodeVerificationLocal
+# due to how the classes are currently used
+# ifneq ($(VULKAN_ENABLED), true)
   EXCLUDE_FILES += $(filter-out $(TOPDIR)/src/java.desktop/share/classes/sun/java2d/vulkan/VKEnv.java, \
                                 $(wildcard $(TOPDIR)/src/java.desktop/*/classes/sun/java2d/vulkan/*.java))
+# endif
 endif
 
 # These files do not appear in the build result of the old build. This
