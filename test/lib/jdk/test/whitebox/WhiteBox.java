@@ -66,7 +66,7 @@ public class WhiteBox {
 
   // Memory
   private native long getObjectAddress0(Object o);
-  public           long getObjectAddress(Object o) {
+  public         long getObjectAddress(Object o) {
     Objects.requireNonNull(o);
     return getObjectAddress0(o);
   }
@@ -79,7 +79,12 @@ public class WhiteBox {
   public native long getHeapAlignment();
   public native long getMinimumJavaStackSize();
 
-  public native boolean  hasExternalSymbolsStripped();
+  public native boolean  shipsFullDebugInfo();
+  public native boolean  shipsPublicDebugInfo();
+
+  public        boolean  shipsDebugInfo() {
+    return shipsFullDebugInfo() || shipsPublicDebugInfo();
+  }
 
   private native boolean isObjectInOldGen0(Object o);
   public         boolean isObjectInOldGen(Object o) {
