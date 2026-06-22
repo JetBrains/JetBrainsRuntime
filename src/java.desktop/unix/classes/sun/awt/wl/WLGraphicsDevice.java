@@ -52,6 +52,12 @@ import java.util.Set;
 public class WLGraphicsDevice extends GraphicsDevice {
     private static final double MM_IN_INCH = 25.4;
 
+    public enum OutputChange {
+        CHANGED, ENTERED, LEFT
+    }
+
+    public static final int WL_OUTPUT_CHANGED_ORIGIN = 1;
+
     /**
      *  ID of the corresponding wl_output object received from Wayland.
      *  Only changes when the device gets invalidated.
@@ -185,6 +191,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
         assert scale > 0 : String.format("Invalid display scale: %d", scale);
 
         this.name = name;
+        int dx = x - this.x;
+        int dy = y - this.y;
         this.x = x;
         this.y = y;
         this.width = width;
@@ -204,10 +212,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         // all the peers on this device had their graphics configuration updated
         // to refer to the new ones with, perhaps, a different scale or resolution.
         // This affects various BufferStrategy that use volatile images as their buffers.
-        notifyToplevels();
-    }
 
-    private void notifyToplevels() {
         List<WLComponentPeer> toplevelsCopy = new ArrayList<>(toplevels.size());
         synchronized (this) {
             for (var toplevel: toplevels) {
@@ -217,7 +222,14 @@ public class WLGraphicsDevice extends GraphicsDevice {
                 }
             }
         }
-        toplevelsCopy.forEach(WLComponentPeer::checkIfOnNewScreen);
+
+        toplevelsCopy.forEach(
+                wlComponentPeer ->
+                        wlComponentPeer.notifyOutputChanged(
+                                this, OutputChange.CHANGED,
+                                dx != 0 || dy != 0 ? WL_OUTPUT_CHANGED_ORIGIN : 0,
+                                dx, dy));
+
     }
 
     /**
