@@ -65,29 +65,35 @@ public class WLMainSurface extends WLSurface {
     @Override
     void notifyEnteredOutput(int wlOutputID) {
         // Called from native code whenever the corresponding wl_surface enters an output (monitor)
+        WLGraphicsDevice gd;
         synchronized (devices) {
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            final WLGraphicsDevice gd = ge.deviceWithID(wlOutputID);
+            gd = ge.deviceWithID(wlOutputID);
             if (gd != null) {
                 devices.add(gd);
             }
         }
 
-        peer.checkIfOnNewScreen();
+        if (gd != null) {
+            peer.notifyOutputChanged(gd, WLGraphicsDevice.OutputChange.ENTERED, 0, 0, 0);
+        }
     }
 
     @Override
     void notifyLeftOutput(int wlOutputID) {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+        WLGraphicsDevice gd;
         synchronized (devices) {
             final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            final WLGraphicsDevice gd = ge.deviceWithID(wlOutputID);
+            gd = ge.deviceWithID(wlOutputID);
             if (gd != null) {
                 devices.remove(gd);
             }
         }
 
-        peer.checkIfOnNewScreen();
+        if (gd != null) {
+            peer.notifyOutputChanged(gd, WLGraphicsDevice.OutputChange.LEFT, 0, 0, 0);
+        }
     }
 
     public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
