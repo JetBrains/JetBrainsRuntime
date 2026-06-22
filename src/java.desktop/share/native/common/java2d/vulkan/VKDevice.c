@@ -26,7 +26,7 @@
 
 #include <string.h>
 #include "sun_java2d_vulkan_VKGPU.h"
-#include "VKUtil.h"
+#include "VKUtil.h" // required for J2D_VK_LITTLE_ENDIAN
 #include "VKCapabilityUtil.h"
 #include "VKEnv.h"
 #include "VKAllocator.h"
@@ -40,10 +40,6 @@
 static const jint CAP_PRESENTABLE_BIT = sun_java2d_vulkan_VKGPU_CAP_PRESENTABLE_BIT;
 #ifdef _MSC_VER
 #pragma warning(pop)
-#endif
-
-#if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define VK_LITTLE_ENDIAN
 #endif
 
 static const char* physicalDeviceTypeString(VkPhysicalDeviceType type) {
@@ -203,7 +199,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     }
     if (CHECK_AND_ADD_FORMAT(VK_FORMAT_A8B8G8R8_UNORM_PACK32) && SRCTYPE_4BYTE->format == VK_FORMAT_UNDEFINED) {
         *SRCTYPE_4BYTE = (VKSampledSrcType) { VK_FORMAT_A8B8G8R8_UNORM_PACK32, {
-#ifdef VK_LITTLE_ENDIAN
+#if J2D_VK_LITTLE_ENDIAN
             VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A
 #else
             VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R

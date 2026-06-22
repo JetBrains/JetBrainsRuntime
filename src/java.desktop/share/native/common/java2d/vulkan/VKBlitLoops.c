@@ -32,7 +32,7 @@
 #include "VKDevice.h"
 #include "VKRenderer.h"
 #include "VKSurfaceData.h"
-#include "VKUtil.h"
+#include "VKUtil.h" // required for J2D_VK_LITTLE_ENDIAN
 
 #define SRCTYPE_BITS sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_BITS
 
@@ -137,6 +137,90 @@ static void VKBlitLoops_FindStageBufferMemoryType(VKMemoryRequirements* requirem
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, VK_ALL_MEMORY_PROPERTIES);
 }
 
+static void VKBlitLoops_TransferAndDrawTile(jshort srctype, jint filter,
+                                     const void* src, jint sw, jint sh, jint pixelStride, jint scanStride,
+                                     jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
+    // Need to validate render pass early, as image may not yet be configured.
+    AlphaType alphaType = getSrcAlphaType(srctype);
+    if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) {
+        return;
+    }
+
+    VKRenderingContext* context = VKRenderer_GetContext();
+    VKDevice* device = context->surface->device;
+    BlitSrcType type = decodeSrcType(device, srctype);
+
+    VKTexturePoolHandle* imageHandle =
+            VKTexturePool_GetTexture(VKRenderer_GetTexturePool(device->renderer), sw, sh, type.format);
+    VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeTexture, imageHandle);
+    VKImage* image = VKTexturePoolHandle_GetTexture(imageHandle);
+    if (!image) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_TransferAndDrawTile: could not get texture from the pool");
+        return;
+    }
+
+    VkDeviceSize dataSize = sh * sw * pixelStride;
+    VKBuffer buffer;
+    VKMemory page = VKBuffer_CreateBuffers(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                           VKBlitLoops_FindStageBufferMemoryType,
+                                           dataSize, 0, &(uint32_t){1}, &buffer);
+    VK_RUNTIME_ASSERT(page);
+    VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeMemory, page);
+    VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeBuffer, buffer.handle);
+
+    const char* raster = src;
+    for (size_t row = 0; row < (size_t)sh; row++) {
+        memcpy((char *)buffer.data + row * sw * pixelStride, raster, sw * pixelStride);
+        raster += (uint32_t)scanStride;
+    }
+
+    {
+        VkBufferMemoryBarrier bufferBarrier;
+        VKBarrierBatch bufferBatch = {0};
+        VKBuffer_AddBarrier(&bufferBarrier, &bufferBatch, &buffer,
+                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                            VK_ACCESS_TRANSFER_READ_BIT);
+        VkImageMemoryBarrier imageBarrier;
+        VKBarrierBatch imageBatch = {0};
+        VKImage_AddBarrier(&imageBarrier, &imageBatch, image,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, &bufferBarrier, &bufferBatch, &imageBarrier, &imageBatch);
+    }
+    VkBufferImageCopy region = (VkBufferImageCopy){
+            .bufferOffset = 0,
+            .bufferRowLength = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .imageSubresource.mipLevel = 0,
+            .imageSubresource.baseArrayLayer = 0,
+            .imageSubresource.layerCount = 1,
+            .imageOffset = {0, 0, 0},
+            .imageExtent = {
+                    .width = sw,
+                    .height = sh,
+                    .depth = 1
+            }
+    };
+    device->vkCmdCopyBufferToImage(VKRenderer_Record(device->renderer), buffer.handle, image->handle,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    {
+        VkImageMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = {0};
+        VKImage_AddBarrier(&barrier, &barrierBatch, image,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
+    }
+
+    VKRenderer_DrawImage(image, type.format, type.swizzle, filter, SAMPLER_WRAP_BORDER,
+                         0, 0, (float)sw, (float)sh, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
+
+    VKRenderer_FlushMemory(context->surface, buffer.range);
+}
+
 void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint filter,
                       jint sx1, jint sy1, jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
@@ -144,7 +228,6 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
         J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: src is null");
         return;
     }
-    VKRenderingContext* context = VKRenderer_GetContext();
 
     SurfaceDataRasInfo srcInfo = { .bounds = { sx1, sy1, sx2, sy2 } };
     // NOTE: This function will modify the contents of the bounds field to represent the maximum available raster data.
@@ -154,7 +237,7 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
     }
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         src->GetRasInfo(env, src, &srcInfo);
-        while (srcInfo.rasBase) {
+        if (srcInfo.rasBase) {
             if (srcInfo.bounds.x1 != sx1) dx1 += (srcInfo.bounds.x1 - sx1) * (dx2 - dx1) / (sx2 - sx1);
             if (srcInfo.bounds.y1 != sy1) dy1 += (srcInfo.bounds.y1 - sy1) * (dy2 - dy1) / (sy2 - sy1);
             if (srcInfo.bounds.x2 != sx2) dx2 += (srcInfo.bounds.x2 - sx2) * (dx2 - dx1) / (sx2 - sx1);
@@ -163,87 +246,51 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
             jint sw = (sx2 = srcInfo.bounds.x2) - (sx1 = srcInfo.bounds.x1);
             jint sh = (sy2 = srcInfo.bounds.y2) - (sy1 = srcInfo.bounds.y1);
 
-            // Need to validate render pass early, as image may not yet be configured.
-            AlphaType alphaType = getSrcAlphaType(srctype);
-            if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) break;
-
-            VKDevice* device = context->surface->device;
-            BlitSrcType type = decodeSrcType(device, srctype);
-            VKTexturePoolHandle* imageHandle =
-                    VKTexturePool_GetTexture(VKRenderer_GetTexturePool(device->renderer), sw, sh, type.format);
-            VKImage* image = VKTexturePoolHandle_GetTexture(imageHandle);
-            if (!image) {
-                J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: could not get texture from the pool");
-                break;
-            }
-
-            VkDeviceSize dataSize = sh * sw * srcInfo.pixelStride;
-            VKBuffer buffer;
-            VKMemory page = VKBuffer_CreateBuffers(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                                   VKBlitLoops_FindStageBufferMemoryType,
-                                                   dataSize, 0, &(uint32_t){1}, &buffer);
-
-            char* raster = (char*) srcInfo.rasBase + sy1 * srcInfo.scanStride + sx1 * srcInfo.pixelStride;
-            for (size_t row = 0; row < (size_t) sh; row++) {
-                memcpy((char*) buffer.data + row * sw * srcInfo.pixelStride, raster, sw * srcInfo.pixelStride);
-                raster += (uint32_t) srcInfo.scanStride;
-            }
-
-            {
-                VkBufferMemoryBarrier bufferBarrier;
-                VKBarrierBatch bufferBatch = { 0 };
-                VKBuffer_AddBarrier(&bufferBarrier, &bufferBatch, &buffer,
-                                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_READ_BIT);
-                VkImageMemoryBarrier imageBarrier;
-                VKBarrierBatch imageBatch = { 0 };
-                VKImage_AddBarrier(&imageBarrier, &imageBatch, image,
-                                   VK_PIPELINE_STAGE_TRANSFER_BIT,
-                                   VK_ACCESS_TRANSFER_WRITE_BIT,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-                VKRenderer_RecordBarriers(device->renderer, &bufferBarrier, &bufferBatch, &imageBarrier, &imageBatch);
-            }
-            VkBufferImageCopy region = (VkBufferImageCopy) {
-                    .bufferOffset = 0,
-                    .bufferRowLength = 0,
-                    .bufferImageHeight = 0,
-                    .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .imageSubresource.mipLevel = 0,
-                    .imageSubresource.baseArrayLayer = 0,
-                    .imageSubresource.layerCount = 1,
-                    .imageOffset = {0, 0, 0},
-                    .imageExtent = {
-                            .width = sw,
-                            .height = sh,
-                            .depth = 1
-                    }
-            };
-            device->vkCmdCopyBufferToImage(VKRenderer_Record(device->renderer), buffer.handle, image->handle,
-                                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-            {
-                VkImageMemoryBarrier barrier;
-                VKBarrierBatch barrierBatch = { 0 };
-                VKImage_AddBarrier(&barrier, &barrierBatch, image,
-                                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                   VK_ACCESS_SHADER_READ_BIT,
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-                VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
-            }
-
-            VKRenderer_DrawImage(image, type.format, type.swizzle, filter, SAMPLER_WRAP_BORDER,
-                         0, 0, (float)sw, (float)sh, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
-
-            VKRenderer_FlushMemory(context->surface, buffer.range);
-            VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeTexture, imageHandle);
-            VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeBuffer, buffer.handle);
-            VKRenderer_ExecOnCleanup(context->surface, VKBlitLoops_DisposeMemory, page);
-            break;
-        }
-        if (!srcInfo.rasBase) {
+            const char* raster = (const char*) srcInfo.rasBase + sy1 * srcInfo.scanStride + sx1 * srcInfo.pixelStride;
+            VKBlitLoops_TransferAndDrawTile(
+                srctype, filter,
+                raster, sw, sh, srcInfo.pixelStride, srcInfo.scanStride,
+                dx1, dy1, dx2, dy2);
+        } else {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_Blit: could not get raster info");
         }
         SurfaceData_InvokeRelease(env, src, &srcInfo);
     }
     SurfaceData_InvokeUnlock(env, src, &srcInfo);
+}
+
+void VKBlitLoops_MaskBlit(jint dstx, jint dsty, jint width, jint height, void *pPixels) {
+    // srctype for MASK_BLIT is always native-order ARGB ((a << 24) | (r << 16) | (g << 8) | b) with pre-multiplied alpha.
+#ifdef J2D_VK_LITTLE_ENDIAN
+#define MASK_BLIT_R 2
+#define MASK_BLIT_G 1
+#define MASK_BLIT_B 0
+#define MASK_BLIT_A 3
+#else
+#define MASK_BLIT_R 1
+#define MASK_BLIT_G 2
+#define MASK_BLIT_B 3
+#define MASK_BLIT_A 0
+#endif
+    // equivalent Java code:
+    // ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? VKSwToSurfaceBlit.encode4Byte(1, 2, 3, 0, true) : VKSwToSurfaceBlit.encode4Byte(2, 1, 0, 3, true)
+    static const jint MASK_BLIT_SRCTYPE =
+            sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_4BYTE |
+            (MASK_BLIT_R << SRCTYPE_BITS) |
+            (MASK_BLIT_G << (SRCTYPE_BITS + 2)) |
+            (MASK_BLIT_B << (SRCTYPE_BITS + 4)) |
+            (MASK_BLIT_A << (SRCTYPE_BITS + 6)) |
+            sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT;
+    static const jint PIXEL_STRIDE = sizeof(jint);
+
+    if (!pPixels || width <= 0 || height <= 0) {
+        return;
+    }
+    VKBlitLoops_TransferAndDrawTile(
+        (jshort)MASK_BLIT_SRCTYPE,
+        java_awt_image_AffineTransformOp_TYPE_NEAREST_NEIGHBOR /* no need for anything else, MASK_BLIT is pixel-perfect anyway */,
+        pPixels, width, height, PIXEL_STRIDE, width * PIXEL_STRIDE,
+        dstx, dsty, dstx + width, dsty + height);
 }
 
 /**
