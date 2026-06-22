@@ -484,6 +484,8 @@ static address generate_double_keccak(StubGenerator *stubgen, MacroAssembler *_m
   __ cmpl(roundsLeft, 0);
   __ jcc(Assembler::notEqual, rounds24_loop);
 
+  __ xorq(rax, rax); // return 0
+
   // store the states
   for (int i = 0; i < 5; i++) {
     __ evmovdquq(Address(state0, i * 40), k5, xmm(i), true, Assembler::AVX_512bit);
