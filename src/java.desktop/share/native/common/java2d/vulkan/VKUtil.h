@@ -169,4 +169,8 @@ void VKUtil_ConcatenateTransform(VKTransform* dst, const VKTransform* src);
 #define RETURN_IF_NULL(value)   ACT_IF_NULL(return, value)
 #define CONTINUE_IF_NULL(value) ACT_IF_NULL(continue, value)
 
+#if !defined(__BYTE_ORDER__) || __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define J2D_VK_LITTLE_ENDIAN 1
+#endif
+
 #endif //VKUtil_h_Included
