@@ -39,6 +39,8 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
                       jint sx1, jint sy1, jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2);
 
+void VKBlitLoops_MaskBlit(jint dstx, jint dsty, jint width, jint height, void *pPixels);
+
 void VKBlitLoops_SurfaceToSwBlit(JNIEnv* env, VKSDOps* src, SurfaceDataOps* dst,
                                  jint srcx, jint srcy, jint dstx, jint dsty, jint width, jint height);
 
