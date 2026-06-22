@@ -1822,41 +1822,48 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         target.setVisible(false);
     }
 
-    void checkIfOnNewScreen() {
+    void notifyOutputChanged(WLGraphicsDevice device, WLGraphicsDevice.OutputChange change, int mask, int dx, int dy) {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
 
-        if (wlSurface == null) return;
-        final WLGraphicsDevice newDevice = wlSurface.getGraphicsDevice();
-        if (newDevice != null) { // could be null when screens are being reconfigured
-            final GraphicsConfiguration gc = newDevice.getDefaultConfiguration();
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(this + " is on (possibly) new device " + newDevice);
-            }
-            var oldDevice = (WLGraphicsDevice) target.getGraphicsConfiguration().getDevice();
-            if (oldDevice != newDevice) {
-                oldDevice.removeWindow(this);
-                newDevice.addWindow(this);
-
-                if (targetIsWlPopup()) {
-                    Point loc = target.getLocation();
-                    Point oldScreenLocation = oldDevice.getBounds().getLocation();
-                    loc.translate(-oldScreenLocation.x, -oldScreenLocation.y);
-                    Point newScreenLocation = newDevice.getBounds().getLocation();
-                    loc.translate(newScreenLocation.x, newScreenLocation.y);
-                    resetTargetLocationTo(loc.x, loc.y);
-                }
-            }
-
-            if (!targetIsWlPopup()) {
-                // Toplevels are assumed to be always located at (0, 0) of their respective monitors.
-                resetTargetLocationTo(newDevice.getDefaultConfiguration());
-            }
-
-            performUnlocked(() -> {
-                var acc = AWTAccessor.getComponentAccessor();
-                acc.setGraphicsConfiguration(target, gc);
-            });
+        final GraphicsConfiguration gc = device.getDefaultConfiguration();
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(this + " is on (possibly) new device " + device);
         }
+
+        switch (change) {
+            case CHANGED:
+                if ((mask & WLGraphicsDevice.WL_OUTPUT_CHANGED_ORIGIN) > 0) {
+                    if (targetIsWlPopup()) {
+                        Point loc = target.getLocation();
+                        loc.translate(dx, dy);
+                        resetTargetLocationTo(loc.x, loc.y);
+                    }
+                }
+                break;
+
+            case ENTERED:
+                var oldDevice = (WLGraphicsDevice) target.getGraphicsConfiguration().getDevice();
+
+                if (oldDevice != device) {
+                    oldDevice.removeWindow(this);
+                    device.addWindow(this);
+                }
+                break;
+
+            case LEFT:
+                device.removeWindow(this);
+                return;
+        }
+
+        if (!targetIsWlPopup()) {
+            // Toplevels are assumed to be always located at (0, 0) of their respective monitors.
+            resetTargetLocationTo(gc);
+        }
+
+        performUnlocked(() -> {
+            var acc = AWTAccessor.getComponentAccessor();
+            acc.setGraphicsConfiguration(target, gc);
+        });
     }
 
     private Dimension constrainSize(int width, int height) {
