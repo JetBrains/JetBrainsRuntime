@@ -370,8 +370,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint dsty     = NEXT_INT(b);
                 jint width    = NEXT_INT(b);
                 jint height   = NEXT_INT(b);
-                jint masklen  = width * height * sizeof(jint);
+                jint masklen  = width * height * (jint)sizeof(jint);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: MASK_BLIT");
+                VKBlitLoops_MaskBlit(dstx, dsty, width, height, b);
                 SKIP_BYTES(b, masklen);
             }
             break;
