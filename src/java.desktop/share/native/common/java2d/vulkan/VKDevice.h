@@ -56,12 +56,14 @@ struct VKDevice {
     VKSampledSrcTypes    sampledSrcTypes;
     jint_array_t          supportedFormats;
     jint caps;
+    VkBool32 swapchainMaintenance1Supported;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
 
     DEVICE_FUNCTION_TABLE(DECL_PFN)
     SWAPCHAIN_DEVICE_FUNCTION_TABLE(DECL_PFN)
+    SWAPCHAIN_MAINTENANCE_1_DEVICE_FUNCTION_TABLE(DECL_PFN)
 };
 
 #endif //VKDevice_h_Included
