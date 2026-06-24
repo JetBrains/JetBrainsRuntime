@@ -49,23 +49,80 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     }
 }
 
+static void VKSwapchain_DestroyImpl(VKSwapchain* swapchain)
+{
+    if (swapchain == NULL) {
+        return;
+    }
+
+    if (swapchain->device != NULL && swapchain->handle != VK_NULL_HANDLE) {
+        swapchain->device->vkDestroySwapchainKHR(swapchain->device->handle, swapchain->handle, NULL);
+    }
+
+    ARRAY_FREE(swapchain->images);
+    free(swapchain);
+}
+
+VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR* createInfo) {
+    VKSwapchain *swapchain = calloc(1, sizeof *swapchain);
+
+    if (swapchain == NULL) {
+        return NULL;
+    }
+
+    swapchain->refcount = 1;
+    swapchain->device = device;
+    swapchain->extent = createInfo->imageExtent;
+    swapchain->isSuboptimal = VK_FALSE;
+
+    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, createInfo, NULL, &swapchain->handle)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    uint32_t imageCount = 0;
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchain->handle, &imageCount, NULL)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    ARRAY_RESIZE(swapchain->images, imageCount);
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchain->handle, &imageCount, swapchain->images.data)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Create(%p): swapchain created", swapchain);
+    return swapchain;
+}
+
+VKSwapchain* VKSwapchain_Retain(VKSwapchain* swapchain) {
+    if (swapchain == NULL) return NULL;
+    ++swapchain->refcount;
+    return swapchain;
+}
+
+void VKSwapchain_Release(VKSwapchain* swapchain) {
+    if (swapchain == NULL) return;
+    if (--swapchain->refcount > 0) return;
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Release(%p): destroying Vulkan objects", swapchain);
+    VKSwapchain_DestroyImpl(swapchain);
+}
+
 void VKSD_ResetSurface(VKSDOps* vksdo) {
     VKSD_ResetImageSurface(vksdo);
 
     // Release VKWinSDOps resources, if applicable.
     if (vksdo->drawableType == VKSD_WINDOW) {
         VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
-        ARRAY_FREE(vkwinsdo->swapchainImages);
-        if (vkwinsdo->vksdOps.device != NULL && vkwinsdo->swapchain != VK_NULL_HANDLE) {
-            vkwinsdo->vksdOps.device->vkDestroySwapchainKHR(vkwinsdo->vksdOps.device->handle, vkwinsdo->swapchain, NULL);
-        }
+        VKSwapchain_Release(vkwinsdo->swapchain);
+        vkwinsdo->swapchain = NULL;
         if (vkwinsdo->surface != VK_NULL_HANDLE) {
             VKEnv* vk = VKEnv_GetInstance();
             vk->vkDestroySurfaceKHR(vk->instance, vkwinsdo->surface, NULL);
         }
-        vkwinsdo->swapchain = VK_NULL_HANDLE;
         vkwinsdo->surface = VK_NULL_HANDLE;
-        vkwinsdo->swapchainDevice = NULL;
     }
 }
 
@@ -129,9 +186,10 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
     // Check for changes.
-    if (vkwinsdo->swapchain != VK_NULL_HANDLE && vkwinsdo->swapchainDevice == vkwinsdo->vksdOps.device &&
-            vkwinsdo->swapchainExtent.width == vkwinsdo->vksdOps.image->extent.width &&
-            vkwinsdo->swapchainExtent.height == vkwinsdo->vksdOps.image->extent.height) return VK_TRUE;
+    if (vkwinsdo->swapchain != NULL && !vkwinsdo->swapchain->isSuboptimal &&
+            vkwinsdo->swapchain->device == vkwinsdo->vksdOps.device &&
+            vkwinsdo->swapchain->extent.width == vkwinsdo->vksdOps.image->extent.width &&
+            vkwinsdo->swapchain->extent.height == vkwinsdo->vksdOps.image->extent.height) return VK_TRUE;
     // Check that surface is ready.
     if (vkwinsdo->surface == VK_NULL_HANDLE) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): surface is not ready", vkwinsdo);
@@ -247,7 +305,6 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     if (imageCount > capabilities.maxImageCount && capabilities.maxImageCount != 0) imageCount = capabilities.maxImageCount;
     else if (imageCount < capabilities.minImageCount) imageCount = capabilities.minImageCount;
 
-    VkSwapchainKHR swapchain;
     VkSwapchainCreateInfoKHR createInfoKhr = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .surface = vkwinsdo->surface,
@@ -264,35 +321,37 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .compositeAlpha = compositeAlpha,
             .presentMode = presentMode,
             .clipped = VK_TRUE,
-            .oldSwapchain = vkwinsdo->swapchainDevice == device ? vkwinsdo->swapchain : NULL
+            .oldSwapchain = (vkwinsdo->swapchain != NULL && vkwinsdo->swapchain->device == device) ?
+                    vkwinsdo->swapchain->handle : VK_NULL_HANDLE,
     };
 
-    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, &createInfoKhr, NULL, &swapchain)) {
+    VkSwapchainPresentModesCreateInfoEXT presentModesCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT
+    };
+
+    if (device->swapchainMaintenance1Supported) {
+        presentModesCreateInfo.presentModeCount = 1;
+        presentModesCreateInfo.pPresentModes = &presentMode;
+        createInfoKhr.pNext = &presentModesCreateInfo;
+    }
+
+    VKSwapchain *swapchain = VKSwapchain_Create(device, &createInfoKhr);
+
+    if (swapchain == NULL) {
         return VK_FALSE;
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d",
                   vkwinsdo, format->format, presentMode, imageCount, compositeAlpha);
     vkwinsdo->resizeCallback(vkwinsdo);
 
-    if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
+    if (vkwinsdo->swapchain != NULL) {
         // Destroy old swapchain.
-        // TODO is it possible that old swapchain is still being presented, can we destroy it right now?
-        device->vkDestroySwapchainKHR(vkwinsdo->swapchainDevice->handle, vkwinsdo->swapchain, NULL);
-        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain destroyed", vkwinsdo);
+        VKSwapchain_Release(vkwinsdo->swapchain);
+        vkwinsdo->swapchain = NULL;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain released", vkwinsdo);
     }
     vkwinsdo->swapchain = swapchain;
-    vkwinsdo->swapchainDevice = device;
-    vkwinsdo->swapchainExtent = swapchainImageExtent;
 
-    uint32_t swapchainImageCount;
-    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {
-        return VK_FALSE;
-    }
-    ARRAY_RESIZE(vkwinsdo->swapchainImages, swapchainImageCount);
-    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, vkwinsdo->swapchain,
-                                             &swapchainImageCount, vkwinsdo->swapchainImages.data)) {
-        return VK_FALSE;
-    }
     return VK_TRUE;
 }
 

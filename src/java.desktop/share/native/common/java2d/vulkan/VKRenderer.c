@@ -91,6 +91,12 @@ typedef struct {
     void* data;
 } VKCleanupEntry;
 
+typedef struct {
+    VKSwapchain *swapchain;
+    VkFence fence;
+    uint32_t imageIndex;
+} VKPresentedImage;
+
 /**
  * Renderer attached to the device.
  */
@@ -105,6 +111,7 @@ struct VKRenderer {
     POOL(VKBuffer,          vertexBufferPool);
     POOL(VKTexelBuffer,     maskFillBufferPool);
     POOL(VKCleanupEntry,    cleanupQueue);
+    POOL(VkFence,           fencePool);
     ARRAY(VKMemory)         bufferMemoryPages;
     ARRAY(VkDescriptorPool) descriptorPools;
     ARRAY(VkDescriptorPool) imageDescriptorPools;
@@ -128,10 +135,14 @@ struct VKRenderer {
     } wait;
 
     struct PendingPresentation {
-        ARRAY(VkSwapchainKHR) swapchains;
+        ARRAY(VkSwapchainKHR) swapchainHandles;
+        ARRAY(VKSwapchain*)   swapchains;
         ARRAY(uint32_t)       indices;
         ARRAY(VkResult)       results;
+        ARRAY(VkFence)        fences;
     } pendingPresentation;
+
+    ARRAY(VKPresentedImage) presentedImages;
 };
 
 typedef struct {
@@ -323,6 +334,39 @@ void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool*
     *set = VKRenderer_AllocateImageDescriptorSet(renderer, *descriptorPool);
 }
 
+static void VKRenderer_CleanupPresentations(VKRenderer* renderer, VkBool32 wait) {
+    // This is a remove_if loop, we remove entries from presentedImages, for which the fence was signaled.
+    uint32_t outIndex = 0;
+    for (uint32_t i = 0; i < renderer->presentedImages.size; ++i) {
+        VKPresentedImage presentedImage = renderer->presentedImages.data[i];
+        if (presentedImage.fence == VK_NULL_HANDLE) {
+            // Shouldn't happen
+            VKSwapchain_Release(presentedImage.swapchain);
+            continue;
+        }
+        if (wait) {
+            renderer->device->vkWaitForFences(renderer->device->handle, 1, &presentedImage.fence, VK_TRUE, UINT64_MAX);
+        }
+        VkResult fenceStatus = renderer->device->vkGetFenceStatus(renderer->device->handle, presentedImage.fence);
+        if (fenceStatus == VK_NOT_READY) {
+            // not yet signaled, retain this entry
+            renderer->presentedImages.data[outIndex++] = presentedImage;
+            continue;
+        }
+
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_CleanupPresentations: cleaning up swapchain %p, fence %p", presentedImage.swapchain, presentedImage.fence);
+        VKSwapchain_Release(presentedImage.swapchain);
+        renderer->device->vkResetFences(renderer->device->handle, 1, &presentedImage.fence);
+        POOL_INSERT(renderer, fencePool, presentedImage.fence);
+    }
+
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_CleanupPresentations: cleaned up %u presentations out of %u",
+        (uint32_t)(renderer->presentedImages.size - outIndex),
+        (uint32_t)(renderer->presentedImages.size));
+
+    ARRAY_RESIZE(renderer->presentedImages, outIndex);
+}
+
 static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
     VKDevice* device = renderer->device;
     for (;;) {
@@ -331,6 +375,7 @@ static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
         if (entry.handler == NULL) break;
         entry.handler(device, entry.data);
     }
+    VKRenderer_CleanupPresentations(renderer, VK_FALSE);
 }
 
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
@@ -370,6 +415,7 @@ void VKRenderer_Sync(VKRenderer* renderer) {
     // Wait for latest checkpoint to be hit by GPU.
     // This only affects commands performed by this renderer, unlike vkDeviceWaitIdle.
     VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
+    VKRenderer_CleanupPresentations(renderer, VK_TRUE);
 }
 
 VKRenderer* VKRenderer_Create(VKDevice* device) {
@@ -470,9 +516,11 @@ void VKRenderer_Destroy(VKRenderer* renderer) {
     device->vkDestroyCommandPool(device->handle, renderer->commandPool, NULL);
     ARRAY_FREE(renderer->wait.semaphores);
     ARRAY_FREE(renderer->wait.stages);
+    ARRAY_FREE(renderer->pendingPresentation.swapchainHandles);
     ARRAY_FREE(renderer->pendingPresentation.swapchains);
     ARRAY_FREE(renderer->pendingPresentation.indices);
     ARRAY_FREE(renderer->pendingPresentation.results);
+    ARRAY_FREE(renderer->presentedImages);
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKRenderer_Destroy(%p)", renderer);
     free(renderer);
 }
@@ -516,7 +564,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     if (renderer == NULL) return;
     VKRenderer_CleanupPendingResources(renderer);
     VKDevice* device = renderer->device;
-    size_t pendingPresentations = renderer->pendingPresentation.swapchains.size;
+    size_t pendingPresentations = renderer->pendingPresentation.swapchainHandles.size;
 
     // Submit pending command buffer and semaphores.
     // Even if there are no commands to be sent, we can submit pending semaphores for presentation synchronization.
@@ -559,21 +607,104 @@ void VKRenderer_Flush(VKRenderer* renderer) {
     // Present pending swapchains
     if (pendingPresentations > 0) {
         ARRAY_RESIZE(renderer->pendingPresentation.results, pendingPresentations);
+        ARRAY_RESIZE(renderer->pendingPresentation.fences, pendingPresentations);
+
+        for (uint32_t i = 0; i < (uint32_t)pendingPresentations; ++i) {
+            renderer->pendingPresentation.fences.data[i] = VK_NULL_HANDLE;
+        }
+
+        VkSwapchainPresentFenceInfoEXT fenceInfo = {
+                .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT,
+                .swapchainCount = (uint32_t)pendingPresentations,
+                .pFences = renderer->pendingPresentation.fences.data,
+        };
+
         VkPresentInfoKHR presentInfo = {
                 .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1,
                 .pWaitSemaphores = &semaphores[1],
                 .swapchainCount = (uint32_t)pendingPresentations,
-                .pSwapchains = renderer->pendingPresentation.swapchains.data,
+                .pSwapchains = renderer->pendingPresentation.swapchainHandles.data,
                 .pImageIndices = renderer->pendingPresentation.indices.data,
                 .pResults = renderer->pendingPresentation.results.data
         };
-        VkResult presentResult = device->vkQueuePresentKHR(device->queue, &presentInfo);
-        if (presentResult != VK_SUCCESS) {
-            // TODO check individual result codes in renderer->pendingPresentation.results
-            // TODO possible suboptimal conditions
-            VK_IF_ERROR(presentResult) {}
+
+        if (renderer->device->swapchainMaintenance1Supported) {
+            bool ok = true;
+            for (uint32_t i = 0; i < (uint32_t)pendingPresentations; ++i) {
+                VkFence fence = VK_NULL_HANDLE;
+                POOL_TAKE(renderer, fencePool, fence);
+                if (fence == VK_NULL_HANDLE) {
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Flush(%p): allocating a new fence for swapchain present tracking", renderer);
+                    VkFenceCreateInfo fenceCreateInfo = {
+                        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                    };
+                    VK_IF_ERROR(device->vkCreateFence(device->handle, &fenceCreateInfo, NULL, &fence)) {
+                        ok = false;
+                        break;
+                    }
+                } else {
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_Flush(%p): reusing a fence for swapchain present tracking", renderer);
+                }
+                renderer->pendingPresentation.fences.data[i] = fence;
+            }
+
+            if (ok) {
+                presentInfo.pNext = &fenceInfo;
+            } else {
+                for (uint32_t i = 0; i < (uint32_t)pendingPresentations; ++i) {
+                    VkFence fence = renderer->pendingPresentation.fences.data[i];
+                    if (fence != VK_NULL_HANDLE) {
+                        device->vkDestroyFence(device->handle, fence, NULL);
+                        renderer->pendingPresentation.fences.data[i] = VK_NULL_HANDLE;
+                    }
+                }
+            }
         }
+
+        VkResult presentResult = device->vkQueuePresentKHR(device->queue, &presentInfo);
+        VK_IF_ERROR(presentResult) {}
+
+        for (uint32_t i = 0; i < (uint32_t)pendingPresentations; ++i) {
+            VkResult result = renderer->pendingPresentation.results.data[i];
+            VKSwapchain *swapchain = renderer->pendingPresentation.swapchains.data[i];
+            VkFence fence = renderer->pendingPresentation.fences.data[i];
+
+            if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {
+                swapchain->isSuboptimal = VK_TRUE;
+            }
+
+            if (fence == VK_NULL_HANDLE) {
+                // No fence associated, decrease refcount on swapchain now.
+                // This ends up being incorrect per Vulkan spec, but without EXT_swapchain_maintenance1,
+                // there's no perfectly correct way to handle swapchain recreation anyway.
+                VKSwapchain_Release(swapchain);
+            }
+
+            if (result < 0) {
+                // Error status code, including VK_ERROR_OUT_OF_DATE_KHR
+                // no presentation was made, fence needs to be recycled
+                if (fence != VK_NULL_HANDLE) {
+                    POOL_INSERT(renderer, fencePool, fence);
+                    renderer->pendingPresentation.fences.data[i] = VK_NULL_HANDLE;
+
+                    // could not have released in the if statement above, since fence != VK_NULL_HANDLE
+                    VKSwapchain_Release(swapchain);
+                }
+                continue;
+            }
+
+            if (fence != VK_NULL_HANDLE) {
+                VKPresentedImage presentedImage = {
+                    .swapchain = swapchain,
+                    .fence = fence,
+                    .imageIndex = renderer->pendingPresentation.indices.data[i],
+                };
+                ARRAY_PUSH_BACK(renderer->presentedImages) = presentedImage;
+            }
+        }
+
+        ARRAY_RESIZE(renderer->pendingPresentation.swapchainHandles, 0);
         ARRAY_RESIZE(renderer->pendingPresentation.swapchains, 0);
         ARRAY_RESIZE(renderer->pendingPresentation.indices, 0);
     }
@@ -979,7 +1110,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         ARRAY_PUSH_BACK(renderer->wait.stages) = VK_PIPELINE_STAGE_TRANSFER_BIT; // Acquire image before blitting content onto swapchain
 
         uint32_t imageIndex;
-        VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain, UINT64_MAX,
+        VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain->handle, UINT64_MAX,
                                                                     acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
         if (acquireImageResult != VK_SUCCESS && acquireImageResult != VK_SUBOPTIMAL_KHR) {
             VK_IF_ERROR(acquireImageResult) {
@@ -999,7 +1130,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .image = win->swapchainImages.data[imageIndex],
+                    .image = win->swapchain->images.data[imageIndex],
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             }};
             VKBarrierBatch barrierBatch = {1, surface->image->lastStage | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
@@ -1019,7 +1150,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         };
         device->vkCmdBlitImage(cb,
                                surface->image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               win->swapchainImages.data[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                               win->swapchain->images.data[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1, &blit, VK_FILTER_NEAREST);
 
         // Insert barrier to prepare swapchain image for presentation.
@@ -1032,14 +1163,15 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                     .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .image = win->swapchainImages.data[imageIndex],
+                    .image = win->swapchain->images.data[imageIndex],
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             };
             device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
         }
 
         // Add pending presentation request.
-        ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchains) = win->swapchain;
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchains) = VKSwapchain_Retain(win->swapchain);
+        ARRAY_PUSH_BACK(renderer->pendingPresentation.swapchainHandles) = win->swapchain->handle;
         ARRAY_PUSH_BACK(renderer->pendingPresentation.indices) = imageIndex;
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushSurface(%p): queued for presentation", surface);
     }
@@ -1656,7 +1788,7 @@ Java_sun_java2d_vulkan_VKTextRenderer_drawGlyphList
      jfloatArray glyphPositions)
 {
     unsigned char *images = NULL;
-    
+
     J2dTraceLn(J2D_TRACE_INFO, "VKTextRenderer_drawGlyphList");
 
     images = (unsigned char *)(*env)->GetPrimitiveArrayCritical(env, glyphImages, NULL);
