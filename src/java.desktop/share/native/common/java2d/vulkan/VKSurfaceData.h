@@ -59,16 +59,22 @@ struct VKSDOps {
 typedef void (*VKWinSD_SurfaceResizeCallback)(VKWinSDOps* surface);
 typedef void (*VKWinSD_SurfaceInitCallback)(VKWinSDOps* surface, void* data);
 
+struct VKSwapchain {
+    VkSwapchainKHR handle;
+    ARRAY(VkImage) images;
+    VKDevice* device;
+    VkExtent2D extent;
+    uint32_t refcount;
+    VkBool32 isSuboptimal;
+};
+
 /**
  * The VKWinSDOps structure describes a native Vulkan surface connected with a window.
  */
 struct VKWinSDOps {
     VKSDOps        vksdOps;
     VkSurfaceKHR   surface;
-    VkSwapchainKHR swapchain;
-    ARRAY(VkImage) swapchainImages;
-    VKDevice*      swapchainDevice;
-    VkExtent2D     swapchainExtent;
+    VKSwapchain*   swapchain;
     VKWinSD_SurfaceResizeCallback resizeCallback;
 };
 
@@ -89,6 +95,10 @@ JNIEXPORT void VKSD_InitWindowSurface(JNIEnv *env, jobject vksd, VKWinSD_Surface
 static inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
     return vksdo->drawableFormat & VKSD_FORMAT_OPAQUE_BIT ? VK_TRUE : VK_FALSE;
 }
+
+VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR* createInfo);
+VKSwapchain* VKSwapchain_Retain(VKSwapchain* swapchain);
+void VKSwapchain_Release(VKSwapchain* swapchain);
 
 /**
  * Release all resources of the surface, resetting it to initial state.
