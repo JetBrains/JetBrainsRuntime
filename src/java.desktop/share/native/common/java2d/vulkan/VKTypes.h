@@ -79,6 +79,7 @@ typedef struct VKTexelBuffer VKTexelBuffer;
 typedef struct VKBuffer VKBuffer;
 typedef struct VKImage VKImage;
 typedef struct VKSDOps VKSDOps;
+typedef struct VKSwapchain VKSwapchain;
 typedef struct VKWinSDOps VKWinSDOps;
 
 typedef const char* pchar;
