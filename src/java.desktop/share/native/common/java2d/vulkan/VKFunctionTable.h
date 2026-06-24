@@ -56,6 +56,10 @@ ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceFormatsKHR); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfacePresentModesKHR); \
 ENTRY(__VA_ARGS__, vkDestroySurfaceKHR); \
 
+#define GET_SURFACE_CAPABILITIES_2_INSTANCE_FUNCTION_TABLE(ENTRY, ...) \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceCapabilities2KHR); \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceFormats2KHR); \
+
 #if defined(DEBUG)
 #define DEBUG_INSTANCE_FUNCTION_TABLE(ENTRY, ...) \
 ENTRY(__VA_ARGS__, vkCreateDebugUtilsMessengerEXT); \
@@ -84,8 +88,10 @@ ENTRY(__VA_ARGS__, vkDestroySemaphore); \
 ENTRY(__VA_ARGS__, vkWaitSemaphores); \
 ENTRY(__VA_ARGS__, vkGetSemaphoreCounterValue); \
 ENTRY(__VA_ARGS__, vkCreateFence); \
+ENTRY(__VA_ARGS__, vkDestroyFence); \
 ENTRY(__VA_ARGS__, vkGetDeviceQueue); \
 ENTRY(__VA_ARGS__, vkWaitForFences); \
+ENTRY(__VA_ARGS__, vkGetFenceStatus); \
 ENTRY(__VA_ARGS__, vkResetFences); \
 ENTRY(__VA_ARGS__, vkResetCommandBuffer); \
 ENTRY(__VA_ARGS__, vkQueueSubmit); \
@@ -144,6 +150,9 @@ ENTRY(__VA_ARGS__, vkDestroySwapchainKHR); \
 ENTRY(__VA_ARGS__, vkGetSwapchainImagesKHR); \
 ENTRY(__VA_ARGS__, vkAcquireNextImageKHR); \
 ENTRY(__VA_ARGS__, vkQueuePresentKHR); \
+
+#define SWAPCHAIN_MAINTENANCE_1_DEVICE_FUNCTION_TABLE(ENTRY, ...) \
+ENTRY(__VA_ARGS__, vkReleaseSwapchainImagesEXT); \
 
 // Utilities for working with function pointers.
 
