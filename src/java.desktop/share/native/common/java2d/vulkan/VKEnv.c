@@ -221,6 +221,8 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     VKNamedEntry* extensions = NULL;
     DEF_NAMED_ENTRY(extensions, PLATFORM_SURFACE_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_KHR_SURFACE_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION);
 #ifdef DEBUG
     DEF_NAMED_ENTRY(extensions, VK_EXT_DEBUG_UTILS_EXTENSION);
 #endif
@@ -237,7 +239,15 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
 
     // Check presentation support.
     VkBool32 presentationSupported = PLATFORM_SURFACE_EXTENSION.found && VK_KHR_SURFACE_EXTENSION.found;
-    if (!presentationSupported) PLATFORM_SURFACE_EXTENSION.found = VK_KHR_SURFACE_EXTENSION.found = NULL;
+    if (!presentationSupported) {
+        PLATFORM_SURFACE_EXTENSION.found = NULL;
+        VK_KHR_SURFACE_EXTENSION.found = NULL;
+        VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION.found = NULL;
+        VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION.found = NULL;
+    }
+
+    bool hasGetSurfaceCaps2 = presentationSupported && VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION.found;
+    bool hasSurfaceMaintenance1 = hasGetSurfaceCaps2 && VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION.found;
 
     // Configure validation
     void *pNext = NULL;
@@ -269,7 +279,8 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     }
     *vk = (VKEnv) {
         .platformData = platformData,
-        .presentationSupported = presentationSupported
+        .presentationSupported = presentationSupported,
+        .surfaceMaintenance1Supported = hasSurfaceMaintenance1,
     };
 
     pchar_array_t enabledLayers = VKNamedEntry_CollectNames(layers);
@@ -316,15 +327,20 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     }
     if (presentationSupported) {
         SURFACE_INSTANCE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vkGetInstanceProcAddr, vk->instance, vk->)
+        if (hasGetSurfaceCaps2) {
+            GET_SURFACE_CAPABILITIES_2_INSTANCE_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vkGetInstanceProcAddr, vk->instance, vk->)
+        }
         if (missingAPI) {
             J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: Required API is missing:");
             SURFACE_INSTANCE_FUNCTION_TABLE(LOG_MISSING_PFN, vk->)
         }
         if (missingAPI || !vk->platformData->initFunctions(vk, vkGetInstanceProcAddr)) {
             vk->presentationSupported = presentationSupported = VK_FALSE;
+            vk->surfaceMaintenance1Supported = hasGetSurfaceCaps2 = hasSurfaceMaintenance1 = VK_FALSE;
         }
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Presentation supported = %s", presentationSupported ? "true" : "false");
+    J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Surface maintenance 1 supported = %s", hasSurfaceMaintenance1 ? "true" : "false");
 
     vk->composites = VKComposites_Create();
 
