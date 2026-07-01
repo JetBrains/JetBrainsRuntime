@@ -63,7 +63,7 @@ static VKPlatformData platformData = {
     .checkPresentationSupport = X11VK_CheckPresentationSupport,
 };
 
-static void X11VK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
+static void X11VK_OnSurfaceResize(VKWinSDOps* surface) {
     // NO-OP
 }
 
