@@ -47,7 +47,9 @@ AC_DEFUN_ONCE([LIB_SETUP_VULKAN],
       AC_MSG_CHECKING([for ${with_vulkan_include}/vulkan/vulkan.h])
       if test -s "${with_vulkan_include}/vulkan/vulkan.h"; then
         VULKAN_ENABLED=true
-        VULKAN_FLAGS="-I${with_vulkan_include}"
+        VULKAN_INCLUDE_DIR="${with_vulkan_include}"
+        UTIL_FIXUP_PATH(VULKAN_INCLUDE_DIR)
+        VULKAN_FLAGS="-I${VULKAN_INCLUDE_DIR}"
         AC_MSG_RESULT([yes])
       else
         AC_MSG_RESULT([no])
@@ -60,7 +62,9 @@ AC_DEFUN_ONCE([LIB_SETUP_VULKAN],
       AC_MSG_CHECKING([for ${VULKAN_SDK}/include/vulkan/vulkan.h])
       if test -s "${VULKAN_SDK}/include/vulkan/vulkan.h"; then
         VULKAN_ENABLED=true
-        VULKAN_FLAGS="-I${VULKAN_SDK}/include"
+        VULKAN_INCLUDE_DIR="${VULKAN_SDK}/include"
+        UTIL_FIXUP_PATH(VULKAN_INCLUDE_DIR)
+        VULKAN_FLAGS="-I${VULKAN_INCLUDE_DIR}"
         AC_MSG_RESULT([yes])
       else
         AC_MSG_RESULT([no])
