@@ -56,7 +56,7 @@ struct VKSDOps {
     uint64_t        lastTimestamp; // When was this surface last used?
 };
 
-typedef void (*VKWinSD_SurfaceResizeCallback)(VKWinSDOps* surface, VkExtent2D extent);
+typedef void (*VKWinSD_SurfaceResizeCallback)(VKWinSDOps* surface);
 typedef void (*VKWinSD_SurfaceInitCallback)(VKWinSDOps* surface, void* data);
 
 /**
