@@ -63,11 +63,8 @@ static VKPlatformData platformData = {
     .checkPresentationSupport = X11VK_CheckPresentationSupport,
 };
 
-static void X11VK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
-    JNIEnv* env = JNU_GetEnv(jvm, JNI_VERSION_1_2);
-    // FIXME: resize breaks everything currently!!!
-    // This `onResize` method looks like it never existed, we should probably adapt some Wayland onSurfaceResize code to fit here.
-    // JNU_CallMethodByName(env, NULL, surface->vksdOps.sdOps.sdObject, "onResize", "()V");
+static void X11VK_OnSurfaceResize(VKWinSDOps* surface) {
+    // NO-OP
 }
 
 static void X11VK_InitSurfaceData(VKWinSDOps* surface, void* data) {
