@@ -349,7 +349,7 @@ ifeq ($(call isTargetOs, windows macosx)+$(ENABLE_HEADLESS_ONLY), false+false)
       common/accessibility/AccessibleAnnouncer \
       #
 
-  LIBAWT_XAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS)
+  LIBAWT_XAWT_CFLAGS += $(A11Y_SPEECHD_ANNOUNCING_CFLAGS) $(VULKAN_FLAGS)
 
   LIBAWT_XAWT_EXTRA_HEADER_DIRS := \
       $(LIBAWT_DEFAULT_HEADER_DIRS) \
