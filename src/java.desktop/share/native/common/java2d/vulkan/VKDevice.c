@@ -65,7 +65,8 @@ static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalD
         // Our format is supported for sampling.
         static const VkFormatFeatureFlags ATTACHMENT_FLAGS = VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
                                                           VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT |
-                                                          VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
+                                                          VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+                                                          VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
         if ((formatProperties.optimalTilingFeatures & ATTACHMENT_FLAGS) == ATTACHMENT_FLAGS) {
             // Our format is supported as a drawing destination.
             J2dRlsTraceLn(J2D_TRACE_INFO, "        %s (attachment)", name);

@@ -124,6 +124,11 @@ void VKRenderer_FlushMemory(VKSDOps* surface, VkMappedMemoryRange range);
 void VKRenderer_FlushSurface(VKSDOps* surface);
 
 /**
+ * Blit the current backing image onto
+ */
+void VKRenderer_BlitBackingImageContentOnto(VKSDOps* surface, VKImage* targetImage);
+
+/**
  * Request size for the surface. It has no effect, if it is already of the same size.
  * Actual resize will be performed later, before starting a new frame.
  */
