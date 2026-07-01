@@ -84,7 +84,7 @@ static void WLVK_InitSurfaceData(VKWinSDOps* surface, void* data) {
     }
 }
 
-static void WLVK_OnSurfaceResize(VKWinSDOps* surface, VkExtent2D extent) {
+static void WLVK_OnSurfaceResize(VKWinSDOps* surface) {
     JNIEnv* env = JNU_GetEnv(jvm, JNI_VERSION_1_2);
     JNU_CallMethodByName(env, NULL, surface->vksdOps.sdOps.sdObject, "bufferAttached", "()V");
 }
