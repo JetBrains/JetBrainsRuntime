@@ -147,30 +147,35 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
         return VK_FALSE;
     }
 
+    VkExtent2D swapchainImageExtent;
+
     // currentExtent is the current width and height of the surface, or the special value (0xFFFFFFFF, 0xFFFFFFFF)
     // indicating that the surface size will be determined by the extent of a swapchain targeting the surface.
     // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSurfaceCapabilitiesKHR.html
-    // The behavior is platform-dependent if the image extent does not match the surface’s currentExtent
-    // as returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR.
-    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainCreateInfoKHR.html
-    if ((vkwinsdo->vksdOps.image->extent.width != capabilities.currentExtent.width ||
-         vkwinsdo->vksdOps.image->extent.height != capabilities.currentExtent.height) &&
-         (capabilities.currentExtent.width != 0xFFFFFFFF || capabilities.currentExtent.height != 0xFFFFFFFF)) {
-        J2dRlsTraceLn(J2D_TRACE_WARNING,
-                      "VKSD_ConfigureWindowSurface(%p): surface size doesn't match, expected=%dx%d, capabilities.currentExtent=%dx%d",
-                      vkwinsdo, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height,
-                      capabilities.currentExtent.width, capabilities.currentExtent.height);
-        return VK_FALSE;
+    if (capabilities.currentExtent.width == 0xFFFFFFFF && capabilities.currentExtent.height == 0xFFFFFFFF) {
+        swapchainImageExtent = vkwinsdo->vksdOps.image->extent;
+    } else {
+        // The behavior is platform-dependent if the image extent does not match the surface’s currentExtent
+        // as returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR.
+        // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainCreateInfoKHR.html
+        swapchainImageExtent = capabilities.currentExtent;
+        if (vkwinsdo->vksdOps.image->extent.width != capabilities.currentExtent.width ||
+            vkwinsdo->vksdOps.image->extent.height != capabilities.currentExtent.height) {
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                          "VKSD_ConfigureWindowSurface(%p): surface size doesn't match backing image size (this is ok during resize), proceeding anyway - image=%dx%d, capabilities.currentExtent=%dx%d",
+                          vkwinsdo, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height,
+                          capabilities.currentExtent.width, capabilities.currentExtent.height);
+        }
     }
 
-    if (vkwinsdo->vksdOps.image->extent.width  < capabilities.minImageExtent.width  ||
-        vkwinsdo->vksdOps.image->extent.height < capabilities.minImageExtent.height ||
-        vkwinsdo->vksdOps.image->extent.width  > capabilities.maxImageExtent.width  ||
-        vkwinsdo->vksdOps.image->extent.height > capabilities.maxImageExtent.height) {
+    if (swapchainImageExtent.width  < capabilities.minImageExtent.width  ||
+        swapchainImageExtent.height < capabilities.minImageExtent.height ||
+        swapchainImageExtent.width  > capabilities.maxImageExtent.width  ||
+        swapchainImageExtent.height > capabilities.maxImageExtent.height) {
         J2dRlsTraceLn(J2D_TRACE_WARNING,
                       "VKSD_ConfigureWindowSurface(%p): surface size doesn't fit, expected=%dx%d, "
                       "capabilities.minImageExtent=%dx%d, capabilities.minImageExtent=%dx%d",
-                      vkwinsdo, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height,
+                      vkwinsdo, swapchainImageExtent.width, swapchainImageExtent.height,
                       capabilities.minImageExtent.width, capabilities.minImageExtent.height,
                       capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
         return VK_FALSE;
@@ -248,7 +253,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
             .minImageCount = imageCount,
             .imageFormat = format->format,
             .imageColorSpace = format->colorSpace,
-            .imageExtent = vkwinsdo->vksdOps.image->extent,
+            .imageExtent = swapchainImageExtent,
             .imageArrayLayers = 1,
             .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
             .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -266,7 +271,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d",
                   vkwinsdo, format->format, presentMode, imageCount, compositeAlpha);
-    vkwinsdo->resizeCallback(vkwinsdo, vkwinsdo->vksdOps.image->extent);
+    vkwinsdo->resizeCallback(vkwinsdo);
 
     if (vkwinsdo->swapchain != VK_NULL_HANDLE) {
         // Destroy old swapchain.
@@ -276,7 +281,7 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
     vkwinsdo->swapchain = swapchain;
     vkwinsdo->swapchainDevice = device;
-    vkwinsdo->swapchainExtent = vkwinsdo->vksdOps.image->extent;
+    vkwinsdo->swapchainExtent = swapchainImageExtent;
 
     uint32_t swapchainImageCount;
     VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, vkwinsdo->swapchain, &swapchainImageCount, NULL)) {
