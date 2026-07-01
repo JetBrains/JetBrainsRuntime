@@ -155,6 +155,16 @@ FormatGroup VKUtil_GetFormatGroup(VkFormat format);
  */
 void VKUtil_ConcatenateTransform(VKTransform* dst, const VKTransform* src);
 
+/**
+ * Get the extent of the common area of two Extent2Ds.
+ */
+static inline VkExtent2D VKUtil_IntersectVkExtent2D(VkExtent2D extent1, VkExtent2D extent2) {
+    return (VkExtent2D){
+        .width = extent1.width < extent2.width ? extent1.width : extent2.width,
+        .height = extent1.height < extent2.height ? extent1.height : extent2.height
+    };
+}
+
 /*
  * The following macros allow the caller to return (or continue) if the
  * provided value is NULL.  (The strange else clause is included below to
