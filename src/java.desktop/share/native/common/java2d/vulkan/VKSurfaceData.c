@@ -354,3 +354,15 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNI
     VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, NULL);
 }
 
+/*
+ * Class:     sun_java2d_vulkan_VKSurfaceData
+ * Method:    updateExtentAndDevice
+ * Signature: (JJII)V
+*/
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKSurfaceData_updateExtentAndDevice(JNIEnv* env, jobject vksd, jlong pData, jlong device, jint extentWidth, jint extentHeight) {
+    VKSDOps* surface = jlong_to_ptr(pData);
+    assert(surface != NULL);
+
+    surface->requestedExtent = (VkExtent2D) { extentWidth, extentHeight };
+    surface->requestedDevice = jlong_to_ptr(device);
+}
