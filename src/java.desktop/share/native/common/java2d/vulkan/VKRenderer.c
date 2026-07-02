@@ -1091,8 +1091,7 @@ void VKRenderer_BlitBackingImageContentOnto(VKSDOps *surface, VKImage *targetIma
 
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device) {
     assert(surface != NULL);
-    surface->requestedExtent = extent;
-    surface->requestedDevice = device;
+
     // We must only do pending flush between frames.
     if (surface->renderPass != NULL && surface->renderPass->pendingFlush)  {
         if (surface->renderPass->pendingCommands) {
@@ -1700,7 +1699,7 @@ Java_sun_java2d_vulkan_VKTextRenderer_drawGlyphList
      jfloatArray glyphPositions)
 {
     unsigned char *images = NULL;
-    
+
     J2dTraceLn(J2D_TRACE_INFO, "VKTextRenderer_drawGlyphList");
 
     images = (unsigned char *)(*env)->GetPrimitiveArrayCritical(env, glyphImages, NULL);
