@@ -298,13 +298,13 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     @Override
     public void dispose() {
         ungrab(true);
-        resetCornerMasks();
+        resetCornerPaths();
         super.dispose();
     }
 
     @Override
     void updateSurfaceData() {
-        resetCornerMasks();
+        resetCornerPaths();
         super.updateSurfaceData();
     }
 
@@ -432,7 +432,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     private boolean needToPaintRoundedCorners() {
         synchronized (getStateLock()) {
-            if (!(roundedCornerKind instanceof WLRoundedCornersManager.CustomRoundedCorners)) return false; 
+            if (!(roundedCornerKind instanceof WLRoundedCornersManager.CustomRoundedCorners)) return false;
             int roundedCornerSize = roundedCornerKind.radius();
             // Note: You would normally get a transparency-capable color model when using
             // the default graphics configuration
@@ -452,37 +452,25 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         synchronized (getStateLock()) {
             if (roundedCornerKind != kind) {
                 roundedCornerKind = kind;
-                resetCornerMasks();
+                resetCornerPaths();
             }
         }
     }
 
-    private void createCornerMasks() {
+    private void createCornerPaths() {
         if (graphics == null) {
             graphics = new SunGraphics2D(surfaceData, Color.WHITE, Color.BLACK, null);
-            graphics.setComposite(AlphaComposite.Clear);
             graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             graphics.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
         }
 
         if (topLeftMask == null) {
-            createCornerMasks(roundedCornerKind.radius());
+            createCornerPaths(roundedCornerKind.radius());
         }
     }
 
-    private void resetCornerMasks() {
-        synchronized (getStateLock()) {
-            if (graphics != null) graphics.dispose();
-            graphics = null;
-            topLeftMask = null;
-            topRightMask = null;
-            bottomLeftMask = null;
-            bottomRightMask = null;
-        }
-    }
-
-    private void createCornerMasks(int size) {
+    private void createCornerPaths(int size) {
         int w = getWidth();
         int h = getHeight();
 
@@ -511,10 +499,22 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         bottomRightMask.closePath();
     }
 
+    private void resetCornerPaths() {
+        synchronized (getStateLock()) {
+            if (graphics != null) graphics.dispose();
+            graphics = null;
+            topLeftMask = null;
+            topRightMask = null;
+            bottomLeftMask = null;
+            bottomRightMask = null;
+        }
+    }
+
     private void paintRoundCorners() {
         synchronized (getStateLock()) {
-            createCornerMasks();
+            createCornerPaths();
 
+            graphics.setComposite(AlphaComposite.Clear);
             graphics.fill(topLeftMask);
             graphics.fill(topRightMask);
             graphics.fill(bottomLeftMask);
