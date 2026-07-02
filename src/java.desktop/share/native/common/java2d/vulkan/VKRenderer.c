@@ -1091,8 +1091,11 @@ void VKRenderer_BlitBackingImageContentOnto(VKSDOps *surface, VKImage *targetIma
 
 void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* device) {
     assert(surface != NULL);
-    surface->requestedExtent = extent;
-    surface->requestedDevice = device;
+
+    // Unused here, because we're updating these synchronously
+    (void) extent;
+    (void) device;
+
     // We must only do pending flush between frames.
     if (surface->renderPass != NULL && surface->renderPass->pendingFlush)  {
         if (surface->renderPass->pendingCommands) {
