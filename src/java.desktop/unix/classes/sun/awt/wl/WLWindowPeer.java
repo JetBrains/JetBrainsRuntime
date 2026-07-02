@@ -62,6 +62,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
@@ -83,6 +84,8 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     private Path2D.Double topRightMask;     // guarded by stateLock
     private Path2D.Double bottomLeftMask;   // guarded by stateLock
     private Path2D.Double bottomRightMask;  // guarded by stateLock
+    private Path2D.Double borderPath;  // guarded by stateLock
+    private Color borderColor;  // guarded by stateLock
     private SunGraphics2D graphics;         // guarded by stateLock
 
     private final LWChildPeers childPeers = new LWChildPeers(new Object());
@@ -432,13 +435,18 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     private boolean needToPaintRoundedCorners() {
         synchronized (getStateLock()) {
-            if (!(roundedCornerKind instanceof WLRoundedCornersManager.CustomRoundedCorners)) return false;
-            int roundedCornerSize = roundedCornerKind.radius();
+            if (!(roundedCornerKind instanceof WLRoundedCornersManager.CustomRoundedCorners customCorners)) return false;
+            int roundedCornerSize = customCorners.radius();
+            int borderWidth = customCorners.borderWidth();
+            int width = getWidth();
+            int height = getHeight();
             // Note: You would normally get a transparency-capable color model when using
             // the default graphics configuration
             return surfaceData.getColorModel().hasAlpha()
-                    && getWidth() > roundedCornerSize * 2
-                    && getHeight() > roundedCornerSize * 2;
+                    && roundedCornerSize > 0
+                    && borderWidth < roundedCornerSize
+                    && width > roundedCornerSize * 2
+                    && height > roundedCornerSize * 2;
         }
     }
 
@@ -466,37 +474,57 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         }
 
         if (topLeftMask == null) {
-            createCornerPaths(roundedCornerKind.radius());
+            createCornerPaths((WLRoundedCornersManager.CustomRoundedCorners)roundedCornerKind);
         }
     }
 
-    private void createCornerPaths(int size) {
+    private void createCornerPaths(WLRoundedCornersManager.CustomRoundedCorners customCorners) {
         int w = getWidth();
         int h = getHeight();
+        int radius = customCorners.radius();
 
         topLeftMask = new Path2D.Double();
         topLeftMask.moveTo(0, 0);
-        topLeftMask.lineTo(size, 0);
-        topLeftMask.quadTo(0, 0, 0, size);
+        topLeftMask.lineTo(radius, 0);
+        topLeftMask.quadTo(0, 0, 0, radius);
         topLeftMask.closePath();
 
         topRightMask = new Path2D.Double();
-        topRightMask.moveTo(w - size, 0);
-        topRightMask.quadTo(w, 0, w, size);
+        topRightMask.moveTo(w - radius, 0);
+        topRightMask.quadTo(w, 0, w, radius);
         topRightMask.lineTo(w, 0);
         topRightMask.closePath();
 
         bottomLeftMask = new Path2D.Double();
-        bottomLeftMask.moveTo(0, h - size);
-        bottomLeftMask.quadTo(0, h, size, h);
+        bottomLeftMask.moveTo(0, h - radius);
+        bottomLeftMask.quadTo(0, h, radius, h);
         bottomLeftMask.lineTo(0, h);
         bottomLeftMask.closePath();
 
         bottomRightMask = new Path2D.Double();
-        bottomRightMask.moveTo(w - size, h);
-        bottomRightMask.quadTo(w, h, w, h - size);
+        bottomRightMask.moveTo(w - radius, h);
+        bottomRightMask.quadTo(w, h, w, h - radius);
         bottomRightMask.lineTo(w, h);
         bottomRightMask.closePath();
+
+        borderColor = customCorners.borderColor();
+        if (borderColor == null) return;
+
+        int borderWidth = customCorners.borderWidth();
+        borderPath = new Path2D.Double(Path2D.WIND_EVEN_ODD);
+        borderPath.append(new RoundRectangle2D.Double(
+                0, 0,
+                w, h,
+                radius * 2, radius * 2
+        ), false);
+        int innerRadius = radius - borderWidth;
+        // borderWidth is used here for both X and Y, that's actually correct, but the inspection doesn't like it
+        //noinspection SuspiciousNameCombination
+        borderPath.append(new RoundRectangle2D.Double(
+                borderWidth, borderWidth,
+                w - borderWidth * 2, h - borderWidth * 2,
+                innerRadius * 2, innerRadius * 2
+        ), false);
     }
 
     private void resetCornerPaths() {
@@ -507,6 +535,8 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
             topRightMask = null;
             bottomLeftMask = null;
             bottomRightMask = null;
+            borderPath = null;
+            borderColor = null;
         }
     }
 
@@ -519,6 +549,12 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
             graphics.fill(topRightMask);
             graphics.fill(bottomLeftMask);
             graphics.fill(bottomRightMask);
+
+            if (borderColor == null) return;
+
+            graphics.setComposite(AlphaComposite.SrcOver); // the default one for Graphics
+            graphics.setColor(borderColor);
+            graphics.fill(borderPath);
         }
     }
 

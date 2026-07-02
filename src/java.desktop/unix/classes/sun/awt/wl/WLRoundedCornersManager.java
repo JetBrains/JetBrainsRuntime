@@ -31,6 +31,7 @@ import sun.awt.RoundedCornersManager;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
+import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.Window;
 
@@ -65,14 +66,32 @@ public class WLRoundedCornersManager implements RoundedCornersManager {
 
     public final static class CustomRoundedCorners extends RoundedCornerKind {
         private final int radius;
+        private final int borderWidth;
+        private final Color borderColor;
 
         CustomRoundedCorners(int radius) {
             this.radius = radius;
+            this.borderWidth = 0;
+            this.borderColor = null;
+        }
+
+        CustomRoundedCorners(int radius, int borderWidth, Color borderColor) {
+            this.radius = radius;
+            this.borderWidth = borderWidth;
+            this.borderColor = borderColor;
         }
 
         @Override
         public int radius() {
             return radius;
+        }
+
+        public int borderWidth() {
+            return borderWidth;
+        }
+
+        public Color borderColor() {
+            return borderColor;
         }
     }
 
@@ -85,7 +104,19 @@ public class WLRoundedCornersManager implements RoundedCornersManager {
                 default -> RoundedCornerKind.DEFAULT;
             };
         }
-
+        else if (o instanceof Float radius) {
+            return new CustomRoundedCorners(Math.round(radius));
+        }
+        else if (o instanceof Object[] values) {
+            if (
+                values.length == 3 &&
+                values[0] instanceof Float radius &&
+                values[1] instanceof Integer borderWidth &&
+                values[2] instanceof Color borderColor
+            ) {
+                return new CustomRoundedCorners(Math.round(radius), borderWidth, borderColor);
+            }
+        }
         return RoundedCornerKind.DEFAULT;
     }
 
