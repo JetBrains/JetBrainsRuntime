@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2023, Rivos Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -167,13 +167,16 @@ static bool is_set(int64_t key, uint64_t value_mask) {
 void RiscvHwprobe::add_features_from_query_result() {
   assert(rw_hwprobe_completed, "hwprobe not init yet.");
 
-  if (is_valid(RISCV_HWPROBE_KEY_MVENDORID)) {
+  // For value-type keys, the kernel returns (uint64_t)-1 when CPUs in the
+  // query set disagree (different core types). Skip these as the value is
+  // not meaningful for the system as a whole.
+  if (is_valid(RISCV_HWPROBE_KEY_MVENDORID) && query[RISCV_HWPROBE_KEY_MVENDORID].value != (uint64_t)-1) {
     VM_Version::mvendorid.enable_feature(query[RISCV_HWPROBE_KEY_MVENDORID].value);
   }
-  if (is_valid(RISCV_HWPROBE_KEY_MARCHID)) {
+  if (is_valid(RISCV_HWPROBE_KEY_MARCHID) && query[RISCV_HWPROBE_KEY_MARCHID].value != (uint64_t)-1) {
     VM_Version::marchid.enable_feature(query[RISCV_HWPROBE_KEY_MARCHID].value);
   }
-  if (is_valid(RISCV_HWPROBE_KEY_MIMPID)) {
+  if (is_valid(RISCV_HWPROBE_KEY_MIMPID) && query[RISCV_HWPROBE_KEY_MIMPID].value != (uint64_t)-1) {
     VM_Version::mimpid.enable_feature(query[RISCV_HWPROBE_KEY_MIMPID].value);
   }
   if (is_set(RISCV_HWPROBE_KEY_BASE_BEHAVIOR, RISCV_HWPROBE_BASE_BEHAVIOR_IMA)) {
