@@ -242,7 +242,7 @@ public class DefaultFrameDecoration extends FullFrameDecorationHelper {
             g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
             g.setBackground(new Color(0, true));
             g.clearRect(0, 0, width, HEIGHT);
-            int radius = WLRoundedCornersManager.roundCornerRadiusFor(WLRoundedCornersManager.RoundedCornerKind.DEFAULT);
+            int radius = WLRoundedCornersManager.RoundedCornerKind.DEFAULT.radius();
             // The title bar
             g.fillRoundRect(0, 0, width, HEIGHT + radius + 1, radius, radius);
 
