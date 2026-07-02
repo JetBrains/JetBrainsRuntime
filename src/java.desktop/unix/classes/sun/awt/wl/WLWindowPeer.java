@@ -431,7 +431,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     }
 
     private boolean canPaintRoundedCorners() {
-        int roundedCornerSize = WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind);
+        int roundedCornerSize = roundedCornerKind.radius();
         // Note: You would normally get a transparency-capable color model when using
         // the default graphics configuration
         return surfaceData.getColorModel().hasAlpha()
@@ -441,8 +441,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     protected boolean roundedCornersRequested() {
         synchronized (getStateLock()) {
-            return roundedCornerKind == WLRoundedCornersManager.RoundedCornerKind.FULL
-                    || roundedCornerKind == WLRoundedCornersManager.RoundedCornerKind.SMALL;
+            return roundedCornerKind instanceof WLRoundedCornersManager.CustomRoundedCorners;
         }
     }
 
@@ -471,7 +470,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         }
 
         if (topLeftMask == null) {
-            createCornerMasks(WLRoundedCornersManager.roundCornerRadiusFor(roundedCornerKind));
+            createCornerMasks(roundedCornerKind.radius());
         }
     }
 
