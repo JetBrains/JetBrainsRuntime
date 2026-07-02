@@ -31,6 +31,7 @@ import sun.awt.RoundedCornersManager;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
+import java.awt.Color;
 import java.awt.Toolkit;
 import java.awt.Window;
 
@@ -43,32 +44,79 @@ public class WLRoundedCornersManager implements RoundedCornersManager {
         }
     }
 
-    public enum RoundedCornerKind {
-        DEFAULT,
-        NONE,
-        SMALL,
-        FULL
+    public abstract static class RoundedCornerKind {
+        public static final RoundedCornerKind DEFAULT = new DefaultRoundedCorners();
+        public static final RoundedCornerKind NONE = new NoRoundedCorners();
+        public abstract int radius();
     }
 
-    public static int roundCornerRadiusFor(RoundedCornerKind kind) {
-        return switch (kind) {
-            case DEFAULT -> 12;
-            case FULL -> 24;
-            case NONE -> 0;
-            case SMALL -> 8;
-        };
+    private final static class DefaultRoundedCorners extends RoundedCornerKind {
+        @Override
+        public int radius() {
+            return 12;
+        }
+    }
+
+    private final static class NoRoundedCorners extends RoundedCornerKind {
+        @Override
+        public int radius() {
+            return 0;
+        }
+    }
+
+    public final static class CustomRoundedCorners extends RoundedCornerKind {
+        private final int radius;
+        private final int borderWidth;
+        private final Color borderColor;
+
+        CustomRoundedCorners(int radius) {
+            this.radius = radius;
+            this.borderWidth = 0;
+            this.borderColor = null;
+        }
+
+        CustomRoundedCorners(int radius, int borderWidth, Color borderColor) {
+            this.radius = radius;
+            this.borderWidth = borderWidth;
+            this.borderColor = borderColor;
+        }
+
+        @Override
+        public int radius() {
+            return radius;
+        }
+
+        public int borderWidth() {
+            return borderWidth;
+        }
+
+        public Color borderColor() {
+            return borderColor;
+        }
     }
 
     public static RoundedCornerKind roundedCornerKindFrom(Object o) {
         if (o instanceof String kind) {
             return switch (kind) {
                 case "none" -> RoundedCornerKind.NONE;
-                case "small" -> RoundedCornerKind.SMALL;
-                case "full" -> RoundedCornerKind.FULL;
+                case "small" -> new CustomRoundedCorners(8);
+                case "full" -> new CustomRoundedCorners(24);
                 default -> RoundedCornerKind.DEFAULT;
             };
         }
-
+        else if (o instanceof Float radius) {
+            return new CustomRoundedCorners(Math.round(radius));
+        }
+        else if (o instanceof Object[] values) {
+            if (
+                values.length == 3 &&
+                values[0] instanceof Float radius &&
+                values[1] instanceof Integer borderWidth &&
+                values[2] instanceof Color borderColor
+            ) {
+                return new CustomRoundedCorners(Math.round(radius), borderWidth, borderColor);
+            }
+        }
         return RoundedCornerKind.DEFAULT;
     }
 
