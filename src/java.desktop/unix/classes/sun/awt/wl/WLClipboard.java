@@ -345,15 +345,24 @@ public final class WLClipboard extends SunClipboard {
     }
 
     void handleClipboardOffer(WLDataOffer offer /* nullable */) {
+        boolean lostOwnership;
         synchronized (dataLock) {
-            if (ourDataSource == null || !ourDataSource.isSourceFor(offer)) {
-                lostOwnershipNow();
-            }
+            lostOwnership = ourDataSource == null || !ourDataSource.isSourceFor(offer);
 
             if (clipboardDataOfferedToUs != null) {
                 clipboardDataOfferedToUs.unref();
             }
             clipboardDataOfferedToUs = offer;
+        }
+
+        if (lostOwnership) {
+            // NB: lostOwnershipNow() synchronizes on this clipboard's monitor, which is also
+            // held by SunClipboard's public API (getContents(), isDataFlavorAvailable(), etc.)
+            // while it calls back into getClipboardFormats(), which acquires dataLock.
+            // Therefore, this call must never be made while holding dataLock, or the two lock
+            // acquisition orders (dataLock -> monitor here, monitor -> dataLock in SunClipboard)
+            // deadlock (JBR-7896, JBR-10347).
+            lostOwnershipNow();
         }
     }
 }
