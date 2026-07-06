@@ -319,6 +319,16 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
                     vkwinsdo->swapchain->handle : VK_NULL_HANDLE,
     };
 
+    VkSwapchainPresentModesCreateInfoEXT presentModesCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT
+    };
+
+    if (device->swapchainMaintenance1Supported) {
+        presentModesCreateInfo.presentModeCount = 1;
+        presentModesCreateInfo.pPresentModes = &presentMode;
+        createInfoKhr.pNext = &presentModesCreateInfo;
+    }
+
     VKSwapchain *swapchain = VKSwapchain_Create(device, &createInfoKhr);
 
     if (swapchain == NULL) {

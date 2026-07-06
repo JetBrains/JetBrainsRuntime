@@ -356,6 +356,7 @@ static void VKRenderer_CleanupPresentations(VKRenderer* renderer, VkBool32 wait)
 
         J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_CleanupPresentations: cleaning up swapchain %p, fence %p", presentedImage.swapchain, presentedImage.fence);
         VKSwapchain_Release(presentedImage.swapchain);
+        renderer->device->vkResetFences(renderer->device->handle, 1, &presentedImage.fence);
         POOL_INSERT(renderer, fencePool, presentedImage.fence);
     }
 
