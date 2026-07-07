@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
 package jdk.test.lib.security;
 
 import java.io.*;
+import java.net.IDN;
 import java.security.cert.*;
 import java.security.cert.Extension;
 import java.util.*;
@@ -41,7 +42,9 @@ import sun.security.x509.AccessDescription;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.AuthorityInfoAccessExtension;
 import sun.security.x509.AuthorityKeyIdentifierExtension;
+import sun.security.x509.GeneralSubtrees;
 import sun.security.x509.IPAddressName;
+import sun.security.x509.NameConstraintsExtension;
 import sun.security.x509.SubjectKeyIdentifierExtension;
 import sun.security.x509.BasicConstraintsExtension;
 import sun.security.x509.ExtendedKeyUsageExtension;
@@ -322,7 +325,6 @@ public class CertificateBuilder {
      * Helper method to add DNSName types for the SAN extension
      *
      * @param dnsNames A {@code List} of names to add as DNSName types
-     *
      * @throws IOException if an encoding error occurs.
      */
     public CertificateBuilder addSubjectAltNameDNSExt(List<String> dnsNames)
@@ -330,7 +332,8 @@ public class CertificateBuilder {
         if (!dnsNames.isEmpty()) {
             GeneralNames gNames = new GeneralNames();
             for (String name : dnsNames) {
-                gNames.add(new GeneralName(new DNSName(name)));
+                gNames.add(new GeneralName(new DNSName(new DerValue(
+                        DerValue.tag_IA5String, IDN.toASCII(name)))));
             }
             addExtension(new SubjectAlternativeNameExtension(false,
                     gNames));
@@ -416,6 +419,17 @@ public class CertificateBuilder {
             int maxPathLen) throws IOException {
         return addExtension(new BasicConstraintsExtension(crit, isCA,
                 maxPathLen));
+    }
+
+    /**
+     * Set the Name Constraints Extension for a certificate.
+     *
+     * @param permitted permitted names
+     * @param excluded excluded names
+     */
+    public CertificateBuilder addNameConstraintsExt(
+            GeneralSubtrees permitted, GeneralSubtrees excluded) {
+        return addExtension(new NameConstraintsExtension(permitted, excluded));
     }
 
     /**
