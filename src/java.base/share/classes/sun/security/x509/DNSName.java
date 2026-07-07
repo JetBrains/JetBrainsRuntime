@@ -52,8 +52,10 @@ import sun.security.util.*;
 public class DNSName implements GeneralNameInterface {
     private final String name;
 
+    private static final HostnameChecker HOSTNAME_CHECKER =
+            HostnameChecker.getInstance(HostnameChecker.TYPE_TLS);
     private static final String DNS_ALLOWED =
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-";
 
     /**
      * Create the DNSName object from the passed encoded Der value.
@@ -218,6 +220,9 @@ public class DNSName implements GeneralNameInterface {
      * For example, www.host.example.com would satisfy the constraint but
      * host1.example.com would not.
      * <p>
+     * RFC6125: Match wildcard pattern in the input name being constrained,
+     * any wildcard in this name will be matched as a literal character.
+     * <p>
      * RFC1034: By convention, domain names can be stored with arbitrary case, but
      * domain name comparisons for all present domain functions are done in a
      * case-insensitive manner, assuming an ASCII character set, and a high
@@ -238,7 +243,8 @@ public class DNSName implements GeneralNameInterface {
             String inName =
                 (((DNSName)inputName).getName()).toLowerCase(Locale.ENGLISH);
             String thisName = name.toLowerCase(Locale.ENGLISH);
-            if (inName.equals(thisName))
+
+            if (HOSTNAME_CHECKER.isMatched(thisName, inName, false))
                 constraintType = NAME_MATCH;
             else if (thisName.endsWith(inName)) {
                 int inNdx = thisName.lastIndexOf(inName);
