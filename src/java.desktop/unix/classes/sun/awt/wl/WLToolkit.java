@@ -321,15 +321,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                 SunToolkit.postEvent(new PeerEvent(this, () -> {
-                    WLToolkit.awtLock();
                     try {
-                        dispatchEventsOnEDT();
-                        if (dataDevice != null) {
-                            dataDevice.performDeletionsOnEDT();
+                        WLToolkit.awtLock();
+                        try {
+                            dispatchEventsOnEDT();
+                            if (dataDevice != null) {
+                                dataDevice.performDeletionsOnEDT();
+                            }
+                        } finally {
+                            WLToolkit.awtUnlock();
                         }
                     } finally {
                         eventsQueued.release();
-                        WLToolkit.awtUnlock();
                     }
                 }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
                 try {
