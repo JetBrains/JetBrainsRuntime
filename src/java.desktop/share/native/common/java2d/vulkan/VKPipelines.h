@@ -57,17 +57,19 @@ typedef enum {
  * Shader variant.
  * It is used to specialize shader behavior, and its meaning varies with each particular shader.
  */
-typedef enum {
+enum {
     SHADER_VARIANT_GRADIENT_CLAMP = 0,
     SHADER_VARIANT_GRADIENT_CYCLE = 1,
     NO_SHADER_VARIANT = 0x7FFFFFFF
-} VKShaderVariant;
+};
+typedef uint32_t VKShaderVariant;
 
-typedef enum {
+enum {
     STENCIL_MODE_NONE = 0, // No stencil attachment.
     STENCIL_MODE_OFF  = 1, // Has stencil attachment, stencil test disabled.
     STENCIL_MODE_ON   = 2  // Has stencil attachment, stencil test enabled.
-} VKStencilMode;
+};
+typedef uint32_t VKStencilMode;
 
 /**
  * All features describing a pipeline.
