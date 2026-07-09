@@ -362,11 +362,20 @@ public:
     static const int EXIT_ENCLOSING_LOOP;
     static const int EXIT_ALL_ENCLOSING_LOOPS;
 
+    // AI COMMENT: JBR-10458 - token meaning "break the current innermost secondary
+    // loop". Used by native-issued quits (drop target, shutdown, primary loop).
+    // Real per-loop tokens are generated in Java starting at 1, so this value never
+    // collides with a real token.
+    static const jlong SECONDARY_LOOP_TOKEN_INNERMOST;
+
     // ...
 
-    void QuitMessageLoop(int status);
+    // AI COMMENT: JBR-10458 - 'token' names the specific secondary loop this quit
+    // targets. A quit for an outer loop only marks that loop; it does not tear down
+    // an unrelated inner loop that happens to be innermost at the time.
+    void QuitMessageLoop(int status, jlong token);
 
-    UINT MessageLoop(IDLEPROC lpIdleFunc, PEEKMESSAGEPROC lpPeekMessageFunc);
+    UINT MessageLoop(IDLEPROC lpIdleFunc, PEEKMESSAGEPROC lpPeekMessageFunc, jlong token);
     BOOL PumpWaitingMessages(PEEKMESSAGEPROC lpPeekMessageFunc);
     void PumpToDestroy(class AwtComponent* p);
     void ProcessMsg(MSG& msg);
@@ -488,6 +497,20 @@ private:
 
     BOOL  m_breakMessageLoop;
     UINT  m_messageLoopResult;
+
+    // AI COMMENT: JBR-10458 - intrusive LIFO stack of active secondary event loops.
+    // Each MessageLoop() invocation links one frame that lives on its own C stack;
+    // the loops are therefore naturally nested LIFO. A targeted quit sets the
+    // 'doBreak' of the named frame only. Since each loop tests its OWN frame's
+    // doBreak (not a shared flag), a quit for an outer loop never terminates an
+    // inner loop, and starting a fresh inner loop is never affected by a break that
+    // is pending for an outer one. Touched only on the toolkit thread -> no locking.
+    struct SecondaryLoopFrame {
+        jlong token;
+        volatile BOOL doBreak;
+        SecondaryLoopFrame* prev;
+    };
+    SecondaryLoopFrame* m_activeSecondaryLoop;
 
     class AwtComponent* m_lastMouseOver;
     BOOL                m_mouseDown;

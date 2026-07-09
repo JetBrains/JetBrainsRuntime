@@ -88,6 +88,7 @@ import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -134,6 +135,25 @@ public abstract class SunToolkit extends Toolkit
      * value for Toolkit.addAWTEventListener.
      */
     public static final int GRAB_EVENT_MASK = 0x80000000;
+
+    /**
+     * AI COMMENT: JBR-10458 - process-wide generator of unique tokens for native
+     * (Windows) secondary event loops used by drag-source feedback and by
+     * data-conversion. Starts at 1 so a token never collides with the native
+     * "innermost" sentinel value 0. A feedback loop and a data-transfer loop can be
+     * active (nested) at the same time on the toolkit thread, and their tokens must
+     * be distinct so a quit releases exactly its own loop.
+     */
+    private static final AtomicLong secondaryLoopTokens = new AtomicLong(1);
+
+    /**
+     * AI COMMENT: JBR-10458 - returns a fresh, unique secondary-event-loop token.
+     * On platforms whose peers do not use native secondary loops the value is
+     * simply unused.
+     */
+    public static long nextSecondaryLoopToken() {
+        return secondaryLoopTokens.getAndIncrement();
+    }
 
     /* The key to put()/get() the PostEventQueue into/from the AppContext.
      */

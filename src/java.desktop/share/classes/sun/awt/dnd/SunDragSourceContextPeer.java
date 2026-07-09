@@ -104,8 +104,11 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
     /**
      * Synchro messages in AWT
      */
-    public void startSecondaryEventLoop(){}
-    public void quitSecondaryEventLoop(){}
+    // AI COMMENT: JBR-10458 - 'token' names the specific native secondary loop so a
+    // quit releases exactly its own loop and cannot tear down an unrelated nested
+    // loop. No-op default; only the Windows peer overrides these (X11/macOS inherit).
+    public void startSecondaryEventLoop(long token){}
+    public void quitSecondaryEventLoop(long token){}
 
     /**
      * initiate a DnD operation ...
@@ -262,12 +265,15 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
                                     dropAction,
                                     targetAction & sourceActions,
                                     modifiers, x, y);
-        EventDispatcher dispatcher = new EventDispatcher(dispatchType, event);
+        // AI COMMENT: JBR-10458 - allocate the loop token before posting the
+        // dispatcher so the EDT-side quit targets this exact loop (nesting-safe).
+        final long loopToken = SunToolkit.nextSecondaryLoopToken();
+        EventDispatcher dispatcher = new EventDispatcher(dispatchType, event, loopToken);
 
         SunToolkit.invokeLaterOnAppContext(
             SunToolkit.targetToAppContext(getComponent()), dispatcher);
 
-        startSecondaryEventLoop();
+        startSecondaryEventLoop(loopToken);
     }
 
     /**
@@ -307,13 +313,14 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
     protected final void dragExit(final int x, final int y) {
         DragSourceEvent event =
             new DragSourceEvent(getDragSourceContext(), x, y);
+        final long loopToken = SunToolkit.nextSecondaryLoopToken();
         EventDispatcher dispatcher =
-            new EventDispatcher(DISPATCH_EXIT, event);
+            new EventDispatcher(DISPATCH_EXIT, event, loopToken);
 
         SunToolkit.invokeLaterOnAppContext(
             SunToolkit.targetToAppContext(getComponent()), dispatcher);
 
-        startSecondaryEventLoop();
+        startSecondaryEventLoop(loopToken);
     }
 
     /**
@@ -338,13 +345,14 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
             new DragSourceDropEvent(getDragSourceContext(),
                                     operations & sourceActions,
                                     success, x, y);
+        final long loopToken = SunToolkit.nextSecondaryLoopToken();
         EventDispatcher dispatcher =
-            new EventDispatcher(DISPATCH_FINISH, event);
+            new EventDispatcher(DISPATCH_FINISH, event, loopToken);
 
         SunToolkit.invokeLaterOnAppContext(
             SunToolkit.targetToAppContext(getComponent()), dispatcher);
 
-        startSecondaryEventLoop();
+        startSecondaryEventLoop(loopToken);
         setNativeContext(0);
         dragImage = null;
         dragImageOffset = null;
@@ -440,7 +448,11 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
 
         private final DragSourceEvent event;
 
-        EventDispatcher(int dispatchType, DragSourceEvent event) {
+        // AI COMMENT: JBR-10458 - token of the native secondary loop this dispatcher
+        // must quit when it finishes, so it releases exactly its own loop.
+        private final long loopToken;
+
+        EventDispatcher(int dispatchType, DragSourceEvent event, long loopToken) {
             switch (dispatchType) {
             case DISPATCH_ENTER:
             case DISPATCH_MOTION:
@@ -464,6 +476,7 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
 
             this.dispatchType  = dispatchType;
             this.event         = event;
+            this.loopToken     = loopToken;
         }
 
         public void run() {
@@ -498,7 +511,7 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
                                                     dispatchType);
                 }
             } finally {
-                 SunDragSourceContextPeer.this.quitSecondaryEventLoop();
+                 SunDragSourceContextPeer.this.quitSecondaryEventLoop(loopToken);
             }
         }
     }

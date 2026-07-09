@@ -309,9 +309,15 @@ public final class WToolkit extends SunToolkit implements Runnable {
      *
      * WARNING: startSecondaryEventLoop must only be called from the "AWT-
      * Windows" thread.
+     *
+     * AI COMMENT: JBR-10458 - 'token' identifies the specific native secondary loop.
+     * A quit only releases the loop with the matching token, so nested secondary
+     * loops (e.g. a drag-feedback loop with an async data-conversion loop nested
+     * inside it) unwind correctly and a quit meant for an outer loop cannot tear
+     * down an inner one. Tokens come from SunToolkit.nextSecondaryLoopToken().
      */
-    static native void startSecondaryEventLoop();
-    static native void quitSecondaryEventLoop();
+    static native void startSecondaryEventLoop(long token);
+    static native void quitSecondaryEventLoop(long token);
 
     /*
      * Create peer objects.

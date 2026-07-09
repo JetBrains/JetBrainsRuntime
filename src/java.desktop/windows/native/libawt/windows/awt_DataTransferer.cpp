@@ -230,11 +230,12 @@ PeekMessageFunc(MSG& msg) {
 }
 
 void
-AwtDataTransferer::SecondaryMessageLoop() {
+AwtDataTransferer::SecondaryMessageLoop(jlong token) {
     DASSERT(AwtToolkit::MainThread() == ::GetCurrentThreadId());
 
     AwtToolkit::GetInstance().MessageLoop(IdleFunc,
-                                          PeekMessageFunc);
+                                          PeekMessageFunc,
+                                          token);
 }
 
 extern "C" {
@@ -873,11 +874,11 @@ Java_sun_awt_windows_WDataTransferer_getClipboardFormatName(JNIEnv *env,
  * Signature: ()V;
  */
 JNIEXPORT void JNICALL
-Java_sun_awt_windows_WToolkitThreadBlockedHandler_startSecondaryEventLoop(JNIEnv *env, jclass)
+Java_sun_awt_windows_WToolkitThreadBlockedHandler_startSecondaryEventLoop(JNIEnv *env, jclass, jlong token)
 {
     TRY;
 
-    AwtDataTransferer::SecondaryMessageLoop();
+    AwtDataTransferer::SecondaryMessageLoop(token);
 
     CATCH_BAD_ALLOC;
 }

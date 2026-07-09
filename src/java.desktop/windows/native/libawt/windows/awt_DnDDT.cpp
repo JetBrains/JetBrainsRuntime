@@ -370,7 +370,8 @@ HRESULT AwtDropTarget::Drop(IDataObject __RPC_FAR *pDataObj, DWORD grfKeyState, 
         }
     } catch (std::bad_alloc&) {
         AwtToolkit::GetInstance().MessageLoop(AwtToolkit::SecondaryIdleFunc,
-                                              AwtToolkit::CommonPeekMessageFunc);
+                                              AwtToolkit::CommonPeekMessageFunc,
+                                              AwtToolkit::SECONDARY_LOOP_TOKEN_INNERMOST);
         *pdwEffect = ::convertActionsToDROPEFFECT(m_dropActions);
         DragCleanup();
         throw;
@@ -383,7 +384,8 @@ HRESULT AwtDropTarget::Drop(IDataObject __RPC_FAR *pDataObj, DWORD grfKeyState, 
      * all events and so it is able to close. This way the app won't deadlock.
      */
     AwtToolkit::GetInstance().MessageLoop(AwtToolkit::SecondaryIdleFunc,
-                                          AwtToolkit::CommonPeekMessageFunc);
+                                          AwtToolkit::CommonPeekMessageFunc,
+                                          AwtToolkit::SECONDARY_LOOP_TOKEN_INNERMOST);
 
     ret = (m_dropSuccess == JNI_TRUE) ? S_OK : E_FAIL;
     *pdwEffect = ::convertActionsToDROPEFFECT(m_dropActions);
@@ -422,7 +424,10 @@ void AwtDropTarget::_DropDone(void* param) {
 void AwtDropTarget::DropDone(jboolean success, jint action) {
     m_dropSuccess = success;
     m_dropActions = action;
-    AwtToolkit::GetInstance().QuitMessageLoop(AwtToolkit::EXIT_ENCLOSING_LOOP);
+    // AI COMMENT: JBR-10458 - the drop-target loop is the innermost secondary loop
+    // being pumped here, so break the innermost one.
+    AwtToolkit::GetInstance().QuitMessageLoop(AwtToolkit::EXIT_ENCLOSING_LOOP,
+                                              AwtToolkit::SECONDARY_LOOP_TOKEN_INNERMOST);
     AwtToolkit::GetInstance().isDnDTargetActive = FALSE;
 }
 

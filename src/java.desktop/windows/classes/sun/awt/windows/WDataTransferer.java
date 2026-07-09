@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.SortedMap;
 
 import sun.awt.Mutex;
+import sun.awt.SunToolkit;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.ToolkitThreadBlockedHandler;
 import sun.awt.image.ImageRepresentation;
@@ -493,13 +494,28 @@ final class WDataTransferer extends DataTransferer {
 final class WToolkitThreadBlockedHandler extends Mutex
         implements ToolkitThreadBlockedHandler {
 
+    // AI COMMENT: JBR-10458 - tokens of data-conversion secondary loops entered but
+    // not yet exited, in FIFO (enter) order. enter() runs on the toolkit thread and
+    // enqueues; exit() runs on the EDT and dequeues the oldest. Data conversions DO
+    // nest: while a conversion loop pumps, another external GetData (an asynchronous
+    // request from the drop target, e.g. Electron/Chromium) may be serviced and start
+    // a second, inner conversion loop. The nested enter() and its EDT-side exit() both
+    // happen after the outer ones, so dequeuing oldest-first pairs each exit() with a
+    // distinct outstanding loop. A single shared field would be clobbered by the
+    // nested enter(), making the outer exit() quit the wrong loop. Access is
+    // serialized by this handler's own Mutex, held across the enqueue in enter() and
+    // the dequeue in exit().
+    private final java.util.ArrayDeque<Long> loopTokens = new java.util.ArrayDeque<>();
+
     @Override
     public void enter() {
         if (!isOwned()) {
             throw new IllegalMonitorStateException();
         }
+        long token = SunToolkit.nextSecondaryLoopToken();
+        loopTokens.addLast(token);
         unlock();
-        startSecondaryEventLoop();
+        startSecondaryEventLoop(token);
         lock();
     }
 
@@ -508,10 +524,13 @@ final class WToolkitThreadBlockedHandler extends Mutex
         if (!isOwned()) {
             throw new IllegalMonitorStateException();
         }
-        WToolkit.quitSecondaryEventLoop();
+        Long token = loopTokens.pollFirst();
+        // Fall back to 0 (SECONDARY_LOOP_TOKEN_INNERMOST) if unexpectedly empty, so
+        // native breaks the current innermost loop (legacy behavior).
+        WToolkit.quitSecondaryEventLoop(token != null ? token.longValue() : 0L);
     }
 
-    private native void startSecondaryEventLoop();
+    private native void startSecondaryEventLoop(long token);
 }
 
 enum EHTMLReadMode {

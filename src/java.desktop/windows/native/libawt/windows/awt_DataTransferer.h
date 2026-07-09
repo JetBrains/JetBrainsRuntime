@@ -39,7 +39,7 @@ class AwtDataTransferer {
     static jbyteArray GetPaletteBytes(HGDIOBJ hGdiObj, DWORD dwGdiObjType,
                                       BOOL bFailSafe);
     static jbyteArray LCIDToTextEncoding(JNIEnv *env, LCID lcid);
-    static void SecondaryMessageLoop();
+    static void SecondaryMessageLoop(jlong token);
 };
 
 /*
