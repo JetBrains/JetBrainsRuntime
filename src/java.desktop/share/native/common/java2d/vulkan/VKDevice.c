@@ -81,19 +81,6 @@ static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalD
 }
 
 void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
-    // Query device properties.
-    VkPhysicalDeviceVulkan12Features device12Features = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-            .pNext = NULL
-    };
-    VkPhysicalDeviceFeatures2 deviceFeatures2 = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext = &device12Features
-    };
-    vk->vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
-    VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-    vk->vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
-
     // Query supported layers.
     uint32_t layerCount;
     VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, NULL)) return;
@@ -105,19 +92,6 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, NULL)) return;
     DECL_ARRAY(VkExtensionProperties, allExtensions, extensionCount);
     VK_IF_ERROR(vk->vkEnumerateDeviceExtensionProperties(physicalDevice, NULL, &extensionCount, allExtensions)) return;
-
-    // Check API version.
-    pchar_array_t errors = {0};
-    jint caps = 0;
-    J2dRlsTraceLn(J2D_TRACE_INFO, "%s (%d.%d.%d, %s)",
-                  (const char *) deviceProperties2.properties.deviceName,
-                  VK_API_VERSION_MAJOR(deviceProperties2.properties.apiVersion),
-                  VK_API_VERSION_MINOR(deviceProperties2.properties.apiVersion),
-                  VK_API_VERSION_PATCH(deviceProperties2.properties.apiVersion),
-                  physicalDeviceTypeString(deviceProperties2.properties.deviceType));
-    if (deviceProperties2.properties.apiVersion < REQUIRED_VULKAN_VERSION) {
-        ARRAY_PUSH_BACK(errors) = "Unsupported API version";
-    }
 
     // Log layers and extensions.
     VKNamedEntry_LogAll("device layers", allLayers[0].layerName, layerCount, sizeof(VkLayerProperties));
@@ -136,26 +110,46 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     DEF_NAMED_ENTRY(extensions, VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION);
     VKNamedEntry_Match(extensions, allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
 
-    bool hasSwapchainMaintenance1 = false;
+    // Query device properties.
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainMaintenance1Features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
+            .pNext = NULL,
+            .swapchainMaintenance1 = VK_FALSE,
+    };
 
-    if (vk->presentationSupported && vk->surfaceMaintenance1Supported &&
-            VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found != NULL) {
-        VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainMaintenance1Features = {
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
-                .pNext = NULL,
-        };
-        VkPhysicalDeviceFeatures2 deviceFeatures2 = {
-                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-                .pNext = &swapchainMaintenance1Features,
-        };
-        vk->vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
-        if (swapchainMaintenance1Features.swapchainMaintenance1) {
-            hasSwapchainMaintenance1 = true;
-        }
+    VkPhysicalDeviceVulkan12Features device12Features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext = NULL
+    };
+
+    VkPhysicalDeviceFeatures2 deviceFeatures2 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &device12Features
+    };
+
+    if (VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found != NULL) {
+        device12Features.pNext = &swapchainMaintenance1Features;
     }
 
-    if (!hasSwapchainMaintenance1) {
-        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found = NULL;
+    vk->vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
+    VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    vk->vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+
+    bool hasSwapchainMaintenance1 =
+        vk->presentationSupported && vk->surfaceMaintenance1Supported &&
+        swapchainMaintenance1Features.swapchainMaintenance1 == VK_TRUE;
+
+    // Check API version.
+    pchar_array_t errors = {0};
+    jint caps = 0;
+    J2dRlsTraceLn(J2D_TRACE_INFO, "%s (%d.%d.%d, %s)",
+                  (const char *) deviceProperties2.properties.deviceName,
+                  VK_API_VERSION_MAJOR(deviceProperties2.properties.apiVersion),
+                  VK_API_VERSION_MINOR(deviceProperties2.properties.apiVersion),
+                  VK_API_VERSION_PATCH(deviceProperties2.properties.apiVersion),
+                  physicalDeviceTypeString(deviceProperties2.properties.deviceType));
+    if (deviceProperties2.properties.apiVersion < REQUIRED_VULKAN_VERSION) {
+        ARRAY_PUSH_BACK(errors) = "Unsupported API version";
     }
 
     // Query queue family properties.
