@@ -72,6 +72,11 @@ static jclass sjc_CAccessibility = NULL;
         return nil;
     }
 
+    CHECK_EXCEPTION();
+    if (axComponent == nil) {
+        return nil;
+    }
+
     CommonComponentAccessibility *currentElement = [CommonComponentAccessibility createWithAccessible:axComponent
                                                             withEnv:env withView:self->fView isCurrent:YES];
     (*env)->DeleteLocalRef(env, axComponent);
