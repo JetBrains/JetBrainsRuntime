@@ -49,44 +49,51 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
     }
 }
 
+static void VKSwapchain_DestroyImpl(VKSwapchain* swapchain)
+{
+    if (swapchain == NULL) {
+        return;
+    }
+
+    if (swapchain->device != NULL && swapchain->handle != VK_NULL_HANDLE) {
+        swapchain->device->vkDestroySwapchainKHR(swapchain->device->handle, swapchain->handle, NULL);
+    }
+
+    ARRAY_FREE(swapchain->images);
+    free(swapchain);
+}
+
 VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR* createInfo) {
-    VkSwapchainKHR swapchainHandle = VK_NULL_HANDLE;
-    uint32_t swapchainImageCount = 0;
     VKSwapchain *swapchain = calloc(1, sizeof *swapchain);
 
     if (swapchain == NULL) {
-        goto fail;
+        return NULL;
     }
 
-    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, createInfo, NULL, &swapchainHandle)) {
-        goto fail;
-    }
-
-    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchainHandle, &swapchainImageCount, NULL)) {
-        goto fail;
-    }
-
-    ARRAY_RESIZE(swapchain->images, swapchainImageCount);
-    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchainHandle, &swapchainImageCount, swapchain->images.data)) {
-        goto fail;
-    }
-
-    swapchain->handle = swapchainHandle;
     swapchain->refcount = 1;
     swapchain->device = device;
     swapchain->extent = createInfo->imageExtent;
     swapchain->isSuboptimal = VK_FALSE;
 
+    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, createInfo, NULL, &swapchain->handle)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    uint32_t imageCount = 0;
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchain->handle, &imageCount, NULL)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    ARRAY_RESIZE(swapchain->images, imageCount);
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchain->handle, &imageCount, swapchain->images.data)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Create(%p): swapchain created", swapchain);
     return swapchain;
-
-fail:
-    ARRAY_FREE(swapchain->images);
-    if (swapchainHandle != VK_NULL_HANDLE) {
-        device->vkDestroySwapchainKHR(device->handle, swapchainHandle, NULL);
-    }
-    free(swapchain);
-    return NULL;
 }
 
 VKSwapchain* VKSwapchain_Retain(VKSwapchain* swapchain) {
@@ -100,13 +107,7 @@ void VKSwapchain_Release(VKSwapchain* swapchain) {
     if (--swapchain->refcount > 0) return;
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Release(%p): destroying Vulkan objects", swapchain);
-
-    if (swapchain->device != NULL && swapchain->handle != VK_NULL_HANDLE) {
-        swapchain->device->vkDestroySwapchainKHR(swapchain->device->handle, swapchain->handle, NULL);
-    }
-
-    ARRAY_FREE(swapchain->images);
-    free(swapchain);
+    VKSwapchain_DestroyImpl(swapchain);
 }
 
 void VKSD_ResetSurface(VKSDOps* vksdo) {
