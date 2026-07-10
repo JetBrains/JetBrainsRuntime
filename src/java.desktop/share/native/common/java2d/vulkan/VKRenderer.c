@@ -656,6 +656,7 @@ void VKRenderer_Flush(VKRenderer* renderer) {
                     VkFence fence = renderer->pendingPresentation.fences.data[i];
                     if (fence != VK_NULL_HANDLE) {
                         device->vkDestroyFence(device->handle, fence, NULL);
+                        renderer->pendingPresentation.fences.data[i] = VK_NULL_HANDLE;
                     }
                 }
             }
