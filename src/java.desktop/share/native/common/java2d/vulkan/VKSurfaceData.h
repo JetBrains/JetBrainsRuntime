@@ -65,7 +65,6 @@ struct VKSwapchain {
     VKDevice* device;
     VkExtent2D extent;
     uint32_t refcount;
-    uint32_t acquiredImageIndex;
     VkBool32 isSuboptimal;
 };
 
@@ -122,11 +121,5 @@ VkBool32 VKSD_ConfigureImageSurfaceStencil(VKSDOps* vksdo);
  * VKSD_ConfigureImageSurface must have been called before.
  */
 VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo);
-
-/**
- * Acquires the next swapchain image, recreating the swapchain if needed.
- * Returns VK_TRUE if the swapchain image was successfully acquired, VK_FALSE if not.
- */
-VkBool32 VKSD_AcquireNextWindowImage(VKWinSDOps* vkwinsdo, VkSemaphore acquireSemaphore, uint32_t *pImageIndex);
 
 #endif /* VKSurfaceData_h_Included */

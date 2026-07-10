@@ -75,7 +75,6 @@ VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR
     swapchain->refcount = 1;
     swapchain->device = device;
     swapchain->extent = createInfo->imageExtent;
-    swapchain->acquiredImageIndex = UINT32_MAX;
     swapchain->isSuboptimal = VK_FALSE;
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Create(%p): swapchain created", swapchain);
@@ -346,70 +345,6 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     }
     vkwinsdo->swapchain = swapchain;
 
-    return VK_TRUE;
-}
-
-VkBool32 VKSD_AcquireNextWindowImage(VKWinSDOps* vkwinsdo, VkSemaphore acquireSemaphore, uint32_t *pImageIndex) {
-    uint32_t imageIndex;
-    VkResult acquireNextImageResult = VK_NOT_READY;
-    uint32_t failures = 0;
-    static const uint32_t maxFailures = 3;
-
-    while (true) {
-        if (!VKSD_ConfigureWindowSurface(vkwinsdo)) {
-            return VK_FALSE;
-        }
-
-        VKDevice* device = vkwinsdo->swapchain->device;
-
-        acquireNextImageResult = device->vkAcquireNextImageKHR(
-            device->handle, vkwinsdo->swapchain->handle, UINT64_MAX,
-            acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
-
-        if (acquireNextImageResult == VK_SUCCESS) {
-            break;
-        }
-
-        ++failures;
-
-        if (acquireNextImageResult == VK_SUBOPTIMAL_KHR) {
-            vkwinsdo->swapchain->isSuboptimal = VK_TRUE;
-            if (failures >= maxFailures || !device->swapchainMaintenance1Supported) {
-                break;
-            }
-
-            VkReleaseSwapchainImagesInfoEXT releaseInfo = {
-                .sType = VK_STRUCTURE_TYPE_RELEASE_SWAPCHAIN_IMAGES_INFO_EXT,
-                .pNext = NULL,
-                .swapchain = vkwinsdo->swapchain->handle,
-                .imageIndexCount = 1,
-                .pImageIndices = &imageIndex,
-            };
-
-            VK_IF_ERROR(device->vkReleaseSwapchainImagesEXT(device->handle, &releaseInfo)) {
-                return VK_FALSE;
-            }
-
-            continue;
-        }
-
-        if (failures >= maxFailures) {
-            return VK_FALSE;
-        }
-
-        if (acquireNextImageResult == VK_ERROR_OUT_OF_DATE_KHR) {
-            vkwinsdo->swapchain->isSuboptimal = VK_TRUE;
-            continue;
-        }
-
-        // unexpected status, surface lost? device lost?
-        VK_IF_ERROR(acquireNextImageResult) {
-            return VK_FALSE;
-        }
-    }
-
-    *pImageIndex = imageIndex;
-    vkwinsdo->swapchain->acquiredImageIndex = imageIndex;
     return VK_TRUE;
 }
 

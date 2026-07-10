@@ -1109,12 +1109,15 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         ARRAY_PUSH_BACK(renderer->wait.stages) = VK_PIPELINE_STAGE_TRANSFER_BIT; // Acquire image before blitting content onto swapchain
 
         uint32_t imageIndex;
-        if (!VKSD_AcquireNextWindowImage(win, acquireSemaphore, &imageIndex)) {
+        VkResult acquireImageResult = device->vkAcquireNextImageKHR(device->handle, win->swapchain->handle, UINT64_MAX,
+                                                                    acquireSemaphore, VK_NULL_HANDLE, &imageIndex);
+        if (acquireImageResult != VK_SUCCESS && acquireImageResult != VK_SUBOPTIMAL_KHR) {
+            VK_IF_ERROR(acquireImageResult) {
                 // Failed, try again later.
                 surface->renderPass->pendingFlush = VK_TRUE;
                 return;
+            }
         }
-        VkImage swapchainImage = win->swapchain->images.data[imageIndex];
 
         // Insert barriers to prepare both main (src) and swapchain (dst) images for blit.
         {
@@ -1126,7 +1129,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .image = swapchainImage,
+                    .image = win->swapchain->images.data[imageIndex],
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             }};
             VKBarrierBatch barrierBatch = {1, surface->image->lastStage | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
@@ -1146,7 +1149,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
         };
         device->vkCmdBlitImage(cb,
                                surface->image->handle, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                               swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                               win->swapchain->images.data[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                1, &blit, VK_FILTER_NEAREST);
 
         // Insert barrier to prepare swapchain image for presentation.
@@ -1159,7 +1162,7 @@ void VKRenderer_FlushSurface(VKSDOps* surface) {
                     .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                     .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .image = swapchainImage,
+                    .image = win->swapchain->images.data[imageIndex],
                     .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 }
             };
             device->vkCmdPipelineBarrier(cb, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
