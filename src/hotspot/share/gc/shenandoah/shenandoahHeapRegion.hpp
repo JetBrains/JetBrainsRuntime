@@ -269,6 +269,7 @@ private:
 
   ShenandoahSharedFlag _recycling; // Used to indicate that the region is being recycled; see try_recycle*().
 
+  // This is only read/written by a gc worker to avoid unnecessary bitmap resets
   bool _needs_bitmap_reset;
 
 public:
