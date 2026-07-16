@@ -1878,6 +1878,11 @@ public class IRNode {
        beforeMatchingNameRegex(SQRT_HF, "SqrtHF");
     }
 
+    public static final String SQRT_D = PREFIX + "SQRT_D" + POSTFIX;
+    static {
+        beforeMatchingNameRegex(SQRT_D, "SqrtD");
+    }
+
     public static final String SQRT_F = PREFIX + "SQRT_F" + POSTFIX;
     static {
        beforeMatchingNameRegex(SQRT_F, "SqrtF");
@@ -2903,6 +2908,12 @@ public class IRNode {
     static {
         String regex = START + "ModD" + MID + END;
         macroNodes(MOD_D, regex);
+    }
+
+    public static final String POW_D = PREFIX + "POW_D" + POSTFIX;
+    static {
+        String regex = START + "PowD" + MID + END;
+        macroNodes(POW_D, regex);
     }
 
     public static final String BLACKHOLE = PREFIX + "BLACKHOLE" + POSTFIX;
