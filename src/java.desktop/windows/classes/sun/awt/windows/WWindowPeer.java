@@ -826,4 +826,21 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             }
         }
     }
+
+    @Override
+    public Graphics getGraphics() {
+        Graphics g = super.getGraphics();
+        if (!(g instanceof SunGraphics2D)) return g;
+        SunGraphics2D sg = (SunGraphics2D) g;
+
+        // Decorated Vulkan windows' surface only covers the client area,
+        // so we undo java2d's translation that assumes otherwise.
+        if (surfaceData instanceof Win32VKWindowSurfaceData) {
+            Insets insets = ((Window) target).getInsets();
+            if (insets.left != 0 || insets.top != 0) {
+                sg.translate(-insets.left, -insets.top);
+            }
+        }
+        return sg; // In this case, we don't want to use the following correction.
+    }
 }
