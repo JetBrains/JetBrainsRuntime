@@ -67,6 +67,11 @@ import static com.jetbrains.internal.IoOverNio.DEBUG;
 
 class IoOverNioFileSystem extends FileSystem {
     /**
+     * A single guard for every code that can call {@link java.nio.file.spi.FileSystemProvider#readAttributes} inside.
+     */
+    private static final String RECURSION_GUARD_ATTRIBUTES_LABEL = "IoOverNioFileSystem.attributeReading";
+
+    /**
      * The filesystem created by default in the original OpenJDK.
      */
     private final FileSystem parent;
@@ -560,7 +565,8 @@ class IoOverNioFileSystem extends FileSystem {
     private String canonicalize0(String path) throws IOException {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(path);
         if (nioFs != null) {
-            try {
+            try (var guard = IoOverNio.RecursionGuard.create("IoOverNioFileSystem.canonicalize0")) {
+                IoOverNio.blackhole(guard);
                 // Unlike java.nio.file.Path.toRealPath, File.getCanonicalFile works with non-existent files
                 // and resolves symlinks for the first existing parent.
                 Path nioPath = nioFs.getPath(path);
@@ -661,7 +667,8 @@ class IoOverNioFileSystem extends FileSystem {
     private int getBooleanAttributes0(File f) {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
-            try {
+            try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+                IoOverNio.blackhole(guard);
                 Path path = nioFs.getPath(f.getPath());
 
                 {
@@ -759,7 +766,8 @@ class IoOverNioFileSystem extends FileSystem {
                 return false;
             }
 
-            try {
+            try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+                IoOverNio.blackhole(guard);
                 Path path = nioFs.getPath(f.getPath());
 
                 int i = 0;
@@ -802,14 +810,18 @@ class IoOverNioFileSystem extends FileSystem {
     private boolean setPermission0(File f, int access, boolean enable, boolean owneronly) {
         java.nio.file.FileSystem nioFs = acquireNioFs(f.getPath());
         if (nioFs != null) {
-            return setPermission0(nioFs, f, access, enable, owneronly);
+            try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+                IoOverNio.blackhole(guard);
+                return setPermission0(nioFs, f, access, enable, owneronly);
+            }
         }
         return parent.setPermission(f, access, enable, owneronly);
     }
 
     @Override
     public long getLastModifiedTime(File f) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+            IoOverNio.blackhole(guard);
             long result = getLastModifiedTime0(f);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.getLastModifiedTime(%s) = %d%n", f, result);
@@ -845,7 +857,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public long getLength(File f) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+            IoOverNio.blackhole(guard);
             long result = getLength0(f);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.getLength(%s) = %d%n", f, result);
@@ -881,7 +894,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean createFileExclusively(String pathname) throws IOException {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+            IoOverNio.blackhole(guard);
             boolean result = createFileExclusively0(pathname);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.createFileExclusively(%s) = %b%n", pathname, result);
@@ -1011,7 +1025,8 @@ class IoOverNioFileSystem extends FileSystem {
                 return null;
             }
 
-            try {
+            try (var guard = IoOverNio.RecursionGuard.create("IoOverNioFileSystem.list0")) {
+                IoOverNio.blackhole(guard);
                 if (getSeparator() == '\\') {
                     // Java_java_io_WinNTFileSystem_list0 deliberately and explicitly removes trailing spaces from the path.
                     // It doesn't happen in Java_java_io_UnixFileSystem_list0
@@ -1045,7 +1060,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean createDirectory(File f) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create("IoOverNioFileSystem.createDirectory")) {
+            IoOverNio.blackhole(guard);
             boolean result = createDirectory0(f);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.createDirectory(%s) = %b%n", f, result);
@@ -1082,7 +1098,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean rename(File f1, File f2) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create("IoOverNioFileSystem.rename")) {
+            IoOverNio.blackhole(guard);
             boolean result = rename0(f1, f2);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.rename(%s, %s) = %b%n", f1, f2, result);
@@ -1120,7 +1137,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public boolean setLastModifiedTime(File f, long time) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create(RECURSION_GUARD_ATTRIBUTES_LABEL)) {
+            IoOverNio.blackhole(guard);
             boolean result = setLastModifiedTime0(f, time);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.setLastModifiedTime(%s, %d) = %b%n", f, time, result);
@@ -1219,7 +1237,8 @@ class IoOverNioFileSystem extends FileSystem {
 
     @Override
     public long getSpace(File f, int t) {
-        try {
+        try (var guard = IoOverNio.RecursionGuard.create("IoOverNioFileSystem.getSpace")) {
+            IoOverNio.blackhole(guard);
             long result = getSpace0(f, t);
             if (DEBUG.writeTraces()) {
                 System.err.printf("IoOverNioFileSystem.getSpace(%s, %d) = %d%n", f, t, result);
