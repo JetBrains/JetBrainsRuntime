@@ -140,6 +140,14 @@ class AOTClassLocationConfig : public CHeapObj<mtClassShared> {
   static AOTClassLocationConfig* _dumptime_instance;
   static const AOTClassLocationConfig* _runtime_instance;
 
+  // If validate() accepted the archive using longest-common-prefix (LCP) substitution
+  // (i.e., the application has been moved to a different directory since the archive
+  // was created), these record the runtime LCP that replaces the first _dumptime_lcp_len
+  // characters of each archived boot/app classpath entry. Otherwise _runtime_lcp is null.
+  static const char* _runtime_lcp;
+  static size_t _runtime_lcp_len;
+  static void set_runtime_lcp(const char* lcp, size_t lcp_len);
+
   Array<AOTClassLocation*>* _class_locations; // jrt -> -Xbootclasspath/a -> -classpath -> --module_path
   static Array<ClassPathZipEntry*>* _dumptime_jar_files;
 
@@ -236,6 +244,13 @@ public:
 
   const AOTClassLocation* class_location_at(int index) const;
   int get_module_shared_path_index(Symbol* location) const;
+
+  // Returns the runtime location of the boot/app classpath entry at the given index:
+  // the dump-time path with the LCP substitution applied, if validate() accepted this
+  // archive using LCP substitution (see check_classpaths()). The returned string may be
+  // resource-allocated. Use this (instead of class_location_at(index)->path()) whenever
+  // the returned path is used to access the file system at runtime.
+  const char* runtime_path(int index) const;
 
   // Functions used only during dumptime
   static void dumptime_init(JavaThread* current);

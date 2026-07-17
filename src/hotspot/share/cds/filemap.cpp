@@ -2101,8 +2101,10 @@ ClassPathEntry* FileMapInfo::get_classpath_entry_for_jvmti(int i, TRAPS) {
   }
   ClassPathEntry* ent = _classpath_entries_for_jvmti[i];
   if (ent == nullptr) {
-    const AOTClassLocation* cl = AOTClassLocationConfig::runtime()->class_location_at(i);
-    const char* path = cl->path();
+    ResourceMark rm(THREAD);
+    // Use runtime_path() so that this works when the application has been moved
+    // (and the archive was accepted via LCP substitution).
+    const char* path = AOTClassLocationConfig::runtime()->runtime_path(i);
     struct stat st;
     if (os::stat(path, &st) != 0) {
       char *msg = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, char, strlen(path) + 128);
