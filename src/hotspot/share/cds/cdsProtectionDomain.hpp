@@ -41,6 +41,12 @@ class CDSProtectionDomain : AllStatic {
   static OopHandle _shared_protection_domains;
   static OopHandle _shared_jar_urls;
   static OopHandle _shared_jar_manifests;
+  // _shared_jar_url_computed[i] is true if we have already attempted to compute
+  // _shared_jar_urls[i]. The attempt can fail (leaving _shared_jar_urls[i] == null)
+  // if the classpath location no longer exists. This flag prevents us from repeating
+  // the (expensive, especially on Windows) failing file-system lookup for every
+  // class loaded from that location.
+  static bool* _shared_jar_url_computed;
 
 public:
   // Package handling:

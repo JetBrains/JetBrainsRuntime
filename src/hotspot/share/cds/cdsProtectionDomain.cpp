@@ -38,11 +38,13 @@
 #include "memory/universe.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/symbol.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/javaCalls.hpp"
 
 OopHandle CDSProtectionDomain::_shared_protection_domains;
 OopHandle CDSProtectionDomain::_shared_jar_urls;
 OopHandle CDSProtectionDomain::_shared_jar_manifests;
+bool* CDSProtectionDomain::_shared_jar_url_computed = nullptr;
 
 // Initializes the java.lang.Package and java.security.ProtectionDomain objects associated with
 // the given InstanceKlass.
@@ -197,14 +199,21 @@ Handle CDSProtectionDomain::get_shared_jar_manifest(int shared_path_index, TRAPS
 
 Handle CDSProtectionDomain::get_shared_jar_url(int shared_path_index, TRAPS) {
   Handle url_h;
-  if (shared_jar_url(shared_path_index) == nullptr) {
-    const char* path = AOTClassLocationConfig::runtime()->class_location_at(shared_path_index)->path();
+  if (shared_jar_url(shared_path_index) == nullptr &&
+      !Atomic::load_acquire(&_shared_jar_url_computed[shared_path_index])) {
+    ResourceMark rm(THREAD);
+    const char* path = AOTClassLocationConfig::runtime()->runtime_path(shared_path_index);
     oop result_oop = to_file_URL(path, url_h, CHECK_(url_h));
     atomic_set_shared_jar_url(shared_path_index, result_oop);
+    // Remember that the conversion has been attempted. to_file_URL() returns null if
+    // the file does not exist; without this flag, the failing file-system walk in
+    // Path.toRealPath() would be repeated for every class loaded from this location
+    // (benign race: concurrent threads may attempt the conversion more than once).
+    Atomic::release_store(&_shared_jar_url_computed[shared_path_index], true);
   }
 
+  // May be null if the classpath location no longer exists.
   url_h = Handle(THREAD, shared_jar_url(shared_path_index));
-  assert(url_h.not_null(), "sanity");
   return url_h;
 }
 
@@ -331,6 +340,10 @@ void CDSProtectionDomain::allocate_shared_jar_url_array(int size, TRAPS) {
     oop sju = oopFactory::new_objArray(
         vmClasses::URL_klass(), size, CHECK);
     _shared_jar_urls = OopHandle(Universe::vm_global(), sju);
+  }
+  if (_shared_jar_url_computed == nullptr) {
+    _shared_jar_url_computed = NEW_C_HEAP_ARRAY(bool, size, mtClassShared);
+    memset(_shared_jar_url_computed, 0, sizeof(bool) * size);
   }
 }
 
