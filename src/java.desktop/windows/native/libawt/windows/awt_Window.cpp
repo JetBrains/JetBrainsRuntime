@@ -171,6 +171,7 @@ jfieldID AwtWindow::customTitleBarHitTestID;
 jfieldID AwtWindow::customTitleBarHitTestQueryID;
 
 jfieldID AwtWindow::windowTypeID;
+jfieldID AwtWindow::noRedirectionBitmapID;
 jmethodID AwtWindow::notifyWindowStateChangedMID;
 jfieldID AwtWindow::sysInsetsID;
 
@@ -418,6 +419,10 @@ LRESULT CALLBACK AwtWindow::CBTFilter(int nCode, WPARAM wParam, LPARAM lParam)
     return ::CallNextHookEx(AwtWindow::ms_hCBTFilter, nCode, wParam, lParam);
 }
 
+#ifndef WS_EX_NOREDIRECTIONBITMAP
+#define WS_EX_NOREDIRECTIONBITMAP 0x00200000L
+#endif
+
 void AwtWindow::CreateHWnd(JNIEnv *env, LPCWSTR title,
         DWORD windowStyle,
         DWORD windowExStyle,
@@ -431,6 +436,10 @@ void AwtWindow::CreateHWnd(JNIEnv *env, LPCWSTR title,
     JNU_CHECK_EXCEPTION(env);
 
     TweakStyle(windowStyle, windowExStyle);
+
+    if (env->GetBooleanField(peer, AwtWindow::noRedirectionBitmapID)) {
+        windowExStyle |= WS_EX_NOREDIRECTIONBITMAP;
+    }
 
     AwtCanvas::CreateHWnd(env, title,
             windowStyle,
@@ -3032,6 +3041,9 @@ Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 
     AwtWindow::windowTypeID = env->GetFieldID(cls, "windowType",
             "Ljava/awt/Window$Type;");
+
+    CHECK_NULL(AwtWindow::noRedirectionBitmapID =
+        env->GetFieldID(cls, "noRedirectionBitmap", "Z"));
 
     AwtWindow::notifyWindowStateChangedMID =
         env->GetMethodID(cls, "notifyWindowStateChanged", "(II)V");

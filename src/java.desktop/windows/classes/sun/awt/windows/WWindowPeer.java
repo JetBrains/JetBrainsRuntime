@@ -88,6 +88,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
 
+    // RootPane client property for setting WS_EX_NOREDIRECTIONBITMAP on the native window
+    public static final String WINDOW_NO_REDIRECTION_BITMAP = "jbr.window.noRedirectionBitmap";
+
     // we can't use WDialogPeer as blocker may be an instance of WPrintDialogPeer that
     // extends WWindowPeer, not WDialogPeer
     private WWindowPeer modalBlocker = null;
@@ -259,22 +262,32 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             setOpaque(((Window)target).isOpaque());
         }
 
-        if (target instanceof RootPaneContainer) {
-            JRootPane rootpane = ((RootPaneContainer)target).getRootPane();
-            if (rootpane != null) {
-                setRoundedCornersImpl(rootpane.getClientProperty(WINDOW_CORNER_RADIUS));
-            }
+        setRoundedCornersImpl(getRootPaneClientProperty(WINDOW_CORNER_RADIUS));
+    }
+
+    private Object getRootPaneClientProperty(String name) {
+        if (!(target instanceof RootPaneContainer)) {
+            return null;
         }
+        JRootPane rootPane = ((RootPaneContainer)target).getRootPane();
+        if (rootPane == null) {
+            return null;
+        }
+
+        return rootPane.getClientProperty(name);
     }
 
     native void createAwtWindow(WComponentPeer parent);
 
     private volatile Window.Type windowType = Window.Type.NORMAL;
 
+    private volatile boolean noRedirectionBitmap = false;
+
     // This method must be called for Window, Dialog, and Frame before creating
     // the hwnd
     void preCreate(WComponentPeer parent) {
         windowType = ((Window)target).getType();
+        noRedirectionBitmap = Boolean.TRUE.equals(getRootPaneClientProperty(WINDOW_NO_REDIRECTION_BITMAP));
     }
 
     @Override

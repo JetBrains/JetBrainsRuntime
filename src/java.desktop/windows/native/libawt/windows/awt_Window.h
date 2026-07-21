@@ -58,6 +58,7 @@ public:
 
     /* sun.awt.windows.WWindowPeer field and method IDs */
     static jfieldID windowTypeID;
+    static jfieldID noRedirectionBitmapID;
     static jmethodID notifyWindowStateChangedMID;
 
     /* java.awt.Window method IDs */
