@@ -93,7 +93,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -103,7 +102,7 @@ import org.junit.jupiter.api.extension.TestWatcher;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class AbstractThrowingPushPromises implements HttpServerAdapters {
 
-    static SSLContext sslContext;
+    private static final SSLContext sslContext = SimpleSSLContext.findSSLContext();
     static HttpTestServer http2TestServer;   // HTTP/2 ( h2c )
     static HttpTestServer https2TestServer;  // HTTP/2 ( h2  )
     static String http2URI_fixed;
@@ -732,10 +731,6 @@ public abstract class AbstractThrowingPushPromises implements HttpServerAdapters
 
     @BeforeAll
     public static void setup() throws Exception {
-        sslContext = new SimpleSSLContext().get();
-        if (sslContext == null)
-            throw new AssertionError("Unexpected null sslContext");
-
         // HTTP/2
         HttpTestHandler h2_fixedLengthHandler = new HTTP_FixedLengthHandler();
         HttpTestHandler h2_chunkedHandler = new HTTP_ChunkedHandler();

@@ -84,11 +84,7 @@ public class HttpGetInCancelledFuture {
     HttpClient makeClient(URI uri, Version version, Executor executor) {
         var builder = HttpClient.newBuilder();
         if (uri.getScheme().equalsIgnoreCase("https")) {
-            try {
-                builder.sslContext(new SimpleSSLContext().get());
-            } catch (IOException io) {
-                throw new UncheckedIOException(io);
-            }
+            builder.sslContext(SimpleSSLContext.findSSLContext());
         }
         return builder.connectTimeout(Duration.ofSeconds(1))
                 .executor(executor)

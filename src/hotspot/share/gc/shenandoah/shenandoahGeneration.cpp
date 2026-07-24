@@ -74,6 +74,9 @@ public:
     }
   }
 
+  // Bitmap reset task is heavy-weight and benefits from much smaller tasks than the default.
+  size_t parallel_region_stride() override { return 8; }
+
   bool is_thread_safe() override { return true; }
 };
 
@@ -151,8 +154,8 @@ size_t ShenandoahGeneration::bytes_allocated_since_gc_start() const {
   return Atomic::load(&_bytes_allocated_since_gc_start);
 }
 
-void ShenandoahGeneration::reset_bytes_allocated_since_gc_start() {
-  Atomic::store(&_bytes_allocated_since_gc_start, (size_t)0);
+void ShenandoahGeneration::reset_bytes_allocated_since_gc_start(size_t initial_bytes_allocated) {
+  Atomic::store(&_bytes_allocated_since_gc_start, initial_bytes_allocated);
 }
 
 void ShenandoahGeneration::increase_allocated(size_t bytes) {
@@ -382,11 +385,11 @@ void ShenandoahGeneration::adjust_evacuation_budgets(ShenandoahHeap* const heap,
   // available that results from a decrease in memory consumed by old evacuation is not necessarily available to be loaned
   // to young-gen.
 
-  size_t region_size_bytes = ShenandoahHeapRegion::region_size_bytes();
+  const size_t region_size_bytes = ShenandoahHeapRegion::region_size_bytes();
   ShenandoahOldGeneration* const old_generation = heap->old_generation();
   ShenandoahYoungGeneration* const young_generation = heap->young_generation();
 
-  size_t old_evacuated = collection_set->get_old_bytes_reserved_for_evacuation();
+  const size_t old_evacuated = collection_set->get_live_bytes_in_old_regions();
   size_t old_evacuated_committed = (size_t) (ShenandoahOldEvacWaste * double(old_evacuated));
   size_t old_evacuation_reserve = old_generation->get_evacuation_reserve();
 
@@ -399,14 +402,15 @@ void ShenandoahGeneration::adjust_evacuation_budgets(ShenandoahHeap* const heap,
     // Leave old_evac_reserve as previously configured
   } else if (old_evacuated_committed < old_evacuation_reserve) {
     // This happens if the old-gen collection consumes less than full budget.
+    log_debug(gc, cset)("Shrinking old evac reserve to match old_evac_commited: " PROPERFMT, PROPERFMTARGS(old_evacuated_committed));
     old_evacuation_reserve = old_evacuated_committed;
     old_generation->set_evacuation_reserve(old_evacuation_reserve);
   }
 
-  size_t young_advance_promoted = collection_set->get_young_bytes_to_be_promoted();
+  size_t young_advance_promoted = collection_set->get_live_bytes_in_tenurable_regions();
   size_t young_advance_promoted_reserve_used = (size_t) (ShenandoahPromoEvacWaste * double(young_advance_promoted));
 
-  size_t young_evacuated = collection_set->get_young_bytes_reserved_for_evacuation();
+  size_t young_evacuated = collection_set->get_live_bytes_in_untenurable_regions();
   size_t young_evacuated_reserve_used = (size_t) (ShenandoahEvacWaste * double(young_evacuated));
 
   size_t total_young_available = young_generation->available_with_reserve();
@@ -524,7 +528,7 @@ inline void assert_no_in_place_promotions() {
 // that this allows us to more accurately budget memory to hold the results of evacuation.  Memory for evacuation
 // of aged regions must be reserved in the old generation.  Memory for evacuation of all other regions must be
 // reserved in the young generation.
-size_t ShenandoahGeneration::select_aged_regions(size_t old_available) {
+size_t ShenandoahGeneration::select_aged_regions(const size_t old_promotion_reserve) {
 
   // There should be no regions configured for subsequent in-place-promotions carried over from the previous cycle.
   assert_no_in_place_promotions();
@@ -535,7 +539,8 @@ size_t ShenandoahGeneration::select_aged_regions(size_t old_available) {
 
   const size_t old_garbage_threshold = (ShenandoahHeapRegion::region_size_bytes() * ShenandoahOldGarbageThreshold) / 100;
 
-  size_t old_consumed = 0;
+  const size_t pip_used_threshold = (ShenandoahHeapRegion::region_size_bytes() * ShenandoahGenerationalMinPIPUsage) / 100;
+
   size_t promo_potential = 0;
   size_t candidates = 0;
 
@@ -557,10 +562,8 @@ size_t ShenandoahGeneration::select_aged_regions(size_t old_available) {
       continue;
     }
     if (heap->is_tenurable(r)) {
-      if ((r->garbage() < old_garbage_threshold)) {
-        // This tenure-worthy region has too little garbage, so we do not want to expend the copying effort to
-        // reclaim the garbage; instead this region may be eligible for promotion-in-place to the
-        // old generation.
+      if ((r->garbage() < old_garbage_threshold) && (r->used() > pip_used_threshold)) {
+        // We prefer to promote this region in place because it has a small amount of garbage and a large usage.
         HeapWord* tams = ctx->top_at_mark_start(r);
         HeapWord* original_top = r->top();
         if (!heap->is_concurrent_old_mark_in_progress() && tams == original_top) {
@@ -586,7 +589,7 @@ size_t ShenandoahGeneration::select_aged_regions(size_t old_available) {
         // Else, we do not promote this region (either in place or by copy) because it has received new allocations.
 
         // During evacuation, we exclude from promotion regions for which age > tenure threshold, garbage < garbage-threshold,
-        //  and get_top_before_promote() != tams
+        //  used > pip_used_threshold, and get_top_before_promote() != tams
       } else {
         // Record this promotion-eligible candidate region. After sorting and selecting the best candidates below,
         // we may still decide to exclude this promotion-eligible region from the current collection set.  If this
@@ -620,17 +623,21 @@ size_t ShenandoahGeneration::select_aged_regions(size_t old_available) {
     // Note that we keep going even if one region is excluded from selection.
     // Subsequent regions may be selected if they have smaller live data.
   }
+
+  log_info(gc, ergo)("Promotion potential of aged regions with sufficient garbage: " PROPERFMT, PROPERFMTARGS(promo_potential));
+
   // Sort in increasing order according to live data bytes.  Note that candidates represents the number of regions
   // that qualify to be promoted by evacuation.
+  size_t old_consumed = 0;
   if (candidates > 0) {
     size_t selected_regions = 0;
     size_t selected_live = 0;
     QuickSort::sort<AgedRegionData>(sorted_regions, candidates, compare_by_aged_live);
     for (size_t i = 0; i < candidates; i++) {
       ShenandoahHeapRegion* const region = sorted_regions[i]._region;
-      size_t region_live_data = sorted_regions[i]._live_data;
-      size_t promotion_need = (size_t) (region_live_data * ShenandoahPromoEvacWaste);
-      if (old_consumed + promotion_need <= old_available) {
+      const size_t region_live_data = sorted_regions[i]._live_data;
+      const size_t promotion_need = (size_t) (region_live_data * ShenandoahPromoEvacWaste);
+      if (old_consumed + promotion_need <= old_promotion_reserve) {
         old_consumed += promotion_need;
         candidate_regions_for_promotion_by_copy[region->index()] = true;
         selected_regions++;
@@ -644,9 +651,9 @@ size_t ShenandoahGeneration::select_aged_regions(size_t old_available) {
       // We keep going even if one region is excluded from selection because we need to accumulate all eligible
       // regions that are not preselected into promo_potential
     }
-    log_debug(gc)("Preselected %zu regions containing %zu live bytes,"
-                 " consuming: %zu of budgeted: %zu",
-                 selected_regions, selected_live, old_consumed, old_available);
+    log_debug(gc, ergo)("Preselected %zu regions containing " PROPERFMT " live data,"
+                        " consuming: " PROPERFMT " of budgeted: " PROPERFMT,
+                        selected_regions, PROPERFMTARGS(selected_live), PROPERFMTARGS(old_consumed), PROPERFMTARGS(old_promotion_reserve));
   }
 
   heap->old_generation()->set_pad_for_promote_in_place(promote_in_place_pad);
@@ -678,7 +685,7 @@ void ShenandoahGeneration::prepare_regions_and_collection_set(bool concurrent) {
   }
 
   // Tally the census counts and compute the adaptive tenuring threshold
-  if (is_generational && ShenandoahGenerationalAdaptiveTenuring && !ShenandoahGenerationalCensusAtEvac) {
+  if (is_generational) {
     // Objects above TAMS weren't included in the age census. Since they were all
     // allocated in this cycle they belong in the age 0 cohort. We walk over all
     // young regions and sum the volume of objects between TAMS and top.

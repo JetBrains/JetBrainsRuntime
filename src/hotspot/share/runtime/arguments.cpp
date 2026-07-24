@@ -1483,6 +1483,7 @@ void Arguments::set_conservative_max_heap_alignment() {
                                           os::vm_allocation_granularity(),
                                           os::max_page_size(),
                                           GCArguments::compute_heap_alignment());
+  assert(is_power_of_2(_conservative_max_heap_alignment), "Expected to be a power-of-2");
 }
 
 jint Arguments::set_ergonomics_flags() {
@@ -1534,13 +1535,13 @@ void Arguments::set_heap_size() {
                            !FLAG_IS_DEFAULT(MaxRAM));
   if (override_coop_limit) {
     if (FLAG_IS_DEFAULT(MaxRAM)) {
-      phys_mem = os::physical_memory();
+      phys_mem = static_cast<julong>(os::physical_memory());
       FLAG_SET_ERGO(MaxRAM, (uint64_t)phys_mem);
     } else {
       phys_mem = (julong)MaxRAM;
     }
   } else {
-    phys_mem = FLAG_IS_DEFAULT(MaxRAM) ? MIN2(os::physical_memory(), (julong)MaxRAM)
+    phys_mem = FLAG_IS_DEFAULT(MaxRAM) ? MIN2(static_cast<julong>(os::physical_memory()), (julong)MaxRAM)
                                        : (julong)MaxRAM;
   }
 
@@ -1662,7 +1663,8 @@ jint Arguments::set_aggressive_heap_flags() {
   // Thus, we need to make sure we're using a julong for intermediate
   // calculations.
   julong initHeapSize;
-  julong total_memory = os::physical_memory();
+  physical_memory_size_type phys_mem = os::physical_memory();
+  julong total_memory = static_cast<julong>(phys_mem);
 
   if (total_memory < (julong) 256 * M) {
     jio_fprintf(defaultStream::error_stream(),
