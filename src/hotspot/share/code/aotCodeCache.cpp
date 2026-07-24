@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -141,6 +141,11 @@ void AOTCodeCache::initialize() {
     return; // AOTCache must be specified to dump and use AOT code
   }
 
+  // Disable adapters caching which requires CPU features matching checks
+  // (implemented by JDK-8377507 and JDK-8381975) which we don't
+  // have in this version of code.
+  FLAG_SET_ERGO_IF_DEFAULT(AOTAdapterCaching, false);
+
   // Disable stubs caching until JDK-8357398 is fixed.
   FLAG_SET_ERGO(AOTStubCaching, false);
 
@@ -158,14 +163,11 @@ void AOTCodeCache::initialize() {
   bool is_dumping = false;
   bool is_using   = false;
   if (CDSConfig::is_dumping_final_static_archive() && CDSConfig::is_dumping_aot_linked_classes()) {
-    FLAG_SET_ERGO_IF_DEFAULT(AOTAdapterCaching, true);
-    FLAG_SET_ERGO_IF_DEFAULT(AOTStubCaching, true);
     is_dumping = true;
   } else if (CDSConfig::is_using_archive() && CDSConfig::is_using_aot_linked_classes()) {
-    FLAG_SET_ERGO_IF_DEFAULT(AOTAdapterCaching, true);
-    FLAG_SET_ERGO_IF_DEFAULT(AOTStubCaching, true);
     is_using = true;
   } else {
+    FLAG_SET_ERGO(AOTAdapterCaching, false);
     log_info(aot, codecache, init)("AOT Code Cache is not used: AOT Class Linking is not used.");
     return; // nothing to do
   }

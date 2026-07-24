@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -128,6 +128,7 @@ public class AOTCodeCompressedOopsTest {
             case RunMode.ASSEMBLY: {
                     List<String> args = getVMArgsForHeapConfig(zeroBaseInAsmPhase, zeroShiftInAsmPhase);
                     args.addAll(List.of("-XX:+UnlockDiagnosticVMOptions",
+                                        "-XX:+AOTAdapterCaching",
                                         "-Xlog:aot=info",
                                         "-Xlog:aot+codecache+init=debug",
                                         "-Xlog:aot+codecache+exit=debug"));
@@ -136,6 +137,7 @@ public class AOTCodeCompressedOopsTest {
             case RunMode.PRODUCTION: {
                     List<String> args = getVMArgsForHeapConfig(zeroBaseInProdPhase, zeroShiftInProdPhase);
                     args.addAll(List.of("-XX:+UnlockDiagnosticVMOptions",
+                                        "-XX:+AOTAdapterCaching",
                                         "-Xlog:aot=info", // we need this to parse CompressedOops settings
                                         "-Xlog:aot+codecache+init=debug",
                                         "-Xlog:aot+codecache+exit=debug"));
