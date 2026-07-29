@@ -114,15 +114,17 @@ static jfieldID buttonCodeFID;
 static jfieldID isButtonPressedFID;
 static jfieldID axisSourceFID;
 static jfieldID xAxis_hasVectorValueFID;
-static jfieldID xAxis_hasStopEventFID;
 static jfieldID xAxis_hasSteps120ValueFID;
+static jfieldID xAxis_hasStopEventFID;
 static jfieldID xAxis_vectorValueFID;
 static jfieldID xAxis_steps120ValueFID;
+static jfieldID xAxis_stopEventTimestampFID;
 static jfieldID yAxis_hasVectorValueFID;
-static jfieldID yAxis_hasStopEventFID;
 static jfieldID yAxis_hasSteps120ValueFID;
+static jfieldID yAxis_hasStopEventFID;
 static jfieldID yAxis_vectorValueFID;
 static jfieldID yAxis_steps120ValueFID;
+static jfieldID yAxis_stopEventTimestampFID;
 
 static jmethodID handleProtocolErrorMID;
 static jmethodID handleExceptionFromEventHandlerMID;
@@ -173,10 +175,10 @@ struct pointer_event_cumulative {
     struct {
         // wl_pointer::axis
         bool has_vector_value   : 1;
-        // wl_pointer::axis_stop
-        bool has_stop_event     : 1;
         // wl_pointer::axis_discrete or wl_pointer::axis_value120
         bool has_steps120_value : 1;
+        // wl_pointer::axis_stop
+        bool has_stop_event     : 1;
 
         // wl_pointer::axis
         wl_fixed_t vector_value;
@@ -184,6 +186,9 @@ struct pointer_event_cumulative {
         // wl_pointer::axis_discrete or wl_pointer::axis_value120
         // In the former case, the value is multiplied by 120 for compatibility with wl_pointer::axis_value120
         int32_t    steps120_value;
+
+        // time parameter of wl_pointer::axis_stop
+        uint32_t stop_time;
     } axes[2];
     uint32_t axis_source;
 };
@@ -264,7 +269,20 @@ wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
     }
 
     pointer_event.axes[axis].has_stop_event = true;
-    pointer_event.time                      = time;
+    pointer_event.axes[axis].stop_time      = time;
+
+    const bool commonTimeIsAlreadySet =
+        pointer_event.has_motion_event ||
+        pointer_event.has_button_event ||
+        pointer_event.axes[(axis + 1) % 2].has_vector_value ||
+        pointer_event.axes[(axis + 1) % 2].has_stop_event ||
+        pointer_event.axes[axis].has_vector_value;
+
+    if (commonTimeIsAlreadySet && pointer_event.time != 0 && time != 0) {
+        pointer_event.time                  = MIN(pointer_event.time, time);
+    } else {
+        pointer_event.time                  = time;
+    }
 }
 
 static void
@@ -329,16 +347,18 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetIntField(env, pointerEventRef, axisSourceFID, (jint)pointer_event.axis_source);
 
     (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasVectorValueFID,   pointer_event.axes[1].has_vector_value);
-    (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasStopEventFID,     pointer_event.axes[1].has_stop_event);
     (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasSteps120ValueFID, pointer_event.axes[1].has_steps120_value);
+    (*env)->SetBooleanField(env, pointerEventRef, xAxis_hasStopEventFID,     pointer_event.axes[1].has_stop_event);
     (*env)->SetDoubleField (env, pointerEventRef, xAxis_vectorValueFID,      wl_fixed_to_double(pointer_event.axes[1].vector_value));
     (*env)->SetIntField    (env, pointerEventRef, xAxis_steps120ValueFID,    pointer_event.axes[1].steps120_value);
+    (*env)->SetLongField   (env, pointerEventRef, xAxis_stopEventTimestampFID, pointer_event.axes[1].stop_time);
 
     (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasVectorValueFID,   pointer_event.axes[0].has_vector_value);
-    (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasStopEventFID,     pointer_event.axes[0].has_stop_event);
     (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasSteps120ValueFID, pointer_event.axes[0].has_steps120_value);
+    (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasStopEventFID,     pointer_event.axes[0].has_stop_event);
     (*env)->SetDoubleField (env, pointerEventRef, yAxis_vectorValueFID,      wl_fixed_to_double(pointer_event.axes[0].vector_value));
     (*env)->SetIntField    (env, pointerEventRef, yAxis_steps120ValueFID,    pointer_event.axes[0].steps120_value);
+    (*env)->SetLongField   (env, pointerEventRef, yAxis_stopEventTimestampFID, pointer_event.axes[0].stop_time);
 }
 
 static void
@@ -811,16 +831,18 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(axisSourceFID = (*env)->GetFieldID(env, pointerEventClass, "axisSource", "I"), JNI_FALSE);
 
     CHECK_NULL_RETURN(xAxis_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasVectorValue", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(xAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasStopEvent", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(xAxis_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasSteps120Value", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_hasStopEvent", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(xAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_vectorValue", "D"), JNI_FALSE);
     CHECK_NULL_RETURN(xAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_steps120Value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(xAxis_stopEventTimestampFID = (*env)->GetFieldID(env, pointerEventClass, "xAxis_stopEventTimestamp", "J"), JNI_FALSE);
 
     CHECK_NULL_RETURN(yAxis_hasVectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasVectorValue", "Z"), JNI_FALSE);
-    CHECK_NULL_RETURN(yAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasStopEvent", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasSteps120Value", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(yAxis_hasStopEventFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasStopEvent", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_vectorValue", "D"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_steps120Value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(yAxis_stopEventTimestampFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_stopEventTimestamp", "J"), JNI_FALSE);
 
     CHECK_NULL_RETURN(handleProtocolErrorMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                               "handleProtocolError",
