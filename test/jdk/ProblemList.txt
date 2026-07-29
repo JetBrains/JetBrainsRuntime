@@ -645,8 +645,6 @@ sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8316183 linux-pp
 
 security/infra/java/security/cert/CertPathValidator/certification/CAInterop.java#teliasonerarootcav1  8333640 generic-all
 
-sun/security/tools/keytool/GenKeyPairSigner.java                8342002 generic-all
-
 ############################################################################
 
 # jdk_sound
