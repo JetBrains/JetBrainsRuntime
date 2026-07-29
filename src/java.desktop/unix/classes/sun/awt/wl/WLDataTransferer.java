@@ -133,6 +133,24 @@ public class WLDataTransferer extends DataTransferer {
         }
     }
 
+    @Override
+    protected String getCharsetForTextFormat(Long lFormat) {
+        if (isMimeFormat(lFormat, "text")) {
+            String nat = getNativeForFormat(lFormat);
+            DataFlavor df = new DataFlavor(nat, null);
+            // Ignore the charset parameter of the MIME type if the subtype
+            // doesn't support charset.
+            if (!DataFlavorUtil.doesSubtypeSupportCharset(df)) {
+                return null;
+            }
+            String charset = df.getParameter("charset");
+            if (charset != null) {
+                return charset;
+            }
+        }
+        return super.getCharsetForTextFormat(lFormat);
+    }
+
     /**
      * @return true if the given format ID corresponds to a MIME format
      *         with the given primary type
