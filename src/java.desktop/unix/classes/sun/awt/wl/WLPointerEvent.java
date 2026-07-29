@@ -58,21 +58,25 @@ class WLPointerEvent {
     private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
     private boolean isButtonPressed; // true if button was pressed, false if released
 
-    private int     axisSource;             // axis source type from axis_source event
+    private int     axisSource;               // axis source type from axis_source event
 
-    private boolean xAxis_hasVectorValue;   // whether xAxis_vectorValue is valid
-    private boolean xAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
-    private boolean xAxis_hasSteps120Value; // whether xAxis_steps120Value is valid
-    private double  xAxis_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
-    private int     xAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
-                                            //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+    private boolean xAxis_hasVectorValue;     // whether xAxis_vectorValue is valid
+    private boolean xAxis_hasStopEvent;       // whether wl_pointer::axis_stop event has been received for this axis
+                                              // and xAxis_stopEventTimestamp is valid
+    private boolean xAxis_hasSteps120Value;   // whether xAxis_steps120Value is valid
+    private double  xAxis_vectorValue;        // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     xAxis_steps120Value;      // "high-resolution wheel scroll information, with each multiple of 120
+                                              // representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+    private long    xAxis_stopEventTimestamp; // time parameter of the wl_pointer::axis_stop event
 
-    private boolean yAxis_hasVectorValue;   // whether yAxis_vectorValue is valid
-    private boolean yAxis_hasStopEvent;     // whether wl_pointer::axis_stop event has been received for this axis
-    private boolean yAxis_hasSteps120Value; // whether yAxis_steps120Value is valid
-    private double  yAxis_vectorValue;      // "length of vector in surface-local coordinate space" (source: wayland.xml)
-    private int     yAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
-                                            //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+    private boolean yAxis_hasVectorValue;     // whether yAxis_vectorValue is valid
+    private boolean yAxis_hasStopEvent;       // whether wl_pointer::axis_stop event has been received for this axis
+                                              // and yAxis_stopEventTimestamp is valid
+    private boolean yAxis_hasSteps120Value;   // whether yAxis_steps120Value is valid
+    private double  yAxis_vectorValue;        // "length of vector in surface-local coordinate space" (source: wayland.xml)
+    private int     yAxis_steps120Value;      // "high-resolution wheel scroll information, with each multiple of 120
+                                              // representing one logical scroll step (a wheel detent)" (source: wayland.xml)
+    private long    yAxis_stopEventTimestamp; // time parameter of the wl_pointer::axis_stop event
 
     private WLPointerEvent() {}
 
@@ -321,6 +325,11 @@ class WLPointerEvent {
         return xAxis_steps120Value;
     }
 
+    public long getXAxisStopEventTimestamp() {
+        assert xAxisHasStopEvent() : "Must have an X axis_stop event";
+        return xAxis_stopEventTimestamp;
+    }
+
     public boolean yAxisHasEvents() {
         return yAxisHasVectorValue() ||
                yAxisHasStopEvent()   ||
@@ -347,6 +356,11 @@ class WLPointerEvent {
     public int getYAxisSteps120Value() {
         assert yAxisHasSteps120Value(): "Must have an Y axis steps120 value";
         return yAxis_steps120Value;
+    }
+
+    public long getYAxisStopEventTimestamp() {
+        assert yAxisHasStopEvent() : "Must have an Y axis_stop event";
+        return yAxis_stopEventTimestamp;
     }
 
     @Override
@@ -399,6 +413,7 @@ class WLPointerEvent {
                 }
                 if (yAxisHasStopEvent()) {
                     builder.append(" stop");
+                    builder.append(" timestamp ").append(getYAxisStopEventTimestamp());
                 }
             }
             if (xAxisHasEvents()) {
@@ -412,6 +427,7 @@ class WLPointerEvent {
                 }
                 if (xAxisHasStopEvent()) {
                     builder.append(" stop");
+                    builder.append(" timestamp ").append(getXAxisStopEventTimestamp());
                 }
             }
         }
