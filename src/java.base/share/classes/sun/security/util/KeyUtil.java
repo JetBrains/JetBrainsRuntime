@@ -26,9 +26,13 @@
 package sun.security.util;
 
 import java.math.BigInteger;
+import java.security.AccessController;
 import java.security.AlgorithmParameters;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.PrivilegedAction;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.interfaces.*;
 import java.security.spec.*;
@@ -186,13 +190,13 @@ public final class KeyUtil {
      */
     public static final String fullDisplayAlgName(Key key) {
         String result = key.getAlgorithm();
-        if (key instanceof ECKey) {
-            ECParameterSpec paramSpec = ((ECKey) key).getParams();
+        if (key instanceof PrivateKey || key instanceof PublicKey) {
+            AlgorithmParameterSpec paramSpec = getParams(key);
             if (paramSpec instanceof NamedCurve nc) {
                 result += " (" + nc.getNameAndAliases()[0] + ")";
+            } else if (paramSpec instanceof NamedParameterSpec nps) {
+                result = nps.getName();
             }
-        } else if (key instanceof EdECKey) {
-            result = ((EdECKey) key).getParams().getName();
         }
         return result;
     }
@@ -426,5 +430,25 @@ public final class KeyUtil {
         return t;
     }
 
+    @SuppressWarnings({"deprecation", "removal"})
+    public static AlgorithmParameterSpec getParams(Key key) {
+        try {
+            var m = key.getClass().getMethod("getParams");
+            if (!m.isAccessible()) {
+                PrivilegedAction<Object> pa = () -> {
+                    m.setAccessible(true);
+                    return null;
+                };
+                AccessController.doPrivileged(pa);
+            }
+            var result = m.invoke(key);
+            if (result instanceof AlgorithmParameterSpec spec) {
+                return spec;
+            }
+        } catch (NoSuchMethodException e) {
+        } catch (ReflectiveOperationException e) {
+        }
+        return null;
+    }
 }
 

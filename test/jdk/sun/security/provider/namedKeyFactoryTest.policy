@@ -1,0 +1,11 @@
+grant {
+
+    permission java.util.PropertyPermission "*",  "read";
+    permission java.security.SecurityPermission "putProviderProperty.P";
+    permission java.security.SecurityPermission "insertProvider";
+    permission java.lang.RuntimePermission "accessClassInPackage.sun.security.x509";
+    permission java.lang.RuntimePermission "accessClassInPackage.sun.security.pkcs";
+    permission java.lang.RuntimePermission "accessClassInPackage.sun.security.util";
+    permission java.lang.RuntimePermission "accessClassInPackage.sun.security.provider";
+
+};

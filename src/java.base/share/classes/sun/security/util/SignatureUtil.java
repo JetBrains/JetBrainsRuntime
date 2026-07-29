@@ -33,7 +33,9 @@ import java.security.interfaces.RSAKey;
 import java.security.spec.*;
 import java.util.Locale;
 
+import sun.security.pkcs.NamedPKCS8Key;
 import sun.security.rsa.RSAUtil;
+import sun.security.util.KeyUtil;
 import jdk.internal.access.SharedSecrets;
 import sun.security.x509.AlgorithmId;
 
@@ -273,7 +275,7 @@ public class SignatureUtil {
             return signatureAlgorithm.substring(0, with);
         } else {
             throw new IllegalArgumentException(
-                    "Unknown algorithm: " + signatureAlgorithm);
+                    "Cannot extract digest algorithm from " + signatureAlgorithm);
         }
     }
 
@@ -386,8 +388,8 @@ public class SignatureUtil {
     public static AlgorithmId fromSignature(Signature sigEngine, PrivateKey key)
             throws SignatureException {
         try {
-            if (key instanceof EdECKey) {
-                return AlgorithmId.get(((EdECKey) key).getParams().getName());
+            if (KeyUtil.getParams(key) instanceof NamedParameterSpec nps) {
+                return AlgorithmId.get(nps.getName());
             }
 
             AlgorithmParameters params = null;
@@ -427,6 +429,14 @@ public class SignatureUtil {
     public static void checkKeyAndSigAlgMatch(PrivateKey key, String sAlg) {
         String kAlg = key.getAlgorithm().toUpperCase(Locale.ENGLISH);
         sAlg = checkName(sAlg);
+        if (key instanceof NamedPKCS8Key n8k) {
+            if (!sAlg.equalsIgnoreCase(n8k.getAlgorithm())
+                    && !sAlg.equalsIgnoreCase(n8k.getParams().getName())) {
+                throw new IllegalArgumentException(
+                        "key algorithm not compatible with signature algorithm");
+            }
+            return;
+        }
         switch (sAlg) {
             case "RSASSA-PSS" -> {
                 if (!kAlg.equals("RSASSA-PSS")
