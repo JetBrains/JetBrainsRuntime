@@ -80,7 +80,6 @@ size_t ShenandoahGenerationalHeap::unsafe_max_tlab_alloc(Thread *thread) const {
 ShenandoahGenerationalHeap::ShenandoahGenerationalHeap(ShenandoahCollectorPolicy* policy) :
   ShenandoahHeap(policy),
   _age_census(nullptr),
-  _evac_tracker(new ShenandoahEvacuationTracker()),
   _min_plab_size(calculate_min_plab()),
   _max_plab_size(calculate_max_plab()),
   _regulator_thread(nullptr),
@@ -100,18 +99,6 @@ void ShenandoahGenerationalHeap::print_init_logger() const {
   logger.print_all();
 }
 
-void ShenandoahGenerationalHeap::print_tracing_info() const {
-  ShenandoahHeap::print_tracing_info();
-
-  LogTarget(Info, gc, stats) lt;
-  if (lt.is_enabled()) {
-    LogStream ls(lt);
-    ls.cr();
-    ls.cr();
-    evac_tracker()->print_global_on(&ls);
-  }
-}
-
 void ShenandoahGenerationalHeap::initialize_heuristics() {
   // Initialize global generation and heuristics even in generational mode.
   ShenandoahHeap::initialize_heuristics();
@@ -123,7 +110,6 @@ void ShenandoahGenerationalHeap::initialize_heuristics() {
   _generation_sizer.heap_size_changed(max_capacity());
   size_t initial_capacity_young = _generation_sizer.max_young_size();
   size_t max_capacity_young = _generation_sizer.max_young_size();
-  size_t initial_capacity_old = max_capacity() - max_capacity_young;
   size_t max_capacity_old = max_capacity() - initial_capacity_young;
 
   _young_generation = new ShenandoahYoungGeneration(max_workers(), max_capacity_young);
@@ -280,6 +266,7 @@ oop ShenandoahGenerationalHeap::try_evacuate_object(oop p, Thread* thread, Shena
               // the requested object does not fit within the current plab but the plab still has an "abundance" of memory,
               // where abundance is defined as >= ShenGenHeap::plab_min_size().  In the former case, we try shrinking the
               // desired PLAB size to the minimum and retry PLAB allocation to avoid cascading of shared memory allocations.
+              // Shrinking the desired PLAB size may allow us to eke out a small PLAB while staying beneath evacuation reserve.
               if (plab->words_remaining() < plab_min_size()) {
                 ShenandoahThreadLocalData::set_plab_size(thread, plab_min_size());
                 copy = allocate_from_plab(thread, size, is_promotion);
@@ -337,8 +324,11 @@ oop ShenandoahGenerationalHeap::try_evacuate_object(oop p, Thread* thread, Shena
     return ShenandoahBarrierSet::resolve_forwarded(p);
   }
 
+  if (ShenandoahEvacTracking) {
+    evac_tracker()->begin_evacuation(thread, size * HeapWordSize, from_region->affiliation(), target_gen);
+  }
+
   // Copy the object:
-  NOT_PRODUCT(evac_tracker()->begin_evacuation(thread, size * HeapWordSize));
   Copy::aligned_disjoint_words(cast_from_oop<HeapWord*>(p), copy, size);
   oop copy_val = cast_to_oop(copy);
 
@@ -347,20 +337,23 @@ oop ShenandoahGenerationalHeap::try_evacuate_object(oop p, Thread* thread, Shena
     ShenandoahHeap::increase_object_age(copy_val, from_region->age() + 1);
   }
 
+  // Relativize stack chunks before publishing the copy. After the forwarding CAS,
+  // mutators can see the copy and thaw it via the fast path if flags == 0. We must
+  // relativize derived pointers and set gc_mode before that happens. Skip if the
+  // copy's mark word is already a forwarding pointer (another thread won the race
+  // and overwrote the original's header before we copied it).
+  if (!ShenandoahForwarding::is_forwarded(copy_val)) {
+    ContinuationGCSupport::relativize_stack_chunk(copy_val);
+  }
+
   // Try to install the new forwarding pointer.
   oop result = ShenandoahForwarding::try_update_forwardee(p, copy_val);
   if (result == copy_val) {
     // Successfully evacuated. Our copy is now the public one!
-
-    // This is necessary for virtual thread support. This uses the mark word without
-    // considering that it may now be a forwarding pointer (and could therefore crash).
-    // Secondarily, we do not want to spend cycles relativizing stack chunks for oops
-    // that lost the evacuation race (and will therefore not become visible). It is
-    // safe to do this on the public copy (this is also done during concurrent mark).
-    ContinuationGCSupport::relativize_stack_chunk(copy_val);
-
-    // Record that the evacuation succeeded
-    NOT_PRODUCT(evac_tracker()->end_evacuation(thread, size * HeapWordSize));
+    if (ShenandoahEvacTracking) {
+      // Record that the evacuation succeeded
+      evac_tracker()->end_evacuation(thread, size * HeapWordSize, from_region->affiliation(), target_gen);
+    }
 
     if (target_gen == OLD_GENERATION) {
       old_generation()->handle_evacuation(copy, size, from_region->is_young());
@@ -368,11 +361,6 @@ oop ShenandoahGenerationalHeap::try_evacuate_object(oop p, Thread* thread, Shena
       // When copying to the old generation above, we don't care
       // about recording object age in the census stats.
       assert(target_gen == YOUNG_GENERATION, "Error");
-      // We record this census only when simulating pre-adaptive tenuring behavior, or
-      // when we have been asked to record the census at evacuation rather than at mark
-      if (ShenandoahGenerationalCensusAtEvac || !ShenandoahGenerationalAdaptiveTenuring) {
-        evac_tracker()->record_age(thread, size * HeapWordSize, ShenandoahHeap::get_object_age(copy_val));
-      }
     }
     shenandoah_assert_correct(nullptr, copy_val);
     return copy_val;
@@ -449,9 +437,8 @@ inline HeapWord* ShenandoahGenerationalHeap::allocate_from_plab(Thread* thread, 
 
 // Establish a new PLAB and allocate size HeapWords within it.
 HeapWord* ShenandoahGenerationalHeap::allocate_from_plab_slow(Thread* thread, size_t size, bool is_promotion) {
-  // New object should fit the PLAB size
-
   assert(mode()->is_generational(), "PLABs only relevant to generational GC");
+
   const size_t plab_min_size = this->plab_min_size();
   // PLABs are aligned to card boundaries to avoid synchronization with concurrent
   // allocations in other PLABs.
@@ -464,23 +451,24 @@ HeapWord* ShenandoahGenerationalHeap::allocate_from_plab_slow(Thread* thread, si
   }
 
   // Expand aggressively, doubling at each refill in this epoch, ceiling at plab_max_size()
-  size_t future_size = MIN2(cur_size * 2, plab_max_size());
+  const size_t future_size = MIN2(cur_size * 2, plab_max_size());
   // Doubling, starting at a card-multiple, should give us a card-multiple. (Ceiling and floor
   // are card multiples.)
   assert(is_aligned(future_size, CardTable::card_size_in_words()), "Card multiple by construction, future_size: %zu"
-          ", card_size: %zu, cur_size: %zu, max: %zu",
-         future_size, (size_t) CardTable::card_size_in_words(), cur_size, plab_max_size());
+          ", card_size: %u, cur_size: %zu, max: %zu",
+         future_size, CardTable::card_size_in_words(), cur_size, plab_max_size());
 
   // Record new heuristic value even if we take any shortcut. This captures
   // the case when moderately-sized objects always take a shortcut. At some point,
   // heuristics should catch up with them.  Note that the requested cur_size may
   // not be honored, but we remember that this is the preferred size.
-  log_debug(gc, free)("Set new PLAB size: %zu", future_size);
+  log_debug(gc, plab)("Set next PLAB refill size: %zu bytes", future_size * HeapWordSize);
   ShenandoahThreadLocalData::set_plab_size(thread, future_size);
+
   if (cur_size < size) {
     // The PLAB to be allocated is still not large enough to hold the object. Fall back to shared allocation.
     // This avoids retiring perfectly good PLABs in order to represent a single large object allocation.
-    log_debug(gc, free)("Current PLAB size (%zu) is too small for %zu", cur_size, size);
+    log_debug(gc, plab)("Current PLAB size (%zu) is too small for %zu", cur_size * HeapWordSize, size * HeapWordSize);
     return nullptr;
   }
 
@@ -566,6 +554,7 @@ void ShenandoahGenerationalHeap::retire_plab(PLAB* plab, Thread* thread) {
   ShenandoahThreadLocalData::reset_plab_promoted(thread);
   ShenandoahThreadLocalData::set_plab_actual_size(thread, 0);
   if (not_promoted > 0) {
+    log_debug(gc, plab)("Retire PLAB, unexpend unpromoted: %zu", not_promoted * HeapWordSize);
     old_generation()->unexpend_promoted(not_promoted);
   }
   const size_t original_waste = plab->waste();
@@ -577,8 +566,8 @@ void ShenandoahGenerationalHeap::retire_plab(PLAB* plab, Thread* thread) {
   if (top != nullptr && plab->waste() > original_waste && is_in_old(top)) {
     // If retiring the plab created a filler object, then we need to register it with our card scanner so it can
     // safely walk the region backing the plab.
-    log_debug(gc)("retire_plab() is registering remnant of size %zu at " PTR_FORMAT,
-                  plab->waste() - original_waste, p2i(top));
+    log_debug(gc, plab)("retire_plab() is registering remnant of size %zu at " PTR_FORMAT,
+                        (plab->waste() - original_waste) * HeapWordSize, p2i(top));
     // No lock is necessary because the PLAB memory is aligned on card boundaries.
     old_generation()->card_scan()->register_object_without_lock(top);
   }

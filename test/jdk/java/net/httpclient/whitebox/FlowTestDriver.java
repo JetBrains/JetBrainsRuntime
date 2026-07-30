@@ -23,6 +23,7 @@
 
 /*
  * @test
+ * @compile/module=java.net.http ../../../../../../lib/jdk/test/lib/net/SimpleSSLContext.java
  * @modules java.net.http/jdk.internal.net.http
  * @run testng java.net.http/jdk.internal.net.http.FlowTest
  */

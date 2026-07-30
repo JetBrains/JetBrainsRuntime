@@ -37,6 +37,7 @@
 #include "runtime/globals_extension.hpp"
 #include "runtime/java.hpp"
 #include "utilities/defaultStream.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 void ShenandoahArguments::initialize() {
 #if !(defined AARCH64 || defined AMD64 || defined IA32 || defined PPC64 || defined RISCV64)
@@ -198,13 +199,14 @@ void ShenandoahArguments::initialize() {
       && strcmp(ShenandoahGCHeuristics, "adaptive") != 0) {
     log_warning(gc)("Ignoring -XX:ShenandoahGCHeuristics input: %s, because generational shenandoah only"
       " supports adaptive heuristics", ShenandoahGCHeuristics);
+    FLAG_SET_ERGO(ShenandoahGCHeuristics, "adaptive");
   }
 
   FullGCForwarding::initialize_flags(MaxHeapSize);
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {
-  size_t align = ShenandoahMaxRegionSize;
+  size_t align = next_power_of_2(ShenandoahMaxRegionSize);
   if (UseLargePages) {
     align = MAX2(align, os::large_page_size());
   }

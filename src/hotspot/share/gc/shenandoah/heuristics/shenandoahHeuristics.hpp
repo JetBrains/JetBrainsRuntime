@@ -36,7 +36,7 @@
   do {                                                                      \
     if (FLAG_IS_DEFAULT(name) && (name)) {                                  \
       log_info(gc)("Heuristics ergonomically sets -XX:-" #name);            \
-      FLAG_SET_DEFAULT(name, false);                                        \
+      FLAG_SET_ERGO(name, false);                                           \
     }                                                                       \
   } while (0)
 
@@ -44,7 +44,7 @@
   do {                                                                      \
     if (FLAG_IS_DEFAULT(name) && !(name)) {                                 \
       log_info(gc)("Heuristics ergonomically sets -XX:+" #name);            \
-      FLAG_SET_DEFAULT(name, true);                                         \
+      FLAG_SET_ERGO(name, true);                                            \
     }                                                                       \
   } while (0)
 
@@ -52,7 +52,7 @@
   do {                                                                      \
     if (FLAG_IS_DEFAULT(name)) {                                            \
       log_info(gc)("Heuristics ergonomically sets -XX:" #name "=" #value);  \
-      FLAG_SET_DEFAULT(name, value);                                        \
+      FLAG_SET_ERGO(name, value);                                           \
     }                                                                       \
   } while (0)
 
@@ -123,6 +123,13 @@ protected:
 
     inline void set_region_and_livedata(ShenandoahHeapRegion* region, size_t live) {
       _region = region;
+      _region_union._live_data = live;
+#ifdef ASSERT
+      _union_tag = is_live_data;
+#endif
+    }
+
+    inline void update_livedata(size_t live) {
       _region_union._live_data = live;
 #ifdef ASSERT
       _union_tag = is_live_data;
@@ -218,7 +225,7 @@ public:
 
   virtual void record_success_concurrent();
 
-  virtual void record_success_degenerated();
+  virtual void record_degenerated();
 
   virtual void record_success_full();
 
@@ -240,6 +247,11 @@ public:
   virtual void initialize();
 
   double elapsed_cycle_time() const;
+
+  virtual size_t force_alloc_rate_sample(size_t bytes_allocated) {
+    // do nothing
+    return 0;
+  }
 
   // Format prefix and emit log message indicating a GC cycle hs been triggered
   void log_trigger(const char* fmt, ...) ATTRIBUTE_PRINTF(2, 3);

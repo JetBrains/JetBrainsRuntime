@@ -323,7 +323,6 @@ HeapWord* ShenandoahCardCluster::first_object_start(const size_t card_index, con
     if (ctx->is_marked(p)) {
       oop obj = cast_to_oop(p);
       assert(oopDesc::is_oop(obj), "Should be an object");
-      assert(Klass::is_valid(obj->klass()), "Not a valid klass ptr");
       assert(p + obj->size() > left, "This object should span start of card");
       assert(p < right, "Result must precede right");
       return p;
@@ -350,15 +349,15 @@ HeapWord* ShenandoahCardCluster::first_object_start(const size_t card_index, con
 
   // Recall that we already dealt with the co-initial object case above
   assert(p < left, "obj should start before left");
-  // While it is safe to ask an object its size in the loop that
-  // follows, the (ifdef'd out) loop should never be needed.
+  // While it is safe to ask an object its size in the block that
+  // follows, the (ifdef'd out) block should never be needed.
   // 1. we ask this question only for regions in the old generation, and those
   //    that are not humongous regions
   // 2. there is no direct allocation ever by mutators in old generation
   //    regions walked by this code. Only GC will ever allocate in old regions,
   //    and then too only during promotion/evacuation phases. Thus there is no danger
   //    of races between reading from and writing to the object start array,
-  //    or of asking partially initialized objects their size (in the loop below).
+  //    or of asking partially initialized objects their size (in the ifdef below).
   //    Furthermore, humongous regions (and their dirty cards) are never processed
   //    by this code.
   // 3. only GC asks this question during phases when it is not concurrently
@@ -370,15 +369,6 @@ HeapWord* ShenandoahCardCluster::first_object_start(const size_t card_index, con
 #ifdef ASSERT
   oop obj = cast_to_oop(p);
   assert(oopDesc::is_oop(obj), "Should be an object");
-  while (p + obj->size() < left) {
-    p += obj->size();
-    obj = cast_to_oop(p);
-    assert(oopDesc::is_oop(obj), "Should be an object");
-    assert(Klass::is_valid(obj->klass()), "Not a valid klass ptr");
-    // Check assumptions in previous block comment if this assert fires
-    fatal("Should never need forward walk in block start");
-  }
-  assert(p <= left, "p should start at or before left end of card");
   assert(p + obj->size() > left, "obj should end after left end of card");
 #endif // ASSERT
   return p;
@@ -777,9 +767,9 @@ void ShenandoahScanRememberedTask::do_work(uint worker_id) {
   struct ShenandoahRegionChunk assignment;
   while (_work_list->next(&assignment)) {
     ShenandoahHeapRegion* region = assignment._r;
-    log_debug(gc)("ShenandoahScanRememberedTask::do_work(%u), processing slice of region "
-                  "%zu at offset %zu, size: %zu",
-                  worker_id, region->index(), assignment._chunk_offset, assignment._chunk_size);
+    log_debug(gc, remset)("ShenandoahScanRememberedTask::do_work(%u), processing slice of region "
+                          "%zu at offset %zu, size: %zu",
+                          worker_id, region->index(), assignment._chunk_offset, assignment._chunk_size);
     if (region->is_old()) {
       size_t cluster_size =
         CardTable::card_size_in_words() * ShenandoahCardCluster::CardsPerCluster;

@@ -1504,7 +1504,14 @@ class ArchiveBuilder::CDSMapLogger : AllStatic {
         st->print(PTR_FORMAT " ", p2i(requested_obj));
       }
       if (UseCompressedOops) {
-        st->print("(0x%08x) ", CompressedOops::narrow_oop_value(requested_obj));
+        uint32_t narrow_oop;
+        if (ArchiveHeapWriter::is_writing_deterministic_heap()) {
+          // Don't decode in case of deterministic heap.
+          narrow_oop = checked_cast<uint32_t>(cast_from_oop<intptr_t>(requested_obj));
+        } else {
+          narrow_oop = CompressedOops::narrow_oop_value(requested_obj);
+        }
+        st->print("(0x%08x) ", narrow_oop);
       }
       if (source_oop->is_array()) {
         int array_len = arrayOop(source_oop)->length();

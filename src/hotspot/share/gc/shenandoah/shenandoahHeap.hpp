@@ -115,6 +115,7 @@ public:
 class ShenandoahHeapRegionClosure : public StackObj {
 public:
   virtual void heap_region_do(ShenandoahHeapRegion* r) = 0;
+  virtual size_t parallel_region_stride() { return ShenandoahParallelRegionStride; }
   virtual bool is_thread_safe() { return false; }
 };
 
@@ -203,9 +204,12 @@ public:
   void initialize_serviceability() override;
 
   void print_heap_on(outputStream* st)         const override;
-  void print_gc_on(outputStream *st)           const override;
+  void print_gc_on(outputStream* st)           const override;
   void print_tracing_info()                    const override;
   void print_heap_regions_on(outputStream* st) const;
+
+  // Flushes cycle timings to global timings and prints the phase timings for the last completed cycle.
+  void process_gc_stats() const;
 
   void stop() override;
 
@@ -375,7 +379,7 @@ private:
 
 public:
   // This returns the raw value of the singular, global gc state.
-  char gc_state() const;
+  inline char gc_state() const;
 
   // Compares the given state against either the global gc state, or the thread local state.
   // The global gc state may change on a safepoint and is the correct value to use until
@@ -383,7 +387,7 @@ public:
   // compare against the thread local state). The thread local gc state may also be changed
   // by a handshake operation, in which case, this function continues using the updated thread
   // local value.
-  bool is_gc_state(GCState state) const;
+  inline bool is_gc_state(GCState state) const;
 
   // This copies the global gc state into a thread local variable for all threads.
   // The thread local gc state is primarily intended to support quick access at barriers.
@@ -454,9 +458,12 @@ public:
   // This indicates the reason the last GC cycle was cancelled.
   inline GCCause::Cause cancelled_cause() const;
 
-  // Clears the cancellation cause and optionally resets the oom handler (cancelling an
-  // old mark does _not_ touch the oom handler).
-  inline void clear_cancelled_gc(bool clear_oom_handler = true);
+  // Clears the cancellation cause and resets the oom handler
+  inline void clear_cancelled_gc();
+
+  // Clears the cancellation cause iff the current cancellation reason equals the given
+  // expected cancellation cause. Does not reset the oom handler.
+  inline GCCause::Cause clear_cancellation(GCCause::Cause expected);
 
   void cancel_concurrent_mark();
 
@@ -473,6 +480,8 @@ protected:
   ShenandoahRegionIterator _update_refs_iterator;
 
 private:
+  inline void reset_cancellation_time();
+
   // GC support
   // Evacuation
   virtual void evacuate_collection_set(bool concurrent);
@@ -556,6 +565,10 @@ public:
   ShenandoahPhaseTimings*    phase_timings()     const { return _phase_timings;     }
 
   ShenandoahEvacOOMHandler*  oom_evac_handler()        { return &_oom_evac_handler; }
+
+  ShenandoahEvacuationTracker* evac_tracker() const {
+    return _evac_tracker;
+  }
 
   void on_cycle_start(GCCause::Cause cause, ShenandoahGeneration* generation);
   void on_cycle_end(ShenandoahGeneration* generation);
@@ -788,6 +801,10 @@ private:
   ShenandoahEvacOOMHandler _oom_evac_handler;
 
   oop try_evacuate_object(oop src, Thread* thread, ShenandoahHeapRegion* from_region, ShenandoahAffiliation target_gen);
+
+protected:
+  // Used primarily to look for failed evacuation attempts.
+  ShenandoahEvacuationTracker*  _evac_tracker;
 
 public:
   static address in_cset_fast_test_addr();

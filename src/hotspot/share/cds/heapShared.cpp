@@ -300,6 +300,7 @@ bool HeapShared::archive_object(oop obj, oop referrer, KlassSubGraphInfo* subgra
     debug_trace();
     return false;
   } else {
+    AOTArtifactFinder::add_cached_class(obj->klass());
     count_allocation(obj->size());
     ArchiveHeapWriter::add_source_obj(obj);
     CachedOopInfo info = make_cached_oop_info(obj, referrer);
