@@ -71,6 +71,9 @@ struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
 struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
+#ifdef WL_FIXES_ACK_GLOBAL_REMOVE
+struct wl_fixes *wl_fixes = NULL; // optional, check for NULL before use
+#endif
 
 #define MAX_CURSOR_SCALE 100
 struct wl_cursor_theme *cursor_themes[MAX_CURSOR_SCALE] = {NULL};
@@ -698,6 +701,11 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, ext_data_control_manager_v1_interface.name) == 0) {
         ext_data_control_manager = wl_registry_bind(wl_registry, name, &ext_data_control_manager_v1_interface, 1);
     }
+#ifdef WL_FIXES_ACK_GLOBAL_REMOVE
+    else if (strcmp(interface, wl_fixes_interface.name) == 0) {
+        wl_fixes = wl_registry_bind(wl_registry, name, &wl_fixes_interface, MIN(version, 2));
+    }
+#endif
 }
 
 static void
@@ -705,6 +713,12 @@ registry_global_remove(void *data, struct wl_registry *wl_registry, uint32_t nam
 {
     WLOutputDeregister(wl_registry, name);
     // TODO: also handle wl_seat removal
+
+#ifdef WL_FIXES_ACK_GLOBAL_REMOVE
+    if (wl_fixes && wl_fixes_get_version(wl_fixes) >= WL_FIXES_ACK_GLOBAL_REMOVE_SINCE_VERSION) {
+        wl_fixes_ack_global_remove(wl_fixes, wl_registry, name);
+    }
+#endif
 }
 
 static const struct wl_registry_listener wl_registry_listener = {
