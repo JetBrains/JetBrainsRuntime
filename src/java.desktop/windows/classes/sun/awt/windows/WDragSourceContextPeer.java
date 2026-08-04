@@ -55,12 +55,17 @@ import sun.awt.dnd.SunDragSourceContextPeer;
 
 final class WDragSourceContextPeer extends SunDragSourceContextPeer {
     @Override
+    protected int getNextSecondaryEventLoopToken() {
+        return WToolkit.getNextSecondaryEventLoopIndex();
+    }
+
+    @Override
     public void startSecondaryEventLoop(){
         WToolkit.startSecondaryEventLoop();
     }
     @Override
-    public void quitSecondaryEventLoop(){
-        WToolkit.quitSecondaryEventLoop();
+    public void quitSecondaryEventLoop(int loopIndex){
+        WToolkit.quitSecondaryEventLoop(loopIndex);
     }
 
     private static final WDragSourceContextPeer theInstance =

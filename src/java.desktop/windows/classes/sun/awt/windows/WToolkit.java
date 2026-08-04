@@ -309,11 +309,17 @@ public final class WToolkit extends SunToolkit implements Runnable {
      * processing native events, eliminating a potential deadlock situation
      * with SendMessage.
      *
-     * WARNING: startSecondaryEventLoop must only be called from the "AWT-
-     * Windows" thread.
+     * WARNING: getNextSecondaryEventLoopIndex and startSecondaryEventLoop
+     * must only be called from the "AWT-Windows" thread.
      */
+    static native int getNextSecondaryEventLoopIndex();
     static native void startSecondaryEventLoop();
-    static native void quitSecondaryEventLoop();
+    static native void quitSecondaryEventLoop(int loopIndex);
+
+    static final int INNERMOST_SECONDARY_LOOP_INDEX = 0;
+    static void quitSecondaryEventLoop() {
+        quitSecondaryEventLoop(INNERMOST_SECONDARY_LOOP_INDEX);
+    }
 
     /*
      * Create peer objects.

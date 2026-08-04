@@ -28,6 +28,7 @@ package sun.awt.dnd;
 import java.awt.AWTEvent;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Event;
 import java.awt.EventQueue;
 import java.awt.Image;
 import java.awt.Point;
@@ -104,8 +105,11 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
     /**
      * Synchro messages in AWT
      */
+    protected int getNextSecondaryEventLoopToken() {
+        return 0;
+    }
     public void startSecondaryEventLoop(){}
-    public void quitSecondaryEventLoop(){}
+    public void quitSecondaryEventLoop(int loopIndex){}
 
     /**
      * initiate a DnD operation ...
@@ -437,8 +441,8 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
     private class EventDispatcher implements Runnable {
 
         private final int dispatchType;
-
         private final DragSourceEvent event;
+        private final int secondaryEventLoopIndex;
 
         EventDispatcher(int dispatchType, DragSourceEvent event) {
             switch (dispatchType) {
@@ -462,8 +466,9 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
                                                    dispatchType);
             }
 
-            this.dispatchType  = dispatchType;
-            this.event         = event;
+            this.dispatchType       = dispatchType;
+            this.event              = event;
+            this.secondaryEventLoopIndex = SunDragSourceContextPeer.this.getNextSecondaryEventLoopToken();
         }
 
         public void run() {
@@ -498,7 +503,7 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
                                                     dispatchType);
                 }
             } finally {
-                 SunDragSourceContextPeer.this.quitSecondaryEventLoop();
+                 SunDragSourceContextPeer.this.quitSecondaryEventLoop(secondaryEventLoopIndex);
             }
         }
     }
