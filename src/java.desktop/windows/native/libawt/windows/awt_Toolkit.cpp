@@ -313,8 +313,9 @@ AwtToolkit::AwtToolkit() {
     m_verifyComponents = FALSE;
     m_breakOnError = FALSE;
 
-    m_breakMessageLoop = FALSE;
-    m_messageLoopResult = 0;
+    m_innermostSecondaryLoop = NULL;
+    m_nextSecondaryLoopToken = 1;
+    m_areAllMessageLoopsShuttingDown = FALSE;
 
     m_lastMouseOver = NULL;
     m_mouseDown = FALSE;
@@ -1311,9 +1312,9 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
       /* Session management */
       case WM_QUERYENDSESSION: {
           // Shut down cleanly
-          // If m_messageLoopResult is EXIT_ALL_ENCLOSING_LOOPS means that application is already in process a closing.
+          // m_areAllMessageLoopsShuttingDown means that application is already in process a closing.
           // No need to repeat such logic via WM_QUERYENDSESSION and WM_ENDSESSION.
-          if (!isSuddenTerminationEnabled || AwtToolkit::GetInstance().m_messageLoopResult == EXIT_ALL_ENCLOSING_LOOPS) {
+          if (!isSuddenTerminationEnabled || AwtToolkit::GetInstance().m_areAllMessageLoopsShuttingDown) {
               return FALSE;
           }
           if (JVM_RaiseSignal(SIGTERM)) {
@@ -1498,7 +1499,6 @@ LRESULT CALLBACK AwtToolkit::MouseLowLevelHook(int code,
 const int AwtToolkit::EXIT_ENCLOSING_LOOP      = 0;
 const int AwtToolkit::EXIT_ALL_ENCLOSING_LOOPS = -1;
 
-
 /**
  * Called upon event idle to ensure that we have released any
  * CriticalSections that we took during window event processing.
@@ -1517,7 +1517,7 @@ void VerifyWindowMoveLockReleased()
     }
 }
 
-UINT
+void
 AwtToolkit::MessageLoop(IDLEPROC lpIdleFunc,
                         PEEKMESSAGEPROC lpPeekMessageFunc)
 {
@@ -1526,27 +1526,36 @@ AwtToolkit::MessageLoop(IDLEPROC lpIdleFunc,
     DASSERT(lpIdleFunc != NULL);
     DASSERT(lpPeekMessageFunc != NULL);
 
-    m_messageLoopResult = 0;
-    while (!m_breakMessageLoop) {
+    MessageLoopFrame frame;
+    frame.breakMessageLoop = FALSE;
+    frame.token = m_nextSecondaryLoopToken++;
+    frame.enclosingLoop = m_innermostSecondaryLoop;
 
-        (*lpIdleFunc)();
+    m_innermostSecondaryLoop = &frame;
+    try {
+        while (!frame.breakMessageLoop) {
 
-        PumpWaitingMessages(lpPeekMessageFunc); /* pumps waiting messages */
+            (*lpIdleFunc)();
 
-        // Catch problems with windowMoveLock critical section.  In case we
-        // misunderstood the way windows processes window move/resize
-        // events, we don't want to hold onto the windowMoveLock CS forever.
-        // If we've finished processing events for now, release the lock
-        // if held.
-        VerifyWindowMoveLockReleased();
+            PumpWaitingMessages(lpPeekMessageFunc); /* pumps waiting messages */
+
+            // Catch problems with windowMoveLock critical section.  In case we
+            // misunderstood the way windows processes window move/resize
+            // events, we don't want to hold onto the windowMoveLock CS forever.
+            // If we've finished processing events for now, release the lock
+            // if held.
+            VerifyWindowMoveLockReleased();
+        }
+        m_innermostSecondaryLoop = frame.enclosingLoop;
+    } catch (...) {
+        m_innermostSecondaryLoop = frame.enclosingLoop;
+        throw;
     }
-    if (m_messageLoopResult == EXIT_ALL_ENCLOSING_LOOPS)
-        ::PostQuitMessage(EXIT_ALL_ENCLOSING_LOOPS);
-    m_breakMessageLoop = FALSE;
+
+    if (m_areAllMessageLoopsShuttingDown)
+        ::PostQuitMessage(0);
 
     DTRACE_PRINTLN("AWT event loop ended");
-
-    return m_messageLoopResult;
 }
 
 /*
@@ -1569,32 +1578,40 @@ static BOOL CALLBACK CancelAllThreadWindows(HWND hWnd, LPARAM)
 }
 
 static void DoQuitMessageLoop(void* param) {
-    int status = *static_cast<int*>(param);
-
-    AwtToolkit::GetInstance().QuitMessageLoop(status);
+    jlong token = *static_cast<jlong*>(param);
+    AwtToolkit::GetInstance().QuitMessageLoop(token);
 }
 
-void AwtToolkit::QuitMessageLoop(int status) {
+void AwtToolkit::QuitMessageLoop(jlong token) {
     /*
      * Fix for 4623377.
      * Reinvoke QuitMessageLoop on the toolkit thread, so that
-     * m_breakMessageLoop is accessed on a single thread.
+     * frame->breakMessageLoop is accessed on a single thread.
      */
     if (!AwtToolkit::IsMainThread()) {
-        InvokeFunction(DoQuitMessageLoop, &status);
+        InvokeFunction(DoQuitMessageLoop, &token);
         return;
     }
 
-    /*
-     * Fix for BugTraq ID 4445747.
-     * EnumThreadWindows() is very slow during dnd on Win9X/ME.
-     * This call is unnecessary during dnd, since we postpone processing of all
-     * messages that can enter internal message loop until dnd is over.
-     */
-      if (status == EXIT_ALL_ENCLOSING_LOOPS) {
-          ::EnumThreadWindows(MainThread(), (WNDENUMPROC)CancelAllThreadWindows,
-                              0);
-      }
+    if (token == EXIT_ALL_ENCLOSING_LOOPS) {
+        m_areAllMessageLoopsShuttingDown = TRUE;
+        /*
+         * Fix for BugTraq ID 4445747.
+         * EnumThreadWindows() is very slow during dnd on Win9X/ME.
+         * This call is unnecessary during dnd, since we postpone processing of all
+         * messages that can enter internal message loop until dnd is over.
+         */
+        ::EnumThreadWindows(MainThread(), (WNDENUMPROC)CancelAllThreadWindows,
+                            0);
+    }
+
+    MessageLoopFrame* frame = m_innermostSecondaryLoop;
+    // token > 0 means that a specific secondary loop is the target here, otherwise it's the innermost loop
+    if (token > 0) {
+        while (frame != NULL && frame->token != token) {
+            frame = frame->enclosingLoop;
+        }
+    }
 
     /*
      * Fix for 4623377.
@@ -1606,8 +1623,9 @@ void AwtToolkit::QuitMessageLoop(int status) {
      * ensure that the nested message loop exits quickly and doesn't wait until
      * a possible modal loop completes.
      */
-    m_breakMessageLoop = TRUE;
-    m_messageLoopResult = status;
+    if (frame != NULL) {
+        frame->breakMessageLoop = TRUE;
+    }
 
     /*
      * Fix for 4683602.
@@ -1623,42 +1641,47 @@ void AwtToolkit::QuitMessageLoop(int status) {
  */
 BOOL AwtToolkit::PumpWaitingMessages(PEEKMESSAGEPROC lpPeekMessageFunc)
 {
+    MessageLoopFrame* frame = m_innermostSecondaryLoop;
+    DASSERT(frame != NULL);
+
     MSG  msg;
     BOOL foundOne = FALSE;
 
     DASSERT(lpPeekMessageFunc != NULL);
 
-    while (!m_breakMessageLoop && (*lpPeekMessageFunc)(msg)) {
+    while (!frame->breakMessageLoop && (*lpPeekMessageFunc)(msg)) {
         foundOne = TRUE;
-        ProcessMsg(msg);
+        ProcessMsg(msg, frame);
     }
     return foundOne;
 }
 
 void AwtToolkit::PumpToDestroy(class AwtComponent* p)
 {
+    MessageLoopFrame* frame = m_innermostSecondaryLoop;
+    DASSERT(frame != NULL);
+
     MSG  msg;
 
     DASSERT(AwtToolkit::PrimaryIdleFunc != NULL);
     DASSERT(AwtToolkit::CommonPeekMessageFunc != NULL);
 
-    while (p->IsDestroyPaused() && !m_breakMessageLoop) {
+    while (p->IsDestroyPaused() && !frame->breakMessageLoop) {
 
         PrimaryIdleFunc();
 
-        while (p->IsDestroyPaused() && !m_breakMessageLoop && CommonPeekMessageFunc(msg)) {
-            ProcessMsg(msg);
+        while (p->IsDestroyPaused() && !frame->breakMessageLoop && CommonPeekMessageFunc(msg)) {
+            ProcessMsg(msg, frame);
         }
     }
 }
 
-void AwtToolkit::ProcessMsg(MSG& msg)
+void AwtToolkit::ProcessMsg(MSG& msg, MessageLoopFrame* frame)
 {
     if (msg.message == WM_QUIT) {
-        m_breakMessageLoop = TRUE;
-        m_messageLoopResult = static_cast<UINT>(msg.wParam);
-        if (m_messageLoopResult == EXIT_ALL_ENCLOSING_LOOPS)
-            ::PostQuitMessage(static_cast<int>(msg.wParam));  // make sure all loops exit
+        frame->breakMessageLoop = TRUE;
+        if (m_areAllMessageLoopsShuttingDown)
+            ::PostQuitMessage(0);  // make sure all loops exit
     }
     else if (msg.message != WM_NULL) {
         /*
@@ -2532,17 +2555,39 @@ Java_sun_awt_windows_WToolkit_startSecondaryEventLoop(
 
 /*
  * Class:     sun_awt_windows_WToolkit
- * Method:    quitSecondaryEventLoop
- * Signature: ()V;
+ * Method:    getNextSecondaryEventLoopToken
+ * Signature: ()J;
  */
-JNIEXPORT void JNICALL
-Java_sun_awt_windows_WToolkit_quitSecondaryEventLoop(
+JNIEXPORT jlong JNICALL
+Java_sun_awt_windows_WToolkit_getNextSecondaryEventLoopToken(
     JNIEnv *env,
     jclass)
 {
     TRY;
 
-    AwtToolkit::GetInstance().QuitMessageLoop(AwtToolkit::EXIT_ENCLOSING_LOOP);
+    DASSERT(AwtToolkit::MainThread() == ::GetCurrentThreadId());
+
+    return AwtToolkit::GetInstance().GetNextMessageLoopToken();
+
+    CATCH_BAD_ALLOC_RET(0);
+}
+
+/*
+ * Class:     sun_awt_windows_WToolkit
+ * Method:    quitSecondaryEventLoop
+ * Signature: (J)V;
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WToolkit_quitSecondaryEventLoop(
+    JNIEnv *env,
+    jclass,
+    jlong token)
+{
+    TRY;
+
+    DASSERT(token > 0 || token == AwtToolkit::EXIT_ENCLOSING_LOOP || token == AwtToolkit::EXIT_ALL_ENCLOSING_LOOPS);
+
+    AwtToolkit::GetInstance().QuitMessageLoop(token);
 
     CATCH_BAD_ALLOC;
 }

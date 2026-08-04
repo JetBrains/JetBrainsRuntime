@@ -132,9 +132,7 @@ import sun.awt.Win32GraphicsEnvironment;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
-import sun.java2d.ScreenUpdateManager;
 import sun.java2d.d3d.D3DRenderQueue;
-import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.windows.WindowsFlags;
@@ -309,11 +307,12 @@ public final class WToolkit extends SunToolkit implements Runnable {
      * processing native events, eliminating a potential deadlock situation
      * with SendMessage.
      *
-     * WARNING: startSecondaryEventLoop must only be called from the "AWT-
-     * Windows" thread.
+     * WARNING: getNextSecondaryEventLoopToken and startSecondaryEventLoop
+     * must only be called from the "AWT-Windows" thread.
      */
+    static native long getNextSecondaryEventLoopToken();
     static native void startSecondaryEventLoop();
-    static native void quitSecondaryEventLoop();
+    static native void quitSecondaryEventLoop(long token);
 
     /*
      * Create peer objects.
