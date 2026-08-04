@@ -90,6 +90,64 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     private final LWChildPeers childPeers = new LWChildPeers(new Object());
 
+    // Accessible via getMouseEventDispatcher()
+    private LWMouseEventDispatcher mouseEventDispatcher = null;
+    private final WLPointerEventDefaultDispatcherBase pointerEventDispatcher = new WLPointerEventDefaultDispatcherBase() {
+        @Override
+        protected void notifyMouseEvent(
+            int awtId,
+            long awtWhen,
+            int awtButton,
+            int awtX,
+            int awtY,
+            int awtAbsX,
+            int awtAbsY,
+            int awtModifiers,
+            int awtClickCount,
+            boolean awtIsPopupTrigger
+        ) {
+            WLWindowPeer.this.getMouseEventDispatcher().notifyMouseEvent(
+                awtId,
+                awtWhen,
+                awtButton,
+                awtX, awtY,
+                awtAbsX, awtAbsY,
+                awtModifiers,
+                awtClickCount,
+                awtIsPopupTrigger
+            );
+        }
+
+        @Override
+        protected void notifyMouseWheelEvent(
+            long awtWhen,
+            int awtX,
+            int awtY,
+            int awtAbsX,
+            int awtAbsY,
+            int awtModifiers,
+            int awtClickCount,
+            boolean awtIsPopupTrigger,
+            int awtScrollType,
+            int awtScrollAmount,
+            int awtWheelRotation,
+            double awtPreciseWheelRotation
+        ) {
+            WLWindowPeer.this.getMouseEventDispatcher().notifyMouseWheelEvent(
+                awtWhen,
+                awtX, awtY,
+                awtAbsX, awtAbsY,
+                awtModifiers,
+                awtClickCount,
+                awtIsPopupTrigger,
+                awtScrollType,
+                awtScrollAmount,
+                awtWheelRotation,
+                awtPreciseWheelRotation
+            );
+        }
+    };
+
     static {
         if (!GraphicsEnvironment.isHeadless()) {
             initIDs();
@@ -751,5 +809,16 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     @Override
     public boolean needsDragEventCorrection() {
         return false;
+    }
+
+    @Override
+    final void dispatchPointerEventInContext(final WLPointerEvent e, final WLInputState newInputState) {
+        final int x = newInputState.getPointerX();
+        final int y = newInputState.getPointerY();
+        final Point abs = relativePointToAbsolute(new Point(x, y));
+        final int xAbsolute = abs.x;
+        final int yAbsolute = abs.y;
+
+        this.pointerEventDispatcher.dispatchPointerEventInContext(e, newInputState, x, y, xAbsolute, yAbsolute);
     }
 }
