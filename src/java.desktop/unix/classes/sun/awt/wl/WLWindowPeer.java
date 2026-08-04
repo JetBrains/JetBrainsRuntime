@@ -65,7 +65,6 @@ import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
-import java.awt.peer.WindowPeer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -90,6 +89,64 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
     private SunGraphics2D graphics;         // guarded by stateLock
 
     private final LWChildPeers childPeers = new LWChildPeers(new Object());
+
+    // Accessible via getMouseEventDispatcher()
+    private LWMouseEventDispatcher mouseEventDispatcher = null;
+    private final WLPointerEventDefaultDispatcherBase pointerEventDispatcher = new WLPointerEventDefaultDispatcherBase() {
+        @Override
+        protected void notifyMouseEvent(
+            int awtId,
+            long awtWhen,
+            int awtButton,
+            int awtX,
+            int awtY,
+            int awtAbsX,
+            int awtAbsY,
+            int awtModifiers,
+            int awtClickCount,
+            boolean awtIsPopupTrigger
+        ) {
+            WLWindowPeer.this.getMouseEventDispatcher().notifyMouseEvent(
+                awtId,
+                awtWhen,
+                awtButton,
+                awtX, awtY,
+                awtAbsX, awtAbsY,
+                awtModifiers,
+                awtClickCount,
+                awtIsPopupTrigger
+            );
+        }
+
+        @Override
+        protected void notifyMouseWheelEvent(
+            long awtWhen,
+            int awtX,
+            int awtY,
+            int awtAbsX,
+            int awtAbsY,
+            int awtModifiers,
+            int awtClickCount,
+            boolean awtIsPopupTrigger,
+            int awtScrollType,
+            int awtScrollAmount,
+            int awtWheelRotation,
+            double awtPreciseWheelRotation
+        ) {
+            WLWindowPeer.this.getMouseEventDispatcher().notifyMouseWheelEvent(
+                awtWhen,
+                awtX, awtY,
+                awtAbsX, awtAbsY,
+                awtModifiers,
+                awtClickCount,
+                awtIsPopupTrigger,
+                awtScrollType,
+                awtScrollAmount,
+                awtWheelRotation,
+                awtPreciseWheelRotation
+            );
+        }
+    };
 
     static {
         if (!GraphicsEnvironment.isHeadless()) {
@@ -761,5 +818,16 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     public void removeDropTarget(DropTarget dt) {
+    }
+
+    @Override
+    final void dispatchPointerEventInContext(final WLPointerEvent e, final WLInputState newInputState) {
+        final int x = newInputState.getPointerX();
+        final int y = newInputState.getPointerY();
+        final Point abs = relativePointToAbsolute(new Point(x, y));
+        final int xAbsolute = abs.x;
+        final int yAbsolute = abs.y;
+
+        this.pointerEventDispatcher.dispatchPointerEventInContext(e, newInputState, x, y, xAbsolute, yAbsolute);
     }
 }
