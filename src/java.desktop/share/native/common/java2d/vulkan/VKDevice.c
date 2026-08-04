@@ -192,7 +192,11 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     VKNamedEntry_LogFound(extensions);
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "    presentable = %s", (caps & CAP_PRESENTABLE_BIT) ? "true" : "false");
-    if (!(caps & CAP_PRESENTABLE_BIT)) VK_KHR_SWAPCHAIN_EXTENSION.found = NULL;
+    if (!(caps & CAP_PRESENTABLE_BIT)) {
+        VK_KHR_SWAPCHAIN_EXTENSION.found = NULL;
+        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found = NULL;
+        hasSwapchainMaintenance1 = false;
+    }
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "    logicOp = %s", deviceFeatures2.features.logicOp ? "true" : "false");
     if (deviceFeatures2.features.logicOp) caps |= sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT;
