@@ -493,11 +493,15 @@ final class WDataTransferer extends DataTransferer {
 final class WToolkitThreadBlockedHandler extends Mutex
         implements ToolkitThreadBlockedHandler {
 
+    long secondaryEventLoopToken = 0;
+
     @Override
     public void enter() {
         if (!isOwned()) {
             throw new IllegalMonitorStateException();
         }
+        assert(secondaryEventLoopToken == 0);
+        secondaryEventLoopToken = WToolkit.getNextSecondaryEventLoopToken();
         unlock();
         startSecondaryEventLoop();
         lock();
@@ -508,7 +512,9 @@ final class WToolkitThreadBlockedHandler extends Mutex
         if (!isOwned()) {
             throw new IllegalMonitorStateException();
         }
-        WToolkit.quitSecondaryEventLoop();
+        assert(secondaryEventLoopToken != 0);
+        WToolkit.quitSecondaryEventLoop(secondaryEventLoopToken);
+        secondaryEventLoopToken = 0;
     }
 
     private native void startSecondaryEventLoop();
