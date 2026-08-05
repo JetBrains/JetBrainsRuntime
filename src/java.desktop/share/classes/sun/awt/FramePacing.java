@@ -160,6 +160,12 @@ public abstract class FramePacing {
         return null;
     }
 
+    private static void trace(String message) {
+        if (TRACE) {
+            System.err.println("[JBR-FramePacing] " + message);
+        }
+    }
+
     @JBRApi.Provided("FramePacing.Listener")
     public interface Listener {
         void onTick(long displayId, long timeNanos);
