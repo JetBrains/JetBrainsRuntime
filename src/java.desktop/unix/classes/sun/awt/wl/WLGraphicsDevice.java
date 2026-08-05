@@ -300,7 +300,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return defaultConfig;
     }
 
-    int getID() {
+    public int getID() {
         return wlID;
     }
 
