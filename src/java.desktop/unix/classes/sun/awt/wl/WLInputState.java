@@ -263,7 +263,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 final boolean clickedSameSurface
                         = newEventWithSurface.getSurface() == pointerButtonPressedEvent.surface;
                 final boolean clickedQuickly
-                        = (pointerEvent.getTimestamp() - pointerButtonPressedEvent.timestamp)
+                        = (pointerEvent.getButtonTimestamp() - pointerButtonPressedEvent.timestamp)
                         <= WLToolkit.getMulticlickTime();
                 if (clickedSameSurface && clickedQuickly && multiclickMouseDidNotMove(newEventWithPosition)) {
                     clickCount = pointerButtonPressedEvent.clickCount + 1;
@@ -272,7 +272,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
 
             return new PointerButtonEvent(
                     newEventWithSurface.getSurface(),
-                    newEventWithTimestamp.getTimestamp(),
+                    pointerEvent.getButtonTimestamp(),
                     clickCount,
                     pointerEvent.getButtonCode(),
                     newEventWithPosition.getSurfaceX(),
