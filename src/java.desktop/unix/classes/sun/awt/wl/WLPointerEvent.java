@@ -57,6 +57,7 @@ class WLPointerEvent {
 
     private long    motionTimestamp;          // time parameter of the wl_pointer::motion event
 
+    private long    buttonTimestamp;          // time parameter of the wl_pointer::button event
     private int     buttonCode;               // pointer button code corresponding to PointerButtonCodes.linuxCode
     private boolean isButtonPressed;          // true if button was pressed, false if released
 
@@ -272,6 +273,7 @@ class WLPointerEvent {
     /**
      * @return the timestamp of the latest received timestamped event (i.e. motion, button, axis, axis_stop) in the frame
      * @see #getMotionTimestamp()
+     * @see #getButtonTimestamp()
      * @see #getXAxisStopEventTimestamp()
      * @see #getYAxisStopEventTimestamp()
      */
@@ -293,6 +295,11 @@ class WLPointerEvent {
     public long getMotionTimestamp() {
         assert hasMotionEvent() : "Must have a motion event to get the motion timestamp";
         return motionTimestamp;
+    }
+
+    public long getButtonTimestamp() {
+        assert hasButtonEvent() : "Must have a button event to get the button timestamp";
+        return buttonTimestamp;
     }
 
     public int getButtonCode() {
@@ -400,11 +407,12 @@ class WLPointerEvent {
             builder.append("x: ").append(getSurfaceX()).append(", y: ").append(getSurfaceY());
             builder.append(", timestamp: ").append(getMotionTimestamp());
         }
+
         if (hasButtonEvent()) {
             builder.append(" button ");
-
-            builder.append(buttonCodeToString(getButtonCode())).append(" ");
-            builder.append(getIsButtonPressed() ? "pressed" : "released");
+            builder.append(buttonCodeToString(getButtonCode()));
+            builder.append(getIsButtonPressed() ? " pressed" : " released");
+            builder.append(", timestamp: ").append(getButtonTimestamp());
         }
 
         if (hasAnyAxisLikeEvents()) {
