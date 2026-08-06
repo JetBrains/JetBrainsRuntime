@@ -618,7 +618,11 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self.nsWindow == nil) return nil; // no hope either
     [self.nsWindow release]; // the property retains the object already
 
-    if (!isWindowAnimationEnabled()
+    // JBR-9375: suppress the blurry order-in animation for undecorated popups/menus only.
+    // JBR-9776: decorated frames/dialogs must keep NSWindowAnimationBehaviorDefault — the
+    // automatic order-in animation is what forces the first CoreAnimation display pass for a
+    // window ordered into a newly created full-screen Space.
+    if (!isWindowAnimationEnabled() && !IS(bits, DECORATED)
         && (self.nsWindow.animationBehavior != NSWindowAnimationBehaviorNone)) {
         self.nsWindow.animationBehavior = NSWindowAnimationBehaviorNone;
     }
