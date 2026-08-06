@@ -400,45 +400,63 @@ class WLPointerEvent {
     @Override
     public String toString() {
         final StringBuilder builder = new StringBuilder();
-        builder.append("WLPointerEvent(");
+
+        String delimiter = "";
+
+        builder.append("WLPointerEvent@").append(Long.toHexString(System.identityHashCode(this))).append('(');
+
         if (hasSurface()) {
-            builder.append("surface: 0x").append(Long.toHexString(getSurface()));
+            builder.append(delimiter).append("surface: 0x").append(Long.toHexString(getSurface()));
+            delimiter = " ";
         }
 
         if (hasSerial()) {
-            builder.append(", serial: ").append(getSerial());
+            builder.append(delimiter).append("serial: ").append(getSerial());
+            delimiter = " ";
         }
 
         if (hasTimestamp()) {
-            builder.append(", latestTimestamp: ").append(getLatestTimestamp());
+            builder.append(delimiter).append("latestTimestamp: ").append(getLatestTimestamp());
+            delimiter = " ";
         }
 
-        if (hasEnterEvent()) builder.append(" enter");
-        if (hasLeaveEvent()) builder.append(" leave");
+        if (hasEnterEvent()) {
+            builder.append(delimiter).append("enter");
+            delimiter = " ";
+        }
+        if (hasLeaveEvent()) {
+            builder.append(delimiter).append("leave");
+            delimiter = " ";
+        }
 
         if (hasMotionEvent()) {
-            builder.append(" motion ");
+            builder.append(delimiter).append("motion ");
             builder.append("x: ").append(getSurfaceX()).append(", y: ").append(getSurfaceY());
             builder.append(", timestamp: ").append(getMotionTimestamp());
+            delimiter = " ";
         }
 
         if (hasButtonEvent()) {
-            builder.append(" button ");
+            builder.append(delimiter).append("button ");
             builder.append(buttonCodeToString(getButtonCode()));
             builder.append(getIsButtonPressed() ? " pressed" : " released");
             builder.append(", timestamp: ").append(getButtonTimestamp());
+            delimiter = " ";
         }
 
         if (hasAnyAxisLikeEvents()) {
-            builder.append(" axis");
+            builder.append(delimiter).append("axis");
+
+            delimiter = " ";
 
             if (hasAxisSourceEvent()) {
-                builder.append(" source: ").append(getAxisSource())
-                                           .append(" (AxisSourceType=").append(AxisSourceType.recognizedOrNull(getAxisSource())).append(')');
+                builder.append(delimiter).append("source: ").append(getAxisSource())
+                                         .append(" (AxisSourceType=").append(AxisSourceType.recognizedOrNull(getAxisSource())).append(')');
+                delimiter = ", ";
             }
 
             if (yAxisHasEvents()) {
-                builder.append(" vertical-scroll:");
+                builder.append(delimiter).append("vertical-scroll:");
 
                 if (yAxisHasVectorValue()) {
                     builder.append(" ").append(getYAxisVectorValue());
@@ -451,9 +469,10 @@ class WLPointerEvent {
                     builder.append(" stop");
                     builder.append(" timestamp ").append(getYAxisStopEventTimestamp());
                 }
+                delimiter = ", ";
             }
             if (xAxisHasEvents()) {
-                builder.append(" horizontal-scroll:");
+                builder.append(delimiter).append("horizontal-scroll:");
 
                 if (xAxisHasVectorValue()) {
                     builder.append(" ").append(getXAxisVectorValue());
@@ -466,7 +485,9 @@ class WLPointerEvent {
                     builder.append(" stop");
                     builder.append(" timestamp ").append(getXAxisStopEventTimestamp());
                 }
+                delimiter = ", ";
             }
+            delimiter = " ";
         }
 
         builder.append(")");
