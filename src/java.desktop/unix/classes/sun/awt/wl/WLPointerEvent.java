@@ -67,6 +67,7 @@ class WLPointerEvent {
     private boolean xAxis_hasStopEvent;       // whether wl_pointer::axis_stop event has been received for this axis
                                               // and xAxis_stopEventTimestamp is valid
     private boolean xAxis_hasSteps120Value;   // whether xAxis_steps120Value is valid
+    private long    xAxis_vectorTimestamp;    // time parameter of the wl_pointer::axis event (x axis)
     private double  xAxis_vectorValue;        // "length of vector in surface-local coordinate space" (source: wayland.xml)
     private int     xAxis_steps120Value;      // "high-resolution wheel scroll information, with each multiple of 120
                                               // representing one logical scroll step (a wheel detent)" (source: wayland.xml)
@@ -76,6 +77,7 @@ class WLPointerEvent {
     private boolean yAxis_hasStopEvent;       // whether wl_pointer::axis_stop event has been received for this axis
                                               // and yAxis_stopEventTimestamp is valid
     private boolean yAxis_hasSteps120Value;   // whether yAxis_steps120Value is valid
+    private long    yAxis_vectorTimestamp;    // time parameter of the wl_pointer::axis event (y axis)
     private double  yAxis_vectorValue;        // "length of vector in surface-local coordinate space" (source: wayland.xml)
     private int     yAxis_steps120Value;      // "high-resolution wheel scroll information, with each multiple of 120
                                               // representing one logical scroll step (a wheel detent)" (source: wayland.xml)
@@ -274,6 +276,8 @@ class WLPointerEvent {
      * @return the timestamp of the latest received timestamped event (i.e. motion, button, axis, axis_stop) in the frame
      * @see #getMotionTimestamp()
      * @see #getButtonTimestamp()
+     * @see #getXAxisVectorTimestamp()
+     * @see #getYAxisVectorTimestamp()
      * @see #getXAxisStopEventTimestamp()
      * @see #getYAxisStopEventTimestamp()
      */
@@ -335,6 +339,11 @@ class WLPointerEvent {
         return xAxis_hasSteps120Value;
     }
 
+    public long getXAxisVectorTimestamp() {
+        assert xAxisHasVectorValue() : "Must have an X axis vector value";
+        return xAxis_vectorTimestamp;
+    }
+
     public double getXAxisVectorValue() {
         assert xAxisHasVectorValue() : "Must have an X axis vector value";
         return xAxis_vectorValue;
@@ -366,6 +375,11 @@ class WLPointerEvent {
 
     public boolean yAxisHasSteps120Value() {
         return yAxis_hasSteps120Value;
+    }
+
+    public long getYAxisVectorTimestamp() {
+        assert yAxisHasVectorValue() : "Must have an Y axis vector value";
+        return yAxis_vectorTimestamp;
     }
 
     public double getYAxisVectorValue() {
@@ -428,6 +442,7 @@ class WLPointerEvent {
 
                 if (yAxisHasVectorValue()) {
                     builder.append(" ").append(getYAxisVectorValue());
+                    builder.append(" timestamp ").append(getYAxisVectorTimestamp());
                 }
                 if (yAxisHasSteps120Value()) {
                     builder.append(" ").append(getYAxisSteps120Value()).append("/120 steps");
@@ -442,6 +457,7 @@ class WLPointerEvent {
 
                 if (xAxisHasVectorValue()) {
                     builder.append(" ").append(getXAxisVectorValue());
+                    builder.append(" timestamp ").append(getXAxisVectorTimestamp());
                 }
                 if (xAxisHasSteps120Value()) {
                     builder.append(" ").append(getXAxisSteps120Value()).append("/120 steps");
