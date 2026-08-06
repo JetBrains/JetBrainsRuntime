@@ -375,7 +375,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
      *          because they are not guaranteed to be based on the midnight of Jan 1, 1970 UTC.
      */
     public long getTimestamp() {
-        return eventWithTimestamp != null ? eventWithTimestamp.getTimestamp() : 0;
+        return eventWithTimestamp != null ? eventWithTimestamp.getLatestTimestamp() : 0;
     }
 
     public int getClickCount() {

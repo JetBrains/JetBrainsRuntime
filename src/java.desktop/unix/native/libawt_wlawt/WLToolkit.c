@@ -107,7 +107,7 @@ static jfieldID hasButtonEventFID;
 static jfieldID hasAxisSourceEventFID;
 static jfieldID serialFID;
 static jfieldID surfaceFID;
-static jfieldID timestampFID;
+static jfieldID latestTimestampFID;
 static jfieldID surfaceXFID;
 static jfieldID surfaceYFID;
 static jfieldID buttonCodeFID;
@@ -162,7 +162,8 @@ struct pointer_event_cumulative {
     bool has_button_event        : 1;
     bool has_axis_source_event   : 1;
 
-    uint32_t   time;
+    // timestamp of the latest received timestamped event (i.e. motion, button, axis, axis_stop) in the frame
+    uint32_t   latest_time;
     uint32_t   serial;
     struct wl_surface* surface;
 
@@ -221,7 +222,7 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
                   wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
     pointer_event.has_motion_event = true;
-    pointer_event.time             = time;
+    pointer_event.latest_time      = time;
     pointer_event.surface_x        = surface_x,
     pointer_event.surface_y        = surface_y;
 }
@@ -231,7 +232,7 @@ wl_pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
                   uint32_t time, uint32_t button, uint32_t state)
 {
     pointer_event.has_button_event = true;
-    pointer_event.time             = time;
+    pointer_event.latest_time      = time;
     pointer_event.serial           = serial;
     pointer_event.button           = button,
     pointer_event.state            = state;
@@ -247,7 +248,7 @@ wl_pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,
     }
 
     pointer_event.axes[axis].has_vector_value = true;
-    pointer_event.time                        = time;
+    pointer_event.latest_time                 = time;
     pointer_event.axes[axis].vector_value    += value;
 }
 
@@ -269,20 +270,8 @@ wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
     }
 
     pointer_event.axes[axis].has_stop_event = true;
+    pointer_event.latest_time               = time;
     pointer_event.axes[axis].stop_time      = time;
-
-    const bool commonTimeIsAlreadySet =
-        pointer_event.has_motion_event ||
-        pointer_event.has_button_event ||
-        pointer_event.axes[(axis + 1) % 2].has_vector_value ||
-        pointer_event.axes[(axis + 1) % 2].has_stop_event ||
-        pointer_event.axes[axis].has_vector_value;
-
-    if (commonTimeIsAlreadySet && pointer_event.time != 0 && time != 0) {
-        pointer_event.time                  = MIN(pointer_event.time, time);
-    } else {
-        pointer_event.time                  = time;
-    }
 }
 
 static void
@@ -335,7 +324,7 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
 
     (*env)->SetLongField(env, pointerEventRef, surfaceFID, (long)pointer_event.surface);
     (*env)->SetLongField(env, pointerEventRef, serialFID, pointer_event.serial);
-    (*env)->SetLongField(env, pointerEventRef, timestampFID, pointer_event.time);
+    (*env)->SetLongField(env, pointerEventRef, latestTimestampFID, pointer_event.latest_time);
 
     (*env)->SetIntField(env, pointerEventRef, surfaceXFID, wl_fixed_to_int(pointer_event.surface_x));
     (*env)->SetIntField(env, pointerEventRef, surfaceYFID, wl_fixed_to_int(pointer_event.surface_y));
@@ -822,7 +811,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
 
     CHECK_NULL_RETURN(serialFID = (*env)->GetFieldID(env, pointerEventClass, "serial", "J"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceFID = (*env)->GetFieldID(env, pointerEventClass, "surface", "J"), JNI_FALSE);
-    CHECK_NULL_RETURN(timestampFID = (*env)->GetFieldID(env, pointerEventClass, "timestamp", "J"), JNI_FALSE);
+    CHECK_NULL_RETURN(latestTimestampFID = (*env)->GetFieldID(env, pointerEventClass, "latestTimestamp", "J"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceXFID = (*env)->GetFieldID(env, pointerEventClass, "surface_x", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceYFID = (*env)->GetFieldID(env, pointerEventClass, "surface_y", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
