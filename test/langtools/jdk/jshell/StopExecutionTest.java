@@ -27,7 +27,7 @@
  * @summary Test JShell#stop
  * @modules jdk.jshell/jdk.internal.jshell.tool
  * @build KullaTesting TestingInputStream
- * @run testng StopExecutionTest
+ * @run junit StopExecutionTest
  */
 
 import java.io.IOException;
@@ -42,28 +42,30 @@ import java.util.function.Consumer;
 import jdk.internal.jshell.tool.StopDetectingInputStream;
 import jdk.internal.jshell.tool.StopDetectingInputStream.State;
 import jdk.jshell.JShell;
-import org.testng.annotations.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.fail;
-
-@Test
 public class StopExecutionTest extends KullaTesting {
 
     private final Object lock = new Object();
     private boolean isStopped;
 
-    @Test(enabled = false) // TODO 8129546
+    @Test // TODO 8129546
+    @Disabled
     public void testStopLoop() throws InterruptedException {
         scheduleStop("while (true) ;");
     }
 
-    @Test(enabled = false) // TODO 8129546
+    @Test // TODO 8129546
+    @Disabled
     public void testStopASleep() throws InterruptedException {
         scheduleStop("while (true) { try { Thread.sleep(100); } catch (InterruptedException ex) { } }");
     }
 
-    @Test(enabled = false) // TODO 8129546
+    @Test // TODO 8129546
+    @Disabled
     public void testScriptCatchesStop() throws Exception {
         scheduleStop("for (int i = 0; i < 30; i++) { try { Thread.sleep(100); } catch (Throwable ex) { } }");
     }
@@ -104,6 +106,7 @@ public class StopExecutionTest extends KullaTesting {
         t.join();
     }
 
+    @Test
     public void testStopDetectingInputRandom() throws IOException {
         long seed = System.nanoTime();
         Random r = new Random(seed);
@@ -129,10 +132,11 @@ public class StopExecutionTest extends KullaTesting {
         for (int c = 0; c < chunkSize; c++) {
             int read = buffer.read();
 
-            assertEquals(read, c);
+            assertEquals(c, read);
         }
     }
 
+    @Test
     public void testStopDetectingInputBufferWaitStop() throws Exception {
         Runnable shouldNotHappenRun =
                 () -> { throw new AssertionError("Should not happen."); };

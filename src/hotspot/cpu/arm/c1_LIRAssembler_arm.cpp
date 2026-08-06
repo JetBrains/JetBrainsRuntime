@@ -152,8 +152,14 @@ void LIR_Assembler::osr_entry() {
   int monitor_offset = (method()->max_locals() + 2 * (number_of_locks - 1)) * BytesPerWord;
   for (int i = 0; i < number_of_locks; i++) {
     int slot_offset = monitor_offset - (i * 2 * BytesPerWord);
-    __ ldr(R1, Address(OSR_buf, slot_offset + 0*BytesPerWord));
-    __ ldr(R2, Address(OSR_buf, slot_offset + 1*BytesPerWord));
+    if (slot_offset >= 4096 - BytesPerWord) {
+      __ add_slow(R2, OSR_buf, slot_offset);
+      __ ldr(R1, Address(R2, 0*BytesPerWord));
+      __ ldr(R2, Address(R2, 1*BytesPerWord));
+    } else {
+      __ ldr(R1, Address(OSR_buf, slot_offset + 0*BytesPerWord));
+      __ ldr(R2, Address(OSR_buf, slot_offset + 1*BytesPerWord));
+    }
     __ str(R1, frame_map()->address_for_monitor_lock(i));
     __ str(R2, frame_map()->address_for_monitor_object(i));
   }
@@ -2653,11 +2659,11 @@ void LIR_Assembler::volatile_move_op(LIR_Opr src, LIR_Opr dest, BasicType type, 
     const Register src_hi = src->as_register_hi();
     assert(addr->index()->is_illegal() && addr->disp() == 0, "The address is simple already");
 
-    if (src_lo < src_hi) {
+    if (src_lo->encoding() < src_hi->encoding()) {
       null_check_offset = __ offset();
       __ stmia(addr->base()->as_register(), RegisterSet(src_lo) | RegisterSet(src_hi));
     } else {
-      assert(src_lo < Rtemp, "Rtemp is higher than any allocatable register");
+      assert(src_lo->encoding() < Rtemp->encoding(), "Rtemp is higher than any allocatable register");
       __ mov(Rtemp, src_hi);
       null_check_offset = __ offset();
       __ stmia(addr->base()->as_register(), RegisterSet(src_lo) | RegisterSet(Rtemp));
@@ -2670,10 +2676,10 @@ void LIR_Assembler::volatile_move_op(LIR_Opr src, LIR_Opr dest, BasicType type, 
     assert(addr->index()->is_illegal() && addr->disp() == 0, "The address is simple already");
 
     null_check_offset = __ offset();
-    if (dest_lo < dest_hi) {
+    if (dest_lo->encoding() < dest_hi->encoding()) {
       __ ldmia(addr->base()->as_register(), RegisterSet(dest_lo) | RegisterSet(dest_hi));
     } else {
-      assert(dest_lo < Rtemp, "Rtemp is higher than any allocatable register");
+      assert(dest_lo->encoding() < Rtemp->encoding(), "Rtemp is higher than any allocatable register");
       __ ldmia(addr->base()->as_register(), RegisterSet(dest_lo) | RegisterSet(Rtemp));
       __ mov(dest_hi, Rtemp);
     }

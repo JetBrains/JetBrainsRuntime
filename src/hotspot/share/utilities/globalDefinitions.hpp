@@ -131,6 +131,7 @@ class oopDesc;
 #define UINT64_FORMAT_X          "0x%"        PRIx64
 #define UINT64_FORMAT_X_0        "0x%016"     PRIx64
 #define UINT64_FORMAT_W(width)   "%"   #width PRIu64
+#define PHYS_MEM_TYPE_FORMAT     "%"          PRIu64
 
 // Format integers which change size between 32- and 64-bit.
 #define SSIZE_FORMAT             "%"          PRIdPTR
@@ -425,6 +426,11 @@ inline size_t byte_size_in_exact_unit(size_t s) {
 
 #define HEAP_CHANGE_FORMAT_ARGS(_name_, _prev_used_, _prev_capacity_, _used_, _capacity_) \
   (_name_), (_prev_used_) / K, (_prev_capacity_) / K, (_used_) / K, (_capacity_) / K
+
+// This typedef is to address the issue of running a 32-bit VM. In this case the amount
+// of physical memory may not fit in size_t, so we have to have a larger type. Once 32-bit
+// is deprecated, one can use size_t.
+typedef uint64_t physical_memory_size_type;
 
 //----------------------------------------------------------------------------------------------------
 // VM type definitions

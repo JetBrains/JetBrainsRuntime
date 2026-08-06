@@ -402,9 +402,9 @@ JVM_ENTRY_NO_ENV(jlong, jfr_host_total_memory(JNIEnv* env, jobject jvm))
 #ifdef LINUX
   // We want the host memory, not the container limit.
   // os::physical_memory() would return the container limit.
-  return os::Linux::physical_memory();
+  return static_cast<jlong>(os::Linux::physical_memory());
 #else
-  return os::physical_memory();
+  return static_cast<jlong>(os::physical_memory());
 #endif
 JVM_END
 

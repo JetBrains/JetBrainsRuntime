@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020, 2025, Red Hat Inc.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +25,8 @@
 
 #include "cgroupV2Subsystem_linux.hpp"
 #include "cgroupUtil_linux.hpp"
+
+#include <math.h>
 
 // Constructor
 CgroupV2Controller::CgroupV2Controller(char* mount_path,
@@ -60,22 +63,39 @@ int CgroupV2CpuController::cpu_shares() {
     log_debug(os, container)("CPU Shares is: %d", -1);
     return -1;
   }
+  // cg v2 values must be in range [1-10000]
+  assert(shares_int >= 1 && shares_int <= 10000, "invariant");
 
   // CPU shares (OCI) value needs to get translated into
   // a proper Cgroups v2 value. See:
-  // https://github.com/containers/crun/blob/master/crun.1.md#cpu-controller
+  // https://github.com/containers/crun/blob/1.24/crun.1.md#cpu-controller
   //
   // Use the inverse of (x == OCI value, y == cgroupsv2 value):
-  // ((262142 * y - 1)/9999) + 2 = x
+  // y = 10^(log2(x)^2/612 + 125/612 * log2(x) - 7.0/34.0)
   //
-  int x = 262142 * shares_int - 1;
-  double frac = x/9999.0;
-  x = ((int)frac) + 2;
+  // By re-arranging it to the standard quadratic form:
+  // log2(x)^2 + 125 * log2(x) - (126 + 612 * log_10(y)) = 0
+  //
+  // Therefore, log2(x) = (-125 + sqrt( 125^2 - 4 * (-(126 + 612 * log_10(y)))))/2
+  //
+  // As a result we have the inverse (we can discount substraction of the
+  // square root value since those values result in very small numbers and the
+  // cpu shares values - OCI - are in range [2,262144]):
+  //
+  // x = 2^((-125 + sqrt(16129 + 2448* log10(y)))/2)
+  //
+  double log_multiplicand = log10(shares_int);
+  double discriminant = 16129 + 2448 * log_multiplicand;
+  double square_root = sqrt(discriminant);
+  double exponent = (-125 + square_root)/2;
+  double scaled_val = pow(2, exponent);
+  int x = (int) scaled_val;
   log_trace(os, container)("Scaled CPU shares value is: %d", x);
   // Since the scaled value is not precise, return the closest
   // multiple of PER_CPU_SHARES for a more conservative mapping
   if ( x <= PER_CPU_SHARES ) {
-     // will always map to 1 CPU
+     // Don't do the multiples of PER_CPU_SHARES mapping since we
+     // have a value <= PER_CPU_SHARES
      log_debug(os, container)("CPU Shares is: %d", x);
      return x;
   }
@@ -114,12 +134,14 @@ int CgroupV2CpuController::cpu_quota() {
 // Constructor
 CgroupV2Subsystem::CgroupV2Subsystem(CgroupV2MemoryController * memory,
                                      CgroupV2CpuController* cpu,
+                                     CgroupV2CpuacctController* cpuacct,
                                      CgroupV2Controller unified) :
                                      _unified(unified) {
   CgroupUtil::adjust_controller(memory);
   CgroupUtil::adjust_controller(cpu);
   _memory = new CachingCgroupController<CgroupMemoryController>(memory);
   _cpu = new CachingCgroupController<CgroupCpuController>(cpu);
+  _cpuacct = cpuacct;
 }
 
 bool CgroupV2Subsystem::is_containerized() {
@@ -152,6 +174,17 @@ int CgroupV2CpuController::cpu_period() {
   return period;
 }
 
+jlong CgroupV2CpuController::cpu_usage_in_micros() {
+  julong cpu_usage;
+  bool is_ok = reader()->read_numerical_key_value("/cpu.stat", "usage_usec", &cpu_usage);
+  if (!is_ok) {
+    log_trace(os, container)("CPU Usage failed: %d", OSCONTAINER_ERROR);
+    return OSCONTAINER_ERROR;
+  }
+  log_trace(os, container)("CPU Usage is: " JULONG_FORMAT, cpu_usage);
+  return (jlong)cpu_usage;
+}
+
 /* memory_usage_in_bytes
  *
  * Return the amount of used memory used by this cgroup and descendents
@@ -173,10 +206,16 @@ jlong CgroupV2MemoryController::memory_soft_limit_in_bytes(julong phys_mem) {
   return mem_soft_limit;
 }
 
+jlong CgroupV2MemoryController::memory_throttle_limit_in_bytes() {
+  jlong mem_throttle_limit;
+  CONTAINER_READ_NUMBER_CHECKED_MAX(reader(), "/memory.high", "Memory Throttle Limit", mem_throttle_limit);
+  return mem_throttle_limit;
+}
+
 jlong CgroupV2MemoryController::memory_max_usage_in_bytes() {
-  // Log this string at trace level so as to make tests happy.
-  log_trace(os, container)("Maximum Memory Usage is not supported.");
-  return OSCONTAINER_ERROR; // not supported
+  julong mem_max_usage;
+  CONTAINER_READ_NUMBER_CHECKED(reader(), "/memory.peak", "Maximum Memory Usage", mem_max_usage);
+  return mem_max_usage;
 }
 
 jlong CgroupV2MemoryController::rss_usage_in_bytes() {

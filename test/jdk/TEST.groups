@@ -688,6 +688,7 @@ jdk_jfr_sanity = \
     jdk/jfr/event/gc/collection/TestGCWithFasttime.java \
     jdk/jfr/event/gc/configuration/TestGCConfigurationEvent.java \
     jdk/jfr/event/metadata/TestDefaultConfigurations.java \
+    jdk/jfr/event/oldobject/TestDFSWithSmallStack.java \
     jdk/jfr/startupargs/TestDumpOnExit.java \
     jdk/jfr/api/consumer/recordingstream/TestBasics.java
 
@@ -1047,7 +1048,6 @@ jdk_awt_wayland = \
     -java/awt/image/BufferStrategy/ExceptionAfterComponentDispose.java \
     -java/awt/image/MemoryLeakTest/MemoryLeakTest.java \
     -java/awt/image/OpaquePNGToGIFTest.java \
-    -java/awt/image/VolatileImage/DrawBufImgOp.java \
     -java/awt/image/VolatileImage/TransparentVImage.java \
     -java/awt/image/mlib/MlibOpsTest.java \
     -java/awt/image/multiresolution/MenuMultiresolutionIconTest.java \
