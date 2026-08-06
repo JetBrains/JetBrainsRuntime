@@ -235,11 +235,14 @@ static void
 wl_pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,
                 uint32_t axis, wl_fixed_t value)
 {
-    assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
+    if ( axis >= sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]) ) {
+        assert(axis < sizeof(pointer_event.axes) / sizeof(pointer_event.axes[0]));
+        return;
+    }
 
     pointer_event.axes[axis].has_vector_value = true;
     pointer_event.time                        = time;
-    pointer_event.axes[axis].vector_value     = value;
+    pointer_event.axes[axis].vector_value    += value;
 }
 
 static void
@@ -254,7 +257,10 @@ static void
 wl_pointer_axis_stop(void *data, struct wl_pointer *wl_pointer,
                      uint32_t time, uint32_t axis)
 {
-    assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
+    if ( axis >= sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]) ) {
+        assert(axis < sizeof(pointer_event.axes) / sizeof(pointer_event.axes[0]));
+        return;
+    }
 
     pointer_event.axes[axis].has_stop_event = true;
     pointer_event.time                      = time;
@@ -264,7 +270,10 @@ static void
 wl_pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer,
                          uint32_t axis, int32_t discrete)
 {
-    assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
+    if ( axis >= sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]) ) {
+        assert(axis < sizeof(pointer_event.axes) / sizeof(pointer_event.axes[0]));
+        return;
+    }
 
     // wl_pointer::axis_discrete event is deprecated with wl_pointer version 8 - this event is not sent to clients
     //   supporting version 8 or later.
@@ -281,7 +290,10 @@ static void
 wl_pointer_axis_value120(void *data, struct wl_pointer *wl_pointer,
                          uint32_t axis, int32_t value120)
 {
-    assert(axis < sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]));
+    if ( axis >= sizeof(pointer_event.axes)/sizeof(pointer_event.axes[0]) ) {
+        assert(axis < sizeof(pointer_event.axes) / sizeof(pointer_event.axes[0]));
+        return;
+    }
 
     pointer_event.axes[axis].has_steps120_value = true;
     pointer_event.axes[axis].steps120_value     = value120;
