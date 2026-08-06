@@ -48,9 +48,9 @@ class WLPointerEvent {
     private boolean has_button_event;
     private boolean has_axis_source_event;
 
-    private long    surface; /// 'struct wl_surface *' this event appertains to
+    private long    latestTimestamp;          // timestamp of the latest received timestamped event (i.e. motion, button, axis, axis_stop) in the frame
     private long    serial;
-    private long    timestamp;
+    private long    surface; /// 'struct wl_surface *' this event appertains to
 
     private int     surface_x;
     private int     surface_y;
@@ -241,7 +241,7 @@ class WLPointerEvent {
     }
 
     /**
-     * @return true if this event's field 'timestamp' is valid.
+     * @return true if this frame has at least one of the timestamped events (motion, button, axis, axis_stop).
      */
     public boolean hasTimestamp() {
         return hasMotionEvent() ||
@@ -267,9 +267,14 @@ class WLPointerEvent {
         return serial;
     }
 
-    public long getTimestamp() {
+    /**
+     * @return the timestamp of the latest received timestamped event (i.e. motion, button, axis, axis_stop) in the frame
+     * @see #getXAxisStopEventTimestamp()
+     * @see #getYAxisStopEventTimestamp()
+     */
+    public long getLatestTimestamp() {
         assert hasTimestamp() : "The event must have a valid timestamp";
-        return timestamp;
+        return latestTimestamp;
     }
 
     public int getSurfaceX() {
@@ -376,7 +381,7 @@ class WLPointerEvent {
         }
 
         if (hasTimestamp()) {
-            builder.append(", timestamp: ").append(getTimestamp());
+            builder.append(", latestTimestamp: ").append(getLatestTimestamp());
         }
 
         if (hasEnterEvent()) builder.append(" enter");
