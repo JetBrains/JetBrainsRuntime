@@ -52,11 +52,13 @@ class WLPointerEvent {
     private long    serial;
     private long    surface; /// 'struct wl_surface *' this event appertains to
 
-    private int     surface_x;
+    private int     surface_x;                // wl_pointer::enter or wl_pointer::motion
     private int     surface_y;
 
-    private int     buttonCode; // pointer button code corresponding to PointerButtonCodes.linuxCode
-    private boolean isButtonPressed; // true if button was pressed, false if released
+    private long    motionTimestamp;          // time parameter of the wl_pointer::motion event
+
+    private int     buttonCode;               // pointer button code corresponding to PointerButtonCodes.linuxCode
+    private boolean isButtonPressed;          // true if button was pressed, false if released
 
     private int     axisSource;               // axis source type from axis_source event
 
@@ -269,6 +271,7 @@ class WLPointerEvent {
 
     /**
      * @return the timestamp of the latest received timestamped event (i.e. motion, button, axis, axis_stop) in the frame
+     * @see #getMotionTimestamp()
      * @see #getXAxisStopEventTimestamp()
      * @see #getYAxisStopEventTimestamp()
      */
@@ -285,6 +288,11 @@ class WLPointerEvent {
     public int getSurfaceY() {
         assert hasCoordinates() : "The event must have valid coordinates";
         return surface_y;
+    }
+
+    public long getMotionTimestamp() {
+        assert hasMotionEvent() : "Must have a motion event to get the motion timestamp";
+        return motionTimestamp;
     }
 
     public int getButtonCode() {
@@ -390,7 +398,7 @@ class WLPointerEvent {
         if (hasMotionEvent()) {
             builder.append(" motion ");
             builder.append("x: ").append(getSurfaceX()).append(", y: ").append(getSurfaceY());
-
+            builder.append(", timestamp: ").append(getMotionTimestamp());
         }
         if (hasButtonEvent()) {
             builder.append(" button ");

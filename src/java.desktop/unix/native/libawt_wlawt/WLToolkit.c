@@ -111,6 +111,7 @@ static jfieldID surfaceFID;
 static jfieldID latestTimestampFID;
 static jfieldID surfaceXFID;
 static jfieldID surfaceYFID;
+static jfieldID motionTimestampFID;
 static jfieldID buttonCodeFID;
 static jfieldID isButtonPressedFID;
 static jfieldID axisSourceFID;
@@ -176,8 +177,12 @@ struct pointer_event_cumulative {
     uint32_t   serial;
     struct wl_surface* surface;
 
+    // wl_pointer::enter or wl_pointer::motion
     wl_fixed_t surface_x;
     wl_fixed_t surface_y;
+
+    // wl_pointer::motion
+    uint32_t   motion_time;
 
     uint32_t   button;
     uint32_t   state;
@@ -232,6 +237,7 @@ wl_pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
 {
     pointer_event.has_motion_event = true;
     pointer_event.latest_time      = time;
+    pointer_event.motion_time      = time;
     pointer_event.surface_x        = surface_x,
     pointer_event.surface_y        = surface_y;
 }
@@ -337,6 +343,8 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
 
     (*env)->SetIntField(env, pointerEventRef, surfaceXFID, wl_fixed_to_int(pointer_event.surface_x));
     (*env)->SetIntField(env, pointerEventRef, surfaceYFID, wl_fixed_to_int(pointer_event.surface_y));
+
+    (*env)->SetLongField(env, pointerEventRef, motionTimestampFID, pointer_event.motion_time);
 
     (*env)->SetIntField(env, pointerEventRef, buttonCodeFID, (jint)pointer_event.button);
     (*env)->SetBooleanField(env, pointerEventRef, isButtonPressedFID,
@@ -870,6 +878,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(latestTimestampFID = (*env)->GetFieldID(env, pointerEventClass, "latestTimestamp", "J"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceXFID = (*env)->GetFieldID(env, pointerEventClass, "surface_x", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(surfaceYFID = (*env)->GetFieldID(env, pointerEventClass, "surface_y", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(motionTimestampFID = (*env)->GetFieldID(env, pointerEventClass, "motionTimestamp", "J"), JNI_FALSE);
     CHECK_NULL_RETURN(buttonCodeFID = (*env)->GetFieldID(env, pointerEventClass, "buttonCode", "I"), JNI_FALSE);
     CHECK_NULL_RETURN(isButtonPressedFID = (*env)->GetFieldID(env, pointerEventClass, "isButtonPressed", "Z"), JNI_FALSE);
 
