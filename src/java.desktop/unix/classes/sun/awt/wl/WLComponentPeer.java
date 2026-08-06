@@ -1368,7 +1368,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                             ? mweConversionInfo.yAxisMWEPreciseRotations
                             : mweConversionInfo.yAxisMWERoundRotations );
 
-                    if (xAxisUnitsToScroll > yAxisUnitsToScroll) {
+                    if (Math.abs(xAxisUnitsToScroll) > Math.abs(yAxisUnitsToScroll)) {
                         horizontalMWEScrollAmount     = mweConversionInfo.xAxisMWEScrollAmount;
                         horizontalMWEPreciseRotations = mweConversionInfo.xAxisMWEPreciseRotations;
                         horizontalMWERoundRotations   = mweConversionInfo.xAxisMWERoundRotations;
