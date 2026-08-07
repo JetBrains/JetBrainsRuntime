@@ -116,9 +116,7 @@ function create_image_bundle {
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
-  if [ ! -n "${JCEF_BUILD_LEGACY:-}" ]; then
-    [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
-  fi
+  [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
 
   echo Creating "$JBR".tar.gz ...
 
@@ -180,7 +178,7 @@ JBRSDK_BUNDLE=jbrsdk
 echo Fixing permissions
 chmod -R a+r $JSDK
 
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "lb" ]; then
+if [ "$bundle_type" == "jcef" ]; then
   git apply -p0 < jb/project/tools/patches/add_jcef_module.patch || do_exit $?
   update_jsdk_mods $JSDK $JCEF_PATH/jmods $JSDK/jmods $JSDK_MODS_DIR || do_exit $?
   cp $JCEF_PATH/jmods/* $JSDK_MODS_DIR # $JSDK/jmods is not changed
@@ -193,7 +191,7 @@ create_image_bundle "jbr${jbr_name_postfix}" "jbr" $JSDK_MODS_DIR "$modules" || 
 
 # create sdk image bundle
 modules=$(cat $JSDK/release | grep MODULES | sed s/MODULES=//g | sed s/' '/','/g | sed s/\"//g | sed s/\\n//g) || do_exit $?
-if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "lb" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
+if [ "$bundle_type" == "jcef" ] || [ "$bundle_type" == "$JBRSDK_BUNDLE" ]; then
   modules=${modules},$(get_mods_list "$JCEF_PATH"/jmods)
 fi
 create_image_bundle "$JBRSDK_BUNDLE${jbr_name_postfix}" $JBRSDK_BUNDLE $JSDK_MODS_DIR "$modules" || do_exit $?
