@@ -34,6 +34,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JEditorPaneFontFallback {
     public static final char CHINESE_CHAR = '\u4e2d';
@@ -78,17 +80,20 @@ public class JEditorPaneFontFallback {
     private static BufferedImage renderJEditorPaneInSubprocess(String fontFamilyName, boolean afterFontInfoCaching)
             throws Exception {
         String tmpFileName = "image.png";
-        String[] processCmd = new String[]{
-                System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
-                "-cp",
-                System.getProperty("test.classes", "."),
-                System.getProperty("test.java.opts", ""),
-                JEditorPaneRenderer.class.getName(),
-                fontFamilyName,
-                Boolean.toString(afterFontInfoCaching),
-                tmpFileName};
+        List<String> processCmd = new ArrayList<>();
+        processCmd.add(System.getProperty("java.home") + File.separator + "bin" + File.separator + "java");
+        processCmd.add("-cp");
+        processCmd.add(System.getProperty("test.classes", "."));
+        // test.java.opts may contain several options, each one must be passed as a separate argument
+        for (String opt : System.getProperty("test.java.opts", "").trim().split("\\s+")) {
+            if (!opt.isEmpty()) processCmd.add(opt);
+        }
+        processCmd.add(JEditorPaneRenderer.class.getName());
+        processCmd.add(fontFamilyName);
+        processCmd.add(Boolean.toString(afterFontInfoCaching));
+        processCmd.add(tmpFileName);
         System.out.println("===> Sub-process command: " + String.join(" ", processCmd));
-        Process process = Runtime.getRuntime().exec(processCmd);
+        Process process = Runtime.getRuntime().exec(processCmd.toArray(new String[0]));
         int exitCode = process.waitFor();
         try {
             System.out.println("===> Sub-process stdout:");
