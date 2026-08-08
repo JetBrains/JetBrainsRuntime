@@ -29,7 +29,7 @@
  *          application has been moved to a different directory must get a
  *          CodeSource that refers to the new location of the JAR file.
  * @requires vm.cds
- * @library /test/lib
+ * @library /test/lib /runtime/cds/appcds
  * @compile test-classes/RelocatedJarApp.java
  * @compile test-classes/RelocatedJarApp2.java
  * @run driver RelocatedAppJarCodeSource
