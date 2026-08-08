@@ -292,6 +292,13 @@ private:
 
   static const TypeFunc* ghash_processBlocks_Type();
   static const TypeFunc* chacha20Block_Type();
+  static const TypeFunc* kyberNtt_Type();
+  static const TypeFunc* kyberInverseNtt_Type();
+  static const TypeFunc* kyberNttMult_Type();
+  static const TypeFunc* kyberAddPoly_2_Type();
+  static const TypeFunc* kyberAddPoly_3_Type();
+  static const TypeFunc* kyber12To16_Type();
+  static const TypeFunc* kyberBarrettReduce_Type();
   static const TypeFunc* dilithiumAlmostNtt_Type();
   static const TypeFunc* dilithiumAlmostInverseNtt_Type();
   static const TypeFunc* dilithiumNttMult_Type();

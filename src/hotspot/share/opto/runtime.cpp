@@ -1289,6 +1289,146 @@ const TypeFunc* OptoRuntime::chacha20Block_Type() {
     return TypeFunc::make(domain, range);
 }
 
+// Kyber NTT function
+const TypeFunc* OptoRuntime::kyberNtt_Type() {
+    int argcnt = 2;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // coeffs
+    fields[argp++] = TypePtr::NOTNULL;      // NTT zetas
+
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+
+// Kyber inverse NTT function
+const TypeFunc* OptoRuntime::kyberInverseNtt_Type() {
+    int argcnt = 2;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // coeffs
+    fields[argp++] = TypePtr::NOTNULL;      // inverse NTT zetas
+
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+
+// Kyber NTT multiply function
+const TypeFunc* OptoRuntime::kyberNttMult_Type() {
+    int argcnt = 4;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // result
+    fields[argp++] = TypePtr::NOTNULL;      // ntta
+    fields[argp++] = TypePtr::NOTNULL;      // nttb
+    fields[argp++] = TypePtr::NOTNULL;      // NTT multiply zetas
+
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+// Kyber add 2 polynomials function
+const TypeFunc* OptoRuntime::kyberAddPoly_2_Type() {
+    int argcnt = 3;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // result
+    fields[argp++] = TypePtr::NOTNULL;      // a
+    fields[argp++] = TypePtr::NOTNULL;      // b
+
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+
+
+// Kyber add 3 polynomials function
+const TypeFunc* OptoRuntime::kyberAddPoly_3_Type() {
+    int argcnt = 4;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // result
+    fields[argp++] = TypePtr::NOTNULL;      // a
+    fields[argp++] = TypePtr::NOTNULL;      // b
+    fields[argp++] = TypePtr::NOTNULL;      // c
+
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+
+
+// Kyber XOF output parsing into polynomial coefficients candidates
+// or decompress(12,...) function
+const TypeFunc* OptoRuntime::kyber12To16_Type() {
+    int argcnt = 4;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // condensed
+    fields[argp++] = TypeInt::INT;          // condensedOffs
+    fields[argp++] = TypePtr::NOTNULL;      // parsed
+    fields[argp++] = TypeInt::INT;          // parsedLength
+
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+
+// Kyber Barrett reduce function
+const TypeFunc* OptoRuntime::kyberBarrettReduce_Type() {
+    int argcnt = 1;
+
+    const Type** fields = TypeTuple::fields(argcnt);
+    int argp = TypeFunc::Parms;
+    fields[argp++] = TypePtr::NOTNULL;      // coeffs
+    assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+    const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+    // result type needed
+    fields = TypeTuple::fields(1);
+    fields[TypeFunc::Parms + 0] = TypeInt::INT;
+    const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
+    return TypeFunc::make(domain, range);
+}
+
 // Dilithium NTT function except for the final "normalization" to |coeff| < Q
 const TypeFunc* OptoRuntime::dilithiumAlmostNtt_Type() {
     int argcnt = 2;
