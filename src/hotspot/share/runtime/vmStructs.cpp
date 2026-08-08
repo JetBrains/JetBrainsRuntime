@@ -540,6 +540,13 @@
      static_field(StubRoutines,                _galoisCounterMode_AESCrypt,                   address)                               \
      static_field(StubRoutines,                _ghash_processBlocks,                          address)                               \
      static_field(StubRoutines,                _chacha20Block,                                address)                               \
+     static_field(StubRoutines,                _kyberNtt,                                     address)                               \
+     static_field(StubRoutines,                _kyberInverseNtt,                              address)                               \
+     static_field(StubRoutines,                _kyberNttMult,                                 address)                               \
+     static_field(StubRoutines,                _kyberAddPoly_2,                               address)                               \
+     static_field(StubRoutines,                _kyberAddPoly_3,                               address)                               \
+     static_field(StubRoutines,                _kyber12To16,                                  address)                               \
+     static_field(StubRoutines,                _kyberBarrettReduce,                           address)                               \
      static_field(StubRoutines,                _dilithiumAlmostNtt,                           address)                               \
      static_field(StubRoutines,                _dilithiumAlmostInverseNtt,                    address)                               \
      static_field(StubRoutines,                _dilithiumNttMult,                             address)                               \
