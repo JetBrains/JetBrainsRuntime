@@ -52,7 +52,6 @@ Array<ClassPathZipEntry*>* AOTClassLocationConfig::_dumptime_jar_files = nullptr
 AOTClassLocationConfig* AOTClassLocationConfig::_dumptime_instance = nullptr;
 const AOTClassLocationConfig* AOTClassLocationConfig::_runtime_instance = nullptr;
 const char* AOTClassLocationConfig::_runtime_lcp = nullptr;
-size_t AOTClassLocationConfig::_runtime_lcp_len = 0;
 
 // A ClassLocationStream represents a list of code locations, which can be iterated using
 // start() and has_next().
@@ -660,28 +659,26 @@ AOTClassLocation const* AOTClassLocationConfig::class_location_at(int index) con
   return _class_locations->at(index);
 }
 
-void AOTClassLocationConfig::set_runtime_lcp(const char* lcp, size_t lcp_len) {
+void AOTClassLocationConfig::set_runtime_lcp(const char* lcp) {
   if (_runtime_lcp != nullptr) {
     os::free((void*)_runtime_lcp);
     _runtime_lcp = nullptr;
-    _runtime_lcp_len = 0;
   }
-  if (lcp != nullptr && lcp_len > 0) {
+  if (lcp != nullptr) {
     _runtime_lcp = os::strdup(lcp, mtClassShared);
-    _runtime_lcp_len = lcp_len;
   }
 }
 
 const char* AOTClassLocationConfig::runtime_path(int index) const {
   const char* path = class_location_at(index)->path();
-  if (_runtime_lcp != nullptr && _dumptime_lcp_len > 0 &&
-      index >= boot_cp_start_index() && index < app_cp_end_index() &&
-      strlen(path) > _dumptime_lcp_len) {
+  assert(_runtime_lcp == nullptr || _dumptime_lcp_len > 0, "runtime LCP requires a dump-time LCP");
+  if (_runtime_lcp != nullptr &&
+      index >= boot_cp_start_index() && index < app_cp_end_index()) {
     // validate() accepted this archive by substituting the longest common prefix of the
     // dump-time paths with the (different) runtime prefix -- see check_classpaths().
     // Apply the same substitution here, so that callers get the path where the file
     // actually lives at runtime, not the (possibly stale) dump-time path.
-    return substitute(path, _dumptime_lcp_len, _runtime_lcp, _runtime_lcp_len);
+    return substitute(path, _dumptime_lcp_len, _runtime_lcp, strlen(_runtime_lcp));
   }
   return path;
 }
@@ -1004,8 +1001,6 @@ bool AOTClassLocationConfig::need_lcp_match_helper(int start, int end, ClassLoca
 bool AOTClassLocationConfig::validate(const char* cache_filename, bool has_aot_linked_classes, bool* has_extra_module_paths) const {
   ResourceMark rm;
   AllClassLocationStreams all_css;
-  const char* used_lcp = nullptr; // runtime LCP if this archive is accepted via LCP substitution
-  size_t used_lcp_len = 0;
 
   log_locations(cache_filename, /*is_write=*/false);
 
@@ -1021,6 +1016,9 @@ bool AOTClassLocationConfig::validate(const char* cache_filename, bool has_aot_l
       *has_extra_module_paths = true;
     } else {
       *has_extra_module_paths = false;
+    }
+    if (success) {
+      set_runtime_lcp(nullptr);
     }
   } else {
     bool use_lcp_match = need_lcp_match(all_css);
@@ -1054,16 +1052,9 @@ bool AOTClassLocationConfig::validate(const char* cache_filename, bool has_aot_l
                             (*has_extra_module_paths) ? " (extra module paths found)" : "");
     }
 
-    if (success && use_lcp_match && runtime_lcp_len > 0 && _dumptime_lcp_len > 0) {
-      used_lcp = runtime_lcp; // still owned by runtime_lcp; strdup'ed by set_runtime_lcp() below
-      used_lcp_len = runtime_lcp_len;
-    }
-
     if (success) {
-      // Remember the substitution (or clear a previously remembered one), so that
-      // runtime_path() can return the actual runtime locations of the archived
-      // classpath entries.
-      set_runtime_lcp(used_lcp, used_lcp_len);
+      bool lcp_was_used = use_lcp_match && runtime_lcp_len > 0 && _dumptime_lcp_len > 0;
+      set_runtime_lcp(lcp_was_used ? runtime_lcp : nullptr);
     }
 
     if (runtime_lcp_len > 0) {

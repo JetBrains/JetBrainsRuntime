@@ -145,8 +145,7 @@ class AOTClassLocationConfig : public CHeapObj<mtClassShared> {
   // was created), these record the runtime LCP that replaces the first _dumptime_lcp_len
   // characters of each archived boot/app classpath entry. Otherwise _runtime_lcp is null.
   static const char* _runtime_lcp;
-  static size_t _runtime_lcp_len;
-  static void set_runtime_lcp(const char* lcp, size_t lcp_len);
+  static void set_runtime_lcp(const char* lcp);
 
   Array<AOTClassLocation*>* _class_locations; // jrt -> -Xbootclasspath/a -> -classpath -> --module_path
   static Array<ClassPathZipEntry*>* _dumptime_jar_files;
