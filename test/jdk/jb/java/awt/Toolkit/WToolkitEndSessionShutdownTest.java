@@ -36,6 +36,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -48,7 +49,6 @@ import jdk.test.lib.process.ProcessTools;
  * @key headful
  * @requires (os.family == "windows")
  * @library /test/lib
- * @modules java.desktop/sun.awt:+open
  * @summary Simulates Windows system shutdown by posting WM_QUERYENDSESSION
  *          and WM_ENDSESSION to the AWT toolkit window via FFM, then verifies
  *          the JVM exits within a reasonable time. This directly triggers the
@@ -65,6 +65,21 @@ public class WToolkitEndSessionShutdownTest {
     // Printed by the child right before it posts WM_QUERYENDSESSION. If this is
     // missing, a child that outlives the timeout did not hang in AWT shutdown.
     private static final String POSTING_MARKER = "POSTING_ENDSESSION";
+
+    // Printed by a shutdown hook in the child. Its absence means the posted
+    // WM_QUERYENDSESSION never raised SIGTERM, so the JVM shutdown sequence -
+    // and with it WToolkit.shutdown() - never started. Without this marker a
+    // child that simply outlives the timeout is indistinguishable from one
+    // hung in AWT shutdown.
+    private static final String SHUTDOWN_MARKER = "SHUTDOWN_STARTED";
+
+    // Window class of the hidden AWT toolkit window (szAwtToolkitClassName in
+    // awt_Toolkit.cpp). Its WndProc is the only one that handles the session
+    // messages: WM_QUERYENDSESSION raises SIGTERM and WM_ENDSESSION runs the
+    // nested MessageLoop() that races WToolkit.shutdown(). Ordinary AWT windows
+    // do not handle either message, so posting to a Frame only reaches
+    // DefWindowProc and exercises nothing.
+    private static final String TOOLKIT_WINDOW_CLASS = "SunAwtToolkit";
 
     public static void main(String[] args) throws Throwable {
         if (args.length > 0 && "child".equals(args[0])) {
@@ -89,13 +104,9 @@ public class WToolkitEndSessionShutdownTest {
      */
     private static void runDriver() throws Exception {
         ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
+                // The child locates the toolkit window and posts to it through
+                // FFM downcalls into user32; no internal JDK API is needed.
                 "--enable-native-access=ALL-UNNAMED",
-                // The options jtreg derives from @modules apply to this driver JVM
-                // only, so the child needs them spelled out: sun.awt exported for
-                // AWTAccessor, sun.awt.windows opened for the reflective
-                // WComponentPeer.getHWnd() call in getFrameHwnd().
-                "--add-exports", "java.desktop/sun.awt=ALL-UNNAMED",
-                "--add-opens", "java.desktop/sun.awt.windows=ALL-UNNAMED",
                 "-Dsun.java2d.d3d=false",
                 WToolkitEndSessionShutdownTest.class.getSimpleName(), "child");
         Process p = pb.start();
@@ -122,6 +133,16 @@ public class WToolkitEndSessionShutdownTest {
                         + ", so the WM_ENDSESSION shutdown path was not exercised. "
                         + "This is a test setup failure, not JBR-9933; see child output above.");
             }
+            if (!childOut.contains(SHUTDOWN_MARKER)) {
+                // The messages were posted but no shutdown hook ever ran, so
+                // WM_QUERYENDSESSION did not raise SIGTERM. The child is merely
+                // idling in its keep-alive sleep, not hung in AWT shutdown.
+                throw new RuntimeException(
+                        "FAIL: Child JVM never printed " + SHUTDOWN_MARKER
+                        + ", so WM_QUERYENDSESSION did not start the JVM shutdown "
+                        + "sequence and WToolkit.shutdown() was never reached. "
+                        + "This is a test setup failure, not JBR-9933; see child output above.");
+            }
             throw new RuntimeException(
                     "FAIL: Child JVM hung during WM_ENDSESSION-triggered AWT shutdown "
                     + "(did not exit within " + CHILD_TIMEOUT_SEC + "s). See JBR-9933.");
@@ -129,6 +150,9 @@ public class WToolkitEndSessionShutdownTest {
 
         output.shouldContain("FRAME_VISIBLE");
         output.shouldContain(POSTING_MARKER);
+        // A fast exit only counts if it was an orderly shutdown rather than,
+        // say, an early crash after the frame came up.
+        output.shouldContain(SHUTDOWN_MARKER);
 
         System.out.println("PASS: Child JVM exited after WM_ENDSESSION simulation within timeout "
                 + "(exit code: " + p.exitValue() + ").");
@@ -136,11 +160,12 @@ public class WToolkitEndSessionShutdownTest {
 
     /**
      * Child: creates an AWT Frame with continuous repainting, then posts
-     * WM_QUERYENDSESSION and WM_ENDSESSION to its own AWT window to
+     * WM_QUERYENDSESSION and WM_ENDSESSION to its own AWT toolkit window to
      * simulate Windows system shutdown.
      *
      * The sequence mirrors real OS shutdown:
-     * 1. WM_QUERYENDSESSION → WndProc raises SIGTERM → JVM shutdown hooks start
+     * 1. WM_QUERYENDSESSION → AwtToolkit::WndProc raises SIGTERM → JVM shutdown
+     *    hooks start
      * 2. WM_ENDSESSION → WndProc enters nested MessageLoop() → race with
      *    WToolkit.shutdown()'s QuitMessageLoop()
      *
@@ -153,6 +178,13 @@ public class WToolkitEndSessionShutdownTest {
         final int WM_ENDSESSION = 0x0016;
         // ENDSESSION_CLOSEAPP = 0x00000001
         final long ENDSESSION_CLOSEAPP = 0x00000001L;
+
+        // Registered before anything else so the driver can tell "SIGTERM never
+        // arrived" apart from "shutdown started and then hung".
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println(SHUTDOWN_MARKER);
+            System.out.flush();
+        }));
 
         Toolkit.getDefaultToolkit();
 
@@ -191,13 +223,19 @@ public class WToolkitEndSessionShutdownTest {
         // Let painting run to fill the message queue
         Thread.sleep(2000);
 
-        // Get native HWND
-        long hwnd = getFrameHwnd(frame);
-        System.out.println("HWND=" + hwnd);
-
         // Set up FFM to call PostMessageW
         Linker linker = Linker.nativeLinker();
         SymbolLookup user32 = SymbolLookup.libraryLookup("user32", Arena.global());
+
+        // Target the AWT toolkit window, not the Frame: only the former's
+        // WndProc implements the session-management messages.
+        long hwnd = findToolkitWindow(linker, user32);
+        if (hwnd == 0) {
+            throw new RuntimeException("No " + TOOLKIT_WINDOW_CLASS
+                    + " window found in this process; the AWT toolkit window "
+                    + "was not created or was renamed.");
+        }
+        System.out.println("TOOLKIT_HWND=" + hwnd);
 
         // BOOL PostMessageW(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
         // On 64-bit Windows: HWND=ptr, UINT=32bit, WPARAM=ptr-sized, LPARAM=ptr-sized
@@ -247,19 +285,60 @@ public class WToolkitEndSessionShutdownTest {
     }
 
     /**
-     * Extracts the native HWND from an AWT Frame via its peer.
+     * Finds this process's hidden AWT toolkit window, or 0 if there is none.
+     *
+     * The window is a disabled, zero-sized top-level window, so it shows up in
+     * the FindWindowExW(NULL, ...) enumeration. Other JBR processes on the same
+     * machine have one too, hence the process id filter - posting a shutdown
+     * sequence into someone else's JVM would be both wrong and rude.
      */
-    private static long getFrameHwnd(Frame frame) {
-        try {
-            Object peer = sun.awt.AWTAccessor.getComponentAccessor().getPeer(frame);
-            if (peer == null) {
-                throw new RuntimeException("Frame has no peer");
+    private static long findToolkitWindow(Linker linker, SymbolLookup user32) throws Throwable {
+        // HWND FindWindowExW(HWND hWndParent, HWND hWndChildAfter,
+        //                    LPCWSTR lpszClass, LPCWSTR lpszWindow)
+        MethodHandle findWindowExW = linker.downcallHandle(
+                user32.find("FindWindowExW").orElseThrow(),
+                FunctionDescriptor.of(
+                        ValueLayout.ADDRESS,     // HWND return
+                        ValueLayout.ADDRESS,     // HWND hWndParent
+                        ValueLayout.ADDRESS,     // HWND hWndChildAfter
+                        ValueLayout.ADDRESS,     // LPCWSTR lpszClass
+                        ValueLayout.ADDRESS      // LPCWSTR lpszWindow
+                )
+        );
+
+        // DWORD GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId)
+        MethodHandle getWindowThreadProcessId = linker.downcallHandle(
+                user32.find("GetWindowThreadProcessId").orElseThrow(),
+                FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,    // DWORD return (thread id)
+                        ValueLayout.ADDRESS,     // HWND hWnd
+                        ValueLayout.ADDRESS      // LPDWORD lpdwProcessId
+                )
+        );
+
+        long myPid = ProcessHandle.current().pid();
+
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment className =
+                    arena.allocateFrom(TOOLKIT_WINDOW_CLASS, StandardCharsets.UTF_16LE);
+            MemorySegment pidOut = arena.allocate(ValueLayout.JAVA_INT);
+
+            MemorySegment hwnd = MemorySegment.NULL;
+            while (true) {
+                hwnd = (MemorySegment) findWindowExW.invoke(
+                        MemorySegment.NULL, hwnd, className, MemorySegment.NULL);
+                if (hwnd.address() == 0) {
+                    return 0;
+                }
+                int threadId = (int) getWindowThreadProcessId.invoke(hwnd, pidOut);
+                if (threadId == 0) {
+                    continue; // window died between enumeration and the query
+                }
+                // DWORD is unsigned; widen before comparing against the Java pid.
+                if (Integer.toUnsignedLong(pidOut.get(ValueLayout.JAVA_INT, 0)) == myPid) {
+                    return hwnd.address();
+                }
             }
-            java.lang.reflect.Method getHWnd = peer.getClass().getMethod("getHWnd");
-            getHWnd.setAccessible(true);
-            return (long) getHWnd.invoke(peer);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to get HWND from Frame peer", e);
         }
     }
 }
