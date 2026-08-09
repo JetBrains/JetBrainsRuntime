@@ -23,8 +23,10 @@
 
 import java.awt.Dimension;
 import java.awt.DisplayMode;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.image.VolatileImage;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import javax.swing.JFrame;
@@ -35,7 +37,9 @@ import jdk.jfr.Recording;
 import java.io.IOException;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedFrame;
+import jdk.jfr.consumer.RecordedStackTrace;
 import jdk.jfr.consumer.RecordingFile;
+import jtreg.SkippedException;
 
 /*
  * @test
@@ -43,6 +47,8 @@ import jdk.jfr.consumer.RecordingFile;
  *
  * @summary Test verifies that there is no extra allocation after display mode switch
  *
+ * @library /test/lib
+ * @build jtreg.SkippedException
  * @run main/othervm -Xmx750M ExtraAllocationTest
  */
 
@@ -55,6 +61,20 @@ public class ExtraAllocationTest {
     public static void main(String[] args) throws InterruptedException, InvocationTargetException,
             IOException
     {
+        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsDevice d = ge.getDefaultScreenDevice();
+        GraphicsConfiguration gc = d.getDefaultConfiguration();
+
+        if (!d.isDisplayChangeSupported()) {
+            throw new SkippedException("Display mode change is not supported by " + d.getIDstring());
+        }
+        if (!isVolatileImageAccelerated(gc)) {
+            // Without an accelerated volatile image the software backup surface is the
+            // regular painting path, so a window-sized DataBufferInt is allocated even
+            // when nothing extra is allocated, and the check below cannot tell them apart.
+            throw new SkippedException("Volatile images are not accelerated on " + gc);
+        }
+
         Recording recording = new Recording();
         recording.enable("jdk.ObjectAllocationOutsideTLAB");
         recording.start();
@@ -67,26 +87,21 @@ public class ExtraAllocationTest {
             f.setVisible(true);
         });
 
-        GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        GraphicsDevice d = ge.getDefaultScreenDevice();
-
         final DisplayMode originalDisplayMode = d.getDisplayMode();
 
-        if (d.isDisplayChangeSupported()) {
-            DisplayMode[] modes = d.getDisplayModes();
-            int modesCount = Math.min(modes.length, MAX_MODES);
+        DisplayMode[] modes = d.getDisplayModes();
+        int modesCount = Math.min(modes.length, MAX_MODES);
 
-            for (int i = 0; i < modesCount; i++) {
-                DisplayMode mode = modes[i];
-                try {
-                    d.setDisplayMode(mode);
-                } catch (IllegalArgumentException e) {
-                    e.printStackTrace();
-                } finally {
-                    d.setDisplayMode(originalDisplayMode);
-                }
-                Thread.sleep(2000);
+        for (int i = 0; i < modesCount; i++) {
+            DisplayMode mode = modes[i];
+            try {
+                d.setDisplayMode(mode);
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            } finally {
+                d.setDisplayMode(originalDisplayMode);
             }
+            Thread.sleep(2000);
         }
         f.setVisible(false);
         f.dispose();
@@ -97,17 +112,37 @@ public class ExtraAllocationTest {
 
         for (RecordedEvent event : RecordingFile.readAllEvents(path)) {
             if ("jdk.ObjectAllocationOutsideTLAB".equalsIgnoreCase(event.getEventType().getName())) {
-                for (RecordedFrame recordedFrame :event.getStackTrace().getFrames()) {
+                RecordedStackTrace stackTrace = event.getStackTrace();
+                if (stackTrace == null) {
+                    continue;
+                }
+                for (RecordedFrame recordedFrame : stackTrace.getFrames()) {
                     if (recordedFrame.isJavaFrame() &&
                             "java.awt.image.DataBufferInt".equals(
                                     recordedFrame.getMethod().getType().getName()) &&
                             event.getLong("allocationSize") > th)
                     {
+                        System.err.println(event);
                         throw new RuntimeException("Extra allocation detected: " +
                                 event.getLong("allocationSize"));
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Tells whether volatile images of this configuration are backed by an accelerated
+     * surface. If they are not, every volatile image falls back to a software backup
+     * surface and the allocation this test looks for is a normal one.
+     */
+    private static boolean isVolatileImageAccelerated(GraphicsConfiguration gc) {
+        VolatileImage vi = gc.createCompatibleVolatileImage(W, H);
+        try {
+            vi.validate(gc);
+            return vi.getCapabilities().isAccelerated();
+        } finally {
+            vi.flush();
         }
     }
 }
