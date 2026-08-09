@@ -1382,6 +1382,7 @@ java/awt/print/PrinterJob/PrintCrashTest.java                                   
 java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
 java/awt/print/PrinterJob/PageRangesAuto.java                                       JBR-10527 generic-all
 java/awt/PrintJob/PrinterException.java                                             nobug generic-all
+java/awt/PrintJob/TestPrintNoException.java                                         JBR-10527 windows-all
 java/awt/PrintJob/Security/SecurityDialogTest.java JBR-5225 windows-all
 javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
 javax/print/CheckDupFlavor.java                                                     nobug generic-all
