@@ -276,6 +276,7 @@ java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java JBR-
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java 8073636,JBR-4211 macosx-all,linux-all
 java/awt/EventDispatchThread/PropertyPermissionOnEDT/PropertyPermissionOnEDT.java JBR-5225 windows-all
 java/awt/FullScreen/AltTabCrashTest/AltTabCrashTest.java JBR-4905 windows-all,linux-all
+java/awt/FullScreen/DisplayModeNoRefreshTest.java JBR-10528 linux-all
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 8266245 generic-all
 java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880 linux-all,windows-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java 8253184 windows-all
@@ -1379,6 +1380,7 @@ java/awt/print/PrinterJob/Margins.java                                          
 java/awt/print/PrinterJob/PaintText.java                                            JBR-893 generic-all
 java/awt/print/PrinterJob/PrintCrashTest.java                                       nobug generic-all
 java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
+java/awt/print/PrinterJob/PageRangesAuto.java                                       JBR-10527 generic-all
 java/awt/PrintJob/PrinterException.java                                             nobug generic-all
 java/awt/PrintJob/Security/SecurityDialogTest.java JBR-5225 windows-all
 javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
