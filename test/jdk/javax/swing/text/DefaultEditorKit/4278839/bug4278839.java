@@ -64,7 +64,7 @@ public class bug4278839 {
             robo.waitForIdle();
             robo.delay(250);
 
-            area.setCaretPosition(0);
+            SwingUtilities.invokeAndWait(() -> area.setCaretPosition(0));
             robo.waitForIdle();
             robo.delay(250);
 
