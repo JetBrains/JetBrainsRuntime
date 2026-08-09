@@ -143,8 +143,7 @@ public class TestSelectedTextBackgroundColor {
             robot.waitForIdle();
             robot.delay(500);
 
-            JFormattedTextField formattedTextField = getTextField(listModelSpinner);
-            formattedTextField.selectAll();
+            SwingUtilities.invokeAndWait(() -> getTextField(listModelSpinner).selectAll());
 
             robot.waitForIdle();
             robot.delay(500);
