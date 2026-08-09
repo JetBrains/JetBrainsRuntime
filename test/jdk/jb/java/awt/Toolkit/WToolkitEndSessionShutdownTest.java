@@ -62,9 +62,21 @@ public class WToolkitEndSessionShutdownTest {
     // Normal shutdown takes < 5s. The bug causes 18+ minute hangs.
     private static final int CHILD_TIMEOUT_SEC = 45;
 
+    // Printed by the child right before it posts WM_QUERYENDSESSION. If this is
+    // missing, a child that outlives the timeout did not hang in AWT shutdown.
+    private static final String POSTING_MARKER = "POSTING_ENDSESSION";
+
     public static void main(String[] args) throws Throwable {
         if (args.length > 0 && "child".equals(args[0])) {
-            runChild();
+            try {
+                runChild();
+            } catch (Throwable t) {
+                // Fail fast. The AWT EDT is not a daemon thread and the frame is
+                // still showing, so without an explicit exit the child would linger
+                // until the driver's timeout and be misreported as a shutdown hang.
+                t.printStackTrace();
+                System.exit(2);
+            }
             return;
         }
         runDriver();
@@ -78,6 +90,12 @@ public class WToolkitEndSessionShutdownTest {
     private static void runDriver() throws Exception {
         ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
                 "--enable-native-access=ALL-UNNAMED",
+                // The options jtreg derives from @modules apply to this driver JVM
+                // only, so the child needs them spelled out: sun.awt exported for
+                // AWTAccessor, sun.awt.windows opened for the reflective
+                // WComponentPeer.getHWnd() call in getFrameHwnd().
+                "--add-exports", "java.desktop/sun.awt=ALL-UNNAMED",
+                "--add-opens", "java.desktop/sun.awt.windows=ALL-UNNAMED",
                 "-Dsun.java2d.d3d=false",
                 WToolkitEndSessionShutdownTest.class.getSimpleName(), "child");
         Process p = pb.start();
@@ -88,19 +106,29 @@ public class WToolkitEndSessionShutdownTest {
             // Kill the hung process first so OutputAnalyzer readers can finish
             p.destroyForcibly();
             p.waitFor(5, TimeUnit.SECONDS);
+            String childOut = output.getStdout();
             System.err.println("Child process did not exit within "
-                    + CHILD_TIMEOUT_SEC + " seconds — WToolkit.shutdown() likely hung.");
+                    + CHILD_TIMEOUT_SEC + " seconds.");
             System.err.println("--- child stdout ---");
-            System.err.println(output.getStdout());
+            System.err.println(childOut);
             System.err.println("--- child stderr ---");
             System.err.println(output.getStderr());
+            if (!childOut.contains(POSTING_MARKER)) {
+                // The child never got as far as posting WM_QUERYENDSESSION, so the
+                // AWT shutdown path was never entered. Whatever kept the process
+                // alive is a test problem, not the JBR-9933 race.
+                throw new RuntimeException(
+                        "FAIL: Child JVM never reached " + POSTING_MARKER
+                        + ", so the WM_ENDSESSION shutdown path was not exercised. "
+                        + "This is a test setup failure, not JBR-9933; see child output above.");
+            }
             throw new RuntimeException(
                     "FAIL: Child JVM hung during WM_ENDSESSION-triggered AWT shutdown "
                     + "(did not exit within " + CHILD_TIMEOUT_SEC + "s). See JBR-9933.");
         }
 
         output.shouldContain("FRAME_VISIBLE");
-        output.shouldContain("POSTING_ENDSESSION");
+        output.shouldContain(POSTING_MARKER);
 
         System.out.println("PASS: Child JVM exited after WM_ENDSESSION simulation within timeout "
                 + "(exit code: " + p.exitValue() + ").");
@@ -189,7 +217,7 @@ public class WToolkitEndSessionShutdownTest {
 
         // Post WM_QUERYENDSESSION — this triggers JVM_RaiseSignal(SIGTERM)
         // in the AWT toolkit's WndProc, starting the JVM shutdown sequence.
-        System.out.println("POSTING_ENDSESSION");
+        System.out.println(POSTING_MARKER);
         System.out.flush();
 
         int r1 = (int) postMessageW.invoke(
