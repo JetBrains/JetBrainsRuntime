@@ -295,7 +295,7 @@ public class ProhibitedMethods {
             MethodVisitor mv = cv.visitMethod(ACC_PRIVATE, READ_OBJECT_NAME, READ_OBJECT_DESC, null, null);
             mv.visitCode();
             mv.visitLdcInsn(READ_OBJECT_NAME + " should not be invoked");
-            mv.visitMethodInsn(INVOKESTATIC, "org/testng/Assert", "fail", "(Ljava/lang/String;)V", false);
+            mv.visitMethodInsn(INVOKESTATIC, "org/junit/jupiter/api/Assertions", "fail", "(Ljava/lang/String;)Ljava/lang/Object;", false);
             mv.visitInsn(RETURN);
             mv.visitMaxs(0, 0);
             mv.visitEnd();
@@ -314,7 +314,7 @@ public class ProhibitedMethods {
             MethodVisitor mv = cv.visitMethod(ACC_PRIVATE, READ_OBJECT_NO_DATA_NAME, READ_OBJECT_NO_DATA_DESC, null, null);
             mv.visitCode();
             mv.visitLdcInsn(READ_OBJECT_NO_DATA_NAME + " should not be invoked");
-            mv.visitMethodInsn(INVOKESTATIC, "org/testng/Assert", "fail", "(Ljava/lang/String;)V", false);
+            mv.visitMethodInsn(INVOKESTATIC, "org/junit/jupiter/api/Assertions", "fail", "(Ljava/lang/String;)Ljava/lang/Object;", false);
             mv.visitInsn(RETURN);
             mv.visitMaxs(0, 0);
             mv.visitEnd();
@@ -372,3 +372,4 @@ public class ProhibitedMethods {
         }
     }
 }
+
