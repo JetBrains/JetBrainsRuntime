@@ -120,7 +120,7 @@ Klass* oopDesc::klass_or_null() const {
 Klass* oopDesc::klass_or_null_acquire() const {
   switch (ObjLayout::klass_mode()) {
     case ObjLayout::Compact:
-      return mark_acquire().klass();
+      return mark_acquire().klass_or_null();
     case ObjLayout::Compressed: {
       narrowKlass narrow_klass = Atomic::load_acquire(&_metadata._compressed_klass);
       return CompressedKlassPointers::decode(narrow_klass);
