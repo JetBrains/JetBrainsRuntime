@@ -96,6 +96,38 @@ abstract class WLPointerEventDefaultDispatcherBase {
     }
 
 
+    public final class KineticScroller extends WLKineticScrollerBase {
+        @Override
+        protected void notifyKineticScrollingEvent(
+            long awtWhen,
+            int awtX,
+            int awtY,
+            int awtAbsX,
+            int awtAbsY,
+            int awtModifiers,
+
+            WLPointerEvent.AxisSourceType axisSource,
+            double xAxisVector,
+            int xAxisSteps120Value,
+            double yAxisVector,
+            int yAxisSteps120Value
+        ) {
+            WLPointerEventDefaultDispatcherBase.this.notifyRawPointerAxisEvent(
+                awtWhen,
+                awtX, awtY,
+                awtAbsX, awtAbsY,
+                awtModifiers,
+                false,
+                axisSource,
+                xAxisVector,
+                xAxisSteps120Value,
+                yAxisVector,
+                yAxisSteps120Value
+            );
+        }
+    }
+
+
     public final void dispatchPointerEventInContext(
         final WLPointerEvent e,
         final WLInputState newInputState,
@@ -112,6 +144,20 @@ abstract class WLPointerEventDefaultDispatcherBase {
         this.processPointerMotionEventIfAny(e, newInputState, awtPeerX, awtPeerY, awtAbsX, awtAbsY, awtWhen);
         this.processPointerLeaveEventIfAny(e, newInputState, awtPeerX, awtPeerY, awtAbsX, awtAbsY, awtWhen);
     }
+
+    // When:
+    //   * TODO: a key pressed
+    //   * [DONE] a mouse button pressed
+    //   * TODO: the peer disposal
+    //   * TODO: the touchpad is just touched but not pressed (the "pointer-gestures" protocol is required)
+    //   * TODO: wl_pointer.leave ? <=== may also need resetting the axes buffer
+    //   * TODO: wl_keyboard.leave ? <=== may also need resetting the axes buffer
+    public void stopCurrentKineticScrollingSession() {
+        if (this.kineticScroller != null) {
+            this.kineticScroller.stopCurrentScrollingSession();
+        }
+    }
+
 
     /**
      * This method is supposed to deliver a new {@link MouseEvent} in the same manner other
@@ -170,6 +216,8 @@ abstract class WLPointerEventDefaultDispatcherBase {
         final double yAxisVector,
         final int    yAxisSteps120Value
     ) {
+        // TODO: if there are several kinetic scrolling sessions, they're sharing the same MouseWheelRoundRotationsAccumulators.
+
         // Current implementation is not thread-safe
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
@@ -378,6 +426,8 @@ abstract class WLPointerEventDefaultDispatcherBase {
 
     protected final MouseWheelRoundRotationsAccumulator xAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
     protected final MouseWheelRoundRotationsAccumulator yAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
+    // TODO: introduce a way to disable the scroller
+    protected final KineticScroller kineticScroller = new KineticScroller();
 
 
     private void processPointerEnterEventIfAny(
@@ -514,6 +564,8 @@ abstract class WLPointerEventDefaultDispatcherBase {
         // Current implementation is not thread-safe
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
+        final int modifiers = newInputState.getModifiers();
+
         if (e.hasAnyAxisLikeEvents()) {
             final WLPointerEvent.AxisSourceType axisSource = Objects.requireNonNullElse(
                 e.hasAxisSourceEvent() ? WLPointerEvent.AxisSourceType.recognizedOrNull(e.getAxisSource()) : null,
@@ -532,7 +584,7 @@ abstract class WLPointerEventDefaultDispatcherBase {
                 awtPeerY,
                 awtAbsX,
                 awtAbsY,
-                newInputState.getModifiers(),
+                modifiers,
                 false,
                 axisSource,
                 xAxisVector,
@@ -542,6 +594,11 @@ abstract class WLPointerEventDefaultDispatcherBase {
             );
         }
 
+        if (this.kineticScroller != null) {
+            this.kineticScroller.processPointerEvent(e, modifiers, awtPeerX, awtPeerY, awtAbsX, awtAbsY);
+        }
+
+        // TODO: consider throwing away or replacing with "of different axis source types"
         if (e.xAxisHasStopEvent()) {
             this.xAxisWheelRoundRotationsAccumulator.reset();
         }
