@@ -60,7 +60,11 @@ abstract class WLKineticScrollerBase {
         int yAxisSteps120Value
     );
 
-    void processPointerEvent(
+
+    /**
+     * @return true if a new kinetic scrolling session has been launched as the result of processing the event.
+     */
+    boolean processPointerEvent(
         final WLPointerEvent pointerEvent,
         final int modifiers,
         final int x,
@@ -87,7 +91,7 @@ abstract class WLKineticScrollerBase {
             if (pointerEvent.hasAnyAxisLikeEvents()) {
                 this.axisEvents.reset();
             }
-            return;
+            return false;
         }
 
         final double xAxisVectorValue;
@@ -149,9 +153,11 @@ abstract class WLKineticScrollerBase {
 
         if (toStartNewScrollingSession) {
             this.startNewScrollingSession(flingTimestamp, modifiers, x, y, xAbsolute, yAbsolute);
+            return true;
         } else if (pointerEvent.xAxisHasStopEvent() || pointerEvent.yAxisHasStopEvent()) {
             this.axisEvents.reset();
         }
+        return false;
     }
 
     void stopCurrentScrollingSession() {

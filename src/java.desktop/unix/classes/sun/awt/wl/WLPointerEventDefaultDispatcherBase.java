@@ -594,16 +594,20 @@ abstract class WLPointerEventDefaultDispatcherBase {
             );
         }
 
+        final boolean newKineticScrollingSessionSpawned;
         if (this.kineticScroller != null) {
-            this.kineticScroller.processPointerEvent(e, modifiers, awtPeerX, awtPeerY, awtAbsX, awtAbsY);
+            newKineticScrollingSessionSpawned = this.kineticScroller.processPointerEvent(e, modifiers, awtPeerX, awtPeerY, awtAbsX, awtAbsY);
+        } else {
+            newKineticScrollingSessionSpawned = false;
         }
 
-        // TODO: consider throwing away or replacing with "of different axis source types"
-        if (e.xAxisHasStopEvent()) {
-            this.xAxisWheelRoundRotationsAccumulator.reset();
-        }
-        if (e.yAxisHasStopEvent()) {
-            this.yAxisWheelRoundRotationsAccumulator.reset();
+        if (!newKineticScrollingSessionSpawned) {
+            if (e.xAxisHasStopEvent()) {
+                this.xAxisWheelRoundRotationsAccumulator.reset();
+            }
+            if (e.yAxisHasStopEvent()) {
+                this.yAxisWheelRoundRotationsAccumulator.reset();
+            }
         }
     }
 }
