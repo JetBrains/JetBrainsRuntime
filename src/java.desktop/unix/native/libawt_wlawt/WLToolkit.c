@@ -122,6 +122,7 @@ static jfieldID yAxis_hasSteps120ValueFID;
 static jfieldID yAxis_vectorValueFID;
 static jfieldID yAxis_steps120ValueFID;
 
+static jmethodID handleWaylandLogMID;
 static jmethodID handleProtocolErrorMID;
 static jmethodID handleExceptionFromEventHandlerMID;
 static jmethodID dispatchKeyboardKeyEventMID;
@@ -813,6 +814,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(yAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_vectorValue", "D"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_steps120Value", "I"), JNI_FALSE);
 
+    CHECK_NULL_RETURN(handleWaylandLogMID = (*env)->GetStaticMethodID(env, tkClass, "handleWaylandLog", "(Ljava/lang/String;)V"), JNI_FALSE);
     CHECK_NULL_RETURN(handleProtocolErrorMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                               "handleProtocolError",
                                                                               "(Ljava/lang/String;IJ)V"),
@@ -945,6 +947,28 @@ JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLDisplay_connect(JNIEnv *env, jobject obj)
 {
     return ptr_to_jlong(wl_display_connect(NULL));
+}
+
+static void
+libwaylandLoggingCallback(const char *fmt, va_list args)
+{
+    char buf[4096];
+    vsnprintf(buf, sizeof buf, fmt, args);
+    // NOTE: vsnprintf always null-terminates the buffer
+
+    JNIEnv *env = getEnv();
+    jstring message = (*env)->NewStringUTF(env, buf);
+    JNU_CHECK_EXCEPTION(env);
+
+    (*env)->CallStaticVoidMethod(env, tkClass, handleWaylandLogMID, message);
+    (*env)->ExceptionCheck(env);
+    (*env)->DeleteLocalRef(env, message);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_initLibwaylandLogging(JNIEnv *env, jclass clazz)
+{
+    wl_log_set_handler_client(libwaylandLoggingCallback);
 }
 
 JNIEXPORT void JNICALL
