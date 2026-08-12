@@ -260,6 +260,12 @@ Java_sun_lwawt_macosx_CRobot_mouseEvent
     if (isMouseMove) {
         // any mouse movement resets click count
         gsLastClickTime = 0;
+
+        // isButtonsDownState is true for all moves; use type to detect a drag.
+        if (type != kCGEventMouseMoved) {
+            // AppKit correlates a drag with its press by kCGMouseEventNumber.
+            eventNumber = gsButtonEventNumber[button];
+        }
     } else {
         clickCount = GetClickCount(isButtonsDownState);
 
