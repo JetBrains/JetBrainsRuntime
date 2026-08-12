@@ -24,15 +24,14 @@
  * questions.
  */
 
+#include "WLToolkit.h"
+
 #include <stdlib.h>
 #include <jni.h>
 #include <jni_util.h>
 #include <assert.h>
 
-#include <wayland-client-protocol.h>
-
 #include "JNIUtilities.h"
-#include "WLToolkit.h"
 #include "WLGraphicsEnvironment.h"
 
 #include "sun_awt_wl_WLSurface.h"

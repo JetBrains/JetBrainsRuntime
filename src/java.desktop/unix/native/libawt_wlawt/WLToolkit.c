@@ -24,8 +24,6 @@
  * questions.
  */
 
-#include "relative-pointer-unstable-v1.h"
-#include "xdg-decoration-unstable-v1.h"
 #ifdef HEADLESS
     #error This file should not be included in headless library
 #endif

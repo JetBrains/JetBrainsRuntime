@@ -24,6 +24,8 @@
  * questions.
  */
 
+#include "WLToolkit.h"
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +39,6 @@
 #include "awt.h"
 
 #include "WLBuffers.h"
-#include "WLToolkit.h"
 
 #ifndef HEADLESS
 

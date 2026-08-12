@@ -23,6 +23,13 @@
  * questions.
  */
 
+#ifndef WLTOOLKIT_H
+#define WLTOOLKIT_H
+
+#ifdef WAYLAND_CLIENT_CORE_H
+#error include WLToolkit.h before including any Wayland headers
+#endif
+
 #include <stdbool.h>
 
 #include <wayland-client.h>
@@ -89,3 +96,5 @@ int wlFlushToServer(JNIEnv* env);
 struct wl_cursor_theme *getCursorTheme(int scale);
 
 struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data, int* poolFDPtr);
+
+#endif // WLTOOLKIT_H

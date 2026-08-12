@@ -24,6 +24,8 @@
  * questions.
  */
 
+#include "WLToolkit.h"
+
 #include <string.h>
 #include <pthread.h>
 #include <wayland-client.h>
@@ -36,7 +38,6 @@
 #include "Trace.h"
 #include "WLSMSurfaceData.h"
 #include "WLBuffers.h"
-#include "WLToolkit.h"
 
 struct WLSDOps {
     SurfaceDataOps      sdOps;
