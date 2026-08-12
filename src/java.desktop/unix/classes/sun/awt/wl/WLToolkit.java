@@ -158,6 +158,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     // TODO: this is currently unused
     private static final java.util.List<Integer> preferredIconSizes = new ArrayList<>();
 
+    private static native void initLibwaylandLogging();
     private static native void initIDs(long displayPtr);
 
     static {
@@ -165,6 +166,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
 
         if (!GraphicsEnvironment.isHeadless()) {
+            initLibwaylandLogging();
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
             VKEnv.init(() -> VKEnv.initPlatformWayland(display));
@@ -213,6 +215,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         Thread shutdownThread = InnocuousThread.newSystemThread("WLToolkit-Shutdown-Thread", r);
         shutdownThread.setDaemon(true);
         Runtime.getRuntime().addShutdownHook(shutdownThread);
+    }
+
+    // called from native
+    private static void handleWaylandLog(String message) {
+        log.warning("libwayland-client: " + message.strip());
     }
 
     // called from native
