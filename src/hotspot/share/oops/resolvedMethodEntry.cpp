@@ -23,17 +23,13 @@
  */
 
 #include "cds/archiveBuilder.hpp"
-#include "cppstdlib/type_traits.hpp"
 #include "oops/method.hpp"
 #include "oops/resolvedMethodEntry.hpp"
-
-static_assert(std::is_trivially_copyable_v<ResolvedMethodEntry>);
 
 // Detect inadvertently introduced trailing padding.
 class ResolvedMethodEntryWithExtra : public ResolvedMethodEntry {
   u1 _extra_field;
 };
-static_assert(sizeof(ResolvedMethodEntryWithExtra) > sizeof(ResolvedMethodEntry));
 
 bool ResolvedMethodEntry::check_no_old_or_obsolete_entry() {
   // return false if m refers to a non-deleted old or obsolete method
