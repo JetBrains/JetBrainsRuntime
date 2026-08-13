@@ -118,7 +118,13 @@ public abstract class FramePacing {
         if (!isDisplayPresent(displayId)) return null;
 
         DisplayClock clock = clocks.get(displayId);
-        if (clock == null) {
+        if (clock == null || clock.stopped) {
+            // A stopped clock can still be registered, because a clock stopped
+            // by its last unsubscription is retired by that caller rather than
+            // by itself. Adopting one would hand back a Subscription whose
+            // deliveries are already short-circuited, so it would never tick.
+            // Replacing the entry is safe: a clock is only ever retired with a
+            // value-matching remove, which no longer matches once replaced.
             long period = refreshPeriodNanos(displayId);
             clock = new DisplayClock(this, displayId, period > 0 ? period : FALLBACK_PERIOD_NANOS);
             clocks.put(displayId, clock);
@@ -147,6 +153,25 @@ public abstract class FramePacing {
     private synchronized void removeClock(DisplayClock clock) {
         clocks.remove(clock.displayId, clock);
         if (TRACE) trace("clock removed display=" + clock.displayId);
+    }
+
+    /**
+     * Retires a clock that its own tick thread believes is idle, stopping it
+     * and removing it from the registry as one step under the service lock.
+     * The tick thread evaluates that condition without the lock, so a
+     * subscriber can arrive in between; the condition is therefore re-checked
+     * here, and the clock keeps running when one did.
+     *
+     * @return true when the clock was stopped and retired
+     */
+    private synchronized boolean retireIfIdle(DisplayClock clock) {
+        if (!clock.listenerRefs.isEmpty() && isDisplayPresent(clock.displayId)) {
+            return false;
+        }
+
+        clock.stopped = true;
+        removeClock(clock);
+        return true;
     }
 
     private boolean isDisplayPresent(long displayId) {
@@ -234,6 +259,7 @@ public abstract class FramePacing {
         private final CopyOnWriteArrayList<WeakReference<Listener>> listenerRefs = new CopyOnWriteArrayList<>();
 
         private volatile boolean stopped;
+        private boolean started;
 
         DisplayClock(FramePacing service, long displayId, long periodNanos) {
             this.service = service;
@@ -243,7 +269,14 @@ public abstract class FramePacing {
         }
 
         void add(WeakReference<Listener> listenerRef) {
-            boolean first = listenerRefs.isEmpty();
+            // Deliberately not "the listener list is empty": the tick thread
+            // sweeps collected listeners out of that list itself, so an empty
+            // list means nobody is listening right now, not that no thread is
+            // running yet. Starting on that would give one display two tick
+            // threads. Every caller holds the service lock, so a plain field
+            // is enough here.
+            boolean first = !started;
+            started = true;
             listenerRefs.add(listenerRef);
 
             if (first) {
@@ -314,9 +347,11 @@ public abstract class FramePacing {
                 }
 
                 ticks++;
+                // Only a candidate: this is evaluated without the service
+                // lock, so a subscriber may be arriving right now. retireIfIdle
+                // re-checks under the lock and stops the clock only if none did.
                 if (ticks % hotplugCheckTicks == 0 && !service.isDisplayPresent(displayId) || listenerRefs.isEmpty()) {
-                    stopped = true;
-                    service.removeClock(this);
+                    service.retireIfIdle(this);
                 }
             }
             if (TRACE) trace("clock stopped display=" + displayId);
