@@ -450,5 +450,10 @@ public final class KeyUtil {
         }
         return null;
     }
+
+    public static boolean isSupportedKeyAgreementOutputAlgorithm(String alg) {
+        return alg.equalsIgnoreCase("TlsPremasterSecret")
+                || alg.equalsIgnoreCase("Generic");
+    }
 }
 

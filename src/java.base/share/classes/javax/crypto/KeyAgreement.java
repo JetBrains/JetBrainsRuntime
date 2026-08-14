@@ -661,7 +661,7 @@ public class KeyAgreement {
      * {@code generateSecret} to change the private information used in
      * subsequent operations.
      *
-     * @param algorithm the requested secret-key algorithm
+     * @param algorithm the requested secret key algorithm
      *
      * @return the shared secret key
      *
