@@ -248,7 +248,7 @@ bool shape_full(hb_font_t* hbfont, hb_buffer_t *buffer, const char *featuresStr)
 
     const char *iter = featuresStr;
     for (int i = 0; i < featuresCount; i++) {
-        char *next = strchr(iter, SEPARATOR);
+        const char *next = strchr(iter, SEPARATOR);
         if (!hb_feature_from_string(iter, next != NULL ? next - iter : -1, &features[i])) {
             res = false;
             goto cleanup;
