@@ -70,7 +70,7 @@ void ShenandoahSTWMark::mark() {
 
   // Arm all nmethods. Even though this is STW mark, some marking code
   // piggybacks on nmethod barriers for special instances.
-  ShenandoahCodeRoots::arm_nmethods_for_mark();
+  ShenandoahCodeRoots::arm_nmethods();
 
   // Weak reference processing
   assert(ShenandoahHeap::heap()->gc_generation() == _generation, "Marking unexpected generation");
