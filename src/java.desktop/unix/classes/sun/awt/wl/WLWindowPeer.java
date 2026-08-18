@@ -483,27 +483,38 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         int h = getHeight();
         int radius = customCorners.radius();
 
+        // Imitate what RoundRectangle2D does under the hood (using cubic curves),
+        // but without the entire rectangle to keep the corners local.
+
+        // We need just a single control value for control points.
+        // It pretty much corresponds to java.awt.geom.RoundRectIterator.acv,
+        // but we multiply it by two because we use the arc radius, not the diameter like RoundRectangle2D does.
+        double control = 0.44771525016920666;
+        // The following value pretty much defines both cubic control points for every corner.
+        // For the top-left corner it's (0, rc) and (rc, 0). For others, everything's symmetric.
+        double rc = radius * control;
+
         topLeftMask = new Path2D.Double();
         topLeftMask.moveTo(0, 0);
         topLeftMask.lineTo(radius, 0);
-        topLeftMask.quadTo(0, 0, 0, radius);
+        topLeftMask.curveTo(rc, 0, 0, rc, 0, radius);
         topLeftMask.closePath();
 
         topRightMask = new Path2D.Double();
         topRightMask.moveTo(w - radius, 0);
-        topRightMask.quadTo(w, 0, w, radius);
+        topRightMask.curveTo(w - rc, 0, w, rc, w, radius);
         topRightMask.lineTo(w, 0);
         topRightMask.closePath();
 
         bottomLeftMask = new Path2D.Double();
         bottomLeftMask.moveTo(0, h - radius);
-        bottomLeftMask.quadTo(0, h, radius, h);
+        bottomLeftMask.curveTo(0, h - rc, rc, h, radius, h);
         bottomLeftMask.lineTo(0, h);
         bottomLeftMask.closePath();
 
         bottomRightMask = new Path2D.Double();
         bottomRightMask.moveTo(w - radius, h);
-        bottomRightMask.quadTo(w, h, w, h - radius);
+        bottomRightMask.curveTo(w - rc, h, w, h - rc, w, h - radius);
         bottomRightMask.lineTo(w, h);
         bottomRightMask.closePath();
 
