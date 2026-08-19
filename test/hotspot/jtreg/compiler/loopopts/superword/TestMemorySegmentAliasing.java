@@ -73,30 +73,6 @@ import java.lang.foreign.*;
  */
 
 /*
- * @test id=byte-array-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing ByteArray NoShortRunningLongLoop
- */
-
-/*
- * @test id=byte-array-AlignVector-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing ByteArray AlignVector NoShortRunningLongLoop
- */
-
-/*
- * @test id=byte-array-NoSpeculativeAliasingCheck-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing ByteArray NoSpeculativeAliasingCheck NoShortRunningLongLoop
- */
-
-/*
  * @test id=char-array
  * @bug 8324751
  * @summary Test vectorization of loops over MemorySegment
@@ -150,22 +126,6 @@ import java.lang.foreign.*;
  * @summary Test vectorization of loops over MemorySegment
  * @library /test/lib /
  * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing IntArray NoAutoAlignment
- */
-
-/*
- * @test id=int-array-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing IntArray NoShortRunningLongLoop
- */
-
-/*
- * @test id=int-array-NoSpeculativeAliasingCheck-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing IntArray NoSpeculativeAliasingCheck NoShortRunningLongLoop
  */
 
 /*
@@ -262,30 +222,6 @@ import java.lang.foreign.*;
  * @summary Test vectorization of loops over MemorySegment
  * @library /test/lib /
  * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing Native AlignVector NoSpeculativeAliasingCheck
- */
-
-/*
- * @test id=native-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing Native NoShortRunningLongLoop
- */
-
-/*
- * @test id=native-AlignVector-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing Native AlignVector NoShortRunningLongLoop
- */
-
-/*
- * @test id=native-NoSpeculativeAliasingCheck-NoShortRunningLongLoop
- * @bug 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegmentAliasing Native NoSpeculativeAliasingCheck NoShortRunningLongLoop
  */
 
 public class TestMemorySegmentAliasing {

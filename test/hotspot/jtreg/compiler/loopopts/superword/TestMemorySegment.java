@@ -65,30 +65,6 @@ import java.lang.foreign.*;
  */
 
 /*
- * @test id=byte-array-NoShortRunningLongLoop
- * @bug 8329273 8342692
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegment ByteArray NoShortRunningLongLoop
- */
-
-/*
- * @test id=byte-array-AlignVector-NoShortRunningLongLoop
- * @bug 8329273 8348263 8342692
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegment ByteArray AlignVector NoShortRunningLongLoop
- */
-
-/*
- * @test id=byte-array-NoSpeculativeAliasingCheck-NoShortRunningLongLoop
- * @bug 8329273 8348263 8342692 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegment ByteArray NoSpeculativeAliasingCheck NoShortRunningLongLoop
- */
-
-/*
  * @test id=char-array
  * @bug 8329273
  * @summary Test vectorization of loops over MemorySegment
@@ -198,30 +174,6 @@ import java.lang.foreign.*;
  * @summary Test vectorization of loops over MemorySegment
  * @library /test/lib /
  * @run driver compiler.loopopts.superword.TestMemorySegment Native AlignVector NoSpeculativeAliasingCheck
- */
-
-/*
- * @test id=native-NoShortRunningLongLoop
- * @bug 8329273 8342692
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegment Native NoShortRunningLongLoop
- */
-
-/*
- * @test id=native-AlignVector-NoShortRunningLongLoop
- * @bug 8329273 8348263 8342692
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegment Native AlignVector NoShortRunningLongLoop
- */
-
-/*
- * @test id=native-NoSpeculativeAliasingCheck-NoShortRunningLongLoop
- * @bug 8329273 8348263 8342692 8324751
- * @summary Test vectorization of loops over MemorySegment
- * @library /test/lib /
- * @run driver compiler.loopopts.superword.TestMemorySegment Native NoSpeculativeAliasingCheck NoShortRunningLongLoop
  */
 
 // FAILS: mixed providers currently do not vectorize. Maybe there is some inlining issue.
