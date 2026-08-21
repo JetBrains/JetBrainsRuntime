@@ -53,13 +53,12 @@ public class MTLLayer extends CFLayer {
     private final boolean perfCountersEnabled;
 
     public MTLLayer(LWWindowPeer peer) {
-        super(0, true);
+        super(0, true, peer);
 
         Window target = (peer != null) ? peer.getTarget() : null;
         this.perfCountersEnabled = (target != null) && AWTAccessor.getWindowAccessor().countersEnabled(target);
 
         setPtr(nativeCreateLayer(perfCountersEnabled));
-        this.peer = peer;
 
         MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
@@ -71,7 +70,7 @@ public class MTLLayer extends CFLayer {
     }
 
     public SurfaceData replaceSurfaceData(int scale) {
-        if (getBounds().isEmpty()) {
+        if (getBounds().isEmpty() || isWindowSurfaceDisabled()) {
             surfaceData = NullSurfaceData.theInstance;
             return surfaceData;
         }
