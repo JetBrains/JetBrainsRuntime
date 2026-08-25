@@ -191,7 +191,7 @@ public class WLDataSource {
         }
     }
 
-    // Event handlers, called from native code on the data transferer dispatch thread
+    // Event handlers, called from native code on the data source dispatch thread
 
     protected void handleSend(String mime, int fd) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
