@@ -25,6 +25,7 @@
 
 package sun.java2d;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Rectangle;
 import java.awt.Transparency;
@@ -818,11 +819,20 @@ public abstract class SurfaceData
 
     private static CompositeType getFillCompositeType(SunGraphics2D sg2d) {
         CompositeType compType = sg2d.imageComp;
+
+        // Try to coerce as much as possible into SrcNoEa or Src, optimized loop registrations rely on this.
         if (sg2d.compositeState == SunGraphics2D.COMP_ISCOPY) {
             if (compType == CompositeType.SrcOverNoEa) {
+                // SrcOverNoEa is proven to not depend on dst => must be fully opaque source.
                 compType = CompositeType.OpaqueSrcOverNoEa;
-            } else {
+            } else if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR ||
+                    (sg2d.composite instanceof AlphaComposite alphaComp && alphaComp.getAlpha() >= 1.0f)) {
+                // With ALPHACOLOR paints, any extraAlpha is already folded into the paint so it's effectively NoEa.
+                // Otherwise, we check composite.getAlpha() to determine if NoEa is true.
                 compType = CompositeType.SrcNoEa;
+            } else {
+                // This is the general meaning of COMP_ISCOPY.
+                compType = CompositeType.Src;
             }
         }
         return compType;
