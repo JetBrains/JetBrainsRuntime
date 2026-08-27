@@ -604,6 +604,7 @@ struct _PrimitiveTypes PrimitiveTypes = {
  * Definition and initialization of the globally accessible SurfaceTypes.
  */
 struct _SurfaceTypes SurfaceTypes = {
+    { { "AnyPaint", NULL}, NULL, 0, 0 },
     { { "OpaqueColor", NULL}, NULL, 0, 0 },
     { { "AnyColor", NULL}, NULL, 0, 0 },
     { { "AnyByte", NULL}, NULL, 0, 0 },
@@ -655,4 +656,5 @@ struct _CompositeTypes CompositeTypes = {
     { { "SrcOver", NULL}, GrPrim_CompGetAlphaInfo, SD_LOCK_RD_WR },
     { { "Xor", NULL}, GrPrim_CompGetXorInfo, SD_LOCK_RD_WR },
     { { "AnyAlpha", NULL}, GrPrim_CompGetAlphaInfo, SD_LOCK_RD_WR },
+    { { "Clear", NULL}, NULL, 0 },
 };
