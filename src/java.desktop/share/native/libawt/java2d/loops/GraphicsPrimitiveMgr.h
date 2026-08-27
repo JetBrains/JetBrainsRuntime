@@ -430,6 +430,7 @@ extern struct _PrimitiveTypes {
  * structures can be statically initialized by pointing to these structures.
  */
 extern struct _SurfaceTypes {
+    SurfaceType         AnyPaint;
     SurfaceType         OpaqueColor;
     SurfaceType         AnyColor;
     SurfaceType         AnyByte;
@@ -474,6 +475,7 @@ extern struct _CompositeTypes {
     CompositeType       SrcOver;
     CompositeType       Xor;
     CompositeType       AnyAlpha;
+    CompositeType       Clear;
 } CompositeTypes;
 
 #define ArraySize(A)    (sizeof(A) / sizeof(A[0]))
