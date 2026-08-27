@@ -818,11 +818,18 @@ public abstract class SurfaceData
 
     private static CompositeType getFillCompositeType(SunGraphics2D sg2d) {
         CompositeType compType = sg2d.imageComp;
+
+        // Try to coerce as much as possible into SrcNoEa or Src, optimized loop registrations rely on this.
+        // The original implementation of this method resulted in invalid coercions, so here are important points for any further rewrite:
+        // 1. The output must describe real operations that could be applied with the current graphics state, not some potential equivalent rewrites.
+        // 2. COMP_ISCOPY does NOT generally imply a fully opaque source; it only means that the output is not dependent on dst.
         if (sg2d.compositeState == SunGraphics2D.COMP_ISCOPY) {
             if (compType == CompositeType.SrcOverNoEa) {
+                // SrcOverNoEa is proven to not depend on dst => must be fully opaque source.
                 compType = CompositeType.OpaqueSrcOverNoEa;
-            } else {
-                compType = CompositeType.SrcNoEa;
+            } else if (compType == CompositeType.SrcIn) {
+                // COMP_ISCOPY => destination is proven opaque => SrcIn === Src.
+                compType = CompositeType.Src;
             }
         }
         return compType;
