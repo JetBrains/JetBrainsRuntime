@@ -555,6 +555,18 @@ class IoOverNioFileSystem extends FileSystem {
         }
     }
 
+    private static Path resolveSubpath(Path root, Path path, int pathElementsToTake) {
+        return pathElementsToTake > 0 ? root.resolve(path.subpath(0, pathElementsToTake)) : root;
+    }
+
+    private static Path toRealPathOrNull(Path path) {
+        try {
+            return path.toRealPath();
+        } catch (IOException _) {
+            return null;
+        }
+    }
+
     private String canonicalize0(String path) throws IOException {
         @SuppressWarnings("resource") java.nio.file.FileSystem nioFs = acquireNioFs(path);
         if (nioFs != null) {
@@ -568,29 +580,46 @@ class IoOverNioFileSystem extends FileSystem {
 
                 boolean isTrickyDriveRelativePath = !nioPath.toString().startsWith(nioPath.getRoot().toString());
 
-                Path suffix = nioFs.getPath("");
+                Path root = nioPath.getRoot();
+                int totalPathElementCount = nioPath.getNameCount();
 
-                while (!nioPath.equals(nioPath.getRoot())) {
-                    Path parent = nioPath.getParent();
-                    if (parent == null) {
-                        parent = nioPath.getRoot();
-                    }
+                Path fullPath = resolveSubpath(root, nioPath, totalPathElementCount);
+                Path realPath = Files.exists(fullPath) ? toRealPathOrNull(fullPath) : null;
 
-                    String fileNameStr = nioPath.getFileName().toString();
-
-                    if (!fileNameStr.isEmpty() && !fileNameStr.equals(".")) {
-                        try {
-                            nioPath = nioPath.toRealPath();
+                int existingPathElementCount = totalPathElementCount;
+                if (realPath == null) {
+                    existingPathElementCount = 0;
+                    int missingPathElementCount = totalPathElementCount;
+                    // Hypothesis: missing subpath (probably even a file is missing in an existing path) is the most prevalent case
+                    // in comparison to missing an entire path. For that exponential search will be most efficient.
+                    for (int currentTurnMissingElements = 1; currentTurnMissingElements < totalPathElementCount; currentTurnMissingElements *= 2) {
+                        int pathElementsToCheck = totalPathElementCount - currentTurnMissingElements;
+                        if (Files.exists(resolveSubpath(root, nioPath, pathElementsToCheck))) {
+                            existingPathElementCount = pathElementsToCheck;
                             break;
-                        } catch (IOException _) {
-                            // Nothing.
                         }
-                        suffix = nioPath.getFileName().resolve(suffix);
+                        missingPathElementCount = pathElementsToCheck;
                     }
-                    nioPath = parent;
+
+                    // Refine what's left with binary search
+                    while (missingPathElementCount - existingPathElementCount > 1) {
+                        int mid = (existingPathElementCount + missingPathElementCount) >>> 1;
+                        if (Files.exists(resolveSubpath(root, nioPath, mid))) {
+                            existingPathElementCount = mid;
+                        } else {
+                            missingPathElementCount = mid;
+                        }
+                    }
+                    Path deepestExistingPath = resolveSubpath(root, nioPath, existingPathElementCount);
+                    realPath = toRealPathOrNull(deepestExistingPath);
+                    if (realPath == null) {
+                        realPath = deepestExistingPath;
+                    }
                 }
 
-                Path result = nioPath.resolve(suffix).normalize();
+                Path result = existingPathElementCount < totalPathElementCount
+                    ? realPath.resolve(nioPath.subpath(existingPathElementCount, totalPathElementCount)).normalize()
+                    : realPath.normalize();
 
                 // It's not clear why it should work like that,
                 // but this behaviour is checked by the test `GetAbsolutePath.windowsDriveRelative`.
