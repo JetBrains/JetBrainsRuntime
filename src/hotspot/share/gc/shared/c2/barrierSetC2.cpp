@@ -1153,7 +1153,7 @@ void BarrierSetC2::compute_liveness_at_stubs() const {
   Arena* const A = Thread::current()->resource_area();
   PhaseCFG* const cfg = C->cfg();
   PhaseRegAlloc* const regalloc = C->regalloc();
-  RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks() * sizeof(RegMask));
+  RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks());
   BarrierSetAssembler* const bs = BarrierSet::barrier_set()->barrier_set_assembler();
   BarrierSetC2State* bs_state = barrier_set_state();
   Block_List worklist;
