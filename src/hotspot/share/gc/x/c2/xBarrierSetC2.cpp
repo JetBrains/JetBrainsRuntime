@@ -498,7 +498,7 @@ void XBarrierSetC2::compute_liveness_at_stubs() const {
   Arena* const A = Thread::current()->resource_area();
   PhaseCFG* const cfg = C->cfg();
   PhaseRegAlloc* const regalloc = C->regalloc();
-  RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks() * sizeof(RegMask));
+  RegMask* const live = NEW_ARENA_ARRAY(A, RegMask, cfg->number_of_blocks());
   XBarrierSetAssembler* const bs = XBarrierSet::assembler();
   Block_List worklist;
 
