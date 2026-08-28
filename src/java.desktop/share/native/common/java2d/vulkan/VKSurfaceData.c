@@ -69,6 +69,13 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
     }
 }
 
+VkBool32 VKSD_ShouldRecreateImage(VKImage* currentImage, VkExtent2D requestedExtent) {
+    return requestedExtent.width > 0 && requestedExtent.height > 0 && (
+        currentImage == NULL ||
+        requestedExtent.width != currentImage->extent.width ||
+        requestedExtent.height != currentImage->extent.height);
+}
+
 static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) {
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
 }
@@ -83,9 +90,7 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): device updated", vksdo);
     }
     // Initialize image.
-    if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 && (vksdo->image == NULL ||
-            vksdo->requestedExtent.width != vksdo->image->extent.width ||
-            vksdo->requestedExtent.height != vksdo->image->extent.height)) {
+    if (VKSD_ShouldRecreateImage(vksdo->image, vksdo->requestedExtent)) {
         // Currently, we only support *_SRGB and *_UNORM formats,
         // as other types may not be trivial to alias for logicOp rendering.
         VkFormat format = (VkFormat) (vksdo->drawableFormat & ~VKSD_FORMAT_OPAQUE_BIT);
