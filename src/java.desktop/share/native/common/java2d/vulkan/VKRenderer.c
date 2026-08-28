@@ -1049,6 +1049,20 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* 
     assert(surface != NULL);
     surface->requestedExtent = extent;
     surface->requestedDevice = device;
+
+    // We must end the current render pass right now,
+    // otherwise the current render pass would continue accepting draws
+    // (that, from the point of view of Java, should be drawn onto the new image)
+    // and then silently discard them when recreating the image later.
+    // This would lead to presenting unpainted regions of the new surface - see JBR-10486, JBR-10448.
+    // Simply preserving the contents of the old image between resizes
+    // is not enough, because Java might expect to have a LARGER image right after issuing CONFIGURE_SURFACE.
+    if (surface->renderPass != NULL && surface->renderPass->pendingCommands &&
+        (surface->requestedDevice != surface->device || VKSD_ShouldRecreateImage(surface->image, surface->requestedExtent))) {
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_ConfigureSurface(%p): eagerly flushing the render pass", surface);
+        VKRenderer_FlushRenderPass(surface);
+    }
+
     // We must only do pending flush between frames.
     if (surface->renderPass != NULL && surface->renderPass->pendingFlush)  {
         if (surface->renderPass->pendingCommands) {
@@ -1656,7 +1670,7 @@ Java_sun_java2d_vulkan_VKTextRenderer_drawGlyphList
      jfloatArray glyphPositions)
 {
     unsigned char *images = NULL;
-    
+
     J2dTraceLn(J2D_TRACE_INFO, "VKTextRenderer_drawGlyphList");
 
     images = (unsigned char *)(*env)->GetPrimitiveArrayCritical(env, glyphImages, NULL);

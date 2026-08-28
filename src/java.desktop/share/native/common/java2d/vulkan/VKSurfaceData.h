@@ -96,6 +96,11 @@ static inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
 void VKSD_ResetSurface(VKSDOps* vksdo);
 
 /**
+ * Test if the image should be recreated based on currentImage vs requestedExtent.
+ */
+VkBool32 VKSD_ShouldRecreateImage(VKImage* currentImage, VkExtent2D requestedExtent);
+
+/**
  * Configure image surface. This [re]initializes the device and surface image.
  */
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo);
