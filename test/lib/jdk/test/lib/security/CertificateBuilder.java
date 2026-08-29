@@ -48,13 +48,13 @@ import sun.security.x509.IPAddressName;
 import sun.security.x509.NameConstraintsExtension;
 import sun.security.x509.SubjectKeyIdentifierExtension;
 import sun.security.x509.BasicConstraintsExtension;
+import sun.security.x509.CertificateSerialNumber;
 import sun.security.x509.ExtendedKeyUsageExtension;
 import sun.security.x509.DistributionPoint;
 import sun.security.x509.DNSName;
 import sun.security.x509.GeneralName;
 import sun.security.x509.GeneralNames;
 import sun.security.x509.KeyUsageExtension;
-import sun.security.x509.SerialNumber;
 import sun.security.x509.SubjectAlternativeNameExtension;
 import sun.security.x509.URIName;
 import sun.security.x509.KeyIdentifier;
@@ -452,11 +452,8 @@ public class CertificateBuilder {
      *
      * @param bitSettings Boolean array for all nine bit settings in the order
      * documented in RFC 5280 section 4.2.1.3.
-     *
-     * @throws IOException if an encoding error occurs.
      */
-    public CertificateBuilder addKeyUsageExt(boolean[] bitSettings)
-            throws IOException {
+    public CertificateBuilder addKeyUsageExt(boolean[] bitSettings) {
         return addExtension(new KeyUsageExtension(bitSettings));
     }
 
@@ -469,11 +466,9 @@ public class CertificateBuilder {
      * @param maxPathLen The maximum path length issued by this CA.  Values
      * less than zero will omit this field from the resulting extension and
      * no path length constraint will be asserted.
-     *
-     * @throws IOException if an encoding error occurs.
      */
     public CertificateBuilder addBasicConstraintsExt(boolean crit, boolean isCA,
-            int maxPathLen) throws IOException {
+            int maxPathLen) {
         return addExtension(new BasicConstraintsExtension(crit, isCA,
                 maxPathLen));
     }
@@ -564,7 +559,27 @@ public class CertificateBuilder {
     }
 
     /**
-     * Build the certificate.
+     * Build the certificate using the default algorithm for the provided
+     * signing key.
+     *
+     * @param issuerCert The certificate of the issuing authority, or
+     * {@code null} if the resulting certificate is self-signed.
+     * @param issuerKey The private key of the issuing authority
+     *
+     * @return The resulting {@link X509Certificate}
+     *
+     * @throws IOException if an encoding error occurs.
+     * @throws CertificateException If the certificate cannot be generated
+     * by the underlying {@link CertificateFactory}
+     */
+    public X509Certificate build(X509Certificate issuerCert,
+            PrivateKey issuerKey) throws IOException, CertificateException {
+        return build(issuerCert, issuerKey,
+                SignatureUtil.getDefaultSigAlgForKey(issuerKey));
+    }
+
+    /**
+     * Build the certificate using the key and specified signing algorithm.
      *
      * @param issuerCert The certificate of the issuing authority, or
      * {@code null} if the resulting certificate is self-signed.
@@ -576,14 +591,10 @@ public class CertificateBuilder {
      * @throws IOException if an encoding error occurs.
      * @throws CertificateException If the certificate cannot be generated
      * by the underlying {@link CertificateFactory}
-     * @throws NoSuchAlgorithmException If an invalid signature algorithm
-     * is provided.
      */
     public X509Certificate build(X509Certificate issuerCert,
             PrivateKey issuerKey, String algName)
-            throws IOException, CertificateException, NoSuchAlgorithmException {
-        // TODO: add some basic checks (key usage, basic constraints maybe)
-
+            throws IOException, CertificateException {
         byte[] encodedCert = encodeTopLevel(issuerCert, issuerKey, algName);
         ByteArrayInputStream bais = new ByteArrayInputStream(encodedCert);
         return (X509Certificate)factory.generateCertificate(bais);
@@ -612,15 +623,14 @@ public class CertificateBuilder {
      */
     private byte[] encodeTopLevel(X509Certificate issuerCert,
             PrivateKey issuerKey, String algName)
-            throws CertificateException, IOException, NoSuchAlgorithmException {
+            throws CertificateException, IOException {
 
-        AlgorithmId signAlg = AlgorithmId.get(algName);
+        AlgorithmId signAlg;
         DerOutputStream outerSeq = new DerOutputStream();
         DerOutputStream topLevelItems = new DerOutputStream();
 
         try {
-            Signature sig = SignatureUtil.fromKey(signAlg.getName(), issuerKey, (Provider)null);
-            // Rewrite signAlg, RSASSA-PSS needs some parameters.
+            Signature sig = SignatureUtil.fromKey(algName, issuerKey, "");
             signAlg = SignatureUtil.fromSignature(sig, issuerKey);
             tbsCertBytes = encodeTbsCert(issuerCert, signAlg);
             sig.update(tbsCertBytes);
@@ -677,7 +687,9 @@ public class CertificateBuilder {
         }
 
         // Serial Number
-        SerialNumber sn = new SerialNumber(serialNumber);
+        CertificateSerialNumber sn = (serialNumber != null) ?
+            new CertificateSerialNumber(serialNumber) :
+            CertificateSerialNumber.newRandom64bit(new SecureRandom());
         sn.encode(tbsCertItems);
 
         // Algorithm ID
@@ -694,8 +706,12 @@ public class CertificateBuilder {
 
         // Validity period (set as UTCTime)
         DerOutputStream valSeq = new DerOutputStream();
-        valSeq.putUTCTime(notBefore);
-        valSeq.putUTCTime(notAfter);
+        Instant now = Instant.now();
+        Date startDate = (notBefore != null) ? notBefore : Date.from(now);
+        valSeq.putUTCTime(startDate);
+        Date endDate = (notAfter != null) ? notAfter :
+            Date.from(now.plus(90, ChronoUnit.DAYS));
+        valSeq.putUTCTime(endDate);
         tbsCertItems.write(DerValue.tag_Sequence, valSeq);
 
         // Subject Name
@@ -735,6 +751,9 @@ public class CertificateBuilder {
      */
     private void encodeExtensions(DerOutputStream tbsStream)
             throws IOException {
+        if (extensions.isEmpty()) {
+            return;
+        }
         DerOutputStream extSequence = new DerOutputStream();
         DerOutputStream extItems = new DerOutputStream();
 
