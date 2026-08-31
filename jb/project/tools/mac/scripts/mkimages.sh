@@ -69,6 +69,7 @@ function do_configure {
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     $WITH_XCODE_PATH \
     $WITH_SYSROOT \
+    $ENABLE_DEPRECATED_PORTS \
     || do_exit $?
 }
 
@@ -129,8 +130,12 @@ function create_image_bundle {
 
 WITH_DEBUG_LEVEL="--with-debug-level=release"
 CONF_ARCHITECTURE=x86_64
+ENABLE_DEPRECATED_PORTS=""
 if [[ "${architecture}" == *aarch64* ]]; then
   CONF_ARCHITECTURE=aarch64
+else
+  # The macOS/x64 port is deprecated; configure fails unless the error is suppressed explicitly.
+  ENABLE_DEPRECATED_PORTS="--enable-deprecated-ports"
 fi
 RELEASE_NAME=macosx-${CONF_ARCHITECTURE}-server-release
 
