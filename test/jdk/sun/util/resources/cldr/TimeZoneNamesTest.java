@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
  * @bug 8181157 8202537 8234347 8236548 8261279
  * @modules jdk.localedata
  * @summary Checks CLDR time zone names are generated correctly at runtime
- * @run testng/othervm -Djava.locale.providers=CLDR TimeZoneNamesTest
+ * @run junit/othervm -Djava.locale.providers=CLDR TimeZoneNamesTest
  */
 
 import java.text.DateFormatSymbols;
@@ -37,16 +37,15 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.TimeZone;
 
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@Test
 public class TimeZoneNamesTest {
 
-    @DataProvider(name="noResourceTZs")
-    Object[][] data() {
+    private static Object[][] data() {
         return new Object[][] {
             // tzid, locale, style, expected
 
@@ -178,19 +177,20 @@ public class TimeZoneNamesTest {
     }
 
 
-    @Test(dataProvider="noResourceTZs")
+    @ParameterizedTest
+    @MethodSource("data")
     public void test_tzNames(String tzid, Locale locale, String lstd, String sstd, String ldst, String sdst, String lgen, String sgen) {
         // Standard time
-        assertEquals(TimeZone.getTimeZone(tzid).getDisplayName(false, TimeZone.LONG, locale), lstd);
-        assertEquals(TimeZone.getTimeZone(tzid).getDisplayName(false, TimeZone.SHORT, locale), sstd);
+        assertEquals(lstd, TimeZone.getTimeZone(tzid).getDisplayName(false, TimeZone.LONG, locale));
+        assertEquals(sstd, TimeZone.getTimeZone(tzid).getDisplayName(false, TimeZone.SHORT, locale));
 
         // daylight saving time
-        assertEquals(TimeZone.getTimeZone(tzid).getDisplayName(true, TimeZone.LONG, locale), ldst);
-        assertEquals(TimeZone.getTimeZone(tzid).getDisplayName(true, TimeZone.SHORT, locale), sdst);
+        assertEquals(ldst, TimeZone.getTimeZone(tzid).getDisplayName(true, TimeZone.LONG, locale));
+        assertEquals(sdst, TimeZone.getTimeZone(tzid).getDisplayName(true, TimeZone.SHORT, locale));
 
         // generic name
-        assertEquals(ZoneId.of(tzid).getDisplayName(TextStyle.FULL, locale), lgen);
-        assertEquals(ZoneId.of(tzid).getDisplayName(TextStyle.SHORT, locale), sgen);
+        assertEquals(lgen, ZoneId.of(tzid).getDisplayName(TextStyle.FULL, locale));
+        assertEquals(sgen, ZoneId.of(tzid).getDisplayName(TextStyle.SHORT, locale));
     }
 
     // Make sure getZoneStrings() returns non-empty string array
