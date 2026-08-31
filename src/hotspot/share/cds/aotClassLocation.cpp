@@ -51,6 +51,7 @@
 Array<ClassPathZipEntry*>* AOTClassLocationConfig::_dumptime_jar_files = nullptr;
 AOTClassLocationConfig* AOTClassLocationConfig::_dumptime_instance = nullptr;
 const AOTClassLocationConfig* AOTClassLocationConfig::_runtime_instance = nullptr;
+const char* AOTClassLocationConfig::_runtime_lcp = nullptr;
 
 // A ClassLocationStream represents a list of code locations, which can be iterated using
 // start() and has_next().
@@ -973,6 +974,25 @@ bool AOTClassLocationConfig::need_lcp_match_helper(int start, int end, ClassLoca
   return true;
 }
 
+void AOTClassLocationConfig::set_runtime_lcp(const char* lcp) {
+  if (_runtime_lcp != nullptr) {
+    os::free((void*) _runtime_lcp);
+    _runtime_lcp = nullptr;
+  }
+  if (lcp != nullptr) {
+    _runtime_lcp = os::strdup(lcp, mtClassShared);
+  }
+}
+
+const char* AOTClassLocationConfig::runtime_path(int index) const {
+  const char* path = class_location_at(index)->path();
+  if (_runtime_lcp != nullptr && index >= boot_cp_start_index() && index < app_cp_end_index()) {
+    // Apply validated LCP substitution.
+    return substitute(path, _dumptime_lcp_len, _runtime_lcp, strlen(_runtime_lcp));
+  }
+  return path;
+}
+
 bool AOTClassLocationConfig::validate(const char* cache_filename, bool has_aot_linked_classes, bool* has_extra_module_paths) const {
   ResourceMark rm;
   AllClassLocationStreams all_css;
@@ -991,6 +1011,9 @@ bool AOTClassLocationConfig::validate(const char* cache_filename, bool has_aot_l
       *has_extra_module_paths = true;
     } else {
       *has_extra_module_paths = false;
+    }
+    if (success) {
+      set_runtime_lcp(nullptr);
     }
   } else {
     bool use_lcp_match = need_lcp_match(all_css);
@@ -1022,6 +1045,11 @@ bool AOTClassLocationConfig::validate(const char* cache_filename, bool has_aot_l
                                    all_css.module_path(), has_extra_module_paths);
       log_info(class, path)("Archived module path validation: %s%s", success ? "passed" : "failed",
                             (*has_extra_module_paths) ? " (extra module paths found)" : "");
+    }
+
+    if (success) {
+      bool lcp_was_used = use_lcp_match && runtime_lcp_len > 0 && _dumptime_lcp_len > 0;
+      set_runtime_lcp(lcp_was_used ? runtime_lcp : nullptr);
     }
 
     if (runtime_lcp_len > 0) {
