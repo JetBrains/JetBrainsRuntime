@@ -140,6 +140,9 @@ class AOTClassLocationConfig : public CHeapObj<mtClassShared> {
   static AOTClassLocationConfig* _dumptime_instance;
   static const AOTClassLocationConfig* _runtime_instance;
 
+  // Runtime LCP for relocated boot/app classpath entries, null if not relocated.
+  static const char* _runtime_lcp;
+
   Array<AOTClassLocation*>* _class_locations; // jrt -> -Xbootclasspath/a -> -classpath -> --module_path
   static Array<ClassPathZipEntry*>* _dumptime_jar_files;
 
@@ -174,6 +177,7 @@ class AOTClassLocationConfig : public CHeapObj<mtClassShared> {
   static const char* find_lcp(ClassLocationStream& css, size_t& lcp_len);
   bool need_lcp_match(AllClassLocationStreams& all_css) const;
   bool need_lcp_match_helper(int start, int end, ClassLocationStream& css) const;
+  static void set_runtime_lcp(const char* lcp);
 
   template <typename FUNC> void dumptime_iterate_helper(FUNC func) const {
     assert(_class_locations != nullptr, "sanity");
@@ -236,6 +240,9 @@ public:
 
   const AOTClassLocation* class_location_at(int index) const;
   int get_module_shared_path_index(Symbol* location) const;
+
+  // Resource allocated runtime path with optionally applied LCP substitution.
+  const char* runtime_path(int index) const;
 
   // Functions used only during dumptime
   static void dumptime_init(JavaThread* current);
