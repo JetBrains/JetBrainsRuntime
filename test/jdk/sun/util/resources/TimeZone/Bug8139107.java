@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,11 +27,12 @@
  * @summary Test that date parsing with DateTimeFormatter pattern
  *   that contains timezone field doesn't trigger NPE. All supported
  *   locales are tested.
- * @run testng/othervm -Djava.locale.providers=JRE,SPI Bug8139107
+ * @run junit/othervm -Djava.locale.providers=JRE,SPI Bug8139107
  */
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
-import org.testng.annotations.Test;
+
+import org.junit.jupiter.api.Test;
 
 public class Bug8139107 {
 
