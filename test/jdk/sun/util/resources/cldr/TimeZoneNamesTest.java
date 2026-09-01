@@ -24,8 +24,7 @@
  /*
  * @test
  * @bug 8181157 8202537 8234347 8236548 8261279 8322647 8174269 8346948
- *      8381379 8382020 8384043 8390388
- *      8381379 8382020 8384043
+ *      8381379 8382020 8384043 8390388 8390380
  * @modules jdk.localedata
  * @summary Checks CLDR time zone names are generated correctly at
  * either build or runtime
@@ -277,7 +276,9 @@ public class TimeZoneNamesTest {
             Arguments.of(ZonedDateTime.of(2026, 4, 5, 0, 0, 0, 0, ZoneId.of("Eire")), "Irish Standard Time"),
             Arguments.of(ZonedDateTime.of(2026, 12, 5, 0, 0, 0, 0, ZoneId.of("Eire")), "Greenwich Mean Time"),
             Arguments.of(ZonedDateTime.of(2026, 4, 5, 0, 0, 0, 0, ZoneId.of("America/Vancouver")), "Pacific Daylight Time"),
-            Arguments.of(ZonedDateTime.of(2026, 12, 5, 0, 0, 0, 0, ZoneId.of("America/Vancouver")), "Pacific Daylight Time")
+            Arguments.of(ZonedDateTime.of(2026, 12, 5, 0, 0, 0, 0, ZoneId.of("America/Vancouver")), "Pacific Daylight Time"),
+            Arguments.of(ZonedDateTime.of(2026, 1, 5, 0, 0, 0, 0, ZoneId.of("America/Edmonton")), "Mountain Standard Time"),
+            Arguments.of(ZonedDateTime.of(2026, 7, 5, 0, 0, 0, 0, ZoneId.of("America/Edmonton")), "Mountain Daylight Time")
         );
     }
 
