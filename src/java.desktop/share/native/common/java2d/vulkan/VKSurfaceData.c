@@ -290,16 +290,13 @@ VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
     // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html
     uint32_t imageCount = 2;
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
-    // MAILBOX makes no sense without at least 3 images and using less memory
-    // for swapchain images may be more beneficial than having unlimited FPS.
-    // However, if minImageCount is too big anyway, why not use MAILBOX.
-    if (capabilities.minImageCount >= 3) {
-        for (uint32_t i = 0; i < presentModeCount; i++) {
-            if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-                presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
-                imageCount = 3;
-                break;
-            }
+    // Try to use mailbox whenever possible, FIFO currently has serious issues on Mutter.
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            // MAILBOX needs at least 3 images to be functionally different from FIFO.
+            imageCount = 3;
+            break;
         }
     }
     if (imageCount > capabilities.maxImageCount && capabilities.maxImageCount != 0) imageCount = capabilities.maxImageCount;
