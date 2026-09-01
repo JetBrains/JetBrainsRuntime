@@ -107,7 +107,7 @@ public abstract class BufferedContext {
     private Reference<Paint> validPaintRef = null;
     // renamed from isValidatedPaintAColor as part of a work around for 6764257
     private boolean         isValidatedPaintJustAColor;
-    private int             validatedRGB;
+    private int             validatedColorPixel;
     private int             validatedFlags;
     private boolean         xformInUse;
     private AffineTransform transform;
@@ -200,16 +200,17 @@ public abstract class BufferedContext {
             throw new InvalidPipeException("bounds changed or surface lost");
         }
 
+        // In case of color paints, we record `pixel` as validated to match what's actually transmitted later in setColor.
+        // Using paint.getRGB() would be incorrect, because it ignores extraAlpha that is folded into the pixel in SunGraphics2D.validateColor().
         if (paint instanceof Color) {
-            // REMIND: not 30-bit friendly
-            int newRGB = ((Color)paint).getRGB();
+            int newPixel = sg2d.pixel;
             if (isValidatedPaintJustAColor) {
-                if (newRGB != validatedRGB) {
-                    validatedRGB = newRGB;
+                if (newPixel != validatedColorPixel) {
+                    validatedColorPixel = newPixel;
                     updatePaint = true;
                 }
             } else {
-                validatedRGB = newRGB;
+                validatedColorPixel = newPixel;
                 updatePaint = true;
                 isValidatedPaintJustAColor = true;
             }
