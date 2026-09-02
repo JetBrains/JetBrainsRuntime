@@ -117,6 +117,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean isLayouting = false; // protected by stateLock
     protected boolean visible = false;
 
+    private boolean isConfigured = false; // protected by stateLock
     private boolean isActive = false;  // protected by stateLock
     private boolean isFullscreen = false;  // protected by stateLock
     private boolean sizeIsBeingConfigured = false; // protected by stateLock
@@ -488,6 +489,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // from notifyConfigured()
         } else {
             performLocked(() -> {
+                isConfigured = false;
                 if (wlSurface != null) { // may get a "hide" request even though we were never shown
                     notifyNativeWindowToBeHidden(nativePtr);
 
@@ -546,6 +548,22 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         return true;
     }
 
+    private void doRepositionPopup(int surfaceWidth, int surfaceHeight) {
+        assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
+
+        Window popup = (Window) target;
+        Window toplevel = getToplevelFor(popup.getParent());
+        Point nativeLocation = nativeLocationForPopup(popup, toplevel);
+        boolean isUnconstrained = isPopupPositionUnconstrained();
+        nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
+    }
+
+    private void doRepositionPopup() {
+        int surfaceWidth = wlSize.getSurfaceWidth();
+        int surfaceHeight = wlSize.getSurfaceHeight();
+        doRepositionPopup(surfaceWidth, surfaceHeight);
+    }
+
     @Override
     public void updateSurfaceSize() {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
@@ -577,16 +595,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             nativeSetMaximumSize(nativePtr, surfaceWidth, surfaceHeight);
         }
 
+        // Since popup's reposition request includes both its size and location, the request
+        // needs to be in sync with all the other sizes this method is responsible for updating.
         if (popupNeedsReposition()) {
             popupRepositioned();
-
-            // Since popup's reposition request includes both its size and location, the request
-            // needs to be in sync with all the other sizes this method is responsible for updating.
-            Window popup = (Window) target;
-            Window toplevel = getToplevelFor(popup.getParent());
-            Point nativeLocation = nativeLocationForPopup(popup, toplevel);
-            boolean isUnconstrained = isPopupPositionUnconstrained();
-            nativeRepositionWLPopup(nativePtr, surfaceWidth, surfaceHeight, nativeLocation.x, nativeLocation.y, isUnconstrained);
+            doRepositionPopup(surfaceWidth, surfaceHeight);
         }
     }
 
@@ -688,9 +701,11 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    private void markPopupNeedsReposition() {
+    private boolean markPopupNeedsReposition() {
         synchronized (getStateLock()) {
+            boolean oldRepositionPopup = repositionPopup;
             repositionPopup = true;
+            return !oldRepositionPopup;
         }
     }
 
@@ -735,7 +750,17 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         if ((positionChanged || sizeChanged) && isPopup && visible) {
             // Need to update the location and size even if does not (yet) have a surface
             // as the initial configure event needs to have the latest data on the location/size.
-            markPopupNeedsReposition();
+            if (markPopupNeedsReposition()) {
+
+                // DANGER: first we take the AWT lock, and only then the stateLock within popupNeedsReposition() et al.
+                // This is done consistently whenever we need to take those two locks.
+                performLocked(() -> {
+                    if (popupNeedsReposition() && isConfigured) {
+                        popupRepositioned();
+                        doRepositionPopup();
+                    }
+                });
+            }
         }
 
         if (positionChanged) {
@@ -1768,6 +1793,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         synchronized (getStateLock()) {
             isActive = active;
             isFullscreen = fullscreen;
+            isConfigured = true;
         }
 
         boolean isWlPopup = targetIsWlPopup();
