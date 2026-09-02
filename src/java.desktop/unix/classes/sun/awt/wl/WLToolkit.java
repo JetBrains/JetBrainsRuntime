@@ -166,9 +166,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         // This field must be initialized BEFORE initIDs is called because it'll be read there
         ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
 
-        initLibwaylandLogging();
-
         if (!GraphicsEnvironment.isHeadless()) {
+            initLibwaylandLogging();
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
             VKEnv.init(() -> VKEnv.initPlatformWayland(display));
