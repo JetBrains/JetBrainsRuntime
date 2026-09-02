@@ -44,6 +44,7 @@ static jmethodID notifyPopupDoneMID;
 
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
+    struct wl_surface *wl_surface; // not owned
     struct xdg_surface *xdg_surface;
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
@@ -337,6 +338,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
     struct wl_surface *wl_surface = jlong_to_ptr(wlSurfacePtr);
 
+    frame->wl_surface = wl_surface;
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
@@ -398,6 +400,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
     struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
+    frame->wl_surface = wl_surface;
     frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
 
@@ -427,9 +430,9 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
     if (wl_proxy_get_version((struct wl_proxy *)xdg_wm_base) >= 3) {
         struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY, isUnconstrained);
         CHECK_NULL(xdg_positioner);
-        static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
-        xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
+        xdg_popup_reposition(frame->xdg_popup, xdg_positioner, 0);
         xdg_positioner_destroy(xdg_positioner);
+        wl_surface_commit(frame->wl_surface);
         wlFlushToServer(env);
     }
 }
@@ -444,6 +447,7 @@ DoHide(JNIEnv *env, struct WLFrame *frame)
     }
     xdg_surface_destroy(frame->xdg_surface);
 
+    frame->wl_surface = NULL;
     frame->xdg_surface = NULL;
     frame->xdg_toplevel = NULL;
     frame->xdg_popup = NULL;
