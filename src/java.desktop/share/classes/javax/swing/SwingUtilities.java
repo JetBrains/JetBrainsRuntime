@@ -171,24 +171,73 @@ public class SwingUtilities implements SwingConstants
      * @return the converted coordinate
      */
     public static Point convertPoint(Component source,Point aPoint,Component destination) {
-        Point p;
+        Point result;
 
-        if(source == null && destination == null)
+        if (source == null && destination == null)
             return aPoint;
-        if(source == null) {
+        if (source == null) {
             source = getWindowAncestor(destination);
-            if(source == null)
+            if (source == null)
                 throw new Error("Source component not connected to component tree hierarchy");
         }
-        p = new Point(aPoint);
-        convertPointToScreen(p,source);
-        if(destination == null) {
+        if (destination == null) {
             destination = getWindowAncestor(source);
-            if(destination == null)
+            if (destination == null)
                 throw new Error("Destination component not connected to component tree hierarchy");
         }
-        convertPointFromScreen(p,destination);
-        return p;
+
+        // Deliberately keep the number of allocations to a minimum.
+        // We need to allocate the result, but the rest of the code uses int-based APIs instead of Point-based.
+        result = new Point(aPoint);
+
+        // It doesn't matter which component we start from,
+        // but converting to an ancestor is a far more common case:
+        // e.g., converting several components to a common parent to compare their coordinates in one system.
+        // So we start going up from the source for the most fast-path scenario.
+        Component currentSource = source;
+        // Invariant: at the end of each iteration, result is in the currentSource's coordinate system.
+        // Stop when reaching the ultimate window because windows are not positioned relative to their parents.
+        while (currentSource != destination && !(currentSource instanceof Window)) {
+            Component sourceParent = currentSource.getParent();
+            if (sourceParent == null) {
+                break;
+            }
+            result.x += currentSource.getX();
+            result.y += currentSource.getY();
+            currentSource = sourceParent;
+        }
+        if (currentSource == destination) return result; // the fast-path case: converting to an ancestor
+
+        // We've reached the ultimate parent (currentSource).
+        // Now we have the point relative to it.
+        // But we still have no clue about where our destination is,
+        // so let's start figuring that out.
+        Component currentDestination = destination;
+        int destinationRelativeToCurrentDestinationX = 0;
+        int destinationRelativeToCurrentDestinationY = 0;
+        while (currentDestination != currentSource && !(currentDestination instanceof Window)) {
+            Component destinationParent = currentDestination.getParent();
+            if (destinationParent == null) {
+                break;
+            }
+            destinationRelativeToCurrentDestinationX += currentDestination.getX();
+            destinationRelativeToCurrentDestinationY += currentDestination.getY();
+            currentDestination = destinationParent;
+        }
+
+        // If the ultimate parents are the same, and we have the answer relative to currentSource,
+        // it means we now have the result relative to currentDestination (as it's the same).
+        // If they're not the same, we need to resort to screen coordinates to convert between them.
+        if (currentDestination != currentSource) {
+            convertPointToScreen(result, currentSource);
+            convertPointFromScreen(result, currentDestination);
+        }
+
+        // Now we have the result relative to currentDestination.
+        // And we already know where it is relative to the original destination.
+        result.x -= destinationRelativeToCurrentDestinationX;
+        result.y -= destinationRelativeToCurrentDestinationY;
+        return result;
     }
 
     /**
