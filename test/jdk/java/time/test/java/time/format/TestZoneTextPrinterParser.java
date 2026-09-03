@@ -64,10 +64,13 @@ import org.testng.annotations.Test;
 @Test
 public class TestZoneTextPrinterParser extends AbstractTestPrinterParser {
 
-    // Explicit dstOffset attributes from CLDR v48.2 metazone data.
+    // Explicit dstOffset attributes from CLDR pre-release v49 metazone data.
     private static final Map<String, ZoneOffset> CLDR_EXPLICIT_DST_OFFSETS = Map.of(
             "Africa/Windhoek", ZoneOffset.of("+02:00"),
+            "America/Edmonton", ZoneOffset.of("-06:00"),
+            "America/Yellowknife", ZoneOffset.of("-06:00"),
             "America/Vancouver", ZoneOffset.of("-07:00"),
+            "Canada/Mountain", ZoneOffset.of("-06:00"),
             "Canada/Pacific", ZoneOffset.of("-07:00"),
             "Europe/Dublin", ZoneOffset.of("+01:00"),
             "Eire", ZoneOffset.of("+01:00"));
