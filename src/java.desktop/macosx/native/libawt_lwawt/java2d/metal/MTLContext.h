@@ -65,6 +65,8 @@ typedef enum {
 - (id<MTLCommandBuffer>) getCommandBuffer;
 - (void) onComplete; // invoked from completion handler in some pooled thread
 - (void) registerPooledTexture:(MTLPooledTextureHandle *)handle;
+// retains the texture until the command buffer completes
+- (void) registerTexture:(id<MTLTexture>)texture;
 @end
 
 /**

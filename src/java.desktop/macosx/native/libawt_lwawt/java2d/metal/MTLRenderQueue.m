@@ -650,9 +650,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pSrc = NEXT_LONG(b);
                     jlong pDst = NEXT_LONG(b);
 
+                    // The glyph caches belong to the context, not to the
+                    // surfaces, and survive a surface switch.
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                             sync = NO;
@@ -672,8 +672,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
                         [mtlc commitCommandBuffer:NO display:NO];
                     }
 
@@ -692,8 +690,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA free];
-                            [mtlc.glyphCacheLCD free];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
@@ -709,8 +705,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA free];
-                            [mtlc.glyphCacheLCD free];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
