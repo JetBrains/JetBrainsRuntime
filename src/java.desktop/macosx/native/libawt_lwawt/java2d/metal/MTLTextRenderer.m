@@ -105,9 +105,31 @@ static jint vertexCacheIndex = 0;
         LCD_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
     } while (0)
 
-static void MTLTR_SyncFlushGlyphVertexCache(MTLContext *mtlc) {
+/**
+ * Flush callback of the glyph caches: draws the pending glyph quads, which
+ * still reference the texture of the cache that is about to be freed.
+ * The texture is released when the command buffer completes
+ * (see MTLGlyphCache.free), so this callback does not wait for the GPU.
+ */
+static void MTLTR_FlushGlyphVertexCache(MTLContext *mtlc) {
     MTLVertexCache_FlushGlyphVertexCache(mtlc);
-    [mtlc commitCommandBuffer:YES display:NO];
+}
+
+/**
+ * Returns the cell of the given glyph that belongs to the given context,
+ * or NULL. A glyph can hold one cell per context (one per GPU).
+ */
+static MTLCacheCellInfo *
+MTLTR_FindCellForContext(GlyphInfo *ginfo, MTLContext *mtlc)
+{
+    MTLCacheCellInfo *cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
+    while (cell != NULL) {
+        if (cell->cacheInfo != NULL && cell->cacheInfo->mtlc == mtlc) {
+            return cell;
+        }
+        cell = cell->nextGCI;
+    }
+    return NULL;
 }
 
 /**
@@ -127,7 +149,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
-                                    func:MTLTR_SyncFlushGlyphVertexCache])
+                                    func:MTLTR_FlushGlyphVertexCache])
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLTR_InitGlyphCache: could not init MTL glyph cache");
@@ -386,17 +408,20 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
         glyphMode = MODE_USE_CACHE_LCD;
     }
 
-    if (ginfo->cellInfo == NULL) {
+    // the glyph can hold cells of other contexts, use only a cell of this one
+    cell = MTLTR_FindCellForContext(ginfo, mtlc);
+    if (cell == NULL) {
         // attempt to add glyph to accelerated glyph cache
         // TODO : Handle RGB order
         MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_TRUE, 0);
 
-        if (ginfo->cellInfo == NULL) {
+        // a new cell is added to the head of the glyph's cell list
+        cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
+        if (cell == NULL || cell->cacheInfo == NULL || cell->cacheInfo->mtlc != mtlc) {
             // we'll just no-op in the rare case that the cell is NULL
             return JNI_TRUE;
         }
     }
-    cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
 
     MTLTR_SetLCDContrast(mtlc, contrast, mtlc.glyphCacheLCD.cacheInfo->encoder);

@@ -131,6 +131,7 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
     NSMutableArray * _pooledTextures;
+    NSMutableArray * _textures;
     NSLock* _lock;
 }
 
@@ -139,6 +140,7 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     if (self) {
         _commandBuffer = [cmdBuf retain];
         _pooledTextures = [[NSMutableArray alloc] init];
+        _textures = [[NSMutableArray alloc] init];
         _lock = [[NSLock alloc] init];
     }
     return self;
@@ -154,6 +156,8 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
         for (int c = 0; c < [_pooledTextures count]; ++c)
             [[_pooledTextures objectAtIndex:c] releaseTexture];
         [_pooledTextures removeAllObjects];
+        // the array held the last reference to these textures
+        [_textures removeAllObjects];
     } @finally {
         [_lock unlock];
     }
@@ -169,11 +173,26 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     }
 }
 
+- (void) registerTexture:(id<MTLTexture>)texture {
+    if (texture == nil) {
+        return;
+    }
+    [_lock lock];
+    @try {
+        [_textures addObject:texture];
+    } @finally {
+        [_lock unlock];
+    }
+}
+
 - (void) dealloc {
     [self onComplete];
 
     [_pooledTextures release];
     _pooledTextures = nil;
+
+    [_textures release];
+    _textures = nil;
 
     [_commandBuffer release];
     _commandBuffer = nil;
