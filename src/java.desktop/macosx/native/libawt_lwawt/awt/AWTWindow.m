@@ -1401,6 +1401,7 @@ AWT_ASSERT_APPKIT_THREAD;
         DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", 0.0f);
         DECLARE_METHOD_RETURN(jm_internalCustomTitleBarHeight, jc_Window, "internalCustomTitleBarHeight", "()F", 0.0f);
         DECLARE_METHOD_RETURN(jm_internalCustomTitleBarControlsVisible, jc_Window, "internalCustomTitleBarControlsVisible", "()Z", 0.0f);
+        DECLARE_METHOD_RETURN(jm_internalCustomTitleBarControlsRtl, jc_Window, "internalCustomTitleBarControlsRtl", "()Z", 0.0f);
 
         jobject platformWindow = (*env)->NewLocalRef(env, self.javaPlatformWindow);
         if (!platformWindow) return 0.0f;
@@ -1409,6 +1410,9 @@ AWT_ASSERT_APPKIT_THREAD;
             h = (CGFloat) (*env)->CallFloatMethod(env, target, jm_internalCustomTitleBarHeight);
             if (!(*env)->ExceptionCheck(env)) {
                 self.customTitleBarControlsVisible = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsVisible);
+            }
+            if (!(*env)->ExceptionCheck(env)) {
+                self.customTitleBarControlsRtl = (BOOL) (*env)->CallBooleanMethod(env, target, jm_internalCustomTitleBarControlsRtl);
             }
             (*env)->DeleteLocalRef(env, target);
         }
@@ -1444,7 +1448,11 @@ AWT_ASSERT_APPKIT_THREAD;
     if (!platformWindow) return;
     jobject target = (*env)->GetObjectField(env, platformWindow, jf_target);
     if (target) {
-        (*env)->CallVoidMethod(env, target, jm_internalCustomTitleBarUpdateInsets, (jfloat) leftInset, (jfloat) 0.0f);
+        if (self.customTitleBarControlsRtl) {
+            (*env)->CallVoidMethod(env, target, jm_internalCustomTitleBarUpdateInsets, (jfloat) 0.0f, (jfloat) leftInset);
+        } else {
+            (*env)->CallVoidMethod(env, target, jm_internalCustomTitleBarUpdateInsets, (jfloat) leftInset, (jfloat) 0.0f);
+        }
         (*env)->DeleteLocalRef(env, target);
     }
     CHECK_EXCEPTION();
@@ -1715,12 +1723,15 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 
     CGFloat shrinkingFactor = self.customTitleBarButtonShrinkingFactor;
     CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
+    BOOL rtl = self.customTitleBarControlsRtl;
+    NSLayoutAnchor* anchorX = rtl ? titlebarContainer.rightAnchor : titlebarContainer.leftAnchor;
     self.customTitleBarButtonCenterXConstraints = [[NSMutableArray alloc] initWithCapacity:3];
     [@[closeButtonView, miniaturizeButtonView, zoomButtonView] enumerateObjectsUsingBlock:^(NSView* button, NSUInteger index, BOOL* stop)
     {
         button.translatesAutoresizingMaskIntoConstraints = NO;
-        NSLayoutConstraint* buttonCenterXConstraint = [button.centerXAnchor constraintEqualToAnchor:titlebarContainer.leftAnchor
-                                                       constant:(self.customTitleBarHeight / 2.0 + (index * horizontalButtonOffset))];
+        CGFloat offset = self.customTitleBarHeight / 2.0 + (index * horizontalButtonOffset);
+        NSLayoutConstraint* buttonCenterXConstraint = [button.centerXAnchor constraintEqualToAnchor:anchorX
+                                                       constant:(rtl ? -offset : offset)];
         [self.customTitleBarButtonCenterXConstraints addObject:buttonCenterXConstraint];
         [self.customTitleBarConstraints addObjectsFromArray:@[
             [button.widthAnchor constraintLessThanOrEqualToAnchor:titlebarContainer.heightAnchor multiplier:0.5],
@@ -1744,9 +1755,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     self.customTitleBarHeightConstraint.constant = self.customTitleBarHeight;
     CGFloat shrinkingFactor = self.customTitleBarButtonShrinkingFactor;
     CGFloat horizontalButtonOffset = shrinkingFactor * DefaultHorizontalTitleBarButtonOffset;
+    BOOL rtl = self.customTitleBarControlsRtl;
     [self.customTitleBarButtonCenterXConstraints enumerateObjectsUsingBlock:^(NSLayoutConstraint* buttonConstraint, NSUInteger index, BOOL *stop)
     {
-        buttonConstraint.constant = (self.customTitleBarHeight / 2.0 + (index * horizontalButtonOffset));
+        CGFloat offset = self.customTitleBarHeight / 2.0 + (index * horizontalButtonOffset);
+        buttonConstraint.constant = rtl ? -offset : offset;
     }];
     [self setWindowControlsHidden:!self.customTitleBarControlsVisible];
     [self updateCustomTitleBarInsets:self.customTitleBarControlsVisible];
@@ -1861,10 +1874,17 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     NSView *parent = self.nsWindow.contentView;
     CGFloat w = 80;
     CGFloat h = _fullScreenOriginalButtons.frame.size.height;
-    CGFloat x = 6;
+    CGFloat inset = 6;
+    CGFloat buttonsWidth = w - inset;
+    CGFloat x;
+    if (self.customTitleBarControlsRtl) {
+        x = parent.frame.size.width - buttonsWidth;
+    } else {
+        x = inset;
+    }
     CGFloat y = parent.frame.size.height - h - (self.customTitleBarHeight - h) / 2.0;
 
-    [_fullScreenButtons setFrame:NSMakeRect(x, y, w - x, h)];
+    [_fullScreenButtons setFrame:NSMakeRect(x, y, buttonsWidth, h)];
 }
 
 - (void)updateFullScreenButtons: (BOOL) dfm {
@@ -1902,9 +1922,11 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
 }
 
 - (void) updateCustomTitleBar {
+    BOOL oldRtl = self.customTitleBarControlsRtl;
     _customTitleBarHeight = -1.0f; // Reset for lazy init
     BOOL enabled = self.isCustomTitleBarEnabled;
     BOOL fullscreen = self.isFullScreen;
+    BOOL rtlChanged = (oldRtl != self.customTitleBarControlsRtl);
 
     jint mask = [AWTWindow affectedStyleMaskForCustomTitleBar];
     jint newBits = [AWTWindow overrideStyleBits:self.styleBits customTitleBarEnabled:enabled fullscreen:fullscreen];
@@ -1931,7 +1953,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
         [self _deliverMoveResizeEvent];
     }
 
-    if (enabled != (self.customTitleBarConstraints != nil)) {
+    if (enabled != (self.customTitleBarConstraints != nil) || (enabled && rtlChanged)) {
         if (!fullscreen) {
             if (self.isCustomTitleBarEnabled) {
                 [self setUpCustomTitleBar];
