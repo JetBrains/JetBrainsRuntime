@@ -84,6 +84,10 @@ public abstract class GraphicsEnvironment {
          */
         static final GraphicsEnvironment INSTANCE = createGE();
 
+        static {
+            SunGraphicsEnvironment.setInitialized();
+        }
+
         /**
          * Creates and returns the GraphicsEnvironment, according to the
          * platform-specific proxy class.
@@ -93,6 +97,7 @@ public abstract class GraphicsEnvironment {
         private static GraphicsEnvironment createGE() {
             if (graphicsEnvironmentProvider != null) {
                 GraphicsEnvironment overriddenGE = graphicsEnvironmentProvider.get();
+                graphicsEnvironmentProvider = null;
                 if (overriddenGE != null)
                     return overriddenGE;
             }
