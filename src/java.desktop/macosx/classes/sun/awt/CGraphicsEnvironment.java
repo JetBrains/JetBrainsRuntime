@@ -44,6 +44,7 @@ import java.util.Map;
 import sun.java2d.MacOSFlags;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.metal.MTLGraphicsConfig;
+import sun.lwawt.macosx.CThreading;
 import sun.util.logging.PlatformLogger;
 
 import com.jetbrains.exported.JBRApi;
@@ -252,6 +253,13 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * (Re)create all CGraphicsDevices, reuses a devices if it is possible.
      */
     private synchronized void initDevices() {
+        // Calling initDevices() on a non-AppKit thread may result in deadlocks.
+        // For instance, when initDevices() is blocked by a call to AppKit from the CGraphicsDevice constructor
+        // and AppKit is waiting on a CGraphicsEnvironment monitor via _AppEventHandler.handleNativeNotification(NOTIFY_SCREEN_CHANGE_PARAMETERS)
+        if (!CThreading.isAppKit() && SunGraphicsEnvironment.isInitialized()) {
+            throw new Error("Must only be called either from the AppKit thread or during the GraphicsEnvironment initialization");
+        }
+
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
         devices.clear();
         mainDisplayID = getMainDisplayID();
