@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.Set;
 import sun.awt.CGraphicsDevice;
 import sun.awt.SunToolkit;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.util.logging.PlatformLogger;
 
 final class _AppEventHandler {
@@ -274,9 +275,11 @@ final class _AppEventHandler {
                 if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                     logger.fine("NOTIFY_SCREEN_CHANGE_PARAMETERS");
                 }
-                for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
-                    if (gd instanceof CGraphicsDevice cgd) {
-                        cgd.displayParametersChanged();
+                if (SunGraphicsEnvironment.isInitialized()) {
+                    for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+                        if (gd instanceof CGraphicsDevice cgd) {
+                            cgd.displayParametersChanged();
+                        }
                     }
                 }
                 break;
