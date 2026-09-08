@@ -69,6 +69,17 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static Boolean uiScaleEnabled_overridden;
     private static final double debugScale;
 
+    private static volatile boolean initialized;
+    public static void setInitialized() {
+        initialized = true;
+    }
+    /**
+     * Whether {@link GraphicsEnvironment#getLocalGraphicsEnvironment()} has been initialized.
+     */
+    public static boolean isInitialized() {
+        return initialized;
+    }
+
     static {
         String uiScaleEnabledPropValue = System.getProperty("sun.java2d.uiScale.enabled", "true");
 
