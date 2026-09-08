@@ -186,6 +186,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         });
 
         if (!GraphicsEnvironment.isHeadless()) {
+            VKEnv.maybeSetQuirkSyncBeforePresentEnabled(() -> {
+                if (!("gnome".equals(getDesktop()))) {
+                    return false;
+                }
+
+                // Versions 46.0-46.2.x are affected, but we can only reliably test for the major version.
+                // Also enable the mitigation when the version is unknown just to be safe.
+                Integer gnomeShellMajorVersion = getGnomeShellMajorVersion();
+                return gnomeShellMajorVersion == null || gnomeShellMajorVersion == 46;
+            });
+
             toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
             toolkitThread.setDaemon(true);
             toolkitThread.start();

@@ -32,6 +32,7 @@
 #include "VKUtil.h"
 #include "VKAllocator.h"
 #include "VKBuffer.h"
+#include "VKEnv.h"
 #include "VKDevice.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
@@ -558,6 +559,12 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 
     // Present pending swapchains
     if (pendingPresentations > 0) {
+        if (VKEnv_GetInstance()->quirkSyncBeforePresent) {
+            // Workaround for Mutter 46.x crashing.
+            // Wait for the GPU to finish before presenting,
+            // which will avoid creating deferred presentations inside Mutter.
+            VKRenderer_Sync(renderer);
+        }
         ARRAY_RESIZE(renderer->pendingPresentation.results, pendingPresentations);
         VkPresentInfoKHR presentInfo = {
                 .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1666,7 +1673,7 @@ Java_sun_java2d_vulkan_VKTextRenderer_drawGlyphList
      jfloatArray glyphPositions)
 {
     unsigned char *images = NULL;
-    
+
     J2dTraceLn(J2D_TRACE_INFO, "VKTextRenderer_drawGlyphList");
 
     images = (unsigned char *)(*env)->GetPrimitiveArrayCritical(env, glyphImages, NULL);

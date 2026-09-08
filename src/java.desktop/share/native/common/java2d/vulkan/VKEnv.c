@@ -33,6 +33,7 @@
 #endif
 
 #include <string.h>
+#include <assert.h>
 #include "VKUtil.h"
 #include "VKCapabilityUtil.h"
 #include "VKEnv.h"
@@ -269,7 +270,8 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     }
     *vk = (VKEnv) {
         .platformData = platformData,
-        .presentationSupported = presentationSupported
+        .presentationSupported = presentationSupported,
+        .quirkSyncBeforePresent = VK_FALSE
     };
 
     pchar_array_t enabledLayers = VKNamedEntry_CollectNames(layers);
@@ -434,4 +436,15 @@ Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv* env, jclass vkenv, jlong platfor
 
     instance = vk;
     return deviceArray;
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKEnv
+ * Method:    enableQuirkSyncBeforePresent
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+Java_sun_java2d_vulkan_VKEnv_enableQuirkSyncBeforePresent(JNIEnv* env, jclass vkenv) {
+    assert(instance != NULL);
+    instance->quirkSyncBeforePresent = VK_TRUE;
 }

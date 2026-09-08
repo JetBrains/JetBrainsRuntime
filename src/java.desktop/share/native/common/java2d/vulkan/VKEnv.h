@@ -60,6 +60,7 @@ struct VKEnv {
 
     VKPlatformData* platformData;
     VkBool32 presentationSupported;
+    VkBool32 quirkSyncBeforePresent;
 
     INSTANCE_FUNCTION_TABLE(DECL_PFN)
     SURFACE_INSTANCE_FUNCTION_TABLE(DECL_PFN)

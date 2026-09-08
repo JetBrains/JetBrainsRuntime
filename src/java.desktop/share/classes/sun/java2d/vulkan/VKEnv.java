@@ -55,6 +55,12 @@ public final class VKEnv {
         @SuppressWarnings("removal")
         private static final int deviceNumber = !vulkan ? 0 : AccessController.doPrivileged(
                 (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.java2d.vulkan.deviceNumber", 0));
+
+        private static final String QUIRK_SYNC_BEFORE_PRESENT_PROPERTY_NAME = "sun.java2d.vulkan.quirk.syncBeforePresent";
+
+        @SuppressWarnings("removal")
+        private static final String quirkSyncBeforePresentProperty = AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> System.getProperty(QUIRK_SYNC_BEFORE_PRESENT_PROPERTY_NAME, "auto"));
     }
 
     private static final int UNINITIALIZED = 0;
@@ -68,10 +74,16 @@ public final class VKEnv {
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
+    // Block to wait for the GPU to draw the whole frame
+    // before issuing a vkQueuePresentKHR request.
+    // Used as a workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173 on Vulkan + Mutter 46.*
+    private static Boolean quirkSyncBeforePresent = null;
+
     public static native long initPlatformWayland(long nativePtr);
     private static native long initPlatformX11Native(long nativePtr);
     public static native long initPlatformWin32();
     private static native VKGPU[] initNative(long platformData);
+    private static native void enableQuirkSyncBeforePresent();
 
     static class VKInitializationException extends RuntimeException {
         private static final long serialVersionUID = 7476713504086007145L;
@@ -90,6 +102,22 @@ public final class VKEnv {
         return initPlatformX11Native(nativePtr);
     }
 
+    public static void maybeSetQuirkSyncBeforePresentEnabled(Supplier<Boolean> detectShouldEnable) {
+        if (quirkSyncBeforePresent != null) {
+            return;
+        }
+        if (!VKEnv.isPresentationEnabled()) {
+            quirkSyncBeforePresent = false;
+        } else {
+            quirkSyncBeforePresent = detectShouldEnable.get();
+        }
+        if (Boolean.TRUE.equals(quirkSyncBeforePresent)) {
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Vulkan: quirkSyncBeforePresent enabled as a workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173, expect slight graphics performance degradation");
+            }
+            enableQuirkSyncBeforePresent();
+        }
+    }
 
     public static synchronized void init(Supplier<Long> getPlatformData) {
         if (state > INITIALIZING) return;
@@ -150,6 +178,23 @@ public final class VKEnv {
                 log.fine(message);
             }
         }
+
+        maybeSetQuirkSyncBeforePresentEnabled(() -> resolveTrueFalseAutoProperty(Options.QUIRK_SYNC_BEFORE_PRESENT_PROPERTY_NAME, Options.quirkSyncBeforePresentProperty));
+    }
+
+    public static Boolean resolveTrueFalseAutoProperty(String propertyName, String propertyStr) {
+        if (propertyStr.equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (propertyStr.equalsIgnoreCase("false")) {
+            return false;
+        }
+        if (!propertyStr.equalsIgnoreCase("auto")) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning(String.format("Property %s must be one of true|false|auto, but '%s' provided instead - treating as 'auto'.", propertyName, propertyStr));
+            }
+        }
+        return null;
     }
 
     private static void checkInit() {
