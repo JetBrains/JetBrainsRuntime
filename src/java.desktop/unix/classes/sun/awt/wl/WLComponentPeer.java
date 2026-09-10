@@ -45,6 +45,8 @@ import sun.lwawt.LWMouseEventDispatcher;
 import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
+import javax.swing.JComponent;
+import javax.swing.JWindow;
 import javax.swing.SwingUtilities;
 import java.awt.AWTEvent;
 import java.awt.AWTException;
@@ -96,6 +98,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private static final PlatformLogger popupLog = PlatformLogger.getLogger("sun.awt.wl.popup.WLComponentPeer");
 
     public static final String POPUP_POSITION_UNCONSTRAINED_CLIENT_PROPERTY = "wlawt.popup_position_unconstrained";
+    public static final String WINDOW_SHADOW_PROPERTY = "Window.shadow";
 
     protected static final int MINIMUM_WIDTH = 1;
     protected static final int MINIMUM_HEIGHT = 1;
@@ -151,6 +154,21 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
+    static boolean componentShadowEnabled(Component target) {
+        if (target instanceof JWindow jWindow) {
+            return componentShadowEnabled(jWindow.getRootPane());
+        }
+
+        if (target instanceof JComponent jTarget) {
+            Object value = jTarget.getClientProperty(WINDOW_SHADOW_PROPERTY);
+            if (value instanceof Boolean boolValue) {
+                return boolValue;
+            }
+        }
+
+        return true;
+    }
+
     /**
      * Standard peer constructor, with corresponding Component
      */
@@ -174,7 +192,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             log.fine("WLComponentPeer: target=" + target + " with size=" + wlSize);
         }
 
-        if (dropShadow && shadowEnabled) {
+        if (dropShadow && shadowEnabled && componentShadowEnabled(target)) {
             shadow = new ShadowImpl(targetIsWlPopup() ? ShadowImage.POPUP_SHADOW_SIZE : ShadowImage.WINDOW_SHADOW_SIZE);
         } else {
             shadow = new NilShadow();
