@@ -412,6 +412,7 @@ static void VKRenderer_Wait(VKRenderer* renderer, uint64_t timestamp) {
 }
 
 void VKRenderer_Sync(VKRenderer* renderer) {
+    if (renderer == NULL) return;
     // Wait for latest checkpoint to be hit by GPU.
     // This only affects commands performed by this renderer, unlike vkDeviceWaitIdle.
     VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
