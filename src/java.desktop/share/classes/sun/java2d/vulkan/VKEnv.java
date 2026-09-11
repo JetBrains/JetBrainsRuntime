@@ -185,4 +185,19 @@ public final class VKEnv {
         final VKGPU first = defaultDevice;
         return Stream.concat(Stream.of(first), Stream.of(devices).filter(d -> d != first));
     }
+
+    public static Boolean resolveTrueFalseAutoProperty(String propertyName, String propertyStr) {
+        if (propertyStr.equalsIgnoreCase("true")) {
+            return true;
+        }
+        if (propertyStr.equalsIgnoreCase("false")) {
+            return false;
+        }
+        if (!propertyStr.equalsIgnoreCase("auto")) {
+            if (log.isLoggable(PlatformLogger.Level.WARNING)) {
+                log.warning(String.format("Property %s must be one of true|false|auto, but '%s' provided instead - treating as 'auto'.", propertyName, propertyStr));
+            }
+        }
+        return null;
+    }
 }

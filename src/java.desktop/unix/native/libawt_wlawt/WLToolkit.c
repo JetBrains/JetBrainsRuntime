@@ -1190,6 +1190,25 @@ Java_sun_awt_wl_WLToolkit_readEvents
     }
 }
 
+// Wait for a roundtrip in a separate queue.
+// We can't use the default queue, because we're already holding awtLock at this point.
+// Using a separate queue will only make sure that the *server* has produced events and put them in the respective queues,
+// those events are not yet (and don't need to be) processed by JBR yet.
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_roundtripForSyncBeforePopupMap
+  (JNIEnv *env, jclass clazz)
+{
+    struct wl_event_queue *queue = wl_display_create_queue(wl_display);
+    if (queue == NULL) {
+        return;
+    }
+    int rc = wl_display_roundtrip_queue(wl_display, queue);
+    wl_event_queue_destroy(queue);
+    if (rc < 0) {
+        wlCheckProtocolError(env);
+    }
+}
+
 JNIEXPORT jint JNICALL
 DEF_JNI_OnLoad(JavaVM *vm, void *reserved)
 {
