@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2008, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.security.PrivilegedAction;
 import java.util.concurrent.TimeUnit;
 
 import static sun.java2d.pipe.BufferedOpCodes.*;
+import java.util.concurrent.TimeUnit;
 
 /**
  * D3D-specific implementation of RenderQueue.
@@ -45,9 +46,12 @@ public final class D3DRenderQueue extends RenderQueue {
     private static D3DRenderQueue theInstance;
     private final QueueFlusher flusher;
 
-    @SuppressWarnings("removal")
     private D3DRenderQueue() {
-        flusher = AccessController.doPrivileged((PrivilegedAction<QueueFlusher>) QueueFlusher::new);
+        /*
+         * The thread must be a member of a thread group
+         * which will not get GCed before VM exit.
+         */
+        flusher = new QueueFlusher();
     }
 
     /**
@@ -138,18 +142,17 @@ public final class D3DRenderQueue extends RenderQueue {
         try {
             flusher.flushNow();
         } catch (Exception e) {
-            System.err.println("exception in flushNow:");
-            e.printStackTrace();
+            logger.severe("D3DRenderQueue.flushNow: exception occurred: ", e);
         }
     }
 
     @Override
     public void flushAndInvokeNow(Runnable r) {
+        // assert lock.isHeldByCurrentThread();
         try {
             flusher.flushAndInvokeNow(r);
         } catch (Exception e) {
-            System.err.println("exception in flushAndInvokeNow:");
-            e.printStackTrace();
+            logger.severe("D3DRenderQueue.flushAndInvokeNow: exception occurred: ", e);
         }
     }
 
@@ -171,8 +174,11 @@ public final class D3DRenderQueue extends RenderQueue {
     public static native int getFramePresentedStatus();
     public static native int setPresentStatistic(int status);
 
-    private class QueueFlusher implements Runnable {
-        private static volatile boolean needsFlush;
+    private final class QueueFlusher implements Runnable {
+        private final static long NOTIFY_WAIT_TIMEOUT_MS = 100L;
+        private final static long AWT_WAIT_TIMEOUT = 5L;
+
+        private volatile boolean needsFlush;
 
         private Runnable task;
         private Error error;
@@ -192,7 +198,7 @@ public final class D3DRenderQueue extends RenderQueue {
         }
 
         private void flushNow(Runnable task) {
-            Error err;
+            Error err = null;
             synchronized (this) {
                 if (task != null) {
                     this.task = task;
@@ -203,24 +209,26 @@ public final class D3DRenderQueue extends RenderQueue {
 
                 // wait for flush to complete
                 try {
-                    wait(100);
+                    wait(NOTIFY_WAIT_TIMEOUT_MS);
                 } catch (InterruptedException e) {
+                    logger.fine("QueueFlusher.flushNow: interrupted");
                 }
                 err = error;
             }
-            if (needsFlush) {
+            if ((err == null) && needsFlush) {
                 // if we still wait for flush then avoid potential deadlock
                 err = AWTThreading.executeWaitToolkit(() -> {
-                    synchronized (D3DRenderQueue.QueueFlusher.this) {
+                    synchronized (QueueFlusher.this) {
                         while (needsFlush) {
                             try {
-                                D3DRenderQueue.QueueFlusher.this.wait();
+                                QueueFlusher.this.wait();
                             } catch (InterruptedException e) {
+                                logger.fine("QueueFlusher.wait: interrupted");
                             }
                         }
                         return error;
                     }
-                }, 5, TimeUnit.SECONDS);
+                }, AWT_WAIT_TIMEOUT, TimeUnit.SECONDS);
             }
             // re-throw any error that may have occurred during the flush
             if (err != null) {
@@ -232,18 +240,19 @@ public final class D3DRenderQueue extends RenderQueue {
             flushNow(task);
         }
 
+        @Override
         public synchronized void run() {
-            boolean timedOut = false;
+            boolean locked = false;
             while (true) {
                 while (!needsFlush) {
                     try {
-                        timedOut = false;
+                        locked = false;
                         /*
                          * Wait until we're woken up with a flushNow() call,
                          * or the timeout period elapses (so that we can
                          * flush the queue periodically).
                          */
-                        wait(100);
+                        wait(NOTIFY_WAIT_TIMEOUT_MS);
                         /*
                          * We will automatically flush the queue if the
                          * following conditions apply:
@@ -252,7 +261,7 @@ public final class D3DRenderQueue extends RenderQueue {
                          *   - there is something in the queue to flush
                          * Otherwise, just continue (we'll flush eventually).
                          */
-                        if (!needsFlush && (timedOut = tryLock())) {
+                        if (!needsFlush && (locked = tryLock())) {
                             if (buf.position() > 0) {
                                 needsFlush = true;
                             } else {
@@ -260,6 +269,7 @@ public final class D3DRenderQueue extends RenderQueue {
                             }
                         }
                     } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.run: interrupted");
                     }
                 }
                 try {
@@ -271,13 +281,13 @@ public final class D3DRenderQueue extends RenderQueue {
                     if (task != null) {
                         task.run();
                     }
-                } catch (Error e) {
-                    error = e;
-                } catch (Exception x) {
-                    System.err.println("exception in QueueFlusher:");
-                    x.printStackTrace();
+                } catch (Error err) {
+                    logger.severe("QueueFlusher.run: error occurred: ", err);
+                    error = err;
+                } catch (Exception e) {
+                    logger.severe("QueueFlusher.run: exception occurred: ", e);
                 } finally {
-                    if (timedOut) {
+                    if (locked) {
                         unlock();
                     }
                     task = null;
