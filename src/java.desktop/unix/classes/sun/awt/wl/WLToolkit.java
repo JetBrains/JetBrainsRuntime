@@ -186,6 +186,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         });
 
         if (!GraphicsEnvironment.isHeadless()) {
+            quirkSyncBeforePopupMap = computeQuirkSyncBeforePopupMap();
+            if (quirkSyncBeforePopupMap && log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Vulkan: quirkSyncBeforePopupMap enabled as a workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173");
+            }
+
             toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
             toolkitThread.setDaemon(true);
             toolkitThread.start();
@@ -1226,6 +1231,40 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         preferredIconSizes.add(size);
     }
 
+    // A workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173
+    private boolean quirkSyncBeforePopupMap = false;
+
+    private boolean computeQuirkSyncBeforePopupMap() {
+        // Never enable when not using Vulkan with presentation
+        if (!VKEnv.isPresentationEnabled()) {
+            return false;
+        }
+
+        // First, check the property override
+        final String syncBeforePopupMapPropertyName = "sun.java2d.vulkan.quirk.syncBeforePopupMap";
+        Boolean overrideValue = VKEnv.resolveTrueFalseAutoProperty(syncBeforePopupMapPropertyName, System.getProperty(syncBeforePopupMapPropertyName, "auto"));
+        if (overrideValue != null) {
+            return overrideValue;
+        }
+
+        // Match GNOME 46 and unknown GNOME versions to be safe.
+        if (!"gnome".equals(getDesktop())) {
+            return false;
+        }
+        Integer majorVersion = getGnomeShellMajorVersion();
+        return majorVersion == null || majorVersion == 46;
+    }
+
+    public void syncBeforePopupMapIfEnabled() {
+        if (!quirkSyncBeforePopupMap) {
+            return;
+        }
+
+        sync();
+        roundtripForSyncBeforePopupMap();
+    }
+
+    private native static void roundtripForSyncBeforePopupMap();
 
     public static WLToolkit getWLToolkit() {
         return (WLToolkit)Toolkit.getDefaultToolkit();

@@ -436,6 +436,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                 wlSurface = new WLMainSurface((WLWindowPeer) this);
                 long wlSurfacePtr = wlSurface.getWlSurfacePtr();
                 if (isWlPopup) {
+                    WLToolkit.getWLToolkit().syncBeforePopupMapIfEnabled();
                     Window popup = (Window) target;
                     Window toplevel = getToplevelFor(popup.getParent());
                     Point nativeLocation = nativeLocationForPopup(popup, toplevel);
