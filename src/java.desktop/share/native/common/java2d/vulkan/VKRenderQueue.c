@@ -102,6 +102,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
 
     end = b + limit;
 
+    bool sync = false;
     while (b < end) {
         jint opcode = NEXT_INT(b);
 
@@ -560,6 +561,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                               "VKRenderQueue_flushBuffer: SYNC");
+                sync = true;
             }
             break;
 
@@ -763,5 +765,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
     VKEnv* vk = VKEnv_GetInstance();
     for (uint32_t i = 0; i < vk->devices.size; i++) {
         VKRenderer_Flush(vk->devices.data[i].renderer);
+    }
+    if (sync) {
+        for (uint32_t i = 0; i < vk->devices.size; i++) {
+            VKRenderer_Sync(vk->devices.data[i].renderer);
+        }
     }
 }
