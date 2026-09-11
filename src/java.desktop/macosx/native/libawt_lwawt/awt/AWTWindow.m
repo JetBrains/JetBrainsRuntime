@@ -757,11 +757,9 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (AWTWindow *) getTopmostWindowUnderMouse {
+    NSInteger topmostWindowUnderMouseID = [AWTWindow getTopmostWindowUnderMouseID];
     NSEnumerator *windowEnumerator = [[NSApp windows] objectEnumerator];
     NSWindow *window;
-
-    NSInteger topmostWindowUnderMouseID = [AWTWindow getTopmostWindowUnderMouseID];
-
     while ((window = [windowEnumerator nextObject]) != nil) {
         if ([window windowNumber] == topmostWindowUnderMouseID) {
             BOOL isAWTWindow = [AWTWindow isAWTWindow: window];
@@ -792,12 +790,9 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (void) synthesizeMouseEnteredExitedEventsForAllWindows {
-
     NSInteger topmostWindowUnderMouseID = [AWTWindow getTopmostWindowUnderMouseID];
-    NSArray *windows = [NSApp windows];
+    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
     NSWindow *window;
-
-    NSEnumerator *windowEnumerator = [windows objectEnumerator];
     while ((window = [windowEnumerator nextObject]) != nil) {
         if ([AWTWindow isAWTWindow: window]) {
             BOOL isUnderMouse = ([window windowNumber] == topmostWindowUnderMouseID);

@@ -275,7 +275,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, i
             : [eventWindow convertRectToScreen:NSMakeRect(eventLocation.x, eventLocation.y, 0, 0)].origin;
         // macOS can report mouseMoved events to a window even if it's not showing currently (see JBR-2702)
         // so we're performing an additional check here
-        if (self.window.windowNumber == [NSWindow windowNumberAtPoint:screenPoint belowWindowWithWindowNumber:0]) {
+        if (self.window.windowNumber == [NSWindow windowNumberAtPoint:screenPoint belowWindowWithWindowNumber:kCGNullWindowID]) {
             [self deliverJavaMouseEvent: event];
             return;
         }

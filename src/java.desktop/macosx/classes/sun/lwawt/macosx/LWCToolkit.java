@@ -1197,7 +1197,8 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     public PlatformWindow getPlatformWindowUnderMouse() {
-        return CPlatformWindow.nativeGetTopmostPlatformWindowUnderMouse();
+        // May be blocking thread (appkit wait):
+        return AWTThreading.executeWaitToolkit(() -> CPlatformWindow.nativeGetTopmostPlatformWindowUnderMouse());
     }
 
     @Override
