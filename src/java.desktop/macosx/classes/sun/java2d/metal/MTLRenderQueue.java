@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,14 @@
 
 package sun.java2d.metal;
 
+import sun.awt.AWTThreading;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
 
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_CONFIG;
 import static sun.java2d.pipe.BufferedOpCodes.SYNC;
+import java.util.concurrent.TimeUnit;
 
 /**
  * MTL-specific implementation of RenderQueue.  This class provides a
@@ -153,7 +155,10 @@ public final class MTLRenderQueue extends RenderQueue {
     }
 
     private final class QueueFlusher implements Runnable {
-        private boolean needsFlush;
+        private final static long NOTIFY_WAIT_TIMEOUT_MS = 100L;
+        private final static long AWT_WAIT_TIMEOUT = 5L;
+
+        private volatile boolean needsFlush;
         private Runnable task;
         private Error error;
         private final Thread thread;
@@ -161,50 +166,72 @@ public final class MTLRenderQueue extends RenderQueue {
         public QueueFlusher() {
             String name = "Java2D Queue Flusher";
             thread = new Thread(ThreadGroupUtils.getRootThreadGroup(),
-                    this, name, 0, false);
+                                this, name, 0, false);
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();
         }
 
-        public synchronized void flushNow() {
-            // wake up the flusher
-            needsFlush = true;
-            notify();
+        public void flushNow() {
+            flushNow(null);
+        }
 
-            // wait for flush to complete
-            while (needsFlush) {
+        private void flushNow(Runnable task) {
+            Error err = null;
+            synchronized (this) {
+                if (task != null) {
+                    this.task = task;
+                }
+                // wake up the flusher
+                needsFlush = true;
+                notifyAll();
+
+                // wait for flush to complete
                 try {
-                    wait();
+                    wait(NOTIFY_WAIT_TIMEOUT_MS);
                 } catch (InterruptedException e) {
                     logger.fine("QueueFlusher.flushNow: interrupted");
                 }
+                err = error;
             }
-
+            if ((err == null) && needsFlush) {
+                // if we still wait for flush then avoid potential deadlock
+                err = AWTThreading.executeWaitToolkit(() -> {
+                    synchronized (QueueFlusher.this) {
+                        while (needsFlush) {
+                            try {
+                                QueueFlusher.this.wait();
+                            } catch (InterruptedException e) {
+                                logger.fine("QueueFlusher.wait: interrupted");
+                            }
+                        }
+                        return error;
+                    }
+                }, AWT_WAIT_TIMEOUT, TimeUnit.SECONDS);
+            }
             // re-throw any error that may have occurred during the flush
-            if (error != null) {
-                throw error;
+            if (err != null) {
+                throw err;
             }
         }
 
-        public synchronized void flushAndInvokeNow(Runnable task) {
-            this.task = task;
-            flushNow();
+        public void flushAndInvokeNow(Runnable task) {
+            flushNow(task);
         }
 
         @Override
         public synchronized void run() {
-            boolean timedOut = false;
+            boolean locked = false;
             while (true) {
                 while (!needsFlush) {
                     try {
-                        timedOut = false;
+                        locked = false;
                         /*
                          * Wait until we're woken up with a flushNow() call,
                          * or the timeout period elapses (so that we can
                          * flush the queue periodically).
                          */
-                        wait(100);
+                        wait(NOTIFY_WAIT_TIMEOUT_MS);
                         /*
                          * We will automatically flush the queue if the
                          * following conditions apply:
@@ -213,7 +240,7 @@ public final class MTLRenderQueue extends RenderQueue {
                          *   - there is something in the queue to flush
                          * Otherwise, just continue (we'll flush eventually).
                          */
-                        if (!needsFlush && (timedOut = tryLock())) {
+                        if (!needsFlush && (locked = tryLock())) {
                             if (buf.position() > 0) {
                                 needsFlush = true;
                             } else {
@@ -239,13 +266,13 @@ public final class MTLRenderQueue extends RenderQueue {
                 } catch (Exception e) {
                     logger.severe("QueueFlusher.run: exception occurred: ", e);
                 } finally {
-                    if (timedOut) {
+                    if (locked) {
                         unlock();
                     }
                     task = null;
                     // allow the waiting thread to continue
                     needsFlush = false;
-                    notify();
+                    notifyAll();
                 }
             }
         }
