@@ -81,6 +81,10 @@ public final class VKEnv {
     }
 
     public static long initPlatformX11(long nativePtr) {
+        String allowExperimentalXToolkitProperty = System.getProperty("sun.java2d.vulkan.allowExperimental.XToolkit", "false");
+        if (!allowExperimentalXToolkitProperty.equalsIgnoreCase("true")) {
+            throw new VKInitializationException("Vulkan on XToolkit is in an experimental state, provide -Dsun.java2d.vulkan.allowExperimental.XToolkit=true to enable");
+        }
         String forceOnXWaylandProperty = System.getProperty("sun.java2d.vulkan.forceOnXWayland", "false");
         boolean forceOnXWayland = forceOnXWaylandProperty.equalsIgnoreCase("true");
         if (!forceOnXWayland && Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit && sunToolkit.isRunningOnXWayland()) {
