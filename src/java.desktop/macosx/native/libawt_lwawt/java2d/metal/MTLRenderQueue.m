@@ -651,11 +651,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
-                            sync = NO;
                         } else {
                             [mtlc commitCommandBuffer:NO display:NO];
                         }
@@ -672,9 +669,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
-                        [mtlc commitCommandBuffer:NO display:NO];
+                        if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
+                            [mtlc commitCommandBuffer:YES display:YES];
+                        } else {
+                            [mtlc commitCommandBuffer:NO display:NO];
+                        }
                     }
 
                     if (mtlInfo != NULL) {
@@ -692,8 +691,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA free];
-                            [mtlc.glyphCacheLCD free];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
@@ -709,8 +706,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA free];
-                            [mtlc.glyphCacheLCD free];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
