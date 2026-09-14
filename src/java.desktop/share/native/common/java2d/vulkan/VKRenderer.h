@@ -83,6 +83,8 @@ void VKRenderer_RecordBarriers(VKRenderer* renderer,
 
 void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool* descriptorPool, VkDescriptorSet* set);
 
+void VKRenderer_CleanupPresentations(VKRenderer* renderer, VkBool32 wait, VKSwapchain *waitSwapchain);
+
 void VKRenderer_Destroy(VKRenderer* renderer);
 
 /**
