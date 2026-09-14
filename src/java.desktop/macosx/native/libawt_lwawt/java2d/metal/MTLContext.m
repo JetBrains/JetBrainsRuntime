@@ -131,6 +131,7 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
     NSMutableArray * _pooledTextures;
+    NSMutableArray * _resources;
     NSLock* _lock;
 }
 
@@ -139,6 +140,7 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     if (self) {
         _commandBuffer = [cmdBuf retain];
         _pooledTextures = [[NSMutableArray alloc] init];
+        _resources = [[NSMutableArray alloc] init];
         _lock = [[NSLock alloc] init];
     }
     return self;
@@ -151,13 +153,15 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 - (void) onComplete { // invoked from completion handler in some pooled thread
     [_lock lock];
     @try {
-        for (int c = 0; c < [_pooledTextures count]; ++c)
+        for (int c = 0, len = [_pooledTextures count]; c < len; ++c) {
             [[_pooledTextures objectAtIndex:c] releaseTexture];
+        }
         [_pooledTextures removeAllObjects];
+        // the resources array held the last reference to these memory allocations
+        [_resources removeAllObjects];
     } @finally {
         [_lock unlock];
     }
-
 }
 
 - (void) registerPooledTexture:(MTLPooledTextureHandle *)handle {
@@ -169,11 +173,26 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     }
 }
 
+- (void) registerResource:(id<MTLResource>)resource {
+    if (resource == nil) {
+        return;
+    }
+    [_lock lock];
+    @try {
+        [_resources addObject:resource];
+    } @finally {
+        [_lock unlock];
+    }
+}
+
 - (void) dealloc {
     [self onComplete];
 
     [_pooledTextures release];
     _pooledTextures = nil;
+
+    [_resources release];
+    _resources = nil;
 
     [_commandBuffer release];
     _commandBuffer = nil;
