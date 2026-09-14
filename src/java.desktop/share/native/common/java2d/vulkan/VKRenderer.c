@@ -334,7 +334,7 @@ void VKRenderer_CreateImageDescriptorSet(VKRenderer* renderer, VkDescriptorPool*
     *set = VKRenderer_AllocateImageDescriptorSet(renderer, *descriptorPool);
 }
 
-static void VKRenderer_CleanupPresentations(VKRenderer* renderer, VkBool32 wait) {
+void VKRenderer_CleanupPresentations(VKRenderer* renderer, VkBool32 wait, VKSwapchain *waitSwapchain) {
     // This is a remove_if loop, we remove entries from presentedImages, for which the fence was signaled.
     uint32_t outIndex = 0;
     for (uint32_t i = 0; i < renderer->presentedImages.size; ++i) {
@@ -344,7 +344,7 @@ static void VKRenderer_CleanupPresentations(VKRenderer* renderer, VkBool32 wait)
             VKSwapchain_Release(presentedImage.swapchain);
             continue;
         }
-        if (wait) {
+        if (wait && (waitSwapchain == NULL || waitSwapchain == presentedImage.swapchain)) {
             renderer->device->vkWaitForFences(renderer->device->handle, 1, &presentedImage.fence, VK_TRUE, UINT64_MAX);
         }
         VkResult fenceStatus = renderer->device->vkGetFenceStatus(renderer->device->handle, presentedImage.fence);
@@ -375,7 +375,7 @@ static void VKRenderer_CleanupPendingResources(VKRenderer* renderer) {
         if (entry.handler == NULL) break;
         entry.handler(device, entry.data);
     }
-    VKRenderer_CleanupPresentations(renderer, VK_FALSE);
+    VKRenderer_CleanupPresentations(renderer, VK_FALSE, NULL);
 }
 
 static VkSemaphore VKRenderer_AddPendingSemaphore(VKRenderer* renderer) {
@@ -416,7 +416,7 @@ void VKRenderer_Sync(VKRenderer* renderer) {
     // Wait for latest checkpoint to be hit by GPU.
     // This only affects commands performed by this renderer, unlike vkDeviceWaitIdle.
     VKRenderer_Wait(renderer, renderer->writeTimestamp - 1);
-    VKRenderer_CleanupPresentations(renderer, VK_TRUE);
+    VKRenderer_CleanupPresentations(renderer, VK_TRUE, NULL);
 }
 
 VKRenderer* VKRenderer_Create(VKDevice* device) {
