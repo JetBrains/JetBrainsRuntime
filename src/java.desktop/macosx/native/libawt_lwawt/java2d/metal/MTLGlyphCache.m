@@ -232,7 +232,19 @@
     if (_cacheInfo->Flush != NULL) {
         _cacheInfo->Flush(_cacheInfo->mtlc);
     }
-    [_cacheInfo->texture release];
+    if (_cacheInfo->texture != nil) {
+        if (_ctx != nil) {
+            // Encoded commands may still read the texture. The command
+            // buffer keeps it alive until it completes, so the caller
+            // does not need to wait for the GPU here.
+            // texture is retained by MTLCommandBufferWrapper
+            // (released once the command buffer is completed):
+            [[_ctx getCommandBufferWrapper] registerResource:_cacheInfo->texture];
+        }
+        // release texture reference anyway:
+        [_cacheInfo->texture release];
+        _cacheInfo->texture = nil;
+    }
 
     while (_cacheInfo->head != NULL) {
         MTLCacheCellInfo *cellinfo = _cacheInfo->head;
@@ -249,6 +261,9 @@
 }
 
 - (void) dealloc {
+    // the context is being destroyed: release the texture directly
+    // ie avoid MTLCommandBufferWrapper registerAllocation():
+    _ctx = nil;
     [self free];
     [super dealloc];
 }
