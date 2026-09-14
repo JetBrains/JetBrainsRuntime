@@ -30,6 +30,8 @@
 #include "VKImage.h"
 #include "VKEnv.h"
 
+#include <assert.h>
+
 /**
  * Release VKSDOps resources & reset to initial state.
  */
@@ -110,13 +112,24 @@ void VKSwapchain_Release(VKSwapchain* swapchain) {
     VKSwapchain_DestroyImpl(swapchain);
 }
 
+static void VKSwapchain_DestroySync(VKSwapchain* swapchain) {
+    if (swapchain == NULL) return;
+    VKDevice* device = swapchain->device;
+    VKRenderer* renderer = device->renderer;
+    if (renderer != NULL) {
+        VKRenderer_CleanupPresentations(renderer, VK_TRUE, swapchain);
+    }
+    assert(swapchain->refcount == 1);
+    VKSwapchain_Release(swapchain);
+}
+
 void VKSD_ResetSurface(VKSDOps* vksdo) {
     VKSD_ResetImageSurface(vksdo);
 
     // Release VKWinSDOps resources, if applicable.
     if (vksdo->drawableType == VKSD_WINDOW) {
         VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
-        VKSwapchain_Release(vkwinsdo->swapchain);
+        VKSwapchain_DestroySync(vkwinsdo->swapchain);
         vkwinsdo->swapchain = NULL;
         if (vkwinsdo->surface != VK_NULL_HANDLE) {
             VKEnv* vk = VKEnv_GetInstance();
