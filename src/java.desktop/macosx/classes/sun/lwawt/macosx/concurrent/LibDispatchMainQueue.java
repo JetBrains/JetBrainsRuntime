@@ -26,8 +26,12 @@
 package sun.lwawt.macosx.concurrent;
 
 import java.util.concurrent.Executor;
+import sun.util.logging.PlatformLogger;
 
 abstract class LibDispatchMainQueue extends LibDispatchQueue implements Executor {
+
+        protected final static PlatformLogger logger = PlatformLogger.getLogger(LibDispatchMainQueue.class.getName());
+
         public LibDispatchMainQueue() {
                 super(LibDispatchNative.nativeGetMainQueue());
         }
@@ -40,7 +44,10 @@ abstract class LibDispatchMainQueue extends LibDispatchQueue implements Executor
         static class Sync extends LibDispatchMainQueue {
                 @Override
                 public void execute(final Runnable task) {
-                        LibDispatchNative.nativeExecuteSync(ptr, task);
+                    logger.info("LibDispatchMainQueue.Sync: running " + task + " ...");
+                    LibDispatchNative.nativeExecuteSync(ptr, task);
+                    logger.info("LibDispatchMainQueue.Sync: exit " + task + " ...");
+
                 }
         }
 

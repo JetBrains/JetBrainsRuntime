@@ -238,28 +238,74 @@ public abstract class SunToolkit extends Toolkit
         awtLockListeners.add(l);
     }
 
+    private final static PlatformLogger toolkitLogger = PlatformLogger.getLogger(SunToolkit.class.getName());
+
+    private static final boolean TRACE_AWT_LOCK_WAIT = false;
+
+    private final static boolean AWT_LOCK_ACTIVE_WAIT = true;
+    private final static long AWT_LOCK_TIMEOUT_MS = 10L;
+
     public static void awtLock() {
+        final boolean isMainThread = TRACE_AWT_LOCK_WAIT && "AppKit Thread".equals(Thread.currentThread().getName());
+        if (isMainThread) {
+            toolkitLogger.info("SunToolkit.awtLock[" + Thread.currentThread().getName()
+                + "]: MAIN: from\n", new Throwable());
+        }
         // fast-path:
         if (!awtTryLock()) {
-            // lock() may block current thread = wait:
-            AWT_LOCK.lock();
+            boolean waited = false;
+            final long startTime = System.nanoTime();
+            if (AWT_LOCK_ACTIVE_WAIT) {
+                while (true) {
+                    /*
+                     * use timeout to ensure liveness (+ monitoring)
+                     */
+                    if (awtTryLock(AWT_LOCK_TIMEOUT_MS)) {
+                        break;
+                    }
+                    if (TRACE_AWT_LOCK_WAIT) {
+                        waited = true;
+                        toolkitLogger.info("SunToolkit.awtLock[" + Thread.currentThread().getName()
+                                + "]: waiting, elapsed = " + 1e-6 * (System.nanoTime() - startTime) + " ms");
+                    }
+                }
+            } else {
+                // lock() may block current thread = wait:
+                AWT_LOCK.lock();
+                if (TRACE_AWT_LOCK_WAIT) {
+                    waited = true;
+                }
+            }
+            if (TRACE_AWT_LOCK_WAIT && waited) {
+                toolkitLogger.info("SunToolkit.awtLock[" + Thread.currentThread().getName()
+                        + "]: waited: elapsed = " + 1e-6 * (System.nanoTime() - startTime) + " ms");
+            }
             // AWT_LOCK owned by the current thread
             if (awtLockListeners != null) {
                 awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
             }
         }
+        if (false && isMainThread) {
+            toolkitLogger.info("Waiting 177ms");
+            try {
+                Thread.sleep(177L);
+            } catch (InterruptedException ie) {}
+        }
     }
 
     public static boolean awtTryLock() {
+        return awtTryLock(0L);
+    }
+
+    public static boolean awtTryLock(final long timeoutMillis) {
         try {
-            final boolean acquired = AWT_LOCK.tryLock(0L, TimeUnit.NANOSECONDS);
+            final boolean acquired = AWT_LOCK.tryLock(timeoutMillis, TimeUnit.MILLISECONDS);
             if (acquired && (awtLockListeners != null)) {
                 awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
             }
             return acquired;
         } catch (InterruptedException ie) {
-            PlatformLogger.getLogger(SunToolkit.class.getName())
-                    .fine("awtTryLock() interrupted");
+            toolkitLogger.fine("awtTryLock() interrupted");
         }
         return false;
     }
@@ -1361,7 +1407,7 @@ public abstract class SunToolkit extends Toolkit
         }
         try {
             // We should wait unconditionally for the first event on EDT
-            EventQueue.invokeAndWait(() -> {/*dummy implementation*/});
+            EventQueue.invokeAndWait(EventQueue.dummyRunnable);
         } catch (InterruptedException | InvocationTargetException ignored) {
         }
         int bigLoop = 0;
@@ -1966,6 +2012,10 @@ public abstract class SunToolkit extends Toolkit
  * code, and we mustn't ever call client code from the toolkit thread.
  */
 class PostEventQueue {
+    private static final boolean TRACE_RUN_LOOP = false;
+
+    private final static PlatformLogger toolkitLogger = (TRACE_RUN_LOOP) ? PlatformLogger.getLogger(SunToolkit.class.getName()) : null;
+
     private EventQueueItem queueHead = null;
     private EventQueueItem queueTail = null;
     private final EventQueue eventQueue;
@@ -1986,9 +2036,9 @@ class PostEventQueue {
      * potentially lead to deadlock
      */
     public void flush() {
+        if (TRACE_RUN_LOOP) toolkitLogger.info("PostEventQueue.flush(): start on queue : " + eventQueue);
 
-        Thread newThread = Thread.currentThread();
-
+        final Thread newThread = Thread.currentThread();
         try {
             EventQueueItem tempQueue;
             synchronized (this) {
@@ -2024,10 +2074,11 @@ class PostEventQueue {
                     notifyAll();
                 }
             }
-        }
-        catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             // Couldn't allow exception go up, so at least recover the flag
             newThread.interrupt();
+        } finally {
+            if (TRACE_RUN_LOOP) toolkitLogger.info("PostEventQueue.flush(): exit");
         }
     }
 

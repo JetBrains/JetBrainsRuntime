@@ -112,6 +112,10 @@ enum {
 MTLContext *MTLRenderQueue_GetCurrentContext();
 BMTLSDOps *MTLRenderQueue_GetCurrentDestination();
 
+const char* MTLRenderQueue_GetCurrentOpCode();
+
+void MTLRenderQueue_DumpStats();
+
 extern jint mtlPreviousOp;
 
 #endif /* MTLRenderQueue_h_Included */

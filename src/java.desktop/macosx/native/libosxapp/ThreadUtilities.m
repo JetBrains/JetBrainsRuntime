@@ -71,7 +71,6 @@ static BOOL isNSApplicationOwner = NO;
 static JNIEnv *appKitEnv = NULL;
 static jobject appkitThreadGroup = NULL;
 
-static NSString* CriticalRunLoopMode = @"AWTCriticalRunLoopMode";
 static NSString* JavaRunLoopMode = @"AWTRunLoopMode";
 static NSArray<NSString*> *javaModes = nil;
 static NSArray<NSString*> *allModesExceptJava = nil;
@@ -79,7 +78,7 @@ static NSArray<NSString*> *allModesExceptJava = nil;
 /* Traceability data */
 static const BOOL forceTracing = NO;
 static const BOOL enableTracing = NO || forceTracing;
-static const BOOL enableTracingLog = NO;
+static const BOOL enableTracingLog = YES;
 static const BOOL enableTracingNSLog = YES && enableTracingLog;
 static const BOOL enableCallStacks = YES;
 
@@ -162,18 +161,16 @@ static void setBlockingEventDispatchThread(BOOL value) {
 }
 
 + (void)initialize {
-    /* All the standard modes plus the Critical mode */
+    /* All the standard modes */
     allModesExceptJava = [[NSArray alloc] initWithObjects:NSRunLoopCommonModes,
                                                           NSModalPanelRunLoopMode,
                                                           NSEventTrackingRunLoopMode,
-                                                          CriticalRunLoopMode,
                                                           nil];
 
-    /* All the standard modes plus Critical and Java modes */
+    /* All the standard modes plus Java mode */
     javaModes = [[NSArray alloc] initWithObjects:NSRunLoopCommonModes,
                                            NSModalPanelRunLoopMode,
                                            NSEventTrackingRunLoopMode,
-                                           CriticalRunLoopMode,
                                            JavaRunLoopMode,
                                            nil];
 }
@@ -226,13 +223,9 @@ AWT_ASSERT_APPKIT_THREAD;
                     [[RunLoopCallbackQueue shared] processQueuedCallbacks];
                 }
         );
-        // Register observer on the Main RunLoop for all modes (common, critical & java):
+        // Register observer on the Main RunLoop for all modes (common & java):
         CFRunLoopRef mainRunLoop = [[NSRunLoop mainRunLoop] getCFRunLoop];
         CFRunLoopAddObserver(mainRunLoop, observer, kCFRunLoopCommonModes);
-
-        CFStringRef criticalModeRef = (__bridge CFStringRef) CriticalRunLoopMode;
-        CFRunLoopAddObserver(mainRunLoop, observer, criticalModeRef);
-        CFRelease(criticalModeRef);
 
         CFStringRef javaModeRef = (__bridge CFStringRef) JavaRunLoopMode;
         CFRunLoopAddObserver(mainRunLoop, observer, javaModeRef);
@@ -268,7 +261,7 @@ AWT_ASSERT_APPKIT_THREAD;
          NSString* symbol = symbols[i];
          if (![symbol containsString: @"performOnMainThread"]
              && ((prefixSymbol == nil) || ![symbol containsString: prefixSymbol])) {
-             return [symbol retain];
+             return symbol; // autoreleased ?
          }
     }
     return nil;
@@ -289,7 +282,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if (pos != -1) {
         const NSRange theRange = NSMakeRange(pos, symbols.count - pos);
         const NSArray<NSString*> *filteredSymbols = [symbols subarrayWithRange:theRange];
-        return [[filteredSymbols componentsJoinedByString:@"\n"] retain];
+        return [filteredSymbols componentsJoinedByString:@"\n"]; // autoreleased ?
     }
     return nil;
 }
@@ -347,9 +340,7 @@ AWT_ASSERT_APPKIT_THREAD;
  * This implementation uses fast-path if MainThread latency threshold < 0;
  * slow-path with tracing and monitoring otherwise.
  *
- * useJavaModes=NO will use the CriticalRunLoopMode
- * to ensure the execution of the given selector AS SOON AS POSSIBLE
- * i.e. during the next RunLoop run() with the lowest possible latency.
+ * useJavaModes=NO will use the standard modes.
  */
 + (void)performOnMainThread:(SEL)aSelector
                          on:(id)target
@@ -357,6 +348,12 @@ AWT_ASSERT_APPKIT_THREAD;
               waitUntilDone:(BOOL)wait
                useJavaModes:(BOOL)useJavaModes
 {
+    if (0) {
+        // force deadlocks ?
+        useJavaModes = YES;
+    }
+
+
     const int mtThreshold = getMainThreadLatencyThreshold();
 
     if (!forceTracing && (!enableTracing || (mtThreshold < 0))) {
@@ -393,9 +390,7 @@ AWT_ASSERT_APPKIT_THREAD;
  *
  * This implementation monitors the selector execution (tracing).
  *
- * useJavaModes=NO will use the CriticalRunLoopMode
- * to ensure the execution of the given selector AS SOON AS POSSIBLE
- * i.e. during the next RunLoop run() with the lowest possible latency.
+ * useJavaModes=NO will use the standard modes.
  */
 + (void)performOnMainThreadWithTracing:(SEL)aSelector
                                     on:(id)target
@@ -409,7 +404,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     // Slow path:
     const int mtThreshold = getMainThreadLatencyThreshold();
-    const bool doTrace = (enableTracing && doWait);
+    const BOOL doTrace = (enableTracing && (doWait || blockingEDT));
 
     NSArray<NSString*> *runLoopModes = (useJavaModes) ? javaModes : allModesExceptJava;
 
@@ -424,7 +419,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if (doTrace) {
         // Get current thread env:
         cenv = [ThreadUtilities getJNIEnvUncached];
-        char* operation = (invokeDirect ? "now  " : (blockingEDT ? "blocking" : "later"));
+        char* operation = (invokeDirect ? "now  " : (blockingEDT ? "blockingEDT" : (doWait) ? "WAIT" : "later"));
 
         // Record thread stack now and return another copy (auto-released):
         callerCtx = [ThreadUtilities recordTraceContext:nil actionId:actionId useJavaModes:useJavaModes operation:operation];
@@ -469,6 +464,10 @@ AWT_ASSERT_APPKIT_THREAD;
             if (blockingEDT) {
                 setBlockingEventDispatchThread(YES);
             }
+            if (false && doTrace) {
+                NSLog(@"sleep 0.123s ...");
+                [NSThread sleepForTimeInterval:0.123];
+            }
             [target performSelector:aSelector withObject:arg];
         } @finally {
             if (blockingEDT) {
@@ -510,10 +509,6 @@ AWT_ASSERT_APPKIT_THREAD;
         // Finally reset thread context in context store:
         [ThreadUtilities resetTraceContext];
     }
-}
-
-+ (NSString*)criticalRunLoopMode {
-    return CriticalRunLoopMode;
 }
 
 + (NSString*)javaRunLoopMode {
@@ -635,7 +630,6 @@ AWT_ASSERT_APPKIT_THREAD;
         [dump appendString:@"\n] \n"];
     }
     [dump appendString:@"]"];
-    [dump retain];
     return dump;
 }
 @end
@@ -799,7 +793,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 /* Traceability data */
 @implementation ThreadTraceContext
 
-@synthesize sleep, useJavaModes, actionId, operation, timestamp, caller, callStack;
+@synthesize useJavaModes, actionId, operation, timestamp, caller, callStack;
 
 - (id)init:(NSString*)threadName {
     self = [super init];
@@ -813,7 +807,6 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 - (id)copyWithZone:(NSZone *)zone {
     ThreadTraceContext *newCtx = [[ThreadTraceContext alloc] init];
     if (newCtx) {
-        [newCtx setSleep:[self sleep]];
         [newCtx setUseJavaModes:[self useJavaModes]];
         [newCtx setActionId:[self actionId]];
         [newCtx setOperation:[self operation]];
@@ -829,7 +822,6 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 }
 
 - (void)reset {
-    self.sleep = NO;
     self.useJavaModes = NO;
     self.actionId = -1;
     self.operation = nil;
@@ -839,12 +831,10 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
 }
 
 - (void)dealloc {
+    [self.threadName release];
+    [self.caller release];
+    [self.callStack release];
     [super dealloc];
-}
-
-- (void)updateThreadState:(BOOL)sleepValue {
-    self.timestamp = CACurrentMediaTime();
-    self.sleep = sleepValue;
 }
 
 - (void) set:(long) pActionId
@@ -853,15 +843,13 @@ useJavaModes:(BOOL) pUseJavaModes
       caller:(NSString*) pCaller
    callstack:(NSString*) pCallStack
 {
-    [self updateThreadState:NO];
+    self.timestamp = CACurrentMediaTime();
     self.useJavaModes = pUseJavaModes;
     self.actionId = pActionId;
     self.operation = pOperation;
 
     self.caller = pCaller;
-    [pCaller release];
     self.callStack = pCallStack;
-    [pCallStack release];
 }
 
 - (const char*)identifier {
@@ -871,8 +859,8 @@ useJavaModes:(BOOL) pUseJavaModes
 
 - (NSString *)description {
     // creates autorelease string:
-    return [NSString stringWithFormat:@"%s useJavaModes=%d sleep=%d caller=[%@] callStack={\n%@}",
-            [self identifier], useJavaModes, sleep, caller,
+    return [NSString stringWithFormat:@"%s useJavaModes=%d caller=[%@] callStack={\n%@}",
+            [self identifier], useJavaModes, caller,
             ([self callStack] == nil) ? @"-" : [self callStack]];
 }
 @end

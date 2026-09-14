@@ -161,7 +161,6 @@ do {                                  \
 /* autorelease in init and copy */
 - (id)init:(NSString*)threadName;
 - (void)reset;
-- (void)updateThreadState:(BOOL)sleepValue;
 
 - (void)set:(long)pActionId operation:(const char*)pOperation useJavaModes:(BOOL)pUseJavaModes
             caller:(NSString *)pCaller callstack:(NSString *)pCallStack;
@@ -194,7 +193,6 @@ __attribute__((visibility("default")))
 + (void)performOnMainThreadWaiting:(BOOL)wait useJavaModes:(BOOL)useJavaModes block:(void (^)())block;
 + (void)performOnMainThread:(SEL)aSelector on:(id)target withObject:(id)arg waitUntilDone:(BOOL)wait useJavaModes:(BOOL)useJavaModes;
 
-+ (NSString*)criticalRunLoopMode;
 + (NSString*)javaRunLoopMode;
 
 + (void)setBlockingMainThread:(BOOL)value;

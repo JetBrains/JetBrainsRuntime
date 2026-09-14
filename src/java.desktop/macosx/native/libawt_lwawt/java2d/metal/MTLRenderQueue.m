@@ -39,7 +39,16 @@
 #include "MTLUtils.h"
 #import "ThreadUtilities.h"
 
-#define TRACE_OP    0
+#define TRACE_OP                0
+#define FORCE_FLUSH_GLYPH_CACHE 0
+
+typedef struct _MTLRenderQueueStats {
+    long flushBuffers;
+    long maxLen;
+    long opCodes;
+    long syncs;
+    long mtlCtxSwitches;
+} MTLRenderQueueStats;
 
 /**
  * References to the "current" context and destination surface.
@@ -47,6 +56,9 @@
 static MTLContext *mtlc = NULL;
 static BMTLSDOps *dstOps = NULL;
 jint mtlPreviousOp = MTL_OP_INIT;
+
+static jint currentOp = -1;
+static MTLRenderQueueStats stats = {0L, 0L, 0L, 0L, 0L};
 
 extern BOOL isDisplaySyncEnabled();
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
@@ -90,6 +102,7 @@ static const char* mtlOpToStr(uint op);
         /* flush GPU state before draining pool: */                                     \
         MTLRenderQueue_reset(mtlc, sync);                                               \
         [pool drain];                                                                   \
+        currentOp = -1;                                                                 \
     }
 
 /**
@@ -116,6 +129,7 @@ void MTLRenderQueue_reset(MTLContext* context, BOOL sync)
         if (isDisplaySyncEnabled()) {
             [context commitCommandBuffer:NO display:YES];
         } else {
+            stats.syncs++;
             [context commitCommandBuffer:sync display:YES];
         }
     }
@@ -163,6 +177,9 @@ void MTLRenderQueue_CheckPreviousOp(jint op) {
         if (op == MTL_OP_RESET_PAINT || op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS ||
             mtlPreviousOp == MTL_OP_MASK_OP)
         {
+            if ((op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS)) {
+                stats.syncs++;
+            }
             [mtlc commitCommandBuffer:(op == MTL_OP_SYNC || op == MTL_OP_SHAPE_CLIP_SPANS)
                               display:NO];
         }
@@ -186,6 +203,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         return;
     }
 
+    stats.flushBuffers++;
+    if (limit > stats.maxLen) {
+        stats.maxLen = limit;
+    }
+
     end = b + limit;
 
     // Handle any NSException thrown:
@@ -193,6 +215,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     {
         while (b < end) {
             opcode = NEXT_INT(b);
+            // trace:
+            currentOp = opcode;
+            stats.opCodes++;
 
             J2dTraceLn(J2D_TRACE_VERBOSE,
                     "MTLRenderQueue_flushBuffer: opcode=%d, rem=%d",
@@ -649,18 +674,27 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
-                        if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
-                            [mtlc commitCommandBuffer:YES display:YES];
-                            sync = NO;
+// TODO: CHECK
+                        if (FORCE_FLUSH_GLYPH_CACHE) {
+                            // free glyph caches anyway (commitCommandBuffer:YES):
+                            [mtlc.glyphCacheAA free];
+                            [mtlc.glyphCacheLCD free];
                         } else {
-                            [mtlc commitCommandBuffer:NO display:NO];
+                            // flush glyph / vertex caches if metal contexts (ie mtl device) are different:
+                            [mtlc.glyphCacheAA flush];
+                            [mtlc.glyphCacheLCD flush];
                         }
+                        CHECK_RENDER_DEST(dstOps, sync);
+                        if (sync) { stats.syncs++; }
+                        // flush pending commands anyway:
+                        [mtlc commitCommandBuffer:sync display:sync];
+                        // reset sync:
+                        sync = NO;
                         MTLSD_Flush();
                     }
                     mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
                     dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
+                    stats.mtlCtxSwitches++;
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
@@ -671,17 +705,30 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
-                        [mtlc commitCommandBuffer:NO display:NO];
-                    MTLSD_Flush();}
-
+// TODO: CHECK
+                        if (FORCE_FLUSH_GLYPH_CACHE) {
+                            // free glyph caches anyway (commitCommandBuffer:YES):
+                            [mtlc.glyphCacheAA free];
+                            [mtlc.glyphCacheLCD free];
+                        } else {
+                            // flush glyph / vertex caches if metal contexts (ie mtl device) are different:
+                            [mtlc.glyphCacheAA flush];
+                            [mtlc.glyphCacheLCD flush];
+                        }
+                        CHECK_RENDER_DEST(dstOps, sync);
+                        if (sync) { stats.syncs++; }
+                        // flush pending commands anyway:
+                        [mtlc commitCommandBuffer:sync display:sync];
+                        // reset sync:
+                        sync = NO;
+                        MTLSD_Flush();
+                    }
                     if (mtlInfo != NULL) {
                         mtlc = mtlInfo->context;
                     } else {
                         mtlc = NULL;
                     }
-                    dstOps = NULL;
+                    dstOps = NULL;                    stats.mtlCtxSwitches++;
                     break;
                 }
                 case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
@@ -691,8 +738,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
+// TODO: CHECK
                             [mtlc.glyphCacheAA free];
                             [mtlc.glyphCacheLCD free];
+                            stats.syncs++;
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
@@ -708,8 +757,17 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA free];
-                            [mtlc.glyphCacheLCD free];
+// TODO: CHECK
+                            if (FORCE_FLUSH_GLYPH_CACHE) {
+                                // free glyph caches anyway (commitCommandBuffer:YES):
+                                [mtlc.glyphCacheAA free];
+                                [mtlc.glyphCacheLCD free];
+                            } else {
+                                // flush glyph / vertex caches if metal contexts (ie mtl device) are different:
+                                [mtlc.glyphCacheAA flush];
+                                [mtlc.glyphCacheLCD flush];
+                            }
+                            stats.syncs++;
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
@@ -726,9 +784,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     CHECK_PREVIOUS_OP(MTL_OP_OTHER);
                     jlong pConfigInfo = NEXT_LONG(b);
                     CONTINUE_IF_NULL(mtlc);
+                    // free glyph caches anyway (commitCommandBuffer:YES):
                     [mtlc.glyphCacheAA free];
                     [mtlc.glyphCacheLCD free];
-                    [mtlc commitCommandBuffer:YES display:NO];
+
+                    // flush pending commands anyway:
+                    [mtlc commitCommandBuffer:NO display:NO];
+
+                    // May release metal context if no more usage:
                     MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
                     mtlc = NULL;
                     break;
@@ -979,6 +1042,30 @@ BMTLSDOps *
 MTLRenderQueue_GetCurrentDestination()
 {
     return dstOps;
+}
+
+const char* MTLRenderQueue_GetCurrentOpCode() {
+    if (currentOp == -1) {
+        return "";
+    }
+    return mtlOpCodeToStr(currentOp);
+}
+
+void MTLRenderQueue_ResetStats() {
+    stats.flushBuffers = 0L;
+    stats.maxLen = 0L;
+    stats.opCodes = 0L;
+    stats.syncs = 0L;
+    stats.mtlCtxSwitches = 0L;
+}
+
+void MTLRenderQueue_DumpStats() {
+    NSLog(@"MTLRenderQueue_DumpStats: flushBuffers = %ld (maxLen = %ld bytes) "
+           "opCodes = %ld syncs = %ld mtlCtxSwitches = %ld",
+            stats.flushBuffers, stats.maxLen, stats.opCodes, stats.syncs, stats.mtlCtxSwitches);
+    if (1) {
+        MTLRenderQueue_ResetStats();
+    }
 }
 
 /* debugging helper functions */

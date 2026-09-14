@@ -121,14 +121,17 @@ public class EventQueue {
     private static final Lock pushPopLock = new ReentrantLock();
     private static final Condition pushPopCond = pushPopLock.newCondition();
 
-    /*
+    private final static class DummyRunnable implements Runnable {
+        @Override
+        public void run() {
+        }
+    }
+
+    /**
      * Dummy runnable to wake up EDT from getNextEvent() after
      push/pop is performed
      */
-    private static final Runnable dummyRunnable = new Runnable() {
-        public void run() {
-        }
-    };
+    public static final Runnable dummyRunnable = new DummyRunnable();
 
     private EventDispatchThread dispatchThread;
 

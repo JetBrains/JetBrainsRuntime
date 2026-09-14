@@ -474,6 +474,7 @@ public abstract class MTLSurfaceData extends SurfaceData
 
     @Override
     public void flush() {
+    // TODO: check thread ?
         invalidate();
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
@@ -632,6 +633,7 @@ public abstract class MTLSurfaceData extends SurfaceData
      * Java-level MTLSurfaceData object is about to go away.
      */
      public static void dispose(long pData) {
+    // TODO: check thread ?
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
@@ -644,6 +646,7 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     static void flushBuffer(long layer) {
+    // TODO: check thread ?
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,7 @@ extern BOOL MTLLayer_isExtraRedrawEnabled();
 extern void dumpDisplayInfo(jint displayID);
 extern BOOL isValidDisplayMode(CGDisplayModeRef mode);
 
-#define STATS_CVLINK        0
+#define STATS_CVLINK        1
 
 #define TRACE_NOTIF         0
 
@@ -80,6 +80,10 @@ extern BOOL isValidDisplayMode(CGDisplayModeRef mode);
         J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "CVDisplayLink[%s - %s][%p]: OK",     \
                      op, (source != nil) ? source : "", dl);                            \
     }                                                                                   \
+}
+
+static const char * toCString(id obj) {
+    return obj == nil ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
 }
 
 /* 60 fps typically => exponential smoothing on 0.5s */
@@ -223,7 +227,7 @@ extern void initSamplers(id<MTLDevice> device);
             ctxNotif = MTLDCM_DISPLAY_SLEEP;
         }
         if (ctxNotif != MTLDCM_SYSTEM_UNDEFINED) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // common modes
                                          block:^() {
                  [MTLContext processContextStoreNotification:ctxNotif];
             }];
@@ -243,7 +247,7 @@ extern void initSamplers(id<MTLDevice> device);
             ctxNotif = MTLDCM_DISPLAY_WAKEUP;
         }
         if (ctxNotif != MTLDCM_SYSTEM_UNDEFINED) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // common modes
                                          block:^() {
                  [MTLContext processContextStoreNotification:ctxNotif];
             }];
@@ -447,6 +451,29 @@ extern void initSamplers(id<MTLDevice> device);
     AWT_ASSERT_APPKIT_THREAD;
     self = [super init];
     if (self) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext_initWithDevice: ctx=%p device=(%llu: %s)",
+                       self, mtlDevice.registryID, toCString(mtlDevice.name));
+
+        if (0) {
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.name:             %s", toCString(mtlDevice.name));
+            if (@available(macOS 14.0, *)) {
+                J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.architecture:     %s", toCString(mtlDevice.architecture.name));
+            }
+
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.registryID:       %llu", mtlDevice.registryID);
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.location:         %lu", mtlDevice.location);
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.locationNumber :  %lu", mtlDevice.locationNumber);
+
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.headless:         %d", mtlDevice.headless);
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.lowPower:         %d", mtlDevice.lowPower);
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.hasUnifiedMemory: %d", mtlDevice.hasUnifiedMemory);
+
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.maxBufferLength:  %lu Kb",
+                           mtlDevice.maxBufferLength / 1024);
+            J2dRlsTraceLn(J2D_TRACE_INFO, "MTLDevice.recommendedMaxWorkingSetSize: %llu Kb",
+                           mtlDevice.recommendedMaxWorkingSetSize / 1024);
+        }
+
         device = mtlDevice;
         shadersLib = [[NSString alloc] initWithString:mtlShadersLib];
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
@@ -661,6 +688,9 @@ extern void initSamplers(id<MTLDevice> device);
 - (void)dealloc {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
 
+    J2dRlsTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc: ctx=%p", self);
+
+    // Note: should have been done before (async)
     if (_displayLinkStates != nil) {
         [self haltRedraw];
         [_displayLinkStates release];
@@ -671,8 +701,14 @@ extern void initSamplers(id<MTLDevice> device);
     // TODO : Check that texturePool is completely released.
     // texturePool content is released in MTLCommandBufferWrapper.onComplete()
     //self.texturePool = nil;
+
+    // glyph caches are already freed:
     [_glyphCacheLCD release];
     [_glyphCacheAA release];
+    if (0) {
+        // reset shared state !
+        MTLVertexCache_FreeVertexCache();
+    }
 
     self.vertexBuffer = nil;
     self.commandQueue = nil;
@@ -1023,8 +1059,15 @@ extern void initSamplers(id<MTLDevice> device);
                 [cbwrapper release];
             }];
             [commandbuf commit];
+
             if (waitUntilCompleted) {
+                // [ThreadUtilities dumpThreadTraceContext:"MTLContext_commitCommandBuffer"];
+                double now = CACurrentMediaTime();
                 [commandbuf waitUntilCompleted];
+                NSLog(@"MTLContext_commitCommandBuffer: waitUntilCompleted by %@ = %.3lf (opcode = %s)",
+                        [[NSThread currentThread] name],
+                        1e3 * (CACurrentMediaTime() - now),
+                        MTLRenderQueue_GetCurrentOpCode());
             }
         }
     }
@@ -1116,6 +1159,8 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
                 // dump stats:
                 NSLog(@"mtlDisplayLinkCallback[displayID: %d]: avg interval = %.3lf ms (%.1lf fps) on %d samples", displayID,
                       TO_MS(dlState->avgDisplayLinkTime), TO_FPS(dlState->avgDisplayLinkTime), dlState->avgDisplayLinkSamples);
+
+                MTLRenderQueue_DumpStats();
             }
         }
 
@@ -1129,7 +1174,7 @@ CVReturn mtlDisplayLinkCallback(CVDisplayLinkRef displayLink, const CVTimeStamp*
         }
 
         [ThreadUtilities performOnMainThread:@selector(redraw:) on:mtlc withObject:@(displayID)
-                               waitUntilDone:NO useJavaModes:NO]; // critical
+                               waitUntilDone:NO useJavaModes:NO]; // common modes
     JNI_COCOA_EXIT();
     return kCVReturnSuccess;
 }

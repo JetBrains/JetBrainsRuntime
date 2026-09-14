@@ -323,9 +323,6 @@ AWT_ASSERT_APPKIT_THREAD;
 + (void) runAWTLoopWithApp:(NSApplication*)app {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
 
-    // Define the special Critical RunLoop mode to ensure action executed ASAP:
-    [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities criticalRunLoopMode]];
-
     // Make sure that when we run in javaRunLoopMode we don't exit randomly
     [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities javaRunLoopMode]];
 

@@ -44,6 +44,7 @@ static jclass jc_JavaLayer = NULL;
 const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
 
 extern BOOL isColorMatchingEnabled();
+extern const char* MTLRenderQueue_GetCurrentOpCode();
 
 BOOL isDisplaySyncEnabled() {
     static int syncEnabled = -1;
@@ -433,13 +434,13 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // common modes
                                                      block:^(){
                 [self.ctx startRedraw:self];
             }];
         }
     } else {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // common modes
                                                      block:^(){
             [self setNeedsDisplay];
         }];
@@ -458,7 +459,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             self.redrawCount = 0;
         }
         if (mtlc != nil) {
-            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // common modes
                                                      block:^(){
                 [mtlc stopRedraw:displayID layer:self];
             }];
@@ -502,7 +503,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 }
                 // Ensure layer will be redrawn asap to display new content:
                 [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
-                                       waitUntilDone:NO useJavaModes:NO]; // critical
+                                       waitUntilDone:NO useJavaModes:NO]; // common modes
             }
             [self release];
         }];
@@ -517,7 +518,12 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
             }
         }
         if (waitUntilCompleted && isDisplaySyncEnabled()) {
-           [commandbuf waitUntilCompleted];
+            double now = CACurrentMediaTime();
+            [commandbuf waitUntilCompleted];
+            NSLog(@"MTLLayer_commitCommandBuffer: waitUntilCompleted by %@ = %.3lf (opcode = %s)",
+                      [[NSThread currentThread] name],
+                      1e3 * (CACurrentMediaTime() - now),
+                      MTLRenderQueue_GetCurrentOpCode());
         }
     } else if (updateDisplay) {
         [self startRedraw];
@@ -583,7 +589,7 @@ JNI_COCOA_ENTER(env);
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
     // Wait and ensure main thread creates the MTLLayer instance now:
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // common modes
                                           block:^(){
             AWT_ASSERT_APPKIT_THREAD;
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
@@ -601,6 +607,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_validate
 (JNIEnv *env, jclass cls, jlong layerPtr, jobject surfaceData)
 {
+    JNI_COCOA_ENTER(env);
     MTLLayer *layer = OBJC(layerPtr);
 
     if (surfaceData != NULL) {
@@ -652,6 +659,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.ctx = NULL;
         [layer stopRedraw:YES];
     }
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT void JNICALL
@@ -665,7 +673,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // common modes
                                              block:^(){
         layer.contentsScale = scale;
     }];
@@ -709,7 +717,7 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     // Ensure main thread changes the MTLLayer instance later:
-    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // common modes
                                           block:^(){
         [layer setOpaque:(opaque == JNI_TRUE)];
     }];

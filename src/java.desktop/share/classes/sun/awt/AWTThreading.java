@@ -32,7 +32,7 @@ public class AWTThreading {
 
     private static final boolean TRACE_RUN_LOOP = false;
 
-    private static final Runnable EMPTY_RUNNABLE = () -> {};
+    private static final Runnable dummyRunnable = EventQueue.dummyRunnable;
 
     private static final AtomicReference<Function<Thread, AWTThreading>> theAWTThreadingFactory =
             new AtomicReference<>(AWTThreading::new);
@@ -83,6 +83,42 @@ public class AWTThreading {
         return executeWaitToolkit(callable, -1, null);
     }
 
+    protected final static class CallableRunnable implements Callable<Void> {
+        private final Runnable runnable;
+
+        CallableRunnable(final Runnable runnable) { this.runnable = runnable; }
+
+        @Override
+        public Void call() throws Exception {
+            runnable.run();
+            return null;
+        }
+
+        public String toString() {
+            return runnable.toString();
+        }
+    }
+
+    protected final static class CallableConsumer implements Callable<Boolean> {
+        private final Consumer<Boolean> consumer;
+        private final Boolean wait;
+
+        CallableConsumer(final Consumer<Boolean> consumer, final Boolean wait) {
+            this.consumer = consumer;
+            this.wait = wait;
+        }
+
+        @Override
+        public Boolean call() throws Exception {
+            consumer.accept(wait);
+            return null;
+        }
+
+        public String toString() {
+            return consumer.toString();
+        }
+    }
+
     /**
      * A boolean value passed to the consumer indicates whether the consumer should perform
      * a synchronous invocation on the Toolkit thread and wait, or return immediately.
@@ -90,21 +126,15 @@ public class AWTThreading {
      * @see #executeWaitToolkit(Callable).
      */
     public static void executeWaitToolkit(Consumer<Boolean> consumer) {
-        boolean wait = EventQueue.isDispatchThread();
-        executeWaitToolkit(() -> {
-            consumer.accept(wait);
-            return null;
-        });
+        final boolean wait = EventQueue.isDispatchThread();
+        executeWaitToolkit(new CallableConsumer(consumer, wait));
     }
 
     /**
      * @see #executeWaitToolkit(Callable).
      */
     public static void executeWaitToolkit(Runnable runnable) {
-        executeWaitToolkit(() -> {
-            runnable.run();
-            return null;
-        });
+        executeWaitToolkit(new CallableRunnable(runnable));
     }
 
     /**
@@ -121,7 +151,8 @@ public class AWTThreading {
                 return instance.execute(callable, timeout, unit);
             }
         }
-
+        if (TRACE_RUN_LOOP) logger.info("AWTThreading.executeWaitToolkit: thread = " + Thread.currentThread().getName()
+                                        + ", direct run callable " + callable);
         try {
             return callable.call();
         } catch (Exception e) {
@@ -160,7 +191,7 @@ public class AWTThreading {
                 }
             }
 
-            if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: callable " + callable);
+            if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: run callable " + callable);
 
             FutureTask<T> task = new FutureTask<>(callable) {
                 @Override
@@ -168,7 +199,7 @@ public class AWTThreading {
                     synchronized (invocations) {
                         invocations.remove(currentQueue);
                         // add dummy event to wake up the queue
-                        currentQueue.add(new InvocationEvent(new Object(), ()  -> {}));
+                        currentQueue.add(new InvocationEvent(new Object(), dummyRunnable));
                     }
                 }
             };
@@ -176,13 +207,19 @@ public class AWTThreading {
 
             try {
                 while (!task.isDone() || !currentQueue.isEmpty()) {
-                    if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: poll event = will be WAITING for : " + timeout + " " + unit);
-
                     InvocationEvent event;
                     if (timeout >= 0 && unit != null) {
+                        if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: poll event = will be WAITING for : " + timeout + " " + unit);
                         event = currentQueue.poll(timeout, unit);
                     } else {
-                        event = currentQueue.take();
+                        /* Ensure >3000ms = 3.666s timeout to avoid any deadlock among
+                         * appkit, EDT, Flusher & a11y threads, locks
+                         * and various synchronization patterns... */
+                        final long timeoutMilliSeconds = 3666; // milli-seconds
+
+                        if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: poll event = will be WAITING for : " + timeoutMilliSeconds + " ms");
+                        event = currentQueue.poll(timeoutMilliSeconds,  TimeUnit.MILLISECONDS);
+                        // event = currentQueue.take();
                     }
                     if (event == null) {
                         task.cancel(false);
@@ -203,6 +240,7 @@ public class AWTThreading {
             }
         } finally {
             level--;
+            if (TRACE_RUN_LOOP) logger.info("AWTThreading.execute: exit " + callable);
         }
         return null;
     }
@@ -255,7 +293,7 @@ public class AWTThreading {
                 return eventRef.get();
             }
         }
-        return TrackedInvocationEvent.create(source, onDispatched, EMPTY_RUNNABLE, catchThrowables);
+        return TrackedInvocationEvent.create(source, onDispatched, dummyRunnable, catchThrowables);
     }
 
     @SuppressWarnings("serial")
@@ -296,8 +334,8 @@ public class AWTThreading {
 
         protected TrackedInvocationEvent(Object source, Runnable onDispatched, Runnable onDone, boolean catchThrowables) {
             super(source,
-                  Optional.of(onDispatched).orElse(EMPTY_RUNNABLE),
-                  Optional.of(onDone).orElse(EMPTY_RUNNABLE),
+                  Optional.of(onDispatched).orElse(dummyRunnable),
+                  Optional.of(onDone).orElse(dummyRunnable),
                   catchThrowables);
 
             futureResult.whenComplete((r, ex) -> {
@@ -361,7 +399,7 @@ public class AWTThreading {
          * Calls the runnable when it's done (immediately if it's done).
          */
         public void onDone(Runnable runnable) {
-            futureResult.whenComplete((r, ex) -> Optional.of(runnable).orElse(EMPTY_RUNNABLE).run());
+            futureResult.whenComplete((r, ex) -> Optional.of(runnable).orElse(dummyRunnable).run());
         }
     }
 
@@ -446,7 +484,7 @@ public class AWTThreading {
      */
     public CompletableFuture<Void> onEventDispatchThreadFree(Runnable runnable) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        future.thenRun(Optional.of(runnable).orElse(EMPTY_RUNNABLE));
+        future.thenRun(Optional.of(runnable).orElse(dummyRunnable));
 
         if (!isEventDispatchThreadFree) {
             synchronized (eventDispatchThreadStateNotifiers) {

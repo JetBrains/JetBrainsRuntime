@@ -46,7 +46,7 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
     }
     __block MTLContext *mtlc = (MTLContext*)mtlinfo->context;
     mtlinfo->context = nil;
-    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // common modes
                                           block:^() {
         AWT_ASSERT_APPKIT_THREAD;
         if (mtlc != NULL) {
@@ -76,7 +76,7 @@ JNI_COCOA_ENTER(env);
 
     __block NSString* path = NormalizedPathNSStringFromJavaString(env, mtlShadersLib);
 
-    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // common modes
                                           block:^() {
         AWT_ASSERT_APPKIT_THREAD;
         MTLContext* mtlc = [MTLContext createContextWithDeviceIfAbsent:displayID

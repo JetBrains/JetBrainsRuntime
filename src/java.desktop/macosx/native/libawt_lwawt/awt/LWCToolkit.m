@@ -57,16 +57,14 @@
 
 /* RunLoop run max duration = 4 millis */
 #define RUN_LOOP_TICK           (0.004)
-/* RunLoop critical run max duration = 1 millis */
-#define RUN_LOOP_TICK_CRITICAL  (0.001)
 
-/* max wait timeout for AWTRunLoop > 10s */
-#define WAIT_TIMEOUT_LIMIT      (13.333)
+/* max wait timeout for AWTRunLoop > 6s */
+#define WAIT_TIMEOUT_LIMIT      (6.666)
 
 /* power transition period = 10s */
 #define PWM_TRANSITION_PERIOD   (10.000)
 
-#define TRACE_RUN_LOOP  0
+#define TRACE_RUN_LOOP  1
 
 int gNumberOfButtons;
 jint* gButtonDownMasks;
@@ -203,12 +201,15 @@ static BOOL inDoDragDropLoop;
 }
 
 - (void)perform {
+    @try {
     JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
     DECLARE_CLASS(sjc_Runnable, "java/lang/Runnable");
     DECLARE_METHOD(jm_Runnable_run, sjc_Runnable, "run", "()V");
     (*env)->CallVoidMethod(env, self.runnable, jm_Runnable_run);
     CHECK_EXCEPTION();
+    } @finally {
     [self release];
+}
 }
 @end
 
@@ -269,7 +270,6 @@ static void setUpAWTAppKit(BOOL installObservers)
     DECLARE_STATIC_METHOD(jsm_installToolkitThreadInJava, jc_LWCToolkit, "installToolkitThreadInJava", "()V");
     (*env)->CallStaticVoidMethod(env, jc_LWCToolkit, jsm_installToolkitThreadInJava);
     CHECK_EXCEPTION();
-
 }
 
 BOOL isSWTInWebStart(JNIEnv* env) {
@@ -483,7 +483,6 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_nativeSyncQueue
     if (([AWTToolkit getEventCount] - currentEventNum) != 0) {
         return JNI_TRUE;
     }
-
     return JNI_FALSE;
 }
 
@@ -616,7 +615,7 @@ JNI_COCOA_ENTER(env);
 
     /*
      * 2025.02: infinite timeout means possible deadlocks or freezes may happen.
-     * To ensure responsiveness, infinite is limited to a huge delay (~10s)
+     * To ensure responsiveness, infinite is limited to a huge delay (>5s)
      */
     if ((timeoutSeconds <= 0.0) || (timeoutSeconds > WAIT_TIMEOUT_LIMIT)) {
         timeoutSeconds = WAIT_TIMEOUT_LIMIT;
@@ -627,7 +626,6 @@ JNI_COCOA_ENTER(env);
         NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s", [[timeoutDate description] UTF8String]);
         NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
     }
-    NSRunLoopMode criticalRunMode = [ThreadUtilities criticalRunLoopMode];
     NSRunLoopMode runMode = inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode;
     if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: runMode = %@", runMode);
 
@@ -636,15 +634,6 @@ JNI_COCOA_ENTER(env);
     NSDate *deadlineDate = nil;
 
     while (![mediatorObject shouldEndRunLoop] && isRunning) {
-        // always process critical events:
-        // Check every few ms at least:
-        deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK_CRITICAL];
-
-        // Runs the loop once, blocking for input in the specified mode until the deadline date:
-        BOOL hasRunCritical = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
-        [deadlineDate release];
-        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: hasRunCritical = %d", hasRunCritical);
-
         // Check every few ms at least:
         deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK];
 
@@ -726,9 +715,7 @@ JNI_COCOA_ENTER(env);
     // Convert NSString* to JavaString
     NSString* result = [ThreadUtilities getThreadTraceContexts];
 
-    jstring javaString = (*env)->NewStringUTF(env, result.UTF8String);
-    [result release];
-    return javaString;
+    return (*env)->NewStringUTF(env, result.UTF8String);
 
 JNI_COCOA_EXIT(env);
 }

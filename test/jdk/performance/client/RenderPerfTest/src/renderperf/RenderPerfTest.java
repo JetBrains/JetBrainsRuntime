@@ -1650,6 +1650,8 @@ public final class RenderPerfTest {
     private final ParticleRenderer volImgTextBatchedRenderer = new BatchedParticleRenderer(volImgRenderer, textRenderer);
     private final ParticleRenderer volImgTextMixedRenderer = new MixedParticleRenderer(volImgRenderer, textRenderer);
 
+    private final ParticleRenderer textArgbSwBlitVolImgMixedRenderer = new MixedParticleRenderer(argbSwBlitImageRenderer, textRenderer, volImgRenderer);
+
     private final static Configurable AA = new ConfigurableAA();
     private final static Configurable TextAA = new ConfigurableTextAA();
     private final static Configurable TextLCD = new ConfigurableTextLCD();
@@ -1932,6 +1934,10 @@ public final class RenderPerfTest {
 
     public void testVolImageTextNoAAMix() throws Exception {
         createPerfMeter(testName).exec(createPR(volImgTextMixedRenderer));
+    }
+
+    public void testTextArgbSwBlitVolImgMix() throws Exception {
+        createPerfMeter(testName).exec(createPR(textArgbSwBlitVolImgMixedRenderer).configure(AA));
     }
 
     private static void help() {

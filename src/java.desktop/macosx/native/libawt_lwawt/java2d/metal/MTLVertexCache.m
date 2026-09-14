@@ -91,6 +91,13 @@ static id<MTLRenderCommandEncoder> encoder = nil;
     (unsigned char) (((c) >> 24) & 0xFF)    \
 }
 
+void MTLVertexCache_Reset() {
+    vertexCacheIndex = 0;
+    maskColorCacheIndex = 0;
+    maskCacheIndex = 0;
+    maskCacheLastIndex = MTLVC_MASK_CACHE_MAX_INDEX;
+}
+
 jboolean
 MTLVertexCache_InitVertexCache()
 {
@@ -133,7 +140,22 @@ MTLVertexCache_InitVertexCache()
             return JNI_FALSE;
         }
     }
+    MTLVertexCache_Reset();
     return JNI_TRUE;
+}
+
+void MTLVertexCache_FreeVertexCache()
+{
+    if (vertexCache != NULL) {
+        free(vertexCache);
+        vertexCache = NULL;
+    }
+    if (maskColorCache != NULL) {
+        free(maskColorCache);
+        maskColorCache = NULL;
+    }
+    // reset (reentrance with InitVertexCache)
+    MTLVertexCache_Reset();
 }
 
 void
@@ -157,12 +179,8 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
                    "MTLVertexCache_FlushVertexCache : encode %d tiles", (vertexCacheIndex / VERTS_FOR_A_QUAD));
 
         [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertexCacheIndex];
-
-        vertexCacheIndex = 0;
-        maskColorCacheIndex = 0;
-        maskCacheIndex = 0;
-        maskCacheLastIndex = MTLVC_MASK_CACHE_MAX_INDEX;
     }
+    MTLVertexCache_Reset();
 
     // register texture to be released once encoder is completed:
     if (maskCacheTex != nil) {
@@ -191,19 +209,7 @@ MTLVertexCache_FlushGlyphVertexCache(MTLContext *mtlc)
 
         [gcEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vertexCacheIndex];
     }
-    vertexCacheIndex = 0;
-}
-
-void MTLVertexCache_FreeVertexCache()
-{
-    if (vertexCache != NULL) {
-        free(vertexCache);
-        vertexCache = NULL;
-    }
-    if (maskColorCache != NULL) {
-        free(maskColorCache);
-        maskColorCache = NULL;
-    }
+    MTLVertexCache_Reset();
 }
 
 static void MTLVertexCache_InitFullTile()
@@ -280,7 +286,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
-    MTLVertexCache_FreeVertexCache();
 }
 
 void

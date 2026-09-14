@@ -76,7 +76,7 @@ public abstract class RenderQueue {
     protected static final PlatformLogger logger = PlatformLogger.getLogger("sun.java2d.pipe.RenderQueue");
 
     /** The size of the underlying buffer, in bytes. */
-    private static final int BUFFER_SIZE = 6400000;
+    private static final int BUFFER_SIZE = (false) ? 32 * 1024 : 6400000;
 
     /** The underlying buffer for this queue. */
     protected RenderBuffer buf;
