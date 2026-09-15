@@ -30,6 +30,8 @@
 #include "VKImage.h"
 #include "VKEnv.h"
 
+#include <assert.h>
+
 /**
  * Release VKSDOps resources & reset to initial state.
  */
@@ -110,13 +112,14 @@ void VKSwapchain_Release(VKSwapchain* swapchain) {
     VKSwapchain_DestroyImpl(swapchain);
 }
 
-void VKSwapchain_DestroySync(VKSwapchain* swapchain) {
+static void VKSwapchain_DestroySync(VKSwapchain* swapchain) {
     if (swapchain == NULL) return;
     VKDevice* device = swapchain->device;
     VKRenderer* renderer = device->renderer;
     if (renderer != NULL) {
         VKRenderer_CleanupPresentations(renderer, VK_TRUE, swapchain);
     }
+    assert(swapchain->refcount == 1);
     VKSwapchain_Release(swapchain);
 }
 
