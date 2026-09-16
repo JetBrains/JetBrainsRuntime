@@ -102,7 +102,12 @@ public class BlitRotateClippedArea {
 
     private static void validate(BufferedImage gold, BufferedImage img,
                                  String className) throws IOException {
-        if (!(className.equals("XRGraphicsConfig"))) {
+        // XRender and Vulkan pipelines premultiply the source color with
+        // different rounding than the software loops, allow a deviation of
+        // one unit per channel for them
+        boolean tolerant = className.equals("XRGraphicsConfig")
+                           || className.endsWith("VKGraphicsConfig");
+        if (!tolerant) {
             for (int x = 0; x < gold.getWidth(); ++x) {
                 for (int y = 0; y < gold.getHeight(); ++y) {
                     if (gold.getRGB(x, y) != img.getRGB(x, y)) {
@@ -113,7 +118,7 @@ public class BlitRotateClippedArea {
                 }
             }
         } else {
-            // In Linux where we use XRender pipeline there is
+            // In Linux where we use XRender or Vulkan pipeline there is
             // little deviation because of less arithmetic precision
             for (int x = 0; x < gold.getWidth(); ++x) {
                 for (int y = 0; y < gold.getHeight(); ++y) {
