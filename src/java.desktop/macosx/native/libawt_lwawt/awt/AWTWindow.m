@@ -791,6 +791,7 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (void) synthesizeMouseEnteredExitedEventsForAllWindows {
+
     NSInteger topmostWindowUnderMouseID = [AWTWindow getTopmostWindowUnderMouseID];
     NSArray *windows = [NSApp windows];
     NSWindow *window;
