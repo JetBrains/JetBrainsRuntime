@@ -49,6 +49,8 @@ static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
         VKImage_Destroy(vksdo->device, vksdo->image);
         vksdo->image = vksdo->stencil = NULL;
     }
+
+    ARRAY_FREE(vksdo->dependentSurfaces);
 }
 
 static void VKSwapchain_DestroyImpl(VKSwapchain* swapchain)
