@@ -95,9 +95,18 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
 
     @Override
     protected boolean isConfigValid(GraphicsConfiguration gc) {
+        if (gc == null || vImg.getGraphicsConfig() == null) {
+            return true;
+        }
+
         // We consider configs with the same format compatible across Vulkan devices.
-        return gc == null || vImg.getGraphicsConfig() == null ||
-                ((VKGraphicsConfig) gc).getFormat() == ((VKGraphicsConfig) vImg.getGraphicsConfig()).getFormat();
+        if (gc instanceof VKGraphicsConfig vkGC &&
+            vImg.getGraphicsConfig() instanceof VKGraphicsConfig vImgGC)
+        {
+            return vkGC.getFormat() == vImgGC.getFormat();
+        }
+
+        return false;
     }
 
     @Override
