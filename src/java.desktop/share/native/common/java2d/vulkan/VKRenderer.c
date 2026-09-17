@@ -834,8 +834,11 @@ void VKRenderer_DestroyRenderPass(VKSDOps* surface) {
         if (surface->renderPass->commandBuffer != VK_NULL_HANDLE) {
             POOL_RETURN(device->renderer, secondaryCommandBufferPool, surface->renderPass->commandBuffer);
         }
+        ARRAY_FREE(surface->renderPass->flushRanges);
         ARRAY_FREE(surface->renderPass->vertexBuffers);
         ARRAY_FREE(surface->renderPass->maskFillBuffers);
+        ARRAY_FREE(surface->renderPass->cleanupQueue);
+        ARRAY_FREE(surface->renderPass->usedSurfaces);
     }
     free(surface->renderPass);
     surface->renderPass = NULL;
