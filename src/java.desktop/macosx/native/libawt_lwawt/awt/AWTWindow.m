@@ -661,6 +661,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
 // returns id for the topmost window under mouse
 + (NSInteger) getTopmostWindowUnderMouseID {
+    // May be blocking thread (appkit wait on window server)
     return [NSWindow windowNumberAtPoint:[NSEvent mouseLocation] belowWindowWithWindowNumber:kCGNullWindowID];
 }
 
@@ -757,11 +758,9 @@ AWT_ASSERT_APPKIT_THREAD;
 }
 
 + (AWTWindow *) getTopmostWindowUnderMouse {
+    NSInteger topmostWindowUnderMouseID = [AWTWindow getTopmostWindowUnderMouseID];
     NSEnumerator *windowEnumerator = [[NSApp windows] objectEnumerator];
     NSWindow *window;
-
-    NSInteger topmostWindowUnderMouseID = [AWTWindow getTopmostWindowUnderMouseID];
-
     while ((window = [windowEnumerator nextObject]) != nil) {
         if ([window windowNumber] == topmostWindowUnderMouseID) {
             BOOL isAWTWindow = [AWTWindow isAWTWindow: window];
