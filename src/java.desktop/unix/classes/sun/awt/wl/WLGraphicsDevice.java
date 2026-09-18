@@ -164,7 +164,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         if (VKEnv.isPresentationEnabled()) {
             newConfigs = VKEnv.getDevices().flatMap(d -> d.getPresentableGraphicsConfigs().map(
                             gc -> WLVKGraphicsConfig.getConfig(gc, this)))
-                    .toArray(WLGraphicsConfig[]::new);
+                    .toArray(GraphicsConfiguration[]::new);
             newDefaultConfig = (WLGraphicsConfig) newConfigs[0];
         } else {
             // TODO: Actually, Wayland may support a lot more shared memory buffer configurations, need to
