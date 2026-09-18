@@ -32,7 +32,6 @@ import java.awt.Image;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.util.LinkedHashSet;
-import java.util.UUID;
 
 public class WLDataSource {
     protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataSource");
@@ -43,8 +42,6 @@ public class WLDataSource {
     private long nativePtr;
 
     private final Transferable data;
-
-    private final String mimeTypeCookie;
 
     private final boolean anyMimesAnnounced;
 
@@ -63,7 +60,6 @@ public class WLDataSource {
         return "WLDataSource{" +
                 "nativePtr=0x" + Long.toHexString(nativePtr) +
                 ", data=" + data +
-                ", mimeTypeCookie='" + mimeTypeCookie + '\'' +
                 ", anyMimesAnnounced=" + anyMimesAnnounced +
                 '}';
     }
@@ -78,7 +74,6 @@ public class WLDataSource {
         nativePtr = initNative(dataDevice.getNativePtr(), protocol);
         assert nativePtr != 0 : "Failed to initialize the native part of the source"; // should've already thrown in native
         this.data = data;
-        this.mimeTypeCookie = "JAVA_DATATRANSFER_COOKIE_" + UUID.randomUUID();
         boolean anyMimesAnnounced = false;
 
         try {
@@ -100,7 +95,6 @@ public class WLDataSource {
                     }
                 }
 
-                mimes.add(mimeTypeCookie);
                 for (var mime : mimes) {
                     offerMimeImpl(nativePtr, mime);
                 }
@@ -120,24 +114,12 @@ public class WLDataSource {
         return nativePtr;
     }
 
-    public String getMimeTypeCookie() {
-        return mimeTypeCookie;
-    }
-
     public Transferable getData() {
         return data;
     }
 
     public boolean hasSerializableFormats() {
         return anyMimesAnnounced;
-    }
-
-    public boolean isSourceFor(WLDataOffer offer) {
-        if (offer == null) {
-            return false;
-        }
-
-        return offer.getMimes().contains(mimeTypeCookie);
     }
 
     // This method can only be called once before setting this object as a drag-and-drop source
