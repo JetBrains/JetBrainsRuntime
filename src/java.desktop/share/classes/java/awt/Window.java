@@ -4025,6 +4025,14 @@ public class Window extends Container implements Accessible {
     }
     /**
      * Convenience method for JNI access.
+     * @return true if custom title bar controls should be on the right (RTL).
+     */
+    private boolean internalCustomTitleBarControlsRtl() {
+        CustomTitleBar t = customTitleBar;
+        return t != null && Boolean.TRUE.equals(t.getProperties().get("controls.rtl"));
+    }
+    /**
+     * Convenience method for JNI access.
      */
     private void internalCustomTitleBarUpdateInsets(float left, float right) {
         CustomTitleBar t = customTitleBar;
