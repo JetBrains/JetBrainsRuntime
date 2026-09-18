@@ -174,6 +174,8 @@ public final class WLClipboard extends SunClipboard {
                 synchronized (WLClipboard.this) {
                     if (ourDataSource == this) {
                         ourDataSource = null;
+                        // NOTE: cannot do lostOwnershipNow, because we're on the data source dispatch thread, not on EDT
+                        lostOwnershipLater(null);
                     }
                 }
 
@@ -348,7 +350,9 @@ public final class WLClipboard extends SunClipboard {
 
     void handleClipboardOffer(WLDataOffer offer /* nullable */) {
         synchronized (this) {
-            if (ourDataSource == null || !ourDataSource.isSourceFor(offer)) {
+            if (ourDataSource == null) {
+                // probably not needed, the data_source.cancelled handler already calls lostOwnershipLater
+                // still, there's no harm in doing this
                 lostOwnershipNow(null);
             }
 
