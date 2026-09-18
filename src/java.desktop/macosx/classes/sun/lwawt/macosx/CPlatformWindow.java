@@ -146,6 +146,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public static final String WINDOW_TITLE_VISIBLE = "apple.awt.windowTitleVisible";
     public static final String WINDOW_APPEARANCE = "apple.awt.windowAppearance";
     public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
+    public static final String WINDOW_SURFACE_DISABLED = "apple.awt.windowSurfaceDisabled";
 
     // This system property is named as jdk.* because it is not specific to AWT
     // and it is also used in JavaFX
