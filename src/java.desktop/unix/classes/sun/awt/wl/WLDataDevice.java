@@ -298,7 +298,9 @@ public class WLDataDevice {
     }
 
     private void handleSelection(WLDataOffer offer /* nullable */, int protocol, int selection) {
-        if (protocol != DATA_TRANSFER_PROTOCOL_DATA_CONTROL) {
+        boolean useDataControl = isProtocolSupported(DATA_TRANSFER_PROTOCOL_DATA_CONTROL);
+        boolean isDataControl = protocol == DATA_TRANSFER_PROTOCOL_DATA_CONTROL;
+        if (useDataControl == isDataControl) {
             if (selection == CLIPBOARD_SELECTION_PRIMARY && primarySelectionClipboard != null) {
                 primarySelectionClipboard.handleClipboardOffer(offer);
                 return;
