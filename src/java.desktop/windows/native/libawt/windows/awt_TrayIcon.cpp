@@ -974,7 +974,9 @@ Java_sun_awt_windows_WTrayIconPeer_create(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTrayIconPeer__1dispose(JNIEnv *env, jobject self)
 {
-    TRY;
+    // No TRY, TRY_NO_HANG or JBR_AWT_JNIDOWNCALL_BEGIN: AwtObject::_Dispose is able to work even when
+    //   the toolkit thread is shutting down.
+    TRY_NO_VERIFY;
 
     AwtObject::_Dispose(self);
 

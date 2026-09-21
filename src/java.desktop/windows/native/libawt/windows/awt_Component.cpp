@@ -7045,7 +7045,9 @@ Java_sun_awt_windows_WComponentPeer_nativeHandleEvent(JNIEnv *env,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer__1dispose(JNIEnv *env, jobject self)
 {
-    TRY_NO_HANG;
+    // No TRY, TRY_NO_HANG or JBR_AWT_JNIDOWNCALL_BEGIN: AwtObject::_Dispose is able to work even when
+    //   the toolkit thread is shutting down.
+    TRY_NO_VERIFY;
 
     AwtObject::_Dispose(self);
 
