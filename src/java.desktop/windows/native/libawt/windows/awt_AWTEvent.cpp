@@ -68,7 +68,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_AWTEvent_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtAWTEvent::bdataID = env->GetFieldID(cls, "bdata", "[B");
     DASSERT(AwtAWTEvent::bdataID != NULL);
@@ -82,7 +82,7 @@ Java_java_awt_AWTEvent_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtAWTEvent::consumedID != NULL);
     CHECK_NULL(AwtAWTEvent::consumedID);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -93,7 +93,7 @@ Java_java_awt_AWTEvent_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL Java_java_awt_AWTEvent_nativeSetSource
     (JNIEnv *env, jobject self, jobject newSource)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     JNI_CHECK_NULL_RETURN(self, "null AWTEvent");
 
@@ -116,7 +116,7 @@ JNIEXPORT void JNICALL Java_java_awt_AWTEvent_nativeSetSource
         env->ReleasePrimitiveArrayCritical(bdata, (void *)pMsg, 0);
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

@@ -847,7 +847,7 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WFontMetrics_stringWidth(JNIEnv *env, jobject self,
                                               jstring str)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     if (str == NULL) {
         JNU_ThrowNullPointerException(env, "str argument");
@@ -862,7 +862,7 @@ Java_sun_awt_windows_WFontMetrics_stringWidth(JNIEnv *env, jobject self,
     VERIFY(::ReleaseDC(0, hDC));
     return ret;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -875,7 +875,7 @@ Java_sun_awt_windows_WFontMetrics_charsWidth(JNIEnv *env, jobject self,
                                              jcharArray str,
                                              jint off, jint len)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     if (str == NULL) {
         JNU_ThrowNullPointerException(env, "str argument");
@@ -902,7 +902,7 @@ Java_sun_awt_windows_WFontMetrics_charsWidth(JNIEnv *env, jobject self,
     delete [] strp;
     return result;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 
@@ -916,7 +916,7 @@ Java_sun_awt_windows_WFontMetrics_bytesWidth(JNIEnv *env, jobject self,
                                              jbyteArray str,
                                              jint off, jint len)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     if (str == NULL) {
         JNU_ThrowNullPointerException(env, "bytes argument");
@@ -978,7 +978,7 @@ Java_sun_awt_windows_WFontMetrics_bytesWidth(JNIEnv *env, jobject self,
     env->ReleasePrimitiveArrayCritical(str, pStrBody, 0);
     return ScaleDownX(result);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 
@@ -990,7 +990,7 @@ Java_sun_awt_windows_WFontMetrics_bytesWidth(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFontMetrics_init(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject font = env->GetObjectField(self, AwtFont::fontID);
     if (font == NULL) {
@@ -1002,7 +1002,7 @@ Java_sun_awt_windows_WFontMetrics_init(JNIEnv *env, jobject self)
 
     AwtFont::LoadMetrics(env, self);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -1116,13 +1116,13 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFontPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtFont::textComponentFontNameID = env->GetFieldID(cls, "textComponentFontName", "Ljava/lang/String;");
 
     DASSERT(AwtFont::textComponentFontNameID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -1898,13 +1898,13 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDefaultFontCharset_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtFont::fontNameID = env->GetFieldID(cls, "fontName",
                                           "Ljava/lang/String;");
     DASSERT(AwtFont::fontNameID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -1922,7 +1922,7 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WDefaultFontCharset_canConvert(JNIEnv *env, jobject self,
                                                     jchar ch)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     static CCombinedSegTableManager tableManager;
 
@@ -1935,7 +1935,7 @@ Java_sun_awt_windows_WDefaultFontCharset_canConvert(JNIEnv *env, jobject self,
     JNU_ReleaseStringPlatformChars(env, fontName, fontNameW);
     return (pTable->In((USHORT) ch) ? JNI_TRUE : JNI_FALSE);
 
-    CATCH_BAD_ALLOC_RET(FALSE);
+    JBR_AWT_JNIDOWNCALL_END_RET(FALSE);
 }
 
 } /* extern "C" */

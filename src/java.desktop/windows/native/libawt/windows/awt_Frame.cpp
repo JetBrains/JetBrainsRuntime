@@ -2103,12 +2103,12 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Frame_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtFrame::undecoratedID = env->GetFieldID(cls,"undecorated","Z");
     DASSERT(AwtFrame::undecoratedID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2119,12 +2119,12 @@ Java_java_awt_Frame_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtFrame::getExtendedStateMID = env->GetMethodID(cls, "getExtendedState", "()I");
     DASSERT(AwtFrame::getExtendedStateMID);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2136,7 +2136,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_setState(JNIEnv *env, jobject self,
     jint state)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetStateStruct *sss = new SetStateStruct;
     sss->frame = env->NewGlobalRef(self);
@@ -2145,7 +2145,7 @@ Java_sun_awt_windows_WFramePeer_setState(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtFrame::_SetState, sss);
     // global ref and sss are deleted in _SetState()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2156,7 +2156,7 @@ Java_sun_awt_windows_WFramePeer_setState(JNIEnv *env, jobject self,
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WFramePeer_getState(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -2165,7 +2165,7 @@ Java_sun_awt_windows_WFramePeer_getState(JNIEnv *env, jobject self)
         (void *)selfGlobalRef)));
     // selfGlobalRef is deleted in _GetState()
 
-    CATCH_BAD_ALLOC_RET(java_awt_Frame_NORMAL);
+    JBR_AWT_JNIDOWNCALL_END_RET(java_awt_Frame_NORMAL);
 }
 
 
@@ -2178,7 +2178,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_setMaximizedBounds(JNIEnv *env, jobject self,
     jint x, jint y, jint width, jint height)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetMaximizedBoundsStruct *smbs = new SetMaximizedBoundsStruct;
     smbs->frame = env->NewGlobalRef(self);
@@ -2190,7 +2190,7 @@ Java_sun_awt_windows_WFramePeer_setMaximizedBounds(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtFrame::_SetMaximizedBounds, smbs);
     // global ref and smbs are deleted in _SetMaximizedBounds()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -2202,7 +2202,7 @@ Java_sun_awt_windows_WFramePeer_setMaximizedBounds(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_clearMaximizedBounds(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -2210,7 +2210,7 @@ Java_sun_awt_windows_WFramePeer_clearMaximizedBounds(JNIEnv *env, jobject self)
         (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _ClearMaximizedBounds()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -2223,7 +2223,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_setMenuBar0(JNIEnv *env, jobject self,
                                             jobject mbPeer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetMenuBarStruct *smbs = new SetMenuBarStruct;
     smbs->frame = env->NewGlobalRef(self);
@@ -2232,7 +2232,7 @@ Java_sun_awt_windows_WFramePeer_setMenuBar0(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtFrame::_SetMenuBar, smbs);
     // global refs and smbs are deleted in _SetMenuBar()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2244,13 +2244,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_createAwtFrame(JNIEnv *env, jobject self,
                                                jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtFrame::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2261,11 +2261,11 @@ Java_sun_awt_windows_WFramePeer_createAwtFrame(JNIEnv *env, jobject self,
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WFramePeer_getSysMenuHeight(JNIEnv *env, jclass self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     return ::GetSystemMetrics(SM_CYMENUSIZE);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -2277,7 +2277,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_pSetIMMOption(JNIEnv *env, jobject self,
                                                jstring option)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetIMMOptionStruct *sios = new SetIMMOptionStruct;
     sios->frame = env->NewGlobalRef(self);
@@ -2286,7 +2286,7 @@ Java_sun_awt_windows_WFramePeer_pSetIMMOption(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtFrame::_SetIMMOption, sios);
     // global refs and sios are deleted in _SetIMMOption()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -2306,7 +2306,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WEmbeddedFrame_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtFrame::handleID = env->GetFieldID(cls, "handle", "J");
     DASSERT(AwtFrame::handleID != NULL);
@@ -2319,7 +2319,7 @@ Java_sun_awt_windows_WEmbeddedFrame_initIDs(JNIEnv *env, jclass cls)
     AwtFrame::isEmbeddedInIEID = env->GetFieldID(cls, "isEmbeddedInIE", "Z");
     DASSERT(AwtFrame::isEmbeddedInIEID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL
@@ -2329,7 +2329,7 @@ Java_sun_awt_windows_WEmbeddedFrame_notifyModalBlockedImpl(JNIEnv *env,
                                                            jobject blockerPeer,
                                                            jboolean blocked)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     NotifyModalBlockedStruct *nmbs = new NotifyModalBlockedStruct;
     nmbs->frame = env->NewGlobalRef(self);
@@ -2340,7 +2340,7 @@ Java_sun_awt_windows_WEmbeddedFrame_notifyModalBlockedImpl(JNIEnv *env,
     AwtToolkit::GetInstance().SyncCall(AwtFrame::_NotifyModalBlocked, nmbs);
     // global refs and nmbs are deleted in _NotifyModalBlocked()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -2356,20 +2356,20 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WEmbeddedFramePeer_create(JNIEnv *env, jobject self,
                                                jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     JNI_CHECK_NULL_RETURN(self, "peer");
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtFrame::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WEmbeddedFramePeer_getBoundsPrivate(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject result = (jobject)AwtToolkit::GetInstance().SyncCall(
         (void *(*)(void *))AwtFrame::_GetBoundsPrivate,
@@ -2387,13 +2387,13 @@ Java_sun_awt_windows_WEmbeddedFramePeer_getBoundsPrivate(JNIEnv *env, jobject se
         return NULL;
     }
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_synthesizeWmActivate(JNIEnv *env, jobject self, jboolean doActivate)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SynthesizeWmActivateStruct *sas = new SynthesizeWmActivateStruct;
     sas->frame = env->NewGlobalRef(self);
@@ -2406,29 +2406,29 @@ Java_sun_awt_windows_WFramePeer_synthesizeWmActivate(JNIEnv *env, jobject self, 
     AwtToolkit::GetInstance().InvokeFunction(AwtFrame::_SynthesizeWmActivate, sas);
     // global ref and sas are deleted in _SynthesizeWmActivate()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_updateIcon(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::GetInstance().InvokeFunction(_UpdateIcon, env->NewGlobalRef(self));
     // global ref is deleted in _UpdateIcon()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_updateCustomTitleBar(JNIEnv *env, jclass cls, jobject peer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::GetInstance().InvokeFunction(AwtFrame::_UpdateCustomTitleBar, env->NewGlobalRef(peer));
     // global ref is deleted in _UpdateCustomTitleBar()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

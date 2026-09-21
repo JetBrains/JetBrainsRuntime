@@ -248,7 +248,7 @@ JNIEXPORT jobjectArray JNICALL
 Java_sun_awt_windows_WDataTransferer_dragQueryFile
     (JNIEnv *env, jobject obj, jbyteArray bytes)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     /*
      * Fix for the BugTraq ID 4327064 - inter-jvm DnD crashes the dropping jvm.
@@ -318,7 +318,7 @@ Java_sun_awt_windows_WDataTransferer_dragQueryFile
         throw;
     }
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*
@@ -330,7 +330,7 @@ JNIEXPORT jintArray JNICALL
 Java_sun_awt_windows_WDataTransferer_platformImageBytesToImageData(
     JNIEnv *env, jobject self, jbyteArray bytes, jlong format) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HDC hdc = NULL;
 
@@ -614,7 +614,7 @@ Java_sun_awt_windows_WDataTransferer_platformImageBytesToImageData(
 
     return buffer;
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*
@@ -628,7 +628,7 @@ Java_sun_awt_windows_WDataTransferer_imageDataToPlatformImageBytes(JNIEnv *env,
                                                jint width, jint height,
                                                jlong format) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     if (JNU_IsNull(env, imageData)) {
         return NULL;
@@ -818,7 +818,7 @@ Java_sun_awt_windows_WDataTransferer_imageDataToPlatformImageBytes(JNIEnv *env,
         return NULL;
     }
     return bytes;
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*
@@ -831,7 +831,7 @@ Java_sun_awt_windows_WDataTransferer_registerClipboardFormat(JNIEnv *env,
                                                              jclass cls,
                                                              jstring str)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     LPCTSTR cStr = JNU_GetStringPlatformChars(env, str, NULL);
     CHECK_NULL_RETURN(cStr, 0);
@@ -840,7 +840,7 @@ Java_sun_awt_windows_WDataTransferer_registerClipboardFormat(JNIEnv *env,
 
     return value;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -853,7 +853,7 @@ Java_sun_awt_windows_WDataTransferer_getClipboardFormatName(JNIEnv *env,
                                                             jclass cls,
                                                             jlong format)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     LPTSTR buf = new TCHAR[512]; // perhaps a bad idea to limit ourselves to 512
     VERIFY(::GetClipboardFormatName((UINT)format, buf, 512));
@@ -864,7 +864,7 @@ Java_sun_awt_windows_WDataTransferer_getClipboardFormatName(JNIEnv *env,
     }
     return name;
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*
@@ -875,11 +875,11 @@ Java_sun_awt_windows_WDataTransferer_getClipboardFormatName(JNIEnv *env,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkitThreadBlockedHandler_startSecondaryEventLoop(JNIEnv *env, jclass)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtDataTransferer::SecondaryMessageLoop();
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 }

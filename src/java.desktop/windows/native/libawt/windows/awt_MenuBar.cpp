@@ -276,7 +276,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_MenuBar_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtMenuBar::getMenuCountMID = env->GetMethodID(cls, "getMenuCountImpl", "()I");
     DASSERT(AwtMenuBar::getMenuCountMID != NULL);
@@ -286,7 +286,7 @@ Java_java_awt_MenuBar_initIDs(JNIEnv *env, jclass cls)
                                               "(I)Ljava/awt/Menu;");
     DASSERT(AwtMenuBar::getMenuMID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -307,7 +307,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuBarPeer_addMenu(JNIEnv *env, jobject self,
                                           jobject menu)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AddMenuStruct *ams = new AddMenuStruct;
     ams->menubar = env->NewGlobalRef(self);
@@ -316,7 +316,7 @@ Java_sun_awt_windows_WMenuBarPeer_addMenu(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtMenuBar::_AddMenu, ams);
     // global refs and ams are deleted in _AddMenu()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -328,7 +328,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuBarPeer_delMenu(JNIEnv *env, jobject self,
                                           jint index)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DelItemStruct *dis = new DelItemStruct;
     dis->menuitem = env->NewGlobalRef(self);
@@ -337,7 +337,7 @@ Java_sun_awt_windows_WMenuBarPeer_delMenu(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtMenuBar::_DelItem, dis);
     // global refs and dis are deleted in _DelItem
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -349,12 +349,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuBarPeer_create(JNIEnv *env, jobject self,
                                          jobject frame)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, frame,
                                 (AwtToolkit::ComponentFactory)
                                 AwtMenuBar::Create);
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

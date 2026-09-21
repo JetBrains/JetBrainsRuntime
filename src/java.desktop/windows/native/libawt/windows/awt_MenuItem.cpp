@@ -901,13 +901,13 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_MenuItem_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtMenuItem::labelID = env->GetFieldID(cls, "label", "Ljava/lang/String;");
     CHECK_NULL(AwtMenuItem::labelID);
     AwtMenuItem::enabledID = env->GetFieldID(cls, "enabled", "Z");
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -922,11 +922,11 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_CheckboxMenuItem_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtMenuItem::stateID = env->GetFieldID(cls, "state", "Z");
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -946,7 +946,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtMenuItem::isCheckboxID = env->GetFieldID(cls, "isCheckbox", "Z");
     CHECK_NULL(AwtMenuItem::isCheckboxID);
@@ -956,7 +956,7 @@ Java_sun_awt_windows_WMenuItemPeer_initIDs(JNIEnv *env, jclass cls)
     AwtMenuItem::getDefaultFontMID =
         env->GetStaticMethodID(cls, "getDefaultFont", "()Ljava/awt/Font;");
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -967,7 +967,7 @@ Java_sun_awt_windows_WMenuItemPeer_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer__1setLabel(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetLabelStruct *sls = new SetLabelStruct;
     sls->menuitem = env->NewGlobalRef(self);
@@ -975,7 +975,7 @@ Java_sun_awt_windows_WMenuItemPeer__1setLabel(JNIEnv *env, jobject self)
     AwtToolkit::GetInstance().SyncCall(AwtMenuItem::_SetLabel, sls);
     // global refs and sls are deleted in _SetLabel
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -986,7 +986,7 @@ Java_sun_awt_windows_WMenuItemPeer__1setLabel(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer__1setFont(JNIEnv *env, jobject self, jobject)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -995,7 +995,7 @@ Java_sun_awt_windows_WMenuItemPeer__1setFont(JNIEnv *env, jobject self, jobject)
     AwtToolkit::GetInstance().SyncCall(AwtMenuItem::_UpdateLayout, selfGlobalRef);
     // selfGlobalRef is deleted in _UpdateLayout
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1007,12 +1007,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer_create(JNIEnv *env, jobject self,
                                           jobject menu)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, menu,
                                 (AwtToolkit::ComponentFactory)
                                 AwtMenuItem::Create);
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1024,7 +1024,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer_enable(JNIEnv *env, jobject self,
                                           jboolean on)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetEnableStruct *ses = new SetEnableStruct;
     ses->menuitem = env->NewGlobalRef(self);
@@ -1033,7 +1033,7 @@ Java_sun_awt_windows_WMenuItemPeer_enable(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtMenuItem::_SetEnable, ses);
     // global refs and ses are deleted in _SetEnable
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1068,7 +1068,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WCheckboxMenuItemPeer_setState(JNIEnv *env, jobject self,
                                                     jboolean on)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetStateStruct *sts = new SetStateStruct;
     sts->menuitem = env->NewGlobalRef(self);
@@ -1077,7 +1077,7 @@ Java_sun_awt_windows_WCheckboxMenuItemPeer_setState(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtMenuItem::_SetState, sts);
     // global refs and sts are deleted in _SetState
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

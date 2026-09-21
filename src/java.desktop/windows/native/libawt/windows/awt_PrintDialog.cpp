@@ -154,7 +154,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrintDialog_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtPrintDialog::controlID =
         env->GetFieldID(cls, "pjob", "Ljava/awt/print/PrinterJob;");
@@ -162,13 +162,13 @@ Java_sun_awt_windows_WPrintDialog_initIDs(JNIEnv *env, jclass cls)
 
     AwtPrintControl::initIDs(env, cls);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrintDialogPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtPrintDialog::parentID =
         env->GetFieldID(cls, "parent", "Lsun/awt/windows/WComponentPeer;");
@@ -180,13 +180,13 @@ Java_sun_awt_windows_WPrintDialogPeer_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtPrintDialog::setHWndMID != NULL);
     CHECK_NULL(AwtPrintDialog::setHWndMID);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WPrintDialogPeer__1show(JNIEnv *env, jobject peer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jboolean result = JNI_FALSE;
 
@@ -298,31 +298,31 @@ Java_sun_awt_windows_WPrintDialogPeer__1show(JNIEnv *env, jobject peer)
 
     return result;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrintDialogPeer_toFront(JNIEnv *env, jobject peer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::GetInstance().SyncCall(AwtPrintDialog::_ToFront,
                                        (void *)(env->NewGlobalRef(peer)));
     // global ref is deleted in _ToFront
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrintDialogPeer_toBack(JNIEnv *env, jobject peer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::GetInstance().SyncCall(AwtPrintDialog::_ToBack,
                                        (void *)(env->NewGlobalRef(peer)));
     // global ref is deleted in _ToBack
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

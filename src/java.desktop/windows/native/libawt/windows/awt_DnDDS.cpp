@@ -1729,14 +1729,14 @@ Java_sun_awt_windows_WDragSourceContextPeer_setNativeCursor(JNIEnv* env,
                                                             jlong nativeCtxt,
                                                             jobject cursor,
                                                             jint type) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtDragSource* ds = (AwtDragSource*)nativeCtxt;
     if (ds != NULL) {
         ds->SetCursor(cursor);
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /**
@@ -1749,7 +1749,7 @@ Java_sun_awt_windows_WDragSourceContextPeer_createDragSource(
     jobject trigger, jint actions,
     jlongArray formats, jobject formatMap)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     if (!AwtDropTarget::IsCurrentDnDDataObject(NULL)) {
         JNU_ThrowByName(env, "java/awt/dnd/InvalidDnDOperationException",
@@ -1765,7 +1765,7 @@ Java_sun_awt_windows_WDragSourceContextPeer_createDragSource(
 
     return (jlong)ds;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /**
@@ -1781,7 +1781,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WDragSourceContextPeer_doDragDrop(
     jint imageWidth, jint imageHeight,
     jint x, jint y)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     cursor = env->NewGlobalRef(cursor);
     if (NULL != imageData) {
@@ -1795,7 +1795,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WDragSourceContextPeer_doDragDrop(
         imageWidth, imageHeight,
         x, y);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

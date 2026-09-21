@@ -309,69 +309,69 @@ static void DoKeyEvent(jint jkey, DWORD dwFlags)
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_mouseMoveImpl(
     JNIEnv * env, jobject self, jint x, jint y)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     MouseMove(x, y);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_mousePress(
     JNIEnv * env, jobject self, jint buttons)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     MousePress(buttons);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_mouseRelease(
     JNIEnv * env, jobject self, jint buttons)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     MouseRelease(buttons);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_mouseWheel(
     JNIEnv * env, jobject self, jint wheelAmt)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     MouseWheel(wheelAmt);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_getRGBPixels(
     JNIEnv *env, jobject self, jint x, jint y, jint width, jint height, jintArray pixelArray)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     GetRGBPixels(x, y, width, height, pixelArray);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_keyPress(
   JNIEnv *, jobject self, jint javakey )
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DoKeyEvent(javakey, 0); // no flags means key down
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WRobotPeer_keyRelease(
   JNIEnv *, jobject self, jint javakey )
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DoKeyEvent(javakey, KEYEVENTF_KEYUP);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }

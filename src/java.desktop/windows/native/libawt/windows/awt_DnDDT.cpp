@@ -1546,14 +1546,14 @@ DWORD mapModsToDROPEFFECT(DWORD effects, DWORD mods) {
  */
 
 JNIEXPORT jobject JNICALL Java_sun_awt_windows_WDropTargetContextPeer_getData(JNIEnv* env, jobject self, jlong dropTarget, jlong format) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtDropTarget* pDropTarget = (AwtDropTarget*)dropTarget;
 
     DASSERT(!::IsBadReadPtr(pDropTarget, sizeof(AwtDropTarget)));
     return pDropTarget->DoGetData(format);
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /**
@@ -1563,14 +1563,14 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_WDropTargetContextPeer_getData(JN
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDropTargetContextPeer_dropDone(JNIEnv* env, jobject self,
                              jlong dropTarget, jboolean success, jint actions) {
-    TRY_NO_HANG;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtDropTarget* pDropTarget = (AwtDropTarget*)dropTarget;
 
     DASSERT(!::IsBadReadPtr(pDropTarget, sizeof(AwtDropTarget)));
     pDropTarget->DoDropDone(success, actions);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /**
@@ -1578,13 +1578,13 @@ Java_sun_awt_windows_WDropTargetContextPeer_dropDone(JNIEnv* env, jobject self,
  */
 
 JNIEXPORT void JNICALL Java_sun_awt_windows_WDropTargetContextPeerFileStream_freeStgMedium(JNIEnv* env, jobject self, jlong stgmedium) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     ::ReleaseStgMedium((STGMEDIUM*)stgmedium);
 
     free((void*)stgmedium);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /**
@@ -1592,11 +1592,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WDropTargetContextPeerFileStream_fre
  */
 
 JNIEXPORT jint JNICALL Java_sun_awt_windows_WDropTargetContextPeerIStream_Available(JNIEnv* env, jobject self, jlong istream) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     return WDTCPIStreamWrapper::DoAvailable((WDTCPIStreamWrapper*)istream);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /**
@@ -1604,11 +1604,11 @@ JNIEXPORT jint JNICALL Java_sun_awt_windows_WDropTargetContextPeerIStream_Availa
  */
 
 JNIEXPORT jint JNICALL Java_sun_awt_windows_WDropTargetContextPeerIStream_Read(JNIEnv* env, jobject self, jlong istream) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     return WDTCPIStreamWrapper::DoRead((WDTCPIStreamWrapper*)istream);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /**
@@ -1616,11 +1616,11 @@ JNIEXPORT jint JNICALL Java_sun_awt_windows_WDropTargetContextPeerIStream_Read(J
  */
 
 JNIEXPORT jint JNICALL Java_sun_awt_windows_WDropTargetContextPeerIStream_ReadBytes(JNIEnv* env, jobject self, jlong istream, jbyteArray buf, jint off, jint len) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     return WDTCPIStreamWrapper::DoReadBytes((WDTCPIStreamWrapper*)istream, buf, off, len);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /**

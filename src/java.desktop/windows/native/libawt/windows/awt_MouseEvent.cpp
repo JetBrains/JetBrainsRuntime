@@ -43,7 +43,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_event_MouseEvent_initIDs(JNIEnv *env, jclass cls) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtMouseEvent::xID = env->GetFieldID(cls, "x", "I");
     DASSERT(AwtMouseEvent::xID != NULL);
@@ -62,7 +62,7 @@ Java_java_awt_event_MouseEvent_initIDs(JNIEnv *env, jclass cls) {
     DASSERT(AwtMouseEvent::buttonID != NULL);
     CHECK_NULL(AwtMouseEvent::buttonID);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

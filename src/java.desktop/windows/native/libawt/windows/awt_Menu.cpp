@@ -359,7 +359,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Menu_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtMenu::countItemsMID = env->GetMethodID(cls, "countItemsImpl", "()I");
     DASSERT(AwtMenu::countItemsMID != NULL);
@@ -369,7 +369,7 @@ Java_java_awt_Menu_initIDs(JNIEnv *env, jclass cls)
                                            "(I)Ljava/awt/MenuItem;");
     DASSERT(AwtMenu::getItemMID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -390,7 +390,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuPeer_delItem(JNIEnv *env, jobject self,
                                        jint index)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DelItemStruct *dis = new DelItemStruct;
     dis->menuitem = env->NewGlobalRef(self);
@@ -399,7 +399,7 @@ Java_sun_awt_windows_WMenuPeer_delItem(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtMenu::_DelItem, dis);
     // global refs and dis are deleted in _DelItem
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -411,12 +411,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuPeer_createMenu(JNIEnv *env, jobject self,
                                           jobject menuBar)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, menuBar,
                                 (AwtToolkit::ComponentFactory)AwtMenu::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -428,12 +428,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuPeer_createSubMenu(JNIEnv *env, jobject self,
                                              jobject menu)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, menu,
                                 (AwtToolkit::ComponentFactory)AwtMenu::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

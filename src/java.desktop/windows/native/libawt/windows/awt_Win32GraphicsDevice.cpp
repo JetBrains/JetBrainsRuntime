@@ -932,7 +932,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_Win32GraphicsDevice_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     /* class ids */
     jclass iCMClass = env->FindClass("java/awt/image/IndexColorModel");
@@ -978,7 +978,7 @@ Java_sun_awt_Win32GraphicsDevice_initIDs(JNIEnv *env, jclass cls)
     // workaround JDK-6477756, ignore return value to keep dll in memory
     JDK_LoadSystemLibrary("opengl32.dll");
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -992,7 +992,9 @@ Java_sun_awt_Win32GraphicsDevice_initIDs(JNIEnv *env, jclass cls)
 
 JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getMaxConfigsImpl
     (JNIEnv* jniEnv, jclass clazz, jint screen) {
-        TRY;
+
+    JBR_AWT_JNIDOWNCALL_BEGIN;
+
     HDC hDC = AwtWin32GraphicsDevice::GetDCFromScreen(screen);
 
     PIXELFORMATDESCRIPTOR pfd;
@@ -1008,7 +1010,8 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getMaxConfigsImpl
         max = 1;
     }
     return (jint)max;
-        CATCH_BAD_ALLOC_RET(0);
+
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -1019,7 +1022,9 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getMaxConfigsImpl
 
 JNIEXPORT jboolean JNICALL Java_sun_awt_Win32GraphicsDevice_isPixFmtSupported
     (JNIEnv* env, jclass clazz, jint pixFmtID, jint screen) {
-        TRY;
+
+    JBR_AWT_JNIDOWNCALL_BEGIN;
+
     jboolean suppColor = JNI_TRUE;
     HDC hDC = AwtWin32GraphicsDevice::GetDCFromScreen(screen);
 
@@ -1050,7 +1055,8 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_Win32GraphicsDevice_isPixFmtSupported
     }
     return (((pfd.dwFlags & REQUIRED_FLAGS) == REQUIRED_FLAGS) && suppColor) ?
      JNI_TRUE : JNI_FALSE;
-        CATCH_BAD_ALLOC_RET(FALSE);
+
+    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
 }
 
 /*
@@ -1061,7 +1067,9 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_Win32GraphicsDevice_isPixFmtSupported
 
 JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getDefaultPixIDImpl
     (JNIEnv* env, jclass clazz, jint screen) {
-        TRY;
+
+    JBR_AWT_JNIDOWNCALL_BEGIN;
+
     int pixFmtID = 0;
     HDC hDC = AwtWin32GraphicsDevice::GetDCFromScreen(screen);
 
@@ -1100,7 +1108,8 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_getDefaultPixIDImpl
     VERIFY(::DeleteDC(hDC));
     hDC = NULL;
     return (jint)pixFmtID;
-        CATCH_BAD_ALLOC_RET(0);
+
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 typedef BOOL (WINAPI *pfn_WTSQuerySessionInformationW)(HANDLE, DWORD, WTS_INFO_CLASS, LPWSTR*, DWORD*);
@@ -1114,7 +1123,7 @@ typedef BOOL (WINAPI *pfn_WTSFreeMemory)(PVOID);
 JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_isRemoteConnection
     (JNIEnv *, jclass) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HMODULE libWtsapi32 = JDK_LoadSystemLibrary("Wtsapi32.dll");
     CHECK_NULL_RETURN(libWtsapi32, JNI_ERR);
@@ -1137,7 +1146,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_isRemoteConnection
     }
     return JNI_ERR;
 
-    CATCH_BAD_ALLOC_RET(JNI_ERR);
+    JBR_AWT_JNIDOWNCALL_END_RET(JNI_ERR);
 }
 
 /*
@@ -1151,7 +1160,7 @@ Java_sun_awt_Win32GraphicsDevice_enterFullScreenExclusive(
         JNIEnv* env, jobject graphicsDevice,
         jint screen, jobject windowPeer) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     PDATA pData;
     JNI_CHECK_PEER_RETURN(windowPeer);
@@ -1168,7 +1177,7 @@ Java_sun_awt_Win32GraphicsDevice_enterFullScreenExclusive(
                    ::GetLastError());
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1182,7 +1191,7 @@ Java_sun_awt_Win32GraphicsDevice_exitFullScreenExclusive(
         JNIEnv* env, jobject graphicsDevice,
         jint screen, jobject windowPeer) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     PDATA pData;
     JNI_CHECK_PEER_RETURN(windowPeer);
@@ -1206,7 +1215,7 @@ Java_sun_awt_Win32GraphicsDevice_exitFullScreenExclusive(
     // We should restore alwaysOnTop state as it's anyway dropped here
     Java_sun_awt_windows_WWindowPeer_setAlwaysOnTopNative(env, windowPeer, alwaysOnTop);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 jobject CreateDisplayMode(JNIEnv* env, jint width, jint height,
@@ -1275,7 +1284,7 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_Win32GraphicsDevice_getCurrentDisplayMode
     (JNIEnv* env, jobject graphicsDevice, jint screen)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DEVMODE dm;
     LPTSTR pName = NULL;
@@ -1295,7 +1304,7 @@ Java_sun_awt_Win32GraphicsDevice_getCurrentDisplayMode
     return CreateDisplayMode(env, dm.dmPelsWidth,
         dm.dmPelsHeight, dm.dmBitsPerPel, dm.dmDisplayFrequency);
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*
@@ -1308,7 +1317,7 @@ Java_sun_awt_Win32GraphicsDevice_configDisplayMode
     (JNIEnv* env, jobject graphicsDevice, jint screen, jobject windowPeer,
      jint width, jint height, jint bitDepth, jint refreshRate)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
         DEVMODE dm;
 
@@ -1343,7 +1352,7 @@ Java_sun_awt_Win32GraphicsDevice_configDisplayMode
                                "Could not set display mode");
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 class EnumDisplayModeParam {
@@ -1391,7 +1400,7 @@ JNIEXPORT void JNICALL Java_sun_awt_Win32GraphicsDevice_enumDisplayModes
     (JNIEnv* env, jobject graphicsDevice, jint screen, jobject arrayList)
 {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DEVMODE dm;
     LPTSTR pName = NULL;
@@ -1415,7 +1424,7 @@ JNIEXPORT void JNICALL Java_sun_awt_Win32GraphicsDevice_enumDisplayModes
         }
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*

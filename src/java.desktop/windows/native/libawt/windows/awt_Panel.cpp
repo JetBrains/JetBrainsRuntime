@@ -43,13 +43,13 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPanelPeer_initIDs(JNIEnv *env, jclass cls) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtPanel::insets_ID = env->GetFieldID(cls, "insets_", "Ljava/awt/Insets;");
 
     DASSERT(AwtPanel::insets_ID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

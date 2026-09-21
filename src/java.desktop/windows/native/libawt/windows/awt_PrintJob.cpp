@@ -413,7 +413,7 @@ Java_sun_awt_windows_WPrinterJob_showDocProperties(JNIEnv *env,
                                                    jshort xres_quality,
                                                    jshort yres)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HGLOBAL hDevMode = AwtPrintControl::getPrintHDMode(env, wJob);
     HGLOBAL hDevNames = AwtPrintControl::getPrintHDName(env, wJob);
@@ -459,7 +459,7 @@ Java_sun_awt_windows_WPrinterJob_showDocProperties(JNIEnv *env,
 
     return ret;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
 }
 
 /************************************************************************
@@ -468,14 +468,14 @@ Java_sun_awt_windows_WPrinterJob_showDocProperties(JNIEnv *env,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPageDialog_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtPrintDialog::pageID =
         env->GetFieldID(cls, "page", "Ljava/awt/print/PageFormat;");
 
     DASSERT(AwtPrintDialog::pageID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /************************************************************************
@@ -504,7 +504,7 @@ Java_sun_awt_windows_WPageDialog_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WPageDialogPeer__1show(JNIEnv *env, jobject peer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     // as peer object is used later on another thread, create global ref here
     jobject peerGlobalRef = env->NewGlobalRef(peer);
@@ -712,7 +712,7 @@ Java_sun_awt_windows_WPageDialogPeer__1show(JNIEnv *env, jobject peer)
 
     return doIt;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /************************************************************************
@@ -749,7 +749,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_getDefaultPage(JNIEnv *env, jobject self,
                                                 jobject page) {
 
-  TRY;
+  JBR_AWT_JNIDOWNCALL_BEGIN;
 
   // devnames and dc are initialized at setting of Print Service,
   // through print dialog or start of printing
@@ -868,7 +868,7 @@ done:
   }
   ::GlobalUnlock(hDevNames);
 
-  CATCH_BAD_ALLOC;
+  JBR_AWT_JNIDOWNCALL_END;
 
 }
 
@@ -900,7 +900,7 @@ done:
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_validatePaper(JNIEnv *env, jobject self,
                                          jobject origPaper, jobject newPaper) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     /* If the print dialog has been displayed or a DC has otherwise
      * been created, use that. Else get a DC for the default printer
@@ -1121,7 +1121,7 @@ Java_sun_awt_windows_WPrinterJob_validatePaper(JNIEnv *env, jobject self,
     /* Free any resources allocated */
     CLEANUP_VALIDATE_PAPER;
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 static void initPrinter(JNIEnv *env, jobject self) {
@@ -1152,7 +1152,7 @@ static void initPrinter(JNIEnv *env, jobject self) {
  */
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_initPrinter(JNIEnv *env, jobject self) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
     jboolean err;
 
     initPrinter(env, self);
@@ -1197,7 +1197,7 @@ Java_sun_awt_windows_WPrinterJob_initPrinter(JNIEnv *env, jobject self) {
         }
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -1390,7 +1390,7 @@ LPTSTR VerifyDestination(JNIEnv *env, jobject wPrinterJob) {
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WPrinterJob__1startDoc(JNIEnv *env, jobject self,
                                             jstring dest, jstring jobname) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     int err = 0;
 
@@ -1506,7 +1506,7 @@ Java_sun_awt_windows_WPrinterJob__1startDoc(JNIEnv *env, jobject self,
         return JNI_TRUE;
     }
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
 }
 
 /*
@@ -1516,7 +1516,7 @@ Java_sun_awt_windows_WPrinterJob__1startDoc(JNIEnv *env, jobject self,
  */
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_endDoc(JNIEnv *env, jobject self) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HDC printDC = AwtPrintControl::getPrintDC(env, self);
 
@@ -1526,7 +1526,7 @@ Java_sun_awt_windows_WPrinterJob_endDoc(JNIEnv *env, jobject self) {
         RESTORE_CONTROLWORD
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1536,7 +1536,7 @@ Java_sun_awt_windows_WPrinterJob_endDoc(JNIEnv *env, jobject self) {
  */
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_abortDoc(JNIEnv *env, jobject self) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HDC printDC = AwtPrintControl::getPrintDC(env, self);
 
@@ -1544,7 +1544,7 @@ Java_sun_awt_windows_WPrinterJob_abortDoc(JNIEnv *env, jobject self) {
          ::AbortDoc(printDC);
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 static void DeletePrintDC(HDC printDC) {
@@ -1603,7 +1603,7 @@ Java_sun_awt_windows_WPrinterJob_deleteDC
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_deviceStartPage
 (JNIEnv *env, jobject self, jobject format, jobject painter, jint pageIndex,
  jboolean pageChanged) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HDC printDC = AwtPrintControl::getPrintDC(env, self);
 
@@ -1699,7 +1699,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_deviceStartPage
         ::SetBkMode(printDC, TRANSPARENT);
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1709,7 +1709,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_deviceStartPage
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_deviceEndPage
 (JNIEnv *env, jobject self, jobject format, jobject painter, jint pageIndex) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HDC printDC = AwtPrintControl::getPrintDC(env, self);
 
@@ -1719,7 +1719,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_deviceEndPage
         RESTORE_CONTROLWORD
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1790,7 +1790,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WEmbeddedFrame_printBand
      * printing. Today embedded frames are used only when a toolkit such as SWT
      * needs to embed
      */
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
     jbyte *image = NULL;
     try {
         int length = env->GetArrayLength(imageArray);
@@ -1837,7 +1837,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WEmbeddedFrame_printBand
 
     delete[] image;
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1860,11 +1860,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_printBand
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_beginPath
 (JNIEnv *env , jobject self, jlong printDC) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::BeginPath((HDC)printDC);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1874,11 +1874,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_beginPath
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_endPath
 (JNIEnv *env, jobject self, jlong printDC) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::EndPath((HDC)printDC);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1888,11 +1888,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_endPath
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_fillPath
 (JNIEnv *env, jobject self, jlong printDC) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::FillPath((HDC)printDC);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1902,11 +1902,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_fillPath
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_closeFigure
 (JNIEnv *env, jobject self, jlong printDC) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::CloseFigure((HDC)printDC);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1916,11 +1916,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_closeFigure
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_lineTo
 (JNIEnv *env, jobject self, jlong printDC, jfloat x, jfloat y) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::LineTo((HDC)printDC, ROUND_TO_LONG(x), ROUND_TO_LONG(y));
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -1931,11 +1931,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_lineTo
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_moveTo
 (JNIEnv *env, jobject self, jlong printDC, jfloat x, jfloat y) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::MoveToEx((HDC)printDC, ROUND_TO_LONG(x), ROUND_TO_LONG(y), NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1949,7 +1949,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_polyBezierTo
  jfloat control2x, jfloat control2y,
  jfloat endX, jfloat endY) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     POINT points[3];
 
@@ -1962,7 +1962,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_polyBezierTo
 
     (void) ::PolyBezierTo((HDC)printDC, points, 3);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1972,11 +1972,11 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_polyBezierTo
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setPolyFillMode
 (JNIEnv *env, jobject self, jlong printDC, jint fillRule) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     (void) ::SetPolyFillMode((HDC)printDC, fillRule);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1986,13 +1986,13 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setPolyFillMode
  */
 JNIEXPORT jint JNICALL Java_sun_awt_windows_WPrinterJob_setAdvancedGraphicsMode
 (JNIEnv *env, jobject self, jlong printDC) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     int oldGraphicsMode = ::SetGraphicsMode((HDC)printDC, GM_ADVANCED);
     DASSERT(oldGraphicsMode != 0);
     return (jint) oldGraphicsMode;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -2002,12 +2002,12 @@ JNIEXPORT jint JNICALL Java_sun_awt_windows_WPrinterJob_setAdvancedGraphicsMode
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setGraphicsMode
 (JNIEnv *env, jobject self, jlong printDC, jint mode) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     int oldGraphicsMode = ::SetGraphicsMode((HDC)printDC, mode);
     DASSERT(oldGraphicsMode != 0);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2017,7 +2017,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setGraphicsMode
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_scale
 (JNIEnv *env, jobject self, jlong printDC, jdouble scaleX, jdouble scaleY) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     XFORM xForm;
 
@@ -2031,7 +2031,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_scale
     BOOL result = ::ModifyWorldTransform((HDC)printDC, &xForm, MWT_RIGHTMULTIPLY);
     DASSERT(result);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2041,7 +2041,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_scale
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_getWorldTransform
 (JNIEnv* env, jobject self, jlong printDC, jdoubleArray transform) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     double elems[6];
     XFORM xForm;
@@ -2058,7 +2058,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_getWorldTransform
 
     env->SetDoubleArrayRegion(transform, 0, 6, elems);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2068,7 +2068,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_getWorldTransform
  */
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setWorldTransform
 (JNIEnv* env, jobject self, jlong printDC, jdoubleArray transform) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     double *elems;
     XFORM xForm;
@@ -2087,7 +2087,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setWorldTransform
     BOOL result = ::SetWorldTransform((HDC)printDC, &xForm);
     DASSERT(result);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2098,13 +2098,13 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_setWorldTransform
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_selectSolidBrush
 (JNIEnv *env, jobject self, jlong printDC, jint red, jint green, jint blue) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HBRUSH colorBrush = ::CreateSolidBrush(RGB(red, green, blue));
     HBRUSH oldBrush = (HBRUSH)::SelectObject((HDC)printDC, colorBrush);
     DeleteObject(oldBrush);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2115,14 +2115,14 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_selectSolidBrush
 JNIEXPORT jint JNICALL Java_sun_awt_windows_WPrinterJob_getPenX
 (JNIEnv *env, jobject self, jlong printDC) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     POINT where;
     ::GetCurrentPositionEx((HDC)printDC, &where);
 
     return (jint) where.x;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -2133,14 +2133,14 @@ JNIEXPORT jint JNICALL Java_sun_awt_windows_WPrinterJob_getPenX
 JNIEXPORT jint JNICALL Java_sun_awt_windows_WPrinterJob_getPenY
 (JNIEnv *env, jobject self, jlong printDC) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     POINT where;
     ::GetCurrentPositionEx((HDC)printDC, &where);
 
     return (jint) where.y;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -2151,11 +2151,11 @@ JNIEXPORT jint JNICALL Java_sun_awt_windows_WPrinterJob_getPenY
 JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_selectClipPath
 (JNIEnv *env, jobject self, jlong printDC) {
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     ::SelectClipPath((HDC)printDC, RGN_COPY);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -2168,7 +2168,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_frameRect
 (JNIEnv *env, jobject self, jlong printDC,
  jfloat x, jfloat y, jfloat width, jfloat height) {
 
-  TRY;
+  JBR_AWT_JNIDOWNCALL_BEGIN;
 
   POINT points[5];
 
@@ -2185,7 +2185,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_frameRect
 
   ::Polyline((HDC)printDC, points, sizeof(points)/sizeof(points[0]));
 
-  CATCH_BAD_ALLOC;
+  JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -2198,7 +2198,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_fillRect
  jfloat x, jfloat y, jfloat width, jfloat height,
  jint red, jint green, jint blue) {
 
-  TRY;
+  JBR_AWT_JNIDOWNCALL_BEGIN;
 
   RECT rect;
   rect.left = ROUND_TO_LONG(x);
@@ -2213,7 +2213,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_fillRect
     DeleteObject(brush);
   }
 
-  CATCH_BAD_ALLOC;
+  JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -2226,7 +2226,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_selectPen
 (JNIEnv *env, jobject self, jlong printDC, jfloat width,
  jint red, jint green, jint blue) {
 
-  TRY;
+  JBR_AWT_JNIDOWNCALL_BEGIN;
 
   HPEN hpen =  ::CreatePen(PS_SOLID, ROUND_TO_LONG(width),
                            RGB(red, green, blue));
@@ -2239,7 +2239,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WPrinterJob_selectPen
     }
   }
 
-  CATCH_BAD_ALLOC;
+  JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -2252,7 +2252,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WPrinterJob_selectStylePen
 (JNIEnv *env, jobject self, jlong printDC, jlong cap, jlong join, jfloat width,
  jint red, jint green, jint blue) {
 
-  TRY;
+  JBR_AWT_JNIDOWNCALL_BEGIN;
 
   LOGBRUSH logBrush;
 
@@ -2274,7 +2274,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WPrinterJob_selectStylePen
 
   return JNI_TRUE;
 
-  CATCH_BAD_ALLOC_RET (0);
+  JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
 }
 
 /*
@@ -4175,7 +4175,7 @@ Java_sun_awt_windows_WPrinterJob_setNativePrintService(JNIEnv *env,
                                                        jobject name,
                                                        jstring printer)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
     LPTSTR printerName = (LPTSTR)JNU_GetStringPlatformChars(env, printer, NULL);
     CHECK_NULL(printerName);
 
@@ -4244,7 +4244,7 @@ Java_sun_awt_windows_WPrinterJob_setNativePrintService(JNIEnv *env,
     setCapabilities(env, name, hDC);
 
     JNU_ReleaseStringPlatformChars(env, printer, printerName);
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 
@@ -4252,7 +4252,7 @@ JNIEXPORT jstring JNICALL
 Java_sun_awt_windows_WPrinterJob_getNativePrintService(JNIEnv *env,
                                                        jobject name)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
     jstring printer;
     HANDLE hDevNames = AwtPrintControl::getPrintHDName(env, name);
     if (hDevNames == NULL) {
@@ -4265,7 +4265,7 @@ Java_sun_awt_windows_WPrinterJob_getNativePrintService(JNIEnv *env,
     ::GlobalUnlock(hDevNames);
     return printer;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 static BOOL getPrintableArea(HDC pdc, HANDLE hDevMode, RectDouble *margin)
@@ -4304,7 +4304,7 @@ static BOOL getPrintableArea(HDC pdc, HANDLE hDevMode, RectDouble *margin)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtPrintDialog::controlID = env->GetFieldID(cls, "pjob", "Ljava/awt/print/PrinterJob;");
     DASSERT(AwtPrintDialog::controlID != NULL);
@@ -4317,7 +4317,7 @@ Java_sun_awt_windows_WPrinterJob_initIDs(JNIEnv *env, jclass cls)
     CHECK_NULL(AwtPrintDialog::setHWndMID);
 
     AwtPrintControl::initIDs(env, cls);
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

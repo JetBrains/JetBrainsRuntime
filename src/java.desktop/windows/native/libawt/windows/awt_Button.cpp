@@ -352,7 +352,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WButtonPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     cls = env->FindClass("java/awt/Button");
     if (cls == NULL) {
@@ -361,7 +361,7 @@ Java_sun_awt_windows_WButtonPeer_initIDs(JNIEnv *env, jclass cls)
     AwtButton::labelID = env->GetFieldID(cls, "label", "Ljava/lang/String;");
     DASSERT(AwtButton::labelID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -373,7 +373,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WButtonPeer_setLabel(JNIEnv *env, jobject self,
                                           jstring label)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetLabelStruct *sls = new SetLabelStruct;
     sls->button = env->NewGlobalRef(self);
@@ -382,7 +382,7 @@ Java_sun_awt_windows_WButtonPeer_setLabel(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtButton::_SetLabel, sls);
     // global refs and sls are deleted in _SetLabel()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -394,12 +394,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WButtonPeer_create(JNIEnv *env, jobject self,
                                         jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(
         self, parent, (AwtToolkit::ComponentFactory)AwtButton::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 }  /* extern "C" */

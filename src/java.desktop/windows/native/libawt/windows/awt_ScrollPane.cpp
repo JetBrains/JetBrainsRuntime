@@ -594,7 +594,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_ScrollPane_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtScrollPane::scrollbarDisplayPolicyID =
         env->GetFieldID(cls, "scrollbarDisplayPolicy", "I");
@@ -610,7 +610,7 @@ Java_java_awt_ScrollPane_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls, "vAdjustable", "Ljava/awt/ScrollPaneAdjustable;");
     DASSERT(AwtScrollPane::vAdjustableID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -630,7 +630,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_ScrollPaneAdjustable_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtScrollPane::unitIncrementID = env->GetFieldID(cls,"unitIncrement", "I");
     DASSERT(AwtScrollPane::unitIncrementID != NULL);
@@ -640,7 +640,7 @@ Java_java_awt_ScrollPaneAdjustable_initIDs(JNIEnv *env, jclass cls)
         env->GetFieldID(cls,"blockIncrement", "I");
     DASSERT(AwtScrollPane::blockIncrementID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -655,13 +655,13 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WScrollPanePeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtScrollPane::postScrollEventID =
         env->GetMethodID(cls, "postScrollEvent", "(IIIZ)V");
     DASSERT(AwtScrollPane::postScrollEventID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -673,7 +673,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WScrollPanePeer_create(JNIEnv *env, jobject self,
                                             jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DTRACE_PRINTLN2("%x: WScrollPanePeer.create(%x)", self, parent);
 
@@ -684,7 +684,7 @@ Java_sun_awt_windows_WScrollPanePeer_create(JNIEnv *env, jobject self,
     JNI_CHECK_PEER_CREATION_RETURN(self);
     ((AwtScrollPane*)pData)->VerifyState();
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -696,7 +696,7 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WScrollPanePeer_getOffset(JNIEnv *env, jobject self,
                                                jint orient)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     GetOffsetStruct *gos = new GetOffsetStruct;
     gos->scrollpane = env->NewGlobalRef(self);
@@ -706,7 +706,7 @@ Java_sun_awt_windows_WScrollPanePeer_getOffset(JNIEnv *env, jobject self,
         (void *(*)(void *))AwtScrollPane::_GetOffset, gos)));
     // global ref and gos are deleted in _GetOffset()
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -717,13 +717,13 @@ Java_sun_awt_windows_WScrollPanePeer_getOffset(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WScrollPanePeer_setInsets(JNIEnv *env, jobject self)
 {
-    TRY
+    JBR_AWT_JNIDOWNCALL_BEGIN
 
     AwtToolkit::GetInstance().InvokeFunction(AwtScrollPane::_SetInsets,
         env->NewGlobalRef(self));
     // global ref is deleted in _SetInsets()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -736,7 +736,7 @@ Java_sun_awt_windows_WScrollPanePeer_setScrollPosition(JNIEnv *env,
                                                        jobject self,
                                                        jint x, jint y)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetScrollPosStruct *ssps = new SetScrollPosStruct;
     ssps->scrollpane = env->NewGlobalRef(self);
@@ -746,7 +746,7 @@ Java_sun_awt_windows_WScrollPanePeer_setScrollPosition(JNIEnv *env,
     AwtToolkit::GetInstance().InvokeFunctionLater(AwtScrollPane::_SetScrollPos, ssps);
     // global ref and ssps are deleted in _SetScrollPos()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -758,12 +758,12 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WScrollPanePeer__1getHScrollbarHeight(JNIEnv *env,
                                                            jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DTRACE_PRINTLN1("%x: WScrollPanePeer._getHScrollbarHeight()", self);
     return ::GetSystemMetrics(SM_CYHSCROLL);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -775,12 +775,12 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WScrollPanePeer__1getVScrollbarWidth(JNIEnv *env,
                                                           jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DTRACE_PRINTLN1("%x: WScrollPanePeer._getVScrollbarHeight()", self);
     return ::GetSystemMetrics(SM_CXVSCROLL);
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -795,7 +795,7 @@ Java_sun_awt_windows_WScrollPanePeer_setSpans(JNIEnv *env, jobject self,
                                               jint childWidth,
                                               jint childHeight)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetSpansStruct *sss = new SetSpansStruct;
     sss->scrollpane = env->NewGlobalRef(self);
@@ -807,7 +807,7 @@ Java_sun_awt_windows_WScrollPanePeer_setSpans(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().InvokeFunction(AwtScrollPane::_SetSpans, sss);
     // global ref and sss are deleted in _SetSpans
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

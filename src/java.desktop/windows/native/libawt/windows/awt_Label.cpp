@@ -316,7 +316,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Label_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     /* init field ids */
     AwtLabel::textID = env->GetFieldID(cls, "text", "Ljava/lang/String;");
@@ -327,7 +327,7 @@ Java_java_awt_Label_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtLabel::alignmentID != NULL);
     CHECK_NULL(AwtLabel::alignmentID);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -348,7 +348,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WLabelPeer_setText(JNIEnv *env, jobject self,
                                         jstring text)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetTextStruct *sts = new SetTextStruct;
     sts->label = env->NewGlobalRef(self);
@@ -357,7 +357,7 @@ Java_sun_awt_windows_WLabelPeer_setText(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtLabel::_SetText, sts);
     // global refs and sts are deleted in _SetText()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -369,7 +369,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WLabelPeer_setAlignment(JNIEnv *env, jobject self,
                                              jint alignment)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetAlignmentStruct *sas = new SetAlignmentStruct;
     sas->label = env->NewGlobalRef(self);
@@ -378,7 +378,7 @@ Java_sun_awt_windows_WLabelPeer_setAlignment(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtLabel::_SetAlignment, sas);
     // global ref and sas are deleted in _SetAlignment
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -390,13 +390,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WLabelPeer_create(JNIEnv *env, jobject self,
                                        jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtLabel::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -407,14 +407,14 @@ Java_sun_awt_windows_WLabelPeer_create(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WLabelPeer_lazyPaint(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtLabel::_LazyPaint, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _LazyPaint
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* export "C" */

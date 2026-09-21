@@ -158,7 +158,7 @@ void awt_clipboard_uninitialize(JNIEnv *env) {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WClipboard_init(JNIEnv *env, jclass cls, jboolean areOwnershipExtraChecksEnabled)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtClipboard::lostSelectionOwnershipMID =
         env->GetMethodID(cls, "lostSelectionOwnershipImpl", "()V");
@@ -169,7 +169,7 @@ Java_sun_awt_windows_WClipboard_init(JNIEnv *env, jclass cls, jboolean areOwners
 
     AwtClipboard::SetOwnershipExtraChecksEnabled( (areOwnershipExtraChecksEnabled == JNI_TRUE) ? TRUE : FALSE );
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -181,7 +181,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WClipboard_openClipboard0(JNIEnv *env, jobject self,
                                               jobject newOwner)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DASSERT(AwtClipboard::theCurrentClipboard != NULL);
     DASSERT(newOwner == NULL || env->IsSameObject(AwtClipboard::theCurrentClipboard, newOwner));
@@ -196,7 +196,7 @@ Java_sun_awt_windows_WClipboard_openClipboard0(JNIEnv *env, jobject self,
         AwtClipboard::GetOwnership();
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -207,13 +207,13 @@ Java_sun_awt_windows_WClipboard_openClipboard0(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WClipboard_closeClipboard0(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     if (::GetOpenClipboardWindow() == AwtToolkit::GetInstance().GetHWnd()) {
         VERIFY(::CloseClipboard());
     }
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -224,11 +224,11 @@ Java_sun_awt_windows_WClipboard_closeClipboard0(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WClipboard_registerClipboardViewer(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtClipboard::RegisterClipboardViewer(env, self);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -242,7 +242,7 @@ Java_sun_awt_windows_WClipboard_publishClipboardData(JNIEnv *env,
                                                      jlong format,
                                                      jbyteArray bytes)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DASSERT(::GetOpenClipboardWindow() == AwtToolkit::GetInstance().GetHWnd());
 
@@ -331,7 +331,7 @@ Java_sun_awt_windows_WClipboard_publishClipboardData(JNIEnv *env,
 
     VERIFY(::SetClipboardData((UINT)format, hglobal));
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -343,7 +343,7 @@ JNIEXPORT jlongArray JNICALL
 Java_sun_awt_windows_WClipboard_getClipboardFormats
     (JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     unsigned int cFormats = 128; // Allocate enough space to hold all
     unsigned int pcFormatsOut = 0;
@@ -370,7 +370,7 @@ Java_sun_awt_windows_WClipboard_getClipboardFormats
 
     return formats;
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*
@@ -382,7 +382,7 @@ JNIEXPORT jbyteArray JNICALL
 Java_sun_awt_windows_WClipboard_getClipboardData
     (JNIEnv *env, jobject self, jlong format)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DASSERT(::GetOpenClipboardWindow() == AwtToolkit::GetInstance().GetHWnd());
 
@@ -525,7 +525,7 @@ Java_sun_awt_windows_WClipboard_getClipboardData
 
     return bytes;
 
-    CATCH_BAD_ALLOC_RET(NULL);
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 /*

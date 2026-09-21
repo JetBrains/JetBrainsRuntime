@@ -36,6 +36,7 @@
 
 #include "stdhdrs.h"
 #include "alloc.h"
+#include "jbr_jnidowncall_begin_end.h"
 #include "awt_Debug.h"
 
 extern COLORREF DesktopColor2RGB(int colorIndex);

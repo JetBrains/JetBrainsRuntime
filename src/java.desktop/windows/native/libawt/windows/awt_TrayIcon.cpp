@@ -925,7 +925,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_TrayIcon_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     /* init field ids */
     AwtTrayIcon::idID = env->GetFieldID(cls, "id", "I");
@@ -944,7 +944,7 @@ Java_java_awt_TrayIcon_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtTrayIcon::updateImageID != NULL);
     CHECK_NULL(AwtTrayIcon::updateImageID);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -955,7 +955,7 @@ Java_java_awt_TrayIcon_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTrayIconPeer_create(JNIEnv *env, jobject self)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, NULL,
                                 (AwtToolkit::ComponentFactory)
@@ -963,7 +963,7 @@ Java_sun_awt_windows_WTrayIconPeer_create(JNIEnv *env, jobject self)
     PDATA pData;
     JNI_CHECK_PEER_CREATION_RETURN(self);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -990,7 +990,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTrayIconPeer_setToolTip(JNIEnv *env, jobject self,
                                               jstring tooltip)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetToolTipStruct *sts = new SetToolTipStruct;
     sts->trayIcon = env->NewGlobalRef(self);
@@ -1003,7 +1003,7 @@ Java_sun_awt_windows_WTrayIconPeer_setToolTip(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTrayIcon::_SetToolTip, sts);
     // global ref and sts are deleted in _SetToolTip
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1016,7 +1016,7 @@ Java_sun_awt_windows_WTrayIconPeer_setNativeIcon(JNIEnv *env, jobject self,
                                                  jintArray intRasterData, jbyteArray andMask,
                                                  jint nSS, jint nW, jint nH)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     int length = env->GetArrayLength(andMask);
     jbyte *andMaskPtr = new jbyte[length];
@@ -1069,7 +1069,7 @@ Java_sun_awt_windows_WTrayIconPeer_setNativeIcon(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTrayIcon::_SetIcon, sis);
     // global ref is deleted in _SetIcon
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1081,7 +1081,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTrayIconPeer_updateNativeIcon(JNIEnv *env, jobject self,
                                                     jboolean doUpdate)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     UpdateIconStruct *uis = new UpdateIconStruct;
     uis->trayIcon = env->NewGlobalRef(self);
@@ -1090,7 +1090,7 @@ Java_sun_awt_windows_WTrayIconPeer_updateNativeIcon(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTrayIcon::_UpdateIcon, uis);
     // global ref is deleted in _UpdateIcon
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -1102,7 +1102,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTrayIconPeer__1displayMessage(JNIEnv *env, jobject self,
     jstring caption, jstring text, jstring msgType)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     DisplayMessageStruct *dms = new DisplayMessageStruct;
     dms->trayIcon = env->NewGlobalRef(self);
@@ -1113,7 +1113,7 @@ Java_sun_awt_windows_WTrayIconPeer__1displayMessage(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTrayIcon::_DisplayMessage, dms);
     // global ref is deleted in _DisplayMessage
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

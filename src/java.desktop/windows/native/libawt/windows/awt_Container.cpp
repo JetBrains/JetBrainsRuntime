@@ -40,14 +40,14 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_Container_initIDs(JNIEnv *env, jclass cls) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtContainer::layoutMgrID =
         env->GetFieldID(cls, "layoutMgr", "Ljava/awt/LayoutManager;");
 
     DASSERT(AwtContainer::layoutMgrID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

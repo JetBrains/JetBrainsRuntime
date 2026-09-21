@@ -41,7 +41,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_Dimension_initIDs(JNIEnv *env, jclass cls) {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtDimension::widthID = env->GetFieldID(cls, "width", "I");
     DASSERT(AwtDimension::widthID != NULL);
@@ -50,7 +50,7 @@ Java_java_awt_Dimension_initIDs(JNIEnv *env, jclass cls) {
     AwtDimension::heightID = env->GetFieldID(cls, "height", "I");
     DASSERT(AwtDimension::heightID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

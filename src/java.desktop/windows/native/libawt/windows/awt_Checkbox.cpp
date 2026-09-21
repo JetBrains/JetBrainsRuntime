@@ -556,7 +556,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Checkbox_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtCheckbox::labelID =
       env->GetFieldID(cls, "label", "Ljava/lang/String;");
@@ -571,7 +571,7 @@ Java_java_awt_Checkbox_initIDs(JNIEnv *env, jclass cls)
     AwtCheckbox::stateID = env->GetFieldID(cls, "state", "Z");
     DASSERT(AwtCheckbox::stateID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -604,7 +604,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WCheckboxPeer_setState(JNIEnv *env, jobject self,
                                             jboolean state)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetStateStruct *sss = new SetStateStruct;
     sss->checkbox = env->NewGlobalRef(self);
@@ -613,7 +613,7 @@ Java_sun_awt_windows_WCheckboxPeer_setState(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtCheckbox::_SetState, sss);
     // global refs and sss are deleted in _SetState()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -625,7 +625,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WCheckboxPeer_setCheckboxGroup(JNIEnv *env, jobject self,
                                                     jobject group)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject *jos = new jobject[2];
     jos[0] = env->NewGlobalRef(self);
@@ -634,7 +634,7 @@ Java_sun_awt_windows_WCheckboxPeer_setCheckboxGroup(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtCheckbox::_SetCheckboxGroup, jos);
     // global refs and jos are deleted in _SetLabel()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -646,7 +646,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WCheckboxPeer_setLabel(JNIEnv *env, jobject self,
                                             jstring label)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetLabelStruct *sls = new SetLabelStruct;
     sls->checkbox = env->NewGlobalRef(self);
@@ -655,7 +655,7 @@ Java_sun_awt_windows_WCheckboxPeer_setLabel(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtCheckbox::_SetLabel, sls);
     // global refs and sls are deleted in _SetLabel()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -667,7 +667,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WCheckboxPeer_create(JNIEnv *env, jobject self,
                                           jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
@@ -679,7 +679,7 @@ Java_sun_awt_windows_WCheckboxPeer_create(JNIEnv *env, jobject self,
     ((AwtComponent*)JNI_GET_PDATA(self))->VerifyState();
 #endif
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

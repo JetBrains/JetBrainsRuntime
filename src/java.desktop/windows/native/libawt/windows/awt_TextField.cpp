@@ -258,13 +258,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTextFieldPeer_create(JNIEnv *env, jobject self,
                                            jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtTextField::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -276,7 +276,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTextFieldPeer_setEchoChar(JNIEnv *env, jobject self,
                                                 jchar ch)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     SetEchoCharStruct *secs = new SetEchoCharStruct;
     secs->textfield = env->NewGlobalRef(self);
@@ -285,7 +285,7 @@ Java_sun_awt_windows_WTextFieldPeer_setEchoChar(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTextField::_SetEchoChar, secs);
     // global ref and secs are deleted in _SetEchoChar()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */

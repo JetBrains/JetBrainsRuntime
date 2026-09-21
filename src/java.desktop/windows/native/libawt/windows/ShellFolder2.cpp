@@ -45,6 +45,7 @@
 #include <shellapi.h>
 #include "jlong.h"
 #include "alloc.h"
+#include "jbr_jnidowncall_begin_end.h"
 
 #include "stdhdrs.h"
 
@@ -1441,7 +1442,7 @@ JNIEXPORT jobjectArray JNICALL Java_sun_awt_shell_Win32ShellFolder2_loadKnownFol
                                 CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pkfm));
     if (!SUCCEEDED(hr)) return NULL;
 
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jclass cl = env->FindClass("sun/awt/shell/Win32ShellFolder2$KnownFolderDefinition");
     CHECK_NULL_RETURN(cl, NULL);
@@ -1636,7 +1637,8 @@ JNIEXPORT jobjectArray JNICALL Java_sun_awt_shell_Win32ShellFolder2_loadKnownFol
     }
     pkfm->Release();
     return result;
-    CATCH_BAD_ALLOC_RET(NULL);
+
+    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
 }
 
 } // extern "C"

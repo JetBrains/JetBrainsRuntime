@@ -327,7 +327,7 @@ Java_sun_awt_Win32FontManager_getEUDCFontFile(JNIEnv *env, jclass cl) {
 JNIEXPORT jint JNICALL
 Java_sun_awt_Win32GraphicsEnvironment_getXResolution(JNIEnv *env, jobject wge)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HWND hWnd = ::GetDesktopWindow();
     HDC hDC = ::GetDC(hWnd);
@@ -335,7 +335,7 @@ Java_sun_awt_Win32GraphicsEnvironment_getXResolution(JNIEnv *env, jobject wge)
     ::ReleaseDC(hWnd, hDC);
     return result;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*
@@ -346,7 +346,7 @@ Java_sun_awt_Win32GraphicsEnvironment_getXResolution(JNIEnv *env, jobject wge)
 JNIEXPORT jint JNICALL
 Java_sun_awt_Win32GraphicsEnvironment_getYResolution(JNIEnv *env, jobject wge)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     HWND hWnd = ::GetDesktopWindow();
     HDC hDC = ::GetDC(hWnd);
@@ -354,7 +354,7 @@ Java_sun_awt_Win32GraphicsEnvironment_getYResolution(JNIEnv *env, jobject wge)
     ::ReleaseDC(hWnd, hDC);
     return result;
 
-    CATCH_BAD_ALLOC_RET(0);
+    JBR_AWT_JNIDOWNCALL_END_RET(0);
 }
 
 /*

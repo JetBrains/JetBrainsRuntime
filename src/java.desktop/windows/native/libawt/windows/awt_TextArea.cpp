@@ -475,14 +475,14 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_TextArea_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtTextArea::scrollbarVisibilityID =
         env->GetFieldID(cls, "scrollbarVisibility", "I");
 
     DASSERT(AwtTextArea::scrollbarVisibilityID != NULL);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 } /* extern "C" */
@@ -503,13 +503,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTextAreaPeer_create(JNIEnv *env, jobject self,
                                           jobject parent)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtTextArea::Create);
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 
 /*
@@ -522,7 +522,7 @@ Java_sun_awt_windows_WTextAreaPeer_replaceRange(JNIEnv *env, jobject self,
                                                jstring text,
                                                jint start, jint end)
 {
-    TRY;
+    JBR_AWT_JNIDOWNCALL_BEGIN;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
     jstring textGlobalRef = (jstring)env->NewGlobalRef(text);
@@ -536,6 +536,6 @@ Java_sun_awt_windows_WTextAreaPeer_replaceRange(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTextArea::_ReplaceText, rts);
     // global refs and rts are deleted in _ReplaceText()
 
-    CATCH_BAD_ALLOC;
+    JBR_AWT_JNIDOWNCALL_END;
 }
 } /* extern "C" */
