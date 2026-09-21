@@ -43,12 +43,13 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
 
         /*
          * We will attempt to accelerate this image only
-         * if the image is not bitmask
+         * if the image is not bitmask and its config is bound to a device.
          */
         int transparency = vImg.getTransparency();
 
         accelerationEnabled = VKEnv.isSurfaceDataAccelerated() &&
-                transparency != Transparency.BITMASK;
+                transparency != Transparency.BITMASK &&
+                vImg.getGraphicsConfig() instanceof VKGraphicsConfig gc && gc.getGPU() != null;
     }
 
     protected boolean isAccelerationEnabled() {
@@ -100,7 +101,7 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
         }
 
         // We consider configs with the same format compatible across Vulkan devices.
-        if (gc instanceof VKGraphicsConfig vkGC &&
+        if (gc instanceof VKGraphicsConfig vkGC && vkGC.getGPU() != null &&
             vImg.getGraphicsConfig() instanceof VKGraphicsConfig vImgGC)
         {
             return vkGC.getFormat() == vImgGC.getFormat();
