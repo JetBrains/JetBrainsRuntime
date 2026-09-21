@@ -77,7 +77,8 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
 
     @Override
     default SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return getGPU().getSurfaceDataProxyCache();
+        VKGPU gpu = getGPU();
+        return gpu == null ? null : gpu.getSurfaceDataProxyCache();
     }
 
     @Override
@@ -100,6 +101,7 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
 
     @Override
     default VolatileImage createCompatibleVolatileImage(int width, int height, int transparency, int type) {
+        if (getGPU() == null) return null; // Cannot accelerate without a device.
         if (type != RT_TEXTURE && type != TEXTURE) return null;
         if (transparency != OPAQUE && (transparency != TRANSLUCENT || !isTranslucencyCapable())) return null;
         SunVolatileImage vi =
@@ -113,7 +115,8 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
     }
 
     default String descriptorString() {
-        return getFormat().name() + ", " + getGPU();
+        VKGPU gpu = getGPU();
+        return gpu == null ? getFormat().name() : getFormat().name() + ", " + gpu;
     }
 
     // Default implementation of GraphicsConfiguration methods.
