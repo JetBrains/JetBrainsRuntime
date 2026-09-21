@@ -244,16 +244,32 @@ class WindowsLinkSupport {
             return result;
         }
 
-        // iterate through each component to get its actual name in the
-        // directory
+        // Check the full path first to avoid looking up every ancestor of a
+        // nonexistent file. FindFirstFile does not follow the final link, so
+        // a dangling link can still be resolved with NOFOLLOW_LINKS.
+        FirstFile lastFile = null;
+        try {
+            lastFile = FindFirstFile(WindowsPath.addPrefixIfNeeded(path));
+            FindClose(lastFile.handle());
+        } catch (WindowsException e) {
+            e.rethrowAsIOException(path);
+        }
+
+        // Iterate through each component: an ordinary child does not rule out
+        // a reparse point in an ancestor.
         int curr = start;
         while (curr < path.length()) {
             int next = path.indexOf('\\', curr);
             int end = (next == -1) ? path.length() : next;
-            String search = sb.toString() + path.substring(curr, end);
             try {
-                FirstFile fileData = FindFirstFile(WindowsPath.addPrefixIfNeeded(search));
-                FindClose(fileData.handle());
+                FirstFile fileData;
+                if (next == -1) {
+                    fileData = lastFile;
+                } else {
+                    String search = sb + path.substring(curr, end);
+                    fileData = FindFirstFile(WindowsPath.addPrefixIfNeeded(search));
+                    FindClose(fileData.handle());
+                }
 
                 // if a reparse point is encountered then we must return the
                 // final path.
