@@ -128,10 +128,14 @@ void handle_bad_alloc(void);
     #define new new(__FILE__, __LINE__)
 #endif /* OUTOFMEM_TEST */
 
+// JBR-10607: consider using JBR_AWT_JNIDOWNCALL_BEGIN / JBR_AWT_JNIDOWNCALL_END[_RET] instead for JNI downcalls
+//            (defined in jbr_jnidowncall_begin_end.h)
 #define TRY \
     try { \
         entry_point(); \
         hang_if_shutdown();
+// JBR-10607: consider using JBR_AWT_JNIDOWNCALL_BEGIN / JBR_AWT_JNIDOWNCALL_END[_RET] instead for JNI downcalls
+//            (defined in jbr_jnidowncall_begin_end.h)
 // The _NO_HANG version of TRY causes the AWT native code to return to Java
 // immediately if the Toolkit is not active. Normal AWT operations should
 // never use this macro. It should only be used for cleanup routines where:

@@ -1969,6 +1969,29 @@ void hang_if_shutdown(void)
     }
 }
 
+void jbr_awt_throw_shutdown_to_java_or_hang(void)
+{
+    if (jvm != nullptr) {
+        JNIEnv* env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        if (env != nullptr) {
+            if (env->ExceptionCheck() == JNI_FALSE) {
+                JNU_ThrowByName(env, "sun/awt/windows/WToolkitShutdownException", "WToolkit is being shutdown");
+            }
+            return;
+        }
+    }
+
+    // Hanging if no jvm or JNIEnv is available.
+
+    // Never return. The VM will halt the process.
+    ::WaitForSingleObject(
+        ::CreateEventW(nullptr, TRUE, FALSE, nullptr),
+        INFINITE
+    );
+    // Should never get here.
+    DASSERT(FALSE);
+}
+
 // for now we support only one embedder, but should be ready for future
 void AwtToolkit::RegisterEmbedderProcessId(HWND embedder)
 {
