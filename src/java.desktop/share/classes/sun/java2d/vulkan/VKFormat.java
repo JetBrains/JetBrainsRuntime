@@ -63,7 +63,7 @@ public enum VKFormat {
     private final int value;
     private final SurfaceType surfaceType, translucentSurfaceType, opaqueSurfaceType;
     private final VKFormatModel translucentModel, opaqueModel;
-    private final VKBufImgGraphicsConfig bufferedGraphicsConfig = new VKBufImgGraphicsConfig(this);
+    private final VKOffscreenGraphicsConfig unacceleratedGraphicsConfig = new VKOffscreenGraphicsConfig(null, this);
 
     VKFormat(int value, VKFormatModel translucentModel, VKFormatModel opaqueModel) {
         this.value = value;
@@ -100,7 +100,7 @@ public enum VKFormat {
         SurfaceType surfaceType = formatModel.getSurfaceType();
         WritableRaster raster = Raster.createWritableRaster(sampleModel, null);
         BufferedImage image = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
-        VKBufImgSurfaceData surfaceData = new VKBufImgSurfaceData(bufferedGraphicsConfig, raster, image, surfaceType);
+        VKBufImgSurfaceData surfaceData = new VKBufImgSurfaceData(unacceleratedGraphicsConfig, raster, image, surfaceType);
         SurfaceManager.setManager(image, new VKBufImgSurfaceManager(image, surfaceData));
         return image;
     }
@@ -158,16 +158,6 @@ public enum VKFormat {
         @Override
         public GraphicsConfiguration getDeviceConfiguration() {
             return gc;
-        }
-    }
-
-    private static class VKBufImgGraphicsConfig extends VKOffscreenGraphicsConfig {
-        private VKBufImgGraphicsConfig(VKFormat format) {
-            super(null, format);
-        }
-        @Override
-        public VKGPU getGPU() {
-            throw new UnsupportedOperationException("No VKGPU associated with VKBufImgGraphicsConfig");
         }
     }
 }
