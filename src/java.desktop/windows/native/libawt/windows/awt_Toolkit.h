@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -259,18 +260,18 @@ public:
 
     INLINE static DWORD MainThread() { return GetInstance().m_mainThreadId; }
     INLINE void VerifyActive() {
-        if (!m_isActive && m_mainThreadId != ::GetCurrentThreadId()) {
+        if (m_lifecycleStage.load() != LifecycleStage::Value::ACTIVE && m_mainThreadId != ::GetCurrentThreadId()) {
             throw awt_toolkit_shutdown();
         }
     }
-    INLINE BOOL IsDisposed() { return m_isDisposed; }
+    INLINE BOOL IsDisposed() { return m_lifecycleStage.load() == LifecycleStage::Value::DISPOSED; }
     static UINT GetMouseKeyState();
     static void GetKeyboardState(PBYTE keyboardState);
 
     static ATOM RegisterClass();
     static void UnregisterClass();
     INLINE LRESULT SendMessage(UINT msg, WPARAM wParam=0, LPARAM lParam=0) {
-        if (!m_isDisposed) {
+        if (!IsDisposed()) {
             return ::SendMessage(GetHWnd(), msg, wParam, lParam);
         } else {
             return NULL;
@@ -463,8 +464,31 @@ private:
     HWND m_toolkitHWnd;
     HWND m_inputMethodHWnd;
     BOOL m_verbose;
-    BOOL m_isActive; // set to FALSE at beginning of Dispose
-    BOOL m_isDisposed; // set to TRUE at end of Dispose
+    struct LifecycleStage {
+        // Since the value can be read from any thread (via AwtToolkit::VerifyActive()),
+        // the implementation has to be thread-safe.
+        //
+        // The std::atomic API is not used to comply with the OpenJDK conventions.
+
+        enum class Value : LONG {
+            ACTIVE = 1,
+            DISPOSING = 2,
+            DISPOSED = 3
+        };
+
+        INLINE Value load() {
+            const LONG resultLong = ::ReadAcquire(&m_stageValue);
+            const Value result = static_cast<Value>(resultLong);
+            return result;
+        }
+
+        INLINE void store(Value value) {
+            ::WriteRelease(&m_stageValue, static_cast<LONG>(value));
+        }
+
+    private:
+        volatile LONG m_stageValue = static_cast<LONG>(Value::DISPOSED);
+    } m_lifecycleStage;
     BOOL m_areExtraMouseButtonsEnabled;
     BOOL m_active_window_tracking_mode_enabled;
 
