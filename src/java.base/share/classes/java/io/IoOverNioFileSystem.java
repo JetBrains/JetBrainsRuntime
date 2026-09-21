@@ -583,8 +583,7 @@ class IoOverNioFileSystem extends FileSystem {
                 Path root = nioPath.getRoot();
                 int totalPathElementCount = nioPath.getNameCount();
 
-                Path fullPath = resolveSubpath(root, nioPath, totalPathElementCount);
-                Path realPath = Files.exists(fullPath) ? toRealPathOrNull(fullPath) : null;
+                Path realPath = toRealPathOrNull(resolveSubpath(root, nioPath, totalPathElementCount));
 
                 int existingPathElementCount = totalPathElementCount;
                 if (realPath == null) {

@@ -32,6 +32,7 @@
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
@@ -89,6 +90,67 @@ public class ToRealPath {
         Path doesNotExist = DIR.resolve("DoesNotExist");
         assertThrows(IOException.class,
                      () -> doesNotExist.toRealPath(NOFOLLOW_LINKS));
+    }
+
+    @Test
+    public void failNestedNotExist() throws IOException {
+        Path tree = Files.createTempDirectory(DIR, "nested");
+        try {
+            Path parent = tree;
+            for (int i = 0; i < 8; i++) {
+                parent = Files.createDirectory(parent.resolve("level" + i));
+            }
+            for (Path missing : new Path[] {
+                    parent.resolve("DoesNotExist"),
+                    tree.resolve("DoesNotExist").resolve("child") }) {
+                assertThrows(NoSuchFileException.class, () -> missing.toRealPath());
+                assertThrows(NoSuchFileException.class,
+                             () -> missing.toRealPath(NOFOLLOW_LINKS));
+            }
+        } finally {
+            TestUtil.removeAll(tree);
+        }
+    }
+
+    @Test
+    @EnabledIf("supportsSymbolicLinks")
+    public void danglingLink() throws IOException {
+        Path link = DIR.resolve("danglingLink");
+        Files.createSymbolicLink(link, DIR.resolve("DoesNotExist").toAbsolutePath());
+        try {
+            assertThrows(NoSuchFileException.class, () -> link.toRealPath());
+            assertEquals(link.getFileName().toString(),
+                         link.toRealPath(NOFOLLOW_LINKS).getFileName().toString());
+        } finally {
+            Files.delete(link);
+        }
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    @EnabledIf("supportsSymbolicLinks")
+    public void windowsDirectoryLink() throws IOException {
+        Path tree = Files.createTempDirectory(DIR, "directoryLink");
+        try {
+            Path target = Files.createDirectory(tree.resolve("Target"));
+            Path child = Files.createDirectory(target.resolve("Child"));
+            Path file = Files.createFile(child.resolve("File"));
+            Path link = tree.resolve("DirectoryLink");
+            Files.createSymbolicLink(link, target.toAbsolutePath());
+            Path throughLink = tree.resolve("directorylink").resolve("child").resolve("file");
+            Path realPath = throughLink.toRealPath();
+            assertEquals(file.toRealPath().toString(), realPath.toString());
+            Path noFollow = throughLink.toRealPath(NOFOLLOW_LINKS);
+            assertEquals("DirectoryLink", noFollow.getName(noFollow.getNameCount() - 3).toString());
+            assertEquals("Child", noFollow.getName(noFollow.getNameCount() - 2).toString());
+            assertEquals("File", noFollow.getFileName().toString());
+            Path missing = throughLink.resolveSibling("DoesNotExist");
+            assertThrows(NoSuchFileException.class, () -> missing.toRealPath());
+            assertThrows(NoSuchFileException.class,
+                         () -> missing.toRealPath(NOFOLLOW_LINKS));
+        } finally {
+            TestUtil.removeAll(tree);
+        }
     }
 
     @EnabledIf("supportsSymbolicLinks")
