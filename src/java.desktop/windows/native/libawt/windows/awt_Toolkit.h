@@ -42,6 +42,8 @@
 
 #include "sun_awt_windows_WToolkit.h"
 
+#include <atomic> // std::atomic_bool
+
 class AwtObject;
 class AwtDialog;
 class AwtDropTarget;
@@ -259,18 +261,18 @@ public:
 
     INLINE static DWORD MainThread() { return GetInstance().m_mainThreadId; }
     INLINE void VerifyActive() {
-        if (!m_isActive && m_mainThreadId != ::GetCurrentThreadId()) {
+        if (m_isActive.load() == false && m_mainThreadId != ::GetCurrentThreadId()) {
             throw awt_toolkit_shutdown();
         }
     }
-    INLINE BOOL IsDisposed() { return m_isDisposed; }
+    INLINE BOOL IsDisposed() { return (m_isDisposed.load() == true) ? TRUE : FALSE; }
     static UINT GetMouseKeyState();
     static void GetKeyboardState(PBYTE keyboardState);
 
     static ATOM RegisterClass();
     static void UnregisterClass();
     INLINE LRESULT SendMessage(UINT msg, WPARAM wParam=0, LPARAM lParam=0) {
-        if (!m_isDisposed) {
+        if (m_isDisposed.load() == false) {
             return ::SendMessage(GetHWnd(), msg, wParam, lParam);
         } else {
             return NULL;
@@ -463,8 +465,8 @@ private:
     HWND m_toolkitHWnd;
     HWND m_inputMethodHWnd;
     BOOL m_verbose;
-    BOOL m_isActive; // set to FALSE at beginning of Dispose
-    BOOL m_isDisposed; // set to TRUE at end of Dispose
+    std::atomic_bool m_isActive;   // set to false at beginning of Dispose
+    std::atomic_bool m_isDisposed; // set to true at end of Dispose
     BOOL m_areExtraMouseButtonsEnabled;
     BOOL m_active_window_tracking_mode_enabled;
 

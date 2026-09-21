@@ -295,8 +295,8 @@ AwtToolkit::AwtToolkit() {
     m_toolkitHWnd = NULL;
     m_inputMethodHWnd = NULL;
     m_verbose = FALSE;
-    m_isActive = TRUE;
-    m_isDisposed = FALSE;
+    m_isActive.store(true);
+    m_isDisposed.store(false);
 
     m_vmSignalled = FALSE;
 
@@ -603,7 +603,7 @@ Java_sun_awt_windows_WToolkit_startToolkitThread(JNIEnv *env, jclass cls, jobjec
 BOOL AwtToolkit::Initialize() {
     AwtToolkit& tk = AwtToolkit::GetInstance();
 
-    if (!tk.m_isActive || tk.m_mainThreadId != 0) {
+    if (tk.m_isActive.load() == false || tk.m_mainThreadId != 0) {
         /* Already initialized. */
         return FALSE;
     }
@@ -728,11 +728,11 @@ BOOL AwtToolkit::Dispose() {
 
     AwtToolkit& tk = AwtToolkit::GetInstance();
 
-    if (!tk.m_isActive || tk.m_mainThreadId != ::GetCurrentThreadId()) {
+    if (tk.m_isActive.load() == false || tk.m_mainThreadId != ::GetCurrentThreadId()) {
         return FALSE;
     }
 
-    tk.m_isActive = FALSE;
+    tk.m_isActive.store(false);
 
     // dispose Direct3D-related resources. This should be done
     // before AwtObjectList::Cleanup() as the d3d will attempt to
@@ -785,7 +785,7 @@ BOOL AwtToolkit::Dispose() {
     ::CloseHandle(m_waitEvent);
     ::CloseHandle(m_inputMethodWaitEvent);
 
-    tk.m_isDisposed = TRUE;
+    tk.m_isDisposed.store(true);
 
     return TRUE;
 }
