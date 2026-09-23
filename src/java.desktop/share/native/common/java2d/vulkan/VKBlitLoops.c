@@ -104,6 +104,10 @@ void VKBlitLoops_IsoBlit(VKSDOps* srcOps, jint filter,
 
     // Ensure all prior drawing to src surface have finished.
     VKRenderer_FlushRenderPass(srcOps);
+    if (srcOps->image == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: srcOps->image is null");
+        return;
+    }
 
     VkBool32 srcOpaque = VKSD_IsOpaque(srcOps);
     AlphaType alphaType = srcOpaque ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
@@ -311,6 +315,10 @@ void VKBlitLoops_SurfaceToSwBlit(JNIEnv* env, VKSDOps* src, SurfaceDataOps* dst,
         J2dTraceLn(J2D_TRACE_WARNING, "VKBlitLoops_SurfaceToSwBlit: dimensions are non-positive");
         return;
     }
+
+    // Ensure all prior drawing to src surface have finished.
+    VKRenderer_FlushRenderPass(src);
+
     VKDevice* device = src->device;
     VKImage* image = src->image;
     if (image == NULL) {
@@ -355,8 +363,6 @@ void VKBlitLoops_SurfaceToSwBlit(JNIEnv* env, VKSDOps* src, SurfaceDataOps* dst,
                 VKBlitLoops_FindStageBufferMemoryType, bufferSize, 0, &(uint32_t){1}, &buffer);
             VK_RUNTIME_ASSERT(page != VK_NULL_HANDLE);
 
-            // Ensure all prior drawing to src surface have finished.
-            VKRenderer_FlushRenderPass(src);
             {
                 VkImageMemoryBarrier barrier;
                 VKBarrierBatch barrierBatch = { 0 };
