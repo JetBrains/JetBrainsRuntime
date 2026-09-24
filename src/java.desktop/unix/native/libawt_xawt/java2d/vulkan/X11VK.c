@@ -84,10 +84,10 @@ static void X11VK_InitSurfaceData(VKWinSDOps* surface, void* data) {
 
 /*
  * Class:     sun_java2d_vulkan_VKEnv
- * Method:    initPlatformX11Native
+ * Method:    initPlatformX11
  * Signature: (J)J
  */
-JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKEnv_initPlatformX11Native
+JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKEnv_initPlatformX11
   (JNIEnv* env, jclass clazz, jlong nativePtr) {
     dpy = jlong_to_ptr(nativePtr);
     return ptr_to_jlong(&platformData);
