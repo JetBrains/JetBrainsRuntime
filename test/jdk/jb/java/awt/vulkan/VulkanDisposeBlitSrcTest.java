@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-2025 JetBrains s.r.o.
+ * Copyright 2024-2026 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,54 +21,29 @@
  * questions.
  */
 
-import jtreg.SkippedException;
-import sun.awt.image.SurfaceManager;
-import sun.java2d.SurfaceData;
-import sun.java2d.vulkan.VKEnv;
-import sun.java2d.vulkan.VKGraphicsConfig;
-import sun.java2d.vulkan.VKRenderQueue;
-import sun.java2d.vulkan.VKSurfaceData;
-
-import java.awt.*;
-import java.awt.image.VolatileImage;
-import java.lang.foreign.MemorySegment;
-import java.lang.ref.WeakReference;
-
 /*
  * @test
- * @requires os.family == "linux" | os.family == "windows"
+ * @requires os.family == "linux"
  * @library /test/lib
  * @summary Verifies that disposal of blit source image doesn't crash the process.
  * @modules java.desktop/sun.java2d.vulkan:+open java.desktop/sun.java2d:+open java.desktop/sun.awt.image:+open
- * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.vulkan=True -Dsun.java2d.vulkan.leOptimizations=true VulkanDisposeBlitSrcTest
+ * @run main/othervm/timeout=300 VulkanDisposeBlitSrcTest
  */
 
 
-public class VulkanDisposeBlitSrcTest {
+public class VulkanDisposeBlitSrcTest extends VulkanDisposeTest {
     public static void main(String[] args) throws Exception {
-        if (!VKEnv.isVulkanEnabled()) {
-            throw new Error("Vulkan not enabled");
+        if (args.length == 0) {
+            runInChildJVM(VulkanDisposeBlitDstTest.class.getName());
+        } else {
+            new VulkanDisposeBlitDstTest();
         }
+    }
 
-        VKGraphicsConfig gc = VKEnv.getDevices().findFirst().get().getOffscreenGraphicsConfigs().findFirst().get();
-        VolatileImage a = gc.createCompatibleVolatileImage(100, 100, VolatileImage.TRANSLUCENT, VKSurfaceData.RT_TEXTURE);
-        VolatileImage b = gc.createCompatibleVolatileImage(100, 100, VolatileImage.TRANSLUCENT, VKSurfaceData.RT_TEXTURE);
-
-        // Blit a onto b
-        Graphics2D g = (Graphics2D) b.getGraphics();
-        g.drawImage(a, 0, 0, null);
-        g.dispose();
-
+    @Override
+    protected void test() {
         // Dispose a
-        WeakReference<SurfaceData> ref = new WeakReference<>(SurfaceManager.getManager(a).getPrimarySurfaceData());
-        MemorySegment vksd = MemorySegment.ofAddress(ref.get().getNativeOps()).reinterpret(144); // sizeof(VKSDOps)
-        a = null;
-        final int MAX_ITERATIONS = 1000;
-        for (int i = 0; i < MAX_ITERATIONS && ref.get() != null; i++) System.gc();
-        if (ref.get() != null) throw new SkippedException("SurfaceData was not collected after " + MAX_ITERATIONS + " iterations");
-        // Mess a's native data
-        Thread.sleep(100);
-        vksd.fill((byte) 0xec);
+        disposeSource();
 
         // Flush b
         b.getSnapshot();
