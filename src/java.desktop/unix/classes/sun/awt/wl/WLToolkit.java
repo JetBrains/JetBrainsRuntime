@@ -170,7 +170,14 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             initLibwaylandLogging();
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
-            VKEnv.init(() -> VKEnv.initPlatformWayland(display));
+            VKEnv.init(() -> {
+                final String allowWLToolkitPropertyName = "sun.java2d.vulkan.allowPlatform.WLToolkit";
+                String allowWLToolkitProperty = System.getProperty(allowWLToolkitPropertyName, "true");
+                if (!"true".equalsIgnoreCase(allowWLToolkitProperty)) {
+                    throw new VKEnv.VKInitializationException("Vulkan on WLToolkit is currently disabled by -D" + allowWLToolkitPropertyName + "=false");
+                }
+                return VKEnv.initPlatformWayland(display);
+            });
             initIDs(display);
         }
         String desktop = System.getenv("XDG_CURRENT_DESKTOP");

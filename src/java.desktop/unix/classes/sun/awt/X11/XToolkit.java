@@ -508,7 +508,22 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             device = (X11GraphicsDevice) localEnv.getDefaultScreenDevice();
             display = device.getDisplay();
             setupModifierMap();
-            VKEnv.init(() -> VKEnv.initPlatformX11(display));
+            VKEnv.init(() -> {
+                final String allowXToolkitPropertyName = "sun.java2d.vulkan.allowPlatform.XToolkit";
+                String allowXToolkitProperty = System.getProperty(allowXToolkitPropertyName, "false");
+                if (!"true".equalsIgnoreCase(allowXToolkitProperty)) {
+                    throw new VKEnv.VKInitializationException("Vulkan on XToolkit is in an experimental state, provide -D" + allowXToolkitPropertyName + "=true to enable");
+                }
+                if (isXWayland()) {
+                    final String allowXWaylandPropertyName = "sun.java2d.vulkan.allowPlatform.XToolkit.XWayland";
+                    String allowXWaylandProperty = System.getProperty(allowXWaylandPropertyName, "false");
+                    // Due to an XWayland bug (no workaround in java2d yet), Java windows would be presented with a titlebar-height shift
+                    if (!"true".equalsIgnoreCase(allowXWaylandProperty)) {
+                        throw new VKEnv.VKInitializationException("Vulkan is currently not supported on XWayland due to a known bug, provide -D" + allowXWaylandPropertyName + "=true to force");
+                    }
+                }
+                return VKEnv.initPlatformX11(display);
+            });
             initIDs();
             setBackingStoreType();
         }

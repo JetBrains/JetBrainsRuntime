@@ -26,7 +26,6 @@
 
 package sun.java2d.vulkan;
 
-import sun.awt.SunToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Toolkit;
@@ -69,31 +68,16 @@ public final class VKEnv {
     private static VKGPU defaultDevice;
 
     public static native long initPlatformWayland(long nativePtr);
-    private static native long initPlatformX11Native(long nativePtr);
+    public static native long initPlatformX11(long nativePtr);
     public static native long initPlatformWin32();
     private static native VKGPU[] initNative(long platformData);
 
-    static class VKInitializationException extends RuntimeException {
+    public static class VKInitializationException extends RuntimeException {
         private static final long serialVersionUID = 7476713504086007145L;
-        VKInitializationException(String message) {
+        public VKInitializationException(String message) {
             super(message);
         }
     }
-
-    public static long initPlatformX11(long nativePtr) {
-        String allowExperimentalXToolkitProperty = System.getProperty("sun.java2d.vulkan.allowExperimental.XToolkit", "false");
-        if (!allowExperimentalXToolkitProperty.equalsIgnoreCase("true")) {
-            throw new VKInitializationException("Vulkan on XToolkit is in an experimental state, provide -Dsun.java2d.vulkan.allowExperimental.XToolkit=true to enable");
-        }
-        String forceOnXWaylandProperty = System.getProperty("sun.java2d.vulkan.forceOnXWayland", "false");
-        boolean forceOnXWayland = forceOnXWaylandProperty.equalsIgnoreCase("true");
-        if (!forceOnXWayland && Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit && sunToolkit.isRunningOnXWayland()) {
-            // Due to an XWayland bug (no workaround in java2d yet), Java windows would be presented with a titlebar-height shift
-            throw new VKInitializationException("Vulkan is currently not supported on XWayland due to a known bug");
-        }
-        return initPlatformX11Native(nativePtr);
-    }
-
 
     public static synchronized void init(Supplier<Long> getPlatformData) {
         if (state > INITIALIZING) return;
