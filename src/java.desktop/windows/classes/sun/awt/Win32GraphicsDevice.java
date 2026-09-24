@@ -322,7 +322,7 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
                     System.out.println(" for default config on screen " +
                                        screen);
                 }
-            } else if (WindowsFlags.isVulkanEnabled()) {
+            } else if (VKEnv.isPresentationEnabled()) {
                 VKGPU vkgpu = VKEnv.getDevices().findFirst().orElseThrow(() -> new RuntimeException("No Vulkan devices found"));
                 VKGraphicsConfig offscreenConfig = vkgpu.getPresentableGraphicsConfigs().findFirst().orElseThrow(() -> new RuntimeException("No presentable graphics configs found"));
                 defaultConfig = new Win32VKGraphicsConfig(offscreenConfig, this, 0);
