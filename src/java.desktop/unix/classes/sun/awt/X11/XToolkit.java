@@ -551,12 +551,12 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean needUpdateWindow() {
-        return VKEnv.isVulkanEnabled();
+        return VKEnv.isPresentationEnabled();
     }
 
     @Override
     public boolean needUpdateWindowAfterPaint() {
-        return VKEnv.isVulkanEnabled();
+        return VKEnv.isPresentationEnabled();
     }
 
 
