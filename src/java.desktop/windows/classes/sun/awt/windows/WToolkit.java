@@ -1217,6 +1217,6 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
     @Override
     public boolean needUpdateWindowAfterPaint() {
-        return VKEnv.isVulkanEnabled();
+        return VKEnv.isPresentationEnabled();
     }
 }
