@@ -141,11 +141,7 @@ public final class SunGraphics2D
     @Native
     public static final int COMP_ALPHA  = 1;/* AlphaComposite */
     @Native
-    public static final int COMP_ISCOPY = 0;/* simple stores into destination,
-                                             * i.e. Src, SrcOverNoEa, and other
-                                             * alpha modes which replace
-                                             * the destination.
-                                             */
+    public static final int COMP_ISCOPY = 0;/* see comment in validatePaintAndComposite for meaning */
 
     /* Stroke */
     @Native
@@ -177,7 +173,8 @@ public final class SunGraphics2D
     @Native
     public static final int CLIP_DEVICE      = 0; /* no clipping set */
 
-    /* The following fields are used when the current Paint is a Color. */
+    /* The following fields are used when the current Paint is a Color.
+     * See the comment in validatePaintAndComposite for additional info. */
     public int eargb;  // ARGB value with ExtraAlpha baked in
     public int pixel;  // pixel value for eargb
 
@@ -192,10 +189,13 @@ public final class SunGraphics2D
 
     public RenderLoops loops;
 
-    public CompositeType imageComp;     /* Image Transparency checked on fly */
+    public CompositeType imageComp; // see comment in validatePaintAndComposite
 
-    public int paintState;
-    public int compositeState;
+    // Used in validatePaintAndComposite()
+    private Paint validatedPaint;
+
+    public int paintState; // see comment in validatePaintAndComposite
+    public int compositeState; // see comment in validatePaintAndComposite
     public int strokeState;
     public int transformState;
     public int clipState;
@@ -270,8 +270,6 @@ public final class SunGraphics2D
         composite = defaultComposite;
         paint = foregroundColor;
 
-        imageComp = CompositeType.SrcOverNoEa;
-
         renderHint = SunHints.INTVAL_RENDER_DEFAULT;
         antialiasHint = SunHints.INTVAL_ANTIALIAS_OFF;
         textAntialiasHint = SunHints.INTVAL_TEXT_ANTIALIAS_DEFAULT;
@@ -288,7 +286,7 @@ public final class SunGraphics2D
             invalidateTransform();
         }
 
-        validateColor();
+        validatePaintAndComposite();
 
         font = f;
         if (font == null) {
@@ -925,6 +923,106 @@ public final class SunGraphics2D
         return surfaceData;
     }
 
+    /*
+     * Recomputes the *derived paint state* and invalidates the pipe on change.
+     * Inputs (provided directly by the user of SunGraphics2D):
+     * - paint
+     * - composite
+     * - foregroundColor
+     * - surfaceData (only used to determine dst transparency)
+     *
+     * The derived paint state is stored in:
+     * - imageComp
+     *   Directly computed from composite, no SRC-equivalence rewrites.
+     *
+     * - eargb
+     *   Directly computed from foregroundColor when the paint is a color. Otherwise, unused.
+     *
+     * - pixel
+     *   The representation of eargb for surfaceData.
+     *
+     * - paintState
+     *   Classifies the *effective paint*.
+     *
+     * - compositeState
+     *   Classifies the composite.
+     *   compositeState is set to COMP_ISCOPY whenever the current paint+composite+surfaceData
+     *   is equivalent to the *effective paint* with SRC + extraAlpha = equivalentExtraAlpha, where
+     *   equivalentExtraAlpha = 1 for color paints (because extraAlpha is already folded into eargb)
+     *   and equivalentExtraAlpha = composite.getAlpha() for non-color paints.
+     *   Otherwise, compositeState simply distinguishes between ALPHA/XOR/CUSTOM.
+     *
+     * The *effective paint* is:
+     * - In case of colors, the color with the composite's extraAlpha folded into it.
+     *   Also, color is forced to 0x00000000 when composite=CLEAR to make it COMP_ISCOPY (equivalent to SRC).
+     * - Otherwise, the paint itself.
+     */
+    private void validatePaintAndComposite() {
+        int newPaintState;
+        if (paint instanceof Color) {
+            int newEargb;
+            if (composite instanceof AlphaComposite alphaComp && alphaComp.getRule() == AlphaComposite.CLEAR) {
+                newEargb = 0;
+            } else {
+                newEargb = foregroundColor.getRGB();
+                if (composite instanceof AlphaComposite alphaComp && alphaComp.getAlpha() < 1.0f) {
+                    int a = Math.round(alphaComp.getAlpha() * (newEargb >>> 24));
+                    newEargb = (newEargb & 0x00ffffff) | (a << 24);
+                }
+            }
+            eargb = newEargb;
+            pixel = surfaceData.pixelFor(eargb);
+            newPaintState = ((this.eargb >> 24) == -1) ? PAINT_OPAQUECOLOR : PAINT_ALPHACOLOR;
+        } else {
+            Class<? extends Paint> paintClass = paint.getClass();
+            if (paintClass == GradientPaint.class) {
+                newPaintState = PAINT_GRADIENT;
+            } else if (paintClass == LinearGradientPaint.class) {
+                newPaintState = PAINT_LIN_GRADIENT;
+            } else if (paintClass == RadialGradientPaint.class) {
+                newPaintState = PAINT_RAD_GRADIENT;
+            } else if (paintClass == TexturePaint.class) {
+                newPaintState = PAINT_TEXTURE;
+            } else {
+                newPaintState = PAINT_CUSTOM;
+            }
+        }
+        boolean shouldInvalidate = newPaintState != paintState || (newPaintState > PAINT_ALPHACOLOR && paint != validatedPaint);
+        paintState = newPaintState;
+        validatedPaint = newPaintState > PAINT_ALPHACOLOR ? paint : null;
+
+        CompositeType newImageComp;
+        int newCompositeState;
+        if (composite instanceof AlphaComposite alphaComp) {
+            newImageComp = CompositeType.forAlphaComposite(alphaComp);
+            boolean isCompositeEquivalentToSrc =
+                    newImageComp == CompositeType.Src ||
+                    newImageComp == CompositeType.SrcNoEa ||
+                    (newImageComp == CompositeType.SrcOverNoEa && (
+                            paintState == PAINT_OPAQUECOLOR || (
+                                    paintState > PAINT_ALPHACOLOR && paint.getTransparency() == Transparency.OPAQUE
+                            )
+                    )) ||
+                    (newImageComp == CompositeType.Clear && paintState <= PAINT_ALPHACOLOR) ||
+                    (newImageComp == CompositeType.SrcIn && surfaceData.getTransparency() == Transparency.OPAQUE);
+            newCompositeState = isCompositeEquivalentToSrc ? COMP_ISCOPY : COMP_ALPHA;
+        } else if (composite instanceof XORComposite) {
+            newImageComp = CompositeType.Xor;
+            newCompositeState = COMP_XOR;
+        } else {
+            newImageComp = CompositeType.General;
+            newCompositeState = COMP_CUSTOM;
+        }
+        shouldInvalidate = shouldInvalidate || newImageComp != imageComp || newCompositeState != compositeState;
+        imageComp = newImageComp;
+        compositeState = newCompositeState;
+
+        if (shouldInvalidate) {
+            invalidatePipe();
+            validFontInfo = false;
+        }
+    }
+
     /**
      * Sets the Composite in the current graphics state. Composite is used
      * in all drawing methods such as drawImage, drawString, drawPath,
@@ -939,53 +1037,11 @@ public final class SunGraphics2D
         if (composite == comp) {
             return;
         }
-        int newCompState;
-        CompositeType newCompType;
-        if (comp instanceof AlphaComposite) {
-            AlphaComposite alphacomp = (AlphaComposite) comp;
-            newCompType = CompositeType.forAlphaComposite(alphacomp);
-            if (newCompType == CompositeType.SrcOverNoEa) {
-                if (paintState == PAINT_OPAQUECOLOR ||
-                    (paintState > PAINT_ALPHACOLOR &&
-                     paint.getTransparency() == Transparency.OPAQUE))
-                {
-                    newCompState = COMP_ISCOPY;
-                } else {
-                    newCompState = COMP_ALPHA;
-                }
-            } else if (newCompType == CompositeType.SrcNoEa ||
-                       newCompType == CompositeType.Src ||
-                       newCompType == CompositeType.Clear)
-            {
-                newCompState = COMP_ISCOPY;
-            } else if (surfaceData.getTransparency() == Transparency.OPAQUE &&
-                       newCompType == CompositeType.SrcIn)
-            {
-                newCompState = COMP_ISCOPY;
-            } else {
-                newCompState = COMP_ALPHA;
-            }
-        } else if (comp instanceof XORComposite) {
-            newCompState = COMP_XOR;
-            newCompType = CompositeType.Xor;
-        } else if (comp == null) {
+        if (comp == null) {
             throw new IllegalArgumentException("null Composite");
-        } else {
-            newCompState = COMP_CUSTOM;
-            newCompType = CompositeType.General;
-        }
-        if (compositeState != newCompState ||
-            imageComp != newCompType)
-        {
-            compositeState = newCompState;
-            imageComp = newCompType;
-            invalidatePipe();
-            validFontInfo = false;
         }
         composite = comp;
-        if (paintState <= PAINT_ALPHACOLOR) {
-            validateColor();
-        }
+        validatePaintAndComposite();
     }
 
     /**
@@ -1005,32 +1061,7 @@ public final class SunGraphics2D
             return;
         }
         this.paint = paint;
-        if (imageComp == CompositeType.SrcOverNoEa) {
-            // special case where compState depends on opacity of paint
-            if (paint.getTransparency() == Transparency.OPAQUE) {
-                if (compositeState != COMP_ISCOPY) {
-                    compositeState = COMP_ISCOPY;
-                }
-            } else {
-                if (compositeState == COMP_ISCOPY) {
-                    compositeState = COMP_ALPHA;
-                }
-            }
-        }
-        Class<? extends Paint> paintClass = paint.getClass();
-        if (paintClass == GradientPaint.class) {
-            paintState = PAINT_GRADIENT;
-        } else if (paintClass == LinearGradientPaint.class) {
-            paintState = PAINT_LIN_GRADIENT;
-        } else if (paintClass == RadialGradientPaint.class) {
-            paintState = PAINT_RAD_GRADIENT;
-        } else if (paintClass == TexturePaint.class) {
-            paintState = PAINT_TEXTURE;
-        } else {
-            paintState = PAINT_CUSTOM;
-        }
-        validFontInfo = false;
-        invalidatePipe();
+        validatePaintAndComposite();
     }
 
     static final int NON_UNIFORM_SCALE_MASK =
@@ -1709,72 +1740,12 @@ public final class SunGraphics2D
         return foregroundColor;
     }
 
-    /*
-     * Validate the eargb and pixel fields against the current color.
-     *
-     * The eargb field must take into account the extraAlpha
-     * value of an AlphaComposite.  It may also take into account
-     * the Fsrc Porter-Duff blending function if such a function is
-     * a constant (see handling of Clear mode below).  For instance,
-     * by factoring in the (Fsrc == 0) state of the Clear mode we can
-     * use a SrcNoEa loop just as easily as a general Alpha loop
-     * since the math will be the same in both cases.
-     *
-     * The pixel field will always be the best pixel data choice for
-     * the final result of all calculations applied to the eargb field.
-     *
-     * Note that this method is only necessary under the following
-     * conditions:
-     *     (paintState <= PAINT_ALPHA_COLOR &&
-     *      compositeState <= COMP_CUSTOM)
-     * though nothing bad will happen if it is run in other states.
-     */
-    void validateColor() {
-        int eargb;
-        if (imageComp == CompositeType.Clear) {
-            eargb = 0;
-        } else {
-            eargb = foregroundColor.getRGB();
-            if (compositeState <= COMP_ALPHA &&
-                imageComp != CompositeType.SrcNoEa &&
-                imageComp != CompositeType.SrcOverNoEa)
-            {
-                AlphaComposite alphacomp = (AlphaComposite) composite;
-                int a = Math.round(alphacomp.getAlpha() * (eargb >>> 24));
-                eargb = (eargb & 0x00ffffff) | (a << 24);
-            }
-        }
-        this.eargb = eargb;
-        this.pixel = surfaceData.pixelFor(eargb);
-    }
-
     public void setColor(Color color) {
         if (color == null || color == paint) {
             return;
         }
         this.paint = foregroundColor = color;
-        validateColor();
-        if ((eargb >> 24) == -1) {
-            if (paintState == PAINT_OPAQUECOLOR) {
-                return;
-            }
-            paintState = PAINT_OPAQUECOLOR;
-            if (imageComp == CompositeType.SrcOverNoEa) {
-                // special case where compState depends on opacity of paint
-                compositeState = COMP_ISCOPY;
-            }
-        } else {
-            if (paintState == PAINT_ALPHACOLOR) {
-                return;
-            }
-            paintState = PAINT_ALPHACOLOR;
-            if (imageComp == CompositeType.SrcOverNoEa) {
-                // special case where compState depends on opacity of paint
-                compositeState = COMP_ALPHA;
-            }
-        }
-        validFontInfo = false;
-        invalidatePipe();
+        validatePaintAndComposite();
     }
 
     /**
@@ -2459,13 +2430,11 @@ public final class SunGraphics2D
             // this will recalculate the composite clip
             setDevClip(surfaceData.getBounds());
 
-            if (paintState <= PAINT_ALPHACOLOR) {
-                validateColor();
-            }
             if (composite instanceof XORComposite) {
                 Color c = ((XORComposite) composite).getXorColor();
                 setComposite(new XORComposite(c, surfaceData));
             }
+            validatePaintAndComposite();
             validatePipe();
         } finally {
             // REMIND: No locking yet in screen SurfaceData objects!
