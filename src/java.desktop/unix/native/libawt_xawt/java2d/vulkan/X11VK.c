@@ -84,7 +84,7 @@ static void X11VK_InitSurfaceData(VKWinSDOps* surface, void* data) {
 
 /*
  * Class:     sun_java2d_vulkan_VKEnv
- * Method:    initPlatformX11Native
+ * Method:    initPlatformX11
  * Signature: (J)J
  */
 JNIEXPORT jlong JNICALL Java_sun_java2d_vulkan_VKEnv_initPlatformX11

@@ -180,7 +180,10 @@ public final class WToolkit extends SunToolkit implements Runnable {
     static {
         loadLibraries();
         initIDs();
-        VKEnv.init(() -> VKEnv.initPlatformWin32());
+
+        if (!GraphicsEnvironment.isHeadless()) {
+            VKEnv.init(() -> VKEnv.initPlatformWin32());
+        }
 
         // Print out which version of Windows is running
         if (log.isLoggable(PlatformLogger.Level.FINE)) {

@@ -26,7 +26,6 @@
 
 package sun.java2d.vulkan;
 
-import sun.awt.SunToolkit;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Toolkit;
@@ -74,7 +73,7 @@ public final class VKEnv {
 
     static class VKInitializationException extends RuntimeException {
         private static final long serialVersionUID = 7476713504086007145L;
-        VKInitializationException(String message) {
+        public VKInitializationException(String message) {
             super(message);
         }
     }
