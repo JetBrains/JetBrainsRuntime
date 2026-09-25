@@ -76,6 +76,7 @@
 @property (nonatomic, retain) NSNumber *currentDisplayID;
 @property (nonatomic, readonly) CGFloat customTitleBarHeight;
 @property (nonatomic) BOOL customTitleBarControlsVisible;
+@property (nonatomic) BOOL customTitleBarControlsRtl;
 @property (nonatomic, retain) NSMutableArray *customTitleBarConstraints;
 @property (nonatomic, retain) NSLayoutConstraint *customTitleBarHeightConstraint;
 @property (nonatomic, retain) NSMutableArray *customTitleBarButtonCenterXConstraints;
