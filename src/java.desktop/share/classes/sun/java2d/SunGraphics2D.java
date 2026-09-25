@@ -983,9 +983,7 @@ public final class SunGraphics2D
             validFontInfo = false;
         }
         composite = comp;
-        // Special case: eargb is read by native sw loops in CLEAR handling, even when using non-color paints.
-        // This is because CLEAR completely ignores the paint.
-        if (paintState <= PAINT_ALPHACOLOR || imageComp == CompositeType.Clear) {
+        if (paintState <= PAINT_ALPHACOLOR) {
             validateColor();
         }
     }
@@ -2461,7 +2459,7 @@ public final class SunGraphics2D
             // this will recalculate the composite clip
             setDevClip(surfaceData.getBounds());
 
-            if (paintState <= PAINT_ALPHACOLOR || imageComp == CompositeType.Clear) {
+            if (paintState <= PAINT_ALPHACOLOR) {
                 validateColor();
             }
             if (composite instanceof XORComposite) {
