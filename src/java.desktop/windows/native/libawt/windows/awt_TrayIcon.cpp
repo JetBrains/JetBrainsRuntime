@@ -974,7 +974,8 @@ Java_sun_awt_windows_WTrayIconPeer_create(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTrayIconPeer__1dispose(JNIEnv *env, jobject self)
 {
-    TRY;
+    // Other users of AwtObject::_Dispose are also wrapped with TRY_NO_HANG instead of the regular TRY
+    TRY_NO_HANG;
 
     AwtObject::_Dispose(self);
 
