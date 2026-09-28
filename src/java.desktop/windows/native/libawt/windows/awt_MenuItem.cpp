@@ -1044,9 +1044,7 @@ Java_sun_awt_windows_WMenuItemPeer_enable(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer__1dispose(JNIEnv *env, jobject self)
 {
-    // No TRY, TRY_NO_HANG or JBR_AWT_JNIDOWNCALL_BEGIN: AwtObject::_Dispose is able to work even when
-    //   the toolkit thread is shutting down.
-    TRY_NO_VERIFY;
+    TRY_NO_HANG;
 
     AwtObject::_Dispose(self);
 
