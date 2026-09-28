@@ -1191,7 +1191,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtFileDialog::parentID =
         env->GetFieldID(cls, "parent", "Lsun/awt/windows/WComponentPeer;");
@@ -1284,24 +1284,24 @@ Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtFileDialog::hintsID != NULL);
     CHECK_NULL(AwtFileDialog::hintsID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer_setFilterString(JNIEnv *env, jclass cls,
                                                      jstring filterDescription)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtFileDialog::Initialize(env, filterDescription);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer__1show(JNIEnv *env, jobject peer)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     /*
      * Fix for 4906972.
@@ -1314,7 +1314,7 @@ Java_sun_awt_windows_WFileDialogPeer__1show(JNIEnv *env, jobject peer)
         env->DeleteGlobalRef(peerGlobal);
     }
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
@@ -1334,7 +1334,7 @@ Java_sun_awt_windows_WFileDialogPeer__1dispose(JNIEnv *env, jobject peer)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer__1hide(JNIEnv *env, jobject peer)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject peerGlobal = env->NewGlobalRef(peer);
 
@@ -1342,31 +1342,31 @@ Java_sun_awt_windows_WFileDialogPeer__1hide(JNIEnv *env, jobject peer)
         (void *)peerGlobal);
     // peerGlobal ref is deleted in _DisposeOrHide
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer_toFront(JNIEnv *env, jobject peer)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(AwtFileDialog::_ToFront,
                                        (void *)(env->NewGlobalRef(peer)));
     // global ref is deleted in _ToFront
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer_toBack(JNIEnv *env, jobject peer)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(AwtFileDialog::_ToBack,
                                        (void *)(env->NewGlobalRef(peer)));
     // global ref is deleted in _ToBack
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 int ScaleDownAbsX(int x, HWND hwnd) {
@@ -1419,7 +1419,7 @@ jobject AwtFileDialog::_GetLocationOnScreen(void *param)
 JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WFileDialogPeer_getLocationOnScreen(JNIEnv *env,
                                                                  jobject peer) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject peerRef = env->NewGlobalRef(peer);
     jobject resultRef = (jobject)AwtToolkit::GetInstance().SyncCall(
@@ -1435,7 +1435,7 @@ Java_sun_awt_windows_WFileDialogPeer_getLocationOnScreen(JNIEnv *env,
 
     return NULL;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 } /* extern "C" */

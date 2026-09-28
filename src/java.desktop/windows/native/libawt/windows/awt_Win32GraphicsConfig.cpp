@@ -53,11 +53,11 @@ JNIEXPORT void JNICALL
 Java_sun_awt_Win32GraphicsConfig_initIDs
     (JNIEnv *env, jclass thisCls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
     AwtWin32GraphicsConfig::win32GCVisualID = env->GetFieldID(thisCls,
          "visual", "I");
     DASSERT(AwtWin32GraphicsConfig::win32GCVisualID);
-    JBR_AWT_JNIDOWNCALL_END;
+        CATCH_BAD_ALLOC;
 }
 
 /*

@@ -743,7 +743,7 @@ extern "C" {
 JNIEXPORT jstring JNICALL
 Java_sun_awt_windows_WTextComponentPeer_getText(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -762,7 +762,7 @@ Java_sun_awt_windows_WTextComponentPeer_getText(JNIEnv *env, jobject self)
         return NULL;
     }
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -774,7 +774,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTextComponentPeer_setText(JNIEnv *env, jobject self,
                                                 jstring text)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetTextStruct *sts = new SetTextStruct;
     sts->textcomponent = env->NewGlobalRef(self);
@@ -783,7 +783,7 @@ Java_sun_awt_windows_WTextComponentPeer_setText(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTextComponent::_SetText, sts);
     // global refs and sts are deleted in _SetText
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -795,14 +795,14 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WTextComponentPeer_getSelectionStart(JNIEnv *env,
                                                           jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return static_cast<jint>(reinterpret_cast<INT_PTR>(AwtToolkit::GetInstance().SyncCall(
         (void *(*)(void *))AwtTextComponent::_GetSelectionStart,
         env->NewGlobalRef(self))));
     // global ref is deleted in _GetSelectionStart()
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -814,14 +814,14 @@ JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WTextComponentPeer_getSelectionEnd(JNIEnv *env,
                                                         jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return static_cast<jint>(reinterpret_cast<INT_PTR>(AwtToolkit::GetInstance().SyncCall(
         (void *(*)(void *))AwtTextComponent::_GetSelectionEnd,
         env->NewGlobalRef(self))));
     // global ref is deleted in _GetSelectionEnd()
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -833,7 +833,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WTextComponentPeer_select(JNIEnv *env, jobject self,
                                                jint start, jint end)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SelectStruct *ss = new SelectStruct;
     ss->textcomponent = env->NewGlobalRef(self);
@@ -843,7 +843,7 @@ Java_sun_awt_windows_WTextComponentPeer_select(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtTextComponent::_Select, ss);
     // global ref and ss are deleted in _Select
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -856,7 +856,7 @@ Java_sun_awt_windows_WTextComponentPeer_enableEditing(JNIEnv *env,
                                                       jobject self,
                                                       jboolean on)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     EnableEditingStruct *ees = new EnableEditingStruct;
     ees->textcomponent = env->NewGlobalRef(self);
@@ -865,7 +865,7 @@ Java_sun_awt_windows_WTextComponentPeer_enableEditing(JNIEnv *env,
     AwtToolkit::GetInstance().SyncCall(AwtTextComponent::_EnableEditing, ees);
     // global ref and ees are deleted in _EnableEditing()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /************************************************************************

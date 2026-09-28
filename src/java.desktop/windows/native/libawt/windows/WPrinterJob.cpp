@@ -50,7 +50,7 @@ JNIEXPORT jstring JNICALL
 Java_sun_print_PrintServiceLookupProvider_getDefaultPrinterName(JNIEnv *env,
                                                              jobject peer)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     TCHAR cBuffer[250];
     OSVERSIONINFO osv;
@@ -93,7 +93,7 @@ Java_sun_print_PrintServiceLookupProvider_getDefaultPrinterName(JNIEnv *env,
         return NULL;
     }
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 
@@ -250,7 +250,7 @@ Java_sun_print_Win32PrintService_getMediaPrintableArea(JNIEnv *env,
                                                   jstring printer,
                                                   jint  papersize)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     LPTSTR printerName = (LPTSTR)JNU_GetStringPlatformChars(env,
                                                             printer, NULL);
@@ -319,7 +319,7 @@ Java_sun_print_Win32PrintService_getMediaPrintableArea(JNIEnv *env,
 
     return printableArray;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 jintArray getIDs(JNIEnv *env, jstring printer, jstring port, int dm_id)

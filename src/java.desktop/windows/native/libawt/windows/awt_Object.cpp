@@ -182,7 +182,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WObjectPeer_initIDs(JNIEnv *env, jclass cls) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtObject::wObjectPeerClass = (jclass)env->NewGlobalRef(cls);
     DASSERT(AwtObject::wObjectPeerClass != NULL);
@@ -211,7 +211,7 @@ Java_sun_awt_windows_WObjectPeer_initIDs(JNIEnv *env, jclass cls) {
     DASSERT(AwtObject::createErrorID != NULL);
     CHECK_NULL(AwtObject::createErrorID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */

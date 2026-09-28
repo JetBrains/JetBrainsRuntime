@@ -2987,7 +2987,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Window_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     CHECK_NULL(AwtWindow::locationByPlatformID =
         env->GetFieldID(cls, "locationByPlatform", "Z"));
@@ -3006,7 +3006,7 @@ Java_java_awt_Window_initIDs(JNIEnv *env, jclass cls)
         env->GetMethodID(windowTypeClass, "name", "()Ljava/lang/String;");
     env->DeleteLocalRef(windowTypeClass);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */
@@ -3026,7 +3026,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     CHECK_NULL(AwtWindow::sysInsetsID = env->GetFieldID(cls, "sysInsets", "Ljava/awt/Insets;"));
 
@@ -3038,7 +3038,7 @@ Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtWindow::notifyWindowStateChangedMID);
     CHECK_NULL(AwtWindow::notifyWindowStateChangedMID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3049,13 +3049,13 @@ Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer__1toFront(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(_ToFrontWait,
         env->NewGlobalRef(self));
     // global ref is deleted in _ToFront()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3066,13 +3066,13 @@ Java_sun_awt_windows_WWindowPeer__1toFront(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_toBack(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_ToBack,
         env->NewGlobalRef(self));
     // global ref is deleted in _ToBack()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3084,7 +3084,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setAlwaysOnTopNative(JNIEnv *env, jobject self,
                                                 jboolean value)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetAlwaysOnTopStruct *sas = new SetAlwaysOnTopStruct;
     sas->window = env->NewGlobalRef(self);
@@ -3093,7 +3093,7 @@ Java_sun_awt_windows_WWindowPeer_setAlwaysOnTopNative(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetAlwaysOnTop, sas);
     // global ref and sas are deleted in _SetAlwaysOnTop
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3105,7 +3105,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer__1setTitle(JNIEnv *env, jobject self,
                                             jstring title)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetTitleStruct *sts = new SetTitleStruct;
     sts->window = env->NewGlobalRef(self);
@@ -3114,7 +3114,7 @@ Java_sun_awt_windows_WWindowPeer__1setTitle(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetTitle, sts);
     /// global refs and sts are deleted in _SetTitle()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3126,7 +3126,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer__1setResizable(JNIEnv *env, jobject self,
                                                 jboolean resizable)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetResizableStruct *srs = new SetResizableStruct;
     srs->window = env->NewGlobalRef(self);
@@ -3135,7 +3135,7 @@ Java_sun_awt_windows_WWindowPeer__1setResizable(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetResizable, srs);
     // global ref and srs are deleted in _SetResizable
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3147,13 +3147,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_createAwtWindow(JNIEnv *env, jobject self,
                                                  jobject parent)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtWindow::Create);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3165,7 +3165,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_updateInsets(JNIEnv *env, jobject self,
                                               jobject insets)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     UpdateInsetsStruct *uis = new UpdateInsetsStruct;
     uis->window = env->NewGlobalRef(self);
@@ -3174,7 +3174,7 @@ Java_sun_awt_windows_WWindowPeer_updateInsets(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_UpdateInsets, uis);
     // global refs and uis are deleted in _UpdateInsets()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3186,7 +3186,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_reshapeFrame(JNIEnv *env, jobject self,
                                         jint x, jint y, jint w, jint h)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     ReshapeFrameStruct *rfs = new ReshapeFrameStruct;
     rfs->frame = env->NewGlobalRef(self);
@@ -3198,7 +3198,7 @@ Java_sun_awt_windows_WWindowPeer_reshapeFrame(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_ReshapeFrame, rfs);
     // global ref and rfs are deleted in _ReshapeFrame()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3210,9 +3210,7 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_WWindowPeer_getNativeWindowSize
 (JNIEnv *env, jobject self) {
 
     jobject res = NULL;
-
-    JBR_AWT_JNIDOWNCALL_BEGIN;
-
+    TRY;
     SizeStruct *ss = new SizeStruct;
     ss->window = env->NewGlobalRef(self);
 
@@ -3240,7 +3238,7 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_WWindowPeer_getNativeWindowSize
 
     return env->NewObject(dimClassID, dimMID, w, h);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -3251,11 +3249,11 @@ JNIEXPORT jobject JNICALL Java_sun_awt_windows_WWindowPeer_getNativeWindowSize
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getSysMinWidth(JNIEnv *env, jclass self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return ::GetSystemMetrics(SM_CXMIN);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -3266,11 +3264,11 @@ Java_sun_awt_windows_WWindowPeer_getSysMinWidth(JNIEnv *env, jclass self)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getSysMinHeight(JNIEnv *env, jclass self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return ::GetSystemMetrics(SM_CYMIN);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -3281,11 +3279,11 @@ Java_sun_awt_windows_WWindowPeer_getSysMinHeight(JNIEnv *env, jclass self)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getSysIconHeight(JNIEnv *env, jclass self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return getSystemMetricValue(SM_CYICON);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -3296,11 +3294,11 @@ Java_sun_awt_windows_WWindowPeer_getSysIconHeight(JNIEnv *env, jclass self)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getSysIconWidth(JNIEnv *env, jclass self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return getSystemMetricValue(SM_CXICON);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -3311,11 +3309,11 @@ Java_sun_awt_windows_WWindowPeer_getSysIconWidth(JNIEnv *env, jclass self)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getSysSmIconHeight(JNIEnv *env, jclass self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return getSystemMetricValue(SM_CYSMICON);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -3326,11 +3324,11 @@ Java_sun_awt_windows_WWindowPeer_getSysSmIconHeight(JNIEnv *env, jclass self)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getSysSmIconWidth(JNIEnv *env, jclass self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return getSystemMetricValue(SM_CXSMICON);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 int getSystemMetricValue(int msgType) {
@@ -3376,7 +3374,7 @@ Java_sun_awt_windows_WWindowPeer_setIconImagesData(JNIEnv *env, jobject self,
     jintArray iconRaster, jint w, jint h,
     jintArray smallIconRaster, jint smw, jint smh)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetIconImagesDataStruct *sims = new SetIconImagesDataStruct;
 
@@ -3391,7 +3389,7 @@ Java_sun_awt_windows_WWindowPeer_setIconImagesData(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetIconImagesData, sims);
     // global refs and sims are deleted in _SetIconImagesData()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3403,7 +3401,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setMinSize(JNIEnv *env, jobject self,
                                               jint w, jint h)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SizeStruct *ss = new SizeStruct;
     ss->window = env->NewGlobalRef(self);
@@ -3413,7 +3411,7 @@ Java_sun_awt_windows_WWindowPeer_setMinSize(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetMinSize, ss);
     // global refs and mds are deleted in _SetMinSize
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3424,14 +3422,14 @@ Java_sun_awt_windows_WWindowPeer_setMinSize(JNIEnv *env, jobject self,
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WWindowPeer_getScreenImOn(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return static_cast<jint>(reinterpret_cast<INT_PTR>(AwtToolkit::GetInstance().SyncCall(
         (void *(*)(void *))AwtWindow::_GetScreenImOn,
         env->NewGlobalRef(self))));
     // global ref is deleted in _GetScreenImOn()
 
-    JBR_AWT_JNIDOWNCALL_END_RET(-1);
+    CATCH_BAD_ALLOC_RET(-1);
 }
 
 /*
@@ -3443,7 +3441,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setFullScreenExclusiveModeState(JNIEnv *env,
         jobject self, jboolean state)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetFullScreenExclusiveModeStateStruct *data =
         new SetFullScreenExclusiveModeStateStruct;
@@ -3454,7 +3452,7 @@ Java_sun_awt_windows_WWindowPeer_setFullScreenExclusiveModeState(JNIEnv *env,
             AwtWindow::_SetFullScreenExclusiveModeState, data);
     // global ref and data are deleted in the invoked method
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3466,7 +3464,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_modalDisable(JNIEnv *env, jobject self,
                                               jobject blocker, jlong blockerHWnd)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     ModalDisableStruct *mds = new ModalDisableStruct;
     mds->window = env->NewGlobalRef(self);
@@ -3475,7 +3473,7 @@ Java_sun_awt_windows_WWindowPeer_modalDisable(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_ModalDisable, mds);
     // global ref and mds are deleted in _ModalDisable
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3486,13 +3484,13 @@ Java_sun_awt_windows_WWindowPeer_modalDisable(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_modalEnable(JNIEnv *env, jobject self, jobject blocker)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_ModalEnable,
         env->NewGlobalRef(self));
     // global ref is deleted in _ModalEnable
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3503,7 +3501,7 @@ Java_sun_awt_windows_WWindowPeer_modalEnable(JNIEnv *env, jobject self, jobject 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setFocusableWindow(JNIEnv *env, jobject self, jboolean isFocusableWindow)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetFocusableWindowStruct *sfws = new SetFocusableWindowStruct;
     sfws->window = env->NewGlobalRef(self);
@@ -3512,29 +3510,29 @@ Java_sun_awt_windows_WWindowPeer_setFocusableWindow(JNIEnv *env, jobject self, j
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetFocusableWindow, sfws);
     // global ref and sfws are deleted in _SetFocusableWindow()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_nativeGrab(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_Grab, env->NewGlobalRef(self));
     // global ref is deleted in _Grab()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_nativeUngrab(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_Ungrab, env->NewGlobalRef(self));
     // global ref is deleted in _Ungrab()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3546,7 +3544,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setOpacity(JNIEnv *env, jobject self,
                                               jint iOpacity)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     OpacityStruct *os = new OpacityStruct;
     os->window = env->NewGlobalRef(self);
@@ -3555,7 +3553,7 @@ Java_sun_awt_windows_WWindowPeer_setOpacity(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetOpacity, os);
     // global refs and mds are deleted in _SetOpacity
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3567,7 +3565,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setOpaqueImpl(JNIEnv *env, jobject self,
                                               jboolean isOpaque)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     OpaqueStruct *os = new OpaqueStruct;
     os->window = env->NewGlobalRef(self);
@@ -3576,7 +3574,7 @@ Java_sun_awt_windows_WWindowPeer_setOpaqueImpl(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetOpaque, os);
     // global refs and mds are deleted in _SetOpaque
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3589,7 +3587,7 @@ Java_sun_awt_windows_WWindowPeer_updateWindowImpl(JNIEnv *env, jobject self,
                                                   jintArray data,
                                                   jint width, jint height)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     UpdateWindowStruct *uws = new UpdateWindowStruct;
     uws->window = env->NewGlobalRef(self);
@@ -3601,7 +3599,7 @@ Java_sun_awt_windows_WWindowPeer_updateWindowImpl(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().InvokeFunction(AwtWindow::_UpdateWindow, uws);
     // global refs and mds are deleted in _UpdateWindow
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /**
@@ -3634,7 +3632,7 @@ void AwtWindow_UpdateWindow(JNIEnv *env, jobject peer,
 JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WWindowPeer_requestWindowFocus
     (JNIEnv *env, jobject self, jboolean isMouseEventCause)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -3646,7 +3644,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WWindowPeer_requestWindowFocus
         (void*(*)(void*))AwtWindow::_RequestWindowFocus, rfs));
     // global refs and rfs are deleted in _RequestWindowFocus
 
-    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
+    CATCH_BAD_ALLOC_RET(JNI_FALSE);
 }
 
 /*
@@ -3657,7 +3655,7 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_windows_WWindowPeer_requestWindowFocus
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, jint type, jboolean isBorderColor, jint borderColor)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     RoundedCornersStruct *rcs = new RoundedCornersStruct;
     rcs->window = env->NewGlobalRef(self);
@@ -3668,7 +3666,7 @@ Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, ji
     AwtToolkit::GetInstance().SyncCall(AwtWindow::_SetRoundedCorners, rcs);
     // global refs and rcs are deleted in _SetRoundedCorners
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -3679,7 +3677,7 @@ Java_sun_awt_windows_WWindowPeer_setRoundedCorners(JNIEnv *env, jobject self, ji
 JNIEXPORT void JNICALL Java_sun_awt_windows_WLightweightFramePeer_overrideNativeHandle
   (JNIEnv *env, jobject self, jlong hwnd)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     OverrideHandle *oh = new OverrideHandle;
     oh->frame = env->NewGlobalRef(self);
@@ -3688,7 +3686,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WLightweightFramePeer_overrideNative
     AwtToolkit::GetInstance().SyncCall(AwtFrame::_OverrideHandle, oh);
     // global ref and oh are deleted in _OverrideHandle()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */

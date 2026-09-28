@@ -50,7 +50,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WKeyboardFocusManagerPeer_setNativeFocusOwner
     (JNIEnv *env, jclass cls, jobject compPeer)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject peerGlobalRef = env->NewGlobalRef(compPeer);
 
@@ -58,7 +58,7 @@ Java_sun_awt_windows_WKeyboardFocusManagerPeer_setNativeFocusOwner
                                        (void*)peerGlobalRef);
     // peerGlobalRef is deleted in SetNativeFocusOwner
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -70,11 +70,11 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WKeyboardFocusManagerPeer_getNativeFocusOwner
     (JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return getNativeFocusState(env, AwtComponent::GetNativeFocusOwner);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -86,10 +86,10 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WKeyboardFocusManagerPeer_getNativeFocusedWindow
     (JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return getNativeFocusState(env, AwtComponent::GetNativeFocusedWindow);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 }

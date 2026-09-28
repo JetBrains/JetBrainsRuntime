@@ -126,13 +126,13 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WTaskbarPeer_flashWindow
 JNIEXPORT void JNICALL Java_sun_awt_windows_WTaskbarPeer_setOverlayIcon
   (JNIEnv *env, jobject, jlong window, jintArray buf, jint w, jint h)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     HICON icon = CreateIconFromRaster(env, buf, w, h);
     m_Taskbar->SetOverlayIcon((HWND)window, icon, NULL);
     ::DestroyIcon(icon);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 #ifdef __cplusplus
 }

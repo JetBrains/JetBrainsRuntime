@@ -275,12 +275,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPopupMenuPeer_createMenu(JNIEnv *env, jobject self,
                                                jobject parent)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::CreateComponent(
         self, parent, (AwtToolkit::ComponentFactory)AwtPopupMenu::Create);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -292,7 +292,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPopupMenuPeer__1show(JNIEnv *env, jobject self,
                                            jobject event)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     ShowStruct *ss = new ShowStruct;
     ss->self = env->NewGlobalRef(self);
@@ -302,7 +302,7 @@ Java_sun_awt_windows_WPopupMenuPeer__1show(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().InvokeFunction(AwtPopupMenu::_Show, ss);
     // global ref and ss are deleted in _Show()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */

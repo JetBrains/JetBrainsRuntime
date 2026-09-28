@@ -43,7 +43,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_Insets_initIDs(JNIEnv *env, jclass cls) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtInsets::leftID = env->GetFieldID(cls, "left", "I");
     DASSERT(AwtInsets::leftID != NULL);
@@ -61,7 +61,7 @@ Java_java_awt_Insets_initIDs(JNIEnv *env, jclass cls) {
     DASSERT(AwtInsets::bottomID != NULL);
     CHECK_NULL(AwtInsets::bottomID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */

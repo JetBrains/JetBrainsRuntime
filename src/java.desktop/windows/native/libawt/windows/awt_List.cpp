@@ -817,7 +817,7 @@ extern "C" {
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WListPeer_getMaxWidth(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -826,7 +826,7 @@ Java_sun_awt_windows_WListPeer_getMaxWidth(JNIEnv *env, jobject self)
         (void *)selfGlobalRef));
     // selfGlobalRef is deleted in _GetMaxWidth
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -837,7 +837,7 @@ Java_sun_awt_windows_WListPeer_getMaxWidth(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_updateMaxItemWidth(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -845,7 +845,7 @@ Java_sun_awt_windows_WListPeer_updateMaxItemWidth(JNIEnv *env, jobject self)
         (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _UpdateMaxItemWidth
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -857,7 +857,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_addItems(JNIEnv *env, jobject self,
                                         jobjectArray items, jint index, jint width)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AddItemsStruct *ais = new AddItemsStruct;
     ais->list = env->NewGlobalRef(self);
@@ -868,7 +868,7 @@ Java_sun_awt_windows_WListPeer_addItems(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtList::_AddItems, ais);
     // global refs and ais are deleted in _AddItems()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -880,7 +880,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_delItems(JNIEnv *env, jobject self,
                                         jint start, jint end)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     DelItemsStruct *dis = new DelItemsStruct;
     dis->list = env->NewGlobalRef(self);
@@ -890,7 +890,7 @@ Java_sun_awt_windows_WListPeer_delItems(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtList::_DelItems, dis);
     // global ref and dis are deleted in _DelItems
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -902,7 +902,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_select(JNIEnv *env, jobject self,
                                       jint pos)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SelectElementStruct *ses = new SelectElementStruct;
     ses->list = env->NewGlobalRef(self);
@@ -911,7 +911,7 @@ Java_sun_awt_windows_WListPeer_select(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtList::_Select, ses);
     // global ref and ses are deleted in _Select
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -923,7 +923,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_deselect(JNIEnv *env, jobject self,
                                         jint pos)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SelectElementStruct *ses = new SelectElementStruct;
     ses->list = env->NewGlobalRef(self);
@@ -932,7 +932,7 @@ Java_sun_awt_windows_WListPeer_deselect(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtList::_Deselect, ses);
     // global ref and ses are deleted in _Deselect
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -944,7 +944,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_makeVisible(JNIEnv *env, jobject self,
                                            jint pos)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SelectElementStruct *ses = new SelectElementStruct;
     ses->list = env->NewGlobalRef(self);
@@ -953,7 +953,7 @@ Java_sun_awt_windows_WListPeer_makeVisible(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtList::_MakeVisible, ses);
     // global ref and ses are deleted in _MakeVisible
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -965,7 +965,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_setMultipleSelections(JNIEnv *env, jobject self,
                                                      jboolean on)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetMultipleSelectionsStruct *sms = new SetMultipleSelectionsStruct;
     sms->list = env->NewGlobalRef(self);
@@ -974,7 +974,7 @@ Java_sun_awt_windows_WListPeer_setMultipleSelections(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtList::_SetMultipleSelections, sms);
     // global ref and sms are deleted in AwtList::_SetMultipleSelections
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -986,12 +986,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WListPeer_create(JNIEnv *env, jobject self,
                                       jobject parent)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)AwtList::Create);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -1003,7 +1003,7 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WListPeer_isSelected(JNIEnv *env, jobject self,
                                           jint index)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SelectElementStruct *ses = new SelectElementStruct;
     ses->list = env->NewGlobalRef(self);
@@ -1013,7 +1013,7 @@ Java_sun_awt_windows_WListPeer_isSelected(JNIEnv *env, jobject self,
         (void *(*)(void *))AwtList::_IsSelected, ses));
     // global ref and ses are deleted in _IsSelected
 
-    JBR_AWT_JNIDOWNCALL_END_RET(FALSE);
+    CATCH_BAD_ALLOC_RET(FALSE);
 }
 
 } /* extern "C" */

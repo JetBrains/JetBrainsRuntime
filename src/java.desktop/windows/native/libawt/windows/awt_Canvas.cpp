@@ -246,13 +246,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WCanvasPeer_create(JNIEnv *env, jobject self,
                                         jobject parent)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtCanvas::Create);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -266,7 +266,7 @@ Java_sun_awt_windows_WCanvasPeer_create(JNIEnv *env, jobject self,
                                                            jboolean doErase,
                                                            jboolean doEraseOnResize)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetEraseBackgroundStruct *sebs = new SetEraseBackgroundStruct;
     sebs->canvas = env->NewGlobalRef(self);
@@ -276,7 +276,7 @@ Java_sun_awt_windows_WCanvasPeer_create(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtCanvas::_SetEraseBackground, sebs);
     // sebs and global ref are deleted in _SetEraseBackground()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */

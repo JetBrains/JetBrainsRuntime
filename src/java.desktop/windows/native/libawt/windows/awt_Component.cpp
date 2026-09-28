@@ -6725,7 +6725,7 @@ void AwtComponent_GetInsets(JNIEnv *env, jobject peer, RECT *insets)
 JNIEXPORT void JNICALL
 Java_java_awt_Component_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
     jboolean ignoreException;
     jintArray obj = (jintArray)JNU_CallStaticMethodByName(env, &ignoreException,
                                                           "java/awt/event/InputEvent",
@@ -6852,7 +6852,7 @@ Java_java_awt_Component_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtComponent::disposeLaterMID);
     CHECK_NULL(AwtComponent::disposeLaterMID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */
@@ -6872,14 +6872,14 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_pShow(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_Show, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _Show
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -6890,14 +6890,14 @@ Java_sun_awt_windows_WComponentPeer_pShow(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_hide(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_Hide, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _Hide
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -6908,14 +6908,14 @@ Java_sun_awt_windows_WComponentPeer_hide(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_enable(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_Enable, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _Enable
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -6926,14 +6926,14 @@ Java_sun_awt_windows_WComponentPeer_enable(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_disable(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_Disable, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _Disable
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -6944,7 +6944,7 @@ Java_sun_awt_windows_WComponentPeer_disable(JNIEnv *env, jobject self)
 JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WComponentPeer_getLocationOnScreen(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -6960,7 +6960,7 @@ Java_sun_awt_windows_WComponentPeer_getLocationOnScreen(JNIEnv *env, jobject sel
 
     return NULL;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -6972,7 +6972,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_reshape(JNIEnv *env, jobject self,
                                             jint x, jint y, jint w, jint h)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     ReshapeStruct *rs = new ReshapeStruct;
     rs->component = env->NewGlobalRef(self);
@@ -6984,7 +6984,7 @@ Java_sun_awt_windows_WComponentPeer_reshape(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_Reshape, rs);
     // global ref and rs are deleted in _Reshape
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -6996,7 +6996,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_reshapeNoCheck(JNIEnv *env, jobject self,
                                             jint x, jint y, jint w, jint h)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     ReshapeStruct *rs = new ReshapeStruct;
     rs->component = env->NewGlobalRef(self);
@@ -7008,7 +7008,7 @@ Java_sun_awt_windows_WComponentPeer_reshapeNoCheck(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_ReshapeNoCheck, rs);
     // global ref and rs are deleted in _ReshapeNoCheck
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 
@@ -7022,7 +7022,7 @@ Java_sun_awt_windows_WComponentPeer_nativeHandleEvent(JNIEnv *env,
                                                       jobject self,
                                                       jobject event)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
     jobject eventGlobalRef = env->NewGlobalRef(event);
@@ -7034,7 +7034,7 @@ Java_sun_awt_windows_WComponentPeer_nativeHandleEvent(JNIEnv *env,
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_NativeHandleEvent, nhes);
     // global refs and nhes are deleted in _NativeHandleEvent
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7061,7 +7061,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer__1setForeground(JNIEnv *env, jobject self,
                                                     jint rgb)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7072,7 +7072,7 @@ Java_sun_awt_windows_WComponentPeer__1setForeground(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetForeground, scs);
     // selfGlobalRef and scs are deleted in _SetForeground()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7084,7 +7084,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer__1setBackground(JNIEnv *env, jobject self,
                                                     jint rgb)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7095,7 +7095,7 @@ Java_sun_awt_windows_WComponentPeer__1setBackground(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetBackground, scs);
     // selfGlobalRef and scs are deleted in _SetBackground()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7107,7 +7107,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer__1setFont(JNIEnv *env, jobject self,
                         jobject font)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
     jobject fontGlobalRef = env->NewGlobalRef(font);
@@ -7119,7 +7119,7 @@ Java_sun_awt_windows_WComponentPeer__1setFont(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetFont, sfs);
     // global refs and sfs are deleted in _SetFont()
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7130,7 +7130,7 @@ Java_sun_awt_windows_WComponentPeer__1setFont(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL Java_sun_awt_windows_WComponentPeer_setFocus
     (JNIEnv *env, jobject self, jboolean doSetFocus)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7142,7 +7142,7 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WComponentPeer_setFocus
         (void*(*)(void*))AwtComponent::_SetFocus, sfs);
     // global refs and self are deleted in _SetFocus
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7153,14 +7153,14 @@ JNIEXPORT void JNICALL Java_sun_awt_windows_WComponentPeer_setFocus
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_start(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_Start, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _Start
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7171,14 +7171,14 @@ Java_sun_awt_windows_WComponentPeer_start(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_beginValidate(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_BeginValidate, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _BeginValidate
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7189,27 +7189,27 @@ Java_sun_awt_windows_WComponentPeer_beginValidate(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_endValidate(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_EndValidate, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _EndValidate
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_updateWindow(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_UpdateWindow, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _UpdateWindow
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7222,7 +7222,7 @@ JNIEXPORT jlong JNICALL
 Java_sun_awt_windows_WComponentPeer_addNativeDropTarget(JNIEnv *env,
                                                         jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7231,7 +7231,7 @@ Java_sun_awt_windows_WComponentPeer_addNativeDropTarget(JNIEnv *env,
         (void *)selfGlobalRef));
     // selfGlobalRef is deleted in _AddNativeDropTarget
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -7244,7 +7244,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_removeNativeDropTarget(JNIEnv *env,
                                                            jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7252,7 +7252,7 @@ Java_sun_awt_windows_WComponentPeer_removeNativeDropTarget(JNIEnv *env,
         AwtComponent::_RemoveNativeDropTarget, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _RemoveNativeDropTarget
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -7263,7 +7263,7 @@ Java_sun_awt_windows_WComponentPeer_removeNativeDropTarget(JNIEnv *env,
 JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WComponentPeer_getTargetGC(JNIEnv* env, jobject theThis)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject targetObj;
     jobject gc = 0;
@@ -7274,7 +7274,7 @@ Java_sun_awt_windows_WComponentPeer_getTargetGC(JNIEnv* env, jobject theThis)
     gc = env->GetObjectField(targetObj, AwtComponent::graphicsConfigID);
     return gc;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -7286,7 +7286,7 @@ JNIEXPORT jintArray JNICALL
 Java_sun_awt_windows_WComponentPeer_createPrintedPixels(JNIEnv* env,
     jobject self, jint srcX, jint srcY, jint srcW, jint srcH, jint alpha)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7312,7 +7312,7 @@ Java_sun_awt_windows_WComponentPeer_createPrintedPixels(JNIEnv* env,
         return NULL;
     }
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -7324,14 +7324,14 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WComponentPeer_nativeHandlesWheelScrolling (JNIEnv* env,
     jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return (jboolean)((intptr_t)AwtToolkit::GetInstance().SyncCall(
         (void *(*)(void *))AwtComponent::_NativeHandlesWheelScrolling,
         env->NewGlobalRef(self)));
     // global ref is deleted in _NativeHandlesWheelScrolling
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -7343,7 +7343,7 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WComponentPeer_isObscured(JNIEnv* env,
     jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -7352,12 +7352,12 @@ Java_sun_awt_windows_WComponentPeer_isObscured(JNIEnv* env,
         (void *)selfGlobalRef));
     // selfGlobalRef is deleted in _IsObscured
 
-    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_pSetParent(JNIEnv* env, jobject self, jobject parent) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetParentStruct * data = new SetParentStruct;
     data->component = env->NewGlobalRef(self);
@@ -7366,14 +7366,14 @@ Java_sun_awt_windows_WComponentPeer_pSetParent(JNIEnv* env, jobject self, jobjec
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetParent, data);
     // global refs and data are deleted in SetParent
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_setRectangularShape(JNIEnv* env, jobject self,
         jint x1, jint y1, jint x2, jint y2, jobject region)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetRectangularShapeStruct * data = new SetRectangularShapeStruct;
     data->component = env->NewGlobalRef(self);
@@ -7390,13 +7390,13 @@ Java_sun_awt_windows_WComponentPeer_setRectangularShape(JNIEnv* env, jobject sel
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetRectangularShape, data);
     // global refs and data are deleted in _SetRectangularShape
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_setZOrder(JNIEnv* env, jobject self, jlong above)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetZOrderStruct * data = new SetZOrderStruct;
     data->component = env->NewGlobalRef(self);
@@ -7405,7 +7405,7 @@ Java_sun_awt_windows_WComponentPeer_setZOrder(JNIEnv* env, jobject self, jlong a
     AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetZOrder, data);
     // global refs and data are deleted in _SetLower
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */

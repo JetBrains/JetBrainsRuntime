@@ -303,7 +303,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Cursor_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtCursor::mSetPDataID = env->GetMethodID(cls, "setPData", "(J)V");
     DASSERT(AwtCursor::mSetPDataID != NULL);
@@ -326,7 +326,7 @@ Java_java_awt_Cursor_initIDs(JNIEnv *env, jclass cls)
 
     AwtCursor::updateCursorID = NULL;
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -353,7 +353,7 @@ Java_sun_awt_windows_WCustomCursor_createCursorIndirect(
     JNIEnv *env, jobject self, jintArray intRasterData, jbyteArray andMask,
     jint nSS, jint nW, jint nH, jint xHotSpot, jint yHotSpot)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     JNI_CHECK_NULL_RETURN(intRasterData, "intRasterData argument");
 
@@ -418,7 +418,7 @@ Java_sun_awt_windows_WCustomCursor_createCursorIndirect(
         }
         throw;
     }
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -429,12 +429,12 @@ Java_sun_awt_windows_WCustomCursor_createCursorIndirect(
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WCustomCursor_getCursorWidth(JNIEnv *, jclass)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     DTRACE_PRINTLN("WCustomCursor.getCursorWidth()");
     return (jint)::GetSystemMetrics(SM_CXCURSOR);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -445,12 +445,12 @@ Java_sun_awt_windows_WCustomCursor_getCursorWidth(JNIEnv *, jclass)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WCustomCursor_getCursorHeight(JNIEnv *, jclass)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     DTRACE_PRINTLN("WCustomCursor.getCursorHeight()");
     return (jint)::GetSystemMetrics(SM_CYCURSOR);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /************************************************************************
@@ -467,7 +467,7 @@ Java_sun_awt_windows_WGlobalCursorManager_getCursorPos(JNIEnv *env,
                                                        jobject,
                                                        jobject point)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     POINT p;
     ::GetCursorPos(&p);
@@ -480,7 +480,7 @@ Java_sun_awt_windows_WGlobalCursorManager_getCursorPos(JNIEnv *env,
     env->SetIntField(point, AwtCursor::pointXID, x);
     env->SetIntField(point, AwtCursor::pointYID, y);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 struct GlobalSetCursorStruct {
@@ -534,7 +534,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
                             jobject, jobject cursor, jboolean u)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     if (cursor != NULL) {  // fix for 4430302 - getCursor() returns NULL
         GlobalSetCursorStruct data;
@@ -546,7 +546,7 @@ Java_sun_awt_windows_WGlobalCursorManager_setCursor(JNIEnv *env, jobject,
     } else {
         JNU_ThrowNullPointerException(env, "NullPointerException");
     }
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -558,7 +558,7 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WGlobalCursorManager_findHeavyweightUnderCursor(
     JNIEnv *env, jobject, jboolean useCache)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     if (env->EnsureLocalCapacity(1) < 0) {
         return NULL;
@@ -572,7 +572,7 @@ Java_sun_awt_windows_WGlobalCursorManager_findHeavyweightUnderCursor(
     env->DeleteGlobalRef(globalRef);
     return localRef;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -584,14 +584,14 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WGlobalCursorManager_getLocationOnScreen(
     JNIEnv *env, jobject, jobject component)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     JNI_CHECK_NULL_RETURN_NULL(component, "null component");
     jobject point =
         env->CallObjectMethod(component, AwtComponent::getLocationOnScreenMID);
     return point;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 } /* extern "C" */

@@ -702,10 +702,10 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Choice_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
     selectedIndexID = env->GetFieldID(cls, "selectedIndex", "I");
     DASSERT(selectedIndexID);
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -717,7 +717,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WChoicePeer_select(JNIEnv *env, jobject self,
                                         jint index)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SelectStruct *ss = new SelectStruct;
     ss->choice = env->NewGlobalRef(self);
@@ -726,7 +726,7 @@ Java_sun_awt_windows_WChoicePeer_select(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtChoice::_Select, ss);
     // global refs and ss are removed in _Select
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -738,7 +738,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WChoicePeer_remove(JNIEnv *env, jobject self,
                                         jint index)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     RemoveStruct *rs = new RemoveStruct;
     rs->choice = env->NewGlobalRef(self);
@@ -747,7 +747,7 @@ Java_sun_awt_windows_WChoicePeer_remove(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtChoice::_Remove, rs);
     // global ref and rs are deleted in _Remove
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -758,14 +758,14 @@ Java_sun_awt_windows_WChoicePeer_remove(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WChoicePeer_removeAll(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtChoice::_RemoveAll, (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _RemoveAll
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -777,7 +777,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WChoicePeer_addItems(JNIEnv *env, jobject self,
                                           jobjectArray items, jint index)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AddItemsStruct *ais = new AddItemsStruct;
     ais->choice = env->NewGlobalRef(self);
@@ -787,7 +787,7 @@ Java_sun_awt_windows_WChoicePeer_addItems(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtChoice::_AddItems, ais);
     // global refs and ais are deleted in _AddItems
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -800,7 +800,7 @@ Java_sun_awt_windows_WChoicePeer_reshape(JNIEnv *env, jobject self,
                                          jint x, jint y,
                                          jint width, jint height)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     ReshapeStruct *rs = new ReshapeStruct;
     rs->choice = env->NewGlobalRef(self);
@@ -812,7 +812,7 @@ Java_sun_awt_windows_WChoicePeer_reshape(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtChoice::_Reshape, rs);
     // global ref and rs are deleted in _Reshape
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -824,13 +824,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WChoicePeer_create(JNIEnv *env, jobject self,
                                         jobject parent)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtChoice::Create);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -841,14 +841,14 @@ Java_sun_awt_windows_WChoicePeer_create(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WChoicePeer_closeList(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
     AwtToolkit::GetInstance().SyncCall(AwtChoice::_CloseList, (void *)selfGlobalRef);
     // global ref is deleted in _CloseList
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 } /* extern "C" */
 

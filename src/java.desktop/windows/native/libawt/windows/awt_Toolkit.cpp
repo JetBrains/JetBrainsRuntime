@@ -2328,7 +2328,7 @@ extern "C" {
  */
 JNIEXPORT void JNICALL
 Java_java_awt_Toolkit_initIDs(JNIEnv *env, jclass cls) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::getDefaultToolkitMID =
         env->GetStaticMethodID(cls,"getDefaultToolkit","()Ljava/awt/Toolkit;");
@@ -2347,7 +2347,7 @@ Java_java_awt_Toolkit_initIDs(JNIEnv *env, jclass cls) {
     DASSERT(AwtToolkit::insetsMID != NULL);
     CHECK_NULL(AwtToolkit::insetsMID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 
@@ -2367,7 +2367,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::windowsSettingChangeMID =
         env->GetMethodID(cls, "windowsSettingChange", "()V");
@@ -2460,7 +2460,7 @@ Java_sun_awt_windows_WToolkit_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtToolkit::systemSleepMID != 0);
     CHECK_NULL(AwtToolkit::systemSleepMID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2471,7 +2471,7 @@ Java_sun_awt_windows_WToolkit_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WToolkit_init(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::SetEnv(env);
 
@@ -2481,7 +2481,7 @@ Java_sun_awt_windows_WToolkit_init(JNIEnv *env, jobject self)
     // In that case, we don't want to start another message pump.
     return AwtToolkit::GetInstance().Initialize();
 
-    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
+    CATCH_BAD_ALLOC_RET(FALSE);
 }
 
 /*
@@ -2492,7 +2492,7 @@ Java_sun_awt_windows_WToolkit_init(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_eventLoop(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::SetBusy(TRUE);
 
@@ -2509,7 +2509,7 @@ Java_sun_awt_windows_WToolkit_eventLoop(JNIEnv *env, jobject self)
      * DO NOT CALL any method of AwtToolkit!!!
      */
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2520,7 +2520,7 @@ Java_sun_awt_windows_WToolkit_eventLoop(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_shutdown(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit& tk = AwtToolkit::GetInstance();
 
@@ -2530,7 +2530,7 @@ Java_sun_awt_windows_WToolkit_shutdown(JNIEnv *env, jobject self)
         Sleep(100);
     }
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2543,14 +2543,14 @@ Java_sun_awt_windows_WToolkit_startSecondaryEventLoop(
     JNIEnv *env,
     jclass)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     DASSERT(AwtToolkit::MainThread() == ::GetCurrentThreadId());
 
     AwtToolkit::GetInstance().MessageLoop(AwtToolkit::SecondaryIdleFunc,
                                           AwtToolkit::CommonPeekMessageFunc);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2563,11 +2563,11 @@ Java_sun_awt_windows_WToolkit_quitSecondaryEventLoop(
     JNIEnv *env,
     jclass)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().QuitMessageLoop(AwtToolkit::EXIT_ENCLOSING_LOOP);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2578,12 +2578,12 @@ Java_sun_awt_windows_WToolkit_quitSecondaryEventLoop(
 JNIEXPORT jobject JNICALL
 Java_sun_awt_windows_WToolkit_makeColorModel(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return AwtWin32GraphicsDevice::GetColorModel(env, JNI_FALSE,
         AwtWin32GraphicsDevice::GetDefaultDeviceIndex());
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 /*
@@ -2594,7 +2594,7 @@ Java_sun_awt_windows_WToolkit_makeColorModel(JNIEnv *env, jclass cls)
 JNIEXPORT jint JNICALL
 Java_sun_awt_windows_WToolkit_getMaximumCursorColors(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     HDC hIC = ::CreateIC(TEXT("DISPLAY"), NULL, NULL, NULL);
 
@@ -2609,7 +2609,7 @@ Java_sun_awt_windows_WToolkit_getMaximumCursorColors(JNIEnv *env, jobject self)
     ::DeleteDC(hIC);
     return nColor;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(0);
+    CATCH_BAD_ALLOC_RET(0);
 }
 
 /*
@@ -2625,7 +2625,7 @@ Java_sun_awt_windows_WToolkit_getScreenInsets(JNIEnv *env,
     jobject insets = NULL;
     RECT rect;
 
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     if (AwtToolkit::GetScreenInsets(screen, &rect)) {
         jclass insetsClass = env->FindClass("java/awt/Insets");
@@ -2646,7 +2646,7 @@ Java_sun_awt_windows_WToolkit_getScreenInsets(JNIEnv *env,
     }
     return insets;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 
@@ -2658,12 +2658,12 @@ Java_sun_awt_windows_WToolkit_getScreenInsets(JNIEnv *env,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_nativeSync(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     // Synchronize both GDI and DDraw
     VERIFY(::GdiFlush());
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2674,11 +2674,11 @@ Java_sun_awt_windows_WToolkit_nativeSync(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_beep(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     VERIFY(::MessageBeep(MB_OK));
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2689,7 +2689,7 @@ Java_sun_awt_windows_WToolkit_beep(JNIEnv *env, jobject self)
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WToolkit_getLockingKeyStateNative(JNIEnv *env, jobject self, jint javaKey)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     UINT windowsKey, modifiers;
     AwtComponent::JavaKeyToWindowsKey(javaKey, &windowsKey, &modifiers);
@@ -2704,7 +2704,7 @@ Java_sun_awt_windows_WToolkit_getLockingKeyStateNative(JNIEnv *env, jobject self
     AwtToolkit::GetKeyboardState(keyboardState);
     return keyboardState[windowsKey] & 0x01;
 
-    JBR_AWT_JNIDOWNCALL_END_RET(JNI_FALSE);
+    CATCH_BAD_ALLOC_RET(JNI_FALSE);
 }
 
 /*
@@ -2715,7 +2715,7 @@ Java_sun_awt_windows_WToolkit_getLockingKeyStateNative(JNIEnv *env, jobject self
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_setLockingKeyStateNative(JNIEnv *env, jobject self, jint javaKey, jboolean state)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     UINT windowsKey, modifiers;
     AwtComponent::JavaKeyToWindowsKey(javaKey, &windowsKey, &modifiers);
@@ -2734,7 +2734,7 @@ Java_sun_awt_windows_WToolkit_setLockingKeyStateNative(JNIEnv *env, jobject self
         ::keybd_event(windowsKey, 0, KEYEVENTF_KEYUP, 0);
     }
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2746,7 +2746,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_loadSystemColors(JNIEnv *env, jobject self,
                                                jintArray colors)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     static int indexMap[] = {
         COLOR_DESKTOP, /* DESKTOP */
@@ -2795,7 +2795,7 @@ Java_sun_awt_windows_WToolkit_loadSystemColors(JNIEnv *env, jobject self,
 
     env->ReleasePrimitiveArrayCritical(colors, colorsPtr, 0);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 extern "C" JNIEXPORT jobject JNICALL DSGetComponent
@@ -2840,11 +2840,11 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_setDynamicLayoutNative(JNIEnv *env,
   jobject self, jboolean dynamic)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::GetInstance().SetDynamicLayout(dynamic);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -2856,11 +2856,11 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_windows_WToolkit_isDynamicLayoutSupportedNative(JNIEnv *env,
   jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     return (jboolean) AwtToolkit::GetInstance().IsDynamicLayoutSupported();
 
-    JBR_AWT_JNIDOWNCALL_END_RET(FALSE);
+    CATCH_BAD_ALLOC_RET(FALSE);
 }
 
 /*
@@ -2871,7 +2871,7 @@ Java_sun_awt_windows_WToolkit_isDynamicLayoutSupportedNative(JNIEnv *env,
 JNIEXPORT jstring JNICALL
 Java_sun_awt_windows_WToolkit_getWindowsVersion(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     WCHAR szVer[128];
 
@@ -2895,7 +2895,7 @@ Java_sun_awt_windows_WToolkit_getWindowsVersion(JNIEnv *env, jclass cls)
 
     return JNU_NewStringPlatform(env, szVer);
 
-    JBR_AWT_JNIDOWNCALL_END_RET(NULL);
+    CATCH_BAD_ALLOC_RET(NULL);
 }
 
 JNIEXPORT void JNICALL
@@ -2987,9 +2987,9 @@ BOOL AwtToolkit::areExtraMouseButtonsEnabled() {
  */
 extern "C" JNIEXPORT void JNICALL Java_sun_awt_windows_WToolkit_setExtraMouseButtonsEnabledNative
 (JNIEnv *env, jclass self, jboolean enable){
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
     AwtToolkit::GetInstance().setExtraMouseButtonsEnabled(enable);
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 void AwtToolkit::setExtraMouseButtonsEnabled(BOOL enable) {

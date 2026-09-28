@@ -743,7 +743,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Dialog_initIDs(JNIEnv *env, jclass cls)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     /* java.awt.Dialog fields and methods */
     AwtDialog::titleID
@@ -756,7 +756,7 @@ Java_java_awt_Dialog_initIDs(JNIEnv *env, jclass cls)
     DASSERT(AwtDialog::undecoratedID != NULL);
     CHECK_NULL(AwtDialog::undecoratedID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 } /* extern "C" */
@@ -777,13 +777,13 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDialogPeer_createAwtDialog(JNIEnv *env, jobject self,
                                         jobject parent)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtDialog::Create);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -794,7 +794,7 @@ Java_sun_awt_windows_WDialogPeer_createAwtDialog(JNIEnv *env, jobject self,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDialogPeer_showModal(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -802,7 +802,7 @@ Java_sun_awt_windows_WDialogPeer_showModal(JNIEnv *env, jobject self)
         (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _ShowModal
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -813,7 +813,7 @@ Java_sun_awt_windows_WDialogPeer_showModal(JNIEnv *env, jobject self)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDialogPeer_endModal(JNIEnv *env, jobject self)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     jobject selfGlobalRef = env->NewGlobalRef(self);
 
@@ -821,7 +821,7 @@ Java_sun_awt_windows_WDialogPeer_endModal(JNIEnv *env, jobject self)
         (void *)selfGlobalRef);
     // selfGlobalRef is deleted in _EndModal
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 /*
@@ -833,7 +833,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDialogPeer_pSetIMMOption(JNIEnv *env, jobject self,
                                                jstring option)
 {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     SetIMMOptionStruct *sios = new SetIMMOptionStruct;
     sios->dialog = env->NewGlobalRef(self);
@@ -842,6 +842,6 @@ Java_sun_awt_windows_WDialogPeer_pSetIMMOption(JNIEnv *env, jobject self,
     AwtToolkit::GetInstance().SyncCall(AwtDialog::_SetIMMOption, sios);
     // global refs and sios are deleted in _SetIMMOption
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 } /* extern "C" */

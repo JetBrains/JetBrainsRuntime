@@ -1009,7 +1009,7 @@ static AwtDesktopProperties * GetCppThis(JNIEnv *env, jobject self) {
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDesktopProperties_initIDs(JNIEnv *env, jclass cls) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     AwtDesktopProperties::pDataID = env->GetFieldID(cls, "pData", "J");
     DASSERT(AwtDesktopProperties::pDataID != 0);
@@ -1045,30 +1045,30 @@ Java_sun_awt_windows_WDesktopProperties_initIDs(JNIEnv *env, jclass cls) {
     DASSERT(AwtDesktopProperties::setSoundPropertyID != 0);
     CHECK_NULL(AwtDesktopProperties::setSoundPropertyID);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDesktopProperties_init(JNIEnv *env, jobject self) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     new AwtDesktopProperties(self);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDesktopProperties_getWindowsParameters(JNIEnv *env, jobject self) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     GetCppThis(env, self)->GetWindowsParameters();
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDesktopProperties_playWindowsSound(JNIEnv *env, jobject self, jstring event) {
-    JBR_AWT_JNIDOWNCALL_BEGIN;
+    TRY;
 
     LPCTSTR winEventName;
     winEventName = JNU_GetStringPlatformChars(env, event, NULL);
@@ -1078,5 +1078,5 @@ Java_sun_awt_windows_WDesktopProperties_playWindowsSound(JNIEnv *env, jobject se
     GetCppThis(env, self)->PlayWindowsSound(winEventName);
     JNU_ReleaseStringPlatformChars(env, event, winEventName);
 
-    JBR_AWT_JNIDOWNCALL_END;
+    CATCH_BAD_ALLOC;
 }
