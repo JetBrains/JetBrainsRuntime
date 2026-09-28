@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,10 +154,15 @@ public class CLDRTimeZoneNameProviderImpl extends TimeZoneNameProviderImpl {
             var cands = ((CLDRLocaleProviderAdapter)LocaleProviderAdapter.forType(Type.CLDR))
                     .getCandidateLocales("", locale);
             for (int i = 1; i < cands.size() ; i++) {
-                String[] parentNames = super.getDisplayNameArray(id, cands.get(i));
+                var loc = cands.get(i);
+                String[] parentNames = super.getDisplayNameArray(id, loc);
                 if (parentNames != null && !parentNames[index].isEmpty()) {
-                    names[index] = parentNames[index];
-                    return;
+                    // Long names in ROOT locale should not be copied, as they can be generated
+                    // with the fallback mechanisms below
+                    if (!loc.equals(Locale.ROOT) || index % 2 == 0) {
+                        names[index] = parentNames[index];
+                        return;
+                    }
                 }
             }
         }
