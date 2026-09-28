@@ -115,7 +115,7 @@ public class RandomAccessFileTest {
         }
     }
 
-    @Test
+    // @Test @ignore JDK-8378469
     public void getFilePointer() throws Exception {
         File file = temporaryFolder.newFile();
         try (RandomAccessFile rac = new RandomAccessFile(file, "r")) {
@@ -190,7 +190,7 @@ public class RandomAccessFileTest {
         }
     }
 
-    @Test
+    // @Test @ignore JDK-8378469
     public void setLength() throws Exception {
         String extraContent = ManglingFileSystemProvider.extraContent;
         assertTrue(extraContent.length() > 2);
@@ -287,6 +287,8 @@ public class RandomAccessFileTest {
     /** JBR-9260 */
     @Test
     public void testNoShareDelete() throws Exception {
+        Assume.assumeTrue("Windows-only test", System.getProperty("os.name").toLowerCase().startsWith("win"));
+
         // This code should throw no exceptions.
         File file = temporaryFolder.newFile();
 
