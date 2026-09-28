@@ -27,6 +27,7 @@
 #define _ALLOC_H_
 
 #include "stdhdrs.h"
+#include "jbr_is_jnidowncall.h" // jbr_is_jni_downcall
 
 // By defining std::bad_alloc in a local header file instead of including
 // the Standard C++ <new> header file, we avoid making awt.dll dependent
@@ -110,6 +111,14 @@ void throw_if_shutdown(void);
 // This function is called when a std::bad_alloc exception is caught
 void handle_bad_alloc(void);
 
+// JBR-8954: Calling AWT native APIs prevents the system from shutting down/signing out and hangs the IDE.
+// This function is called instead of hang_if_shutdown in TRY.
+// Raises a Java sun.awt.windows.WToolkitShutdownException and throws a native awt_toolkit_shutdown exceptions.
+//
+// NB: do not use it inside CATCH_BAD_ALLOC[_RET] macros because they are also used with
+//     TRY_NO_HANG which is not supposed to raise any exceptions to Java.
+void jbr_awt_throw_to_java_or_hang_if_shutdown(void);
+
 // Uncomment to nondeterministically test OutOfMemory errors
 // #define OUTOFMEM_TEST
 
@@ -131,7 +140,11 @@ void handle_bad_alloc(void);
 #define TRY \
     try { \
         entry_point(); \
-        hang_if_shutdown();
+        if (jbr_is_jni_downcall(__FUNCSIG__, __FUNCTION__)) { \
+            jbr_awt_throw_to_java_or_hang_if_shutdown(); \
+        } else { \
+            hang_if_shutdown(); \
+        }
 // The _NO_HANG version of TRY causes the AWT native code to return to Java
 // immediately if the Toolkit is not active. Normal AWT operations should
 // never use this macro. It should only be used for cleanup routines where:
