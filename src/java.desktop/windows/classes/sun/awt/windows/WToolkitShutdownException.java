@@ -34,9 +34,13 @@ import java.io.Serial;
  * shutdown hook or the end of a Windows session).
  * <p>
  * See JBR-10607 for more info.
+ * <p>
+ * The exception type must be derived from {@link InterruptedException}, otherwise JTreg AWT tests fail at the
+ * JTreg cleanup phase. It happens because {@code java.awt.EventDispatchThread#pumpOneEventForFilters} passes any kind
+ * of unhandled exceptions but {@link InterruptedException} to JTreg (via {@code EventDispatchThread#processException}).
  */
 @SuppressWarnings("unused") // thrown from native code
-final class WToolkitShutdownException extends IllegalStateException {
+final class WToolkitShutdownException extends InterruptedException {
     @Serial
     private static final long serialVersionUID = 5604120260941468953L;
 
