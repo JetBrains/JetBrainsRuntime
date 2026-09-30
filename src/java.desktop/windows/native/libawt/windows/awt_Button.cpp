@@ -352,7 +352,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WButtonPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     cls = env->FindClass("java/awt/Button");
     if (cls == NULL) {

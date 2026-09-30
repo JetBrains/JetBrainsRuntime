@@ -925,7 +925,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_TrayIcon_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     /* init field ids */
     AwtTrayIcon::idID = env->GetFieldID(cls, "id", "I");

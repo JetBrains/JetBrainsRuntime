@@ -154,7 +154,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrintDialog_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtPrintDialog::controlID =
         env->GetFieldID(cls, "pjob", "Ljava/awt/print/PrinterJob;");
@@ -168,7 +168,7 @@ Java_sun_awt_windows_WPrintDialog_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrintDialogPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtPrintDialog::parentID =
         env->GetFieldID(cls, "parent", "Lsun/awt/windows/WComponentPeer;");

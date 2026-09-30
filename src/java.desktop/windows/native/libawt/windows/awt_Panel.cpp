@@ -43,7 +43,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPanelPeer_initIDs(JNIEnv *env, jclass cls) {
 
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtPanel::insets_ID = env->GetFieldID(cls, "insets_", "Ljava/awt/Insets;");
 

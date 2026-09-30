@@ -68,7 +68,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_AWTEvent_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtAWTEvent::bdataID = env->GetFieldID(cls, "bdata", "[B");
     DASSERT(AwtAWTEvent::bdataID != NULL);

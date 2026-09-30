@@ -158,7 +158,7 @@ void awt_clipboard_uninitialize(JNIEnv *env) {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WClipboard_init(JNIEnv *env, jclass cls, jboolean areOwnershipExtraChecksEnabled)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtClipboard::lostSelectionOwnershipMID =
         env->GetMethodID(cls, "lostSelectionOwnershipImpl", "()V");

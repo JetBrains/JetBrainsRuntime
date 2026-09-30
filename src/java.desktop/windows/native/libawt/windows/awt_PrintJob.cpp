@@ -468,7 +468,7 @@ Java_sun_awt_windows_WPrinterJob_showDocProperties(JNIEnv *env,
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPageDialog_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtPrintDialog::pageID =
         env->GetFieldID(cls, "page", "Ljava/awt/print/PageFormat;");
@@ -4304,7 +4304,7 @@ static BOOL getPrintableArea(HDC pdc, HANDLE hDevMode, RectDouble *margin)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WPrinterJob_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtPrintDialog::controlID = env->GetFieldID(cls, "pjob", "Ljava/awt/print/PrinterJob;");
     DASSERT(AwtPrintDialog::controlID != NULL);

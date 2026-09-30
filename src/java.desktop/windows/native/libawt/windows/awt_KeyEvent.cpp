@@ -45,7 +45,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_event_KeyEvent_initIDs(JNIEnv *env, jclass cls) {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtKeyEvent::keyCodeID = env->GetFieldID(cls, "keyCode", "I");
     DASSERT(AwtKeyEvent::keyCodeID != NULL);

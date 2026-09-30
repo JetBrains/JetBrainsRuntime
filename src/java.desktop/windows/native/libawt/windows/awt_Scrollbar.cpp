@@ -534,7 +534,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Scrollbar_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtScrollbar::lineIncrementID = env->GetFieldID(cls, "lineIncrement", "I");
     DASSERT(AwtScrollbar::lineIncrementID != NULL);

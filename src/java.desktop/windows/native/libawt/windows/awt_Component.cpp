@@ -6725,7 +6725,7 @@ void AwtComponent_GetInsets(JNIEnv *env, jobject peer, RECT *insets)
 JNIEXPORT void JNICALL
 Java_java_awt_Component_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
     jboolean ignoreException;
     jintArray obj = (jintArray)JNU_CallStaticMethodByName(env, &ignoreException,
                                                           "java/awt/event/InputEvent",

@@ -594,7 +594,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_ScrollPane_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtScrollPane::scrollbarDisplayPolicyID =
         env->GetFieldID(cls, "scrollbarDisplayPolicy", "I");
@@ -630,7 +630,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_ScrollPaneAdjustable_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtScrollPane::unitIncrementID = env->GetFieldID(cls,"unitIncrement", "I");
     DASSERT(AwtScrollPane::unitIncrementID != NULL);
@@ -655,7 +655,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WScrollPanePeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtScrollPane::postScrollEventID =
         env->GetMethodID(cls, "postScrollEvent", "(IIIZ)V");

@@ -41,7 +41,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_Dimension_initIDs(JNIEnv *env, jclass cls) {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtDimension::widthID = env->GetFieldID(cls, "width", "I");
     DASSERT(AwtDimension::widthID != NULL);

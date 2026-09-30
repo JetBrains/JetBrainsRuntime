@@ -316,7 +316,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Label_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     /* init field ids */
     AwtLabel::textID = env->GetFieldID(cls, "text", "Ljava/lang/String;");

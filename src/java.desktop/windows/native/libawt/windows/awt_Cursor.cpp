@@ -303,7 +303,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Cursor_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtCursor::mSetPDataID = env->GetMethodID(cls, "setPData", "(J)V");
     DASSERT(AwtCursor::mSetPDataID != NULL);

@@ -475,7 +475,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_TextArea_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY;
+    TRY_NO_VERIFY;
 
     AwtTextArea::scrollbarVisibilityID =
         env->GetFieldID(cls, "scrollbarVisibility", "I");
