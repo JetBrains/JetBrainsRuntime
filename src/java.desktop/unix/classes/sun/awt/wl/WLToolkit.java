@@ -407,6 +407,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         final WLInputState oldInputState = inputState;
         final WLInputState newInputState = oldInputState.updatedFromPointerEvent(e);
         setInputState(newInputState);
+
+        if (e.hasLeaveEvent() && newInputState.pendingCrossingModifiers() != 0) {
+            // Reset temporary pending crossing state once the compositor fully processes the leave event
+            // If by that time we get an enter event, assume a crossing, and restore modifiers from pendingCrossingModifiers
+            // (this happens in WLInputState.updatedFromPointerEvent)
+            // Otherwise, reset pendingCrossingModifiers
+            syncCallbackOnEDT(() -> {
+                setInputState(inputState.resetPendingCrossingState());
+            });
+        }
+
         if (e.hasLeaveEvent() || e.hasEnterEvent()) {
             // We've lost the control over the cursor, assume no knowledge about it
             getCursorManager().reset();
@@ -1178,6 +1189,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private native void dispatchEventsOnEDT();
     private native void flushImpl();
     private native void dispatchNonDefaultQueuesImpl();
+    private static native void syncCallbackImpl(Runnable callback);
+
+    public static void syncCallbackOnEDT(Runnable callback) {
+        syncCallbackImpl(callback);
+    }
 
     public static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);

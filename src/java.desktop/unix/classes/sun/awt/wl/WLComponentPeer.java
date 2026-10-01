@@ -849,7 +849,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         return getFakeLocationOnScreen();
     }
 
-    private Point getFakeLocationOnScreen() {
+    Point getFakeLocationOnScreen() {
         // If we can't learn the real location from WLRobotPeer, we can at least
         // return a reasonable fake. This fake location places all windows in the top-left
         // corner of their respective screen and popups at the offset from
