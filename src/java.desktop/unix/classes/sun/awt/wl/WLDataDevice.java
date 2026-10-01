@@ -287,6 +287,7 @@ public class WLDataDevice {
 
     private void handleDnDLeave() {
         WLDropTargetContextPeer.getInstance().handleLeave();
+        WLToolkit.resetPointerInputState();
     }
 
     private void handleDnDMotion(long timestamp, double x, double y) {
@@ -295,6 +296,7 @@ public class WLDataDevice {
 
     private void handleDnDDrop() {
         WLDropTargetContextPeer.getInstance().handleDrop();
+        WLToolkit.resetPointerInputState();
     }
 
     private void handleSelection(WLDataOffer offer /* nullable */, int protocol, int selection) {

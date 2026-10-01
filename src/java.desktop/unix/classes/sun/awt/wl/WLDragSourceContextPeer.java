@@ -93,6 +93,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         @Override
         protected synchronized void handleDnDDropPerformed() {
             super.handleDnDDropPerformed();
+            WLToolkit.resetPointerInputState();
             didSucceed = action != 0 && mime != null;
         }
 

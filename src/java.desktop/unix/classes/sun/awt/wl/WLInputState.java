@@ -296,10 +296,6 @@ record WLInputState(WLPointerEvent eventWithSurface,
     private int getNewModifiers(WLPointerEvent pointerEvent) {
         int newModifiers = modifiers;
 
-        if (pointerEvent.hasLeaveEvent()) {
-            return modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask();
-        }
-
         if (pointerEvent.hasButtonEvent()) {
             final WLPointerEvent.PointerButtonCodes buttonCode
                     = WLPointerEvent.PointerButtonCodes.recognizedOrNull(pointerEvent.getButtonCode());
