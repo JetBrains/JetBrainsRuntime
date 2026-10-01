@@ -49,6 +49,4 @@ public interface LWWindowPeerAPI extends LWContainerPeerAPI, WindowPeer {
     void postMouseEvent(MouseEvent e);
 
     boolean isActive();
-
-    boolean needsDragEventCorrection();
 }
