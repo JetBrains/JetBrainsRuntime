@@ -50,6 +50,7 @@
     BOOL isJustCreated;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
+    BOOL isResizeWindowDuringAnotherWindowEndScheduled;
     CGFloat _customTitleBarHeight;
     BOOL hideTabController;
     NSView *_fullScreenButtons;
@@ -73,6 +74,7 @@
 @property (nonatomic) BOOL isJustCreated;
 @property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
 @property (nonatomic) BOOL isEnterFullScreen;
+@property (nonatomic) BOOL isResizeWindowDuringAnotherWindowEndScheduled;
 @property (nonatomic, retain) NSNumber *currentDisplayID;
 @property (nonatomic, readonly) CGFloat customTitleBarHeight;
 @property (nonatomic) BOOL customTitleBarControlsVisible;
