@@ -116,7 +116,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean isLayouting = false; // protected by stateLock
     protected boolean visible = false;
 
-    private boolean isConfigured = false; // protected by stateLock
     private boolean isActive = false;  // protected by stateLock
     private boolean isFullscreen = false;  // protected by stateLock
     private boolean sizeIsBeingConfigured = false; // protected by stateLock
@@ -487,7 +486,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             // from notifyConfigured()
         } else {
             performLocked(() -> {
-                isConfigured = false;
                 if (wlSurface != null) { // may get a "hide" request even though we were never shown
                     notifyNativeWindowToBeHidden(nativePtr);
 
@@ -745,29 +743,27 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             performLocked(() -> setLocationOfToplevel(newXNative, newYNative));
         }
 
+        boolean markedForReposition = false;
         if ((positionChanged || sizeChanged) && isPopup && visible) {
             // Need to update the location and size even if does not (yet) have a surface
             // as the initial configure event needs to have the latest data on the location/size.
-            if (markPopupNeedsReposition()) {
-
-                // DANGER: first we take the AWT lock, and only then the stateLock within popupNeedsReposition() et al.
-                // This is done consistently whenever we need to take those two locks.
-                performLocked(() -> {
-                    if (popupNeedsReposition() && isConfigured) {
-                        popupRepositioned();
-                        doRepositionPopup();
-                    }
-                });
-            }
+            markedForReposition = markPopupNeedsReposition();
         }
 
         if (positionChanged) {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
 
+        boolean sizeActuallyChanged = false;
         if (sizeChanged) {
             if (!isSizeBeingConfigured()) {
-                wlSize.deriveFromJavaSize(newSize.width, newSize.height);
+                synchronized (getStateLock()) {
+                    Dimension oldDims = wlSize.surfaceSize.getSize();
+                    wlSize.deriveFromJavaSize(newSize.width, newSize.height);
+                    if (!oldDims.equals(wlSize.surfaceSize)) {
+                        sizeActuallyChanged = true;
+                    }
+                }
                 shadow.resizeToParentWindow();
                 markResizePending();
             }
@@ -781,6 +777,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_RESIZED));
 
             postPaintEvent(); // no need to repaint after being moved, only when resized
+        }
+
+        if (!sizeActuallyChanged && markedForReposition) {
+            performLocked(() -> {
+                if (popupNeedsReposition() && wlSurface != null && wlSurface.hasSurfaceData()) {
+                    popupRepositioned();
+                    doRepositionPopup();
+                }
+            });
         }
     }
 
@@ -1791,7 +1796,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         synchronized (getStateLock()) {
             isActive = active;
             isFullscreen = fullscreen;
-            isConfigured = true;
         }
 
         boolean isWlPopup = targetIsWlPopup();
