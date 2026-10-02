@@ -389,7 +389,12 @@ AWT_NS_WINDOW_IMPLEMENTATION
 }
 
 - (void)orderOut:(id)sender {
+    // JBR-2893 Big Sur: IDEA hangs after closing a project tab after exiting and entering full screen
     ignoreResizeWindowDuringAnotherWindowEnd = YES;
+#ifdef DEBUG
+    NSLog(@"AWTWindow.orderOut: ignoreResizeWindowDuringAnotherWindowEnd = %d",
+          ignoreResizeWindowDuringAnotherWindowEnd);
+#endif
     [super orderOut:sender];
 }
 
@@ -467,6 +472,7 @@ AWT_NS_WINDOW_IMPLEMENTATION
 @synthesize isJustCreated;
 @synthesize javaWindowTabbingMode;
 @synthesize isEnterFullScreen;
+@synthesize isResizeWindowDuringAnotherWindowEndScheduled;
 @synthesize hideTabController;
 
 - (void) updateMinMaxSize:(BOOL)resizable {
@@ -653,6 +659,7 @@ AWT_ASSERT_APPKIT_THREAD;
     self.javaWindowTabbingMode = [self getJavaWindowTabbingMode];
     self.nsWindow.collectionBehavior = NSWindowCollectionBehaviorManaged;
     self.isEnterFullScreen = NO;
+    self.isResizeWindowDuringAnotherWindowEndScheduled = NO;
 
     [self configureJavaWindowTabbingIdentifier];
 
@@ -1110,6 +1117,8 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
         NSLog(@"=== Native.windowDidResize: %@ | ignored in transition to fullscreen ===", self.nsWindow.title);
 #endif
+        // set window flag:
+        self.isResizeWindowDuringAnotherWindowEndScheduled = YES;
         return;
     }
     [self _deliverMoveResizeEvent];
@@ -1397,6 +1406,18 @@ AWT_ASSERT_APPKIT_THREAD;
     if (orderingScheduled) {
         orderingScheduled = NO;
         [self checkBlockingAndOrder];
+    }
+    // As windowDidResize() is dropped while this window enters
+    // full screen and ignoreResizeWindowDuringAnotherWindowEnd is set. Deliver
+    // the final frame now so CPlatformWindow.nativeBounds and the peer surface
+    // match the full-screen size. LWWindowPeer.notifyReshape() returns early
+    // when nothing changed, so this is free in the common case.
+    if (self.isResizeWindowDuringAnotherWindowEndScheduled) {
+        self.isResizeWindowDuringAnotherWindowEndScheduled = NO;
+#ifdef DEBUG
+        NSLog(@"fullScreenTransitionFinished: _deliverMoveResizeEvent !");
+#endif
+        [self _deliverMoveResizeEvent];
     }
 }
 
@@ -2468,6 +2489,7 @@ JNI_COCOA_ENTER(env);
         NSRect rect = ConvertNSScreenRect(NULL, jrect);
         [window constrainSize:&rect.size];
 
+        NSRect oldFrame = [nsWindow frame];
         [nsWindow setFrame:rect display:YES];
 
         // only start tracking events if pointer is above the toplevel
@@ -2484,7 +2506,12 @@ JNI_COCOA_ENTER(env);
         // "java.awt.Window" and NSWindow locations, because "java.awt.Window"
         // already uses location ignored by the macOS.
         // see sun.lwawt.LWWindowPeer#notifyReshape()
-        if (!NSEqualRects(rect, [nsWindow frame])) {
+
+        // AppKit also posts no windowDidMove()/windowDidResize() when
+        // the frame did not change. A window created with its final frame then
+        // keeps empty CPlatformWindow.nativeBounds. Resync in that case too.
+        NSRect newFrame = [nsWindow frame];
+        if (NSEqualRects(oldFrame, newFrame) || !NSEqualRects(rect, newFrame)) {
             [window _deliverMoveResizeEvent];
         }
     }];
@@ -2902,6 +2929,10 @@ JNI_COCOA_ENTER(env);
         [window release];
 
         ignoreResizeWindowDuringAnotherWindowEnd = NO;
+#ifdef DEBUG
+        NSLog(@"=== CPlatformWindow.nativeDispose: ignoreResizeWindowDuringAnotherWindowEnd = %d",
+              ignoreResizeWindowDuringAnotherWindowEnd);
+#endif
     }];
 
 JNI_COCOA_EXIT(env);
