@@ -29,6 +29,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
+import java.util.Locale;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
@@ -45,7 +46,7 @@ import javax.swing.SwingUtilities;
  */
 public class GlyphCacheSurfaceSwitchTest {
 
-    private static final int SURFACES = Integer.getInteger("test.surfaces", 8);
+    private static final int SURFACES = Integer.getInteger("test.surfaces", 32);
     private static final int ITERATIONS = Integer.getInteger("test.iterations", 300);
     // A surface switch must not cost a GPU round trip. The bound is generous
     // so that only the old synchronous wait per switch can exceed it.
@@ -107,9 +108,10 @@ public class GlyphCacheSurfaceSwitchTest {
         }
         frame.getToolkit().sync();
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+        double msPerIteration = (double) elapsedMs / ITERATIONS;
         double msPerSwitch = (double) elapsedMs / switches;
-        System.out.printf("%d surface switches in %d ms: %.3f ms per switch (%s)%n",
-                          switches, elapsedMs, msPerSwitch, pipeline);
+        System.out.printf(Locale.US, "%d surface switches in %d ms: %.3f ms per switch - %.3f ms per iteration (%s)%n",
+                          switches, elapsedMs, msPerSwitch, msPerIteration, pipeline);
 
         // the cached glyphs must produce the same pixels after many switches
         BufferedImage last = images[0].getSnapshot();
