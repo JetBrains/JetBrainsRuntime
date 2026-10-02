@@ -432,7 +432,6 @@ Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
         CHECK_NULL(xdg_positioner);
         xdg_popup_reposition(frame->xdg_popup, xdg_positioner, 0);
         xdg_positioner_destroy(xdg_positioner);
-        wl_surface_commit(frame->wl_surface);
         wlFlushToServer(env);
     }
 }
