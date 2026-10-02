@@ -106,16 +106,6 @@ static jint vertexCacheIndex = 0;
     } while (0)
 
 /**
- * Flush callback of the glyph caches: draws the pending glyph quads, which
- * still reference the texture of the cache that is about to be freed.
- * The texture is released when the command buffer completes
- * (see MTLGlyphCache.free), so this callback does not wait for the GPU.
- */
-static void MTLTR_FlushGlyphVertexCache(MTLContext *mtlc) {
-    MTLVertexCache_FlushGlyphVertexCache(mtlc);
-}
-
-/**
  * Returns the cell of the given glyph that belongs to the given context,
  * or NULL. A glyph can hold one cell per context (one per GPU).
  */
@@ -149,7 +139,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
-                                    func:MTLTR_FlushGlyphVertexCache])
+                                    func:MTLVertexCache_FlushGlyphVertexCache])
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLTR_InitGlyphCache: could not init MTL glyph cache");

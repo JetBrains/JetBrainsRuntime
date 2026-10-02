@@ -21,17 +21,6 @@
  * questions.
  */
 
-/*
- * @test
- * @key headful
- * @summary Text rendering must stay correct and fast when the destination
- *          surface changes between draws (Metal pipeline). Before the fix,
- *          every surface switch freed both glyph caches and waited for the
- *          GPU, which stalled the EDT in MTLRenderQueue.flushNow.
- * @requires (os.family == "mac")
- * @run main/othervm -Dsun.java2d.metal=true GlyphCacheSurfaceSwitchTest
- */
-
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -43,6 +32,17 @@ import java.awt.image.VolatileImage;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 
+/**
+ * @test
+ * @key headful
+ * @summary Text rendering must stay correct and fast when the destination
+ *          surface changes between draws (Metal pipeline). Before the fix,
+ *          every surface switch freed both glyph caches and waited for the
+ *          GPU, which stalled the EDT in MTLRenderQueue.flushNow.
+ * @requires (os.family == "mac")
+ * @run main/othervm -Dsun.java2d.metal=false GlyphCacheSurfaceSwitchTest
+ * @run main/othervm -Dsun.java2d.metal=true GlyphCacheSurfaceSwitchTest
+ */
 public class GlyphCacheSurfaceSwitchTest {
 
     private static final int SURFACES = Integer.getInteger("test.surfaces", 8);
@@ -50,7 +50,7 @@ public class GlyphCacheSurfaceSwitchTest {
     // A surface switch must not cost a GPU round trip. The bound is generous
     // so that only the old synchronous wait per switch can exceed it.
     private static final double MAX_MS_PER_SWITCH =
-            Double.parseDouble(System.getProperty("test.maxMsPerSwitch", "4.0"));
+            Double.parseDouble(System.getProperty("test.maxMsPerSwitch", "0.2"));
 
     private static final String TEXT = "The quick brown fox jumps over the lazy dog 0123456789";
     private static final int W = 420;
@@ -59,10 +59,9 @@ public class GlyphCacheSurfaceSwitchTest {
     public static void main(String[] args) throws Exception {
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice().getDefaultConfiguration();
-        if (!gc.getClass().getName().contains("MTL")) {
-            System.out.println("The Metal pipeline is not active, nothing to test: " + gc.getClass());
-            return;
-        }
+
+        final String pipeline = gc.getClass().getPackageName();
+        System.out.println("The Graphics pipeline is '" + pipeline + "'");
 
         JFrame[] frame = new JFrame[1];
         SwingUtilities.invokeAndWait(() -> {
@@ -72,13 +71,13 @@ public class GlyphCacheSurfaceSwitchTest {
             frame[0].setVisible(true);
         });
         try {
-            run(gc, frame[0]);
+            run(gc, frame[0], pipeline);
         } finally {
             SwingUtilities.invokeAndWait(() -> frame[0].dispose());
         }
     }
 
-    private static void run(GraphicsConfiguration gc, JFrame frame) throws Exception {
+    private static void run(GraphicsConfiguration gc, JFrame frame, String pipeline) throws Exception {
         VolatileImage[] images = new VolatileImage[SURFACES];
         for (int i = 0; i < SURFACES; i++) {
             images[i] = gc.createCompatibleVolatileImage(W, H);
@@ -109,8 +108,8 @@ public class GlyphCacheSurfaceSwitchTest {
         frame.getToolkit().sync();
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
         double msPerSwitch = (double) elapsedMs / switches;
-        System.out.printf("%d surface switches in %d ms: %.3f ms per switch%n",
-                          switches, elapsedMs, msPerSwitch);
+        System.out.printf("%d surface switches in %d ms: %.3f ms per switch (%s)%n",
+                          switches, elapsedMs, msPerSwitch, pipeline);
 
         // the cached glyphs must produce the same pixels after many switches
         BufferedImage last = images[0].getSnapshot();
