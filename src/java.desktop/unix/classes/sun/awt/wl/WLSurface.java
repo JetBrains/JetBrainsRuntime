@@ -150,6 +150,12 @@ public class WLSurface {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
     }
 
+    void notifyPreferredScale(int scaleNumerator) {
+        // Called from native code whenever the compositor announces the scale it applies to the corresponding
+        // wl_surface (wp_fractional_scale_v1.preferred_scale); the scale is scaleNumerator / 120.
+        // Only available if the compositor supports wp_fractional_scale_v1.
+    }
+
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
         assert SunToolkit.isAWTLockHeldByCurrentThread() : "This method must be invoked while holding the AWT lock";
         assertIsValid();

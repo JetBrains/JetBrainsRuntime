@@ -33,6 +33,7 @@
 #include "xdg-output-unstable-v1.h"
 #include "primary-selection-unstable-v1.h"
 #include "viewporter.h"
+#include "fractional-scale-v1.h"
 #include "relative-pointer-unstable-v1.h"
 #include "text-input-unstable-v3.h"
 #include "xdg-decoration-unstable-v1.h"
@@ -67,6 +68,7 @@ extern struct wl_compositor *wl_compositor;
 extern struct wl_subcompositor *wl_subcompositor;
 extern struct xdg_wm_base *xdg_wm_base;
 extern struct wp_viewporter *wp_viewporter;
+extern struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager; // optional, check for NULL before use
 extern struct xdg_activation_v1 *xdg_activation_v1; // optional, check for NULL before use
 extern struct wl_cursor_theme *wl_cursor_theme;
 extern struct wl_data_device_manager *wl_ddm;

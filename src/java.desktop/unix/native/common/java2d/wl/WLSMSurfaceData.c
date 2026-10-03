@@ -126,7 +126,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_commit(JNIEnv *env, jobject wsd)
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_nativeRevalidate(JNIEnv *env, jobject wsd,
-                                              jint width, jint height, jint scale)
+                                              jint width, jint height)
 {
 #ifndef HEADLESS
     J2dTrace(J2D_TRACE_INFO, "WLSMSurfaceData_revalidate to size %d x %d\n", width, height);

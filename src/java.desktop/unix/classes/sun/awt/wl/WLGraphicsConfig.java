@@ -89,15 +89,26 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
     }
 
     /**
-     * Returns the preferred Wayland buffer scale for this display configuration.
+     * Returns the integer scale of the output as reported by wl_output, which is the real scale rounded up
+     * for fractionally scaled outputs. Only suitable where Wayland requires an integer scale
+     * (wl_surface.set_buffer_scale), such as for cursors and drag icons; see {@link #getSurfaceScale()}.
      */
     public int getDisplayScale() {
         return device.getDisplayScale();
     }
 
     /**
-     * Returns the effective scale, which can differ from the buffer scale
-     * if overridden with the sun.java2d.uiScale system property.
+     * Returns the scale the compositor applies to the surfaces on this output, i.e. the number of pixels
+     * a surface-local unit occupies on the screen. It may be fractional (a multiple of 1/120) and determines
+     * the size of the buffers for the compositor to show them without resampling.
+     */
+    public double getSurfaceScale() {
+        return device.getSurfaceScale();
+    }
+
+    /**
+     * Returns the effective scale Java2D renders at, which is the surface scale unless
+     * overridden with the sun.java2d.uiScale system property.
      */
     public double getEffectiveScale() {
        return device.getEffectiveScale();
@@ -145,7 +156,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
     @Override
     public String toString() {
         Rectangle bounds = getBounds();
-        return String.format("%dx%d@(%d, %d) %dx scale", bounds.width, bounds.height, bounds.x, bounds.y, getDisplayScale());
+        return String.format("%dx%d@(%d, %d) %sx scale", bounds.width, bounds.height, bounds.x, bounds.y, getSurfaceScale());
     }
 
     private static class WLDefaultBufferCapabilities extends BufferCapabilities {

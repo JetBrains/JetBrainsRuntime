@@ -59,6 +59,12 @@ public class WLGraphicsDevice extends GraphicsDevice {
     public static final int WL_OUTPUT_CHANGED_ORIGIN = 1;
 
     /**
+     * The denominator of the fractions that wp_fractional_scale_v1 expresses scales in:
+     * the scale a compositor applies to a surface is a multiple of 1/120.
+     */
+    static final int FRACTIONAL_SCALE_DENOMINATOR = 120;
+
+    /**
      *  ID of the corresponding wl_output object received from Wayland.
      *  Only changes when the device gets invalidated.
      */
@@ -111,13 +117,30 @@ public class WLGraphicsDevice extends GraphicsDevice {
     private volatile int heightMm;
 
     /**
-     * The device's scale factor as reported by Wayland.
-     * Since it is an integer, it's usually higher than the real fraction scale.
+     * The device's integer scale factor as reported by wl_output.
+     * For a fractionally scaled output this is the real scale rounded up, so it is only suitable
+     * where Wayland insists on an integer scale, such as wl_surface.set_buffer_scale for cursors
+     * and drag icons; see {@link #getSurfaceScale()} for the scale to render at.
      */
     private volatile int displayScale;
 
     /**
-     * The effective scale factor as determined by Java.
+     * The scale the compositor applies to the surfaces on this output, i.e. the number of pixels
+     * a surface-local unit occupies on the screen; a multiple of 1/120 that may be fractional.
+     * It is either announced by the compositor for a surface on this output
+     * (wp_fractional_scale_v1.preferred_scale) or estimated as the ratio of the output's physical size
+     * to its logical one, and equals displayScale on outputs with an integer scale.
+     */
+    private volatile double surfaceScale;
+
+    /**
+     * Whether surfaceScale was announced by the compositor rather than estimated from the output's sizes.
+     */
+    private volatile boolean surfaceScaleFromCompositor;
+
+    /**
+     * The effective scale factor as determined by Java: surfaceScale unless overridden
+     * with the sun.java2d.uiScale system property.
      */
     private volatile double effectiveScale;
 
@@ -153,7 +176,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.widthMm = widthMm;
         this.heightMm = heightMm;
         this.displayScale = displayScale;
-        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(displayScale);
+        this.surfaceScale = surfaceScaleFrom(width, height, widthLogical, heightLogical, displayScale);
+        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(surfaceScale);
 
         makeGC();
     }
@@ -185,10 +209,28 @@ public class WLGraphicsDevice extends GraphicsDevice {
                              int widthLogical, int heightLogical,
                              int widthMm, int heightMm,
                              int scale) {
+        double newSurfaceScale = surfaceScaleFrom(width, height, widthLogical, heightLogical, scale);
+        if (surfaceScaleFromCompositor && hasSimilarSurfaceScale(newSurfaceScale)) {
+            // The estimate is within its error of the scale announced by the compositor, which is exact.
+            newSurfaceScale = surfaceScale;
+        } else {
+            surfaceScaleFromCompositor = false;
+        }
+        updateConfiguration(name, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm,
+                scale, newSurfaceScale);
+    }
+
+    private void updateConfiguration(String name,
+                                     int x, int y,
+                                     int width, int height,
+                                     int widthLogical, int heightLogical,
+                                     int widthMm, int heightMm,
+                                     int scale, double surfaceScale) {
         assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
         assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
         assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
         assert scale > 0 : String.format("Invalid display scale: %d", scale);
+        assert surfaceScale > 0 : String.format("Invalid surface scale: %f", surfaceScale);
 
         this.name = name;
         int dx = x - this.x;
@@ -202,8 +244,34 @@ public class WLGraphicsDevice extends GraphicsDevice {
         this.widthMm = widthMm;
         this.heightMm = heightMm;
         this.displayScale = scale;
-        this.effectiveScale =  WLGraphicsEnvironment.effectiveScaleFrom(scale);
+        this.surfaceScale = surfaceScale;
+        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(surfaceScale);
 
+        configurationChanged(dx, dy);
+    }
+
+    /**
+     * Sets the scale the compositor has announced (wp_fractional_scale_v1.preferred_scale) for a surface
+     * on this output. It is exact and therefore takes precedence over the scale estimated from the output's sizes.
+     * If the scale differs from the current one, the graphics configurations get re-created and the windows
+     * on this device notified, exactly as for any other change of the output's configuration.
+     */
+    void setSurfaceScale(double scale) {
+        assert scale > 0 : String.format("Invalid surface scale: %f", scale);
+
+        if (!WLGraphicsEnvironment.isFractionalScaleEnabled()) return;
+
+        surfaceScaleFromCompositor = true;
+        if (hasSurfaceScale(scale)) return;
+
+        this.surfaceScale = scale;
+        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(scale);
+
+        configurationChanged(0, 0);
+        WLGraphicsEnvironment.getSingleInstance().displayChanged();
+    }
+
+    private void configurationChanged(int dx, int dy) {
         // It is necessary to create new config objects whenever this device changes
         // as GraphicsConfiguration identity is used to detect changes in scale, among other things.
         makeGC();
@@ -241,6 +309,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         // Note: It is expected that all the surface this device used to host have already received
         // the 'leave' event and updated their device/graphics configurations accordingly.
         this.wlID = similarDevice.wlID;
+        this.surfaceScaleFromCompositor = similarDevice.surfaceScaleFromCompositor;
         updateConfiguration(similarDevice.name,
                 similarDevice.x,
                 similarDevice.y,
@@ -250,7 +319,27 @@ public class WLGraphicsDevice extends GraphicsDevice {
                 similarDevice.heightLogical,
                 similarDevice.widthMm,
                 similarDevice.heightMm,
-                similarDevice.displayScale);
+                similarDevice.displayScale,
+                similarDevice.surfaceScale);
+    }
+
+    /**
+     * Estimates the scale the compositor applies to the surfaces on an output of the given physical
+     * and logical sizes, i.e. the ratio of the two. As the logical size is an integer, the ratio is only
+     * approximate and gets rounded to the granularity of wp_fractional_scale_v1 (1/120):
+     * 3840 / 2560 = 1.5 for an output at 150%, 1920 / 1097 = 1.7502 -> 210 / 120 = 1.75 for one at 175%.
+     * Falls back to the integer scale reported by wl_output when fractional scaling is disabled.
+     */
+    static double surfaceScaleFrom(int width, int height, int widthLogical, int heightLogical, int displayScale) {
+        if (!WLGraphicsEnvironment.isFractionalScaleEnabled() || widthLogical <= 0 || heightLogical <= 0) {
+            return displayScale;
+        }
+        // The larger dimension is the least affected by the rounding of the logical size
+        double ratio = width >= height
+                ? (double) width / widthLogical
+                : (double) height / heightLogical;
+        long numerator = Math.round(ratio * FRACTIONAL_SCALE_DENOMINATOR);
+        return numerator > 0 ? (double) numerator / FRACTIONAL_SCALE_DENOMINATOR : displayScale;
     }
 
     public static WLGraphicsDevice createWithConfiguration(int id, String name,
@@ -312,10 +401,45 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return new Rectangle(x, y, width, height);
     }
 
+    /**
+     * Returns the integer scale of the output as reported by wl_output; for fractionally scaled outputs
+     * it is the real scale rounded up. Only suitable where Wayland requires an integer scale
+     * (wl_surface.set_buffer_scale), such as for cursors and drag icons.
+     */
     int getDisplayScale() {
         return displayScale;
     }
 
+    /**
+     * Returns the scale the compositor applies to the surfaces on this output, i.e. the number of pixels
+     * a surface-local unit occupies on the screen. It may be fractional (a multiple of 1/120) and determines
+     * the size of the buffers for the compositor to show them without resampling.
+     */
+    double getSurfaceScale() {
+        return surfaceScale;
+    }
+
+    /**
+     * Whether the given scale is the same as the one the compositor applies to the surfaces on this output,
+     * both being multiples of 1/120.
+     */
+    boolean hasSurfaceScale(double scale) {
+        return Math.abs(surfaceScale - scale) * FRACTIONAL_SCALE_DENOMINATOR < 0.5;
+    }
+
+    /**
+     * Whether the given scale is the same as the one the compositor applies to the surfaces on this output
+     * up to the error of estimating the latter from the output's sizes, which is at most
+     * one step of wp_fractional_scale_v1 (1/120).
+     */
+    boolean hasSimilarSurfaceScale(double scale) {
+        return Math.abs(surfaceScale - scale) * FRACTIONAL_SCALE_DENOMINATOR < 1.5;
+    }
+
+    /**
+     * Returns the scale Java2D renders at on this device: {@link #getSurfaceScale()} unless overridden
+     * with the sun.java2d.uiScale system property.
+     */
     double getEffectiveScale() {
         return effectiveScale;
     }

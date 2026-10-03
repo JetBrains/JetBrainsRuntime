@@ -39,6 +39,7 @@
 
 static jmethodID notifyEnteredOutputMID;
 static jmethodID notifyLeftOutputMID;
+static jmethodID notifyPreferredScaleMID;
 
 struct activation_token_list_item {
     struct xdg_activation_token_v1 *token;
@@ -48,6 +49,7 @@ struct activation_token_list_item {
 struct WLSurfaceDescr {
     struct wl_surface* wlSurface;
     struct wp_viewport* viewport;
+    struct wp_fractional_scale_v1* fractionalScale; // optional, NULL if the compositor lacks wp_fractional_scale_v1
     jobject javaSurface; // a global reference to WLSurface
     struct activation_token_list_item *activation_token_list;
 };
@@ -104,6 +106,9 @@ Java_sun_awt_wl_WLSurface_initIDs
     CHECK_NULL_THROW_IE(env,
                         notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(I)V"),
                         "Failed to find method WLSurface.notifyLeftOutput");
+    CHECK_NULL_THROW_IE(env,
+                        notifyPreferredScaleMID = (*env)->GetMethodID(env, clazz, "notifyPreferredScale", "(I)V"),
+                        "Failed to find method WLSurface.notifyPreferredScale");
 }
 
 static void
@@ -148,6 +153,28 @@ static const struct wl_surface_listener wl_surface_listener = {
         .leave = wl_surface_left_output
 };
 
+static void
+wp_fractional_scale_preferred_scale
+        (void *data, struct wp_fractional_scale_v1 *wp_fractional_scale_v1, uint32_t scale)
+{
+    // 'scale' is the numerator of a fraction with a denominator of 120
+    struct WLSurfaceDescr* sd = jlong_to_ptr(data);
+    assert (sd);
+    if (scale == 0) return;
+
+    JNIEnv *env = getEnv();
+    const jobject javaSurface = (*env)->NewLocalRef(env, sd->javaSurface);
+    if (javaSurface) {
+        (*env)->CallVoidMethod(env, javaSurface, notifyPreferredScaleMID, (jint)scale);
+        wlListenerCheckException(env);
+        (*env)->DeleteLocalRef(env, javaSurface);
+    }
+}
+
+static const struct wp_fractional_scale_v1_listener wp_fractional_scale_listener = {
+        .preferred_scale = wp_fractional_scale_preferred_scale
+};
+
 JNIEXPORT jlong JNICALL
 Java_sun_awt_wl_WLSurface_nativeCreateWlSurface
         (JNIEnv *env, jobject obj)
@@ -165,6 +192,14 @@ Java_sun_awt_wl_WLSurface_nativeCreateWlSurface
         data->viewport = viewport;
         data->javaSurface = javaObjRef;
         wl_surface_add_listener(surface, &wl_surface_listener, data);
+        if (wp_fractional_scale_manager) {
+            // Lets the compositor tell us the (fractional) scale it applies to this surface; the buffer is
+            // then sized accordingly and shown as is, instead of being resampled from wl_output's integer scale.
+            data->fractionalScale = wp_fractional_scale_manager_v1_get_fractional_scale(wp_fractional_scale_manager, surface);
+            if (data->fractionalScale) {
+                wp_fractional_scale_v1_add_listener(data->fractionalScale, &wp_fractional_scale_listener, data);
+            }
+        }
         return ptr_to_jlong(data);
     } else {
         if (viewport) wp_viewport_destroy(viewport);
@@ -191,6 +226,7 @@ Java_sun_awt_wl_WLSurface_nativeDestroyWlSurface
     struct WLSurfaceDescr* sd = jlong_to_ptr(ptr);
     assert (sd);
 
+    if (sd->fractionalScale) wp_fractional_scale_v1_destroy(sd->fractionalScale);
     wp_viewport_destroy(sd->viewport);
     wl_surface_destroy(sd->wlSurface);
     delete_all_tokens(sd->activation_token_list);
@@ -223,8 +259,10 @@ Java_sun_awt_wl_WLSurface_nativeCommitWlSurface
 
 /**
  * Specifies the size of the Wayland's surface in surface units.
- * For the resulting image on the screen to look sharp this size should be
- * multiple of backing buffer's size with the ratio matching the display scale.
+ * For the resulting image on the screen to look sharp, the backing buffer's size must be
+ * this size multiplied by the scale the compositor applies to the surface (either its
+ * output's integer scale or the fractional one from wp_fractional_scale_v1) and rounded
+ * halfway away from zero; otherwise the compositor resamples the buffer.
  */
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLSurface_nativeSetSize
         (JNIEnv *env, jobject obj, jlong ptr, jint width, jint height)

@@ -59,6 +59,8 @@ public final class WLVKGraphicsConfig extends WLGraphicsConfig
 
     @Override
     public double getFractionalScale() {
+        // The same scale as in getDefaultTransform(): the scale the compositor applies to the surfaces
+        // on this device (fractional for fractionally scaled outputs) unless overridden with sun.java2d.uiScale.
         return getEffectiveScale();
     }
 

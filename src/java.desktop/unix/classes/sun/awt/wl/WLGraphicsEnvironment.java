@@ -53,6 +53,16 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
     private static final boolean debugScaleEnabled;
+
+    /**
+     * Whether to render at the real, possibly fractional, scale of the outputs (150% -> 1.5)
+     * so that the compositor shows the buffers as they are. Otherwise, the integer scale reported
+     * by wl_output (2 for 150%) is used and the compositor resamples the buffers to the real scale,
+     * which blurs the picture. Can be turned off with -Dsun.awt.wl.FractionalScale=false.
+     */
+    private static final boolean fractionalScaleEnabled =
+            Boolean.parseBoolean(System.getProperty("sun.awt.wl.FractionalScale", "true"));
+
     private final Dimension totalDisplayBounds = new Dimension();
 
     private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
@@ -187,12 +197,13 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         String humanID = deviceNameFrom(name, make, model);
 
         WLGraphicsDevice gd = deviceWithID(wlID);
+        WLGraphicsDevice newGD = null;
         if (gd != null) {
             // Some properties of an existing device have changed; update the existing device and
             // let all the windows it hosts know about the change.
             gd.updateConfiguration(humanID, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm, scale);
         } else {
-            WLGraphicsDevice newGD = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
+            newGD = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
                     x, y, width, height, widthLogical, heightLogical,
                     widthMm, heightMm, scale);
             synchronized (devices) {
@@ -202,7 +213,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         }
 
         if (LogDisplay.ENABLED) {
-            double effectiveScale = effectiveScaleFrom(scale);
+            double effectiveScale = (gd != null ? gd : newGD).getEffectiveScale();
             LogDisplay log = (gd == null) ? LogDisplay.ADDED : LogDisplay.CHANGED;
             log.log(wlID, (int) (width / effectiveScale) + "x" + (int) (height / effectiveScale), effectiveScale);
         }
@@ -308,12 +319,16 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         }
     }
 
-    static double effectiveScaleFrom(int displayScale) {
-        return debugScaleEnabled ? SunGraphicsEnvironment.getDebugScale() : displayScale;
+    static double effectiveScaleFrom(double surfaceScale) {
+        return debugScaleEnabled ? SunGraphicsEnvironment.getDebugScale() : surfaceScale;
     }
 
     static boolean isDebugScaleEnabled() {
         return debugScaleEnabled;
+    }
+
+    static boolean isFractionalScaleEnabled() {
+        return fractionalScaleEnabled;
     }
 
     public String[][] getHiDPIInfo() {
@@ -333,8 +348,8 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
                 j++;
 
                 info[j][0] = String.format("Display #%d logical scale", i);
-                info[j][1] = String.format("%d (%.2f)", gd.getDisplayScale(), gc.getEffectiveScale());
-                info[j][2] = "wl_output scale and effective scale factor";
+                info[j][1] = String.format("%d / %.2f (%.2f)", gd.getDisplayScale(), gd.getSurfaceScale(), gc.getEffectiveScale());
+                info[j][2] = "wl_output scale, scale applied by the compositor and effective scale factor";
                 j++;
 
                 info[j][0] = String.format("Display #%d real scale", i);

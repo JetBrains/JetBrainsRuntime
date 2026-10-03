@@ -121,8 +121,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private boolean isActive = false;  // protected by stateLock
     private boolean isFullscreen = false;  // protected by stateLock
     private boolean sizeIsBeingConfigured = false; // protected by stateLock
-    private int displayScale; // protected by stateLock
-    private double effectiveScale; // protected by stateLock
+    private double surfaceScale; // pixels per surface unit, as applied by the compositor; protected by stateLock
+    private double effectiveScale; // pixels per Java unit, as rendered by Java2D; protected by stateLock
     private final WLSize wlSize = new WLSize();
     private boolean repositionPopup = false; // protected by stateLock
     private boolean resizePending = false; // protected by stateLock
@@ -183,7 +183,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         this.background = target.isBackgroundSet() ? target.getBackground() : SystemColor.window;
         Dimension size = constrainSize(target.getBounds().getSize());
         final WLGraphicsConfig config = (WLGraphicsConfig) target.getGraphicsConfiguration();
-        displayScale = config.getDisplayScale();
+        surfaceScale = config.getSurfaceScale();
         effectiveScale = config.getEffectiveScale();
         wlSize.deriveFromJavaSize(size.width, size.height);
         surfaceData = config.createSurfaceData(this);
@@ -197,12 +197,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             shadow = new ShadowImpl(targetIsWlPopup() ? ShadowImage.POPUP_SHADOW_SIZE : ShadowImage.WINDOW_SHADOW_SIZE);
         } else {
             shadow = new NilShadow();
-        }
-    }
-
-    int getDisplayScale() {
-        synchronized (getStateLock()) {
-            return displayScale;
         }
     }
 
@@ -524,7 +518,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     void updateSurfaceData() {
         performLocked(() -> {
             SurfaceData.convertTo(WLSurfaceDataExt.class, surfaceData).revalidate(
-                    getGraphicsConfiguration(), getBufferWidth(), getBufferHeight(), getDisplayScale());
+                    getGraphicsConfiguration(), getBufferWidth(), getBufferHeight());
 
             shadow.updateSurfaceData();
         });
@@ -1161,14 +1155,16 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
-        final int newScale = ((WLGraphicsConfig)gc).getDisplayScale();
+        final WLGraphicsConfig wlgc = (WLGraphicsConfig) gc;
+        final double newSurfaceScale = wlgc.getSurfaceScale();
+        final double newEffectiveScale = wlgc.getEffectiveScale();
 
-        WLGraphicsDevice gd = ((WLGraphicsConfig) gc).getDevice();
+        WLGraphicsDevice gd = wlgc.getDevice();
         gd.addWindow(this);
         synchronized (getStateLock()) {
-            if (newScale != displayScale) {
-                displayScale = newScale;
-                effectiveScale = ((WLGraphicsConfig)gc).getEffectiveScale();
+            if (newSurfaceScale != surfaceScale || newEffectiveScale != effectiveScale) {
+                surfaceScale = newSurfaceScale;
+                effectiveScale = newEffectiveScale;
                 wlSize.updateWithNewScale();
                 shadow.resizeToParentWindow();
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1710,13 +1706,15 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     /**
      * Converts a value in the Wayland surface-local coordinate system
      * into the Java coordinate system.
+     * The two coincide unless the debug scale (sun.java2d.uiScale) is in effect, in which case
+     * a surface unit is surfaceScale pixels large, but a Java unit is effectiveScale pixels large.
      */
     int surfaceUnitsToJavaUnits(int value) {
         if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
             return value;
         } else {
             synchronized (getStateLock()) {
-                return (int)(value * displayScale / effectiveScale);
+                return (int)(value * surfaceScale / effectiveScale);
             }
         }
     }
@@ -1726,7 +1724,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             return value;
         } else {
             synchronized (getStateLock()) {
-                return (int) Math.ceil(value * displayScale / effectiveScale);
+                return (int) Math.ceil(value * surfaceScale / effectiveScale);
             }
         }
     }
@@ -1740,7 +1738,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             return value;
         } else {
             synchronized (getStateLock()) {
-                return (int) Math.floor(value * effectiveScale / displayScale);
+                return (int) Math.floor(value * effectiveScale / surfaceScale);
             }
         }
     }
@@ -1750,8 +1748,20 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             return value;
         } else {
             synchronized (getStateLock()) {
-                return (int) Math.ceil(value * effectiveScale / displayScale);
+                return (int) Math.ceil(value * effectiveScale / surfaceScale);
             }
+        }
+    }
+
+    /**
+     * Converts a size in the Wayland surface-local units into the size of the buffer (in pixels)
+     * that the compositor shows in that many surface units without resampling. The compositor
+     * maps a surface unit to surfaceScale pixels, which is fractional for fractionally scaled
+     * outputs, and rounds the result halfway away from zero (see wp_fractional_scale_v1).
+     */
+    int surfaceSizeToBufferSize(int value) {
+        synchronized (getStateLock()) {
+            return (int) Math.round(value * surfaceScale);
         }
     }
 
@@ -2246,7 +2256,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
             needsRepaint = true;
             SurfaceData.convertTo(WLSurfaceDataExt.class, shadowSurfaceData).revalidate(
-                    getGraphicsConfiguration(), shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight(), getDisplayScale());
+                    getGraphicsConfiguration(), shadowWlSize.getPixelWidth(), shadowWlSize.getPixelHeight());
         }
 
         public void paint() {
@@ -2317,6 +2327,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         /**
          * Represents the full size of the component in screen pixels.
          * The SurfaceData associated with this component takes its size from this value.
+         * It is derived from surfaceSize such that the compositor shows the buffer without resampling,
+         * see surfaceSizeToBufferSize().
          */
         private final Dimension pixelSize = new Dimension(); // in pixels, protected by stateLock
 
@@ -2332,10 +2344,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             synchronized (getStateLock()) {
                 javaSize.width = width;
                 javaSize.height = height;
-                pixelSize.width = (int) (width * effectiveScale);
-                pixelSize.height = (int) (height * effectiveScale);
                 surfaceSize.width = javaUnitsToSurfaceSize(width);
                 surfaceSize.height = javaUnitsToSurfaceSize(height);
+                derivePixelSizeFromSurfaceSize();
             }
         }
 
@@ -2343,20 +2354,25 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             synchronized (getStateLock()) {
                 javaSize.width = surfaceUnitsToJavaSize(width);
                 javaSize.height = surfaceUnitsToJavaSize(height);
-                pixelSize.width = width * displayScale;
-                pixelSize.height = height * displayScale;
                 surfaceSize.width = width;
                 surfaceSize.height = height;
+                derivePixelSizeFromSurfaceSize();
             }
         }
 
         void updateWithNewScale() {
             synchronized (getStateLock()) {
-                pixelSize.width = (int)(javaSize.width * effectiveScale);
-                pixelSize.height = (int)(javaSize.height * effectiveScale);
                 surfaceSize.width = javaUnitsToSurfaceSize(javaSize.width);
                 surfaceSize.height = javaUnitsToSurfaceSize(javaSize.height);
+                derivePixelSizeFromSurfaceSize();
             }
+        }
+
+        private void derivePixelSizeFromSurfaceSize() {
+            // The buffer has to have exactly as many pixels as the compositor maps the surface to,
+            // otherwise the compositor resamples the buffer and the picture gets blurry.
+            pixelSize.width = surfaceSizeToBufferSize(surfaceSize.width);
+            pixelSize.height = surfaceSizeToBufferSize(surfaceSize.height);
         }
 
         boolean hasPixelSizeSet() {

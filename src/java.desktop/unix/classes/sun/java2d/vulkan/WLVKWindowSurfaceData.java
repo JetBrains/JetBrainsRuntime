@@ -51,6 +51,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         this.target = peer.getTarget();
         this.sizeListener = peer;
         this.gc = (WLVKGraphicsConfig) peer.getGraphicsConfiguration();
+        this.scale = this.gc.getFractionalScale();
         this.width = peer.getBufferWidth();
         this.height = peer.getBufferHeight();
 
@@ -62,6 +63,7 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
         this.target = null;
         this.sizeListener = sizeListener;
         this.gc = gc;
+        this.scale = gc.getFractionalScale();
         this.width = width;
         this.height = height;
 
@@ -99,10 +101,12 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     }
 
     @Override
-    public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
+    public void revalidate(GraphicsConfiguration gc, int width, int height) {
+        // The scale must agree with gc.getDefaultTransform(), which is what Java2D renders with;
+        // it is fractional on outputs with a fractional scale (see WLGraphicsDevice.getSurfaceScale()).
         this.width = width;
         this.height = height;
-        this.scale = scale;
+        this.scale = ((VKGraphicsConfig) gc).getFractionalScale();
         revalidate((VKGraphicsConfig) gc);
         configure();
     }

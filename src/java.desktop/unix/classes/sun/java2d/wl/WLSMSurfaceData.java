@@ -154,7 +154,8 @@ public class WLSMSurfaceData extends SurfaceData implements BufferedSurfaceDataE
         return target;
     }
 
-    public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
+    @Override
+    public void revalidate(GraphicsConfiguration gc, int width, int height) {
         Objects.requireNonNull(gc);
 
         WLSMGraphicsConfig wlgc = (WLSMGraphicsConfig) gc;
@@ -162,7 +163,7 @@ public class WLSMSurfaceData extends SurfaceData implements BufferedSurfaceDataE
         this.width = width;
         this.height = height;
 
-        nativeRevalidate(width, height, scale);
+        nativeRevalidate(width, height);
     }
 
     @Override
@@ -209,7 +210,7 @@ public class WLSMSurfaceData extends SurfaceData implements BufferedSurfaceDataE
         }
     }
 
-    private native void nativeRevalidate(int width, int height, int scale);
+    private native void nativeRevalidate(int width, int height);
     private native int pixelAt(int x, int y);
     private native int [] pixelsAt(int x, int y, int width, int height);
 }

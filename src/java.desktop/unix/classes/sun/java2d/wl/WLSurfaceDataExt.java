@@ -30,5 +30,10 @@ import java.awt.GraphicsConfiguration;
 
 public interface WLSurfaceDataExt {
     void assignSurface(long surfacePtr);
-    void revalidate(GraphicsConfiguration gc, int width, int height, int scale);
+
+    /**
+     * Makes this surface data {@code width x height} pixels large and compatible with the given
+     * graphics configuration; the scale of the surface data, if any, is that of the configuration.
+     */
+    void revalidate(GraphicsConfiguration gc, int width, int height);
 }

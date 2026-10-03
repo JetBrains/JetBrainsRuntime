@@ -65,6 +65,7 @@ struct wl_compositor *wl_compositor = NULL;
 struct wl_subcompositor *wl_subcompositor = NULL;
 struct xdg_wm_base *xdg_wm_base = NULL;
 struct wp_viewporter *wp_viewporter = NULL;
+struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager = NULL; // optional, check for NULL before use
 struct xdg_activation_v1 *xdg_activation_v1 = NULL; // optional, check for NULL before use
 struct wl_seat     *wl_seat = NULL;
 struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
@@ -682,6 +683,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
         zwp_selection_dm = wl_registry_bind(wl_registry, name, &zwp_primary_selection_device_manager_v1_interface, 1);
     } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
         wp_viewporter = wl_registry_bind(wl_registry, name, &wp_viewporter_interface, 1);
+    } else if (strcmp(interface, wp_fractional_scale_manager_v1_interface.name) == 0) {
+        wp_fractional_scale_manager = wl_registry_bind(wl_registry, name, &wp_fractional_scale_manager_v1_interface, 1);
     } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
         zxdg_output_manager_v1 = wl_registry_bind(wl_registry, name, &zxdg_output_manager_v1_interface, 2);
         if (zxdg_output_manager_v1 != NULL) {

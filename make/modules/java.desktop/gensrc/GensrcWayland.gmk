@@ -31,6 +31,7 @@
 WAYLAND_GENSRC_DIR = $(SUPPORT_OUTPUTDIR)/gensrc/java.desktop/wayland
 WAYLAND_BASIC_PROTOCOL_FILES := \
         $(WAYLAND_PROTOCOLS_ROOT)/stable/viewporter/viewporter.xml \
+        $(WAYLAND_PROTOCOLS_ROOT)/staging/fractional-scale/fractional-scale-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/stable/xdg-shell/xdg-shell.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/staging/xdg-activation/xdg-activation-v1.xml \
         $(WAYLAND_PROTOCOLS_ROOT)/staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml \

@@ -50,6 +50,11 @@ public class WLSubSurface extends WLSurface {
     }
 
     @Override
+    void notifyPreferredScale(int scaleNumerator) {
+        // Deliberately ignored; a sub-surface is scaled together with its main surface
+    }
+
+    @Override
     public void dispose() {
         if (isValid) {
             nativeDestroyWlSubSurface(wlSubSurfacePtr);
