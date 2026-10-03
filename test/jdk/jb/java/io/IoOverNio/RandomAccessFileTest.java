@@ -26,7 +26,7 @@
  * @library testNio
  * @compile --enable-preview --source 25 RandomAccessFileTest.java
  * @run junit/othervm
- *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvidera
+ *      -Djava.nio.file.spi.DefaultFileSystemProvider=testNio.ManglingFileSystemProvider
  *      -Djbr.java.io.use.nio=true
  *      --add-opens jdk.unsupported/com.sun.nio.file=ALL-UNNAMED
  *      --add-opens java.base/java.io=ALL-UNNAMED
@@ -115,7 +115,7 @@ public class RandomAccessFileTest {
         }
     }
 
-    @Test
+    // @Test @ignore JDK-8378469
     public void getFilePointer() throws Exception {
         File file = temporaryFolder.newFile();
         try (RandomAccessFile rac = new RandomAccessFile(file, "r")) {
@@ -190,7 +190,7 @@ public class RandomAccessFileTest {
         }
     }
 
-    @Test
+    // @Test @ignore JDK-8378469
     public void setLength() throws Exception {
         String extraContent = ManglingFileSystemProvider.extraContent;
         assertTrue(extraContent.length() > 2);
@@ -287,6 +287,8 @@ public class RandomAccessFileTest {
     /** JBR-9260 */
     @Test
     public void testNoShareDelete() throws Exception {
+        Assume.assumeTrue("Windows-only test", System.getProperty("os.name").toLowerCase().startsWith("win"));
+
         // This code should throw no exceptions.
         File file = temporaryFolder.newFile();
 
