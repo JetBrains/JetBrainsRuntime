@@ -44,8 +44,9 @@ public final class VKEnv {
         private static final String vulkanProperty = AccessController.doPrivileged(
                 (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
 
-        private static final boolean vulkan = "true".equalsIgnoreCase(vulkanProperty);
-        private static final boolean verbose = "True".equals(vulkanProperty);
+        private static final boolean forceVulkan = "force".equalsIgnoreCase(vulkanProperty);
+        private static final boolean vulkan = forceVulkan || "true".equalsIgnoreCase(vulkanProperty);
+        private static final boolean verbose = "True".equals(vulkanProperty) || "Force".equals(vulkanProperty);
 
         @SuppressWarnings("removal")
         private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(AccessController.doPrivileged(
@@ -72,11 +73,19 @@ public final class VKEnv {
     public static native long initPlatformWin32();
     private static native VKGPU[] initNative(long platformData);
 
-    public static class VKInitializationException extends RuntimeException {
+    static class VKInitializationException extends RuntimeException {
         private static final long serialVersionUID = 7476713504086007145L;
         public VKInitializationException(String message) {
             super(message);
         }
+    }
+
+    // for use in init's getPlatformData
+    public static void requireForceVulkan(String platformDescription) {
+        if (Options.forceVulkan) {
+            return;
+        }
+        throw new VKInitializationException("Vulkan is experimental on '" + platformDescription + "', use -Dsun.java2d.vulkan=Force to enable anyway.");
     }
 
     public static synchronized void init(Supplier<Long> getPlatformData) {

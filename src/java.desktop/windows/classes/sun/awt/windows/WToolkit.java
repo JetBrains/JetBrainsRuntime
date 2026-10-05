@@ -184,11 +184,7 @@ public final class WToolkit extends SunToolkit implements Runnable {
         loadLibraries();
         initIDs();
         VKEnv.init(() -> {
-            final String allowWToolkitPropertyName = "sun.java2d.vulkan.allowPlatform.WToolkit";
-            String allowWToolkitProperty = System.getProperty(allowWToolkitPropertyName, "false");
-            if (!"true".equalsIgnoreCase(allowWToolkitProperty)) {
-                throw new VKEnv.VKInitializationException("Vulkan on WToolkit is in an experimental state, provide -D" + allowWToolkitPropertyName + "=true to enable");
-            }
+            VKEnv.requireForceVulkan("WToolkit");
             return VKEnv.initPlatformWin32();
         });
 
