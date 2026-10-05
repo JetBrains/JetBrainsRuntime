@@ -27,6 +27,7 @@ package sun.java2d.windows;
 
 import sun.awt.windows.WToolkit;
 import sun.java2d.opengl.WGLGraphicsConfig;
+import sun.java2d.vulkan.VKEnv;
 
 public final class WindowsFlags {
 
@@ -91,7 +92,6 @@ public final class WindowsFlags {
     private static boolean d3dOnScreenEnabled;
     private static boolean oglEnabled;
     private static boolean oglVerbose;
-    private static boolean vulkanEnabled;
     private static boolean magPresent;
     private static boolean setHighDPIAware;
     // TODO: other flags, including nopixfmt
@@ -192,8 +192,8 @@ public final class WindowsFlags {
             }
         }
 
-        vulkanEnabled = getBooleanProp("sun.java2d.vulkan", false);
-        if (vulkanEnabled) {
+        // WToolkit.<clinit> has been run by this point, so it's ok to use VKEnv
+        if (VKEnv.isVulkanEnabled()) {
             d3dEnabled = false;
             oglEnabled = false;
         }
@@ -264,9 +264,5 @@ public final class WindowsFlags {
 
     public static boolean isOGLVerbose() {
         return oglVerbose;
-    }
-
-    public static boolean isVulkanEnabled() {
-        return vulkanEnabled;
     }
 }
