@@ -330,6 +330,7 @@ module java.base {
     exports sun.security.internal.spec to
         jdk.crypto.cryptoki;
     exports sun.security.jca to
+        java.security.sasl,
         java.smartcardio,
         jdk.crypto.ec,
         jdk.crypto.cryptoki,
