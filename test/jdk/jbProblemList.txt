@@ -1414,7 +1414,7 @@ com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                          
 jb/hotspot/AsyncProfilerRunnerTest.java JBR-7175 macosx-all
 
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-8794 windows-aarch64
-jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1,15.8,15.8.1,15.8.2
+jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1,macosx-15.8,macosx-15.8.1,macosx-15.8.2
 jb/java/awt/event/MouseEvent/MouseMoveEventFallThroughTest.java JBR-8789 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
