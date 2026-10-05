@@ -141,7 +141,7 @@ For terms of use, see http://www.unicode.org/copyright.html
             <type name="cnurc" description="Ürümqi, China" alias="Asia/Urumqi Asia/Kashgar"/>
             <type name="cobog" description="Bogotá, Colombia" alias="America/Bogota"/>
             <type name="crsjo" description="Costa Rica" alias="America/Costa_Rica"/>
-            <type name="cst6cdt" description="POSIX style time zone for US Central Time" deprecated="true" preferred="uschi"/>
+            <type name="cst6cdt" description="POSIX style time zone for US Central Time with daylight saving time" alias="CST6CDT"/>
             <type name="cuhav" description="Havana, Cuba" alias="America/Havana Cuba"/>
             <type name="cvrai" description="Cape Verde" alias="Atlantic/Cape_Verde"/>
             <type name="cxxch" description="Christmas Island" alias="Indian/Christmas"/>
@@ -164,7 +164,7 @@ For terms of use, see http://www.unicode.org/copyright.html
             <type name="esceu" description="Ceuta, Spain" alias="Africa/Ceuta"/>
             <type name="eslpa" description="Canary Islands, Spain" alias="Atlantic/Canary"/>
             <type name="esmad" description="Madrid, Spain" alias="Europe/Madrid"/>
-            <type name="est5edt" description="POSIX style time zone for US Eastern Time" deprecated="true" preferred="usnyc"/>
+            <type name="est5edt" description="POSIX style time zone for US Eastern Time with daylight saving time" alias="EST5EDT"/>
             <type name="etadd" description="Addis Ababa, Ethiopia" alias="Africa/Addis_Ababa"/>
             <type name="fihel" description="Helsinki, Finland" alias="Europe/Helsinki"/>
             <type name="fimhq" description="Mariehamn, Åland, Finland" alias="Europe/Mariehamn"/>
@@ -273,7 +273,7 @@ For terms of use, see http://www.unicode.org/copyright.html
             <type name="mqfdf" description="Martinique" alias="America/Martinique"/>
             <type name="mrnkc" description="Nouakchott, Mauritania" alias="Africa/Nouakchott"/>
             <type name="msmni" description="Montserrat" alias="America/Montserrat"/>
-            <type name="mst7mdt" description="POSIX style time zone for US Mountain Time" deprecated="true" preferred="usden"/>
+            <type name="mst7mdt" description="POSIX style time zone for US Mountain Time with daylight saving time" alias="MST7MDT"/>
             <type name="mtmla" description="Malta" alias="Europe/Malta"/>
             <type name="muplu" description="Mauritius" alias="Indian/Mauritius"/>
             <type name="mvmle" description="Maldives" alias="Indian/Maldives"/>
@@ -321,7 +321,7 @@ For terms of use, see http://www.unicode.org/copyright.html
             <type name="pmmqc" description="Saint Pierre and Miquelon" alias="America/Miquelon"/>
             <type name="pnpcn" description="Pitcairn Islands" alias="Pacific/Pitcairn"/>
             <type name="prsju" description="Puerto Rico" alias="America/Puerto_Rico"/>
-            <type name="pst8pdt" description="POSIX style time zone for US Pacific Time" deprecated="true" preferred="uslax"/>
+            <type name="pst8pdt" description="POSIX style time zone for US Pacific Time with daylight saving time" alias="PST8PDT"/>
             <type name="ptfnc" description="Madeira, Portugal" alias="Atlantic/Madeira"/>
             <type name="ptlis" description="Lisbon, Portugal" alias="Europe/Lisbon Portugal WET"/>
             <type name="ptpdl" description="Azores, Portugal" alias="Atlantic/Azores"/>
@@ -408,15 +408,15 @@ For terms of use, see http://www.unicode.org/copyright.html
             <type name="usaeg" description="Marengo (Indiana), United States" alias="America/Indiana/Marengo"/>
             <type name="usanc" description="Anchorage, United States" alias="America/Anchorage US/Alaska"/>
             <type name="usboi" description="Boise (Idaho), United States" alias="America/Boise"/>
-            <type name="uschi" description="Chicago, United States" alias="America/Chicago US/Central CST6CDT"/>
-            <type name="usden" description="Denver, United States" alias="America/Denver America/Shiprock Navajo US/Mountain MST7MDT"/>
+            <type name="uschi" description="Chicago, United States" alias="America/Chicago US/Central"/>
+            <type name="usden" description="Denver, United States" alias="America/Denver America/Shiprock Navajo US/Mountain"/>
             <type name="usdet" description="Detroit, United States" alias="America/Detroit US/Michigan"/>
             <type name="ushnl" description="Honolulu, United States" alias="Pacific/Honolulu US/Hawaii Pacific/Johnston HST"/>
             <type name="usind" description="Indianapolis, United States" alias="America/Indianapolis America/Fort_Wayne America/Indiana/Indianapolis US/East-Indiana" iana="America/Indiana/Indianapolis"/>
             <type name="usinvev" description="Vevay (Indiana), United States" alias="America/Indiana/Vevay"/>
             <type name="usjnu" description="Juneau (Alaska), United States" alias="America/Juneau"/>
             <type name="usknx" description="Knox (Indiana), United States" alias="America/Indiana/Knox America/Knox_IN US/Indiana-Starke"/>
-            <type name="uslax" description="Los Angeles, United States" alias="America/Los_Angeles US/Pacific US/Pacific-New PST8PDT"/>
+            <type name="uslax" description="Los Angeles, United States" alias="America/Los_Angeles US/Pacific US/Pacific-New"/>
             <type name="uslui" description="Louisville (Kentucky), United States" alias="America/Louisville America/Kentucky/Louisville" iana="America/Kentucky/Louisville"/>
             <type name="usmnm" description="Menominee (Michigan), United States" alias="America/Menominee"/>
             <type name="usmtm" description="Metlakatla (Alaska), United States" alias="America/Metlakatla" since="1.9.1"/>
@@ -424,7 +424,7 @@ For terms of use, see http://www.unicode.org/copyright.html
             <type name="usnavajo" description="Shiprock (Navajo), United States" deprecated="true" preferred="usden"/>
             <type name="usndcnt" description="Center (North Dakota), United States" alias="America/North_Dakota/Center"/>
             <type name="usndnsl" description="New Salem (North Dakota), United States" alias="America/North_Dakota/New_Salem"/>
-            <type name="usnyc" description="New York, United States" alias="America/New_York US/Eastern EST5EDT"/>
+            <type name="usnyc" description="New York, United States" alias="America/New_York US/Eastern"/>
             <type name="usoea" description="Vincennes (Indiana), United States" alias="America/Indiana/Vincennes"/>
             <type name="usome" description="Nome (Alaska), United States" alias="America/Nome"/>
             <type name="usphx" description="Phoenix, United States" alias="America/Phoenix US/Arizona MST"/>
