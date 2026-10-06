@@ -140,13 +140,10 @@ void jbr_awt_throw_to_java_or_hang_if_shutdown(void);
 #define TRY \
     try { \
         entry_point(); \
-        { \
-            static const bool jbrIsJniDowncall = jbr_is_jni_downcall(__FUNCSIG__, __FUNCTION__); \
-            if (jbrIsJniDowncall) { \
-                jbr_awt_throw_to_java_or_hang_if_shutdown(); \
-            } else { \
-                hang_if_shutdown(); \
-            } \
+        if (jbr_is_jni_downcall(__FUNCSIG__, __FUNCTION__)) { \
+            jbr_awt_throw_to_java_or_hang_if_shutdown(); \
+        } else { \
+            hang_if_shutdown(); \
         }
 // The _NO_HANG version of TRY causes the AWT native code to return to Java
 // immediately if the Toolkit is not active. Normal AWT operations should
