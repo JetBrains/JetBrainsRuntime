@@ -24,7 +24,7 @@
  /*
  * @test
  * @bug 8181157 8202537 8234347 8236548 8261279
- *      8381379 8390388 8390380
+ *      8381379 8390388 8390380 8392519 8392377
  * @modules jdk.localedata
  * @summary Checks CLDR time zone names are generated correctly at runtime
  * @run junit/othervm -Djava.locale.providers=CLDR TimeZoneNamesTest
@@ -194,7 +194,8 @@ public class TimeZoneNamesTest {
             Arguments.of(ZonedDateTime.of(2026, 1, 5, 0, 0, 0, 0, ZoneId.of("America/Edmonton")), "Mountain Standard Time"),
             Arguments.of(ZonedDateTime.of(2026, 7, 5, 0, 0, 0, 0, ZoneId.of("America/Edmonton")), "Mountain Daylight Time"),
             Arguments.of(ZonedDateTime.of(2026, 1, 5, 0, 0, 0, 0, ZoneId.of("America/Yellowknife")), "Mountain Standard Time"),
-            Arguments.of(ZonedDateTime.of(2026, 7, 5, 0, 0, 0, 0, ZoneId.of("America/Yellowknife")), "Mountain Daylight Time")
+            Arguments.of(ZonedDateTime.of(2026, 7, 5, 0, 0, 0, 0, ZoneId.of("America/Yellowknife")), "Mountain Daylight Time"),
+            Arguments.of(ZonedDateTime.of(2026, 12, 5, 0, 0, 0, 0, ZoneId.of("America/Inuvik")), "Mountain Daylight Time")
         );
     }
 
