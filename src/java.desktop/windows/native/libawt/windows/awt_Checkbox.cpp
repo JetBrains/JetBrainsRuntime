@@ -556,7 +556,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Checkbox_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtCheckbox::labelID =
       env->GetFieldID(cls, "label", "Ljava/lang/String;");

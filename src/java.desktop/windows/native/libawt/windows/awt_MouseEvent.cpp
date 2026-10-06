@@ -43,7 +43,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_event_MouseEvent_initIDs(JNIEnv *env, jclass cls) {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtMouseEvent::xID = env->GetFieldID(cls, "x", "I");
     DASSERT(AwtMouseEvent::xID != NULL);

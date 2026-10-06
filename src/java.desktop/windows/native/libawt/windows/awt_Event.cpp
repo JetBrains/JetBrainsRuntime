@@ -42,7 +42,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_Event_initIDs(JNIEnv *env, jclass cls) {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtEvent::targetID = env->GetFieldID(cls, "target", "Ljava/lang/Object;");
     DASSERT(AwtEvent::targetID != NULL);

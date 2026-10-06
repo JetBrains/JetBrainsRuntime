@@ -831,7 +831,7 @@ Java_sun_awt_windows_WDataTransferer_registerClipboardFormat(JNIEnv *env,
                                                              jclass cls,
                                                              jstring str)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     LPCTSTR cStr = JNU_GetStringPlatformChars(env, str, NULL);
     CHECK_NULL_RETURN(cStr, 0);

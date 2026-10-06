@@ -702,7 +702,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Choice_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
     selectedIndexID = env->GetFieldID(cls, "selectedIndex", "I");
     DASSERT(selectedIndexID);
     CATCH_BAD_ALLOC;

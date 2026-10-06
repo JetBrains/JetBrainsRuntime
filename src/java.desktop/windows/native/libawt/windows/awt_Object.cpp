@@ -182,7 +182,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WObjectPeer_initIDs(JNIEnv *env, jclass cls) {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtObject::wObjectPeerClass = (jclass)env->NewGlobalRef(cls);
     DASSERT(AwtObject::wObjectPeerClass != NULL);

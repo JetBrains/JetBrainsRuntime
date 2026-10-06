@@ -901,7 +901,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_MenuItem_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtMenuItem::labelID = env->GetFieldID(cls, "label", "Ljava/lang/String;");
     CHECK_NULL(AwtMenuItem::labelID);
@@ -922,7 +922,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_CheckboxMenuItem_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtMenuItem::stateID = env->GetFieldID(cls, "state", "Z");
 
@@ -946,7 +946,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WMenuItemPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtMenuItem::isCheckboxID = env->GetFieldID(cls, "isCheckbox", "Z");
     CHECK_NULL(AwtMenuItem::isCheckboxID);

@@ -2987,7 +2987,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Window_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     CHECK_NULL(AwtWindow::locationByPlatformID =
         env->GetFieldID(cls, "locationByPlatform", "Z"));
@@ -3026,7 +3026,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     CHECK_NULL(AwtWindow::sysInsetsID = env->GetFieldID(cls, "sysInsets", "Ljava/awt/Insets;"));
 

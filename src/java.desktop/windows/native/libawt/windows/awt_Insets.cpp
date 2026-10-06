@@ -43,7 +43,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_java_awt_Insets_initIDs(JNIEnv *env, jclass cls) {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtInsets::leftID = env->GetFieldID(cls, "left", "I");
     DASSERT(AwtInsets::leftID != NULL);

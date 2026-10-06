@@ -2103,7 +2103,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Frame_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFrame::undecoratedID = env->GetFieldID(cls,"undecorated","Z");
     DASSERT(AwtFrame::undecoratedID != NULL);
@@ -2119,7 +2119,7 @@ Java_java_awt_Frame_initIDs(JNIEnv *env, jclass cls)
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFramePeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFrame::getExtendedStateMID = env->GetMethodID(cls, "getExtendedState", "()I");
     DASSERT(AwtFrame::getExtendedStateMID);
@@ -2306,7 +2306,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WEmbeddedFrame_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFrame::handleID = env->GetFieldID(cls, "handle", "J");
     DASSERT(AwtFrame::handleID != NULL);

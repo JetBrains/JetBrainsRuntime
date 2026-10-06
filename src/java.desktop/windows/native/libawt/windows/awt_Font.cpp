@@ -1116,7 +1116,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFontPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFont::textComponentFontNameID = env->GetFieldID(cls, "textComponentFontName", "Ljava/lang/String;");
 
@@ -1898,7 +1898,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDefaultFontCharset_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFont::fontNameID = env->GetFieldID(cls, "fontName",
                                           "Ljava/lang/String;");

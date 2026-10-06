@@ -932,7 +932,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_Win32GraphicsDevice_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     /* class ids */
     jclass iCMClass = env->FindClass("java/awt/image/IndexColorModel");
@@ -1114,7 +1114,7 @@ typedef BOOL (WINAPI *pfn_WTSFreeMemory)(PVOID);
 JNIEXPORT jint JNICALL Java_sun_awt_Win32GraphicsDevice_isRemoteConnection
     (JNIEnv *, jclass) {
 
-    TRY_NO_VERIFY;
+    TRY;
 
     HMODULE libWtsapi32 = JDK_LoadSystemLibrary("Wtsapi32.dll");
     CHECK_NULL_RETURN(libWtsapi32, JNI_ERR);

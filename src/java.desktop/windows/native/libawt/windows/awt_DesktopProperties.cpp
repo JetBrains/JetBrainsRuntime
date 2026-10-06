@@ -1009,7 +1009,7 @@ static AwtDesktopProperties * GetCppThis(JNIEnv *env, jobject self) {
 
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WDesktopProperties_initIDs(JNIEnv *env, jclass cls) {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtDesktopProperties::pDataID = env->GetFieldID(cls, "pData", "J");
     DASSERT(AwtDesktopProperties::pDataID != 0);

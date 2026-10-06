@@ -1191,7 +1191,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFileDialog::parentID =
         env->GetFieldID(cls, "parent", "Lsun/awt/windows/WComponentPeer;");
@@ -1291,7 +1291,7 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WFileDialogPeer_setFilterString(JNIEnv *env, jclass cls,
                                                      jstring filterDescription)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtFileDialog::Initialize(env, filterDescription);
 

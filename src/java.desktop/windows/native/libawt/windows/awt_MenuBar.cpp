@@ -276,7 +276,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_MenuBar_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtMenuBar::getMenuCountMID = env->GetMethodID(cls, "getMenuCountImpl", "()I");
     DASSERT(AwtMenuBar::getMenuCountMID != NULL);

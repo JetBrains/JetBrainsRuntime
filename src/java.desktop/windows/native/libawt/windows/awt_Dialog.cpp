@@ -743,7 +743,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_java_awt_Dialog_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     /* java.awt.Dialog fields and methods */
     AwtDialog::titleID

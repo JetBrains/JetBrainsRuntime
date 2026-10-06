@@ -2334,7 +2334,7 @@ extern "C" {
  */
 JNIEXPORT void JNICALL
 Java_java_awt_Toolkit_initIDs(JNIEnv *env, jclass cls) {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtToolkit::getDefaultToolkitMID =
         env->GetStaticMethodID(cls,"getDefaultToolkit","()Ljava/awt/Toolkit;");
@@ -2373,7 +2373,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_awt_windows_WToolkit_initIDs(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     AwtToolkit::windowsSettingChangeMID =
         env->GetMethodID(cls, "windowsSettingChange", "()V");
@@ -2877,7 +2877,7 @@ Java_sun_awt_windows_WToolkit_isDynamicLayoutSupportedNative(JNIEnv *env,
 JNIEXPORT jstring JNICALL
 Java_sun_awt_windows_WToolkit_getWindowsVersion(JNIEnv *env, jclass cls)
 {
-    TRY_NO_VERIFY;
+    TRY;
 
     WCHAR szVer[128];
 
