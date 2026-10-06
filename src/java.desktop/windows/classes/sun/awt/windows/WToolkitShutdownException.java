@@ -35,7 +35,6 @@ import java.io.Serial;
  * <p>
  * See JBR-10607 for more info.
  */
-@SuppressWarnings("unused") // thrown from native code
 final class WToolkitShutdownException extends IllegalStateException {
     @Serial
     private static final long serialVersionUID = 5604120260941468953L;
