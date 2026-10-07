@@ -235,6 +235,17 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
         return false;
     }
 
+    // see comment in WToolkit's constructor
+    public static void forceLoadIcdForEachScreenToMitigateDriverBug() {
+        if (!(getLocalGraphicsEnvironment() instanceof Win32GraphicsEnvironment graphicsEnvironment)) {
+            return;
+        }
+        int numScreens = graphicsEnvironment.getNumScreens();
+        for (int screen = 0; screen < numScreens; ++screen) {
+            Win32GraphicsDevice.forceLoadIcdToMitigateDriverBug(screen);
+        }
+    }
+
     private static volatile boolean isDWMCompositionEnabled;
     /**
      * Returns true if dwm composition is currently enabled, false otherwise.

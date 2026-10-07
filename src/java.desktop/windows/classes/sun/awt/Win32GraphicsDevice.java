@@ -268,6 +268,13 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
 
     private static native int getMaxConfigsImpl(int screen);
 
+    // See comment in WToolkit's constructor
+    static void forceLoadIcdToMitigateDriverBug(int screen) {
+        if (!pfDisabled) {
+            getMaxConfigsImpl(screen);
+        }
+    }
+
     /**
      * Returns whether or not the PixelFormat indicated by index is
      * supported.  Supported PixelFormats support drawing to a Window

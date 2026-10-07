@@ -212,6 +212,12 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
         sun.java2d.Disposer.addRecord(anchor, new ToolkitDisposer());
 
+        // Some Intel ICDs have this bug:
+        // If the driver is first loaded by another thread while the toolkit thread already exists,
+        // AwtCanvas::Create crashes in SetPixelFormat.
+        // This loads the driver before creating the toolkit thread as a workaround.
+        Win32GraphicsEnvironment.forceLoadIcdForEachScreenToMitigateDriverBug();
+
         /*
          * Fix for 4701990.
          * AWTAutoShutdown state must be changed before the toolkit thread
