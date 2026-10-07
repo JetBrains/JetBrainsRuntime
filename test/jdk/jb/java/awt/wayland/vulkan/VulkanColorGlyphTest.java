@@ -36,14 +36,15 @@ import java.util.Arrays;
  * @key headful
  * @requires os.family == "linux"
  * @summary JBR-10634: Verifies color glyph rendering and subsequent grayscale text on Vulkan surfaces
+ * @library /test/lib
+ * @build jtreg.SkippedException
  * @run main/othervm -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True VulkanColorGlyphTest
  */
 public class VulkanColorGlyphTest {
     public static void main(String[] args) throws Exception {
         if (!Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getAvailableFontFamilyNames()).contains("Noto Color Emoji")) {
-            System.out.println("Noto Color Emoji is not installed; skipping test");
-            return;
+            throw new jtreg.SkippedException("Noto Color Emoji is not installed");
         }
         Font font = new Font("Noto Color Emoji", Font.PLAIN, 40);
         if (!font.canDisplay(0x1F600)) throw new AssertionError("Emoji font unavailable");
