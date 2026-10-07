@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,7 @@ class ServerConfig {
 
     // the value of the TCP_NODELAY socket-level option
     private static boolean noDelay;
+    private static boolean hostValidationDisabled;
 
     static {
         java.security.AccessController.doPrivileged(
@@ -136,6 +137,7 @@ class ServerConfig {
                     debug = Boolean.getBoolean("sun.net.httpserver.debug");
 
                     noDelay = Boolean.getBoolean("sun.net.httpserver.nodelay");
+                    hostValidationDisabled = Boolean.getBoolean("sun.net.httpserver.disableHostValidation");
 
                     return null;
                 }
@@ -259,5 +261,9 @@ class ServerConfig {
 
     static boolean noDelay() {
         return noDelay;
+    }
+
+    static boolean isHostValidationDisabled() {
+        return hostValidationDisabled;
     }
 }
