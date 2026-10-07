@@ -54,7 +54,7 @@ import org.testng.annotations.Test;
 /*
  * @test
  * @bug 8081022 8151876 8166875 8177819 8189784 8206980 8277049 8278434 8346948
- *      8174269 8390388 8388214 8392519
+ *      8174269 8390388 8388214 8392519 8393344
  * @key randomness
  */
 
@@ -65,16 +65,19 @@ import org.testng.annotations.Test;
 public class TestZoneTextPrinterParser extends AbstractTestPrinterParser {
 
     // Explicit dstOffset attributes from CLDR pre-release v49 metazone data.
-    private static final Map<String, ZoneOffset> CLDR_EXPLICIT_DST_OFFSETS = Map.of(
-            "Africa/Windhoek", ZoneOffset.of("+02:00"),
-            "America/Edmonton", ZoneOffset.of("-06:00"),
-            "America/Inuvik", ZoneOffset.of("-06:00"),
-            "America/Yellowknife", ZoneOffset.of("-06:00"),
-            "America/Vancouver", ZoneOffset.of("-07:00"),
-            "Canada/Mountain", ZoneOffset.of("-06:00"),
-            "Canada/Pacific", ZoneOffset.of("-07:00"),
-            "Europe/Dublin", ZoneOffset.of("+01:00"),
-            "Eire", ZoneOffset.of("+01:00"));
+    private static final Map<String, ZoneOffset> CLDR_EXPLICIT_DST_OFFSETS = Map.ofEntries(
+            Map.entry("Africa/Windhoek", ZoneOffset.of("+02:00")),
+            Map.entry("America/Edmonton", ZoneOffset.of("-06:00")),
+            Map.entry("America/Inuvik", ZoneOffset.of("-06:00")),
+            Map.entry("America/Rainy_River", ZoneOffset.of("-05:00")),
+            Map.entry("America/Yellowknife", ZoneOffset.of("-06:00")),
+            Map.entry("America/Vancouver", ZoneOffset.of("-07:00")),
+            Map.entry("America/Winnipeg", ZoneOffset.of("-05:00")),
+            Map.entry("Canada/Central", ZoneOffset.of("-05:00")),
+            Map.entry("Canada/Mountain", ZoneOffset.of("-06:00")),
+            Map.entry("Canada/Pacific", ZoneOffset.of("-07:00")),
+            Map.entry("Europe/Dublin", ZoneOffset.of("+01:00")),
+            Map.entry("Eire", ZoneOffset.of("+01:00")));
 
     private static final Locale[] SAMPLE_LOCALES = {
         Locale.US, Locale.UK, Locale.FRANCE, Locale.GERMANY, Locale.ITALY, Locale.forLanguageTag("es"),
