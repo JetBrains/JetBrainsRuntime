@@ -180,15 +180,49 @@ public class SwingUtilities implements SwingConstants
             if(source == null)
                 throw new Error("Source component not connected to component tree hierarchy");
         }
-        p = new Point(aPoint);
-        convertPointToScreen(p,source);
         if(destination == null) {
             destination = getWindowAncestor(source);
             if(destination == null)
                 throw new Error("Destination component not connected to component tree hierarchy");
         }
-        convertPointFromScreen(p,destination);
+
+        p = new Point(aPoint);
+
+        Component sourceAncestor = findWindowOrUltimateParent(source);
+        Component destinationAncestor = findWindowOrUltimateParent(destination);
+        if (sourceAncestor == destinationAncestor) { // fast-path: skip slow native getLocationOnScreen
+            convertPointToAncestor(source, p, sourceAncestor);
+            convertPointFromAncestor(destinationAncestor, p, destination);
+        } else {
+            convertPointToScreen(p, source);
+            convertPointFromScreen(p, destination);
+        }
+
         return p;
+    }
+
+    private static Component findWindowOrUltimateParent(Component component) {
+        Component result = component;
+        while (true) {
+            if (result instanceof Window) return result;
+            Component parent = result.getParent();
+            if (parent == null) return result;
+            result = parent;
+        }
+    }
+
+    private static void convertPointToAncestor(Component source, Point point, Component ancestor) {
+        for (Component current = source; current != ancestor; current = current.getParent()) {
+            point.x += current.getX();
+            point.y += current.getY();
+        }
+    }
+
+    private static void convertPointFromAncestor(Component ancestor, Point point, Component destination) {
+        for (Component current = destination; current != ancestor; current = current.getParent()) {
+            point.x -= current.getX();
+            point.y -= current.getY();
+        }
     }
 
     /**
