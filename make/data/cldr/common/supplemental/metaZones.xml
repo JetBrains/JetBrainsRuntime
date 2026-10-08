@@ -656,7 +656,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone to="2016-12-03 23:00" mzone="Chile"/>
 			</timezone>
 			<timezone type="America/Rainy_River">
-				<usesMetazone mzone="America_Central"/>
+				<usesMetazone mzone="America_Central" stdOffset="-06" dstOffset="-05"/>
 			</timezone>
 			<timezone type="America/Rankin_Inlet">
 				<usesMetazone to="2000-10-29 07:00" mzone="America_Central"/>
@@ -756,7 +756,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone from="2020-11-01 07:00" mzone="Yukon"/>
 			</timezone>
 			<timezone type="America/Winnipeg">
-				<usesMetazone mzone="America_Central"/>
+				<usesMetazone mzone="America_Central" stdOffset="-06" dstOffset="-05"/>
 			</timezone>
 			<timezone type="America/Yakutat">
 				<usesMetazone from="1983-11-30 09:00" mzone="Alaska"/>
