@@ -498,6 +498,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
                     wlSurface = null;
                 }
             });
+            WLToolkit.getDragSourceContextPeer().cancelDragForPeer(this);
         }
     }
 
