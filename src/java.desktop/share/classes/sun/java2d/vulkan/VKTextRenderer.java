@@ -28,6 +28,7 @@ package sun.java2d.vulkan;
 
 import sun.font.GlyphList;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.pipe.BufferedTextPipe;
 import sun.java2d.pipe.RenderQueue;
@@ -50,8 +51,9 @@ class VKTextRenderer extends BufferedTextPipe {
     @Override
     protected void validateContext(SunGraphics2D sg2d, Composite comp) {
         // assert rq.lock.isHeldByCurrentThread();
-        VKSurfaceData mtlDst = (VKSurfaceData)sg2d.surfaceData;
-        VKContext.validateContext(mtlDst, mtlDst,
+        VKSurfaceData dstData = SurfaceData.convertTo(VKSurfaceData.class,
+                sg2d.surfaceData);
+        VKContext.validateContext(dstData, dstData,
                 sg2d.getCompClip(), comp,
                 null, sg2d.paint, sg2d,
                 VKContext.NO_CONTEXT_FLAGS);
