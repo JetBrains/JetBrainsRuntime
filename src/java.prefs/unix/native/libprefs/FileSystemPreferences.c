@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,6 @@ Java_java_util_prefs_FileSystemPreferences_lockFile0(JNIEnv *env,
     int fd, rc;
     int result[2] = {0, 0};
     jintArray javaResult = NULL;
-    int old_umask;
     FLOCK fl;
 
     if (!fname)
@@ -92,10 +91,12 @@ Java_java_util_prefs_FileSystemPreferences_lockFile0(JNIEnv *env,
         fd = open(fname, O_RDONLY, 0);
         result[1] = errno;
     } else {
-        old_umask = umask(0);
         fd = open(fname, O_WRONLY|O_CREAT, permission);
         result[1] = errno;
-        umask(old_umask);
+        if (fd >= 0) {
+            /* lock file created; set correct permissions */
+            fchmod(fd, permission); /* assume will succeed, ignore retval & errno */
+        }
     }
 
     if (fd < 0) {
