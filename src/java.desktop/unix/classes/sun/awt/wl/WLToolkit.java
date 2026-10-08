@@ -287,6 +287,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return peer;
     }
 
+    public static WLDragSourceContextPeer getDragSourceContextPeer() {
+        return dragSourceContextPeer;
+    }
 
     // This method is directly used by native code at the class loading stage, be careful with changing it in any way.
     public static boolean isNativeInputMethodSupportEnabled() {
@@ -407,6 +410,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         if (e.hasLeaveEvent() || e.hasEnterEvent()) {
             // We've lost the control over the cursor, assume no knowledge about it
             getCursorManager().reset();
+        }
+        if (e.hasLeaveEvent()) {
+            dragSourceContextPeer.unsetPending();
+        }
+        if (e.hasButtonEvent() && !newInputState.hasPointerButtonPressed()) {
+            dragSourceContextPeer.cancelDragIfPending();
         }
         final WLComponentPeer peer = newInputState.peerForPointerEvents();
         if (peer == null) {

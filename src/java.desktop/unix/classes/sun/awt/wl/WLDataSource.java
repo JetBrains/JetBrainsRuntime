@@ -36,9 +36,6 @@ import java.util.LinkedHashSet;
 public class WLDataSource {
     protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataSource");
 
-    // nativePtr will be reset to 0 after this object receives a "cancelled" event, and is destroyed.
-    // Reading from nativePtr doesn't need to be synchronized for methods that happen before announcing
-    // this object as a selection, or a drag-and-drop source.
     private long nativePtr;
 
     private final Transferable data;
@@ -56,7 +53,7 @@ public class WLDataSource {
     private static native void setDnDIconImpl(long nativePtr, int scale, int width, int height, int offsetX, int offsetY, int[] pixels);
 
     @Override
-    public synchronized String toString() {
+    public String toString() {
         return "WLDataSource{" +
                 "nativePtr=0x" + Long.toHexString(nativePtr) +
                 ", data=" + data +
@@ -64,7 +61,7 @@ public class WLDataSource {
                 '}';
     }
 
-    public synchronized String getID() {
+    public String getID() {
         return "0x" + Long.toHexString(nativePtr);
     }
 
@@ -163,7 +160,9 @@ public class WLDataSource {
         setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
     }
 
-    public synchronized void destroy() {
+    // externally synchronized, only call from one thread at a time (e.g. by holding a lock)
+    // destroy all references to this object after this method returns
+    public void destroy() {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("destroy(), this = " + getID());
         }

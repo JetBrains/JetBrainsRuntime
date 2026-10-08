@@ -34,6 +34,7 @@ import java.awt.Cursor;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.DragGestureEvent;
+import java.awt.dnd.InvalidDnDOperationException;
 import java.util.Map;
 
 public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
@@ -53,69 +54,106 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
     }
 
     private final WLDataDevice dataDevice;
+    private WLDragSource currentDragSource = null; // synchronized by 'this'
 
     private class WLDragSource extends WLDataSource {
-        private int action;
-        private String mime;
-        private boolean didSendFinishedEvent = false;
-        private boolean didSucceed = false;
+        int action;
+        String mime;
+        WLComponentPeer peer;
+        boolean didSendFinishedEvent = false;
+        boolean didSucceed = false;
 
-        WLDragSource(Transferable data, int defaultAction) {
+        // pending flag: some compositors might reject a start_drag request silently.
+        // When we receive any event on this drag source, or a relevant event on the data device, we set isPending = false.
+        // When we see a mouse released event, and isPending is true, we can be sure that our start_drag request was rejected.
+        boolean isPending = true;
+
+        WLDragSource(Transferable data, int defaultAction, WLComponentPeer peer) {
             super(dataDevice, WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND, data);
             action = defaultAction;
+            this.peer = peer;
         }
 
-        private synchronized void sendFinishedEvent() {
-            if (didSendFinishedEvent) {
-                return;
-            }
-            didSendFinishedEvent = true;
+        private void sendFinishedEvent() {
+            synchronized (WLDragSourceContextPeer.this) {
+                if (didSendFinishedEvent) {
+                    return;
+                }
+                didSendFinishedEvent = true;
 
-            final int javaAction = didSucceed ? WLDataDevice.waylandActionsToJava(action) : 0;
-            final int x = WLToolkit.getInputState().getPointerX();
-            final int y = WLToolkit.getInputState().getPointerY();
-            WLDragSourceContextPeer.this.dragDropFinished(didSucceed, javaAction, x, y);
-        }
+                final int javaAction = didSucceed ? WLDataDevice.waylandActionsToJava(action) : 0;
+                final int x = WLToolkit.getInputState().getPointerX();
+                final int y = WLToolkit.getInputState().getPointerY();
+                WLDragSourceContextPeer.this.dragDropFinished(didSucceed, javaAction, x, y);
 
-        @Override
-        protected synchronized void handleDnDAction(int action) {
-            super.handleDnDAction(action);
-            // This if statement is a workaround for a KWin bug.
-            // KWin 6.5.1 may send an additional action(0) after dnd_drop_performed().
-            // Spec says that after dnd_drop_performed(), no further action() events will be sent,
-            // except for maybe action(dnd_ask), but since we do not announce support for dnd_ask,
-            // we don't need to worry about it.
-            if (!didSucceed) {
-                this.action = action;
+                if (currentDragSource == this) {
+                    currentDragSource = null;
+                }
+
+                destroy();
             }
         }
 
-        @Override
-        protected synchronized void handleDnDDropPerformed() {
-            super.handleDnDDropPerformed();
-            didSucceed = action != 0 && mime != null;
-        }
-
-        @Override
-        protected synchronized void handleDnDFinished() {
-            super.handleDnDFinished();
-            sendFinishedEvent();
-            destroy();
-        }
-
-        @Override
-        protected synchronized void handleTargetAcceptsMime(String mime) {
-            super.handleTargetAcceptsMime(mime);
-            this.mime = mime;
-        }
-
-        @Override
-        protected synchronized void handleCancelled() {
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("handleCancelled(), this = " + getID());
+        void cancel() {
+            synchronized (WLDragSourceContextPeer.this) {
+                didSucceed = false;
+                sendFinishedEvent();
             }
-            sendFinishedEvent();
-            destroy();
+        }
+
+        @Override
+        protected void handleDnDAction(int action) {
+            synchronized (WLDragSourceContextPeer.this) {
+                super.handleDnDAction(action);
+                isPending = false;
+
+                // This if statement is a workaround for a KWin bug.
+                // KWin 6.5.1 may send an additional action(0) after dnd_drop_performed().
+                // Spec says that after dnd_drop_performed(), no further action() events will be sent,
+                // except for maybe action(dnd_ask), but since we do not announce support for dnd_ask,
+                // we don't need to worry about it.
+                if (!didSucceed) {
+                    this.action = action;
+                }
+            }
+        }
+
+        @Override
+        protected void handleDnDDropPerformed() {
+            synchronized (WLDragSourceContextPeer.this) {
+                super.handleDnDDropPerformed();
+                isPending = false;
+                didSucceed = action != 0 && mime != null;
+            }
+        }
+
+        @Override
+        protected void handleDnDFinished() {
+            synchronized (WLDragSourceContextPeer.this) {
+                super.handleDnDFinished();
+                isPending = false;
+                sendFinishedEvent();
+            }
+        }
+
+        @Override
+        protected void handleTargetAcceptsMime(String mime) {
+            synchronized (WLDragSourceContextPeer.this) {
+                super.handleTargetAcceptsMime(mime);
+                isPending = false;
+                this.mime = mime;
+            }
+        }
+
+        @Override
+        protected void handleCancelled() {
+            synchronized (WLDragSourceContextPeer.this) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("handleCancelled(), this = " + getID());
+                }
+                isPending = false;
+                sendFinishedEvent();
+            }
         }
     }
 
@@ -131,12 +169,33 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         return null;
     }
 
-    private WLMainSurface getSurface() {
-        WLComponentPeer peer = getPeer();
-        if (peer != null) {
-            return peer.getSurface();
+    private synchronized void setDragSource(WLDragSource newDragSource) {
+        if (currentDragSource != null) {
+            currentDragSource.cancel();
         }
-        return null;
+        currentDragSource = newDragSource;
+    }
+
+    synchronized void cancelDragIfPending() {
+        if (currentDragSource != null && currentDragSource.isPending) {
+            setDragSource(null);
+        }
+    }
+
+    synchronized void cancelDragForPeer(WLComponentPeer peer) {
+        if (currentDragSource != null && currentDragSource.peer == peer) {
+            setDragSource(null);
+        }
+    }
+
+    synchronized void unsetPending() {
+        if (currentDragSource != null) {
+            currentDragSource.isPending = false;
+        }
+    }
+
+    private void doStartDrag(Transferable trans) {
+
     }
 
     @Override
@@ -145,10 +204,13 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             log.fine("startDrag(), trans = " + trans);
         }
 
-        var mainSurface = getSurface();
+        WLComponentPeer peer = getPeer();
+        if (peer == null) {
+            throw new InvalidDnDOperationException("startDrag(): peer is null");
+        }
+        WLMainSurface mainSurface = peer.getSurface();
         if (mainSurface == null) {
-            log.warning("startDrag(): mainSurface is null");
-            return;
+            throw new InvalidDnDOperationException("startDrag(): mainSurface is null");
         }
 
         int actions = 0;
@@ -165,21 +227,48 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         }
 
         // formats and formatMap are unused, because WLDataSource already references the same DataTransferer singleton
-        var source = new WLDragSource(trans, defaultAction);
+        // Configuring the dragImage for the source is done without holding a lock, because it might call out to user code.
+        var source = new WLDragSource(trans, defaultAction, peer);
+        try {
+            source.setDnDActions(waylandActions);
 
-        source.setDnDActions(waylandActions);
-
-        var dragImage = getDragImage();
-        if (dragImage != null) {
-            var dragImageOffset = getDragImageOffset();
-            source.setDnDIcon(dragImage,
-                    mainSurface.getGraphicsDevice().getDisplayScale(),
-                    dragImageOffset.x, dragImageOffset.y);
+            var dragImage = getDragImage();
+            if (dragImage != null) {
+                var dragImageOffset = getDragImageOffset();
+                source.setDnDIcon(dragImage,
+                        mainSurface.getGraphicsDevice().getDisplayScale(),
+                        dragImageOffset.x, dragImageOffset.y);
+            }
+        } catch (RuntimeException e) {
+            source.destroy();
+            throw e;
         }
 
-        WLInputSerial eventSerial = WLToolkit.getInputState().pointerButtonSerial();
+        // Take a lock, and check if we have a valid serial atomically.
+        // This is needed, because startDrag() can be called off-EDT, and a mouse release event dispatched on the EDT
+        // should either successfully either cause InvalidDnDOperationException to be thrown here,
+        // or immediately invalidate the drag source.
+        synchronized (this) {
+            try {
+                setDragSource(source);
+                WLInputState inputState = WLToolkit.getInputState();
+                WLInputSerial eventSerial = inputState.pointerButtonSerial();
+                // Do not even try to start a drag without a good mouse button serial.
+                // This should mostly prevent situations, where the compositor silently ignores our start_drag,
+                // and we enter a confused state.
+                // NOTE: WLDragSource.isPending is another mechanism to guard against this
+                if (!eventSerial.isValid() || !inputState.hasPointerButtonPressed()) {
+                    throw new InvalidDnDOperationException("startDrag(): no mouse button pressed");
+                }
 
-        dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial.serial());
+                dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial.serial());
+            } catch (RuntimeException e) {
+                currentDragSource = null;
+                source.destroy();
+                throw e;
+            }
+        }
+
         SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(trans);
     }
 

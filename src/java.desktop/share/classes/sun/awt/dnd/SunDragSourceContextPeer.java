@@ -142,7 +142,17 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
             getFormatsForTransferable(transferable, DataTransferer.adaptFlavorMap
                 (getTrigger().getDragSource().getFlavorMap()));
         long[] formats = DataTransferer.keysToLongArray(formatMap);
-        startDrag(transferable, formats, formatMap);
+        try {
+            startDrag(transferable, formats, formatMap);
+        } catch (RuntimeException e) {
+            trigger = null;
+            component = null;
+            cursor = null;
+            dragSourceContext = null;
+            dragImage = null;
+            dragImageOffset = null;
+            throw e;
+        }
 
         /*
          * Fix for 4613903.
