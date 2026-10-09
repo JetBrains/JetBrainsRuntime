@@ -32,6 +32,7 @@
 #include "VKUtil.h"
 #include "VKAllocator.h"
 #include "VKBuffer.h"
+#include "VKBlitLoops.h"
 #include "VKDevice.h"
 #include "VKImage.h"
 #include "VKRenderer.h"
@@ -1755,7 +1756,8 @@ void VKRenderer_DrawGlyphList(jint numGlyphs,
             glyphListOrigY += ginfo->advanceY;
         }
 
-        if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE)
+        if (ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE &&
+            ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_BGRA)
             continue;
 
         if (ginfo->height * ginfo->rowBytes == 0) continue;
@@ -1771,12 +1773,19 @@ void VKRenderer_DrawGlyphList(jint numGlyphs,
             yOffset = (int)((glyphy - (float)y) * (float)ry);
         }
 
+        const unsigned char* image = ginfo->image + (ginfo->rowBytes * ginfo->height) * (
+                xOffset + yOffset * rx);
+        if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
+            VKBlitLoops_DrawColorGlyph(x, y, ginfo->width, ginfo->height,
+                                       ginfo->rowBytes, image);
+            continue;
+        }
+
         VKRenderer_MaskFill(x, y,
                             ginfo->width, ginfo->height,
                             0, ginfo->rowBytes,
                             ginfo->height * ginfo->rowBytes,
-                            ginfo->image + (ginfo->rowBytes * ginfo->height) * (
-                                xOffset + yOffset * rx));
+                            image);
     }
 }
 
