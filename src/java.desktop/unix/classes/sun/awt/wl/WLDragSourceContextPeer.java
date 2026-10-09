@@ -236,7 +236,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
             if (dragImage != null) {
                 var dragImageOffset = getDragImageOffset();
                 source.setDnDIcon(dragImage,
-                        mainSurface.getGraphicsDevice().getDisplayScale(),
+                        peer.getDisplayScale(),
                         dragImageOffset.x, dragImageOffset.y);
             }
         } catch (RuntimeException e) {
