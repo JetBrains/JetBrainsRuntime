@@ -390,7 +390,8 @@ ifeq ($(call isTargetOs, macosx), true)
       #
 
   LIBAWT_LWAWT_EXCLUDE_FILES := fontpath.c awt_Font.c X11Color.c
-  LIBAWT_LWAWT_EXCLUDES := $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib
+  LIBAWT_LWAWT_EXCLUDES := $(TOPDIR)/src/$(MODULE)/unix/native/common/awt/medialib \
+      $(VULKAN_EXCLUDES)
 
   LIBAWT_LWAWT_STATIC_EXCLUDE_OBJS := systemScale.o
 
