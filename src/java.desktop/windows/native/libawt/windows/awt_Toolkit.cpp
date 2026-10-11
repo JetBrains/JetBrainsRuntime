@@ -1322,8 +1322,6 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           return TRUE;
       }
       case WM_ENDSESSION: {
-          // Keep pumping messages until the shutdown sequence halts the VM,
-          // or we exit the MessageLoop because of a WM_QUIT message
           AwtToolkit& tk = AwtToolkit::GetInstance();
 
           // if WM_QUERYENDSESSION hasn't successfully raised SIGTERM
@@ -1331,10 +1329,13 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
           if (!tk.m_vmSignalled) {
               return 0;
           }
+
+          // Keep pumping messages until the shutdown sequence halts the VM,
+          // or we exit the MessageLoop because of a WM_QUIT message.
           tk.MessageLoop(AwtToolkit::PrimaryIdleFunc,
                          AwtToolkit::CommonPeekMessageFunc);
 
-          // Dispose here instead of in eventLoop so that we don't have
+          // Dispose here instead of in WToolkit_eventLoop so that we don't have
           // to return from the WM_ENDSESSION handler.
           tk.Dispose();
 
