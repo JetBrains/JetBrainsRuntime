@@ -1329,21 +1329,45 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
               return 0;
           }
 
-          // Keep pumping messages until the shutdown sequence halts the VM,
-          // or we exit the MessageLoop because of a WM_QUIT message.
-          tk.MessageLoop(AwtToolkit::PrimaryIdleFunc,
-                         AwtToolkit::CommonPeekMessageFunc);
+          if (!tk.IsDisposed()) {
+              // Keep pumping messages until the shutdown sequence halts the VM,
+              // or we exit the MessageLoop because of a WM_QUIT message.
 
-          // Dispose here instead of in WToolkit_eventLoop so that we don't have
-          // to return from the WM_ENDSESSION handler.
-          tk.Dispose();
+              if (tk.m_lifecycleStage.load() != AwtToolkit::LifecycleStage::Value::ACTIVE) {
+                  // JBR-8954: sometimes, the WM_ENDSESSION message gets dispatched from inside the AwtToolkit::Dispose's message loop or
+                  // its ::DestroyWindow call (if it arrives just after that loop).
+                  // In the first case, the final WM_QUIT message may not be observed by
+                  // the ::WaitMessage we're about to invoke, which will cause the ::WaitMessage sleeping forever:
+                  //   "WaitMessage does not return for unprocessed messages reported by a previous function which checks the queue"
+                  // In the second case, the final WM_QUIT message has already been consumed by the AwtToolkit::Dispose's message loop,
+                  // and if the queue is empty, the ::WaitMessage will sleep forever too.
+                  // To work around both problems, let's post one more WM_QUIT message.
+                  ::PostQuitMessage(EXIT_ALL_ENCLOSING_LOOPS);
+              }
 
-          // Never return. The VM will halt the process.
-          hang_if_shutdown();
+              tk.MessageLoop(AwtToolkit::PrimaryIdleFunc,
+                             AwtToolkit::CommonPeekMessageFunc);
+          }
 
-          // Should never get here.
-          DASSERT(FALSE);
-          break;
+          if (tk.m_lifecycleStage.load() == AwtToolkit::LifecycleStage::Value::ACTIVE) {
+              // Dispose here instead of in WToolkit_eventLoop so that we don't have
+              // to return from the WM_ENDSESSION handler.
+              //
+              // JBR-8954: if the WM_ENDSESSION message gets dispatched from inside AwtToolkit::Dispose, let's go
+              //           back to it. The better approach would be reenter it and finish the disposal process from here
+              //           (to make sure the WM_ENDSESSION messages handler never returns),
+              //           but it's difficult (and probably unmaintainable) to make Dispose reentrant.
+              tk.Dispose();
+              DASSERTMSG(tk.IsDisposed(), "tk.Dispose() should have finished the disposal routine");
+          }
+
+          if (tk.IsDisposed()) {
+              // Never return. The VM will halt the process.
+              hang_if_shutdown();
+              DASSERTMSG(FALSE, "Should never get here");
+          }
+
+          return 0;
       }
 #ifndef WM_WTSSESSION_CHANGE
 #define WM_WTSSESSION_CHANGE        0x02B1
