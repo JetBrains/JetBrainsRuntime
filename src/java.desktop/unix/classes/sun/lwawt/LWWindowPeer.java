@@ -1347,9 +1347,4 @@ public class LWWindowPeer
     public boolean isActive() {
         return platformWindow.isActive();
     }
-
-    @Override
-    public boolean needsDragEventCorrection() {
-        return true;
-    }
 }
