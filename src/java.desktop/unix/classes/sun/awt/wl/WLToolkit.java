@@ -406,7 +406,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         final WLInputState newInputState = oldInputState.updatedFromPointerEvent(e);
         setInputState(newInputState);
 
-        if (e.hasLeaveEvent() && newInputState.pendingCrossingModifiers() != 0) {
+        if (e.hasLeaveEvent() && !e.hasEnterEvent() && newInputState.pendingCrossingModifiers() != 0) {
             // Reset temporary pending crossing state once the compositor fully processes the leave event
             // If by that time we get an enter event, assume a crossing, and restore modifiers from pendingCrossingModifiers
             // (this happens in WLInputState.updatedFromPointerEvent)

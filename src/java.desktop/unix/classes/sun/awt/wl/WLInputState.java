@@ -113,8 +113,7 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 newEventWithTimestamp,
                 newEventWithCoordinates);
         final int newModifiers = getNewModifiers(pointerEvent);
-        final int newPendingCrossingModifiers = pointerEvent.hasLeaveEvent() ?
-                (modifiers & WLPointerEvent.PointerButtonCodes.combinedMask()) : 0;
+        final int newPendingCrossingModifiers = getNewPendingCrossingModifiers(pointerEvent);
 
         boolean newPointerOverSurface = (pointerEvent.hasEnterEvent() || isPointerOverSurface)
                 && !pointerEvent.hasLeaveEvent();
@@ -321,10 +320,27 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return mouseDeltaSquared <= (mouseDeltaThreshold * mouseDeltaThreshold);
     }
 
+    private static int getUpdatedModifiersFromPointerEvent(int modifiers, WLPointerEvent pointerEvent) {
+        if (!pointerEvent.hasButtonEvent()) {
+            return modifiers;
+        }
+
+        final WLPointerEvent.PointerButtonCodes buttonCode
+                = WLPointerEvent.PointerButtonCodes.recognizedOrNull(pointerEvent.getButtonCode());
+        if (buttonCode != null) {
+            if (pointerEvent.getIsButtonPressed()) {
+                modifiers |= buttonCode.mask();
+            } else {
+                modifiers &= ~buttonCode.mask();
+            }
+        }
+        return modifiers;
+    }
+
     private int getNewModifiers(WLPointerEvent pointerEvent) {
         int newModifiers = modifiers;
 
-        if (pointerEvent.hasLeaveEvent()) {
+        if (pointerEvent.hasLeaveEvent() && !pointerEvent.hasEnterEvent()) {
             return modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask();
         }
 
@@ -332,18 +348,16 @@ record WLInputState(WLPointerEvent eventWithSurface,
             newModifiers |= pendingCrossingModifiers;
         }
 
-        if (pointerEvent.hasButtonEvent()) {
-            final WLPointerEvent.PointerButtonCodes buttonCode
-                    = WLPointerEvent.PointerButtonCodes.recognizedOrNull(pointerEvent.getButtonCode());
-            if (buttonCode != null) {
-                if (pointerEvent.getIsButtonPressed()) {
-                    newModifiers |= buttonCode.mask();
-                } else {
-                    newModifiers &= ~buttonCode.mask();
-                }
-            }
+        return getUpdatedModifiersFromPointerEvent(newModifiers, pointerEvent);
+    }
+
+    private int getNewPendingCrossingModifiers(WLPointerEvent pointerEvent) {
+        if (!pointerEvent.hasLeaveEvent() || pointerEvent.hasEnterEvent()) {
+            return 0;
         }
-        return newModifiers;
+
+        int buttons = modifiers & WLPointerEvent.PointerButtonCodes.combinedMask();
+        return getUpdatedModifiersFromPointerEvent(buttons, pointerEvent);
     }
 
     public boolean hasPointerButtonPressed() {
