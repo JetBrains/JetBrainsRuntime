@@ -2051,6 +2051,19 @@ encode %{
     emit_rm( cbuf, 0x0, 1, $mem_ptr$$reg );
   %}
 
+  enc_class enc_cmpxchgb_narrow(eSIRegP mem_ptr, eAXRegI oldval) %{
+    // [Lock]
+    emit_opcode(cbuf, 0xF0);
+
+    // CMPXCHGB [Eptr]
+    emit_opcode(cbuf, 0x0F);
+    emit_opcode(cbuf, 0xB0);
+    emit_rm(cbuf, 0x0, 1, $mem_ptr$$reg);
+
+    MacroAssembler _masm(&cbuf);
+    __ narrow_subword_type($oldval$$Register, T_BYTE);
+  %}
+
   enc_class enc_cmpxchgb(eSIRegP mem_ptr) %{
     // [Lock]
     emit_opcode(cbuf,0xF0);
@@ -2059,6 +2072,22 @@ encode %{
     emit_opcode(cbuf,0x0F);
     emit_opcode(cbuf,0xB0);
     emit_rm( cbuf, 0x0, 1, $mem_ptr$$reg );
+  %}
+
+  enc_class enc_cmpxchgw_narrow(eSIRegP mem_ptr, eAXRegI oldval) %{
+    // [Lock]
+    emit_opcode(cbuf,0xF0);
+
+    // 16-bit mode
+    emit_opcode(cbuf, 0x66);
+
+    // CMPXCHGW [Eptr]
+    emit_opcode(cbuf,0x0F);
+    emit_opcode(cbuf,0xB1);
+    emit_rm( cbuf, 0x0, 1, $mem_ptr$$reg );
+
+    MacroAssembler _masm(&cbuf);
+    __ narrow_subword_type($oldval$$Register, T_SHORT);
   %}
 
   enc_class enc_cmpxchgw(eSIRegP mem_ptr) %{
@@ -7370,7 +7399,7 @@ instruct compareAndExchangeB( pRegP mem_ptr, eAXRegI oldval, eCXRegI newval, eFl
   match(Set oldval (CompareAndExchangeB mem_ptr (Binary oldval newval)));
   effect(KILL cr);
   format %{ "CMPXCHGB [$mem_ptr],$newval\t# If EAX==[$mem_ptr] Then store $newval into [$mem_ptr]\n\t" %}
-  ins_encode( enc_cmpxchgb(mem_ptr) );
+  ins_encode( enc_cmpxchgb_narrow(mem_ptr, oldval) );
   ins_pipe( pipe_cmpxchg );
 %}
 
@@ -7378,7 +7407,7 @@ instruct compareAndExchangeS( pRegP mem_ptr, eAXRegI oldval, eCXRegI newval, eFl
   match(Set oldval (CompareAndExchangeS mem_ptr (Binary oldval newval)));
   effect(KILL cr);
   format %{ "CMPXCHGW [$mem_ptr],$newval\t# If EAX==[$mem_ptr] Then store $newval into [$mem_ptr]\n\t" %}
-  ins_encode( enc_cmpxchgw(mem_ptr) );
+  ins_encode( enc_cmpxchgw_narrow(mem_ptr, oldval) );
   ins_pipe( pipe_cmpxchg );
 %}
 
