@@ -134,6 +134,9 @@ static jmethodID handleToplevelIconSizeMID;
 
 static jmethodID isNativeInputMethodSupportEnabledMID;
 
+static jclass runnableClass;
+static jmethodID runnableRunMID;
+
 JNIEnv *getEnv() {
     JNIEnv *env;
     // assuming we're always called from a Java thread
@@ -847,6 +850,13 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                                                                        "()Z"),
                       JNI_FALSE);
 
+    CHECK_NULL_RETURN(runnableClass = (*env)->FindClass(env, "java/lang/Runnable"), JNI_FALSE);
+    CHECK_NULL_THROW_OOME_RETURN(env,
+                                 runnableClass = (jclass)(*env)->NewGlobalRef(env, runnableClass),
+                                 "Allocation of a global reference to java.lang.Runnable failed",
+                                 JNI_FALSE);
+    CHECK_NULL_RETURN(runnableRunMID = (*env)->GetMethodID(env, runnableClass, "run", "()V"), JNI_FALSE);
+
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
     CHECK_NULL_RETURN(wlgeClass, JNI_FALSE);
 
@@ -1134,6 +1144,39 @@ Java_sun_awt_wl_WLToolkit_flushImpl
   (JNIEnv *env, jobject obj)
 {
     (void) wlFlushToServer(env);
+}
+
+static void sync_callback_done(void *data, struct wl_callback *wl_callback, uint32_t callback_data)
+{
+    (void)callback_data;
+    jobject callback = (jobject)data;
+    JNIEnv *env = getEnv();
+    if (env != NULL && callback != NULL) {
+        (*env)->CallVoidMethod(env, callback, runnableRunMID);
+        wlListenerCheckException(env);
+        (*env)->DeleteGlobalRef(env, callback);
+    }
+    wl_callback_destroy(wl_callback);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_syncCallbackImpl(JNIEnv *env, jclass tk, jobject callbackObj)
+{
+    (void)tk;
+
+    struct wl_callback *wl_callback = wl_display_sync(wl_display);
+    CHECK_NULL_THROW_OOME(env, wl_callback, "wl_display_sync()");
+
+    callbackObj = (*env)->NewGlobalRef(env, callbackObj);
+    if (callbackObj == NULL) {
+        wl_callback_destroy(wl_callback);
+        return;
+    }
+
+    static const struct wl_callback_listener listener = {
+        .done = sync_callback_done,
+    };
+    wl_callback_add_listener(wl_callback, &listener, callbackObj);
 }
 
 JNIEXPORT jint JNICALL
