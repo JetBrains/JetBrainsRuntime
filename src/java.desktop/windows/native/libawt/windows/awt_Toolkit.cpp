@@ -1330,7 +1330,7 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
               return 0;
           }
 
-          if (!tk.IsDisposed()) {
+          if (!tk.m_breakMessageLoop && !tk.IsDisposed()) {
               // Keep pumping messages until the shutdown sequence halts the VM,
               // or we exit the MessageLoop because of a WM_QUIT message.
 
@@ -1354,10 +1354,20 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
               // Dispose here instead of in WToolkit_eventLoop so that we don't have
               // to return from the WM_ENDSESSION handler.
               //
-              // JBR-8954: if the WM_ENDSESSION message gets dispatched from inside AwtToolkit::Dispose, let's go
-              //           back to it. The better approach would be reenter it and finish the disposal process from here
-              //           (to make sure the WM_ENDSESSION messages handler never returns),
-              //           but it's difficult (and probably unmaintainable) to make Dispose reentrant.
+              // JBR-8954: if the WM_ENDSESSION message gets dispatched from inside AwtToolkit::Dispose, let's return
+              // to it. The better approach would be reenter it and finish the disposal process from here
+              // (to make sure the WM_ENDSESSION messages handler never returns),
+              // but it's difficult (and probably unmaintainable) to make the Dispose reentrant.
+
+              // JBR-8954: make sure the tk.Dispose() always finds a final WM_QUIT: its internal message loop
+              // terminates only when it retrieves one. The tk.MessageLoop() above does not guarantee that:
+              // - it is skipped entirely when BOTH the quit request and WM_ENDSESSION were dispatched by
+              //   a SINGLE ::PeekMessage / ::WaitMessage call, so no MessageLoop exit ever gets to post the WM_QUIT;
+              // - it exits without posting one when it was broken by an EXIT_ENCLOSING_LOOP request
+              //   (quitSecondaryEventLoop) rather than EXIT_ALL_ENCLOSING_LOOPS.
+              // Posting while a WM_QUIT is already pending is harmless: PostQuitMessage coalesces.
+              ::PostQuitMessage(EXIT_ALL_ENCLOSING_LOOPS);
+
               tk.Dispose();
               DASSERTMSG(tk.IsDisposed(), "tk.Dispose() should have finished the disposal routine");
           }
