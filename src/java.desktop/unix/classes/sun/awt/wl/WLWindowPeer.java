@@ -65,6 +65,7 @@ import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
+import java.awt.peer.WindowPeer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -747,8 +748,11 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     public Point windowToLocal(int x, int y, LWWindowPeerAPI wp) {
-        // For WLWindowPeer window coordinates are already local coordinates - no transformation needed.
-        return new Point(x, y);
+        Point p = new Point(x, y);
+        Point thisLocation = getFakeLocationOnScreen();
+        Point thatLocation = ((WLComponentPeer) wp).getFakeLocationOnScreen();
+        p.translate(thatLocation.x - thisLocation.x, thatLocation.y - thisLocation.y);
+        return new Point(p);
     }
 
     @Override
@@ -757,10 +761,5 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
 
     @Override
     public void removeDropTarget(DropTarget dt) {
-    }
-
-    @Override
-    public boolean needsDragEventCorrection() {
-        return false;
     }
 }
