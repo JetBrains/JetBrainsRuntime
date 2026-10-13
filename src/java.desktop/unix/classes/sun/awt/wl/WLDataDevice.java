@@ -282,14 +282,17 @@ public class WLDataDevice {
 
     // Event handlers, called from native on the EDT
     private void handleDnDEnter(WLDataOffer offer, long serial, long surfacePtr, double x, double y) {
+        WLToolkit.getDragSourceContextPeer().unsetPending();
         WLDropTargetContextPeer.getInstance().handleEnter(offer, serial, surfacePtr, x, y);
     }
 
     private void handleDnDLeave() {
+        WLToolkit.getDragSourceContextPeer().unsetPending();
         WLDropTargetContextPeer.getInstance().handleLeave();
     }
 
     private void handleDnDMotion(long timestamp, double x, double y) {
+        WLToolkit.getDragSourceContextPeer().unsetPending();
         WLDropTargetContextPeer.getInstance().handleMotion(timestamp, x, y);
     }
 
