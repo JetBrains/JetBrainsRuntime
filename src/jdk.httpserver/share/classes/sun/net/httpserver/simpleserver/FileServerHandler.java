@@ -229,7 +229,8 @@ public final class FileServerHandler implements HttpHandler {
             // resolve each path segment against the root
             Path path = root;
             for (var segment : pathSegment) {
-                if (!URIPathSegment.isSupported(segment)) {
+                if (!URIPathSegment.isSupported(segment) || segment.contains(File.separator)) {
+                    // checking for separator rules out anomalies like UNCs on Windows
                     return null;  // stop resolution, null results in 404 response
                 }
                 path = path.resolve(segment);
