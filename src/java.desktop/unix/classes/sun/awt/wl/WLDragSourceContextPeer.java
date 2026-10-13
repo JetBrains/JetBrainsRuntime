@@ -59,7 +59,6 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
     private class WLDragSource extends WLDataSource {
         int action;
         String mime;
-        WLComponentPeer peer;
         boolean didSendFinishedEvent = false;
         boolean didSucceed = false;
 
@@ -68,10 +67,9 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         // When we see a mouse released event, and isPending is true, we can be sure that our start_drag request was rejected.
         boolean isPending = true;
 
-        WLDragSource(Transferable data, int defaultAction, WLComponentPeer peer) {
+        WLDragSource(Transferable data, int defaultAction) {
             super(dataDevice, WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND, data);
             action = defaultAction;
-            this.peer = peer;
         }
 
         private void sendFinishedEvent() {
@@ -182,20 +180,10 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         }
     }
 
-    synchronized void cancelDragForPeer(WLComponentPeer peer) {
-        if (currentDragSource != null && currentDragSource.peer == peer) {
-            setDragSource(null);
-        }
-    }
-
     synchronized void unsetPending() {
         if (currentDragSource != null) {
             currentDragSource.isPending = false;
         }
-    }
-
-    private void doStartDrag(Transferable trans) {
-
     }
 
     @Override
@@ -228,7 +216,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
 
         // formats and formatMap are unused, because WLDataSource already references the same DataTransferer singleton
         // Configuring the dragImage for the source is done without holding a lock, because it might call out to user code.
-        var source = new WLDragSource(trans, defaultAction, peer);
+        var source = new WLDragSource(trans, defaultAction);
         try {
             source.setDnDActions(waylandActions);
 
@@ -239,7 +227,7 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
                         peer.getDisplayScale(),
                         dragImageOffset.x, dragImageOffset.y);
             }
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             source.destroy();
             throw e;
         }
@@ -248,28 +236,40 @@ public class WLDragSourceContextPeer extends SunDragSourceContextPeer {
         // This is needed, because startDrag() can be called off-EDT, and a mouse release event dispatched on the EDT
         // should either successfully either cause InvalidDnDOperationException to be thrown here,
         // or immediately invalidate the drag source.
-        synchronized (this) {
-            try {
-                setDragSource(source);
-                WLInputState inputState = WLToolkit.getInputState();
-                WLInputSerial eventSerial = inputState.pointerButtonSerial();
-                // Do not even try to start a drag without a good mouse button serial.
-                // This should mostly prevent situations, where the compositor silently ignores our start_drag,
-                // and we enter a confused state.
-                // NOTE: WLDragSource.isPending is another mechanism to guard against this
-                if (!eventSerial.isValid() || !inputState.hasPointerButtonPressed()) {
-                    throw new InvalidDnDOperationException("startDrag(): no mouse button pressed");
+        // We also need to take the AWT lock, because we're accessing the native pointer of the origin surface.
+        // Taking the AWT lock should happen *first*: the AWT lock is held when dispatching events on the EDT,
+        // and these events can also take WLDragSourceContextPeer's monitor.
+        WLToolkit.awtLock();
+        try {
+            synchronized (this) {
+                try {
+                    setDragSource(source);
+                    WLInputState inputState = WLToolkit.getInputState();
+                    WLInputSerial eventSerial = inputState.pointerButtonSerial();
+                    // Do not even try to start a drag without a good mouse button serial.
+                    // This should mostly prevent situations, where the compositor silently ignores our start_drag,
+                    // and we enter a confused state.
+                    // NOTE: WLDragSource.isPending is another mechanism to guard against this
+                    if (!eventSerial.isValid() || !inputState.hasPointerButtonPressed()) {
+                        throw new InvalidDnDOperationException("startDrag(): no mouse button pressed");
+                    }
+
+                    if (!mainSurface.isValid) {
+                        throw new InvalidDnDOperationException("startDrag(): origin surface is invalid");
+                    }
+                    long surfacePtr = mainSurface.getWlSurfacePtr();
+                    dataDevice.startDrag(source, surfacePtr, eventSerial.serial());
+                    SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(trans);
+                } catch (Throwable e) {
+                    currentDragSource = null;
+                    source.destroy();
+                    SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(null);
+                    throw e;
                 }
-
-                dataDevice.startDrag(source, mainSurface.getWlSurfacePtr(), eventSerial.serial());
-            } catch (RuntimeException e) {
-                currentDragSource = null;
-                source.destroy();
-                throw e;
             }
+        } finally {
+            WLToolkit.awtUnlock();
         }
-
-        SunDropTargetContextPeer.setCurrentJVMLocalSourceTransferable(trans);
     }
 
     @Override

@@ -412,12 +412,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             // We've lost the control over the cursor, assume no knowledge about it
             getCursorManager().reset();
         }
-        if (e.hasLeaveEvent()) {
-            dragSourceContextPeer.unsetPending();
+
+        if (e.hasButtonEvent()) {
+            boolean oldPressed = oldInputState.hasPointerButtonPressed();
+            boolean newPressed = newInputState.hasPointerButtonPressed();
+            if (!oldPressed || !newPressed) {
+                // last mouse button is released or first mouse button is pressed,
+                // let's reset drag state if it's still unconfirmed
+                dragSourceContextPeer.cancelDragIfPending();
+            }
         }
-        if (e.hasButtonEvent() && !newInputState.hasPointerButtonPressed()) {
-            dragSourceContextPeer.cancelDragIfPending();
-        }
+
         final WLComponentPeer peer = newInputState.peerForPointerEvents();
         if (peer == null) {
             // We don't know whom to notify of the event; may happen when

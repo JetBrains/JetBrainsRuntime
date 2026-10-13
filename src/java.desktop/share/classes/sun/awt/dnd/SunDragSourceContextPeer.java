@@ -133,7 +133,7 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
         long[] formats = DataTransferer.keysToLongArray(formatMap);
         try {
             startDrag(transferable, formats, formatMap);
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
             trigger = null;
             component = null;
             cursor = null;
