@@ -31,6 +31,7 @@
 #include "jni.h"
 #include "jni_util.h"
 #include "sun_java2d_skia_SKEnvironment.h"
+#include "SKBackend.h"
 #include "include/core/SkMilestone.h"
 
 extern "C" {
@@ -48,6 +49,18 @@ Java_sun_java2d_skia_SKEnvironment_initNative(JNIEnv *env, jclass clazz)
         [device release];
         return JNU_NewStringPlatform(env, description.c_str());
     }
+}
+
+JNIEXPORT jstring JNICALL
+Java_sun_java2d_skia_SKEnvironment_gpuApiNative(JNIEnv *env, jclass clazz)
+{
+    return JNU_NewStringPlatform(env, "metal");
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads)
+{
+    SKBackend_Configure(msaaSamples, edgeAAQuads);
 }
 
 } // extern "C"

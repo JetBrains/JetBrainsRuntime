@@ -54,6 +54,44 @@ public final class SKEnvironment {
     private static boolean initialized;
     private static String description;
 
+    /**
+     * Configuration of the native backend that depends on the GPU architecture
+     * rather than on Java2D semantics, with defaults per GPU API and system
+     * properties to override them:
+     * <ul>
+     * <li>{@code sun.java2d.skia.msaa}: Graphite's internal sample count (1, 2,
+     *     4, 8). Multisampling quantizes antialiased coverage to that many
+     *     levels but makes general paths cheap; non-AA geometry stays
+     *     pixel-exact either way.</li>
+     * <li>{@code sun.java2d.skia.blitQuads}: {@code mesh} (textured
+     *     two-triangle mesh) or {@code edgeAA} (Graphite's per-edge-AA image
+     *     draw with no AA edges) for image blits.</li>
+     * </ul>
+     * {@code sun.java2d.skia.shapes} (see {@link #rasterizesShapes()}) is the
+     * third knob; it is decided on the Java side.
+     */
+    private record Configuration(int msaaSamples, boolean edgeAAQuads) {
+        static Configuration defaultsFor(String gpuApi) {
+            return switch (gpuApi) {
+                // Metal on Apple GPUs: the path atlas beats 4x MSAA on fidelity,
+                // MSAA only wins on general paths; meshes and
+                // the edge-AA draw measured equal, the mesh is the exact one.
+                case "metal" -> new Configuration(1, false);
+                // Vulkan and Dawn/D3D: not measured yet, Metal's values until then.
+                default -> new Configuration(1, false);
+            };
+        }
+
+        Configuration withProperties() {
+            int samples = Integer.getInteger("sun.java2d.skia.msaa", msaaSamples);
+            String blits = System.getProperty("sun.java2d.skia.blitQuads");
+            boolean edgeAA = blits == null ? edgeAAQuads : "edgeAA".equalsIgnoreCase(blits);
+            return new Configuration(samples, edgeAA);
+        }
+    }
+
+    private static Configuration configuration;
+
     private SKEnvironment() {}
 
     /**
@@ -105,6 +143,10 @@ public final class SKEnvironment {
         try {
             System.loadLibrary("awt_skia");
             description = initNative();
+            if (description != null) {
+                configuration = Configuration.defaultsFor(gpuApiNative()).withProperties();
+                configureNative(configuration.msaaSamples(), configuration.edgeAAQuads());
+            }
         } catch (UnsatisfiedLinkError e) {
             if (VERBOSE) {
                 System.err.println("Skia backend is not available: " + e);
@@ -113,7 +155,10 @@ public final class SKEnvironment {
             description = null;
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
-            String msg = "Skia rendering enabled: " + (description != null ? "YES (" + description + ", shapes: " + SHAPES + ")" : "NO");
+            String msg = "Skia rendering enabled: " + (description != null
+                    ? "YES (" + description + ", shapes: " + SHAPES + ", msaa: " + configuration.msaaSamples()
+                      + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh") + ")"
+                    : "NO");
             if (VERBOSE) {
                 System.err.println(msg);
             }
@@ -123,4 +168,10 @@ public final class SKEnvironment {
 
     /** Describes the GPU API and device Skia will run on; {@code null} if unavailable. */
     private static native String initNative();
+
+    /** The GPU API Graphite runs on here: {@code metal}, {@code vulkan} or {@code dawn}. */
+    private static native String gpuApiNative();
+
+    /** Hands the architecture-dependent configuration to the native backend before any context exists. */
+    private static native void configureNative(int msaaSamples, boolean edgeAAQuads);
 }

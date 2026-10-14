@@ -88,14 +88,36 @@ static void forgetContext(SKConfigContext *cc);
 static void forgetSurface(SKSDOps *ops, bool dispose);
 static void flushAllBatches();
 
-// J2D_SKIA_MSAA=4: Graphite renders with 4x MSAA. With MSAA a
-// pass multisamples every draw in it, so non-AA geometry that is not pixel
-// aligned (rotated parallelograms, fractional or rotated blits) is decomposed
-// into integer spans by the pixel-centre rule instead of relying on the
-// rasterizer.
+// Architecture-dependent configuration, see SKEnvironment.Configuration. With
+// MSAA a pass multisamples every draw in it, so non-AA geometry that is not
+// pixel aligned (rotated parallelograms, fractional or rotated blits) is
+// decomposed into integer spans by the pixel-centre rule instead of relying on
+// the rasterizer.
+static struct {
+    jint msaaSamples = 1;
+    bool edgeAAQuads = false;
+} gConfig;
+
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads) {
+    gConfig.msaaSamples = msaaSamples;
+    gConfig.edgeAAQuads = edgeAAQuads;
+}
+
 bool SKBackend_Multisampled() {
-    static const bool msaa = [] { const char *v = getenv("J2D_SKIA_MSAA"); return v != nullptr && atoi(v) == 4; }();
-    return msaa;
+    return gConfig.msaaSamples > 1;
+}
+
+bool SKBackend_EdgeAAQuads() {
+    return gConfig.edgeAAQuads;
+}
+
+static SampleCount sampleCount(jint samples) {
+    switch (samples) {
+        case 2:  return SampleCount::k2;
+        case 4:  return SampleCount::k4;
+        case 8:  return SampleCount::k8;
+        default: return SampleCount::k1;
+    }
 }
 
 SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
@@ -120,12 +142,12 @@ SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
     backend.fDevice.retain((CFTypeRef) device);
     backend.fQueue.retain((CFTypeRef) queue);
     ContextOptions options;
-    // No multisampled passes: Graphite renders a whole pass with MSAA as soon as
-    // one draw in it needs it, which would give every non-AA edge (spans, blits,
-    // parallelograms) 4-level coverage. Anti-aliased paths use the path atlas
-    // instead, with full coverage precision like the Metal pipeline's shaders.
-    // J2D_SKIA_MSAA=4 re-enables it for A/B measurements.
-    options.fInternalMultisampleCount = SKBackend_Multisampled() ? SampleCount::k4 : SampleCount::k1;
+    // Default: no multisampled passes. Graphite renders a whole pass with MSAA
+    // as soon as one draw in it needs it, which quantizes every antialiased
+    // edge to the sample count; anti-aliased paths use the path atlas instead,
+    // with full coverage precision like the Metal pipeline's shaders. Non-AA
+    // geometry stays exact either way (span decomposition under MSAA).
+    options.fInternalMultisampleCount = sampleCount(gConfig.msaaSamples);
     // ContextFactory::MakeMetal: see the note in SKEnvironment.mm on SkContexts::MakeGraphite.
     std::unique_ptr<Context> context = ContextFactory::MakeMetal(backend, options);
     if (!context) {
@@ -1406,10 +1428,9 @@ static SkSamplingOptions samplingForHint(jint hint) {
 // so filtering never blends in neighbouring texels (SrcRectConstraint strict).
 static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, const SkRect &dstRect,
                           const SkSamplingOptions &sampling, SkPaint paint) {
-    // Experiment: Graphite's per-edge-AA image draw with no AA
-    // edges instead of the mesh. J2D_SKIA_EDGEAA=1 selects it for measurements.
-    static const bool edgeAAQuads = getenv("J2D_SKIA_EDGEAA") != nullptr;
-    if (edgeAAQuads) {
+    // Alternative: Graphite's per-edge-AA image draw with no AA
+    // edges instead of the mesh (sun.java2d.skia.blitQuads=edgeAA).
+    if (SKBackend_EdgeAAQuads()) {
         SkCanvas::ImageSetEntry entry(image, srcRect, dstRect, 1.0f, SkCanvas::kNone_QuadAAFlags);
         g.canvas->experimental_DrawEdgeAAImageSet(&entry, 1, nullptr, nullptr, sampling, &paint,
                                                   SkCanvas::kStrict_SrcRectConstraint);
