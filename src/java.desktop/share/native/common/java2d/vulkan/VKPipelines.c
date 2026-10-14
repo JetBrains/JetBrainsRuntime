@@ -167,6 +167,25 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     DECL_ARRAY(VkPipelineDynamicStateCreateInfo, dynamicStates, count);
     DECL_ARRAY_2D(VkDynamicState, dynamicStateValues, count, MAX_DYNAMIC_STATES);
     DECL_ARRAY(VkGraphicsPipelineCreateInfo, createInfos, count);
+
+    void* rasterizationStatePNext = NULL;
+    VkPipelineRasterizationLineStateCreateInfoEXT lineRasterizationState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT,
+        .lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT
+    };
+    if (device->bresenhamLinesSupported) {
+        lineRasterizationState.pNext = rasterizationStatePNext;
+        rasterizationStatePNext = &lineRasterizationState;
+    }
+
+    const VkPipelineRasterizationStateCreateInfo rasterizationState = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .pNext = rasterizationStatePNext,
+        .polygonMode = VK_POLYGON_MODE_FILL,
+        .cullMode = VK_CULL_MODE_NONE,
+        .lineWidth = 1.0f
+    };
+
     for (uint32_t i = 0; i < count; i++) {
         const VKCompositeState* compositeState =
             VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque);
@@ -200,12 +219,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             .pViewports = &viewport,
             .scissorCount = 1,
             .pScissors = &scissor
-        };
-        static const VkPipelineRasterizationStateCreateInfo rasterizationState = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-            .polygonMode = VK_POLYGON_MODE_FILL,
-            .cullMode = VK_CULL_MODE_NONE,
-            .lineWidth = 1.0f
         };
         static const VkPipelineMultisampleStateCreateInfo multisampleState = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
