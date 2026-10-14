@@ -26,9 +26,11 @@
 // All functions run on the Skia queue flusher thread unless noted.
 
 #include "SKBackend.h"
+#include "SKGlyphCache.h"
 
 #include "jlong.h"
 #include "fontscalerdefs.h"
+#include "sun_font_StrikeCache.h"
 #include "java_awt_AlphaComposite.h"
 #include "sun_java2d_pipe_BufferedContext.h"
 #include "sun_java2d_pipe_hw_AccelSurface.h"
@@ -36,6 +38,9 @@
 #include "sun_java2d_skia_SKSurfaceData.h"
 
 #include "include/core/SkBitmap.h"
+#include "include/core/SkBlender.h"
+#include "include/core/SkData.h"
+#include "include/effects/SkRuntimeEffect.h"
 #include "include/core/SkColorSpace.h"
 #include "include/core/SkMatrix.h"
 #include "include/core/SkPathBuilder.h"
@@ -120,6 +125,10 @@ void SKBackend_DisposeContext(SKMTLGraphicsConfigInfo *info) {
     SKBackend_Submit(cc, true);
     gContexts.erase(it);
     forgetContext(cc);
+    SKGlyphCache_Flush(cc->glyphCacheAA);
+    SKGlyphCache_Flush(cc->glyphCacheLCD);
+    SKGlyphCache_Free(cc->glyphCacheAA);
+    SKGlyphCache_Free(cc->glyphCacheLCD);
     cc->recorder.reset();
     cc->context.reset();
     delete cc;
@@ -262,10 +271,13 @@ static void forgetSurface(SKSDOps *ops, bool dispose) {
 }
 static bool gXorWarned = false;
 
+static void flushGlyphBatches();
+
 static void applyCanvasState() {
     if (g.canvas == nullptr) {
         return;
     }
+    flushGlyphBatches();
     g.canvas->restoreToCount(g.baseSaveCount);
     g.canvas->save();
     // Java2D clips are in device space: apply before the transform.
@@ -302,6 +314,7 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
 }
 
 void SKBackend_SetDestination(SKSDOps *dst) {
+    flushGlyphBatches();
     g.dst = dst;
     g.canvas = nullptr;
     if (dst == nullptr) {
@@ -692,7 +705,17 @@ SkPaint SKBackend_MakePaint(bool aa) {
 // Primitives
 // ---------------------------------------------------------------------------
 
-#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched()
+// Pending glyph batches of the current context are drawn before anything else
+// touches the canvas, so draw order is preserved.
+static void flushGlyphBatches() {
+    if (g.cc != nullptr) {
+        SKGlyphCache_Flush(g.cc->glyphCacheAA);
+        SKGlyphCache_Flush(g.cc->glyphCacheLCD);
+    }
+}
+
+#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushGlyphBatches()
+#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched()
 
 void SKBackend_FillRect(jint x, jint y, jint w, jint h) {
     REQUIRE_CANVAS();
@@ -875,17 +898,117 @@ void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const voi
 }
 
 // Glyph images come from Java's font rasterizer (sun.font); Skia only composites them.
+// LCD text, after MTLTextRenderer's lcd_color shader: per-channel coverage blends
+// the gamma-adjusted text colour into the gamma-adjusted destination,
+//   Cr = (Ag * Cs^g + (1 - Ag) * Cd^g) ^ (1/g),   g = contrast / 100.
+static sk_sp<SkBlender> lcdBlender(jint contrast) {
+    static const SkRuntimeEffect *effect = [] {
+        auto result = SkRuntimeEffect::MakeForBlender(SkString(R"(
+            uniform half3 srcAdj;
+            uniform half3 gamma;
+            uniform half3 invGamma;
+            half4 main(half4 src, half4 dst) {
+                half3 cov = src.rgb;
+                if (cov.r == 0 && cov.g == 0 && cov.b == 0) {
+                    return dst;
+                }
+                half3 d = pow(dst.rgb, gamma);
+                half3 r = mix(d, srcAdj, cov);
+                return half4(pow(r, invGamma), 1);
+            }
+        )"));
+        if (!result.effect) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend: LCD blender does not compile: %s", result.errorText.c_str());
+        }
+        return result.effect.release();
+    }();
+    if (effect == nullptr) {
+        return nullptr;
+    }
+    static jint lastContrast = -1;
+    static SkColor lastColor = 0;
+    static sk_sp<SkBlender> last;
+    if (!last || contrast != lastContrast || g.color != lastColor) {
+        float gamma = contrast / 100.0f, inv = 1.0f / gamma;
+        SkColor4f c = SkColor4f::FromColor(g.color);
+        float uniforms[9] = { powf(c.fR, gamma), powf(c.fG, gamma), powf(c.fB, gamma),
+                              gamma, gamma, gamma, inv, inv, inv };
+        last = effect->makeBlender(SkData::MakeWithCopy(uniforms, sizeof(uniforms)));
+        lastContrast = contrast;
+        lastColor = g.color;
+    }
+    return last;
+}
+
+static SKGlyphCache *glyphCache(bool lcd) {
+    SKGlyphCache *&slot = lcd ? g.cc->glyphCacheLCD : g.cc->glyphCacheAA;
+    if (slot == nullptr) {
+        slot = SKGlyphCache_Create(g.cc, lcd);
+    }
+    return slot;
+}
+
+// Glyphs too large for a cache cell, or LCD glyphs shifted by a third of a
+// pixel, are uploaded and drawn individually (MTLTextRenderer's NoCache paths).
+static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
+    const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
+    SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, ginfo->rowBytes);
+    if (sk_sp<SkImage> cov = uploadPixmap(pm)) {
+        g.canvas->drawImage(cov, x, y, SkSamplingOptions(SkFilterMode::kNearest), &paint);
+    }
+}
+
+static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint rowBytesOffset, jboolean rgbOrder,
+                                float x, float y, const SkPaint &paint) {
+    const int w = ginfo->width, h = ginfo->height;
+    std::vector<unsigned char> rgba((size_t) w * h * 4);
+    for (int row = 0; row < h; row++) {
+        const unsigned char *src = ginfo->image + (size_t) row * ginfo->rowBytes + rowBytesOffset;
+        unsigned char *dst = rgba.data() + (size_t) row * w * 4;
+        for (int col = 0; col < w; col++, src += 3, dst += 4) {
+            dst[0] = rgbOrder ? src[0] : src[2];
+            dst[1] = src[1];
+            dst[2] = rgbOrder ? src[2] : src[0];
+            dst[3] = 0xff;
+        }
+    }
+    SkPixmap pm(SkImageInfo::Make(w, h, kRGBA_8888_SkColorType, kOpaque_SkAlphaType), rgba.data(), (size_t) w * 4);
+    if (sk_sp<SkImage> cov = uploadPixmap(pm)) {
+        g.canvas->drawImage(cov, x, y, SkSamplingOptions(SkFilterMode::kNearest), &paint);
+    }
+}
+
+static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
+    SkPixmap pm(SkImageInfo::Make(ginfo->width, ginfo->height, kBGRA_8888_SkColorType, kPremul_SkAlphaType),
+                ginfo->image, ginfo->rowBytes);
+    if (sk_sp<SkImage> img = uploadPixmap(pm)) {
+        SkPaint p;
+        p.setBlendMode(g.xorMode ? SkBlendMode::kSrc : g.blend);
+        p.setAlphaf(g.extraAlpha);
+        g.canvas->drawImage(img, x, y, SkSamplingOptions(SkFilterMode::kNearest), &p);
+    }
+}
+
+// Sub-pixel strikes render rx*ry variants of each glyph; pick the one for the
+// fractional position (MTLTextRenderer's ADJUST_SUBPIXEL_GLYPH_POSITION).
+static inline float adjustSubpixel(float coord, int res) {
+    return res > 1 ? coord + 0.5f / (float) res - 0.5f : coord;
+}
+
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
-                               jfloat glyphListOrigX, jfloat glyphListOrigY,
-                               const jlong *images, const jfloat *positions) {
-    REQUIRE_CANVAS();
-    SkPaint p = SKBackend_MakePaint(false);
-    SkSamplingOptions nearest(SkFilterMode::kNearest);
-    std::vector<unsigned char> a8;
+                             jboolean rgbOrder, jint lcdContrast,
+                             jfloat glyphListOrigX, jfloat glyphListOrigY,
+                             const jlong *images, const jfloat *positions) {
+    REQUIRE_CANVAS_TEXT();
+    SkPaint paint = SKBackend_MakePaint(false);
+    SKGlyphCache *aa = nullptr, *lcd = nullptr;
+    SkPaint lcdPaint;
+    bool lcdPaintReady = false;
+
     for (jint i = 0; i < numGlyphs; i++) {
         const GlyphInfo *ginfo = (const GlyphInfo *) jlong_to_ptr(images[i]);
-        if (ginfo == nullptr) {
-            continue;
+        if (ginfo == nullptr || ginfo == (const GlyphInfo *) -1) {
+            break;
         }
         float gx, gy;
         if (usePositions) {
@@ -897,34 +1020,72 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             glyphListOrigX += ginfo->advanceX;
             glyphListOrigY += ginfo->advanceY;
         }
+        int rx = ginfo->subpixelResolutionX, ry = ginfo->subpixelResolutionY;
+        gx = adjustSubpixel(gx, rx);
+        gy = adjustSubpixel(gy, ry);
+        float fx = floorf(gx), fy = floorf(gy);
+        jint subimage = 0;
+        if (!((rx == 1 && ry == 1) || rx <= 0 || ry <= 0)) {
+            subimage = (int) ((gx - fx) * (float) rx) + (int) ((gy - fy) * (float) ry) * rx;
+        }
         if (ginfo->image == nullptr || ginfo->width == 0 || ginfo->height == 0) {
             continue;
         }
-        // Like MTLTextRenderer: glyph images land on whole pixels; the subpixel
-        // fraction would only select an LCD sub-image, which this path lacks.
-        gx = floorf(gx);
-        gy = floorf(gy);
-        const unsigned char *data = ginfo->image;
-        size_t rowBytes = ginfo->rowBytes;
-        if (ginfo->rowBytes == ginfo->width * 3) {
-            // LCD glyph: no subpixel text on this path yet, use the green channel as coverage.
-            a8.resize((size_t) ginfo->width * ginfo->height);
-            for (int row = 0; row < ginfo->height; row++) {
-                for (int col = 0; col < ginfo->width; col++) {
-                    a8[(size_t) row * ginfo->width + col] = ginfo->image[row * ginfo->rowBytes + col * 3 + 1];
+
+        // Glyphs of one list are drawn in order: an immediate draw (uncached
+        // glyph, colour glyph) or a switch between the AA and LCD caches first
+        // draws whatever is batched.
+        auto flushBatches = [&] {
+            flushGlyphBatches();
+            aa = nullptr;
+            lcd = nullptr;
+        };
+        if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
+            if (lcd != nullptr) {
+                flushBatches();
+            }
+            if (aa == nullptr && (aa = glyphCache(false)) != nullptr) {
+                SKGlyphCache_Begin(aa, g.canvas, paint);
+            }
+            if (SKGlyphCache_Fits(aa, ginfo) && SKGlyphCache_Draw(aa, (GlyphInfo *) ginfo, subimage, false, fx, fy)) {
+                continue;
+            }
+            flushBatches();
+            drawGlyphNoCache(ginfo, subimage, fx, fy, paint);
+        } else if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
+            flushBatches();
+            drawColorGlyph(ginfo, fx, fy);
+        } else {
+            if (aa != nullptr) {
+                flushBatches();
+            }
+            // LCD: the three coverage channels are blended per channel against
+            // the destination, in the destination's gamma.
+            if (!lcdPaintReady) {
+                lcdPaint.setColor(SK_ColorWHITE);
+                lcdPaint.setBlender(lcdBlender(lcdContrast));
+                lcdPaintReady = true;
+            }
+            jint rowBytesOffset = 0;
+            if (subPixPos) {
+                jint frac = (jint) ((gx - fx) * 3);
+                if (frac != 0) {
+                    rowBytesOffset = 3 - frac;
+                    fx += 1;
                 }
             }
-            data = a8.data();
-            rowBytes = ginfo->width;
-        } else if (ginfo->rowBytes < ginfo->width) {
-            continue;
-        }
-        SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, rowBytes);
-        sk_sp<SkImage> cov = uploadPixmap(pm);
-        if (cov) {
-            g.canvas->drawImage(cov, gx, gy, nearest, &p);
+            if (lcd == nullptr && (lcd = glyphCache(true)) != nullptr) {
+                SKGlyphCache_Begin(lcd, g.canvas, lcdPaint);
+            }
+            if (rowBytesOffset == 0 && SKGlyphCache_Fits(lcd, ginfo)
+                    && SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, 0, rgbOrder, fx, fy)) {
+                continue;
+            }
+            flushBatches();
+            drawLcdGlyphNoCache(ginfo, rowBytesOffset, rgbOrder, fx, fy, lcdPaint);
         }
     }
+    // batches stay open for the next glyph list; see flushGlyphBatches()
 }
 
 static SkSamplingOptions samplingForHint(jint hint) {
@@ -1151,6 +1312,8 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return;
     }
+    SKGlyphCache_Flush(cc->glyphCacheAA);
+    SKGlyphCache_Flush(cc->glyphCacheLCD);
     std::unique_ptr<Recording> recording = cc->recorder->snap();
     if (recording) {
         InsertRecordingInfo info;

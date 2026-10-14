@@ -44,6 +44,8 @@ import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
 
 import java.awt.AlphaComposite;
+import java.awt.Composite;
+import java.awt.Transparency;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
@@ -273,6 +275,24 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
     @Override
     public BufferedContext getContext() {
         return SKContext.forConfig(graphicsConfig);
+    }
+
+    /**
+     * Same rule as {@code MTLSurfaceData}: LCD text only on opaque surfaces
+     * with an opaque colour and a composite that copies or SrcOvers it.
+     * Without this override the generic lookup finds no LCD loop for a Skia
+     * surface and the hint is downgraded to grayscale.
+     */
+    @Override
+    public boolean canRenderLCDText(SunGraphics2D sg2d) {
+        return sg2d.surfaceData.getTransparency() == Transparency.OPAQUE
+                && sg2d.paintState <= SunGraphics2D.PAINT_OPAQUECOLOR
+                && (sg2d.compositeState <= SunGraphics2D.COMP_ISCOPY
+                    || (sg2d.compositeState <= SunGraphics2D.COMP_ALPHA && canHandleComposite(sg2d.composite)));
+    }
+
+    private static boolean canHandleComposite(Composite c) {
+        return c instanceof AlphaComposite ac && ac.getRule() == AlphaComposite.SRC_OVER && ac.getAlpha() >= 1f;
     }
 
     // ---- pipeline selection ------------------------------------------------

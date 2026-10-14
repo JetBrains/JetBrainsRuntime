@@ -43,11 +43,15 @@
 
 #include <memory>
 
+struct SKGlyphCache;
+
 struct SKConfigContext {
     SKMTLGraphicsConfigInfo *info = nullptr;
     std::unique_ptr<skgpu::graphite::Context> context;
     std::unique_ptr<skgpu::graphite::Recorder> recorder;
     bool dirty = false;   // recorded but not yet inserted/submitted work
+    SKGlyphCache *glyphCacheAA = nullptr;    // created on first use
+    SKGlyphCache *glyphCacheLCD = nullptr;
 };
 
 struct SKSurfaceState {
@@ -128,6 +132,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
                           const unsigned char *mask);
 void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const void *pixels);
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
+                             jboolean rgbOrder, jint lcdContrast,
                                jfloat glyphListOrigX, jfloat glyphListOrigY,
                                const jlong *images, const jfloat *positions);
 void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2, jint sy2,

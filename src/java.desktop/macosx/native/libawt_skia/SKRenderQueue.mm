@@ -45,6 +45,8 @@
 #define BYTES_PER_GLYPH_POSITION sun_java2d_pipe_BufferedTextPipe_BYTES_PER_GLYPH_POSITION
 #define OFFSET_POSITIONS sun_java2d_pipe_BufferedTextPipe_OFFSET_POSITIONS
 #define OFFSET_SUBPIXPOS sun_java2d_pipe_BufferedTextPipe_OFFSET_SUBPIXPOS
+#define OFFSET_RGBORDER  sun_java2d_pipe_BufferedTextPipe_OFFSET_RGBORDER
+#define OFFSET_CONTRAST  sun_java2d_pipe_BufferedTextPipe_OFFSET_CONTRAST
 
 #define NEXT_VAL(buf, type) (((type *)((buf) += sizeof(type)))[-1])
 #define NEXT_INT(buf)       NEXT_VAL(buf, jint)
@@ -157,9 +159,11 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
             jboolean usePositions = EXTRACT_BOOLEAN(packedParams, OFFSET_POSITIONS);
             jboolean subPixPos = EXTRACT_BOOLEAN(packedParams, OFFSET_SUBPIXPOS);
+            jboolean rgbOrder = EXTRACT_BOOLEAN(packedParams, OFFSET_RGBORDER);
+            jint lcdContrast = (packedParams >> OFFSET_CONTRAST) & 0xff;
             const jlong *images = (const jlong *) b;
             const jfloat *positions = usePositions ? (const jfloat *) (b + numGlyphs * BYTES_PER_GLYPH_IMAGE) : nullptr;
-            SKBackend_DrawGlyphList(numGlyphs, usePositions, subPixPos, origX, origY, images, positions);
+            SKBackend_DrawGlyphList(numGlyphs, usePositions, subPixPos, rgbOrder, lcdContrast, origX, origY, images, positions);
             SKIP_BYTES(b, numGlyphs * (BYTES_PER_GLYPH_IMAGE + (usePositions ? BYTES_PER_GLYPH_POSITION : 0)));
             break;
         }
@@ -462,8 +466,8 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
         positions = (jfloat *) env->GetPrimitiveArrayCritical(posArray, nullptr);
     }
     if (!usePositions || positions != nullptr) {
-        SKBackend_DrawGlyphList(numGlyphs, usePositions, subPixPos, glyphListOrigX, glyphListOrigY,
-                                  images, positions);
+        SKBackend_DrawGlyphList(numGlyphs, usePositions, subPixPos, rgbOrder, lcdContrast,
+                                glyphListOrigX, glyphListOrigY, images, positions);
     }
     if (positions != nullptr) {
         env->ReleasePrimitiveArrayCritical(posArray, positions, JNI_ABORT);

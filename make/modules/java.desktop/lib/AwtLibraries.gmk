@@ -646,6 +646,7 @@ ifeq ($(call isTargetOs, macosx), true)
         NAME := awt_skia, \
         OPTIMIZATION := LOW, \
         LINK_TYPE := C++, \
+        EXTRA_SRC := common/font, \
         CXXFLAGS := $(CXXFLAGS_JDKLIB) $(SKIA_CFLAGS), \
         EXTRA_HEADER_DIRS := $(LIBAWT_SKIA_EXTRA_HEADER_DIRS), \
         DISABLED_WARNINGS_clang := deprecated-declarations undef unused-parameter sign-compare, \
