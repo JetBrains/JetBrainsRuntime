@@ -1580,6 +1580,78 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
     vs[i++] = p3;
 }
 
+static void VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
+    jint x1, jint y1, jint x2, jint y2,
+    VKVertex* p1, VKVertex* p2, VKVertex* p3, VKVertex* p4) {
+
+    assert(x1 <= x2 && y1 <= y2);
+
+    p1->x = p4->x = (float) x1;
+    p2->x = p3->x = (float) (x2 + 1);
+    p1->y = p2->y = (float) y1;
+    p3->y = p4->y = (float) (y2 + 1);
+}
+
+void VKRenderer_DrawLine(jint x1, jint y1, jint x2, jint y2) {
+    if (x1 != x2 && y1 != y2) return; // only support axis-aligned lines for now
+    if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return;
+
+    if (x1 > x2) { jint t = x1; x1 = x2; x2 = t; }
+    if (y1 > y2) { jint t = y1; y1 = y2; y2 = t; }
+
+    VKVertex p1 = { .data = context.vertexData };
+    VKVertex p2 = { .data = context.vertexData };
+    VKVertex p3 = { .data = context.vertexData };
+    VKVertex p4 = { .data = context.vertexData };
+    VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
+        x1, y1, x2, y2, &p1, &p2, &p3, &p4);
+
+    VKVertex *vs;
+    VK_DRAW(vs, 1, 6);
+    vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
+}
+
+void VKRenderer_DrawPixel(jint x, jint y) {
+    if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return;
+
+    VKVertex p1 = { .data = context.vertexData };
+    VKVertex p2 = { .data = context.vertexData };
+    VKVertex p3 = { .data = context.vertexData };
+    VKVertex p4 = { .data = context.vertexData };
+    VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
+        x, y, x, y, &p1, &p2, &p3, &p4);
+
+    VKVertex *vs;
+    VK_DRAW(vs, 1, 6);
+    vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
+}
+
+void VKRenderer_DrawScanlines(jint count, jint* scanlines) {
+    if (count == 0) return;
+    if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return;
+
+    VKVertex p1 = { .data = context.vertexData };
+    VKVertex p2 = { .data = context.vertexData };
+    VKVertex p3 = { .data = context.vertexData };
+    VKVertex p4 = { .data = context.vertexData };
+
+    VKVertex* vs;
+    for (uint32_t primitivesDrawn = 0; primitivesDrawn < (uint32_t) count;) {
+        uint32_t currentDraw = VK_DRAW(vs, (uint32_t) count - primitivesDrawn, 6);
+        for (uint32_t i = 0; i < currentDraw; ++i) {
+            jint x1 = *(scanlines++);
+            jint x2 = *(scanlines++);
+            jint y = *(scanlines++);
+            VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
+                x1, y, x2, y, &p1, &p2, &p3, &p4);
+
+            vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
+            vs += 6;
+        }
+        primitivesDrawn += currentDraw;
+    }
+}
+
 void VKRenderer_FillSpans(jint spanCount, jint *spans) {
     if (spanCount == 0) return;
     if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return; // Not ready.
