@@ -92,6 +92,7 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
     private static PixelToParallelogramConverter skTxRenderPipe;
     private static ParallelogramPipe skAAPgramPipe;
     private static SKTextRenderer skTextPipe;
+    private static SKShapePipe skShapePipe;
     private static SKDrawImage skImagePipe;
 
     static {
@@ -99,6 +100,7 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
             SKRenderQueue rq = SKRenderQueue.getInstance();
             skImagePipe = new SKDrawImage();
             skTextPipe = new SKTextRenderer(rq);
+            skShapePipe = new SKShapePipe(rq);
             skRenderPipe = new SKRenderer(rq);
             skAAPgramPipe = skRenderPipe.getAAParallelogramPipe();
             skTxRenderPipe = new PixelToParallelogramConverter(skRenderPipe, skRenderPipe, 1.0, 0.25, true);
@@ -335,7 +337,17 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
                 nonTxPipe = skRenderPipe;
             }
         } else {
-            if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR &&
+            if (SKEnvironment.rasterizesShapes() && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA
+                    && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKPaints.isValid(sg2d))) {
+                // shapes on Skia: no Marlin, no coverage tiles; rectangles and
+                // lines still become antialiased parallelograms via the converter
+                PixelToParallelogramConverter aaConverter =
+                        new PixelToParallelogramConverter(skShapePipe, skAAPgramPipe, 1.0 / 8.0, 0.499, false);
+                sg2d.drawpipe = aaConverter;
+                sg2d.fillpipe = aaConverter;
+                sg2d.shapepipe = aaConverter;
+                validated = true;
+            } else if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR &&
                     (sg2d.imageComp == CompositeType.SrcOverNoEa || sg2d.imageComp == CompositeType.SrcOver)) {
                 if (!validated) {
                     super.validatePipe(sg2d);

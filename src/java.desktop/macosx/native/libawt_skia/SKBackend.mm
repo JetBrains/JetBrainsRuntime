@@ -50,6 +50,9 @@
 #include "include/core/SkPixmap.h"
 #include "include/core/SkRect.h"
 #include "include/core/SkSamplingOptions.h"
+#include "include/core/SkRRect.h"
+#include "include/effects/SkDashPathEffect.h"
+#include "include/core/SkPathUtils.h"
 #include "include/core/SkSpan.h"
 #include "include/core/SkTileMode.h"
 #include "include/core/SkVertices.h"
@@ -1010,6 +1013,84 @@ void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
         addParallelogram(pb, ix11, iy11, dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
     }
     g.canvas->drawPath(pb.detach(), SKBackend_MakePaint(aa));
+}
+
+void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat *stroke,
+                         const jfloat *params, jint windingRule, jint numTypes, const jint *types,
+                         jint numCoords, const jfloat *coords) {
+    REQUIRE_CANVAS();
+    SkPaint p = SKBackend_MakePaint(true);
+    if (!fill) {
+        // BasicStroke: width, cap, join, miter limit, dash phase, dash count, dashes
+        p.setStyle(SkPaint::kStroke_Style);
+        p.setStrokeWidth(stroke[0]);
+        static const SkPaint::Cap caps[] = { SkPaint::kButt_Cap, SkPaint::kRound_Cap, SkPaint::kSquare_Cap };
+        static const SkPaint::Join joins[] = { SkPaint::kMiter_Join, SkPaint::kRound_Join, SkPaint::kBevel_Join };
+        p.setStrokeCap(caps[std::clamp((int) stroke[1], 0, 2)]);
+        p.setStrokeJoin(joins[std::clamp((int) stroke[2], 0, 2)]);
+        p.setStrokeMiter(stroke[3]);
+        const int dashCount = (int) stroke[5];
+        if (dashCount > 0) {
+            p.setPathEffect(SkDashPathEffect::Make(SkSpan(stroke + 6, dashCount), stroke[4]));
+        }
+    }
+    const SkMatrix m = SkMatrix::MakeAll(xform[0], xform[2], xform[4],
+                                         xform[1], xform[3], xform[5],
+                                         0, 0, 1);
+    const bool identity = m.isIdentity();
+    if (!identity) {
+        // The paint (BufferedPaints) is in device space; keep it there while the
+        // geometry is drawn under the user-space transform.
+        SkMatrix inverse;
+        if (p.getShader() != nullptr && m.invert(&inverse)) {
+            p.setShader(p.refShader()->makeWithLocalMatrix(inverse));
+        }
+        g.canvas->save();
+        g.canvas->concat(m);
+    }
+    switch (kind) {
+        case 0:
+            g.canvas->drawRect(SkRect::MakeXYWH(params[0], params[1], params[2], params[3]), p);
+            break;
+        case 1:
+            g.canvas->drawRRect(SkRRect::MakeRectXY(SkRect::MakeXYWH(params[0], params[1], params[2], params[3]),
+                                                    params[4] / 2, params[5] / 2), p);
+            break;
+        case 2:
+            g.canvas->drawOval(SkRect::MakeXYWH(params[0], params[1], params[2], params[3]), p);
+            break;
+        default: {
+            SkPathBuilder pb(windingRule == 0 ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
+            const jfloat *c = coords;
+            for (jint i = 0; i < numTypes; i++) {
+                switch (types[i]) {
+                    case 0: pb.moveTo(c[0], c[1]); c += 2; break;                                  // SEG_MOVETO
+                    case 1: pb.lineTo(c[0], c[1]); c += 2; break;                                  // SEG_LINETO
+                    case 2: pb.quadTo(c[0], c[1], c[2], c[3]); c += 4; break;                      // SEG_QUADTO
+                    case 3: pb.cubicTo(c[0], c[1], c[2], c[3], c[4], c[5]); c += 6; break;         // SEG_CUBICTO
+                    default: pb.close(); break;                                                     // SEG_CLOSE
+                }
+            }
+            SkPath path = pb.detach();
+            if (fill) {
+                g.canvas->drawPath(path, p);
+            } else {
+                // Stroke like Marlin does: the stroked outline (dashes included)
+                // is filled. Skia's rasterizer would otherwise draw strokes of one
+                // device pixel or less as hairlines with a different coverage rule.
+                bool isFill = false;
+                SkPath outline = skpathutils::FillPathWithPaint(path, p, &isFill);
+                SkPaint fillPaint = p;
+                fillPaint.setStyle(SkPaint::kFill_Style);
+                fillPaint.setPathEffect(nullptr);
+                g.canvas->drawPath(outline, fillPaint);
+            }
+            break;
+        }
+    }
+    if (!identity) {
+        g.canvas->restore();
+    }
 }
 
 void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen,

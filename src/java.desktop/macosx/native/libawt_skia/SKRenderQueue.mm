@@ -36,6 +36,7 @@
 #include "sun_java2d_skia_SKMaskFill.h"
 #include "sun_java2d_skia_SKRenderQueue.h"
 #include "sun_java2d_skia_SKRenderer.h"
+#include "sun_java2d_skia_SKShapePipe.h"
 #include "sun_java2d_skia_SKTextRenderer.h"
 
 #define BYTES_PER_POLY_POINT sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_POLY_POINT
@@ -292,6 +293,27 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             SKBackend_InvalidateState();
             break;
         }
+        case sun_java2d_skia_SKShapePipe_FILL_SHAPE:
+        case sun_java2d_skia_SKShapePipe_DRAW_SHAPE: {
+            const bool fill = opcode == sun_java2d_skia_SKShapePipe_FILL_SHAPE;
+            jint kind = NEXT_INT(b);
+            const jfloat *xform = (const jfloat *) b; b += 6 * sizeof(jfloat);
+            const jfloat *stroke = nullptr;
+            if (!fill) {
+                stroke = (const jfloat *) b;
+                b += (6 + (jint) stroke[5]) * sizeof(jfloat);
+            }
+            if (kind == sun_java2d_skia_SKShapePipe_KIND_PATH) {
+                jint rule = NEXT_INT(b), numTypes = NEXT_INT(b), numCoords = NEXT_INT(b);
+                const jint *types = (const jint *) b; b += numTypes * sizeof(jint);
+                const jfloat *coords = (const jfloat *) b; b += numCoords * sizeof(jfloat);
+                SKBackend_DrawShape(fill, kind, xform, stroke, nullptr, rule, numTypes, types, numCoords, coords);
+            } else {
+                const jfloat *params = (const jfloat *) b; b += 6 * sizeof(jfloat);
+                SKBackend_DrawShape(fill, kind, xform, stroke, params, 0, 0, nullptr, 0, nullptr);
+            }
+            break;
+        }
         OP(SYNC): {
             SKBackend_EndOfFlush(true);
             break;
@@ -422,6 +444,28 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
         }
         env->ReleasePrimitiveArrayCritical(xpointsArray, xPoints, JNI_ABORT);
     }
+    SKBackend_EndOfFlush();
+    } // autoreleasepool
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean fill, jint kind,
+                                           jfloatArray xformArr, jfloatArray strokeArr, jint windingRule,
+                                           jintArray typesArr, jint numTypes, jfloatArray coordsArr, jint numCoords)
+{
+    @autoreleasepool {
+    jfloat *xform = (jfloat *) env->GetPrimitiveArrayCritical(xformArr, nullptr);
+    jfloat *stroke = strokeArr != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(strokeArr, nullptr) : nullptr;
+    jint *types = typesArr != nullptr ? (jint *) env->GetPrimitiveArrayCritical(typesArr, nullptr) : nullptr;
+    jfloat *coords = coordsArr != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(coordsArr, nullptr) : nullptr;
+    if (xform != nullptr && (strokeArr == nullptr || stroke != nullptr) && (typesArr == nullptr || types != nullptr)
+            && (coordsArr == nullptr || coords != nullptr)) {
+        SKBackend_DrawShape(fill, kind, xform, stroke, coords, windingRule, numTypes, types, numCoords, coords);
+    }
+    if (coords != nullptr) env->ReleasePrimitiveArrayCritical(coordsArr, coords, JNI_ABORT);
+    if (types != nullptr) env->ReleasePrimitiveArrayCritical(typesArr, types, JNI_ABORT);
+    if (stroke != nullptr) env->ReleasePrimitiveArrayCritical(strokeArr, stroke, JNI_ABORT);
+    if (xform != nullptr) env->ReleasePrimitiveArrayCritical(xformArr, xform, JNI_ABORT);
     SKBackend_EndOfFlush();
     } // autoreleasepool
 }

@@ -42,6 +42,9 @@ public final class SKEnvironment {
             "true".equalsIgnoreCase(System.getProperty("sun.java2d.skia", ""));
     private static final boolean VERBOSE =
             Boolean.getBoolean("sun.java2d.skia.verbose");
+    /** Who rasterizes antialiased shapes: {@code marlin} (coverage tiles, the default) or {@code skia}. */
+    private static final String SHAPES =
+            System.getProperty("sun.java2d.skia.shapes", "marlin");
 
     private static boolean initialized;
     private static String description;
@@ -64,6 +67,11 @@ public final class SKEnvironment {
     public static synchronized boolean isSkiaEnabled() {
         init();
         return description != null;
+    }
+
+    /** Whether antialiased shapes are rasterized by Skia rather than by Marlin. */
+    public static boolean rasterizesShapes() {
+        return "skia".equalsIgnoreCase(SHAPES);
     }
 
     /**
@@ -95,7 +103,7 @@ public final class SKEnvironment {
             description = null;
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
-            String msg = "Skia rendering enabled: " + (description != null ? "YES (" + description + ")" : "NO");
+            String msg = "Skia rendering enabled: " + (description != null ? "YES (" + description + ", shapes: " + SHAPES + ")" : "NO");
             if (VERBOSE) {
                 System.err.println(msg);
             }
