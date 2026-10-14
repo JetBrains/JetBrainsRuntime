@@ -951,7 +951,23 @@ static void addParallelogram(SkPathBuilder &pb, float x, float y, float dx21, fl
     pb.close();
 }
 
+static void parallelogramPoints(SkPoint pts[4], float x, float y, float dx21, float dy21, float dx12, float dy12) {
+    pts[0] = {x, y};
+    pts[1] = {x + dx21, y + dy21};
+    pts[2] = {x + dx21 + dx12, y + dy21 + dy12};
+    pts[3] = {x + dx12, y + dy12};
+}
+
 void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, jfloat dy21, jfloat dx12, jfloat dy12) {
+    if (!aa) {
+        // non-AA: a quad in the mesh batch, like the other non-AA geometry
+        REQUIRE_CANVAS_RECT();
+        SkPoint pts[4];
+        parallelogramPoints(pts, x11, y11, dx21, dy21, dx12, dy12);
+        gRects.begin(g.canvas, SKBackend_MakePaint(false));
+        gRects.addQuad(pts);
+        return;
+    }
     REQUIRE_CANVAS();
     SkPathBuilder pb;
     addParallelogram(pb, x11, y11, dx21, dy21, dx12, dy12);
@@ -960,7 +976,7 @@ void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
 
 void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, jfloat dy21, jfloat dx12, jfloat dy12,
                                    jfloat lwr21, jfloat lwr12) {
-    REQUIRE_CANVAS();
+    if (aa) { REQUIRE_CANVAS(); } else { REQUIRE_CANVAS_RECT(); }
     // The given parallelogram is the stroke centerline (see MTLRenderer_DrawParallelogram):
     // grow it by half the line width for the outer edge, shrink it for the inner one.
     float ldx21 = dx21 * lwr21, ldy21 = dy21 * lwr21;
@@ -968,6 +984,18 @@ void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
     float ox11 = x11 - (ldx21 + ldx12) / 2.0f, oy11 = y11 - (ldy21 + ldy12) / 2.0f;
     bool hole = lwr21 < 1.0f && lwr12 < 1.0f; // otherwise the stroke covers the interior
     float ix11 = x11 + (ldx21 + ldx12) / 2.0f, iy11 = y11 + (ldy21 + ldy12) / 2.0f;
+    if (!aa) {
+        SkPoint outer[4], inner[4];
+        parallelogramPoints(outer, ox11, oy11, dx21 + ldx21, dy21 + ldy21, dx12 + ldx12, dy12 + ldy12);
+        gRects.begin(g.canvas, SKBackend_MakePaint(false));
+        if (hole) {
+            parallelogramPoints(inner, ix11, iy11, dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
+            gRects.addRing(outer, inner);
+        } else {
+            gRects.addQuad(outer);
+        }
+        return;
+    }
     SkPathBuilder pb;
     pb.setFillType(SkPathFillType::kEvenOdd);
     addParallelogram(pb, ox11, oy11, dx21 + ldx21, dy21 + ldy21, dx12 + ldx12, dy12 + ldy12);
@@ -1214,6 +1242,39 @@ static SkSamplingOptions samplingForHint(jint hint) {
     return hint == 1 ? SkSamplingOptions(SkFilterMode::kNearest) : SkSamplingOptions(SkFilterMode::kLinear);
 }
 
+// Java2D blits are hard-edged quads sampling the source with edge extension
+// (the Metal pipeline draws textured quads). Graphite anti-aliases every rect
+// that is not pixel-aligned in device space whatever the paint says, so a
+// transformed drawImageRect gets coverage edges; a mesh is rasterized without
+// coverage. The sample coordinates are kept half a texel inside the source rect
+// so filtering never blends in neighbouring texels (SrcRectConstraint strict).
+static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, const SkRect &dstRect,
+                          const SkSamplingOptions &sampling, SkPaint paint) {
+    // Experiment: Graphite's per-edge-AA image draw with no AA
+    // edges instead of the mesh. J2D_SKIA_EDGEAA=1 selects it for measurements.
+    static const bool edgeAAQuads = getenv("J2D_SKIA_EDGEAA") != nullptr;
+    if (edgeAAQuads) {
+        SkCanvas::ImageSetEntry entry(image, srcRect, dstRect, 1.0f, SkCanvas::kNone_QuadAAFlags);
+        g.canvas->experimental_DrawEdgeAAImageSet(&entry, 1, nullptr, nullptr, sampling, &paint,
+                                                  SkCanvas::kStrict_SrcRectConstraint);
+        return;
+    }
+    sk_sp<SkShader> shader = image->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, sampling);
+    SkRect inset = srcRect;
+    inset.inset(std::min(0.5f, srcRect.width() / 2), std::min(0.5f, srcRect.height() / 2));
+    shader = SkShaders::CoordClamp(std::move(shader), inset);
+    paint.setShader(std::move(shader));
+    paint.setAntiAlias(false);
+    const SkPoint positions[4] = {{dstRect.fLeft, dstRect.fTop}, {dstRect.fRight, dstRect.fTop},
+                                  {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
+    const SkPoint texCoords[4] = {{srcRect.fLeft, srcRect.fTop}, {srcRect.fRight, srcRect.fTop},
+                                  {srcRect.fRight, srcRect.fBottom}, {srcRect.fLeft, srcRect.fBottom}};
+    static const uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
+    g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
+                                                nullptr, 6, indices),
+                           SkBlendMode::kModulate, paint);
+}
+
 // A software source is uploaded per blit. Upload only what can be visible (the
 // destination rect clipped to the clip, when the canvas matrix is identity) and
 // in pieces no larger than the texture limit: a 20000 px wide BufferedImage is
@@ -1258,8 +1319,7 @@ static void blitSoftwareSource(JNIEnv *env, SurfaceDataOps *src, jint srctype, j
             }
             SkRect tileDst = SkRect::MakeLTRB((SkScalar) (dst.left() + (tx - sx1) / scaleX), (SkScalar) (dst.top() + (ty - sy1) / scaleY),
                                               (SkScalar) (dst.left() + (tx + tw - sx1) / scaleX), (SkScalar) (dst.top() + (ty + th - sy1) / scaleY));
-            g.canvas->drawImageRect(image, SkRect::MakeWH(tw, th), tileDst, samplingForHint(hint), &p,
-                                    SkCanvas::kStrict_SrcRectConstraint);
+            drawImageQuad(image, SkRect::MakeWH(tw, th), tileDst, samplingForHint(hint), p);
         }
     }
 }
@@ -1301,10 +1361,7 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     SkPaint p;
     applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
-    // Strict: Java's transformed and scaled blits never sample outside the source
-    // rect (edge texels extend), Skia's default would sample transparency there.
-    g.canvas->drawImageRect(image, srcRect, dstRect, samplingForHint(hint), &p,
-                            SkCanvas::kStrict_SrcRectConstraint);
+    drawImageQuad(image, srcRect, dstRect, samplingForHint(hint), p);
 }
 
 // Graphite delivers the readback callback from checkAsyncWorkCompletion() in the
