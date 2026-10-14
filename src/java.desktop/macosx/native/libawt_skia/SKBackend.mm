@@ -71,6 +71,8 @@
 #include <cstring>
 #include <unordered_map>
 #include <unordered_set>
+#include <array>
+#include <cfloat>
 #include <vector>
 
 using namespace skgpu::graphite;
@@ -85,6 +87,16 @@ static std::unordered_map<void *, SKConfigContext *> gContexts;
 static void forgetContext(SKConfigContext *cc);
 static void forgetSurface(SKSDOps *ops, bool dispose);
 static void flushAllBatches();
+
+// J2D_SKIA_MSAA=4: Graphite renders with 4x MSAA. With MSAA a
+// pass multisamples every draw in it, so non-AA geometry that is not pixel
+// aligned (rotated parallelograms, fractional or rotated blits) is decomposed
+// into integer spans by the pixel-centre rule instead of relying on the
+// rasterizer.
+bool SKBackend_Multisampled() {
+    static const bool msaa = [] { const char *v = getenv("J2D_SKIA_MSAA"); return v != nullptr && atoi(v) == 4; }();
+    return msaa;
+}
 
 SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
     if (info == nullptr || info->context == nil) {
@@ -113,8 +125,7 @@ SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
     // parallelograms) 4-level coverage. Anti-aliased paths use the path atlas
     // instead, with full coverage precision like the Metal pipeline's shaders.
     // J2D_SKIA_MSAA=4 re-enables it for A/B measurements.
-    const char *msaa = getenv("J2D_SKIA_MSAA");
-    options.fInternalMultisampleCount = (msaa != nullptr && atoi(msaa) == 4) ? SampleCount::k4 : SampleCount::k1;
+    options.fInternalMultisampleCount = SKBackend_Multisampled() ? SampleCount::k4 : SampleCount::k1;
     // ContextFactory::MakeMetal: see the note in SKEnvironment.mm on SkContexts::MakeGraphite.
     std::unique_ptr<Context> context = ContextFactory::MakeMetal(backend, options);
     if (!context) {
@@ -961,6 +972,29 @@ static void addParallelogram(SkPathBuilder &pb, float x, float y, float dx21, fl
     pb.close();
 }
 
+// The rows and columns whose centres fall inside a convex quad, half-open
+// like the software loops (ParallelogramUtils.h): [ceil(v - 0.5), ...).
+template <typename Row>
+static void convexQuadSpans(const SkPoint pts[4], Row row) {
+    float ymin = pts[0].fY, ymax = pts[0].fY;
+    for (int i = 1; i < 4; i++) { ymin = std::min(ymin, pts[i].fY); ymax = std::max(ymax, pts[i].fY); }
+    const jint y0 = (jint) std::ceil(ymin - 0.5f), y1 = (jint) std::ceil(ymax - 0.5f);
+    for (jint y = y0; y < y1; y++) {
+        const float cy = y + 0.5f;
+        float xl = FLT_MAX, xr = -FLT_MAX;
+        for (int i = 0; i < 4; i++) {
+            const SkPoint &a = pts[i], &b = pts[(i + 1) % 4];
+            if ((cy >= a.fY && cy < b.fY) || (cy >= b.fY && cy < a.fY)) {
+                const float x = a.fX + (cy - a.fY) * (b.fX - a.fX) / (b.fY - a.fY);
+                xl = std::min(xl, x); xr = std::max(xr, x);
+            }
+        }
+        if (xl <= xr) {
+            row(y, (jint) std::ceil(xl - 0.5f), (jint) std::ceil(xr - 0.5f));
+        }
+    }
+}
+
 static void parallelogramPoints(SkPoint pts[4], float x, float y, float dx21, float dy21, float dx12, float dy12) {
     pts[0] = {x, y};
     pts[1] = {x + dx21, y + dy21};
@@ -975,7 +1009,11 @@ void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
         SkPoint pts[4];
         parallelogramPoints(pts, x11, y11, dx21, dy21, dx12, dy12);
         gRects.begin(g.canvas, SKBackend_MakePaint(false));
-        gRects.addQuad(pts);
+        if (SKBackend_Multisampled()) {
+            convexQuadSpans(pts, [](jint y, jint l, jint r) { gRects.addRect(l, y, r, y + 1); });
+        } else {
+            gRects.addQuad(pts);
+        }
         return;
     }
     REQUIRE_CANVAS();
@@ -1000,6 +1038,24 @@ void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
         gRects.begin(g.canvas, SKBackend_MakePaint(false));
         if (hole) {
             parallelogramPoints(inner, ix11, iy11, dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
+        }
+        if (SKBackend_Multisampled()) {
+            // outer spans minus the inner spans of the same row
+            std::vector<std::array<jint, 3>> innerSpans;
+            if (hole) {
+                convexQuadSpans(inner, [&](jint y, jint l, jint r) { innerSpans.push_back({y, l, r}); });
+            }
+            convexQuadSpans(outer, [&](jint y, jint l, jint r) {
+                for (const auto &in : innerSpans) {
+                    if (in[0] == y) {
+                        gRects.addRect(l, y, std::min(r, in[1]), y + 1);
+                        gRects.addRect(std::max(l, in[2]), y, r, y + 1);
+                        return;
+                    }
+                }
+                gRects.addRect(l, y, r, y + 1);
+            });
+        } else if (hole) {
             gRects.addRing(outer, inner);
         } else {
             gRects.addQuad(outer);
@@ -1353,14 +1409,65 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
     shader = SkShaders::CoordClamp(std::move(shader), inset);
     paint.setShader(std::move(shader));
     paint.setAntiAlias(false);
-    const SkPoint positions[4] = {{dstRect.fLeft, dstRect.fTop}, {dstRect.fRight, dstRect.fTop},
-                                  {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
-    const SkPoint texCoords[4] = {{srcRect.fLeft, srcRect.fTop}, {srcRect.fRight, srcRect.fTop},
-                                  {srcRect.fRight, srcRect.fBottom}, {srcRect.fLeft, srcRect.fBottom}};
-    static const uint16_t indices[6] = {0, 1, 2, 0, 2, 3};
-    g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
-                                                nullptr, 6, indices),
-                           SkBlendMode::kModulate, paint);
+    static const uint16_t quadIndices[6] = {0, 1, 2, 0, 2, 3};
+    if (!SKBackend_Multisampled()) {
+        const SkPoint positions[4] = {{dstRect.fLeft, dstRect.fTop}, {dstRect.fRight, dstRect.fTop},
+                                      {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
+        const SkPoint texCoords[4] = {{srcRect.fLeft, srcRect.fTop}, {srcRect.fRight, srcRect.fTop},
+                                      {srcRect.fRight, srcRect.fBottom}, {srcRect.fLeft, srcRect.fBottom}};
+        g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
+                                                    nullptr, 6, quadIndices),
+                               SkBlendMode::kModulate, paint);
+        return;
+    }
+    // MSAA: the destination quad in device space, decomposed into the pixel
+    // spans whose centres it covers; texture coordinates come from mapping
+    // each span corner back through the canvas matrix and the dst->src map.
+    const SkMatrix toDevice = g.canvas->getLocalToDevice().asM33();
+    SkMatrix toLocal;
+    if (!toDevice.invert(&toLocal)) {
+        return;
+    }
+    const SkMatrix toSource = SkMatrix::Concat(SkMatrix::RectToRect(dstRect, srcRect), toLocal);   // device -> src
+    SkPoint quad[4] = {{dstRect.fLeft, dstRect.fTop}, {dstRect.fRight, dstRect.fTop},
+                       {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
+    toDevice.mapPoints(SkSpan<SkPoint>(quad, 4));
+    std::vector<SkPoint> positions, texCoords;
+    std::vector<uint16_t> indices;
+    auto addSpanQuad = [&](float l, float t, float r, float b) {
+        const uint16_t base = (uint16_t) positions.size();
+        SkPoint corners[4] = {{l, t}, {r, t}, {r, b}, {l, b}};
+        positions.insert(positions.end(), corners, corners + 4);
+        toSource.mapPoints(SkSpan<SkPoint>(corners, 4));
+        texCoords.insert(texCoords.end(), corners, corners + 4);
+        for (uint16_t i : quadIndices) indices.push_back(base + i);
+    };
+    if (toDevice.rectStaysRect()) {
+        SkRect dev = toDevice.mapRect(dstRect);
+        const float l = std::ceil(dev.fLeft - 0.5f), t = std::ceil(dev.fTop - 0.5f);
+        const float r = std::ceil(dev.fRight - 0.5f), b = std::ceil(dev.fBottom - 0.5f);
+        if (r > l && b > t) addSpanQuad(l, t, r, b);
+    } else {
+        convexQuadSpans(quad, [&](jint y, jint l, jint r) {
+            if (r > l) addSpanQuad(l, y, r, y + 1);
+            if (positions.size() + 4 > 0xffff) {
+                g.canvas->save(); g.canvas->resetMatrix();
+                g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
+                                                            texCoords.data(), nullptr, (int) indices.size(), indices.data()),
+                                       SkBlendMode::kModulate, paint);
+                g.canvas->restore();
+                positions.clear(); texCoords.clear(); indices.clear();
+            }
+        });
+    }
+    if (!indices.empty()) {
+        g.canvas->save();
+        g.canvas->resetMatrix();
+        g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
+                                                    texCoords.data(), nullptr, (int) indices.size(), indices.data()),
+                               SkBlendMode::kModulate, paint);
+        g.canvas->restore();
+    }
 }
 
 // A software source is uploaded per blit. Upload only what can be visible (the

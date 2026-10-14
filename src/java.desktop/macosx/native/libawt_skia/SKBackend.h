@@ -77,6 +77,7 @@ typedef struct {
 bool SKSurfaceData_IsSkiaOps(SurfaceDataOps *ops);
 
 // Contexts
+bool SKBackend_Multisampled();   // J2D_SKIA_MSAA=4
 SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info);
 void SKBackend_DisposeContext(SKMTLGraphicsConfigInfo *info);
 
