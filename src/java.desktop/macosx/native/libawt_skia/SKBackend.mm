@@ -255,6 +255,7 @@ struct RenderState {
     float extraAlpha = 1.0f;
     SkBlendMode blend = SkBlendMode::kSrcOver;
     bool xorMode = false;
+    jint xorPixel = 0;
 
     // clip (device space)
     bool hasRectClip = false;
@@ -295,8 +296,6 @@ static void forgetSurface(SKSDOps *ops, bool dispose) {
         g.touchedWindows.erase(ops);
     }
 }
-
-static bool gXorWarned = false;
 
 static void applyCanvasState() {
     if (g.canvas == nullptr) {
@@ -445,13 +444,8 @@ void SKBackend_SetAlphaComposite(jint rule, jfloat extraAlpha, jint flags) {
 }
 
 void SKBackend_SetXorComposite(jint xorPixel) {
-    // Bitwise XOR has no Skia equivalent; the Java side keeps XOR on the
-    // software pipes, so this is only reached for ops routed here anyway.
     g.xorMode = true;
-    if (!gXorWarned) {
-        gXorWarned = true;
-        J2dRlsTraceLn(J2D_TRACE_WARNING, "Skia backend: XOR composite is not supported, drawing with Src");
-    }
+    g.xorPixel = xorPixel;
 }
 
 void SKBackend_ResetComposite() {
@@ -715,10 +709,79 @@ void SKBackend_SetTexturePaint(JNIEnv *env, jboolean filter, jlong pSrc,
     setTexturePaintShader(std::move(image), filter, xp0, xp1, xp3, yp0, yp1, yp3);
 }
 
+// Java2D's XOR mode, as the Metal pipeline implements it (frag_*_xorMode):
+// for colour paints dst' = dst ^ ((color ^ xorPixel) * coverage), coverage being
+// the source alpha (1 for fills, the glyph/mask value for text and shapes);
+// for image sources dst' = dst ^ pixel ^ xorPixel. 8-bit channel arithmetic.
+// Runtime blenders are restricted to ES2 SkSL, which has no integer bit
+// operations, so the XOR is done bit by bit.
+static sk_sp<SkBlender> xorBlender(jint xorPixel, SkColor color, bool colorPaint) {
+    static const SkRuntimeEffect *effect = [] {
+        auto result = SkRuntimeEffect::MakeForBlender(SkString(R"(
+            uniform half3 xorColor;
+            uniform half3 srcColor;
+            uniform half colorPaint;
+            float3 bxor(float3 a, float3 b) {
+                float3 r = float3(0.0);
+                float p = 1.0;
+                for (int i = 0; i < 8; i++) {
+                    float3 ab = mod(floor(a / p), 2.0);
+                    float3 bb = mod(floor(b / p), 2.0);
+                    r += mod(ab + bb, 2.0) * p;
+                    p *= 2.0;
+                }
+                return r;
+            }
+            half4 main(half4 src, half4 dst) {
+                float3 x = floor(float3(xorColor) * 255.0 + 0.5);
+                float3 d = floor(float3(dst.rgb) * 255.0 + 0.5);
+                float3 c;
+                if (colorPaint > 0.5) {
+                    float3 k = bxor(floor(float3(srcColor) * 255.0 + 0.5), x);
+                    c = floor(k * float(src.a) + 0.5);
+                } else {
+                    c = bxor(floor(float3(src.rgb) * 255.0 + 0.5), x);
+                }
+                return half4(half3(bxor(d, c) / 255.0), src.a + (1.0 - src.a) * dst.a);
+            }
+        )"));
+        if (!result.effect) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend: XOR blender does not compile: %s", result.errorText.c_str());
+        }
+        return result.effect.release();
+    }();
+    if (effect == nullptr) {
+        return nullptr;
+    }
+    static jint lastPixel = 0;
+    static SkColor lastColor = 0;
+    static bool lastColorPaint = false;
+    static sk_sp<SkBlender> last;
+    if (!last || lastPixel != xorPixel || lastColor != color || lastColorPaint != colorPaint) {
+        float u[7] = { ((xorPixel >> 16) & 0xff) / 255.0f, ((xorPixel >> 8) & 0xff) / 255.0f, (xorPixel & 0xff) / 255.0f,
+                       SkColorGetR(color) / 255.0f, SkColorGetG(color) / 255.0f, SkColorGetB(color) / 255.0f,
+                       colorPaint ? 1.0f : 0.0f };
+        last = effect->makeBlender(SkData::MakeWithCopy(u, sizeof(u)));
+        lastPixel = xorPixel;
+        lastColor = color;
+        lastColorPaint = colorPaint;
+    }
+    return last;
+}
+
+// The current composite on a paint: a blend mode, or the XOR blender.
+static void applyComposite(SkPaint &p, bool colorPaint = true) {
+    if (g.xorMode) {
+        p.setBlender(xorBlender(g.xorPixel, g.color, colorPaint && !g.shader));
+    } else {
+        p.setBlendMode(g.blend);
+    }
+}
+
 SkPaint SKBackend_MakePaint(bool aa) {
     SkPaint p;
     p.setAntiAlias(aa);
-    p.setBlendMode(g.xorMode ? SkBlendMode::kSrc : g.blend);
+    applyComposite(p);
     if (g.shader) {
         p.setShader(g.shader);
         p.setColor4f(SkColor4f{1, 1, 1, g.extraAlpha});
@@ -950,7 +1013,7 @@ void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const voi
     sk_sp<SkImage> img = uploadPixmap(pm);
     if (!img) return;
     SkPaint p;
-    p.setBlendMode(g.xorMode ? SkBlendMode::kSrc : g.blend);
+    applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
     g.canvas->drawImage(img, (SkScalar) dstx, (SkScalar) dsty, SkSamplingOptions(SkFilterMode::kNearest), &p);
 }
@@ -1041,7 +1104,7 @@ static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
                 ginfo->image, ginfo->rowBytes);
     if (sk_sp<SkImage> img = uploadPixmap(pm)) {
         SkPaint p;
-        p.setBlendMode(g.xorMode ? SkBlendMode::kSrc : g.blend);
+        applyComposite(p, false);
         p.setAlphaf(g.extraAlpha);
         g.canvas->drawImage(img, x, y, SkSamplingOptions(SkFilterMode::kNearest), &p);
     }
@@ -1182,7 +1245,7 @@ static void blitSoftwareSource(JNIEnv *env, SurfaceDataOps *src, jint srctype, j
         }
     }
     SkPaint p;
-    p.setBlendMode(g.xorMode ? SkBlendMode::kSrc : g.blend);
+    applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
     const jint maxTex = g.cc != nullptr && g.cc->recorder ? g.cc->recorder->maxTextureSize() : 4096;
     for (jint ty = sy1; ty < sy2; ty += maxTex) {
@@ -1236,7 +1299,7 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     }
     SkRect dstRect = SkRect::MakeLTRB((SkScalar) dx1, (SkScalar) dy1, (SkScalar) dx2, (SkScalar) dy2);
     SkPaint p;
-    p.setBlendMode(g.xorMode ? SkBlendMode::kSrc : g.blend);
+    applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
     // Strict: Java's transformed and scaled blits never sample outside the source
     // rect (edge texels extend), Skia's default would sample transparency there.

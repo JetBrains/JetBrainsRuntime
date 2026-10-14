@@ -323,10 +323,9 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         SKRenderer nonTxPipe = null;
 
         if (sg2d.antialiasHint != SunHints.INTVAL_ANTIALIAS_ON) {
-            // Same conditions as MTLSurfaceData. XOR is accepted here and drawn as
-            // Src by the native side (no XOR in Skia); the software loops cannot
-            // touch a Skia surface, so a custom Composite falls through to them
-            // and fails like it does on Metal.
+            // Same conditions as MTLSurfaceData (XOR is a blender on the native
+            // side). A custom Composite falls through to the software loops,
+            // which cannot touch a Skia surface, and fails like it does on Metal.
             if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR &&
                     sg2d.compositeState <= SunGraphics2D.COMP_XOR) {
                 txPipe = skTxRenderPipe;
