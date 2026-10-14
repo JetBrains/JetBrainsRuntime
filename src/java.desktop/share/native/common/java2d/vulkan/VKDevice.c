@@ -104,29 +104,40 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     VKNamedEntry* extensions = NULL;
     DEF_NAMED_ENTRY(extensions, VK_KHR_SWAPCHAIN_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_EXT_LINE_RASTERIZATION_EXTENSION);
     VKNamedEntry_Match(extensions, allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
 
     // Query device properties.
-    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainMaintenance1Features = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
-            .pNext = NULL,
-            .swapchainMaintenance1 = VK_FALSE,
-    };
-
     VkPhysicalDeviceVulkan12Features device12Features = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext = NULL
     };
+    void* pNext = &device12Features;
 
-    VkPhysicalDeviceFeatures2 deviceFeatures2 = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-            .pNext = &device12Features
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT swapchainMaintenance1Features = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
+        .pNext = NULL,
+        .swapchainMaintenance1 = VK_FALSE,
     };
-
     if (VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found != NULL) {
-        device12Features.pNext = &swapchainMaintenance1Features;
+        swapchainMaintenance1Features.pNext = pNext;
+        pNext = &swapchainMaintenance1Features;
     }
 
+    VkPhysicalDeviceLineRasterizationFeaturesEXT lineRasterizationFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT,
+        .pNext = NULL,
+        .bresenhamLines = VK_FALSE,
+    };
+    if (VK_EXT_LINE_RASTERIZATION_EXTENSION.found != NULL) {
+        lineRasterizationFeatures.pNext = pNext;
+        pNext = &lineRasterizationFeatures;
+    }
+
+    VkPhysicalDeviceFeatures2 deviceFeatures2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+        .pNext = pNext
+    };
     vk->vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
     VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
     vk->vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
@@ -291,6 +302,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .supportedFormats = { .as_untyped = supportedFormats.as_untyped },
         .caps = caps,
         .swapchainMaintenance1Supported = hasSwapchainMaintenance1,
+        .bresenhamLinesSupported = lineRasterizationFeatures.bresenhamLines
     };
 }
 
@@ -352,16 +364,26 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
     };
     void *pNext = &features12;
 
-    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT featuresSwapchainMaintenance1 = {
-            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
-    };
-
     VKEnv* vk = VKEnv_GetInstance();
 
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT featuresSwapchainMaintenance1 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT,
+    };
     if (vk->presentationSupported && device->swapchainMaintenance1Supported) {
         featuresSwapchainMaintenance1.swapchainMaintenance1 = VK_TRUE;
         featuresSwapchainMaintenance1.pNext = pNext;
         pNext = &featuresSwapchainMaintenance1;
+    }
+
+    VkPhysicalDeviceLineRasterizationFeaturesEXT lineRasterizationFeatures = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT,
+        .pNext = NULL,
+        .bresenhamLines = VK_FALSE,
+    };
+    if (device->bresenhamLinesSupported) {
+        lineRasterizationFeatures.bresenhamLines = VK_TRUE;
+        lineRasterizationFeatures.pNext = pNext;
+        pNext = &lineRasterizationFeatures;
     }
 
     VkDeviceCreateInfo createInfo = {
