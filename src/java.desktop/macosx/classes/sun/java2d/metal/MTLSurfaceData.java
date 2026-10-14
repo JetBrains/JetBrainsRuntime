@@ -295,7 +295,7 @@ public abstract class MTLSurfaceData extends SurfaceData
      */
     @Override
     public final MTLContext getContext() {
-        return graphicsConfig.getContext();
+        return graphicsConfig.getMTLContext();
     }
 
     /**

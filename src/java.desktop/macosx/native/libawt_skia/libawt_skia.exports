@@ -1,0 +1,5 @@
+# Symbols exported from libawt_skia (ld64 -exported_symbols_list).
+# The prebuilt Skia static libraries are compiled with default visibility; without
+# this list every Skia symbol would be exported, which bloats the dylib and makes
+# in-process coexistence with another Skia copy (Skiko) fragile.
+_Java_sun_java2d_skia_*
