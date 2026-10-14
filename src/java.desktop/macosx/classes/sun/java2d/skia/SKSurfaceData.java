@@ -40,6 +40,7 @@ import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.PixelToParallelogramConverter;
 import sun.java2d.pipe.RenderBuffer;
+import sun.java2d.pipe.ShapeDrawPipe;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
 
@@ -337,12 +338,19 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
                 nonTxPipe = skRenderPipe;
             }
         } else {
-            if (SKEnvironment.rasterizesShapes() && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA
-                    && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKPaints.isValid(sg2d))) {
-                // shapes on Skia: no Marlin, no coverage tiles; rectangles and
-                // lines still become antialiased parallelograms via the converter
+            boolean skiaPaint = sg2d.compositeState <= SunGraphics2D.COMP_ALPHA
+                    && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKPaints.isValid(sg2d));
+            if (skiaPaint && (SKEnvironment.rasterizesShapes() || SKEnvironment.rasterizesAnalyticShapes())) {
+                // shapes on Skia, all of them or the analytic ones with Marlin
+                // for the rest; rectangles and lines still become antialiased
+                // parallelograms via the converter
+                ShapeDrawPipe shapes = skShapePipe;
+                if (SKEnvironment.rasterizesAnalyticShapes()) {
+                    super.validatePipe(sg2d);   // the Marlin pipe for this state
+                    shapes = new SKShapePipe.Hybrid(skShapePipe, sg2d.shapepipe);
+                }
                 PixelToParallelogramConverter aaConverter =
-                        new PixelToParallelogramConverter(skShapePipe, skAAPgramPipe, 1.0 / 8.0, 0.499, false);
+                        new PixelToParallelogramConverter(shapes, skAAPgramPipe, 1.0 / 8.0, 0.499, false);
                 sg2d.drawpipe = aaConverter;
                 sg2d.fillpipe = aaConverter;
                 sg2d.shapepipe = aaConverter;

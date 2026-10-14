@@ -42,7 +42,12 @@ public final class SKEnvironment {
             "true".equalsIgnoreCase(System.getProperty("sun.java2d.skia", ""));
     private static final boolean VERBOSE =
             Boolean.getBoolean("sun.java2d.skia.verbose");
-    /** Who rasterizes antialiased shapes: {@code marlin} (coverage tiles, the default) or {@code skia}. */
+    /**
+     * Who rasterizes antialiased shapes: {@code marlin} (coverage tiles, the
+     * default), {@code analytic} (Skia for the shapes it renders analytically:
+     * axis-aligned rectangles, round rectangles and ellipses; Marlin for the
+     * rest) or {@code skia} (everything).
+     */
     private static final String SHAPES =
             System.getProperty("sun.java2d.skia.shapes", "marlin");
 
@@ -69,9 +74,14 @@ public final class SKEnvironment {
         return description != null;
     }
 
-    /** Whether antialiased shapes are rasterized by Skia rather than by Marlin. */
+    /** Whether every antialiased shape is rasterized by Skia rather than by Marlin. */
     public static boolean rasterizesShapes() {
         return "skia".equalsIgnoreCase(SHAPES);
+    }
+
+    /** Whether Skia rasterizes the antialiased shapes it has analytic renderers for. */
+    public static boolean rasterizesAnalyticShapes() {
+        return "analytic".equalsIgnoreCase(SHAPES);
     }
 
     /**

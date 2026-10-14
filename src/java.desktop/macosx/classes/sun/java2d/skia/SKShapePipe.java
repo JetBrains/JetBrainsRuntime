@@ -91,6 +91,52 @@ final class SKShapePipe implements ShapeDrawPipe {
         }
     }
 
+    /**
+     * The {@code analytic} mode: shapes Skia renders analytically go to Skia,
+     * everything else to the Marlin pipe that was installed for this state.
+     */
+    static final class Hybrid implements ShapeDrawPipe {
+        private final SKShapePipe skia;
+        private final ShapeDrawPipe marlin;
+
+        Hybrid(SKShapePipe skia, ShapeDrawPipe marlin) {
+            this.skia = skia;
+            this.marlin = marlin;
+        }
+
+        @Override
+        public void draw(SunGraphics2D sg2d, Shape s) {
+            if (sg2d.stroke instanceof BasicStroke bs && isAnalytic(sg2d, s, bs)) {
+                skia.draw(sg2d, s);
+            } else {
+                marlin.draw(sg2d, s);
+            }
+        }
+
+        @Override
+        public void fill(SunGraphics2D sg2d, Shape s) {
+            if (isAnalytic(sg2d, s, null)) {
+                skia.fill(sg2d, s);
+            } else {
+                marlin.fill(sg2d, s);
+            }
+        }
+    }
+
+    /** Whether {@link #render} would reach one of Skia's analytic renderers. */
+    static boolean isAnalytic(SunGraphics2D sg2d, Shape s, BasicStroke bs) {
+        if (!(s instanceof Rectangle2D || s instanceof Ellipse2D || s instanceof RoundRectangle2D)) {
+            return false;
+        }
+        AffineTransform at = sg2d.transform;
+        if (bs == null) {
+            return true;
+        }
+        boolean thin = sg2d.strokeState <= SunGraphics2D.STROKE_THINDASHED;
+        double lw = thin ? userSpaceLineWidth(at, THIN_PEN_SIZE) : bs.getLineWidth();
+        return bs.getDashArray() == null && lw * Math.sqrt(Math.abs(at.getDeterminant())) > 1.0;
+    }
+
     @Override
     public void fill(SunGraphics2D sg2d, Shape s) {
         render(sg2d, s, null);
@@ -136,7 +182,7 @@ final class SKShapePipe implements ShapeDrawPipe {
         // and Skia's analytic oval stroke degrades at one device pixel or less.
         boolean analyticStroke = bs == null
                 || (bs.getDashArray() == null && stroke[0] * Math.sqrt(Math.abs(at.getDeterminant())) > 1.0);
-        if (axisAligned && analyticStroke && analytic(s, at, normalize, bs != null, geo)) {
+        if (analyticStroke && analytic(s, at, axisAligned && normalize, axisAligned, bs != null, geo)) {
             // ready
         } else if (bs == null) {
             // fill: the device-space path, normalized like Marlin's
@@ -171,13 +217,18 @@ final class SKShapePipe implements ShapeDrawPipe {
     }
 
     /**
-     * Rectangles, round rectangles and ellipses under an axis-aligned transform:
-     * the bounds go through the transform and, with normalization, their edges
-     * are snapped to pixel centres, which is what the normalizing iterator does
-     * to the end points of their paths. Fills are sent in device space; strokes
-     * are mapped back to user space and stroked under the transform.
+     * Rectangles, round rectangles and ellipses reach Skia's analytic renderers
+     * under any transform. Axis-aligned: the bounds go through the transform
+     * and, with normalization, their edges are snapped to pixel centres, which
+     * is what the normalizing iterator does to the end points of their paths;
+     * fills are sent in device space, strokes mapped back to user space and
+     * stroked under the transform. Rotated or sheared: the shape is sent in
+     * user space under the transform, without normalization (Marlin would snap
+     * the path's end points in device space; the shape then is no longer
+     * analytic).
      */
-    private static boolean analytic(Shape s, AffineTransform at, boolean normalize, boolean stroked, Geometry geo) {
+    private static boolean analytic(Shape s, AffineTransform at, boolean normalize, boolean axisAligned,
+                                    boolean stroked, Geometry geo) {
         double x, y, w, h, aw = 0, ah = 0;
         if (s instanceof Rectangle2D r) {
             geo.kind = KIND_RECT;
@@ -196,6 +247,11 @@ final class SKShapePipe implements ShapeDrawPipe {
             if (!stroked) {
                 return false;   // degenerate fill: let the path route decide (draws nothing)
             }
+        }
+        if (!axisAligned) {
+            geo.params = new float[] { (float) x, (float) y, (float) w, (float) h, (float) aw, (float) ah };
+            geo.xform = matrix(at);
+            return true;
         }
         double[] pts = { x, y, x + w, y + h };
         at.transform(pts, 0, pts, 0, 2);
