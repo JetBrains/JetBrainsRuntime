@@ -105,6 +105,13 @@ SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
     backend.fDevice.retain((CFTypeRef) device);
     backend.fQueue.retain((CFTypeRef) queue);
     ContextOptions options;
+    // No multisampled passes: Graphite renders a whole pass with MSAA as soon as
+    // one draw in it needs it, which would give every non-AA edge (spans, blits,
+    // parallelograms) 4-level coverage. Anti-aliased paths use the path atlas
+    // instead, with full coverage precision like the Metal pipeline's shaders.
+    // J2D_SKIA_MSAA=4 re-enables it for A/B measurements.
+    const char *msaa = getenv("J2D_SKIA_MSAA");
+    options.fInternalMultisampleCount = (msaa != nullptr && atoi(msaa) == 4) ? SampleCount::k4 : SampleCount::k1;
     // ContextFactory::MakeMetal: see the note in SKEnvironment.mm on SkContexts::MakeGraphite.
     std::unique_ptr<Context> context = ContextFactory::MakeMetal(backend, options);
     if (!context) {
