@@ -357,25 +357,19 @@ public:
 
     static void DestroyComponentHWND(HWND hwnd);
 
-    // constants used for QuitMessageLoop
+    // constants used to PostQuitMessage
 
     static const int EXIT_ENCLOSING_LOOP;
     static const int EXIT_ALL_ENCLOSING_LOOPS;
 
     // ...
 
-    struct MessageLoopFrame {
-        BOOL breakMessageLoop;
-        jlong token;
-        MessageLoopFrame* enclosingLoop;
-    };
+    void QuitMessageLoop(int status);
 
-    void QuitMessageLoop(jlong token);
-    jlong GetNextMessageLoopToken() const { return m_nextSecondaryLoopToken; }
-    void MessageLoop(IDLEPROC lpIdleFunc, PEEKMESSAGEPROC lpPeekMessageFunc);
+    UINT MessageLoop(IDLEPROC lpIdleFunc, PEEKMESSAGEPROC lpPeekMessageFunc);
     BOOL PumpWaitingMessages(PEEKMESSAGEPROC lpPeekMessageFunc);
     void PumpToDestroy(class AwtComponent* p);
-    void ProcessMsg(MSG& msg, MessageLoopFrame* frame);
+    void ProcessMsg(MSG& msg);
     BOOL PreProcessMsg(MSG& msg);
     BOOL PreProcessMouseMsg(class AwtComponent* p, MSG& msg);
     BOOL PreProcessKeyMsg(class AwtComponent* p, MSG& msg);
@@ -492,9 +486,8 @@ private:
     BOOL m_verifyComponents;
     BOOL m_breakOnError;
 
-    MessageLoopFrame* m_innermostSecondaryLoop;
-    jlong m_nextSecondaryLoopToken;
-    BOOL m_areAllMessageLoopsShuttingDown;
+    BOOL  m_breakMessageLoop;
+    UINT  m_messageLoopResult;
 
     class AwtComponent* m_lastMouseOver;
     BOOL                m_mouseDown;
