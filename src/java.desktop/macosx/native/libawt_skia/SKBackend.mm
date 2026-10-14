@@ -545,6 +545,12 @@ static sk_sp<SkColorSpace> stopColorSpace(jboolean linear) {
     return linear ? SkColorSpace::MakeSRGBLinear() : nullptr;
 }
 
+// REPEAT: Java evaluates t in float and the boundary pixel of a cycle usually
+// lands on the integer and wraps to the first stop; Skia's evaluation order can
+// leave it an ulp below and show the last stop instead. A bias of 1e-5 in t
+// (a 20000th of a cycle) makes the boundary pixel wrap the same way.
+static const float REPEAT_SEAM_BIAS = 1e-5f;
+
 static SkTileMode tileModeFor(jint cycleMethod) {
     switch (cycleMethod) {
         case 1:  return SkTileMode::kMirror;   // REFLECT
@@ -601,6 +607,11 @@ void SKBackend_SetLinearGradientPaint(jboolean linear, jint cycleMethod, jint nu
     for (int i = 0; i < numStops; i++) {
         colors[i] = argbPreToColor4f(pixels[i]);
     }
+    if (cycleMethod == 2) {
+        const SkVector d = pts[1] - pts[0];
+        pts[0] -= d * REPEAT_SEAM_BIAS;
+        pts[1] -= d * REPEAT_SEAM_BIAS;
+    }
     SkGradient grad(SkGradient::Colors(SkSpan(colors.data(), numStops), SkSpan(fractions, numStops),
                                        tileModeFor(cycleMethod), stopColorSpace(linear)),
                     premulInterpolation(linear));
@@ -628,8 +639,9 @@ void SKBackend_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint nu
     SkGradient grad(SkGradient::Colors(SkSpan(colors.data(), numStops), SkSpan(fractions, numStops),
                                        tileModeFor(cycleMethod), stopColorSpace(linear)),
                     premulInterpolation(linear));
+    const float radius = cycleMethod == 2 ? 1.0f / (1.0f + REPEAT_SEAM_BIAS) : 1.0f;
     g.shader = atPixelOrigin(SkShaders::TwoPointConicalGradient(SkPoint::Make(focusX, 0), 0.0f,
-                                                                SkPoint::Make(0, 0), 1.0f, grad, &local));
+                                                                SkPoint::Make(0, 0), radius, grad, &local));
 }
 
 // Uploads a software surface's pixels to a texture of the current context.
