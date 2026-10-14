@@ -107,17 +107,6 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
     public void startSecondaryEventLoop(){}
     public void quitSecondaryEventLoop(){}
 
-    // Addressable variant of the secondary event loop; token ignored by default.
-    // Implementations that DO support addressable secondary event loops
-    // should override BOTH quitSecondaryEventLoop(long) and quitSecondaryEventLoop(), as well as getNextSecondaryEventLoopToken().
-    // (currently, only Windows does this)
-    protected long getNextSecondaryEventLoopToken() {
-        return 0;
-    }
-    protected void quitSecondaryEventLoop(long token) {
-        quitSecondaryEventLoop();
-    }
-
     /**
      * initiate a DnD operation ...
      */
@@ -455,8 +444,8 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
     private class EventDispatcher implements Runnable {
 
         private final int dispatchType;
+
         private final DragSourceEvent event;
-        private final long secondaryEventLoopToken;
 
         EventDispatcher(int dispatchType, DragSourceEvent event) {
             switch (dispatchType) {
@@ -480,9 +469,8 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
                                                    dispatchType);
             }
 
-            this.dispatchType            = dispatchType;
-            this.event                   = event;
-            this.secondaryEventLoopToken = SunDragSourceContextPeer.this.getNextSecondaryEventLoopToken();
+            this.dispatchType  = dispatchType;
+            this.event         = event;
         }
 
         public void run() {
@@ -517,7 +505,7 @@ public abstract class SunDragSourceContextPeer implements DragSourceContextPeer 
                                                     dispatchType);
                 }
             } finally {
-                 SunDragSourceContextPeer.this.quitSecondaryEventLoop(secondaryEventLoopToken);
+                 SunDragSourceContextPeer.this.quitSecondaryEventLoop();
             }
         }
     }
