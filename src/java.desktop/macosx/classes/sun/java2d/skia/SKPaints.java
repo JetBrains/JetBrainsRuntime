@@ -25,6 +25,8 @@
 package sun.java2d.skia;
 
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
+import sun.java2d.loops.CompositeType;
 import sun.java2d.pipe.BufferedPaints;
 
 import java.awt.MultipleGradientPaint;
@@ -47,7 +49,7 @@ final class SKPaints {
             case SunGraphics2D.PAINT_RAD_GRADIENT:
                 return isMultiGradientValid((MultipleGradientPaint) sg2d.paint);
             case SunGraphics2D.PAINT_TEXTURE:
-                return isTextureValid((TexturePaint) sg2d.paint);
+                return isTextureValid(sg2d);
             default:
                 return false;
         }
@@ -58,9 +60,22 @@ final class SKPaints {
         return paint.getFractions().length <= BufferedPaints.MULTI_MAX_FRACTIONS;
     }
 
-    // The native side reads the texture image as premultiplied ARGB.
-    private static boolean isTextureValid(TexturePaint paint) {
-        BufferedImage img = paint.getImage();
-        return img != null && img.getType() == BufferedImage.TYPE_INT_ARGB_PRE;
+    /**
+     * A TexturePaint is accelerated once its image is cached as a Skia texture
+     * (the surface-data proxy caches it after a few uses). Asking for the
+     * source surface here, outside the queue lock, is what makes the proxy
+     * cache it; doing so from the native paint setup would create the texture
+     * while the queue lock is held and the destination is being validated.
+     * Same rule as MTLPaints.
+     */
+    private static boolean isTextureValid(SunGraphics2D sg2d) {
+        BufferedImage img = ((TexturePaint) sg2d.paint).getImage();
+        SurfaceData dstData = sg2d.surfaceData;
+        SurfaceData srcData = dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT, CompositeType.SrcOver, null);
+        if (!(srcData instanceof SKSurfaceData)) {
+            // the first lookup counts a use; the second may already find the cached texture
+            srcData = dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT, CompositeType.SrcOver, null);
+        }
+        return srcData instanceof SKSurfaceData skData && skData.getType() == SKSurfaceData.TEXTURE;
     }
 }

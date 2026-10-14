@@ -667,18 +667,20 @@ static void setTexturePaintShader(sk_sp<SkImage> image, jboolean filter,
 
 void SKBackend_SetTexturePaint(JNIEnv *env, jboolean filter, jlong pSrc,
                                  jdouble xp0, jdouble xp1, jdouble xp3, jdouble yp0, jdouble yp1, jdouble yp3) {
+    // SKPaints accepts a TexturePaint only once the proxy has cached its image
+    // as a Skia texture, so the source is always one (as in the Metal pipeline).
     SurfaceDataOps *src = (SurfaceDataOps *) jlong_to_ptr(pSrc);
-    // Texture paint sources are BufferedImages (SKPaints.isValid); read the whole image.
-    SurfaceDataRasInfo probe;
-    memset(&probe, 0, sizeof(probe));
-    probe.bounds.x1 = 0; probe.bounds.y1 = 0; probe.bounds.x2 = 0x7fff; probe.bounds.y2 = 0x7fff;
-    if (src == nullptr || src->Lock(env, src, &probe, SD_LOCK_READ) != SD_SUCCESS) {
+    if (!SKSurfaceData_IsSkiaOps(src)) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_SetTexturePaint: source %p is not a Skia texture", src);
         g.shader.reset();
         return;
     }
-    SurfaceData_InvokeUnlock(env, src, &probe);
-    sk_sp<SkImage> image = imageFromSoftwareSurface(env, src, sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE,
-                                                    probe.bounds.x1, probe.bounds.y1, probe.bounds.x2, probe.bounds.y2);
+    SKSDOps *skSrc = (SKSDOps *) src;
+    if (skSrc->state != nullptr && skSrc->state->cc != nullptr && skSrc->state->cc != g.cc) {
+        // another display's context and queue: its work must be complete
+        SKBackend_Submit(skSrc->state->cc, true);
+    }
+    sk_sp<SkImage> image = SKBackend_GetImage(skSrc);
     if (!image) {
         g.shader.reset();
         return;

@@ -141,8 +141,8 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         this.layer = layer;
         this.offscreenImage = offscreenImage;
         this.type = type;
-        // No cached GPU copies of source images yet: BufferedImages are uploaded
-        // on every blit. A Skia-side proxy cache is a follow-up (see makeProxyFor).
+        // one proxy cache per config, shared with the Metal surfaces of that config
+        setBlitProxyCache(gc.getSurfaceDataProxyCache());
         initOps(delegate.getNativeOps(), type, cm.getTransparency() == OPAQUE);
         delegatesByOps.put(getNativeOps(), delegate);
     }
@@ -217,8 +217,7 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
 
     @Override
     public SurfaceDataProxy makeProxyFor(SurfaceData srcData) {
-        // TODO(JBR-10654): Skia-side texture cache for BufferedImage sources.
-        return SurfaceDataProxy.UNCACHED;
+        return SKSurfaceDataProxy.createProxy(srcData, graphicsConfig);
     }
 
     @Override

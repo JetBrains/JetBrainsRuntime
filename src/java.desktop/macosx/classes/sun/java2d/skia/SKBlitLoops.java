@@ -62,12 +62,26 @@ final class SKBlitLoops {
                 new SKSwToSurfaceTransform(SurfaceType.IntArgbPre, SKSurfaceData.PF_INT_ARGB_PRE);
         SKSurfaceToSwBlit blitSurfaceToIntArgbPre =
                 new SKSurfaceToSwBlit(SurfaceType.IntArgbPre, SKSurfaceData.PF_INT_ARGB_PRE);
+        Blit blitIntArgbPreToTexture =
+                new SKSwToSurfaceBlit(SurfaceType.IntArgbPre, SKSurfaceData.PF_INT_ARGB_PRE,
+                                      SKSurfaceData.SKTexture, CompositeType.SrcNoEa);
 
         GraphicsPrimitive[] primitives = {
                 // surface->surface (RTT is a subtype of SKSurface)
-                new SKSurfaceToSurfaceBlit(),
-                new SKSurfaceToSurfaceScale(),
-                new SKSurfaceToSurfaceTransform(),
+                new SKSurfaceToSurfaceBlit(SKSurfaceData.SKSurface),
+                new SKSurfaceToSurfaceScale(SKSurfaceData.SKSurface),
+                new SKSurfaceToSurfaceTransform(SKSurfaceData.SKSurface),
+                // cached copies of software images (SKSurfaceDataProxy)
+                new SKSurfaceToSurfaceBlit(SKSurfaceData.SKTexture),
+                new SKSurfaceToSurfaceScale(SKSurfaceData.SKTexture),
+                new SKSurfaceToSurfaceTransform(SKSurfaceData.SKTexture),
+                blitIntArgbPreToTexture,
+                new SKSwToSurfaceBlit(SurfaceType.IntArgb, SKSurfaceData.PF_INT_ARGB, SKSurfaceData.SKTexture, CompositeType.SrcNoEa),
+                new SKSwToSurfaceBlit(SurfaceType.IntRgb,  SKSurfaceData.PF_INT_RGB,  SKSurfaceData.SKTexture, CompositeType.SrcNoEa),
+                new SKSwToSurfaceBlit(SurfaceType.IntRgbx, SKSurfaceData.PF_INT_RGBX, SKSurfaceData.SKTexture, CompositeType.SrcNoEa),
+                new SKSwToSurfaceBlit(SurfaceType.IntBgr,  SKSurfaceData.PF_INT_BGR,  SKSurfaceData.SKTexture, CompositeType.SrcNoEa),
+                new SKSwToSurfaceBlit(SurfaceType.IntBgrx, SKSurfaceData.PF_INT_BGRX, SKSurfaceData.SKTexture, CompositeType.SrcNoEa),
+                new SKGeneralBlit(SKSurfaceData.SKTexture, CompositeType.SrcNoEa, blitIntArgbPreToTexture),
 
                 // surface->sw
                 new SKSurfaceToSwBlit(SurfaceType.IntArgb, SKSurfaceData.PF_INT_ARGB),
@@ -191,8 +205,8 @@ final class SKBlitLoops {
 }
 
 final class SKSurfaceToSurfaceBlit extends Blit {
-    SKSurfaceToSurfaceBlit() {
-        super(SKSurfaceData.SKSurface, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
+    SKSurfaceToSurfaceBlit(SurfaceType srcType) {
+        super(srcType, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
     }
     @Override
     public void Blit(SurfaceData src, SurfaceData dst, Composite comp, Region clip,
@@ -203,8 +217,8 @@ final class SKSurfaceToSurfaceBlit extends Blit {
 }
 
 final class SKSurfaceToSurfaceScale extends ScaledBlit {
-    SKSurfaceToSurfaceScale() {
-        super(SKSurfaceData.SKSurface, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
+    SKSurfaceToSurfaceScale(SurfaceType srcType) {
+        super(srcType, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
     }
     @Override
     public void Scale(SurfaceData src, SurfaceData dst, Composite comp, Region clip,
@@ -216,8 +230,8 @@ final class SKSurfaceToSurfaceScale extends ScaledBlit {
 }
 
 final class SKSurfaceToSurfaceTransform extends TransformBlit {
-    SKSurfaceToSurfaceTransform() {
-        super(SKSurfaceData.SKSurface, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
+    SKSurfaceToSurfaceTransform(SurfaceType srcType) {
+        super(srcType, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
     }
     @Override
     public void Transform(SurfaceData src, SurfaceData dst, Composite comp, Region clip,
@@ -292,7 +306,10 @@ final class SKSurfaceToSwBlit extends Blit {
 final class SKSwToSurfaceBlit extends Blit {
     private final int typeval;
     SKSwToSurfaceBlit(SurfaceType srcType, int typeval) {
-        super(srcType, CompositeType.AnyAlpha, SKSurfaceData.SKSurface);
+        this(srcType, typeval, SKSurfaceData.SKSurface, CompositeType.AnyAlpha);
+    }
+    SKSwToSurfaceBlit(SurfaceType srcType, int typeval, SurfaceType dstType, CompositeType compType) {
+        super(srcType, compType, dstType);
         this.typeval = typeval;
     }
     @Override
