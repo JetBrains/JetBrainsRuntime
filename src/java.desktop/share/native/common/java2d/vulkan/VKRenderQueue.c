@@ -122,6 +122,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                               "VKRenderQueue_flushBuffer: DRAW_LINE(%d, %d, %d, %d)",
                               x1, y1, x2, y2);
+                VKRenderer_DrawLine(x1, y1, x2, y2);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_RECT:
@@ -145,6 +146,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint *xPoints = (jint *)b;
                 jint *yPoints = ((jint *)b) + nPoints;
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: DRAW_POLY");
+                VKRenderer_DrawPoly(nPoints, isClosed, transX, transY, xPoints, yPoints);
                 SKIP_BYTES(b, nPoints * BYTES_PER_POLY_POINT);
             }
             break;
@@ -153,12 +155,14 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint x = NEXT_INT(b);
                 jint y = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: DRAW_PIXEL");
+                VKRenderer_DrawPixel(x, y);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
             {
                 jint count = NEXT_INT(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: DRAW_SCANLINES");
+                VKRenderer_DrawScanlines(count, (jint*) b);
                 SKIP_BYTES(b, count * BYTES_PER_SCANLINE);
             }
             break;
