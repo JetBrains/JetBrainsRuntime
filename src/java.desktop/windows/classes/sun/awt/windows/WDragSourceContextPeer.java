@@ -59,17 +59,8 @@ final class WDragSourceContextPeer extends SunDragSourceContextPeer {
         WToolkit.startSecondaryEventLoop();
     }
     @Override
-    public void quitSecondaryEventLoop() {
-        quitSecondaryEventLoop(0);
-    }
-
-    @Override
-    protected long getNextSecondaryEventLoopToken() {
-        return WToolkit.getNextSecondaryEventLoopToken();
-    }
-    @Override
-    protected void quitSecondaryEventLoop(long token){
-        WToolkit.quitSecondaryEventLoop(token);
+    public void quitSecondaryEventLoop(){
+        WToolkit.quitSecondaryEventLoop();
     }
 
     private static final WDragSourceContextPeer theInstance =
