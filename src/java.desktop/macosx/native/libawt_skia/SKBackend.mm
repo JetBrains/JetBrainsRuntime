@@ -27,6 +27,8 @@
 
 #include "SKBackend.h"
 #include "SKGlyphCache.h"
+#include "SKMaskCache.h"
+#include "SKQuadBatch.h"
 
 #include "jlong.h"
 #include "fontscalerdefs.h"
@@ -50,6 +52,7 @@
 #include "include/core/SkSamplingOptions.h"
 #include "include/core/SkSpan.h"
 #include "include/core/SkTileMode.h"
+#include "include/core/SkVertices.h"
 #include "include/effects/SkGradient.h"
 #include "include/gpu/graphite/BackendTexture.h"
 #include "include/gpu/graphite/GraphiteTypes.h"
@@ -78,6 +81,7 @@ static std::unordered_map<void *, SKConfigContext *> gContexts;
 // Drop references the render state holds to a context / surface about to go away.
 static void forgetContext(SKConfigContext *cc);
 static void forgetSurface(SKSDOps *ops, bool dispose);
+static void flushAllBatches();
 
 SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
     if (info == nullptr || info->context == nil) {
@@ -122,11 +126,20 @@ void SKBackend_DisposeContext(SKMTLGraphicsConfigInfo *info) {
         return;
     }
     SKConfigContext *cc = it->second;
+    J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_DisposeContext: info=%p cc=%p surfaces=%zu", info, cc, cc->surfaces.size());
     SKBackend_Submit(cc, true);
     gContexts.erase(it);
     forgetContext(cc);
-    SKGlyphCache_Flush(cc->glyphCacheAA);
-    SKGlyphCache_Flush(cc->glyphCacheLCD);
+    // Surfaces wrapped with this recorder cannot be drawn to any more; they are
+    // re-wrapped on their next use (the Metal texture is still there). Submit
+    // has drawn every pending batch.
+    for (SKSurfaceState *st : cc->surfaces) {
+        st->surface.reset();
+        st->wrappedTexture = nullptr;
+        st->cc = nullptr;
+    }
+    cc->surfaces.clear();
+    SKMaskCache_Free(cc->maskCache);
     SKGlyphCache_Free(cc->glyphCacheAA);
     SKGlyphCache_Free(cc->glyphCacheLCD);
     cc->recorder.reset();
@@ -163,6 +176,13 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
     if (cc == nullptr) {
         return nullptr;
     }
+    if (st->surface) {
+        // the texture was replaced: pending batches may still target the old canvas
+        J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_GetSurface: re-wrapping ops=%p (texture %p -> %p)",
+                      ops, st->wrappedTexture, ops->mtl->pTexture);
+        flushAllBatches();
+        st->surface.reset();
+    }
     id<MTLTexture> tex = (id<MTLTexture>) ops->mtl->pTexture;
     BackendTexture bt = BackendTextures::MakeMetal(SkISize::Make((int) tex.width, (int) tex.height), (CFTypeRef) tex);
     st->surface = SkSurfaces::WrapBackendTexture(cc->recorder.get(), bt,
@@ -174,6 +194,7 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
     }
     st->wrappedTexture = ops->mtl->pTexture;
     st->cc = cc;
+    cc->surfaces.insert(st);
     return st->surface;
 }
 
@@ -200,12 +221,17 @@ void SKBackend_ReleaseSurface(SKSDOps *ops, bool dispose) {
     if (ops == nullptr || ops->state == nullptr) {
         return;
     }
+    J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_ReleaseSurface: ops=%p dispose=%d surface=%p", ops, dispose,
+                  (void *) ops->state->surface.get());
+    flushAllBatches();   // batches may refer to this surface's canvas
     if (ops->state->cc != nullptr) {
         // make sure pending draws into this surface reach the GPU first
         SKBackend_Submit(ops->state->cc, false);
+        ops->state->cc->surfaces.erase(ops->state);
     }
     ops->state->surface.reset();
     ops->state->wrappedTexture = nullptr;
+    ops->state->cc = nullptr;
     forgetSurface(ops, dispose);
     if (dispose) {
         delete ops->state;
@@ -269,15 +295,14 @@ static void forgetSurface(SKSDOps *ops, bool dispose) {
         g.touchedWindows.erase(ops);
     }
 }
-static bool gXorWarned = false;
 
-static void flushGlyphBatches();
+static bool gXorWarned = false;
 
 static void applyCanvasState() {
     if (g.canvas == nullptr) {
         return;
     }
-    flushGlyphBatches();
+    flushAllBatches();
     g.canvas->restoreToCount(g.baseSaveCount);
     g.canvas->save();
     // Java2D clips are in device space: apply before the transform.
@@ -300,8 +325,9 @@ static void markTouched() {
     }
 }
 
-// Graphite does not draw raster images directly; everything is uploaded per
-// draw. Texture from pixels the caller owns only for the duration of the call (a
+// Graphite does not draw raster images directly; images drawn repeatedly
+// arrive as textures already (SKSurfaceDataProxy), everything else is uploaded
+// per draw. Texture from pixels the caller owns only for the duration of the call (a
 // locked Java raster, an opcode buffer, a glyph image): Graphite copies them
 // into its upload buffer while recording (verified with a standalone Graphite
 // probe), so the pixmap is wrapped, not copied first.
@@ -314,7 +340,7 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
 }
 
 void SKBackend_SetDestination(SKSDOps *dst) {
-    flushGlyphBatches();
+    flushAllBatches();
     g.dst = dst;
     g.canvas = nullptr;
     if (dst == nullptr) {
@@ -341,6 +367,7 @@ void SKBackend_SetDestination(SKSDOps *dst) {
 }
 
 void SKBackend_SetScratch(SKMTLGraphicsConfigInfo *info) {
+    flushAllBatches();
     g.cc = SKBackend_ContextFor(info);
     g.dst = nullptr;
     g.canvas = nullptr;
@@ -707,8 +734,9 @@ SkPaint SKBackend_MakePaint(bool aa) {
 // Primitives
 // ---------------------------------------------------------------------------
 
-// Pending glyph batches of the current context are drawn before anything else
-// touches the canvas, so draw order is preserved.
+// Pending glyph and mask batches of the current context are drawn before
+// anything else touches the canvas, so draw order is preserved. A batched
+// primitive flushes the other kinds only.
 static void flushGlyphBatches() {
     if (g.cc != nullptr) {
         SKGlyphCache_Flush(g.cc->glyphCacheAA);
@@ -716,29 +744,46 @@ static void flushGlyphBatches() {
     }
 }
 
-#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushGlyphBatches()
-#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched()
+static void flushTextBatches() {   // all batches
+    flushGlyphBatches();
+    if (g.cc != nullptr) {
+        SKMaskCache_Flush(g.cc->maskCache);
+    }
+}
+
+// Non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h).
+static SKQuadBatch gRects;
+
+static void flushAllBatches() {
+    flushTextBatches();
+    gRects.flush();
+}
+
+#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches()
+#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); if (g.cc != nullptr) SKMaskCache_Flush(g.cc->maskCache)
+#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); flushGlyphBatches()
+#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushTextBatches()
 
 void SKBackend_FillRect(jint x, jint y, jint w, jint h) {
-    REQUIRE_CANVAS();
+    REQUIRE_CANVAS_RECT();
     if (w <= 0 || h <= 0) return;
-    SkPaint p = SKBackend_MakePaint(false);
-    g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
+    gRects.addRect(x, y, x + w, y + h);
 }
 
 void SKBackend_DrawRect(jint x, jint y, jint w, jint h) {
-    REQUIRE_CANVAS();
+    REQUIRE_CANVAS_RECT();
     if (w < 0 || h < 0) return;
-    SkPaint p = SKBackend_MakePaint(false);
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
     if (w < 2 || h < 2) {
         // Java draws a (w+1)x(h+1) outline; degenerate outlines are solid.
-        g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w + 1, h + 1), p);
+        gRects.addRect(x, y, x + w + 1, y + h + 1);
         return;
     }
-    g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w + 1, 1), p);           // top
-    g.canvas->drawIRect(SkIRect::MakeXYWH(x, y + h, w + 1, 1), p);       // bottom
-    g.canvas->drawIRect(SkIRect::MakeXYWH(x, y + 1, 1, h - 1), p);       // left
-    g.canvas->drawIRect(SkIRect::MakeXYWH(x + w, y + 1, 1, h - 1), p);   // right
+    gRects.addRect(x, y, x + w + 1, y + 1);              // top
+    gRects.addRect(x, y + h, x + w + 1, y + h + 1);      // bottom
+    gRects.addRect(x, y + 1, x + 1, y + h);              // left
+    gRects.addRect(x + w, y + 1, x + w + 1, y + h);      // right
 }
 
 // Java2D's 1-pixel lines: the Bresenham stepping of the software loops
@@ -746,7 +791,7 @@ void SKBackend_DrawRect(jint x, jint y, jint w, jint h) {
 // inclusive unless `shorten` drops the pixel at (x2, y2) as DrawPolygons.c does
 // for the inner joints of a polyline. The pixels are emitted as horizontal or
 // vertical runs, one rect per run, so nothing depends on Skia's stroking.
-static void bresenhamLine(SkCanvas *canvas, const SkPaint &p, jint x1, jint y1, jint x2, jint y2, bool shorten = false) {
+static void bresenhamLine(jint x1, jint y1, jint x2, jint y2, bool shorten = false) {
     const jint dx = x2 - x1, dy = y2 - y1;
     const jint ax = std::abs(dx), ay = std::abs(dy);
     if (dy == 0 || dx == 0) {
@@ -754,8 +799,7 @@ static void bresenhamLine(SkCanvas *canvas, const SkPaint &p, jint x1, jint y1, 
         jint a = dy == 0 ? x1 : y1, b = dy == 0 ? x2 : y2, lo, hi;
         if (a < b) { lo = a; hi = b - (shorten ? 1 : 0); } else { lo = b + (shorten ? 1 : 0); hi = a; }
         if (lo > hi) return;
-        if (dy == 0) canvas->drawIRect(SkIRect::MakeLTRB(lo, y1, hi + 1, y1 + 1), p);
-        else         canvas->drawIRect(SkIRect::MakeLTRB(x1, lo, x1 + 1, hi + 1), p);
+        if (dy == 0) gRects.addRect(lo, y1, hi + 1, y1 + 1); else gRects.addRect(x1, lo, x1 + 1, hi + 1);
         return;
     }
     const bool xMajor = ax >= ay;
@@ -771,8 +815,8 @@ static void bresenhamLine(SkCanvas *canvas, const SkPaint &p, jint x1, jint y1, 
         const bool last = --steps == 0;
         const bool diagonal = error >= 0;     // the step after this pixel also advances the minor axis
         if (last || diagonal) {
-            if (xMajor) canvas->drawIRect(SkIRect::MakeLTRB(std::min(runStartX, x), y, std::max(runStartX, x) + 1, y + 1), p);
-            else        canvas->drawIRect(SkIRect::MakeLTRB(x, std::min(runStartY, y), x + 1, std::max(runStartY, y) + 1), p);
+            if (xMajor) gRects.addRect(std::min(runStartX, x), y, std::max(runStartX, x) + 1, y + 1);
+            else        gRects.addRect(x, std::min(runStartY, y), x + 1, std::max(runStartY, y) + 1);
         }
         if (last) break;
         if (diagonal) { x += sx; y += sy; error -= errMinor; }
@@ -783,41 +827,42 @@ static void bresenhamLine(SkCanvas *canvas, const SkPaint &p, jint x1, jint y1, 
 }
 
 void SKBackend_DrawLine(jint x1, jint y1, jint x2, jint y2) {
-    REQUIRE_CANVAS();
-    SkPaint p = SKBackend_MakePaint(false);
-    bresenhamLine(g.canvas, p, x1, y1, x2, y2);
+    REQUIRE_CANVAS_RECT();
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
+    bresenhamLine(x1, y1, x2, y2);
 }
 
 void SKBackend_DrawPixel(jint x, jint y) {
-    REQUIRE_CANVAS();
-    SkPaint p = SKBackend_MakePaint(false);
-    g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, 1, 1), p);
+    REQUIRE_CANVAS_RECT();
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
+    gRects.addRect(x, y, x + 1, y + 1);
 }
 
 void SKBackend_DrawScanlines(jint count, const jint *scanlines) {
-    REQUIRE_CANVAS();
-    SkPaint p = SKBackend_MakePaint(false);
+    REQUIRE_CANVAS_RECT();
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
     for (jint i = 0; i < count; i++) {
         jint x1 = scanlines[3 * i], x2 = scanlines[3 * i + 1], y = scanlines[3 * i + 2];
-        g.canvas->drawIRect(SkIRect::MakeLTRB(x1, y, x2 + 1, y + 1), p);
+        gRects.addRect(x1, y, x2 + 1, y + 1);
     }
 }
 
 void SKBackend_FillSpans(jint count, const jint *spans) {
-    REQUIRE_CANVAS();
-    SkPaint p = SKBackend_MakePaint(false);
+    REQUIRE_CANVAS_RECT();
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
     for (jint i = 0; i < count; i++) {
-        g.canvas->drawIRect(SkIRect::MakeLTRB(spans[4 * i], spans[4 * i + 1], spans[4 * i + 2], spans[4 * i + 3]), p);
+        gRects.addRect(spans[4 * i], spans[4 * i + 1], spans[4 * i + 2], spans[4 * i + 3]);
     }
 }
 
 void SKBackend_DrawPoly(jint nPoints, jboolean isClosed, jint transX, jint transY,
                           const jint *xPoints, const jint *yPoints) {
-    REQUIRE_CANVAS();
+    REQUIRE_CANVAS_RECT();
+    if (nPoints <= 0) return;
     if (nPoints < 2) {
         return;   // a single point draws nothing (DrawPolygons.c)
     }
-    SkPaint p = SKBackend_MakePaint(false);
+    gRects.begin(g.canvas, SKBackend_MakePaint(false));
     // As DrawPolygons.c: every segment but the last of an open polyline drops
     // its end pixel (the next segment draws it); a closed polygon shortens all
     // of them and closes back to the first point, a degenerate one is a pixel.
@@ -827,11 +872,11 @@ void SKBackend_DrawPoly(jint nPoints, jboolean isClosed, jint transX, jint trans
     for (jint i = 1; i < nPoints; i++) {
         const jint x = xPoints[i] + transX, y = yPoints[i] + transY;
         empty = empty && px == x && py == y;
-        bresenhamLine(g.canvas, p, px, py, x, y, i < nPoints - 1 || isClosed);
+        bresenhamLine(px, py, x, y, i < nPoints - 1 || isClosed);
         px = x; py = y;
     }
     if (isClosed && (empty || px != x0 || py != y0)) {
-        bresenhamLine(g.canvas, p, px, py, x0, y0, !empty);
+        bresenhamLine(px, py, x0, y0, !empty);
     }
 }
 
@@ -858,27 +903,38 @@ void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
     float ldx21 = dx21 * lwr21, ldy21 = dy21 * lwr21;
     float ldx12 = dx12 * lwr12, ldy12 = dy12 * lwr12;
     float ox11 = x11 - (ldx21 + ldx12) / 2.0f, oy11 = y11 - (ldy21 + ldy12) / 2.0f;
+    bool hole = lwr21 < 1.0f && lwr12 < 1.0f; // otherwise the stroke covers the interior
+    float ix11 = x11 + (ldx21 + ldx12) / 2.0f, iy11 = y11 + (ldy21 + ldy12) / 2.0f;
     SkPathBuilder pb;
     pb.setFillType(SkPathFillType::kEvenOdd);
     addParallelogram(pb, ox11, oy11, dx21 + ldx21, dy21 + ldy21, dx12 + ldx12, dy12 + ldy12);
-    if (lwr21 < 1.0f && lwr12 < 1.0f) {
-        // the interior still has a hole
-        addParallelogram(pb, x11 + (ldx21 + ldx12) / 2.0f, y11 + (ldy21 + ldy12) / 2.0f,
-                         dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
+    if (hole) {
+        addParallelogram(pb, ix11, iy11, dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
     }
     g.canvas->drawPath(pb.detach(), SKBackend_MakePaint(aa));
 }
 
 void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen,
                           const unsigned char *mask) {
-    REQUIRE_CANVAS();
+    REQUIRE_CANVAS_MASK();
     if (w <= 0 || h <= 0) return;
     SkPaint p = SKBackend_MakePaint(false);
     if (mask == nullptr || masklen == 0) {
+        SKMaskCache_Flush(g.cc->maskCache);
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
     }
-    // Marlin's coverage tile as an alpha-only image; the paint supplies color/shader.
+    if (SKMaskCache_Fits(w, h)) {
+        if (g.cc->maskCache == nullptr) {
+            g.cc->maskCache = SKMaskCache_Create(g.cc);
+        }
+        if (g.cc->maskCache != nullptr) {
+            SKMaskCache_Draw(g.cc->maskCache, g.canvas, p, x, y, w, h, mask + maskoff, maskscan);
+            return;
+        }
+    }
+    // Oversized tile: upload it on its own.
+    SKMaskCache_Flush(g.cc->maskCache);
     SkPixmap pm(SkImageInfo::MakeA8(w, h), mask + maskoff, (size_t) maskscan);
     sk_sp<SkImage> cov = uploadPixmap(pm);
     if (cov) {
@@ -1087,7 +1143,7 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             drawLcdGlyphNoCache(ginfo, rowBytesOffset, rgbOrder, fx, fy, lcdPaint);
         }
     }
-    // batches stay open for the next glyph list; see flushGlyphBatches()
+    // batches stay open for the next glyph list; see flushTextBatches()
 }
 
 static SkSamplingOptions samplingForHint(jint hint) {
@@ -1316,6 +1372,8 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     }
     SKGlyphCache_Flush(cc->glyphCacheAA);
     SKGlyphCache_Flush(cc->glyphCacheLCD);
+    SKMaskCache_Flush(cc->maskCache);
+    gRects.flush();
     std::unique_ptr<Recording> recording = cc->recorder->snap();
     if (recording) {
         InsertRecordingInfo info;

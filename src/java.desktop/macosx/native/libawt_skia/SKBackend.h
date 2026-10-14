@@ -42,8 +42,10 @@
 #include "include/gpu/graphite/Recorder.h"
 
 #include <memory>
+#include <unordered_set>
 
 struct SKGlyphCache;
+struct SKMaskCache;
 
 struct SKConfigContext {
     SKMTLGraphicsConfigInfo *info = nullptr;
@@ -52,6 +54,8 @@ struct SKConfigContext {
     bool dirty = false;   // recorded but not yet inserted/submitted work
     SKGlyphCache *glyphCacheAA = nullptr;    // created on first use
     SKGlyphCache *glyphCacheLCD = nullptr;
+    SKMaskCache *maskCache = nullptr;        // created on first use
+    std::unordered_set<struct SKSurfaceState *> surfaces;   // wrapped with this recorder
 };
 
 struct SKSurfaceState {
