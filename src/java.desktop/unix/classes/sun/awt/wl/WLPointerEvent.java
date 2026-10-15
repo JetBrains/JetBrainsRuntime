@@ -71,11 +71,25 @@ class WLPointerEvent {
     private int     yAxis_steps120Value;    // "high-resolution wheel scroll information, with each multiple of 120
                                             //  representing one logical scroll step (a wheel detent)" (source: wayland.xml)
 
+    private int     axis_source;            // wl_pointer::axis_source of this frame or -1 if there's none
+    static final int AXIS_SOURCE_FINGER = 1; // a finger on a touch surface (e.g. a touchpad)
+
     private WLPointerEvent() {}
 
     static WLPointerEvent newInstance() {
         // Invoked from the native code
         return new WLPointerEvent();
+    }
+
+    // Creates an event with the given axis vector values only (and the axis stop events if withStopEvents)
+    static WLPointerEvent newSyntheticAxisEvent(double xAxisVector, double yAxisVector, boolean withStopEvents) {
+        final WLPointerEvent result = new WLPointerEvent();
+        result.xAxis_hasVectorValue = xAxisVector != 0;
+        result.xAxis_vectorValue = xAxisVector;
+        result.yAxis_hasVectorValue = yAxisVector != 0;
+        result.yAxis_vectorValue = yAxisVector;
+        result.xAxis_hasStopEvent = result.yAxis_hasStopEvent = withStopEvents;
+        return result;
     }
 
     public enum PointerButtonCodes {
@@ -229,6 +243,15 @@ class WLPointerEvent {
     public long getTimestamp() {
         assert hasTimestamp() : "The event must have a valid timestamp";
         return timestamp;
+    }
+
+    public long getAxisTimestamp() {
+        assert hasAxisEvent() : "The event must have an axis event";
+        return timestamp;
+    }
+
+    public int getAxisSource() {
+        return axis_source;
     }
 
     public int getSurfaceX() {

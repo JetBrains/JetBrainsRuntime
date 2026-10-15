@@ -135,7 +135,10 @@ static jmethodID handleToplevelIconSizeMID;
 static jmethodID dispatchPinchBeginEventMID;
 static jmethodID dispatchPinchUpdateEventMID;
 static jmethodID dispatchPinchEndEventMID;
+static jmethodID dispatchHoldBeginEventMID;
 static jfieldID enablePinchAsCtrlWheelFID;
+static jfieldID enableKineticScrollingFID;
+static jfieldID axisSourceFID;
 
 static jmethodID isNativeInputMethodSupportEnabledMID;
 
@@ -343,6 +346,7 @@ fillJavaPointerEvent(JNIEnv* env, jobject pointerEventRef)
     (*env)->SetBooleanField(env, pointerEventRef, yAxis_hasSteps120ValueFID, pointer_event.axes[0].has_steps120_value);
     (*env)->SetDoubleField (env, pointerEventRef, yAxis_vectorValueFID,      wl_fixed_to_double(pointer_event.axes[0].vector_value));
     (*env)->SetIntField    (env, pointerEventRef, yAxis_steps120ValueFID,    pointer_event.axes[0].steps120_value);
+    (*env)->SetIntField    (env, pointerEventRef, axisSourceFID, pointer_event.has_axis_source_event ? (jint)pointer_event.axis_source : -1);
 }
 
 static void
@@ -552,6 +556,28 @@ static const struct zwp_pointer_gesture_pinch_v1_listener pinch_gesture_listener
     .end    = pinch_gesture_end
 };
 
+#ifdef ZWP_POINTER_GESTURES_V1_GET_HOLD_GESTURE_SINCE_VERSION
+static void
+hold_gesture_begin(void *data, struct zwp_pointer_gesture_hold_v1 *hold,
+                   uint32_t serial, uint32_t time, struct wl_surface *surface, uint32_t fingers)
+{
+    JNIEnv* env = getEnv();
+    (*env)->CallStaticVoidMethod(env, tkClass, dispatchHoldBeginEventMID);
+    wlListenerCheckException(env);
+}
+
+static void
+hold_gesture_end(void *data, struct zwp_pointer_gesture_hold_v1 *hold,
+                 uint32_t serial, uint32_t time, int32_t cancelled)
+{
+}
+
+static const struct zwp_pointer_gesture_hold_v1_listener hold_gesture_listener = {
+    .begin = hold_gesture_begin,
+    .end   = hold_gesture_end
+};
+#endif
+
 static void
 wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 {
@@ -570,13 +596,24 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
                     zwp_relative_pointer_v1_add_listener(rptr, &relative_pointer_listener, NULL);
                 }
             }
-            if (pointer_gestures != NULL) {
+            JNIEnv *env = getEnv();
+            if (pointer_gestures != NULL && (*env)->GetStaticBooleanField(env, tkClass, enablePinchAsCtrlWheelFID)) {
                 struct zwp_pointer_gesture_pinch_v1* pinch
                     = zwp_pointer_gestures_v1_get_pinch_gesture(pointer_gestures, wl_pointer);
                 if (pinch != NULL) {
                     zwp_pointer_gesture_pinch_v1_add_listener(pinch, &pinch_gesture_listener, NULL);
                 }
             }
+#ifdef ZWP_POINTER_GESTURES_V1_GET_HOLD_GESTURE_SINCE_VERSION
+            if (pointer_gestures != NULL && (*env)->GetStaticBooleanField(env, tkClass, enableKineticScrollingFID)
+                && zwp_pointer_gestures_v1_get_version(pointer_gestures) >= ZWP_POINTER_GESTURES_V1_GET_HOLD_GESTURE_SINCE_VERSION) {
+                struct zwp_pointer_gesture_hold_v1* hold
+                    = zwp_pointer_gestures_v1_get_hold_gesture(pointer_gestures, wl_pointer);
+                if (hold != NULL) {
+                    zwp_pointer_gesture_hold_v1_add_listener(hold, &hold_gesture_listener, NULL);
+                }
+            }
+#endif
         }
     } else if (!has_pointer && wl_pointer != NULL) {
         wl_pointer_release(wl_pointer);
@@ -726,8 +763,10 @@ registry_global(void *data, struct wl_registry *wl_registry,
     }
     else if (strcmp(interface, zwp_pointer_gestures_v1_interface.name) == 0) {
         JNIEnv *env = getEnv();
-        if ((*env)->GetStaticBooleanField(env, tkClass, enablePinchAsCtrlWheelFID)) {
-            pointer_gestures = wl_registry_bind(wl_registry, name, &zwp_pointer_gestures_v1_interface, 1);
+        if ((*env)->GetStaticBooleanField(env, tkClass, enablePinchAsCtrlWheelFID)
+            || (*env)->GetStaticBooleanField(env, tkClass, enableKineticScrollingFID)) {
+            // Version 3 is needed for hold gestures
+            pointer_gestures = wl_registry_bind(wl_registry, name, &zwp_pointer_gestures_v1_interface, MIN(3, version));
         }
     }
     else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
@@ -867,6 +906,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(yAxis_hasSteps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_hasSteps120Value", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_vectorValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_vectorValue", "D"), JNI_FALSE);
     CHECK_NULL_RETURN(yAxis_steps120ValueFID = (*env)->GetFieldID(env, pointerEventClass, "yAxis_steps120Value", "I"), JNI_FALSE);
+    CHECK_NULL_RETURN(axisSourceFID = (*env)->GetFieldID(env, pointerEventClass, "axis_source", "I"), JNI_FALSE);
 
     CHECK_NULL_RETURN(handleWaylandLogMID = (*env)->GetStaticMethodID(env, tkClass, "handleWaylandLog", "(Ljava/lang/String;)V"), JNI_FALSE);
     CHECK_NULL_RETURN(handleProtocolErrorMID = (*env)->GetStaticMethodID(env, tkClass,
@@ -898,7 +938,9 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(dispatchPinchBeginEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchBeginEvent", "(JI)V"), JNI_FALSE);
     CHECK_NULL_RETURN(dispatchPinchUpdateEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchUpdateEvent", "(D)V"), JNI_FALSE);
     CHECK_NULL_RETURN(dispatchPinchEndEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchEndEvent", "()V"), JNI_FALSE);
+    CHECK_NULL_RETURN(dispatchHoldBeginEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchHoldBeginEvent", "()V"), JNI_FALSE);
     CHECK_NULL_RETURN(enablePinchAsCtrlWheelFID = (*env)->GetStaticFieldID(env, tkClass, "ENABLE_PINCH_AS_CTRL_WHEEL", "Z"), JNI_FALSE);
+    CHECK_NULL_RETURN(enableKineticScrollingFID = (*env)->GetStaticFieldID(env, tkClass, "ENABLE_KINETIC_SCROLLING", "Z"), JNI_FALSE);
 
     CHECK_NULL_RETURN(isNativeInputMethodSupportEnabledMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                        "isNativeInputMethodSupportEnabled",
