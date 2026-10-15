@@ -1534,6 +1534,16 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
+    // Translates a touchpad pinch gesture into Ctrl + mouse wheel (like on Windows); no KeyEvents are generated for Ctrl
+    void dispatchPinchZoomAsMouseWheel(WLInputState inputState, int scrollAmount, int roundRotations, double preciseRotations) {
+        final int x = inputState.getPointerX();
+        final int y = inputState.getPointerY();
+        final Point abs = relativePointToAbsolute(new Point(x, y));
+        getMouseEventDispatcher().notifyMouseWheelEvent(System.currentTimeMillis(), x, y, abs.x, abs.y,
+                inputState.getModifiers() | KeyEvent.CTRL_DOWN_MASK, 1, false,
+                MouseWheelEvent.WHEEL_UNIT_SCROLL, scrollAmount, roundRotations, preciseRotations);
+    }
+
     /**
      * Accumulates fractional parts of wheel rotation steps until their absolute sum represents one or more full step(s).
      * This allows implementing smoother scrolling, e.g., the sequence of wl_pointer::axis events with values

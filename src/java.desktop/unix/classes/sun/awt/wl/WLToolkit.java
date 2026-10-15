@@ -163,8 +163,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private static native void initIDs(long displayPtr);
 
     static {
-        // This field must be initialized BEFORE initIDs is called because it'll be read there
+        // These fields must be initialized BEFORE initIDs is called because they'll be read there
         ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
+        ENABLE_PINCH_AS_CTRL_WHEEL = Boolean.getBoolean("sun.awt.wl.PinchAsCtrlWheel");
 
         if (!GraphicsEnvironment.isHeadless()) {
             initLibwaylandLogging();
@@ -323,6 +324,29 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return result;
     }
 
+    /**
+     * If {@code true}, touchpad pinch gestures are translated into mouse wheel events
+     *   with {@link KeyEvent#CTRL_DOWN_MASK} (the same way it happens on Windows).
+     * Read by the native code at the class loading stage.
+     */
+    private final static boolean ENABLE_PINCH_AS_CTRL_WHEEL;
+
+    // Returns the value of the numeric system property, or defaultValue if it isn't set or isn't within [min, max]
+    static double getNumericProperty(String name, double defaultValue, double min, double max) {
+        final String value = System.getProperty(name);
+        if (value != null) {
+            try {
+                final double result = Double.parseDouble(value);
+                if (result >= min && result <= max) {
+                    return result;
+                }
+            } catch (NumberFormatException ignored) {
+            }
+            log.warning("Invalid value of the system property " + name + ": \"" + value + "\", assuming " + defaultValue);
+        }
+        return defaultValue;
+    }
+
     private final Semaphore eventsQueued = new Semaphore(0);
 
     @Override
@@ -397,6 +421,42 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchRelativePointerEvent(double dx, double dy) {
         WLMouseInfoPeer.getInstance().accumulatePointerDelta(dx, dy);
+    }
+
+    // Only pinches with this number of fingers are translated (like on Windows); others are left to the compositor
+    private static final int PINCH_FINGERS = (int) getNumericProperty("sun.awt.wl.PinchAsCtrlWheel.Fingers", 2, 2, 10);
+    private static final int PINCH_SCROLL_AMOUNT = (int) getNumericProperty("sun.awt.wl.PinchAsCtrlWheel.ScrollAmount", 3, 1, 1000);
+    private static final WLPinchZoomConverter pinchZoomConverter = new WLPinchZoomConverter(
+            getNumericProperty("sun.awt.wl.PinchAsCtrlWheel.RotationsPerLogScale", 6.0, Double.MIN_VALUE, 1000));
+    // The surface of the ongoing pinch gesture translated into Ctrl + mouse wheel or 0. Only used on EDT.
+    private static long pinchSurfacePtr;
+
+    private static void dispatchPinchBeginEvent(long surfacePtr, int fingers) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        pinchSurfacePtr = (fingers == PINCH_FINGERS) ? surfacePtr : 0;
+        pinchZoomConverter.reset();
+    }
+
+    private static void dispatchPinchUpdateEvent(double scale) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        if (pinchSurfacePtr != 0 && pinchZoomConverter.update(scale)) {
+            final WLComponentPeer peer = inputState.peerForPointerEvents();
+            if (peer != null && peer == peerFromSurface(pinchSurfacePtr)) {
+                peer.dispatchPinchZoomAsMouseWheel(inputState, PINCH_SCROLL_AMOUNT,
+                        pinchZoomConverter.getRoundRotations(), pinchZoomConverter.getPreciseRotations());
+            }
+        }
+    }
+
+    private static void dispatchPinchEndEvent() {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        pinchSurfacePtr = 0;
     }
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
