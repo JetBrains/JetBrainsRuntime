@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2026, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -20,19 +20,22 @@
 
 package com.sun.org.apache.xpath.internal.functions;
 
+import com.sun.org.apache.xalan.internal.res.XSLMessages;
 import com.sun.org.apache.xpath.internal.XPathContext;
 import com.sun.org.apache.xpath.internal.objects.XObject;
 import com.sun.org.apache.xpath.internal.objects.XString;
 import com.sun.org.apache.xpath.internal.res.XPATHErrorResources;
-import java.io.BufferedInputStream;
 import java.io.InputStream;
 import java.util.Properties;
+import javax.xml.transform.TransformerException;
+import jdk.xml.internal.JdkConstants;
+import jdk.xml.internal.JdkXmlFeatures;
 import jdk.xml.internal.SecuritySupport;
 
 /**
  * Execute the SystemProperty() function.
  * @xsl.usage advanced
- * @LastModified: Sep 2017
+ * @LastModified: June 2026
  */
 public class FuncSystemProperty extends FunctionOneArg
 {
@@ -95,7 +98,7 @@ public class FuncSystemProperty extends FunctionOneArg
         warn(xctxt, XPATHErrorResources.WG_DONT_DO_ANYTHING_WITH_NS,
              new Object[]{ namespace,
                            fullName });  //"Don't currently do anything with namespace "+namespace+" in property: "+fullName);
-
+        checkSysPropAccess(xctxt, fullName);
         try
         {
           result = SecuritySupport.getSystemProperty(propName);
@@ -118,6 +121,7 @@ public class FuncSystemProperty extends FunctionOneArg
     }
     else
     {
+      checkSysPropAccess(xctxt, fullName);
       try
       {
         result = SecuritySupport.getSystemProperty(fullName);
@@ -152,6 +156,22 @@ public class FuncSystemProperty extends FunctionOneArg
     }
     else
       return new XString(result);
+  }
+
+  /**
+   * Checks whether XPath may access non-XSLT-defined system properties.
+   */
+  private void checkSysPropAccess(XPathContext xctxt, String name)
+          throws TransformerException
+  {
+    JdkXmlFeatures features = xctxt.getJdkXmlFeatures();
+
+    if (!features.getFeature(JdkXmlFeatures.XmlFeature.JDK_XPATH_SYSTEM_PROPERTY)) {
+      String fmsg = XSLMessages.createXPATHMessage(
+              XPATHErrorResources.ER_NON_XSLT_SYSTEM_PROPERTY,
+              new Object[] {name, JdkConstants.XPATH_ALLOW_NON_XSLT_SYS_PROPS});
+      throw new TransformerException(fmsg);
+    }
   }
 
   /**
