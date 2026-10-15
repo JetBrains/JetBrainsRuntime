@@ -28,6 +28,7 @@
 
 #import "AccelTexturePool.h"
 #import "MTLTexturePool.h"
+#import "MTLOptions.h"
 #import "Trace.h"
 
 #define USE_ACCEL_TEXTURE_POOL  0
@@ -80,6 +81,9 @@ static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
     // usage = MTLTextureUsageShaderRead
     // storage = MTLStorageModeManaged
     textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    if (format == MTLPixelFormatA8Unorm && !MTLOptions_GpuOptimizedTextures()) {
+        textureDescriptor.allowGPUOptimizedContents = NO;   // mask caches are CPU-updated
+    }
 
     // Use auto-release => MTLTexturePoolItem.dealloc to free texture !
     id <MTLTexture> texture = (id <MTLTexture>) [[device newTextureWithDescriptor:textureDescriptor] autorelease];

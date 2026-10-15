@@ -34,6 +34,7 @@
 #include "MTLContext.h"
 #include "MTLRenderQueue.h"
 #include "MTLTextRenderer.h"
+#import "MTLOptions.h"
 #include "MTLVertexCache.h"
 #include "MTLGlyphCache.h"
 #include "MTLBlitLoops.h"
@@ -107,7 +108,10 @@ static jint vertexCacheIndex = 0;
 
 static void MTLTR_SyncFlushGlyphVertexCache(MTLContext *mtlc) {
     MTLVertexCache_FlushGlyphVertexCache(mtlc);
-    [mtlc commitCommandBuffer:YES display:NO];
+    // The glyph cache texture about to be replaced stays alive until the
+    // command buffer that samples it completes; waiting here is optional
+    // (sun.java2d.metal.glyphCacheSync).
+    [mtlc commitCommandBuffer:MTLOptions_GlyphCacheSync() display:NO];
 }
 
 /**
@@ -122,8 +126,12 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_InitGlyphCache");
     // init glyph cache data structure
     MTLGlyphCache* glyphCache = (lcdCache)?mtlc.glyphCacheLCD:mtlc.glyphCacheAA;
-    if (glyphCache.cacheInfo == NULL && ![glyphCache glyphCacheInitWidth:MTLTR_CACHE_WIDTH
-                                  height:MTLTR_CACHE_HEIGHT
+    jint cacheSize = MTLOptions_GlyphCacheSize();
+    if (cacheSize == 0) {
+        cacheSize = MTLTR_CACHE_WIDTH;   // == MTLTR_CACHE_HEIGHT
+    }
+    if (glyphCache.cacheInfo == NULL && ![glyphCache glyphCacheInitWidth:cacheSize
+                                  height:cacheSize
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm

@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include "jni.h"
 #include "MTLGlyphCache.h"
+#import "MTLOptions.h"
 #include "Trace.h"
 #import "MTLContext.h"
 
@@ -104,7 +105,16 @@
                                                                width:width
                                                               height:height
                                                            mipmapped:NO];
+    if (!MTLOptions_GpuOptimizedTextures()) {
+        textureDescriptor.allowGPUOptimizedContents = NO;   // CPU-updated cache: plain layout, no driver compression
+    }
     _cacheInfo->texture = [_ctx.device newTextureWithDescriptor:textureDescriptor];
+    if (_cacheInfo->texture == nil) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGlyphCache.glyphCacheInitWidth: could not create a %dx%d texture", width, height);
+        free(_cacheInfo);
+        _cacheInfo = NULL;
+        return NO;
+    }
 
     return YES;
 }
