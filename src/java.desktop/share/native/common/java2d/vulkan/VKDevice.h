@@ -57,6 +57,7 @@ struct VKDevice {
     jint_array_t          supportedFormats;
     jint caps;
     VkBool32 swapchainMaintenance1Supported;
+    VkBool32 bresenhamLinesSupported;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
