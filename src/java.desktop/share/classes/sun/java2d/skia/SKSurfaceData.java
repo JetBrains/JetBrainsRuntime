@@ -29,13 +29,9 @@ import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
 import sun.awt.image.PixelConverter;
-import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.MaskFill;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.loops.CompositeType;
-import sun.java2d.metal.MTLGraphicsConfig;
-import sun.java2d.metal.MTLLayer;
-import sun.java2d.metal.MTLSurfaceData;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.PixelToParallelogramConverter;
@@ -47,10 +43,7 @@ import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
 import java.awt.Transparency;
-import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
-import java.awt.Image;
-import java.awt.Rectangle;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,14 +53,14 @@ import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
 /**
  * Destination surface of the experimental Skia backend (JBR-10654).
  * <p>
- * The surface <em>wraps</em> a Metal surface that owns the GPU texture and,
- * for windows, the presentation layer: Skia draws into that texture through
- * a Graphite context on the same command queue, and the Metal layer presents
- * it exactly as it presents Metal-rendered content. This keeps all window,
- * HiDPI and display-sync handling in the existing code while the rendering
- * itself goes through Skia.
+ * Skia draws into a GPU texture through a Graphite context; where that
+ * texture comes from and how a window surface is presented is the platform
+ * subclass's business: on macOS the surface <em>wraps</em> a Metal surface
+ * that owns texture and presentation layer, on Windows the surface owns a
+ * texture and a swap chain itself. Pipeline selection, LCD rules and the
+ * flush/dispose protocol with the native side are shared here.
  */
-public final class SKSurfaceData extends SurfaceData implements AccelSurface {
+public abstract class SKSurfaceData extends SurfaceData implements AccelSurface {
 
     // Pixel formats of software sources/destinations handled natively
     // (same numbering as MTLSurfaceData for easy cross-checking).
@@ -112,21 +105,19 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
-    private final MTLSurfaceData delegate;
-    private final MTLGraphicsConfig graphicsConfig;
-    private final MTLLayer layer;          // non-null for window surfaces
-    private final Image offscreenImage;    // non-null for VolatileImage surfaces
+    private final SKGraphicsConfig graphicsConfig;
+    private final SKContext context;
     private final int type;
 
     /**
-     * Keeps each wrapped Metal surface reachable until the Skia side has
-     * released its wrapper (see {@link #dispose(long)}). The two surfaces have
-     * separate Disposer records; without this the Metal one could free the
-     * native ops while Skia ops referencing them are still queued.
+     * Keeps a platform object reachable until the Skia side has released its
+     * wrapper (see {@link #dispose(long)}): on macOS the wrapped Metal surface,
+     * which has its own Disposer record and could otherwise free the native
+     * ops while Skia ops referencing them are still queued.
      */
-    private static final ConcurrentHashMap<Long, MTLSurfaceData> delegatesByOps = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Long, Object> retainedByOps = new ConcurrentHashMap<>();
 
-    private native void initOps(long mtlOps, int type, boolean isOpaque);
+    private native void initOps(long platformOps, int type, boolean isOpaque);
 
     private static SurfaceType getCustomSurfaceType(int type) {
         switch (type) {
@@ -136,86 +127,33 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         }
     }
 
-    private SKSurfaceData(MTLSurfaceData delegate, MTLGraphicsConfig gc, MTLLayer layer,
-                            Image offscreenImage, ColorModel cm, int type) {
+    /**
+     * @param platformOps native ops of the platform surface that owns the
+     *                    texture ({@code SKPlatformSurface} in {@code SKPlatform.h})
+     */
+    protected SKSurfaceData(SKGraphicsConfig gc, ColorModel cm, int type, long platformOps) {
         super(getCustomSurfaceType(type), cm);
-        this.delegate = delegate;
         this.graphicsConfig = gc;
-        this.layer = layer;
-        this.offscreenImage = offscreenImage;
+        this.context = SKContext.forConfig(gc);
         this.type = type;
-        // one proxy cache per config, shared with the Metal surfaces of that config
+        // one proxy cache per config, shared with the platform surfaces of that config
         setBlitProxyCache(gc.getSurfaceDataProxyCache());
-        initOps(delegate.getNativeOps(), type, cm.getTransparency() == OPAQUE);
-        delegatesByOps.put(getNativeOps(), delegate);
+        initOps(platformOps, type, cm.getTransparency() == OPAQUE);
     }
 
-    /** Window surface: wraps the Metal layer surface created for {@code layer}. */
-    public static SKSurfaceData createData(MTLLayer layer) {
-        MTLGraphicsConfig gc = (MTLGraphicsConfig) layer.getGraphicsConfiguration();
-        MTLSurfaceData mtl = MTLSurfaceData.createData(layer);
-        return new SKSurfaceData(mtl, gc, layer, null, mtl.getColorModel(), WINDOW);
+    /** Keeps {@code platformOwner} reachable until this surface's native ops are disposed. */
+    protected final void retainUntilDisposed(Object platformOwner) {
+        retainedByOps.put(getNativeOps(), platformOwner);
     }
 
-    /** Off-screen surface (VolatileImage back buffers, textures). */
-    public static SKSurfaceData createData(MTLGraphicsConfig gc, int width, int height,
-                                             ColorModel cm, Image image, int type) {
-        MTLSurfaceData mtl = MTLSurfaceData.createData(gc, width, height, cm, image, type);
-        return new SKSurfaceData(mtl, gc, null, image, cm, type);
-    }
-
-    /** The Metal surface that owns the texture (and layer) this surface renders into. */
-    public MTLSurfaceData getDelegate() {
-        return delegate;
-    }
+    /** Whether this is a window surface the platform presents. */
+    public abstract boolean isOnScreen();
 
     // ---- SurfaceData -------------------------------------------------------
 
     @Override
-    public SurfaceData getReplacement() {
-        if (layer != null) {
-            return layer.getSurfaceData();
-        }
-        return restoreContents(offscreenImage);
-    }
-
-    @Override
-    public GraphicsConfiguration getDeviceConfiguration() {
-        return graphicsConfig;
-    }
-
-    @Override
     public Raster getRaster(int x, int y, int w, int h) {
         throw new InternalError("not implemented yet");
-    }
-
-    @Override
-    public Rectangle getBounds() {
-        return delegate.getBounds();
-    }
-
-    @Override
-    public Object getDestination() {
-        return delegate.getDestination();
-    }
-
-    @Override
-    public int getTransparency() {
-        return delegate.getTransparency();
-    }
-
-    @Override
-    public double getDefaultScaleX() {
-        return delegate.getDefaultScaleX();
-    }
-
-    @Override
-    public double getDefaultScaleY() {
-        return delegate.getDefaultScaleY();
-    }
-
-    public boolean isOnScreen() {
-        return layer != null;
     }
 
     @Override
@@ -232,12 +170,35 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         return true;
     }
 
+    /** A flushed surface is invalid; subclasses release the platform surface afterwards. */
     @Override
     public void flush() {
         invalidate();
+    }
+
+    /**
+     * An invalid surface is not drawn to any more, so the Skia wrapper goes
+     * with the validity: the native side forgets the surface synchronously
+     * under the queue lock, before a platform subclass releases what the
+     * wrapper referred to (the macOS window surface clears its layer pointer
+     * on invalidation without a lock).
+     */
+    @Override
+    public void invalidate() {
+        super.invalidate();
+        releaseSkiaSurface();
+    }
+
+    private boolean skiaSurfaceReleased;
+
+    private void releaseSkiaSurface() {
         SKRenderQueue rq = SKRenderQueue.getInstance();
         rq.lock();
         try {
+            if (skiaSurfaceReleased) {
+                return;
+            }
+            skiaSurfaceReleased = true;
             SKContext.setScratchSurface(graphicsConfig);
             RenderBuffer buf = rq.getBuffer();
             rq.ensureCapacityAndAlignment(12, 4);
@@ -247,14 +208,6 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         } finally {
             rq.unlock();
         }
-        // the Skia wrapper is gone; now the Metal side may release the texture
-        delegate.flush();
-    }
-
-    @Override
-    public void invalidate() {
-        super.invalidate();
-        delegate.invalidate();
     }
 
     // ---- AccelSurface ------------------------------------------------------
@@ -265,18 +218,8 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
     }
 
     @Override
-    public long getNativeResource(int resType) {
-        return delegate.getNativeResource(resType);
-    }
-
-    @Override
-    public Rectangle getNativeBounds() {
-        return delegate.getNativeBounds();
-    }
-
-    @Override
     public BufferedContext getContext() {
-        return SKContext.forConfig(graphicsConfig);
+        return context;
     }
 
     /**
@@ -312,7 +255,8 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
                 sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR &&
                 ((AlphaComposite) sg2d.composite).getRule() == AlphaComposite.SRC_OVER) ||
             // XOR text: the software glyph loops cannot lock a Skia surface; draw it
-            // through the Skia text pipe (as Src, see SKBackend_SetXorComposite).
+            // through the Skia text pipe (XOR blender with the glyph coverage, see
+            // SKBackend_SetXorComposite).
             (sg2d.compositeState == SunGraphics2D.COMP_XOR &&
                 sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR)) {
             textpipe = skTextPipe;
@@ -346,7 +290,9 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
                 // parallelograms via the converter
                 ShapeDrawPipe shapes = skShapePipe;
                 if (SKEnvironment.rasterizesAnalyticShapes()) {
-                    super.validatePipe(sg2d);   // the Marlin pipe for this state
+                    if (!validated) {
+                        super.validatePipe(sg2d);   // the Marlin pipe for this state
+                    }
                     shapes = new SKShapePipe.Hybrid(skShapePipe, sg2d.shapepipe);
                 }
                 PixelToParallelogramConverter aaConverter =
@@ -411,7 +357,7 @@ public final class SKSurfaceData extends SurfaceData implements AccelSurface {
         } finally {
             rq.unlock();
         }
-        // queued Skia ops have run; the Metal surface may now be disposed
-        delegatesByOps.remove(pData);
+        // queued Skia ops have run; the platform surface may now be disposed
+        retainedByOps.remove(pData);
     }
 }

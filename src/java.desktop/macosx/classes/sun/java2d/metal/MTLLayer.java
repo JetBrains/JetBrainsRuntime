@@ -28,7 +28,7 @@ package sun.java2d.metal;
 import sun.awt.AWTAccessor;
 import sun.java2d.NullSurfaceData;
 import sun.java2d.SurfaceData;
-import sun.java2d.skia.SKSurfaceData;
+import sun.java2d.skia.MTLSKSurfaceData;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.macosx.CFLayer;
 import sun.util.logging.PlatformLogger;
@@ -94,7 +94,7 @@ public final class MTLLayer extends CFLayer {
         // turn has a reference back to this layer
         if (surfaceData instanceof MTLSurfaceData) {
             validate((MTLSurfaceData)surfaceData);
-        } else if (surfaceData instanceof SKSurfaceData skSurfaceData) {
+        } else if (surfaceData instanceof MTLSKSurfaceData skSurfaceData) {
             // Skia renders into the texture of the wrapped Metal surface
             validate(skSurfaceData.getDelegate());
         }

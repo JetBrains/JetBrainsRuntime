@@ -25,7 +25,7 @@
 package sun.java2d.skia;
 
 import sun.java2d.SunGraphics2D;
-import sun.java2d.metal.MTLGraphicsConfig;
+
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.RenderBuffer;
@@ -46,13 +46,13 @@ import static sun.java2d.pipe.BufferedOpCodes.SET_SCRATCH_SURFACE;
  */
 public final class SKContext extends BufferedContext {
 
-    private static final WeakHashMap<MTLGraphicsConfig, SKContext> contexts = new WeakHashMap<>();
+    private static final WeakHashMap<SKGraphicsConfig, SKContext> contexts = new WeakHashMap<>();
 
     private SKContext() {
         super(SKRenderQueue.getInstance());
     }
 
-    public static synchronized SKContext forConfig(MTLGraphicsConfig gc) {
+    public static synchronized SKContext forConfig(SKGraphicsConfig gc) {
         return contexts.computeIfAbsent(gc, k -> new SKContext());
     }
 
@@ -76,7 +76,7 @@ public final class SKContext extends BufferedContext {
         validateContext(surface, surface, null, null, null, null, null, NO_CONTEXT_FLAGS);
     }
 
-    static void setScratchSurface(MTLGraphicsConfig gc) {
+    static void setScratchSurface(SKGraphicsConfig gc) {
         setScratchSurface(gc.getNativeConfigInfo());
     }
 

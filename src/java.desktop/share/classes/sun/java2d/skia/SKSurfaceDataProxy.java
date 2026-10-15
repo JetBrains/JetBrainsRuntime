@@ -27,7 +27,6 @@ package sun.java2d.skia;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.loops.CompositeType;
-import sun.java2d.metal.MTLGraphicsConfig;
 
 import java.awt.Color;
 import java.awt.Transparency;
@@ -40,7 +39,7 @@ import java.awt.Transparency;
  */
 final class SKSurfaceDataProxy extends SurfaceDataProxy {
 
-    static SurfaceDataProxy createProxy(SurfaceData srcData, MTLGraphicsConfig gc) {
+    static SurfaceDataProxy createProxy(SurfaceData srcData, SKGraphicsConfig gc) {
         if (srcData instanceof SKSurfaceData) {
             // a VolatileImage: already on the GPU, nothing to cache
             return UNCACHED;
@@ -48,19 +47,22 @@ final class SKSurfaceDataProxy extends SurfaceDataProxy {
         return new SKSurfaceDataProxy(gc, srcData.getTransparency());
     }
 
-    private final MTLGraphicsConfig gc;
+    private final SKGraphicsConfig gc;
     private final int transparency;
 
-    private SKSurfaceDataProxy(MTLGraphicsConfig gc, int transparency) {
+    private SKSurfaceDataProxy(SKGraphicsConfig gc, int transparency) {
         this.gc = gc;
         this.transparency = transparency;
     }
 
     @Override
     public SurfaceData validateSurfaceData(SurfaceData srcData, SurfaceData cachedData, int w, int h) {
-        if (cachedData == null) {
+        if (cachedData == null || cachedData.isSurfaceLost()) {
+            if (cachedData != null) {
+                cachedData.flush();
+            }
             try {
-                cachedData = SKSurfaceData.createData(gc, w, h, gc.getColorModel(transparency), null,
+                cachedData = gc.createSKSurfaceData(w, h, gc.getColorModel(transparency), null,
                                                       SKSurfaceData.TEXTURE);
             } catch (OutOfMemoryError e) {
                 return null;

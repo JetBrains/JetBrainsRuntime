@@ -22,56 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef SKMetalInterop_h_Included
-#define SKMetalInterop_h_Included
+#ifndef MTLSKInterop_h_Included
+#define MTLSKInterop_h_Included
 
 // How libawt_skia talks to the Metal pipeline in libawt_lwawt without linking
-// against it: the destination texture and layer are reached through the native
-// ops of the wrapped MTLSurfaceData (BMTLSDOps, shared header), the two private
-// Metal structs below are mirrored field-for-field, and Objective-C objects are
+// against it: the destination texture, layer and configuration are reached
+// through the native ops of the wrapped MTLSurfaceData (BMTLSDOps, MTLSDOps and
+// MTLGraphicsConfigInfo from the shared header), and Objective-C objects are
 // messaged through informal protocols (resolved at runtime, no symbols needed).
 
 #import <Metal/Metal.h>
 #include "jni.h"
-#include "MTLSurfaceDataBase.h"   // BMTLSDOps, SurfaceData.h, Trace.h
-
-// The Metal headers that declare these structs (MTLGraphicsConfig.h,
-// MTLSurfaceData.h) pull in Cocoa, AWTWindow and MTLLayer; mirroring the two
-// plain structs keeps libawt_skia independent of libawt_lwawt's include tree.
-// Keep them in sync with MTLGraphicsConfig.h and MTLSurfaceData.h.
-// Mirror of MTLGraphicsConfigInfo (MTLGraphicsConfig.h).
-typedef struct {
-    id    context;      // MTLContext*
-    jint  displayID;
-} SKMTLGraphicsConfigInfo;
-
-// Mirror of MTLSDOps (MTLSurfaceData.h); referenced by BMTLSDOps.privOps.
-typedef struct {
-    id    peerData;     // AWTView*
-    id    layer;        // MTLLayer*
-    jint  argb[4];      // background clear color
-    SKMTLGraphicsConfigInfo *configInfo;
-} SKMTLSDOps;
+#include "MTLSurfaceDataBase.h"   // BMTLSDOps, MTLSDOps, MTLGraphicsConfigInfo, SurfaceData.h, Trace.h
 
 // Subset of MTLContext we use.
-@protocol SKMTLContextLike
+@protocol MTLSKContextLike
 - (id<MTLDevice>) device;
 - (id<MTLCommandQueue>) commandQueue;
 - (id<MTLCommandQueue>) blitCommandQueue;
 @end
 
 // Subset of MTLLayer we use.
-@protocol SKMTLLayerLike
+@protocol MTLSKLayerLike
 - (void) startRedraw;
 @end
 
-static inline SKMTLSDOps *SKMTL_PrivOps(BMTLSDOps *bmtlsdo) {
-    return (SKMTLSDOps *) bmtlsdo->privOps;
+static inline MTLSDOps *MTLSK_PrivOps(BMTLSDOps *bmtlsdo) {
+    return (MTLSDOps *) bmtlsdo->privOps;
 }
 
-static inline SKMTLGraphicsConfigInfo *SKMTL_ConfigInfo(BMTLSDOps *bmtlsdo) {
-    SKMTLSDOps *priv = SKMTL_PrivOps(bmtlsdo);
+static inline MTLGraphicsConfigInfo *MTLSK_ConfigInfo(BMTLSDOps *bmtlsdo) {
+    MTLSDOps *priv = MTLSK_PrivOps(bmtlsdo);
     return priv != NULL ? priv->configInfo : NULL;
 }
 
-#endif /* SKMetalInterop_h_Included */
+#endif /* MTLSKInterop_h_Included */

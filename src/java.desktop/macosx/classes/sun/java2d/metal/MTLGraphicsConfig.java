@@ -37,15 +37,17 @@ import sun.java2d.DisposerRecord;
 import sun.java2d.Surface;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.BufferedContext;
-import sun.java2d.skia.SKContext;
-import sun.java2d.skia.SKEnvironment;
-import sun.java2d.skia.SKRenderQueue;
-import sun.java2d.skia.SKSurfaceData;
-import sun.java2d.skia.SKVolatileSurfaceManager;
 import sun.java2d.pipe.hw.AccelGraphicsConfig;
 import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
+import sun.java2d.skia.MTLSKSurfaceData;
+import sun.java2d.skia.SKContext;
+import sun.java2d.skia.SKEnvironment;
+import sun.java2d.skia.SKGraphicsConfig;
+import sun.java2d.skia.SKRenderQueue;
+import sun.java2d.skia.SKSurfaceData;
+import sun.java2d.skia.SKVolatileSurfaceManager;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CFRetainedResource;
 
@@ -71,7 +73,7 @@ import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
 public final class MTLGraphicsConfig extends CGraphicsConfig
-        implements AccelGraphicsConfig, SurfaceManager.Factory
+        implements AccelGraphicsConfig, SurfaceManager.Factory, SKGraphicsConfig
 {
     private static ImageCapabilities imageCaps = new MTLImageCaps();
 
@@ -239,9 +241,14 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     @Override
     public SurfaceData createSurfaceData(CFRetainedResource layer) {
         if (SKEnvironment.isSkiaEnabled()) {
-            return SKSurfaceData.createData((MTLLayer) layer);
+            return MTLSKSurfaceData.createData((MTLLayer) layer);
         }
         return MTLSurfaceData.createData((MTLLayer) layer);
+    }
+
+    @Override
+    public SKSurfaceData createSKSurfaceData(int width, int height, ColorModel cm, Image image, int type) {
+        return MTLSKSurfaceData.createData(this, width, height, cm, image, type);
     }
 
     @Override

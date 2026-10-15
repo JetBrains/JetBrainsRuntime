@@ -23,15 +23,14 @@
  * questions.
  */
 
-// Native side of sun.java2d.skia.SKEnvironment for macOS. The Graphite
-// contexts themselves are created per graphics configuration in SKBackend.mm;
-// this only answers whether the GPU API is available and describes it.
+// macOS side of sun.java2d.skia.SKEnvironment: whether the GPU API is
+// available and what it is. The Graphite contexts themselves are created per
+// graphics configuration (SKBackend.cpp via MTLSKPlatform.mm).
 #import <Metal/Metal.h>
 #include <string>
 #include "jni.h"
 #include "jni_util.h"
 #include "sun_java2d_skia_SKEnvironment.h"
-#include "SKBackend.h"
 #include "include/core/SkMilestone.h"
 
 extern "C" {
@@ -57,10 +56,5 @@ Java_sun_java2d_skia_SKEnvironment_gpuApiNative(JNIEnv *env, jclass clazz)
     return JNU_NewStringPlatform(env, "metal");
 }
 
-JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads)
-{
-    SKBackend_Configure(msaaSamples, edgeAAQuads);
-}
 
 } // extern "C"

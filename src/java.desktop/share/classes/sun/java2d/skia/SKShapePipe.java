@@ -432,7 +432,8 @@ final class SKShapePipe implements ShapeDrawPipe {
                     buf.put(geo.params, 0, 6);
                 }
             } else {
-                // too large for the queue: draw directly on the flusher thread
+                // a path too large for the queue (the other kinds always fit): draw
+                // directly on the flusher thread
                 rq.flushAndInvokeNow(() -> drawShape(fill, geo.kind, geo.xform, stroke, geo.windingRule,
                                                      geo.types, geo.numTypes, geo.coords, geo.numCoords));
             }

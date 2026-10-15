@@ -26,8 +26,9 @@ package sun.java2d.skia;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
+import sun.java2d.InvalidPipeException;
 import sun.java2d.SurfaceData;
-import sun.java2d.metal.MTLGraphicsConfig;
+
 import sun.java2d.pipe.hw.AccelSurface;
 
 import java.awt.GraphicsConfiguration;
@@ -52,16 +53,29 @@ public final class SKVolatileSurfaceManager extends VolatileSurfaceManager {
     @Override
     protected SurfaceData initAcceleratedSurface() {
         try {
-            MTLGraphicsConfig gc = (MTLGraphicsConfig) vImg.getGraphicsConfig();
+            SKGraphicsConfig gc = (SKGraphicsConfig) vImg.getGraphicsConfig();
             ColorModel cm = gc.getColorModel(vImg.getTransparency());
             int type = vImg.getForcedAccelSurfaceType();
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            return SKSurfaceData.createData(gc, vImg.getWidth(), vImg.getHeight(), cm, vImg, type);
+            return gc.createSKSurfaceData(vImg.getWidth(), vImg.getHeight(), cm, vImg, type);
         } catch (NullPointerException | OutOfMemoryError ignored) {
             return null;
         }
+    }
+
+    /**
+     * A lost surface (a lost device on Windows) is replaced by a new one on
+     * its configuration; when that fails the image falls back to software.
+     */
+    @Override
+    protected void restoreAcceleratedSurface() {
+        SurfaceData sd = initAcceleratedSurface();
+        if (sd == null) {
+            throw new InvalidPipeException("could not restore the Skia surface");
+        }
+        sdAccel = sd;
     }
 
     @Override

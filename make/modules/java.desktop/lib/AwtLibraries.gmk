@@ -621,50 +621,59 @@ ifeq ($(call isTargetOs, macosx), true)
   ))
 
   TARGETS += $(BUILD_LIBAWT_LWAWT)
+endif
 
-  ##############################################################################
-  ## Build libawt_skia (experimental Skia rendering backend, JBR-10654)
-  ##############################################################################
+################################################################################
+## Build libawt_skia (experimental Skia rendering backend, JBR-10654)
+################################################################################
 
-  ifeq ($(SKIA_ENABLED), true)
-    # Shared Java2D headers (SurfaceData, Trace, glyph structs, generated
-    # opcode/constant headers) and the Metal surface ops struct it wraps.
-    LIBAWT_SKIA_EXTRA_HEADER_DIRS := \
-        include \
-        common/awt/debug \
-        common/font \
-        libawt/java2d \
-        libawt_lwawt/java2d/metal \
-        java.base:libjava \
-        #
+ifeq ($(SKIA_ENABLED), true)
+  # Shared Java2D headers (SurfaceData, Trace, glyph structs, generated
+  # opcode/constant headers); each platform adds the surface ops struct of the
+  # pipeline its SKPlatform implementation wraps.
+  LIBAWT_SKIA_EXTRA_HEADER_DIRS := \
+      include \
+      common/awt/debug \
+      common/font \
+      libawt/java2d \
+      java.base:libjava \
+      #
+  LIBAWT_SKIA_LDFLAGS :=
+  LIBAWT_SKIA_LINK_DEPS :=
 
+  ifeq ($(call isTargetOs, macosx), true)
+    LIBAWT_SKIA_EXTRA_HEADER_DIRS += libawt_lwawt/java2d/metal
     # The prebuilt Skia is compiled with default visibility; export JNI only.
     LIBAWT_SKIA_EXPORTS := \
         $(TOPDIR)/src/$(MODULE)/macosx/native/libawt_skia/libawt_skia.exports
-
-    $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_SKIA, \
-        NAME := awt_skia, \
-        OPTIMIZATION := LOW, \
-        LINK_TYPE := C++, \
-        EXTRA_SRC := common/font, \
-        CXXFLAGS := $(CXXFLAGS_JDKLIB) $(SKIA_CFLAGS), \
-        EXTRA_HEADER_DIRS := $(LIBAWT_SKIA_EXTRA_HEADER_DIRS), \
-        DISABLED_WARNINGS_clang := deprecated-declarations undef unused-parameter sign-compare, \
-        JDK_LIBS := libawt java.base:libjava, \
-        LDFLAGS := -Wl$(COMMA)-exported_symbols_list$(COMMA)$(LIBAWT_SKIA_EXPORTS), \
-        EXTRA_LINK_DEPS := $(LIBAWT_SKIA_EXPORTS), \
-        LIBS := $(SKIA_LIBS), \
-        LIBS_macosx := \
-            -framework CoreFoundation \
-            -framework CoreGraphics \
-            -framework CoreText \
-            -framework Foundation \
-            -framework Metal \
-            -framework QuartzCore, \
-    ))
-
-    TARGETS += $(BUILD_LIBAWT_SKIA)
+    LIBAWT_SKIA_LDFLAGS := -Wl$(COMMA)-exported_symbols_list$(COMMA)$(LIBAWT_SKIA_EXPORTS)
+    LIBAWT_SKIA_LINK_DEPS := $(LIBAWT_SKIA_EXPORTS)
   endif
+  # A Linux half, when it exists, needs the equivalent through a version
+  # script plus -Bsymbolic so a Skiko in the same process never binds to these
+  # Skia symbols; Windows exports JNI only by default.
+  $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_SKIA, \
+      NAME := awt_skia, \
+      OPTIMIZATION := LOW, \
+      LINK_TYPE := C++, \
+      EXTRA_SRC := common/font, \
+      CXXFLAGS := $(CXXFLAGS_JDKLIB) $(SKIA_CFLAGS), \
+      EXTRA_HEADER_DIRS := $(LIBAWT_SKIA_EXTRA_HEADER_DIRS), \
+      DISABLED_WARNINGS_clang := deprecated-declarations undef unused-parameter sign-compare, \
+      JDK_LIBS := libawt java.base:libjava, \
+      LDFLAGS := $(LIBAWT_SKIA_LDFLAGS), \
+      EXTRA_LINK_DEPS := $(LIBAWT_SKIA_LINK_DEPS), \
+      LIBS := $(SKIA_LIBS), \
+      LIBS_macosx := \
+          -framework CoreFoundation \
+          -framework CoreGraphics \
+          -framework CoreText \
+          -framework Foundation \
+          -framework Metal \
+          -framework QuartzCore, \
+  ))
+
+  TARGETS += $(BUILD_LIBAWT_SKIA)
 endif
 
 ################################################################################

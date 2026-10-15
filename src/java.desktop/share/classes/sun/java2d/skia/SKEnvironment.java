@@ -72,14 +72,11 @@ public final class SKEnvironment {
      */
     private record Configuration(int msaaSamples, boolean edgeAAQuads) {
         static Configuration defaultsFor(String gpuApi) {
-            return switch (gpuApi) {
-                // Metal on Apple GPUs: the path atlas beats 4x MSAA on fidelity,
-                // MSAA only wins on general paths; meshes and
-                // the edge-AA draw measured equal, the mesh is the exact one.
-                case "metal" -> new Configuration(1, false);
-                // Vulkan and Dawn/D3D: not measured yet, Metal's values until then.
-                default -> new Configuration(1, false);
-            };
+            // Measured on Metal (Apple M1 Max) and Dawn/D3D11: the path atlas beats
+            // 4x MSAA on fidelity and MSAA only wins on general paths; meshes and
+            // the edge-AA draw measured equal, the mesh is the exact one. Vulkan
+            // inherits these values until measured.
+            return new Configuration(1, false);
         }
 
         Configuration withProperties() {

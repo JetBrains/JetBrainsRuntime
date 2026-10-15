@@ -80,6 +80,37 @@ typedef struct {
     void*                        pStencilTexture;   // stencil texture byte buffer stencil mask used in main rendering
 } BMTLSDOps;
 
+#ifdef __OBJC__
+@class MTLContext;
+@class AWTView;
+@class MTLLayer;
+
+/**
+ * The MTLGraphicsConfigInfo structure contains information specific to a
+ * given MTLGraphicsConfig (pixel format).
+ *     MTLContext *context;
+ * The context associated with this MTLGraphicsConfig.
+ */
+typedef struct _MTLGraphicsConfigInfo {
+    MTLContext          *context;
+    jint                displayID;
+} MTLGraphicsConfigInfo;
+
+/**
+ * The MTLSDOps structure contains the MTL-specific information for a given
+ * MTLSurfaceData.  It is referenced by the native BMTLSDOps structure
+ * (privOps). Declared here, next to BMTLSDOps, so that libawt_skia can reach
+ * the layer and the configuration of a surface without libawt_lwawt's
+ * Cocoa include tree.
+ */
+typedef struct _MTLSDOps {
+    AWTView               *peerData;
+    MTLLayer              *layer;
+    jint              argb[4]; // background clear color
+    MTLGraphicsConfigInfo *configInfo;
+} MTLSDOps;
+#endif
+
 #define MTLSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
 #define MTLSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
 #define MTLSD_TEXTURE         sun_java2d_pipe_hw_AccelSurface_TEXTURE

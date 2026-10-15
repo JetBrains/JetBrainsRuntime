@@ -133,6 +133,7 @@ private:
             if (beforeDraw) {
                 beforeDraw();
             }
+            SkASSERT(texCoords.empty() || texCoords.size() == positions.size());   // a batch is textured or not
             sk_sp<SkVertices> mesh = SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode,
                                                           (int) positions.size(), positions.data(),
                                                           texCoords.empty() ? nullptr : texCoords.data(), nullptr,

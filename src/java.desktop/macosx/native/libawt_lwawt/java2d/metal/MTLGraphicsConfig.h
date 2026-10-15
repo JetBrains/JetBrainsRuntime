@@ -37,15 +37,4 @@
 + (void) _getMTLConfigInfo: (NSMutableArray *)argValue;
 @end
 
-/**
- * The MTLGraphicsConfigInfo structure contains information specific to a
- * given MTLGraphicsConfig (pixel format).
- *     MTLContext *context;
- * The context associated with this MTLGraphicsConfig.
- */
-typedef struct _MTLGraphicsConfigInfo {
-    MTLContext          *context;
-    jint                displayID;
-} MTLGraphicsConfigInfo;
-
 #endif /* MTLGraphicsConfig_h_Included */

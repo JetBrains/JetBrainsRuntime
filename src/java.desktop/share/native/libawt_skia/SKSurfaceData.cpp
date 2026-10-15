@@ -45,8 +45,8 @@ static void SKSD_Unlock(JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *pR
 }
 
 // Invoked by the Disposer: releases the Skia wrapper on the flusher thread via
-// the Java side, which enqueues DISPOSE_SURFACE (the Metal texture is owned and
-// released by the wrapped MTLSurfaceData).
+// the Java side, which enqueues DISPOSE_SURFACE (the texture is owned and
+// released by the wrapped platform surface).
 static void SKSD_Dispose(JNIEnv *env, SurfaceDataOps *ops) {
     JNU_CallStaticMethodByName(env, nullptr, "sun/java2d/skia/SKSurfaceData",
                                "dispose", "(J)V", ptr_to_jlong(ops));
@@ -56,7 +56,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKSurfaceData_initOps(JNIEnv *env, jobject skiasd,
-                                             jlong mtlOps, jint type, jboolean isOpaque)
+                                             jlong platformOps, jint type, jboolean isOpaque)
 {
     SKSDOps *ops = (SKSDOps *) SurfaceData_InitOps(env, skiasd, sizeof(SKSDOps));
     if (ops == nullptr) {
@@ -67,11 +67,11 @@ Java_sun_java2d_skia_SKSurfaceData_initOps(JNIEnv *env, jobject skiasd,
     ops->sdOps.GetRasInfo = SKSD_GetRasInfo;
     ops->sdOps.Unlock     = SKSD_Unlock;
     ops->sdOps.Dispose    = SKSD_Dispose;
-    ops->mtl      = (BMTLSDOps *) jlong_to_ptr(mtlOps);
+    ops->platform = (SKPlatformSurface *) jlong_to_ptr(platformOps);
     ops->type     = type;
     ops->isOpaque = isOpaque;
     ops->state    = nullptr;
-    J2dRlsTraceLn(J2D_TRACE_INFO, "SKSurfaceData_initOps: ops=%p mtl=%p type=%d", ops, ops->mtl, type);
+    J2dTraceLn(J2D_TRACE_VERBOSE, "SKSurfaceData_initOps: ops=%p platform=%p type=%d", ops, ops->platform, type);
 }
 
 } // extern "C"
@@ -79,4 +79,8 @@ Java_sun_java2d_skia_SKSurfaceData_initOps(JNIEnv *env, jobject skiasd,
 // Whether these ops belong to a Skia surface (as opposed to a software raster).
 bool SKSurfaceData_IsSkiaOps(SurfaceDataOps *ops) {
     return ops != nullptr && ops->Lock == SKSD_Lock;
+}
+
+SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops) {
+    return SKSurfaceData_IsSkiaOps(ops) ? ((SKSDOps *) ops)->platform : nullptr;
 }

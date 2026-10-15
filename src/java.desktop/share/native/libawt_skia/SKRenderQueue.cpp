@@ -31,6 +31,7 @@
 #include "jlong.h"
 #include "jni_util.h"
 #include "sun_java2d_pipe_BufferedOpCodes.h"
+#include "sun_java2d_pipe_hw_AccelSurface.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_pipe_BufferedTextPipe.h"
 #include "sun_java2d_skia_SKMaskFill.h"
@@ -72,7 +73,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
     }
     unsigned char *end = b + limit;
 
-    @autoreleasepool {
+    { SKPlatformScope scope;
     while (b < end) {
         jint opcode = NEXT_INT(b);
         switch (opcode) {
@@ -270,7 +271,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
         }
         OP(SET_SCRATCH_SURFACE): {
             jlong pConfigInfo = NEXT_LONG(b);
-            SKBackend_SetScratch((SKMTLGraphicsConfigInfo *) jlong_to_ptr(pConfigInfo));
+            SKBackend_SetScratch((SKPlatformConfig *) jlong_to_ptr(pConfigInfo));
             break;
         }
         OP(FLUSH_SURFACE):
@@ -280,13 +281,22 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             if (ops == SKBackend_CurrentDestination()) {
                 SKBackend_InvalidateState();
             }
-            SKBackend_ReleaseSurface(ops, opcode == sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE);
+            bool dispose = opcode == sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE;
+            SKBackend_ReleaseSurface(ops, dispose);
+            // A flushed window surface is being replaced (AWT never draws to it
+            // again): its platform side goes too, so the window's swap chain is
+            // free for the successor without waiting for the Disposer.
+            if (ops != nullptr && ops->platform != nullptr
+                    && (dispose || ops->type == sun_java2d_pipe_hw_AccelSurface_WINDOW)) {
+                SKPlatform_DisposeSurface(ops->platform);
+                ops->platform = nullptr;
+            }
             break;
         }
         OP(DISPOSE_CONFIG): {
             jlong pConfigInfo = NEXT_LONG(b);
             SKBackend_InvalidateState();
-            SKBackend_DisposeContext((SKMTLGraphicsConfigInfo *) jlong_to_ptr(pConfigInfo));
+            SKBackend_DisposeContext((SKPlatformConfig *) jlong_to_ptr(pConfigInfo));
             break;
         }
         OP(INVALIDATE_CONTEXT): {
@@ -424,7 +434,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
         }
     }
     SKBackend_EndOfFlush();
-    } // autoreleasepool
+    } // SKPlatformScope
 }
 
 // ---- direct entry points (flushAndInvokeNow) ------------------------------
@@ -434,7 +444,7 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
                                            jintArray xpointsArray, jintArray ypointsArray,
                                            jint nPoints, jboolean isClosed, jint transX, jint transY)
 {
-    @autoreleasepool {
+    { SKPlatformScope scope;
     jint *xPoints = (jint *) env->GetPrimitiveArrayCritical(xpointsArray, nullptr);
     if (xPoints != nullptr) {
         jint *yPoints = (jint *) env->GetPrimitiveArrayCritical(ypointsArray, nullptr);
@@ -445,7 +455,7 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
         env->ReleasePrimitiveArrayCritical(xpointsArray, xPoints, JNI_ABORT);
     }
     SKBackend_EndOfFlush();
-    } // autoreleasepool
+    } // SKPlatformScope
 }
 
 JNIEXPORT void JNICALL
@@ -453,14 +463,16 @@ Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean f
                                            jfloatArray xformArr, jfloatArray strokeArr, jint windingRule,
                                            jintArray typesArr, jint numTypes, jfloatArray coordsArr, jint numCoords)
 {
-    @autoreleasepool {
+    { SKPlatformScope scope;
     jfloat *xform = (jfloat *) env->GetPrimitiveArrayCritical(xformArr, nullptr);
     jfloat *stroke = strokeArr != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(strokeArr, nullptr) : nullptr;
     jint *types = typesArr != nullptr ? (jint *) env->GetPrimitiveArrayCritical(typesArr, nullptr) : nullptr;
     jfloat *coords = coordsArr != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(coordsArr, nullptr) : nullptr;
-    if (xform != nullptr && (strokeArr == nullptr || stroke != nullptr) && (typesArr == nullptr || types != nullptr)
-            && (coordsArr == nullptr || coords != nullptr)) {
-        SKBackend_DrawShape(fill, kind, xform, stroke, coords, windingRule, numTypes, types, numCoords, coords);
+    // only paths take this entry (the other kinds always fit the queue), so there
+    // are no analytic parameters to pass
+    if (kind == sun_java2d_skia_SKShapePipe_KIND_PATH && xform != nullptr && (strokeArr == nullptr || stroke != nullptr)
+            && (typesArr == nullptr || types != nullptr) && (coordsArr == nullptr || coords != nullptr)) {
+        SKBackend_DrawShape(fill, kind, xform, stroke, nullptr, windingRule, numTypes, types, numCoords, coords);
     }
     if (coords != nullptr) env->ReleasePrimitiveArrayCritical(coordsArr, coords, JNI_ABORT);
     if (types != nullptr) env->ReleasePrimitiveArrayCritical(typesArr, types, JNI_ABORT);
@@ -476,7 +488,7 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
                                            jint maskoff, jint maskscan, jint masklen,
                                            jbyteArray maskArray)
 {
-    @autoreleasepool {
+    { SKPlatformScope scope;
     unsigned char *mask = nullptr;
     if (maskArray != nullptr) {
         mask = (unsigned char *) env->GetPrimitiveArrayCritical(maskArray, nullptr);
@@ -489,7 +501,7 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
         env->ReleasePrimitiveArrayCritical(maskArray, mask, JNI_ABORT);
     }
     SKBackend_EndOfFlush();
-    } // autoreleasepool
+    } // SKPlatformScope
 }
 
 JNIEXPORT void JNICALL
@@ -500,7 +512,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
                                                     jfloat glyphListOrigX, jfloat glyphListOrigY,
                                                     jlongArray imgArray, jfloatArray posArray)
 {
-    @autoreleasepool {
+    { SKPlatformScope scope;
     jlong *images = (jlong *) env->GetPrimitiveArrayCritical(imgArray, nullptr);
     if (images == nullptr) {
         return;
@@ -518,7 +530,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
     }
     env->ReleasePrimitiveArrayCritical(imgArray, images, JNI_ABORT);
     SKBackend_EndOfFlush();
-    } // autoreleasepool
+    } // SKPlatformScope
 }
 
 } // extern "C"

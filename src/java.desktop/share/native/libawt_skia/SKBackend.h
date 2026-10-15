@@ -26,11 +26,15 @@
 #define SKBackend_h_Included
 
 // Native state of the Skia rendering backend (JBR-10654). One SKConfigContext
-// per Metal graphics config (Graphite context + recorder on the config's device
-// and command queue), one SKSDOps per Java SKSurfaceData, and a single
-// render state owned by the flusher thread.
+// per platform graphics config (Graphite context + recorder on the config's
+// device and queue, see SKPlatform.h), one SKSDOps per Java SKSurfaceData, and
+// a single render state owned by the flusher thread.
 
-#include "SKMetalInterop.h"
+#include "SKPlatform.h"
+
+#include "jni.h"
+#include "SurfaceData.h"
+#include "Trace.h"
 
 #include "include/core/SkCanvas.h"
 #include "include/core/SkImage.h"
@@ -48,10 +52,9 @@ struct SKGlyphCache;
 struct SKMaskCache;
 
 struct SKConfigContext {
-    SKMTLGraphicsConfigInfo *info = nullptr;
+    SKPlatformConfig *config = nullptr;
     std::unique_ptr<skgpu::graphite::Context> context;
     std::unique_ptr<skgpu::graphite::Recorder> recorder;
-    bool dirty = false;   // recorded but not yet inserted/submitted work
     SKGlyphCache *glyphCacheAA = nullptr;    // created on first use
     SKGlyphCache *glyphCacheLCD = nullptr;
     SKMaskCache *maskCache = nullptr;        // created on first use
@@ -60,7 +63,7 @@ struct SKConfigContext {
 
 struct SKSurfaceState {
     sk_sp<SkSurface> surface;
-    void *wrappedTexture = nullptr;   // the MTLTexture `surface` wraps
+    void *wrappedTexture = nullptr;   // identity of the platform texture `surface` wraps (SKPlatform_TextureHandle)
     SKConfigContext *cc = nullptr;
 };
 
@@ -68,13 +71,15 @@ struct SKSurfaceState {
 // memory), so only pointers and scalars live here.
 typedef struct {
     SurfaceDataOps     sdOps;
-    BMTLSDOps         *mtl;        // the wrapped Metal surface (owns the texture)
+    SKPlatformSurface *platform;   // the wrapped platform surface (owns the texture)
     jint               type;       // AccelSurface type
     jboolean           isOpaque;
     SKSurfaceState  *state;
 } SKSDOps;
 
 bool SKSurfaceData_IsSkiaOps(SurfaceDataOps *ops);
+// The platform surface behind a Skia surface's ops (null if not Skia's or already disposed).
+SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops);
 
 // Contexts
 // Architecture-dependent configuration (SKEnvironment decides the values per
@@ -82,8 +87,8 @@ bool SKSurfaceData_IsSkiaOps(SurfaceDataOps *ops);
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads);
 bool SKBackend_Multisampled();
 bool SKBackend_EdgeAAQuads();
-SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info);
-void SKBackend_DisposeContext(SKMTLGraphicsConfigInfo *info);
+SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config);
+void SKBackend_DisposeContext(SKPlatformConfig *config);
 
 // Surfaces
 sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops);
@@ -92,10 +97,9 @@ void SKBackend_ReleaseSurface(SKSDOps *ops, bool dispose);
 
 // Render state (flusher thread)
 void SKBackend_SetDestination(SKSDOps *dst);
-void SKBackend_SetScratch(SKMTLGraphicsConfigInfo *info);
+void SKBackend_SetScratch(SKPlatformConfig *config);
 void SKBackend_InvalidateState();
 SKSDOps *SKBackend_CurrentDestination();
-SkCanvas *SKBackend_CurrentCanvas();
 
 void SKBackend_SetRectClip(jint x1, jint y1, jint x2, jint y2);
 void SKBackend_BeginShapeClip();

@@ -51,7 +51,6 @@
 #include "include/core/SkRect.h"
 #include "include/core/SkSamplingOptions.h"
 #include "include/core/SkRRect.h"
-#include "include/effects/SkDashPathEffect.h"
 #include "include/core/SkPathUtils.h"
 #include "include/core/SkSpan.h"
 #include "include/core/SkTileMode.h"
@@ -62,9 +61,6 @@
 #include "include/gpu/graphite/Image.h"
 #include "include/gpu/graphite/Recording.h"
 #include "include/gpu/graphite/Surface.h"
-#include "include/gpu/graphite/mtl/MtlBackendContext.h"
-#include "include/gpu/graphite/mtl/MtlGraphiteTypes.h"
-#include "include/gpu/graphite/mtl/MtlGraphiteTypes_cpp.h"
 
 #include <atomic>
 #include <cmath>
@@ -85,7 +81,7 @@ static std::unordered_map<void *, SKConfigContext *> gContexts;
 
 // Drop references the render state holds to a context / surface about to go away.
 static void forgetContext(SKConfigContext *cc);
-static void forgetSurface(SKSDOps *ops, bool dispose);
+static void forgetSurface(SKSDOps *ops);
 static void flushAllBatches();
 
 // Architecture-dependent configuration, see SKEnvironment.Configuration. With
@@ -120,27 +116,14 @@ static SampleCount sampleCount(jint samples) {
     }
 }
 
-SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
-    if (info == nullptr || info->context == nil) {
+SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
+    if (config == nullptr) {
         return nullptr;
     }
-    auto it = gContexts.find(info);
+    auto it = gContexts.find(config);
     if (it != gContexts.end()) {
         return it->second;
     }
-    id<SKMTLContextLike> mtlc = (id<SKMTLContextLike>) info->context;
-    id<MTLDevice> device = [mtlc device];
-    id<MTLCommandQueue> queue = [mtlc blitCommandQueue];
-    if (device == nil || queue == nil) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: MTLContext has no device/queue");
-        return nullptr;
-    }
-    // MTLLayer.blitTexture copies pTexture to the drawable on blitCommandQueue.
-    // Submitting on the same queue makes Metal order the presentation blit after
-    // our rendering without a CPU wait (commands on one queue execute in order).
-    MtlBackendContext backend;
-    backend.fDevice.retain((CFTypeRef) device);
-    backend.fQueue.retain((CFTypeRef) queue);
     ContextOptions options;
     // Default: no multisampled passes. Graphite renders a whole pass with MSAA
     // as soon as one draw in it needs it, which quantizes every antialiased
@@ -148,33 +131,32 @@ SKConfigContext *SKBackend_ContextFor(SKMTLGraphicsConfigInfo *info) {
     // with full coverage precision like the Metal pipeline's shaders. Non-AA
     // geometry stays exact either way (span decomposition under MSAA).
     options.fInternalMultisampleCount = sampleCount(gConfig.msaaSamples);
-    // ContextFactory::MakeMetal: see the note in SKEnvironment.mm on SkContexts::MakeGraphite.
-    std::unique_ptr<Context> context = ContextFactory::MakeMetal(backend, options);
+    std::unique_ptr<Context> context = SKPlatform_MakeContext(config, options);
     if (!context) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create Graphite context");
         return nullptr;
     }
     auto *cc = new SKConfigContext();
-    cc->info = info;
+    cc->config = config;
     cc->recorder = context->makeRecorder();
     cc->context = std::move(context);
-    gContexts[info] = cc;
-    J2dTraceLn(J2D_TRACE_INFO, "SKBackend_ContextFor: created Graphite/Metal context for config %p", info);
+    gContexts[config] = cc;
+    J2dTraceLn(J2D_TRACE_INFO, "SKBackend_ContextFor: created Graphite context for config %p", config);
     return cc;
 }
 
-void SKBackend_DisposeContext(SKMTLGraphicsConfigInfo *info) {
-    auto it = gContexts.find(info);
+void SKBackend_DisposeContext(SKPlatformConfig *config) {
+    auto it = gContexts.find(config);
     if (it == gContexts.end()) {
         return;
     }
     SKConfigContext *cc = it->second;
-    J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_DisposeContext: info=%p cc=%p surfaces=%zu", info, cc, cc->surfaces.size());
+    J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_DisposeContext: config=%p cc=%p surfaces=%zu", config, cc, cc->surfaces.size());
     SKBackend_Submit(cc, true);
     gContexts.erase(it);
     forgetContext(cc);
     // Surfaces wrapped with this recorder cannot be drawn to any more; they are
-    // re-wrapped on their next use (the Metal texture is still there). Submit
+    // re-wrapped on their next use (the platform texture is still there). Submit
     // has drawn every pending batch.
     for (SKSurfaceState *st : cc->surfaces) {
         st->surface.reset();
@@ -202,17 +184,18 @@ static SKSurfaceState *stateOf(SKSDOps *ops) {
 }
 
 static SKConfigContext *contextOf(SKSDOps *ops) {
-    return ops->mtl != nullptr ? SKBackend_ContextFor(SKMTL_ConfigInfo(ops->mtl)) : nullptr;
+    return ops->platform != nullptr ? SKBackend_ContextFor(SKPlatform_ConfigOf(ops->platform)) : nullptr;
 }
 
 static SKConfigContext *currentContext();   // the destination's context (render state, below)
 
 sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
-    if (ops == nullptr || ops->mtl == nullptr || ops->mtl->pTexture == nullptr) {
+    void *texture = ops != nullptr && ops->platform != nullptr ? SKPlatform_TextureHandle(ops->platform) : nullptr;
+    if (texture == nullptr) {
         return nullptr;
     }
     SKSurfaceState *st = stateOf(ops);
-    if (st->surface && st->wrappedTexture == ops->mtl->pTexture) {
+    if (st->surface && st->wrappedTexture == texture) {
         return st->surface;
     }
     SKConfigContext *cc = contextOf(ops);
@@ -220,22 +203,26 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
         return nullptr;
     }
     if (st->surface) {
-        // the texture was replaced: pending batches may still target the old canvas
+        // the texture was replaced: pending batches may still target the old
+        // canvas, and so may the render state if this is the destination
         J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_GetSurface: re-wrapping ops=%p (texture %p -> %p)",
-                      ops, st->wrappedTexture, ops->mtl->pTexture);
+                      ops, st->wrappedTexture, texture);
         flushAllBatches();
+        forgetSurface(ops);
         st->surface.reset();
     }
-    id<MTLTexture> tex = (id<MTLTexture>) ops->mtl->pTexture;
-    BackendTexture bt = BackendTextures::MakeMetal(SkISize::Make((int) tex.width, (int) tex.height), (CFTypeRef) tex);
-    st->surface = SkSurfaces::WrapBackendTexture(cc->recorder.get(), bt,
-                                                 kBGRA_8888_SkColorType, nullptr, nullptr);
-    if (!st->surface) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_GetSurface: cannot wrap MTLTexture %p (%lux%lu)",
-                      tex, (unsigned long) tex.width, (unsigned long) tex.height);
+    BackendTexture bt;
+    SkColorType colorType;
+    if (!SKPlatform_BackendTexture(ops->platform, &bt, &colorType)) {
         return nullptr;
     }
-    st->wrappedTexture = ops->mtl->pTexture;
+    st->surface = SkSurfaces::WrapBackendTexture(cc->recorder.get(), bt, colorType, nullptr, nullptr);
+    if (!st->surface) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_GetSurface: cannot wrap texture %p (%dx%d)",
+                      texture, bt.dimensions().width(), bt.dimensions().height());
+        return nullptr;
+    }
+    st->wrappedTexture = texture;
     st->cc = cc;
     cc->surfaces.insert(st);
     return st->surface;
@@ -246,15 +233,18 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
 // the recorder that wraps them, so the view is made with the drawing context's
 // recorder, not the source's.
 sk_sp<SkImage> SKBackend_GetImage(SKSDOps *ops) {
-    if (ops == nullptr || ops->mtl == nullptr || ops->mtl->pTexture == nullptr) {
+    if (ops == nullptr || ops->platform == nullptr || SKPlatform_TextureHandle(ops->platform) == nullptr) {
         return nullptr;
     }
     SKConfigContext *cc = currentContext() != nullptr ? currentContext() : contextOf(ops);
     if (cc == nullptr) {
         return nullptr;
     }
-    id<MTLTexture> tex = (id<MTLTexture>) ops->mtl->pTexture;
-    BackendTexture bt = BackendTextures::MakeMetal(SkISize::Make((int) tex.width, (int) tex.height), (CFTypeRef) tex);
+    BackendTexture bt;
+    SkColorType colorType;
+    if (!SKPlatform_BackendTexture(ops->platform, &bt, &colorType)) {
+        return nullptr;
+    }
     return SkImages::WrapTexture(cc->recorder.get(), bt,
                                  ops->isOpaque ? kOpaque_SkAlphaType : kPremul_SkAlphaType,
                                  nullptr, skgpu::Origin::kTopLeft);
@@ -268,14 +258,17 @@ void SKBackend_ReleaseSurface(SKSDOps *ops, bool dispose) {
                   (void *) ops->state->surface.get());
     flushAllBatches();   // batches may refer to this surface's canvas
     if (ops->state->cc != nullptr) {
-        // make sure pending draws into this surface reach the GPU first
+        // make sure pending draws into this surface reach the GPU first; no CPU
+        // wait is needed before the platform frees the texture, since Graphite
+        // retains the wrapped texture object for as long as a command buffer
+        // that uses it is tracked
         SKBackend_Submit(ops->state->cc, false);
         ops->state->cc->surfaces.erase(ops->state);
     }
     ops->state->surface.reset();
     ops->state->wrappedTexture = nullptr;
     ops->state->cc = nullptr;
-    forgetSurface(ops, dispose);
+    forgetSurface(ops);
     if (dispose) {
         delete ops->state;
         ops->state = nullptr;
@@ -330,14 +323,12 @@ static void forgetContext(SKConfigContext *cc) {
     }
 }
 
-static void forgetSurface(SKSDOps *ops, bool dispose) {
+static void forgetSurface(SKSDOps *ops) {
     if (g.dst == ops) {
         g.dst = nullptr;
         g.canvas = nullptr;
     }
-    if (dispose) {
-        g.touchedWindows.erase(ops);
-    }
+    g.touchedWindows.erase(ops);   // a released window surface is not presented at the end of the flush
 }
 
 static void applyCanvasState() {
@@ -359,7 +350,6 @@ static void applyCanvasState() {
 
 static void markTouched() {
     if (g.cc != nullptr) {
-        g.cc->dirty = true;
         g.touchedContexts.insert(g.cc);
     }
     if (g.dst != nullptr && g.dst->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
@@ -371,8 +361,8 @@ static void markTouched() {
 // arrive as textures already (SKSurfaceDataProxy), everything else is uploaded
 // per draw. Texture from pixels the caller owns only for the duration of the call (a
 // locked Java raster, an opcode buffer, a glyph image): Graphite copies them
-// into its upload buffer while recording (verified with a standalone Graphite
-// probe), so the pixmap is wrapped, not copied first.
+// into its upload buffer while recording (UploadInstance::Make copies the
+// pixels), so the pixmap is wrapped, not copied first.
 static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
     if (g.cc == nullptr) {
         return SkImages::RasterFromPixmapCopy(pm);
@@ -383,17 +373,19 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
 
 void SKBackend_SetDestination(SKSDOps *dst) {
     flushAllBatches();
-    g.dst = dst;
+    g.dst = nullptr;
     g.canvas = nullptr;
     if (dst == nullptr) {
         return;
     }
     g.cc = contextOf(dst);
+    // GetSurface may re-wrap a replaced texture and forget the previous
+    // destination on the way, so the destination is taken after it
     sk_sp<SkSurface> surface = SKBackend_GetSurface(dst);
     if (!surface) {
-        g.dst = nullptr;
         return;
     }
+    g.dst = dst;
     g.canvas = surface->getCanvas();
     // The canvas keeps the save()/clip applyCanvasState() left behind the last
     // time this surface was the destination; drop it before taking the base
@@ -402,15 +394,17 @@ void SKBackend_SetDestination(SKSDOps *dst) {
     g.baseSaveCount = g.canvas->getSaveCount();
     applyCanvasState();
     if (dst->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_SetDestination: window ops=%p tex=%p layer=%p",
-                   dst, dst->mtl->pTexture,
-                   SKMTL_PrivOps(dst->mtl) != nullptr ? (void *) SKMTL_PrivOps(dst->mtl)->layer : nullptr);
+        J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_SetDestination: window ops=%p tex=%p",
+                   dst, SKPlatform_TextureHandle(dst->platform));
     }
 }
 
-void SKBackend_SetScratch(SKMTLGraphicsConfigInfo *info) {
+void SKBackend_SetScratch(SKPlatformConfig *config) {
     flushAllBatches();
-    g.cc = SKBackend_ContextFor(info);
+    // only an existing context: the scratch surface precedes disposals, which
+    // must not create a context for a configuration that never rendered
+    auto it = gContexts.find(config);
+    g.cc = it != gContexts.end() ? it->second : nullptr;
     g.dst = nullptr;
     g.canvas = nullptr;
 }
@@ -421,7 +415,6 @@ void SKBackend_InvalidateState() {
 }
 
 SKSDOps *SKBackend_CurrentDestination() { return g.dst; }
-SkCanvas *SKBackend_CurrentCanvas() { return g.canvas; }
 
 // --- clip
 
@@ -714,6 +707,9 @@ static sk_sp<SkImage> imageFromSoftwareSurface(JNIEnv *env, SurfaceDataOps *ops,
                 }
             }
             image = uploadPixmap(SkPixmap(SkImageInfo::Make(w, h, ct, kPremul_SkAlphaType), opaque.data(), (size_t) w * 4));
+            if (opaque.capacity() > (size_t) 4096 * 4096) {
+                std::vector<uint32_t>().swap(opaque);   // one oversized blit must not pin its buffer
+            }
         } else {
             image = uploadPixmap(SkPixmap(SkImageInfo::Make(w, h, ct, at), base, (size_t) ri.scanStride));
         }
@@ -752,6 +748,12 @@ void SKBackend_SetTexturePaint(JNIEnv *env, jboolean filter, jlong pSrc,
         return;
     }
     SKSDOps *skSrc = (SKSDOps *) src;
+    SKPlatformConfig *srcConfig = SKPlatform_ConfigOf(skSrc->platform);
+    if (g.cc != nullptr && srcConfig != g.cc->config && !SKPlatform_SameDevice(srcConfig, g.cc->config)) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_SetTexturePaint: source %p is on another device, skipped", src);
+        g.shader.reset();
+        return;
+    }
     if (skSrc->state != nullptr && skSrc->state->cc != nullptr && skSrc->state->cc != g.cc) {
         // another display's context and queue: its work must be complete
         SKBackend_Submit(skSrc->state->cc, true);
@@ -1119,10 +1121,8 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
         p.setStrokeCap(caps[std::clamp((int) stroke[1], 0, 2)]);
         p.setStrokeJoin(joins[std::clamp((int) stroke[2], 0, 2)]);
         p.setStrokeMiter(stroke[3]);
-        const int dashCount = (int) stroke[5];
-        if (dashCount > 0) {
-            p.setPathEffect(SkDashPathEffect::Make(SkSpan(stroke + 6, dashCount), stroke[4]));
-        }
+        // stroke[4] (dash phase) and stroke[5] (dash count) are always 0: dashed
+        // strokes are dashed by Java's stroker and arrive as fills
     }
     const SkMatrix m = SkMatrix::MakeAll(xform[0], xform[2], xform[4],
                                          xform[1], xform[3], xform[5],
@@ -1165,14 +1165,14 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
             if (fill) {
                 g.canvas->drawPath(path, p);
             } else {
-                // Stroke like Marlin does: the stroked outline (dashes included)
-                // is filled. Skia's rasterizer would otherwise draw strokes of one
-                // device pixel or less as hairlines with a different coverage rule.
+                // Stroke like Marlin does: the stroked outline is filled (dashed
+                // strokes were dashed by Java's stroker and arrive as fills). Skia's
+                // rasterizer would otherwise draw strokes of one device pixel or
+                // less as hairlines with a different coverage rule.
                 bool isFill = false;
                 SkPath outline = skpathutils::FillPathWithPaint(path, p, &isFill);
                 SkPaint fillPaint = p;
                 fillPaint.setStyle(SkPaint::kFill_Style);
-                fillPaint.setPathEffect(nullptr);
                 g.canvas->drawPath(outline, fillPaint);
             }
             break;
@@ -1563,15 +1563,26 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     SkRect srcRect;
     if (isoblit) {
         SKSDOps *src = (SKSDOps *) jlong_to_ptr(pSrc);
-        if (src != nullptr && src->state != nullptr && src->state->cc != nullptr && src->state->cc != g.cc) {
-            // another display's context and queue: its work must be complete
-            SKBackend_Submit(src->state->cc, true);
+        if (src != nullptr) {
+            SKPlatformConfig *srcConfig = SKPlatform_ConfigOf(src->platform);
+            if (srcConfig != g.cc->config && !SKPlatform_SameDevice(srcConfig, g.cc->config)) {
+                // Another adapter's texture cannot be wrapped by this context (a
+                // window dragged between the displays of two GPUs): nothing is
+                // drawn rather than a texture handle of a foreign device handed
+                // to the driver. Such a blit would need a readback.
+                J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_Blit: source %p is on another device, skipped", src);
+                return;
+            }
+            if (src->state != nullptr && src->state->cc != nullptr && src->state->cc != g.cc) {
+                // another display's context and queue: its work must be complete
+                SKBackend_Submit(src->state->cc, true);
+            }
         }
         if (src != nullptr && src->state != nullptr && src->state->surface && src->state->cc == g.cc
-                && src->mtl != nullptr && src->state->wrappedTexture == src->mtl->pTexture) {
+                && src->platform != nullptr && src->state->wrappedTexture == SKPlatform_TextureHandle(src->platform)) {
             // An image view linked to the source's device: Graphite flushes the
             // source's pending draws before this recording samples it. A bare
-            // WrapTexture of the same MTLTexture would not carry that dependency.
+            // WrapTexture of the same texture would not carry that dependency.
             image = SkSurfaces::AsImage(src->state->surface);
         } else {
             image = SKBackend_GetImage(src);
@@ -1668,7 +1679,6 @@ void SKBackend_SurfaceToSwBlit(JNIEnv *env, jint sx, jint sy, jint dx, jint dy, 
                                                        readbackCallback, req);
                 cc->context->submit(SyncToCpu::kYes);
                 cc->context->checkAsyncWorkCompletion();
-                cc->dirty = false;
                 if (req->done && req->ok) {
                     const bool unpremul = dsttype == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB;
                     for (int row = 0; row < req->h; row++) {
@@ -1738,7 +1748,6 @@ void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
     }
     SKBackend_FlushRecording(cc);
     cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
-    cc->dirty = false;
 }
 
 void SKBackend_EndOfFlush(bool syncToCpu) {
@@ -1746,16 +1755,10 @@ void SKBackend_EndOfFlush(bool syncToCpu) {
         SKBackend_Submit(cc, syncToCpu);
     }
     g.touchedContexts.clear();
-    // Ask the Metal layers of the windows we drew into to present the texture.
+    // Ask the platform to present the windows we drew into.
     for (SKSDOps *dst : g.touchedWindows) {
-        if (dst->mtl != nullptr) {
-            SKMTLSDOps *priv = SKMTL_PrivOps(dst->mtl);
-            if (priv != nullptr && priv->layer != nil) {
-                J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_EndOfFlush: startRedraw layer=%p", (void *) priv->layer);
-                [(id<SKMTLLayerLike>) priv->layer startRedraw];
-            } else {
-                J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_EndOfFlush: window surface %p has no layer", dst);
-            }
+        if (dst->platform != nullptr) {
+            SKPlatform_RequestRedraw(dst->platform);
         }
     }
     g.touchedWindows.clear();
