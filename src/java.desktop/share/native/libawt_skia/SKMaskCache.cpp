@@ -29,6 +29,7 @@
 
 #include "Trace.h"
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -41,6 +42,7 @@ static const jint CACHE_SIZE = 2048;   // 4096 cells: about one wrap per heavy f
 static const jint CELL_SIZE  = 32;
 static const jint CELLS_PER_ROW = CACHE_SIZE / CELL_SIZE;
 static const jint CELL_COUNT = CELLS_PER_ROW * CELLS_PER_ROW;
+static const jint FIRST_CELL = 1;      // cell 0 is reserved (opaque)
 
 struct SKMaskCache {
     SKConfigContext *cc = nullptr;
@@ -49,20 +51,27 @@ struct SKMaskCache {
     jint nextCell = 0;
     SKQuadBatch batch;
     // Tiles are copied into one atlas row on the CPU and uploaded per row: a
-    // writePixels per 32x32 tile costs more than the tile itself.
+    // writePixels per 32x32 tile costs more than the tile itself. Only the
+    // span of the row staged since the last upload goes up: a batch is drawn
+    // (and the row uploaded first) whenever the paint changes, which with
+    // per-shape colours is every few tiles, and a full 64 KB row each time
+    // made uploads the frame's cost where upload bandwidth is scarce (VM).
     std::vector<unsigned char> staging;
     jint stagingRow = -1;
-    bool stagingDirty = false;
+    jint stagingX0 = CACHE_SIZE;   // dirty span [stagingX0, stagingX1), empty when X0 >= X1
+    jint stagingX1 = 0;
 };
 
-// Records the staged row's upload. Must precede the draws that sample it: the
-// atlas' pending uploads are only ordered ahead of a destination's draws that
-// are recorded after them.
+// Records the upload of the staged span. Must precede the draws that sample
+// it: the atlas' pending uploads are only ordered ahead of a destination's
+// draws that are recorded after them.
 static void uploadStaging(SKMaskCache *mc) {
-    if (mc->stagingDirty) {
-        SkPixmap pm(SkImageInfo::MakeA8(CACHE_SIZE, CELL_SIZE), mc->staging.data(), (size_t) CACHE_SIZE);
-        mc->atlas->writePixels(pm, 0, mc->stagingRow);
-        mc->stagingDirty = false;
+    if (mc->stagingX0 < mc->stagingX1) {
+        SkPixmap pm(SkImageInfo::MakeA8(mc->stagingX1 - mc->stagingX0, CELL_SIZE),
+                    mc->staging.data() + mc->stagingX0, (size_t) CACHE_SIZE);
+        mc->atlas->writePixels(pm, mc->stagingX0, mc->stagingRow);
+        mc->stagingX0 = CACHE_SIZE;
+        mc->stagingX1 = 0;
     }
 }
 
@@ -86,6 +95,10 @@ SKMaskCache *SKMaskCache_Create(SKConfigContext *cc) {
     }
     mc->staging.resize((size_t) CACHE_SIZE * CELL_SIZE);
     mc->batch.beforeDraw = [mc] { uploadStaging(mc); };
+    // cell 0 is the opaque cell for fully covered tiles (SKMaskCache_DrawSolid)
+    std::vector<unsigned char> opaque((size_t) CELL_SIZE * CELL_SIZE, 0xff);
+    mc->atlas->writePixels(SkPixmap(SkImageInfo::MakeA8(CELL_SIZE, CELL_SIZE), opaque.data(), CELL_SIZE), 0, 0);
+    mc->nextCell = FIRST_CELL;
     return mc;
 }
 
@@ -103,7 +116,7 @@ static void allocCell(SKMaskCache *mc, jint *cx, jint *cy) {
     if (mc->nextCell == CELL_COUNT) {
         SKMaskCache_Flush(mc);
         SKBackend_FlushRecording(mc->cc);
-        mc->nextCell = 0;
+        mc->nextCell = FIRST_CELL;
     }
     *cx = (mc->nextCell % CELLS_PER_ROW) * CELL_SIZE;
     *cy = (mc->nextCell / CELLS_PER_ROW) * CELL_SIZE;
@@ -123,9 +136,10 @@ void SKMaskCache_Draw(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &paint,
     }
     if (paint.getShader() == nullptr) {
         // alpha-only atlas in the mesh: the tiles mask the paint colour. The
-        // batch uploads the staged row before it draws (beforeDraw), also when
+        // batch uploads the staged span before it draws (beforeDraw), also when
         // begin() flushes an older batch for a different paint.
-        mc->stagingDirty = true;
+        mc->stagingX0 = std::min(mc->stagingX0, cx);
+        mc->stagingX1 = std::max(mc->stagingX1, cx + w);
         mc->batch.begin(canvas, paint, mc->atlasImage);
         mc->batch.addSprite(x, y, w, h, cx, cy);
         return;
@@ -141,6 +155,11 @@ void SKMaskCache_Draw(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &paint,
     mc->atlas->writePixels(tile, cx, cy);
     canvas->drawImageRect(mc->atlasImage.get(), SkRect::MakeXYWH(cx, cy, w, h), SkRect::MakeXYWH(x, y, w, h),
                           SkSamplingOptions(SkFilterMode::kNearest), &paint, SkCanvas::kStrict_SrcRectConstraint);
+}
+
+void SKMaskCache_DrawSolid(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &paint, jint x, jint y, jint w, jint h) {
+    mc->batch.begin(canvas, paint, mc->atlasImage);
+    mc->batch.addSprite(x, y, w, h, 0, 0);
 }
 
 void SKMaskCache_Flush(SKMaskCache *mc) {

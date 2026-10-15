@@ -1188,19 +1188,28 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
     REQUIRE_CANVAS_MASK();
     if (w <= 0 || h <= 0) return;
     SkPaint p = SKBackend_MakePaint(false);
-    if (mask == nullptr || masklen == 0) {
-        SKMaskCache_Flush(g.cc->maskCache);
-        g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
-        return;
-    }
+    const bool solidTile = mask == nullptr || masklen == 0;
     if (SKMaskCache_Fits(w, h)) {
         if (g.cc->maskCache == nullptr) {
             g.cc->maskCache = SKMaskCache_Create(g.cc);
         }
         if (g.cc->maskCache != nullptr) {
-            SKMaskCache_Draw(g.cc->maskCache, g.canvas, p, x, y, w, h, mask + maskoff, maskscan);
+            if (solidTile && !g.shader) {
+                // a shape's interior tiles stay in the mesh with its edge tiles
+                SKMaskCache_DrawSolid(g.cc->maskCache, g.canvas, p, x, y, w, h);
+            } else if (!solidTile) {
+                SKMaskCache_Draw(g.cc->maskCache, g.canvas, p, x, y, w, h, mask + maskoff, maskscan);
+            } else {
+                SKMaskCache_Flush(g.cc->maskCache);
+                g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
+            }
             return;
         }
+    }
+    if (solidTile) {
+        SKMaskCache_Flush(g.cc->maskCache);
+        g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
+        return;
     }
     // Oversized tile: upload it on its own.
     SKMaskCache_Flush(g.cc->maskCache);

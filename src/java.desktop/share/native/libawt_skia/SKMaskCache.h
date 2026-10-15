@@ -48,6 +48,9 @@ bool SKMaskCache_Fits(jint w, jint h);
 // from the atlas individually, so the shader is sampled in device space.
 void SKMaskCache_Draw(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &paint,
                       jint x, jint y, jint w, jint h, const unsigned char *mask, jint maskscan);
+// A fully covered tile (MASK_FILL without a mask) of a colour paint: a sprite
+// of the atlas' reserved opaque cell, so it joins the mesh instead of ending it.
+void SKMaskCache_DrawSolid(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &paint, jint x, jint y, jint w, jint h);
 
 // Draws the queued mesh. Called before any other draw, state or destination
 // change, and before ending a recording.
