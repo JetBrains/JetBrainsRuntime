@@ -660,10 +660,13 @@ ifeq ($(SKIA_ENABLED), true)
       CXXFLAGS := $(CXXFLAGS_JDKLIB) $(SKIA_CFLAGS), \
       EXTRA_HEADER_DIRS := $(LIBAWT_SKIA_EXTRA_HEADER_DIRS), \
       DISABLED_WARNINGS_clang := deprecated-declarations undef unused-parameter sign-compare, \
+      DISABLED_WARNINGS_microsoft := 4244 4267 4996 5030, \
       JDK_LIBS := libawt java.base:libjava, \
       LDFLAGS := $(LIBAWT_SKIA_LDFLAGS), \
       EXTRA_LINK_DEPS := $(LIBAWT_SKIA_LINK_DEPS), \
       LIBS := $(SKIA_LIBS), \
+      LIBS_windows := d3d11.lib d3d12.lib dxgi.lib dxguid.lib user32.lib \
+          mincore.lib winmm.lib, \
       LIBS_macosx := \
           -framework CoreFoundation \
           -framework CoreGraphics \

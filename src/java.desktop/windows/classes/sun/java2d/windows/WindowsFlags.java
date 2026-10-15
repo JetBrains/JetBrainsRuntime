@@ -27,6 +27,7 @@ package sun.java2d.windows;
 
 import sun.awt.windows.WToolkit;
 import sun.java2d.opengl.WGLGraphicsConfig;
+import sun.java2d.skia.SKEnvironment;
 import sun.java2d.vulkan.VKEnv;
 
 public final class WindowsFlags {
@@ -198,6 +199,15 @@ public final class WindowsFlags {
             oglEnabled = false;
         }
 
+        if (SKEnvironment.isSkiaRequested()) {
+            // the Skia pipeline (Graphite on Dawn) takes the screen; D3D's
+            // screen update manager would otherwise claim the windows
+            if (d3dEnabled && isBooleanPropTrueVerbose("sun.java2d.skia")) {
+                System.out.println("Direct3D pipeline disabled: Skia pipeline requested");
+            }
+            d3dEnabled = false;
+            d3dOnScreenEnabled = false;
+        }
         gdiBlitEnabled = getBooleanProp("sun.java2d.gdiBlit", true);
         d3dSet = getPropertySet("sun.java2d.d3d");
         if (d3dSet) {

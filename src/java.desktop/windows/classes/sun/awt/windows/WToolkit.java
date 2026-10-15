@@ -135,6 +135,8 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.d3d.D3DRenderQueue;
 import sun.java2d.d3d.D3DScreenUpdateManager;
 import sun.java2d.opengl.OGLRenderQueue;
+import sun.java2d.skia.SKEnvironment;
+import sun.java2d.skia.SKRenderQueue;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.windows.WindowsFlags;
 import sun.print.PrintJob2D;
@@ -637,6 +639,9 @@ public final class WToolkit extends SunToolkit implements Runnable {
         OGLRenderQueue.sync();
         // now flush the D3D pipeline (this is a no-op if D3D is not enabled)
         D3DRenderQueue.sync();
+        if (SKEnvironment.isSkiaEnabled()) {
+            SKRenderQueue.sync();
+        }
     }
 
     @Override

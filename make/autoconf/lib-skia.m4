@@ -50,26 +50,34 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
       AC_MSG_ERROR([--with-skia needs a directory argument; run jb/project/tools/common/scripts/fetch_skia.sh to obtain one])
     fi
 
-    SKIA_INCLUDE_DIR="${with_skia}"
-    UTIL_FIXUP_PATH(SKIA_INCLUDE_DIR)
-
-    AC_MSG_CHECKING([for ${SKIA_INCLUDE_DIR}/include/core/SkCanvas.h])
-    if test -s "${SKIA_INCLUDE_DIR}/include/core/SkCanvas.h"; then
+    AC_MSG_CHECKING([for ${with_skia}/include/core/SkCanvas.h])
+    if test -s "${with_skia}/include/core/SkCanvas.h"; then
       AC_MSG_RESULT([yes])
     else
       AC_MSG_RESULT([no])
       AC_MSG_ERROR([Can't find Skia headers under '${with_skia}'])
     fi
+    SKIA_INCLUDE_DIR="${with_skia}"
+    UTIL_FIXUP_PATH(SKIA_INCLUDE_DIR)
 
+    # The release ships GN-style names: lib<name>.a on macOS/Linux, <name>.lib on Windows.
+    if test "x$OPENJDK_TARGET_OS" = xwindows; then
+      skia_lib_prefix=
+      skia_lib_suffix=.lib
+    else
+      skia_lib_prefix=lib
+      skia_lib_suffix=.a
+    fi
     AC_MSG_CHECKING([for Skia static libraries])
-    SKIA_LIB_DIR=`ls -d "${SKIA_INCLUDE_DIR}"/out/*/ 2> /dev/null | head -n 1`
-    if test "x${SKIA_LIB_DIR}" != x && test -s "${SKIA_LIB_DIR}/libskia.a"; then
+    skia_build_type=`$GREP "^SKIA_BUILD_TYPE=" "${TOPDIR}/jb/project/tools/common/skia_prebuilt.conf" 2> /dev/null | $CUT -d= -f2`
+    SKIA_LIB_DIR=`$LS -d "${SKIA_INCLUDE_DIR}"/out/${skia_build_type:-Release}-*/ "${SKIA_INCLUDE_DIR}"/out/*/ 2> /dev/null | $HEAD -n 1`
+    if test "x${SKIA_LIB_DIR}" != x && test -s "${SKIA_LIB_DIR}/${skia_lib_prefix}skia${skia_lib_suffix}"; then
       SKIA_LIB_DIR=`echo "${SKIA_LIB_DIR}" | $SED 's|/$||'`
       UTIL_FIXUP_PATH(SKIA_LIB_DIR)
       AC_MSG_RESULT([${SKIA_LIB_DIR}])
     else
       AC_MSG_RESULT([no])
-      AC_MSG_ERROR([Can't find out/<config>/libskia.a under '${with_skia}'])
+      AC_MSG_ERROR([Can't find out/<config>/${skia_lib_prefix}skia${skia_lib_suffix} under '${with_skia}'])
     fi
 
     # fetch_skia.sh leaves the SHA-256 of the verified archive next to the
@@ -94,22 +102,46 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
     # Graphite only; the GPU API matches the Java2D backend of each platform.
     # SK_RELEASE: the prebuilt is a Release build and SkTypes.h would otherwise
     # pick SK_DEBUG (different class layouts) for fastdebug/slowdebug JDK builds.
-    # Skia's headers need C++17 (JDK release lines before 28 compile C++ as C++14).
-    SKIA_CFLAGS="-I${SKIA_INCLUDE_DIR} -DSK_GRAPHITE -DSK_RELEASE -std=c++17"
+    # Skia's headers need C++17 (redundant on the JDK 28 line, kept for the release
+    # lines before it, which compile C++ as C++14); Dawn's webgpu_cpp.h needs C++20
+    # (std::span). A later -std wins on every toolchain.
+    SKIA_CFLAGS="-I${SKIA_INCLUDE_DIR} -DSK_GRAPHITE -DSK_RELEASE"
+    skia_libs="skia_graphite_ext skia"
     if test "x$OPENJDK_TARGET_OS" = xmacosx; then
-      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_METAL"
-    elif test "x$OPENJDK_TARGET_OS" = xlinux; then
-      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_VULKAN"
+      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_METAL -std=c++17"
     elif test "x$OPENJDK_TARGET_OS" = xwindows; then
-      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_DAWN"
+      # Graphite on Dawn (D3D11/D3D12). The WebGPU headers come in two halves:
+      # the hand-written ones in the Dawn checkout and the generated ones next
+      # to the libraries. Dawn is built on Chromium's allocator, hence the
+      # extra libraries. Skia's headers use std::min/max (NOMINMAX) and pull in
+      # <ostream>, which MSVC rejects without exception unwinding (-EHsc).
+      # The release is built against the static CRT (-MT, like Skiko's single
+      # DLL) and the linker refuses to mix it with the JDK's -MD objects, so
+      # libawt_skia carries the static CRT too. Safe because its boundary with
+      # the other JDK libraries is JNI and malloc'd blocks only, and both CRTs
+      # allocate from the process heap since the UCRT.
+      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_DAWN -DNOMINMAX -EHsc -MT -std:c++20 \
+          -I${SKIA_INCLUDE_DIR}/third_party/externals/dawn/include \
+          -I${SKIA_LIB_DIR}/gen/third_party/dawn/include"
+      # allocator_shim is left out: it replaces malloc/free process-wide
+      # (Chromium's PartitionAlloc shim) and collides with the CRT's.
+      skia_libs="skia_graphite_dawn_ext $skia_libs dawn_combined d3d12allocator \
+          allocator_core allocator_base raw_ptr"
+    else
+      AC_MSG_ERROR([--with-skia: the Skia backend has no platform half for $OPENJDK_TARGET_OS])
     fi
 
     # Link order: GPU extension libs first, then core, then bundled dependencies.
-    for lib in skia_graphite_ext skia skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
+    # The codec targets are named libpng, libjpeg, libwebp in GN, so on Windows
+    # their files keep that "lib" (libpng.lib) while the others do not (skia.lib).
+    for lib in $skia_libs skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
         wuffs piex dng_sdk expat; do
-      if test -s "${SKIA_LIB_DIR}/lib${lib}.a"; then
-        SKIA_LIBS="$SKIA_LIBS ${SKIA_LIB_DIR}/lib${lib}.a"
-      fi
+      for candidate in "${skia_lib_prefix}${lib}" "lib${lib}"; do
+        if test -s "${SKIA_LIB_DIR}/${candidate}${skia_lib_suffix}"; then
+          SKIA_LIBS="$SKIA_LIBS ${SKIA_LIB_DIR}/${candidate}${skia_lib_suffix}"
+          break
+        fi
+      done
     done
 
     SKIA_ENABLED=true
@@ -118,6 +150,4 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
   AC_SUBST(SKIA_ENABLED)
   AC_SUBST(SKIA_CFLAGS)
   AC_SUBST(SKIA_LIBS)
-  AC_SUBST(SKIA_INCLUDE_DIR)
-  AC_SUBST(SKIA_LIB_DIR)
 ])
