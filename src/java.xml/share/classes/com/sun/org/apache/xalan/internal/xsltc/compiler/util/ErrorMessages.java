@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2026, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -1036,6 +1036,11 @@ public class ErrorMessages extends ListResourceBundle {
          "that are very large.  Try restructuring your stylesheet to use " +
          "smaller templates."
         },
+
+        {ErrorMsg.DESERIALIZE_TRANSLET_ERR,
+            "Support for deserializing TemplatesImpl is disabled. This can be "
+              + "overridden by setting the ''jdk.xml.enableTemplatesImplDeserialization'' "
+              + "property to ''true''."},
 
         {ErrorMsg.XPATH_GROUP_LIMIT,
             "JAXP0801001: the compiler encountered an XPath expression containing "
