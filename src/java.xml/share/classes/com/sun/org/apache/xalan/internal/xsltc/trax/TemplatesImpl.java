@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -58,6 +58,7 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.URIResolver;
 import jdk.xml.internal.JdkConstants;
+import jdk.xml.internal.JdkXmlFeatures;
 
 
 /**
@@ -258,6 +259,14 @@ public final class TemplatesImpl implements Templates, Serializable {
     private void  readObject(ObjectInputStream is)
       throws IOException, ClassNotFoundException
     {
+        TransformerFactoryImpl tfactory = new TransformerFactoryImpl();
+
+        if (!tfactory.getFeature(
+                JdkXmlFeatures.XmlFeature.ENABLE_TEMPLATESIMPL_DESERIALIZATION.apiProperty())) {
+            ErrorMsg err = new ErrorMsg(ErrorMsg.DESERIALIZE_TRANSLET_ERR);
+            throw new UnsupportedOperationException(err.toString());
+        }
+
         // We have to read serialized fields first.
         ObjectInputStream.GetField gf = is.readFields();
         _name = (String)gf.get("_name", null);
@@ -272,7 +281,7 @@ public final class TemplatesImpl implements Templates, Serializable {
             _uriResolver = (URIResolver) is.readObject();
         }
 
-        _tfactory = new TransformerFactoryImpl();
+        _tfactory = tfactory;
     }
 
 

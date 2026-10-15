@@ -1016,6 +1016,24 @@
  * <td style="text-align:center"><a href="#Processor">Method 1</a></td>
  * <td style="text-align:center">22</td>
  * </tr>
+ * <tr>
+ * <td id="templatesImplDeserialization">{@systemProperty jdk.xml.enableTemplatesImplDeserialization}</td>
+ * <td>Enables or disables deserialization of the JDK's implementation of the
+ * {@link javax.xml.transform.Templates} interface.
+ * </td>
+ * <td style="text-align:center">yes</td>
+ * <td style="text-align:center">boolean</td>
+ * <td>true or false. True indicates that deserialization is allowed. False indicates that
+ * deserialization is disallowed.</td>
+ * <td style="text-align:center">false</td>
+ * <td style="text-align:center">false</td>
+ * <td style="text-align:center">Yes</td>
+ * <td style="text-align:center">
+ *     <a href="#Transform">Transform</a>
+ * </td>
+ * <td style="text-align:center"><a href="#Note8">[8]</a></td>
+ * <td style="text-align:center">7</td>
+ * </tr>
  * </tbody>
  * </table>
  * <p id="Note1">
@@ -1059,6 +1077,10 @@
  * These three properties control whether DTDs as a whole shall be processed. When
  * they are set to deny or ignore, other properties that regulate a part or an
  * aspect of DTD shall have no effect.
+ * <p id="Note8">
+ * <b>[8]</b> This property can be set only via a system property or in the
+ * <a href="#Conf_CF">JAXP Configuration File</a>. Setting this property
+ * on a transformer factory or on a {@code Transformer} instance has no effect.
  *
  * <h3 id="IN_Legacy">Legacy Property Names (deprecated)</h3>
  * JDK releases prior to JDK 17 support the use of URI style prefix for properties.
