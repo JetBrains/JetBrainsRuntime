@@ -1722,18 +1722,12 @@ void VKRenderer_DrawPoly(jint nPoints, jint isClosed,
 }
 
 void VKRenderer_DrawPixel(jint x, jint y) {
-    if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return;
-
-    VKVertex p1 = { .data = context.vertexData };
-    VKVertex p2 = { .data = context.vertexData };
-    VKVertex p3 = { .data = context.vertexData };
-    VKVertex p4 = { .data = context.vertexData };
-    VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
-        x, y, x, y, &p1, &p2, &p3, &p4);
+    if (!VKRenderer_ValidatePaint(0, VK_FALSE)) return;
 
     VKVertex *vs;
-    VK_DRAW(vs, 1, 6);
-    vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
+    VK_DRAW(vs, 1, 2);
+    vs[0] = (VKVertex) { .x = (float) x, .y = (float) y, .data = context.vertexData };
+    vs[1] = (VKVertex) { .x = (float) (x + 1), .y = (float) (y + 1), .data = context.vertexData };
 }
 
 void VKRenderer_DrawScanlines(jint count, jint* scanlines) {
