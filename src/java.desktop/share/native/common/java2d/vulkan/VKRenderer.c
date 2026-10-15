@@ -1593,22 +1593,132 @@ static void VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
 }
 
 void VKRenderer_DrawLine(jint x1, jint y1, jint x2, jint y2) {
-    if (x1 != x2 && y1 != y2) return; // only support axis-aligned lines for now
-    if (!VKRenderer_ValidatePaint(0, VK_TRUE)) return;
+    if (!VKRenderer_ValidatePaint(0, VK_FALSE)) return;
 
-    if (x1 > x2) { jint t = x1; x1 = x2; x2 = t; }
-    if (y1 > y2) { jint t = y1; y1 = y2; y2 = t; }
+    VKVertex* vs;
+    VK_DRAW(vs, 1, 2);
+    vs[0].data = vs[1].data = context.vertexData;
+
+    // DrawLine implementation same as in OGLRenderer.c
+    if (y1 == y2) {
+        // horizontal
+        float fx1 = (float)x1;
+        float fx2 = (float)x2;
+        float fy  = ((float)y1) + 0.2f;
+
+        if (x1 > x2) {
+            float t = fx1; fx1 = fx2; fx2 = t;
+        }
+
+        vs[0].x = fx1 + 0.2f;
+        vs[0].y = fy;
+        vs[1].x = fx2 + 1.2f;
+        vs[1].y = fy;
+    } else if (x1 == x2) {
+        // vertical
+        float fx  = ((float)x1) + 0.2f;
+        float fy1 = (float)y1;
+        float fy2 = (float)y2;
+
+        if (y1 > y2) {
+            float t = fy1; fy1 = fy2; fy2 = t;
+        }
+
+        vs[0].x = fx;
+        vs[0].y = fy1 + 0.2f;
+        vs[1].x = fx;
+        vs[1].y = fy2 + 1.2f;
+    } else {
+        // diagonal
+        float fx1 = (float)x1;
+        float fy1 = (float)y1;
+        float fx2 = (float)x2;
+        float fy2 = (float)y2;
+
+        if (x1 < x2) {
+            fx1 += 0.2f;
+            fx2 += 1.0f;
+        } else {
+            fx1 += 0.8f;
+            fx2 -= 0.2f;
+        }
+
+        if (y1 < y2) {
+            fy1 += 0.2f;
+            fy2 += 1.0f;
+        } else {
+            fy1 += 0.8f;
+            fy2 -= 0.2f;
+        }
+        vs[0].x = fx1;
+        vs[0].y = fy1;
+        vs[1].x = fx2;
+        vs[1].y = fy2;
+    }
+}
+
+void VKRenderer_DrawPoly(jint nPoints, jint isClosed,
+                         jint transX, jint transY,
+                         jint *xPoints, jint *yPoints) {
+    // Impl copied from OGLRenderer with minor modifications
+
+    // Note that BufferedRenderPipe.drawPoly() has already rejected polys
+    // with nPoints<2, so we can be certain here that we have nPoints>=2.
+    assert(xPoints != NULL && yPoints != NULL && nPoints >= 2);
+
+    if (!VKRenderer_ValidatePaint(0, VK_FALSE)) return;
+
+    jint mx = xPoints[0];
+    jint my = yPoints[0];
+    bool isEmpty = true;
 
     VKVertex p1 = { .data = context.vertexData };
-    VKVertex p2 = { .data = context.vertexData };
-    VKVertex p3 = { .data = context.vertexData };
-    VKVertex p4 = { .data = context.vertexData };
-    VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
-        x1, y1, x2, y2, &p1, &p2, &p3, &p4);
+    VKVertex p2 = { .x = (float) (mx + transX) + 0.5f, .y = (float) (my + transY) + 0.5f, .data = context.vertexData };
+    VKVertex* vs;
 
-    VKVertex *vs;
-    VK_DRAW(vs, 1, 6);
-    vs[0] = p1; vs[1] = p2; vs[2] = p3; vs[3] = p3; vs[4] = p4; vs[5] = p1;
+    for (jint i = 1; i < nPoints; i++) {
+        jint x = xPoints[i];
+        jint y = yPoints[i];
+
+        isEmpty = isEmpty && (x == mx && y == my);
+
+        // Translate each vertex by a fraction so that we hit pixel centers.
+        p1 = p2;
+        p2.x = (float) (xPoints[i] + transX) + 0.5f;
+        p2.y = (float) (yPoints[i] + transY) + 0.5f;
+        VK_DRAW(vs, 1, 2);
+        vs[0] = p1; vs[1] = p2;
+    }
+
+    if (isClosed && !isEmpty &&
+        (xPoints[nPoints-1] != mx ||
+         yPoints[nPoints-1] != my))
+    {
+        // In this case, the polyline's start and end positions are
+        // different and need to be closed manually; we do this by adding
+        // one more segment back to the starting position.  Note that we
+        // do not need to fill in the last pixel (as we do in the following
+        // block) because we are returning to the starting pixel, which
+        // has already been filled in.
+        p1 = p2;
+        p2.x = (float) (mx + transX) + 0.5f;
+        p2.y = (float) (my + transY) + 0.5f;
+        VK_DRAW(vs, 1, 2);
+        vs[0] = p1; vs[1] = p2;
+    } else if (!isClosed || isEmpty) {
+        // OpenGL omits the last pixel in a polyline, so we fix this by
+        // adding a one-pixel segment at the end.  Also, if the polyline
+        // never went anywhere (isEmpty is true), we need to use this
+        // workaround to ensure that a single pixel is touched.
+        mx = xPoints[nPoints-1] + transX;
+        my = yPoints[nPoints-1] + transY;
+        p1.x = (float) mx;
+        p1.y = (float) my;
+        p2.x = (float) (mx + 1);
+        p2.y = (float) (my + 1);
+        VK_DRAW(vs, 1, 2);
+        vs[0] = p1; vs[1] = p2;
+    }
 }
 
 void VKRenderer_DrawPixel(jint x, jint y) {

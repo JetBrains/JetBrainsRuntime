@@ -146,6 +146,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jint *xPoints = (jint *)b;
                 jint *yPoints = ((jint *)b) + nPoints;
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderQueue_flushBuffer: DRAW_POLY");
+                VKRenderer_DrawPoly(nPoints, isClosed, transX, transY, xPoints, yPoints);
                 SKIP_BYTES(b, nPoints * BYTES_PER_POLY_POINT);
             }
             break;

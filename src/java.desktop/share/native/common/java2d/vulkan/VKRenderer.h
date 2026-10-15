@@ -144,6 +144,10 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
 
 void VKRenderer_DrawLine(jint x1, jint y1, jint x2, jint y2);
 
+void VKRenderer_DrawPoly(jint nPoints, jint isClosed,
+                         jint transX, jint transY,
+                         jint *xPoints, jint *yPoints);
+
 void VKRenderer_DrawPixel(jint x, jint y);
 
 void VKRenderer_DrawScanlines(jint count, jint* scanlines);
