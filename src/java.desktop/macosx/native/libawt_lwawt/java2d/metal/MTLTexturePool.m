@@ -80,6 +80,11 @@ static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
     // usage = MTLTextureUsageShaderRead
     // storage = MTLStorageModeManaged
     textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    if (format == MTLPixelFormatA8Unorm) {
+        // A8 textures from the pool are the mask cache, filled by replaceRegion
+        // from the CPU; a plain layout makes those uploads copies.
+        textureDescriptor.allowGPUOptimizedContents = NO;
+    }
 
     // Use auto-release => MTLTexturePoolItem.dealloc to free texture !
     id <MTLTexture> texture = (id <MTLTexture>) [[device newTextureWithDescriptor:textureDescriptor] autorelease];

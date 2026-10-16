@@ -24,6 +24,7 @@
  */
 
 #include <stdlib.h>
+#include <stdatomic.h>
 #import <ThreadUtilities.h>
 
 #include "sun_java2d_SunGraphics2D.h"
@@ -128,15 +129,47 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 #undef CASE_MTL_OP
 }
 
+@implementation MTLCompletedCommandBuffers {
+    _Atomic(uint64_t) _sequence;
+}
+
+- (id) init {
+    self = [super init];
+    if (self) {
+        atomic_init(&_sequence, 0);
+    }
+    return self;
+}
+
+- (uint64_t) sequence {
+    return atomic_load(&_sequence);
+}
+
+- (void) completed:(uint64_t)sequence {
+    uint64_t current = atomic_load(&_sequence);
+    // buffers of one queue complete in order; the loop only guards against a handler that runs late
+    while (sequence > current) {
+        if (atomic_compare_exchange_weak(&_sequence, &current, sequence)) {
+            break;
+        }
+    }
+}
+@end
+
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
     NSMutableArray * _pooledTextures;
     NSLock* _lock;
+    uint64_t _sequence;
+    MTLCompletedCommandBuffers * _completed;
 }
 
-- (id) initWithCommandBuffer:(id<MTLCommandBuffer>)cmdBuf {
+- (id) initWithCommandBuffer:(id<MTLCommandBuffer>)cmdBuf sequence:(uint64_t)sequence
+                   completed:(MTLCompletedCommandBuffers *)completed {
     self = [super init];
     if (self) {
+        _sequence = sequence;
+        _completed = [completed retain];
         _commandBuffer = [cmdBuf retain];
         _pooledTextures = [[NSMutableArray alloc] init];
         _lock = [[NSLock alloc] init];
@@ -146,6 +179,14 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 
 - (id<MTLCommandBuffer>) getCommandBuffer {
     return _commandBuffer;
+}
+
+- (uint64_t) sequence {
+    return _sequence;
+}
+
+- (void) markCompleted {
+    [_completed completed:_sequence];
 }
 
 - (void) onComplete { // invoked from completion handler in some pooled thread
@@ -178,6 +219,9 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     [_commandBuffer release];
     _commandBuffer = nil;
 
+    [_completed release];
+    _completed = nil;
+
     [_lock release];
     _lock = nil;
     [super dealloc];
@@ -188,6 +232,8 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 
 @implementation MTLContext {
     MTLCommandBufferWrapper * _commandBufferWrapper;
+    uint64_t _commandBufferSequence;                      // of the buffer being recorded; advanced on commit
+    MTLCompletedCommandBuffers * _completedCommandBuffers; // shared with the wrappers
     NSMutableSet*      _layers;
 
     MTLComposite *     _composite;
@@ -447,6 +493,8 @@ extern void initSamplers(id<MTLDevice> device);
     AWT_ASSERT_APPKIT_THREAD;
     self = [super init];
     if (self) {
+        _commandBufferSequence = 1;   // so that a resource never drawn (sequence 0) counts as completed
+        _completedCommandBuffers = [[MTLCompletedCommandBuffers alloc] init];
         device = mtlDevice;
         shadersLib = [[NSString alloc] initWithString:mtlShadersLib];
         pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
@@ -724,6 +772,8 @@ extern void initSamplers(id<MTLDevice> device);
         _layers = nil;
     }
 
+    [_completedCommandBuffers release];
+    _completedCommandBuffers = nil;
     [super dealloc];
 }
 
@@ -737,7 +787,9 @@ extern void initSamplers(id<MTLDevice> device);
     if (_commandBufferWrapper == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext : commandBuffer is nil!");
         // NOTE: Command queues are thread-safe and allow multiple outstanding command buffers to be encoded simultaneously.
-        _commandBufferWrapper = [[MTLCommandBufferWrapper alloc] initWithCommandBuffer:[self.commandQueue commandBuffer]];// released in [layer blitTexture]
+        _commandBufferWrapper = [[MTLCommandBufferWrapper alloc] initWithCommandBuffer:[self.commandQueue commandBuffer]
+                                                                           sequence:_commandBufferSequence
+                                                                          completed:_completedCommandBuffers];// released in [layer blitTexture]
     }
     return _commandBufferWrapper;
 }
@@ -745,7 +797,18 @@ extern void initSamplers(id<MTLDevice> device);
 - (MTLCommandBufferWrapper *) pullCommandBufferWrapper {
     MTLCommandBufferWrapper * result = _commandBufferWrapper;
     _commandBufferWrapper = nil;
+    if (result != nil) {
+        _commandBufferSequence++;   // whatever is recorded from now on goes into the next buffer
+    }
     return result;
+}
+
+- (uint64_t) commandBufferSequence {
+    return _commandBufferSequence;
+}
+
+- (uint64_t) completedCommandBufferSequence {
+    return [_completedCommandBuffers sequence];
 }
 
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst {
@@ -1020,6 +1083,7 @@ extern void initSamplers(id<MTLDevice> device);
         if (cbwrapper != nil) {
             id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> cb) {
+                [cbwrapper markCompleted];
                 [cbwrapper release];
             }];
             [commandbuf commit];

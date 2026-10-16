@@ -864,6 +864,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
                 [mtlc pullCommandBufferWrapper];
             id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
             [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> cb) {
+                [cbwrapper markCompleted];
                 [cbwrapper release];
             }];
             [commandbuf commit];
