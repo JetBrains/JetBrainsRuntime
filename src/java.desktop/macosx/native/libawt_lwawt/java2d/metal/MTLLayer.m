@@ -495,6 +495,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
 
         [self retain];
         [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+            [cbwrapper markCompleted];
             [cbwrapper release];
             if (updateDisplay && isDisplaySyncEnabled()) {
                 if (TRACE_DISPLAY) {

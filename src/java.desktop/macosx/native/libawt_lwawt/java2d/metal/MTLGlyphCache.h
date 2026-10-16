@@ -51,6 +51,11 @@ typedef struct {
     jint          height;
     jint          cellWidth;
     jint          cellHeight;
+    jint          cellCount;
+    // set once the texture has no room for another cell; from then on the
+    // tail is whichever cell was reused last, not the last one allocated,
+    // so positions must not be derived from it any more
+    jboolean      isFull;
     MTLFlushFunc     *Flush;
 } MTLGlyphCacheInfo;
 
@@ -66,6 +71,10 @@ struct _MTLCacheCellInfo {
     // Only makes sense when subpixel resolution is enabled for the glyph
     jint             glyphSubimage;
     jint             timesRendered;
+    // sequence of the command buffer that last drew this cell (see
+    // MTLContext.commandBufferSequence); the cell may be overwritten once
+    // that buffer has completed
+    uint64_t         lastUsed;
     jint             x;
     jint             y;
     // number of pixels from the left or right edge not considered touched

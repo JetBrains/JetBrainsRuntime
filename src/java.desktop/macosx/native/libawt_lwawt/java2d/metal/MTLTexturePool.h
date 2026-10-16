@@ -51,6 +51,11 @@
     - (id) initWithDevice:(id<MTLDevice>)device;
 
     - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
+    // linear: a row-major layout instead of the GPU-optimized one, for textures
+    // that are written cell by cell from the CPU (replaceRegion) while other
+    // cells are being sampled; a linear texture is only ever handed to a
+    // request that asks for one
+    - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format linear:(BOOL)linear;
 @end
 
 #endif /* MTLTexturePool_h_Included */

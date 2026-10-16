@@ -42,8 +42,8 @@
  * The following constants define the inner and outer bounds of the
  * accelerated glyph cache.
  */
-#define MTLTR_CACHE_WIDTH       512
-#define MTLTR_CACHE_HEIGHT      512
+#define MTLTR_CACHE_WIDTH       1024
+#define MTLTR_CACHE_HEIGHT      1024
 #define MTLTR_CACHE_CELL_WIDTH  32
 #define MTLTR_CACHE_CELL_HEIGHT 32
 
@@ -200,7 +200,12 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
         return;
     }
 
-    if ([gc isCacheFull:glyph]) {
+    ccinfo = [gc addGlyph:glyph];
+    if (ccinfo == NULL && [gc isCacheFull:glyph]) {
+        // every cell is referenced by a command buffer that is still recorded
+        // or running (a frame with more distinct glyphs than cells): start
+        // over with a fresh texture; the old one stays alive with those
+        // buffers
         if (lcdCache) {
             [mtlc.glyphCacheLCD free];
             MTLTR_ValidateGlyphCache(mtlc, dstOps, lcdCache);
@@ -209,8 +214,8 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
             [mtlc.glyphCacheAA free];
             MTLTR_EnableGlyphVertexCache(mtlc, dstOps);
         }
+        ccinfo = gc.cacheInfo != NULL ? [gc addGlyph:glyph] : NULL;   // re-validation can fail
     }
-    ccinfo = [gc addGlyph:glyph];
 
     if (ccinfo != NULL) {
         // store glyph image in texture cell
@@ -345,6 +350,7 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
         cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     }
     cell->timesRendered++;
+    cell->lastUsed = [mtlc commandBufferSequence];
 
     x1 = (jfloat)x;
     y1 = (jfloat)y;
@@ -404,6 +410,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
     }
     cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
+    cell->lastUsed = [mtlc commandBufferSequence];
 
     MTLTR_SetLCDContrast(mtlc, contrast, mtlc.glyphCacheLCD.cacheInfo->encoder);
     tx1 = cell->tx1;

@@ -242,7 +242,8 @@ static jboolean MTLVertexCache_InitMaskCache(MTLContext *mtlc)
     if (maskCacheTex == nil) {
         maskCacheTex = [mtlc.texturePool getTexture:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS
                                              height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS
-                                             format:MTLPixelFormatA8Unorm];
+                                             format:MTLPixelFormatA8Unorm
+                                             linear:YES];
         [maskCacheTex retain];
         if (maskCacheTex == nil) {
             J2dTraceLn(J2D_TRACE_ERROR, "MTLVertexCache_InitMaskCache: can't obtain temporary texture object from pool");

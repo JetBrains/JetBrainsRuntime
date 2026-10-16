@@ -69,7 +69,8 @@ void MTLTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
 static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
                                                    int width,
                                                    int height,
-                                                   long format)
+                                                   long format,
+                                                   BOOL linear)
 {
     MTLTextureDescriptor *textureDescriptor =
             [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:(MTLPixelFormat)format
@@ -80,6 +81,14 @@ static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
     // usage = MTLTextureUsageShaderRead
     // storage = MTLStorageModeManaged
     textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    if (linear) {
+        // The glyph and mask caches are filled cell by cell with replaceRegion
+        // while other cells of the texture are being sampled. In the optimized
+        // (tiled) layout such an upload is a block conversion that may touch a
+        // neighbouring cell's texels; in a row-major layout it is a copy of the
+        // written rows only.
+        textureDescriptor.allowGPUOptimizedContents = NO;
+    }
 
     // Use auto-release => MTLTexturePoolItem.dealloc to free texture !
     id <MTLTexture> texture = (id <MTLTexture>) [[device newTextureWithDescriptor:textureDescriptor] autorelease];
@@ -88,6 +97,12 @@ static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
     if (TRACE_TEX) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_createTexture: created texture: tex=%p, w=%d h=%d, pf=%d",
                                   texture, [texture width], [texture height], [texture pixelFormat]);
     return texture;
+}
+
+// For the shared pool (USE_ACCEL_TEXTURE_POOL), which has no layout request:
+// the optimized layout for everything.
+static id<MTLTexture> MTLTexturePool_createPoolTexture(id<MTLDevice> device, int width, int height, long format) {
+    return MTLTexturePool_createTexture(device, width, height, format, NO);
 }
 
 static int MTLTexturePool_bytesPerPixel(long format) {
@@ -158,6 +173,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     @property (readwrite) int width;
     @property (readwrite) int height;
     @property (readwrite) MTLPixelFormat format;
+    @property (readwrite) BOOL linear;
     @property (readwrite) int reuseCount;
     @property (readwrite) bool isBusy;
 @end
@@ -170,13 +186,14 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 @implementation MTLTexturePoolItem
 
-@synthesize texture, lastUsed, next, cell, width, height, format, reuseCount, isBusy;
+@synthesize texture, lastUsed, next, cell, width, height, format, linear, reuseCount, isBusy;
 
 - (id) initWithTexture:(id<MTLTexture>)tex
                   cell:(MTLPoolCell*)c
                  width:(int)w
                 height:(int)h
                 format:(MTLPixelFormat)f
+                linear:(BOOL)lin
 {
     self = [super init];
     if (self == nil) return self;
@@ -188,6 +205,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self.width = w;
     self.height = h;
     self.format = f;
+    self.linear = lin;
     self.reuseCount = 0;
     self.isBusy = NO;
 
@@ -461,7 +479,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     }
 }
 
-- (MTLTexturePoolItem *) occupyCellItem:(int)width height:(int)height format:(MTLPixelFormat)format {
+- (MTLTexturePoolItem *) occupyCellItem:(int)width height:(int)height format:(MTLPixelFormat)format linear:(BOOL)linear {
     int minDeltaArea = -1;
     const int requestedPixels = width*height;
     MTLTexturePoolItem *minDeltaTpi = nil;
@@ -469,7 +487,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     @try {
         for (MTLTexturePoolItem *cur = available; cur != nil; cur = cur.next) {
             // TODO: use swizzle when formats are not equal:
-            if (cur.format != format) {
+            if (cur.format != format || cur.linear != linear) {
                 continue;
             }
             if (cur.width < width || cur.height < height) {
@@ -565,7 +583,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
     _accelTexturePool = ATexturePool_initWithDevice(dev,
                                                     (jlong)maxDeviceMemory,
-                                                    &MTLTexturePool_createTexture,
+                                                    &MTLTexturePool_createPoolTexture,
                                                     &MTLTexturePool_freeTexture,
                                                     &MTLTexturePool_bytesPerPixel,
                                                     lockWrapper,
@@ -665,6 +683,10 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 // NOTE: called from RQ-thread (on blit operations)
 - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
+    return [self getTexture:width height:height format:format linear:NO];
+}
+
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format linear:(BOOL)linear {
 #if (USE_ACCEL_TEXTURE_POOL == 1)
         ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
         CHECK_NULL_RETURN(texHandle, NULL);
@@ -766,7 +788,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             for (int cx = cellX0; cx < cellX1; ++cx) {
                 MTLPoolCell * cell = _cells[cy * _poolCellWidth + cx];
                 if (cell != NULL) {
-                    MTLTexturePoolItem* tpi = [cell occupyCellItem:width height:height format:format];
+                    MTLTexturePoolItem* tpi = [cell occupyCellItem:width height:height format:format linear:linear];
                     if (!tpi) {
                         continue;
                     }
@@ -793,10 +815,10 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
                 _cells[cellY0 * _poolCellWidth + cellX0] = cell;
             }
             // use device to allocate NEW texture:
-            id <MTLTexture> tex = MTLTexturePool_createTexture(device, width, height, format);
+            id <MTLTexture> tex = MTLTexturePool_createTexture(device, width, height, format, linear);
 
             minDeltaTpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex cell:cell
-                            width:width height:height format:format] autorelease];
+                            width:width height:height format:format linear:linear] autorelease];
             [cell addOccupiedItem: minDeltaTpi];
 
             _memoryAllocated += requestedBytes;
