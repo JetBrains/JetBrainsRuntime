@@ -586,7 +586,11 @@ XImage* X11SD_CreateSharedImage(X11SDOps *xsdo,
 XImage* X11SD_GetSharedImage(X11SDOps *xsdo, jint width, jint height,
                              jint maxWidth, jint maxHeight, jboolean readBits)
 {
-    XImage * retImage = NULL;
+    XImage *retImage = NULL;
+
+    if ((jlong) width * height * xsdo->depth <= 0x10000) {
+        return NULL;
+    }
     if (cachedXImage != NULL &&
         X11SD_CachedXImageFits(width, height, maxWidth, maxHeight,
                                xsdo->depth, readBits)) {
@@ -594,7 +598,7 @@ XImage* X11SD_GetSharedImage(X11SDOps *xsdo, jint width, jint height,
         XSync(awt_display, False);
         retImage = cachedXImage;
         cachedXImage = (XImage *)NULL;
-    } else if ((jlong) width * height * xsdo->depth > 0x10000) {
+    } else {
         retImage = X11SD_CreateSharedImage(xsdo, width, height);
     }
     return retImage;
