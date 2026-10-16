@@ -34,6 +34,7 @@
 #include "primary-selection-unstable-v1.h"
 #include "viewporter.h"
 #include "relative-pointer-unstable-v1.h"
+#include "pointer-gestures-unstable-v1.h"
 #include "text-input-unstable-v3.h"
 #include "xdg-decoration-unstable-v1.h"
 #include "xdg-toplevel-icon-v1.h"
