@@ -43,13 +43,15 @@ public final class SKEnvironment {
     private static final boolean VERBOSE =
             Boolean.getBoolean("sun.java2d.skia.verbose");
     /**
-     * Who rasterizes antialiased shapes: {@code marlin} (coverage tiles, the
-     * default), {@code analytic} (Skia for the shapes it renders analytically:
-     * axis-aligned rectangles, round rectangles and ellipses; Marlin for the
-     * rest) or {@code skia} (everything).
+     * Who rasterizes antialiased shapes: {@code analytic} (the default: Skia
+     * for the shapes it renders analytically, that is rectangles, round
+     * rectangles and ellipses under any transform, Marlin coverage tiles for
+     * the rest),
+     * {@code marlin} (coverage tiles for everything) or {@code skia}
+     * (everything through Skia, general paths via Graphite's path atlas).
      */
     private static final String SHAPES =
-            System.getProperty("sun.java2d.skia.shapes", "marlin");
+            System.getProperty("sun.java2d.skia.shapes", "analytic");
 
     private static boolean initialized;
     private static String description;
