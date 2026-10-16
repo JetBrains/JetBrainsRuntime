@@ -1953,6 +1953,18 @@ public abstract class SunToolkit extends Toolkit
 
         Point getAccumulatedMouseDeltaAndReset();
     }
+
+    @JBRApi.Service
+    @JBRApi.Provides("ToolkitEvents")
+    public static class ToolkitEventsProvider {
+        EventQueue setTargetEventQueue(EventQueue newEventQueue) {
+            PostEventQueue postEventQueue = SunToolkit.postEventQueue;
+            if (postEventQueue == null) {
+                throw new IllegalStateException("postEventQueue is null");
+            }
+            return postEventQueue.setTargetQueue(newEventQueue);
+        }
+    }
 } // class SunToolkit
 
 
@@ -1968,12 +1980,14 @@ public abstract class SunToolkit extends Toolkit
 class PostEventQueue {
     private EventQueueItem queueHead = null;
     private EventQueueItem queueTail = null;
-    private final EventQueue eventQueue;
+    private final EventQueue eventQueue; // root event queue
+    private EventQueue targetEventQueue; // event queue that currently receives posted events
 
     private Thread flushThread = null;
 
     PostEventQueue(EventQueue eq) {
         eventQueue = eq;
+        targetEventQueue = eq;
     }
 
     /*
@@ -1990,6 +2004,7 @@ class PostEventQueue {
         Thread newThread = Thread.currentThread();
 
         try {
+            EventQueue target;
             EventQueueItem tempQueue;
             synchronized (this) {
                 // Avoid method recursion
@@ -2009,10 +2024,11 @@ class PostEventQueue {
 
                 tempQueue = queueHead;
                 queueHead = queueTail = null;
+                target = targetEventQueue;
             }
             try {
                 while (tempQueue != null) {
-                    eventQueue.postEvent(tempQueue.event);
+                    target.postEvent(tempQueue.event);
                     tempQueue = tempQueue.next;
                 }
             }
@@ -2046,5 +2062,34 @@ class PostEventQueue {
             }
         }
         SunToolkit.wakeupEventQueue(eventQueue, event.getSource() == AWTAutoShutdown.getInstance());
+    }
+
+    EventQueue setTargetQueue(EventQueue newEventQueue) {
+        if (newEventQueue == null) {
+            newEventQueue = eventQueue;
+        }
+
+        AWTAccessor.EventQueueAccessor eqa = AWTAccessor.getEventQueueAccessor();
+        if (!eqa.isOnStack(eventQueue, newEventQueue)) {
+            throw new IllegalArgumentException("newEventQueue is not on stack");
+        }
+
+        synchronized (this) {
+            boolean interrupted = false;
+            // wait until the flush is completed
+            while (flushThread != null && flushThread != Thread.currentThread()) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+            }
+            EventQueue oldEventQueue = targetEventQueue;
+            targetEventQueue = newEventQueue;
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+            return oldEventQueue;
+        }
     }
 } // class PostEventQueue
