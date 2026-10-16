@@ -99,12 +99,18 @@
     _cacheInfo->Flush = func;
     _cacheInfo->mtlc = _ctx;
     _cacheInfo->encoder = nil;
-    MTLTextureDescriptor *textureDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat
-                                                               width:width
-                                                              height:height
-                                                           mipmapped:NO];
-    _cacheInfo->texture = [_ctx.device newTextureWithDescriptor:textureDescriptor];
+    // The texture comes from the context's pool: a freed cache returns it
+    // there once the command buffer that may still sample it has completed,
+    // and the next cache takes it back instead of allocating.
+    _cacheInfo->texHandle = [[_ctx.texturePool getTexture:width height:height format:pixelFormat] retain];
+    _cacheInfo->texture = _cacheInfo->texHandle != nil ? [_cacheInfo->texHandle texture] : nil;
+    if (_cacheInfo->texture == nil) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGlyphCache.glyphCacheInitWidth: could not obtain a %dx%d texture", width, height);
+        [_cacheInfo->texHandle release];
+        free(_cacheInfo);
+        _cacheInfo = NULL;
+        return NO;
+    }
 
     return YES;
 }
@@ -220,6 +226,22 @@
  * Invalidates and frees all cells and the cache itself. The "cache" pointer
  * becomes invalid after this function returns.
  */
+/**
+ * Encodes the pending glyph quads that reference this cache. Unlike free,
+ * the cells and the texture stay valid, so a destination change does not
+ * cost the cached glyphs.
+ */
+- (void) flush
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.flush");
+    if (_cacheInfo == NULL) {
+        return;
+    }
+    if (_cacheInfo->Flush != NULL) {
+        _cacheInfo->Flush(_cacheInfo->mtlc);
+    }
+}
+
 - (void) free
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.free");
@@ -227,12 +249,15 @@
         return;
     }
 
-    // flush any pending vertices that may be depending on the current
-    // glyph cache
-    if (_cacheInfo->Flush != NULL) {
-        _cacheInfo->Flush(_cacheInfo->mtlc);
+    [self flush];
+
+    // The texture returns to the pool when the command buffer that was
+    // recorded against it completes; until then the pool keeps it out of
+    // circulation.
+    if (_cacheInfo->texHandle != nil) {
+        [[_cacheInfo->mtlc getCommandBufferWrapper] registerPooledTexture:_cacheInfo->texHandle];
+        [_cacheInfo->texHandle release];
     }
-    [_cacheInfo->texture release];
 
     while (_cacheInfo->head != NULL) {
         MTLCacheCellInfo *cellinfo = _cacheInfo->head;

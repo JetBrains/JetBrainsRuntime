@@ -105,11 +105,6 @@ static jint vertexCacheIndex = 0;
         LCD_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
     } while (0)
 
-static void MTLTR_SyncFlushGlyphVertexCache(MTLContext *mtlc) {
-    MTLVertexCache_FlushGlyphVertexCache(mtlc);
-    [mtlc commitCommandBuffer:YES display:NO];
-}
-
 /**
  * Initializes the one glyph cache (texture and data structure).
  * If lcdCache is JNI_TRUE, the texture will contain RGB data,
@@ -127,7 +122,7 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
                                cellWidth:MTLTR_CACHE_CELL_WIDTH
                               cellHeight:MTLTR_CACHE_CELL_HEIGHT
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
-                                    func:MTLTR_SyncFlushGlyphVertexCache])
+                                    func:MTLVertexCache_FlushGlyphVertexCache])
     {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLTR_InitGlyphCache: could not init MTL glyph cache");
