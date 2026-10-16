@@ -32,6 +32,7 @@ import sun.java2d.pipe.*;
 import sun.java2d.*;
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import java.lang.ref.*;
 
 public final class XRPMBlitLoops {
@@ -39,11 +40,15 @@ public final class XRPMBlitLoops {
     static WeakReference<SunVolatileImage> argbTmpPM = new WeakReference<SunVolatileImage>(null);
     static WeakReference<SunVolatileImage> rgbTmpPM = new WeakReference<SunVolatileImage>(null);
 
+    static WeakReference<BufferedImage> argbTmpBuffer = new WeakReference<>(null);
+    static WeakReference<BufferedImage> rgbTmpBuffer = new WeakReference<>(null);
+
     private XRPMBlitLoops() {
     }
 
     public static void register() {
-        GraphicsPrimitive[] primitives = { new XRPMBlit(XRSurfaceData.IntRgbX11, XRSurfaceData.IntRgbX11),
+        GraphicsPrimitive[] primitives = {
+                new XRPMBlit(XRSurfaceData.IntRgbX11, XRSurfaceData.IntRgbX11),
                 new XRPMBlit(XRSurfaceData.IntRgbX11, XRSurfaceData.IntArgbPreX11),
                 new XRPMBlit(XRSurfaceData.IntArgbPreX11, XRSurfaceData.IntRgbX11),
                 new XRPMBlit(XRSurfaceData.IntArgbPreX11, XRSurfaceData.IntArgbPreX11),
@@ -66,6 +71,7 @@ public final class XRPMBlitLoops {
                 new XrSwToPMBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntRgbX11),
                 new XrSwToPMBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntRgbX11),
                 new XrSwToPMBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntRgbX11),
+                new XrSwToPMBlit(SurfaceType.Any, XRSurfaceData.IntRgbX11),
 
                 new XrSwToPMBlit(SurfaceType.IntArgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMBlit(SurfaceType.IntRgb, XRSurfaceData.IntArgbPreX11),
@@ -74,6 +80,7 @@ public final class XRPMBlitLoops {
                 new XrSwToPMBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11),
+                new XrSwToPMBlit(SurfaceType.Any, XRSurfaceData.IntArgbPreX11),
 
                 /* SW->Surface Scales */
                 new XrSwToPMScaledBlit(SurfaceType.IntArgb, XRSurfaceData.IntRgbX11),
@@ -83,6 +90,7 @@ public final class XRPMBlitLoops {
                 new XrSwToPMScaledBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntRgbX11),
                 new XrSwToPMScaledBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntRgbX11),
                 new XrSwToPMScaledBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntRgbX11),
+                new XrSwToPMScaledBlit(SurfaceType.Any, XRSurfaceData.IntRgbX11),
 
                 new XrSwToPMScaledBlit(SurfaceType.IntArgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMScaledBlit(SurfaceType.IntRgb, XRSurfaceData.IntArgbPreX11),
@@ -91,6 +99,7 @@ public final class XRPMBlitLoops {
                 new XrSwToPMScaledBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMScaledBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMScaledBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11),
+                new XrSwToPMScaledBlit(SurfaceType.Any, XRSurfaceData.IntArgbPreX11),
 
                 /* SW->Surface Transforms */
                 new XrSwToPMTransformedBlit(SurfaceType.IntArgb, XRSurfaceData.IntRgbX11),
@@ -100,6 +109,7 @@ public final class XRPMBlitLoops {
                 new XrSwToPMTransformedBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntRgbX11),
                 new XrSwToPMTransformedBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntRgbX11),
                 new XrSwToPMTransformedBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntRgbX11),
+                new XrSwToPMTransformedBlit(SurfaceType.Any, XRSurfaceData.IntRgbX11),
 
                 new XrSwToPMTransformedBlit(SurfaceType.IntArgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMTransformedBlit(SurfaceType.IntRgb, XRSurfaceData.IntArgbPreX11),
@@ -107,7 +117,9 @@ public final class XRPMBlitLoops {
                 new XrSwToPMTransformedBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMTransformedBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMTransformedBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11), };
+                new XrSwToPMTransformedBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11),
+                new XrSwToPMTransformedBlit(SurfaceType.Any, XRSurfaceData.IntArgbPreX11),
+        };
         GraphicsPrimitiveMgr.register(primitives);
     }
 
@@ -155,10 +167,38 @@ public final class XRPMBlitLoops {
         }
 
         XRSurfaceData vImgSurface = (XRSurfaceData) vImg.getDestSurface();
+        if (swToSurfaceBlit.getNativePrim() == 0) {
+            // Avoid XGetImage round trip to XServer by using write-only native Blit
+            src = convertToTmpBuffer(src, vImgSurfaceType, w, h, sx, sy);
+            sx = 0;
+            sy = 0;
+            swToSurfaceBlit = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, vImgSurfaceType);
+        }
         swToSurfaceBlit.Blit(src, vImgSurface, AlphaComposite.Src, null,
                              sx, sy, 0, 0, w, h);
 
         return vImgSurface;
+    }
+
+    private static SurfaceData convertToTmpBuffer(SurfaceData src, SurfaceType type, int w, int h, int sx, int sy) {
+        boolean isOpaque = type == SurfaceType.IntRgb;
+        WeakReference<BufferedImage> bufferRef = isOpaque ? rgbTmpBuffer : argbTmpBuffer;
+        BufferedImage buffer = bufferRef.get();
+
+        if (buffer == null || buffer.getWidth() < w || buffer.getHeight() < h) {
+            int imageType = isOpaque ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB_PRE;
+            buffer = new BufferedImage(w, h, imageType);
+            if (isOpaque) {
+                rgbTmpBuffer = new WeakReference<>(buffer);
+            } else  {
+                argbTmpBuffer = new WeakReference<>(buffer);
+            }
+        }
+
+        SurfaceData bufferSurfaceData = SurfaceData.getPrimarySurfaceData(buffer);
+        Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, bufferSurfaceData.getSurfaceType())
+                .Blit(src, bufferSurfaceData, AlphaComposite.Src, null, sx, sy, 0, 0, w, h);
+        return bufferSurfaceData;
     }
 }
 
