@@ -61,8 +61,20 @@ typedef enum {
  * The MTLCommandBufferWrapper class contains command buffer and
  * associated resources that will be released in completion handler
  * */
+/**
+ * Counts completed command buffers of one context. Shared between the
+ * context and its MTLCommandBufferWrappers so that a completion handler
+ * needs no reference to the context.
+ */
+@interface MTLCompletedCommandBuffers : NSObject
+- (uint64_t) sequence;                  // highest sequence whose buffer has completed
+- (void) completed:(uint64_t)sequence; // from completion handlers, any thread
+@end
+
 @interface MTLCommandBufferWrapper : NSObject
 - (id<MTLCommandBuffer>) getCommandBuffer;
+- (uint64_t) sequence;  // position of this command buffer in the context's commit order
+- (void) markCompleted; // call from the completion handler
 - (void) onComplete; // invoked from completion handler in some pooled thread
 - (void) registerPooledTexture:(MTLPooledTextureHandle *)handle;
 @end
@@ -110,6 +122,14 @@ typedef enum {
 
 - (MTLCommandBufferWrapper *) getCommandBufferWrapper; // creates command buffer wrapper (when doesn't exist)
 - (MTLCommandBufferWrapper *) pullCommandBufferWrapper; // returns current buffer wrapper with loosing object ownership
+// Command buffers are numbered in commit order. commandBufferSequence is the
+// number of the buffer being recorded (whether or not it exists yet);
+// completedCommandBufferSequence is the highest number whose buffer has
+// completed on the GPU. Buffers of one queue complete in commit order, so a
+// resource last used at a sequence <= completed is not referenced by any
+// encoded or running work and may be overwritten.
+- (uint64_t) commandBufferSequence;
+- (uint64_t) completedCommandBufferSequence;
 
 /**
  * Fetches the MTLContext associated with the given destination surface,

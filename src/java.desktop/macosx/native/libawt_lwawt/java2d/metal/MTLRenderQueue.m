@@ -649,8 +649,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
+                        // the glyph caches belong to the context, not to the
+                        // destination: encode their pending quads, keep the cells
+                        [mtlc.glyphCacheAA flush];
+                        [mtlc.glyphCacheLCD flush];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                             sync = NO;
@@ -671,10 +673,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA free];
-                        [mtlc.glyphCacheLCD free];
+                        [mtlc.glyphCacheAA flush];
+                        [mtlc.glyphCacheLCD flush];
                         [mtlc commitCommandBuffer:NO display:NO];
-                    MTLSD_Flush();}
+                        MTLSD_Flush();
+                    }
 
                     if (mtlInfo != NULL) {
                         mtlc = mtlInfo->context;
@@ -708,8 +711,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA free];
-                            [mtlc.glyphCacheLCD free];
+                            [mtlc.glyphCacheAA flush];
+                            [mtlc.glyphCacheLCD flush];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
