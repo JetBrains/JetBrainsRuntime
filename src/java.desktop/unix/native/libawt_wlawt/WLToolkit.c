@@ -70,6 +70,7 @@ struct wl_seat     *wl_seat = NULL;
 struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
+static struct zwp_pointer_gestures_v1 *pointer_gestures; // optional, check for NULL before use
 struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
@@ -130,6 +131,10 @@ static jmethodID dispatchKeyboardModifiersEventMID;
 static jmethodID dispatchKeyboardEnterEventMID;
 static jmethodID dispatchKeyboardLeaveEventMID;
 static jmethodID dispatchRelativePointerEventMID;
+static jmethodID dispatchPinchBeginEventMID;
+static jmethodID dispatchPinchUpdateEventMID;
+static jmethodID dispatchPinchEndEventMID;
+static jfieldID enablePinchAsCtrlWheelFID;
 static jmethodID handleToplevelIconSizeMID;
 
 static jmethodID isNativeInputMethodSupportEnabledMID;
@@ -515,6 +520,39 @@ static const struct zwp_relative_pointer_v1_listener relative_pointer_listener =
 };
 
 static void
+pinch_gesture_begin(void *data, struct zwp_pointer_gesture_pinch_v1 *pinch,
+                    uint32_t serial, uint32_t time, struct wl_surface *surface, uint32_t fingers)
+{
+    JNIEnv* env = getEnv();
+    (*env)->CallStaticVoidMethod(env, tkClass, dispatchPinchBeginEventMID, ptr_to_jlong(surface), (jint)fingers);
+    wlListenerCheckException(env);
+}
+
+static void
+pinch_gesture_update(void *data, struct zwp_pointer_gesture_pinch_v1 *pinch,
+                     uint32_t time, wl_fixed_t dx, wl_fixed_t dy, wl_fixed_t scale, wl_fixed_t rotation)
+{
+    JNIEnv* env = getEnv();
+    (*env)->CallStaticVoidMethod(env, tkClass, dispatchPinchUpdateEventMID, wl_fixed_to_double(scale));
+    wlListenerCheckException(env);
+}
+
+static void
+pinch_gesture_end(void *data, struct zwp_pointer_gesture_pinch_v1 *pinch,
+                  uint32_t serial, uint32_t time, int32_t cancelled)
+{
+    JNIEnv* env = getEnv();
+    (*env)->CallStaticVoidMethod(env, tkClass, dispatchPinchEndEventMID);
+    wlListenerCheckException(env);
+}
+
+static const struct zwp_pointer_gesture_pinch_v1_listener pinch_gesture_listener = {
+    .begin  = pinch_gesture_begin,
+    .update = pinch_gesture_update,
+    .end    = pinch_gesture_end
+};
+
+static void
 wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
 {
     const bool has_pointer  = capabilities & WL_SEAT_CAPABILITY_POINTER;
@@ -530,6 +568,13 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
                                                                            wl_pointer);
                 if (rptr != NULL) {
                     zwp_relative_pointer_v1_add_listener(rptr, &relative_pointer_listener, NULL);
+                }
+            }
+            if (pointer_gestures != NULL) {
+                struct zwp_pointer_gesture_pinch_v1* pinch
+                    = zwp_pointer_gestures_v1_get_pinch_gesture(pointer_gestures, wl_pointer);
+                if (pinch != NULL) {
+                    zwp_pointer_gesture_pinch_v1_add_listener(pinch, &pinch_gesture_listener, NULL);
                 }
             }
         }
@@ -678,6 +723,12 @@ registry_global(void *data, struct wl_registry *wl_registry,
     }
     else if (strcmp(interface, zwp_relative_pointer_manager_v1_interface.name) == 0) {
         relative_pointer_manager = wl_registry_bind(wl_registry, name, &zwp_relative_pointer_manager_v1_interface, 1);
+    }
+    else if (strcmp(interface, zwp_pointer_gestures_v1_interface.name) == 0) {
+        JNIEnv *env = getEnv();
+        if (env != NULL && (*env)->GetStaticBooleanField(env, tkClass, enablePinchAsCtrlWheelFID)) {
+            pointer_gestures = wl_registry_bind(wl_registry, name, &zwp_pointer_gestures_v1_interface, 1);
+        }
     }
     else if (strcmp(interface, wl_data_device_manager_interface.name) == 0) {
       wl_ddm = wl_registry_bind(wl_registry, name,&wl_data_device_manager_interface, 3);
@@ -844,6 +895,10 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                                                           "dispatchRelativePointerEvent",
                                                                           "(DD)V"),
                       JNI_FALSE);
+    CHECK_NULL_RETURN(dispatchPinchBeginEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchBeginEvent", "(JI)V"), JNI_FALSE);
+    CHECK_NULL_RETURN(dispatchPinchUpdateEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchUpdateEvent", "(D)V"), JNI_FALSE);
+    CHECK_NULL_RETURN(dispatchPinchEndEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchEndEvent", "()V"), JNI_FALSE);
+    CHECK_NULL_RETURN(enablePinchAsCtrlWheelFID = (*env)->GetStaticFieldID(env, tkClass, "ENABLE_PINCH_AS_CTRL_WHEEL", "Z"), JNI_FALSE);
 
     CHECK_NULL_RETURN(isNativeInputMethodSupportEnabledMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                        "isNativeInputMethodSupportEnabled",
