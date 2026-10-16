@@ -549,6 +549,11 @@ public final class AWTAccessor {
          * Creates a secondary loop with the provided condition.
          */
         SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond);
+
+        /**
+         * Returns {@code true} if {@code child} is on the queue stack of {@code parent}
+         */
+        boolean isOnStack(EventQueue parent, EventQueue child);
     }
 
     /*

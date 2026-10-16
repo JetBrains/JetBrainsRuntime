@@ -225,6 +225,14 @@ public class EventQueue {
                 public SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond) {
                     return eventQueue.createSecondaryLoop(cond::getAsBoolean, null, 0);
                 }
+
+                @Override
+                public boolean isOnStack(EventQueue parent, EventQueue child) {
+                    if (parent == null) {
+                        throw new NullPointerException("parent is null");
+                    }
+                    return parent.isOnStack(child);
+                }
             });
     }
 
@@ -1355,6 +1363,23 @@ public class EventQueue {
             nextQueue.setFwDispatcher(dispatcher);
         } else {
             fwDispatcher = dispatcher;
+        }
+    }
+
+    private boolean isOnStack(EventQueue that) {
+        if (that == null) {
+            return false;
+        }
+
+        pushPopLock.lock();
+        try {
+            EventQueue queue = this;
+            while (queue != null && queue != that) {
+                queue = queue.nextQueue;
+            }
+            return queue == that;
+        } finally {
+            pushPopLock.unlock();
         }
     }
 }
