@@ -266,7 +266,6 @@ bool LibraryCallKit::arch_supports_vector(int sopc, int num_elem, BasicType type
         is_supported = Matcher::match_rule_supported_vector_masked(sopc, num_elem, type);
       }
     }
-    is_supported |= Matcher::supports_vector_predicate_op_emulation(sopc, num_elem, type);
 
     if (!is_supported) {
       non_product_log_if_needed("Rejected vector mask predicate using (%s,%s,%d) because architecture does not support it",
@@ -1265,8 +1264,8 @@ bool LibraryCallKit::inline_vector_gather_scatter(bool is_scatter) {
     }
 
     // Check whether the predicated gather/scatter node is supported by architecture.
-    VectorMaskUseType mask = (VectorMaskUseType) (VecMaskUseLoad | VecMaskUsePred);
-    if (!arch_supports_vector(is_scatter ? Op_StoreVectorScatterMasked : Op_LoadVectorGatherMasked, num_elem, elem_bt, mask)) {
+    if (!arch_supports_vector(is_scatter ? Op_StoreVectorScatterMasked : Op_LoadVectorGatherMasked, num_elem, elem_bt,
+                              (VectorMaskUseType) (VecMaskUseLoad | VecMaskUsePred))) {
       log_if_needed("  ** not supported: arity=%d op=%s vlen=%d etype=%s is_masked_op=1",
                       is_scatter, is_scatter ? "scatterMasked" : "gatherMasked",
                       num_elem, type2name(elem_bt));
@@ -1283,8 +1282,7 @@ bool LibraryCallKit::inline_vector_gather_scatter(bool is_scatter) {
   }
 
   // Check that the vector holding indices is supported by architecture
-  // For sub-word gathers expander receive index array.
-  if (!is_subword_type(elem_bt) && !arch_supports_vector(Op_LoadVector, num_elem, T_INT, VecMaskNotUsed)) {
+  if (!arch_supports_vector(Op_LoadVector, num_elem, T_INT, VecMaskNotUsed)) {
       log_if_needed("  ** not supported: arity=%d op=%s/loadindex vlen=%d etype=int is_masked_op=%d",
                       is_scatter, is_scatter ? "scatter" : "gather",
                       num_elem, is_masked_op ? 1 : 0);
@@ -1322,15 +1320,12 @@ bool LibraryCallKit::inline_vector_gather_scatter(bool is_scatter) {
     return false;
   }
 
-  Node* index_vect = nullptr;
   const TypeInstPtr* vbox_idx_type = TypeInstPtr::make_exact(TypePtr::NotNull, vbox_idx_klass);
-  if (!is_subword_type(elem_bt)) {
-    index_vect = unbox_vector(argument(8), vbox_idx_type, T_INT, num_elem);
-    if (index_vect == nullptr) {
-      set_map(old_map);
-      set_sp(old_sp);
-      return false;
-    }
+  Node* index_vect = unbox_vector(argument(8), vbox_idx_type, T_INT, num_elem);
+  if (index_vect == nullptr) {
+    set_map(old_map);
+    set_sp(old_sp);
+    return false;
   }
 
   Node* mask = nullptr;
@@ -1367,23 +1362,10 @@ bool LibraryCallKit::inline_vector_gather_scatter(bool is_scatter) {
     set_memory(vstore, addr_type);
   } else {
     Node* vload = nullptr;
-    Node* index    = argument(11);
-    Node* indexMap = argument(12);
-    Node* indexM   = argument(13);
     if (mask != nullptr) {
-      if (is_subword_type(elem_bt)) {
-        Node* index_arr_base = array_element_address(indexMap, indexM, T_INT);
-        vload = gvn().transform(new LoadVectorGatherMaskedNode(control(), memory(addr), addr, addr_type, vector_type, index_arr_base, mask, index));
-      } else {
-        vload = gvn().transform(new LoadVectorGatherMaskedNode(control(), memory(addr), addr, addr_type, vector_type, index_vect, mask));
-      }
+      vload = gvn().transform(new LoadVectorGatherMaskedNode(control(), memory(addr), addr, addr_type, vector_type, index_vect, mask));
     } else {
-      if (is_subword_type(elem_bt)) {
-        Node* index_arr_base = array_element_address(indexMap, indexM, T_INT);
-        vload = gvn().transform(new LoadVectorGatherNode(control(), memory(addr), addr, addr_type, vector_type, index_arr_base, index));
-      } else {
-        vload = gvn().transform(new LoadVectorGatherNode(control(), memory(addr), addr, addr_type, vector_type, index_vect));
-      }
+      vload = gvn().transform(new LoadVectorGatherNode(control(), memory(addr), addr, addr_type, vector_type, index_vect));
     }
     Node* box = box_vector(vload, vbox_type, elem_bt, num_elem);
     set_result(box);
