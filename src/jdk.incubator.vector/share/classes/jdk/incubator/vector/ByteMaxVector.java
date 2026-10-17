@@ -965,12 +965,6 @@ final class ByteMaxVector extends ByteVector {
         return super.fromArray0Template(ByteMaxMask.class, a, offset, (ByteMaxMask) m, offsetInRange);  // specialize
     }
 
-    @ForceInline
-    @Override
-    final
-    ByteVector fromArray0(byte[] a, int offset, int[] indexMap, int mapOffset, VectorMask<Byte> m) {
-        return super.fromArray0Template(ByteMaxMask.class, a, offset, indexMap, mapOffset, (ByteMaxMask) m);
-    }
 
 
     @ForceInline
