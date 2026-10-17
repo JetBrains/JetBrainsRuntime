@@ -3106,35 +3106,7 @@ public abstract class ShortVector extends AbstractVector<Short> {
                                    short[] a, int offset,
                                    int[] indexMap, int mapOffset) {
         ShortSpecies vsp = (ShortSpecies) species;
-        IntVector.IntSpecies isp = IntVector.species(vsp.indexShape());
-        Objects.requireNonNull(a);
-        Objects.requireNonNull(indexMap);
-        Class<? extends ShortVector> vectorType = vsp.vectorType();
-
-
-        // Constant folding should sweep out following conditonal logic.
-        VectorSpecies<Integer> lsp;
-        if (isp.length() > IntVector.SPECIES_PREFERRED.length()) {
-            lsp = IntVector.SPECIES_PREFERRED;
-        } else {
-            lsp = isp;
-        }
-
-        // Check indices are within array bounds.
-        for (int i = 0; i < vsp.length(); i += lsp.length()) {
-            IntVector vix = IntVector
-                .fromArray(lsp, indexMap, mapOffset + i)
-                .add(offset);
-            VectorIntrinsics.checkIndex(vix, a.length);
-        }
-
-        return VectorSupport.loadWithMap(
-            vectorType, null, short.class, vsp.laneCount(),
-            lsp.vectorType(),
-            a, ARRAY_BASE, null, null,
-            a, offset, indexMap, mapOffset, vsp,
-            (c, idx, iMap, idy, s, vm) ->
-            s.vOp(n -> c[idx + iMap[idy+n]]));
+        return vsp.vOp(n -> a[offset + indexMap[mapOffset + n]]);
     }
 
     /**
@@ -3179,13 +3151,8 @@ public abstract class ShortVector extends AbstractVector<Short> {
                                    short[] a, int offset,
                                    int[] indexMap, int mapOffset,
                                    VectorMask<Short> m) {
-        if (m.allTrue()) {
-            return fromArray(species, a, offset, indexMap, mapOffset);
-        }
-        else {
-            ShortSpecies vsp = (ShortSpecies) species;
-            return vsp.dummyVector().fromArray0(a, offset, indexMap, mapOffset, m);
-        }
+        ShortSpecies vsp = (ShortSpecies) species;
+        return vsp.vOp(m, n -> a[offset + indexMap[mapOffset + n]]);
     }
 
     /**
@@ -3840,49 +3807,6 @@ public abstract class ShortVector extends AbstractVector<Short> {
                                         (arr_, off_, i) -> arr_[off_ + i]));
     }
 
-    /*package-private*/
-    abstract
-    ShortVector fromArray0(short[] a, int offset,
-                                    int[] indexMap, int mapOffset,
-                                    VectorMask<Short> m);
-    @ForceInline
-    final
-    <M extends VectorMask<Short>>
-    ShortVector fromArray0Template(Class<M> maskClass, short[] a, int offset,
-                                            int[] indexMap, int mapOffset, M m) {
-        ShortSpecies vsp = vspecies();
-        IntVector.IntSpecies isp = IntVector.species(vsp.indexShape());
-        Objects.requireNonNull(a);
-        Objects.requireNonNull(indexMap);
-        m.check(vsp);
-        Class<? extends ShortVector> vectorType = vsp.vectorType();
-
-
-        // Constant folding should sweep out following conditonal logic.
-        VectorSpecies<Integer> lsp;
-        if (isp.length() > IntVector.SPECIES_PREFERRED.length()) {
-            lsp = IntVector.SPECIES_PREFERRED;
-        } else {
-            lsp = isp;
-        }
-
-        // Check indices are within array bounds.
-        // FIXME: Check index under mask controlling.
-        for (int i = 0; i < vsp.length(); i += lsp.length()) {
-            IntVector vix = IntVector
-                .fromArray(lsp, indexMap, mapOffset + i)
-                .add(offset);
-            VectorIntrinsics.checkIndex(vix, a.length);
-        }
-
-        return VectorSupport.loadWithMap(
-            vectorType, maskClass, short.class, vsp.laneCount(),
-            lsp.vectorType(),
-            a, ARRAY_BASE, null, m,
-            a, offset, indexMap, mapOffset, vsp,
-            (c, idx, iMap, idy, s, vm) ->
-            s.vOp(vm, n -> c[idx + iMap[idy+n]]));
-    }
 
     /*package-private*/
     abstract
