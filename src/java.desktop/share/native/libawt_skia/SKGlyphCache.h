@@ -49,12 +49,15 @@ bool SKGlyphCache_Fits(const SKGlyphCache *gc, const GlyphInfo *glyph);
 
 // A glyph list starts: the canvas and paint its glyphs are drawn with. Sprites
 // of consecutive glyph lists with the same canvas and paint accumulate in one
-// batch; a different paint draws the previous batch first.
+// batch; a different paint draws the previous batch first. A flush inside the
+// list (an uncached glyph, or an eviction with no cell free of this recording)
+// closes the batch; the next cached glyph of the list reopens it.
 void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint,
                         const struct SKQuadBatchTwoPass *passes = nullptr);
 
-// Queues one glyph (sub)image at device position x, y; uploads it into a cell
-// first if it is not cached yet. Returns false if no cell could be allocated.
+// Queues one glyph (sub)image at device position x, y; writes it into a cell
+// of the shadow bitmap first if it is not cached yet (uploaded with the next
+// batch draw). Returns false if no cell could be allocated.
 bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboolean rgbOrder, float x, float y);
 
 // Draws the queued sprites as one mesh. The backend calls this before any
