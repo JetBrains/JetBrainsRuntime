@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -70,6 +71,16 @@ static constexpr SkColorType kSurfaceColorType = kBGRA_8888_SkColorType;
 
 // D3D11 first: the lowest common denominator of Windows GPUs and VMs.
 static const wgpu::BackendType kBackends[] = { wgpu::BackendType::D3D11, wgpu::BackendType::D3D12 };
+static constexpr size_t kBackendCount = sizeof(kBackends) / sizeof(kBackends[0]);
+
+// One device per backend, shared by the configurations (as the D3D pipeline
+// keeps its device across configurations): a display change (resolution, DPI,
+// a monitor plugged) recreates the configurations, and a device per
+// configuration left every texture of the old one unusable on the new
+// (SKPlatform_SameDevice) and cost a device each time. A lost device is
+// dropped, so recovery gets a new one.
+static std::mutex gDevicesLock;
+static std::shared_ptr<DawnSKDevice> gDevices[kBackendCount];
 
 // ---------------------------------------------------------------------------
 // Instance, adapter, device
@@ -189,25 +200,36 @@ DawnSKConfigInfo *DawnSK_CreateConfig() {
     if (instance == nullptr) {
         return nullptr;
     }
-    for (wgpu::BackendType backendType : kBackends) {
-        wgpu::Adapter adapter = requestAdapter(instance, backendType);
-        if (adapter == nullptr) {
-            continue;
+    std::lock_guard<std::mutex> lock(gDevicesLock);
+    for (size_t i = 0; i < kBackendCount; i++) {
+        const wgpu::BackendType backendType = kBackends[i];
+        std::shared_ptr<DawnSKDevice> gpu = gDevices[i];
+        if (gpu != nullptr && gpu->lost->load()) {
+            gDevices[i].reset();
+            gpu.reset();
         }
-        auto gpu = std::make_shared<DawnSKDevice>();
-        gpu->device = requestDevice(instance, adapter, gpu->lost);
-        if (gpu->device == nullptr) {
-            continue;
+        const bool shared = gpu != nullptr;
+        if (!shared) {
+            wgpu::Adapter adapter = requestAdapter(instance, backendType);
+            if (adapter == nullptr) {
+                continue;
+            }
+            gpu = std::make_shared<DawnSKDevice>();
+            gpu->device = requestDevice(instance, adapter, gpu->lost);
+            if (gpu->device == nullptr) {
+                continue;
+            }
+            gpu->adapter = std::move(adapter);
+            gpu->queue = gpu->device.GetQueue();
+            wgpu::Limits limits;   // the device's limits (the adapter's were required at creation)
+            gpu->maxTextureSize = gpu->device.GetLimits(&limits) == wgpu::Status::Success ? limits.maxTextureDimension2D : 8192;
+            gDevices[i] = gpu;
         }
-        gpu->adapter = std::move(adapter);
-        gpu->queue = gpu->device.GetQueue();
-        wgpu::Limits limits;   // the device's limits (the adapter's were required at creation)
-        gpu->maxTextureSize = gpu->device.GetLimits(&limits) == wgpu::Status::Success ? limits.maxTextureDimension2D : 8192;
         auto *config = new DawnSKConfigInfo();
         config->gpu = std::move(gpu);
         config->description = describe(config->gpu->adapter, backendType);
-        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK_CreateConfig: %s, max texture %u", config->description.c_str(),
-                      config->gpu->maxTextureSize);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK_CreateConfig: %s, max texture %u, %s device", config->description.c_str(),
+                      config->gpu->maxTextureSize, shared ? "shared" : "new");
         return config;
     }
     J2dRlsTraceLn(J2D_TRACE_ERROR, "DawnSK_CreateConfig: no Direct3D adapter yields a Dawn device");
