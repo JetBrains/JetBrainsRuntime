@@ -47,6 +47,7 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Point;
@@ -95,17 +96,28 @@ public class XRenderSoftwareSourceBlitTest {
     };
 
     public static void main() {
-        GraphicsConfiguration config = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice().getDefaultConfiguration();
-        if (!config.getClass().getName().equals("sun.java2d.xr.XRGraphicsConfig")) {
-            throw new SkippedException("XRender pipeline is not used: " + config.getClass().getName());
+        GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        GraphicsConfiguration defaultConfig = device.getDefaultConfiguration();
+        if (!defaultConfig.getClass().getName().equals("sun.java2d.xr.XRGraphicsConfig")) {
+            throw new SkippedException("XRender pipeline is not used: " + defaultConfig.getClass().getName());
+        }
+
+        List<GraphicsConfiguration> configs = new ArrayList<>();
+        configs.add(defaultConfig);
+        for (GraphicsConfiguration config : device.getConfigurations()) {
+            if (!config.equals(defaultConfig) && config.getColorModel().getPixelSize() == 32) {
+                configs.addFirst(config);
+                break;
+            }
         }
 
         List<String> failures = new ArrayList<>();
         for (Source source : sources()) {
-            checkLoops(config, source, failures);
-            for (Mode mode : MODES) {
-                checkRendering(config, source, mode, failures);
+            checkLoops(defaultConfig, source, failures);
+            for (GraphicsConfiguration config : configs) {
+                for (Mode mode : MODES) {
+                    checkRendering(config, source, mode, failures);
+                }
             }
         }
 
@@ -205,7 +217,12 @@ public class XRenderSoftwareSourceBlitTest {
             int[] actual = snapshot.getRGB(0, 0, snapshot.getWidth(), snapshot.getHeight(), null, 0, snapshot.getWidth());
             int diff = maxChannelDiff(expected, actual);
             if (diff > mode.tolerance) {
-                failures.add(source.name() + ", " + mode.name() + (pass == 1 ? ", uncached" : ", cached") + ": pixels differ from software rendering by up to " + diff);
+                String failureDescription = source.name() + ", " +
+                        mode.name() + ", " +
+                        config.getColorModel().getPixelSize() + " bits, " +
+                        (pass == 1 ? "uncached" : "cached") + ": " +
+                        "pixels differ from software rendering by up to " + diff;
+                failures.add(failureDescription);
             }
         }
         target.flush();

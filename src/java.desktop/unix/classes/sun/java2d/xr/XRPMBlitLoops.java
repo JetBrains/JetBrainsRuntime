@@ -64,60 +64,15 @@ public final class XRPMBlitLoops {
                 new XRPMTransformedBlit(XRSurfaceData.IntArgbPreX11, XRSurfaceData.IntArgbPreX11),
 
                 /* SW -> Surface Blits */
-                new XrSwToPMBlit(SurfaceType.IntArgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMBlit(SurfaceType.IntRgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMBlit(SurfaceType.IntBgr, XRSurfaceData.IntRgbX11),
-                new XrSwToPMBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntRgbX11),
-                new XrSwToPMBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntRgbX11),
                 new XrSwToPMBlit(SurfaceType.Any, XRSurfaceData.IntRgbX11),
-
-                new XrSwToPMBlit(SurfaceType.IntArgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMBlit(SurfaceType.IntRgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMBlit(SurfaceType.IntBgr, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMBlit(SurfaceType.Any, XRSurfaceData.IntArgbPreX11),
 
                 /* SW->Surface Scales */
-                new XrSwToPMScaledBlit(SurfaceType.IntArgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMScaledBlit(SurfaceType.IntRgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMScaledBlit(SurfaceType.IntBgr, XRSurfaceData.IntRgbX11),
-                new XrSwToPMScaledBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntRgbX11),
-                new XrSwToPMScaledBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMScaledBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMScaledBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntRgbX11),
                 new XrSwToPMScaledBlit(SurfaceType.Any, XRSurfaceData.IntRgbX11),
-
-                new XrSwToPMScaledBlit(SurfaceType.IntArgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMScaledBlit(SurfaceType.IntRgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMScaledBlit(SurfaceType.IntBgr, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMScaledBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMScaledBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMScaledBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMScaledBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMScaledBlit(SurfaceType.Any, XRSurfaceData.IntArgbPreX11),
 
                 /* SW->Surface Transforms */
-                new XrSwToPMTransformedBlit(SurfaceType.IntArgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMTransformedBlit(SurfaceType.IntRgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMTransformedBlit(SurfaceType.IntBgr, XRSurfaceData.IntRgbX11),
-                new XrSwToPMTransformedBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntRgbX11),
-                new XrSwToPMTransformedBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMTransformedBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntRgbX11),
-                new XrSwToPMTransformedBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntRgbX11),
                 new XrSwToPMTransformedBlit(SurfaceType.Any, XRSurfaceData.IntRgbX11),
-
-                new XrSwToPMTransformedBlit(SurfaceType.IntArgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.IntRgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.IntBgr, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.ThreeByteBgr, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.Ushort565Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.Ushort555Rgb, XRSurfaceData.IntArgbPreX11),
-                new XrSwToPMTransformedBlit(SurfaceType.ByteIndexed, XRSurfaceData.IntArgbPreX11),
                 new XrSwToPMTransformedBlit(SurfaceType.Any, XRSurfaceData.IntArgbPreX11),
         };
         GraphicsPrimitiveMgr.register(primitives);
@@ -128,17 +83,7 @@ public final class XRPMBlitLoops {
      *  allowing it to shrink again after some time.
      */
     protected static XRSurfaceData cacheToTmpSurface(SurfaceData src, XRSurfaceData dst, int w, int h, int sx, int sy) {
-        SunVolatileImage vImg;
-        SurfaceType vImgSurfaceType;
-
-        if (src.getTransparency() == Transparency.OPAQUE) {
-            vImg = rgbTmpPM.get();
-            vImgSurfaceType = SurfaceType.IntRgb;
-        } else {
-            vImg = argbTmpPM.get();
-            vImgSurfaceType = SurfaceType.IntArgbPre;
-        }
-
+        SunVolatileImage vImg = src.getTransparency() == Transparency.OPAQUE ? rgbTmpPM.get() : argbTmpPM.get();
         if (vImg == null || vImg.getWidth() < w || vImg.getHeight() < h ||
             // Sometimes we get volatile image of wrong dest surface type,
             // so recreating it
@@ -160,13 +105,13 @@ public final class XRPMBlitLoops {
             }
         }
 
-        Blit swToSurfaceBlit = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, vImgSurfaceType);
-
-        if (!(vImg.getDestSurface() instanceof XRSurfaceData)) {
+        if (!(vImg.getDestSurface() instanceof XRSurfaceData vImgSurface)) {
             throw new InvalidPipeException("wrong surface data type: " + vImg.getDestSurface());
         }
 
-        XRSurfaceData vImgSurface = (XRSurfaceData) vImg.getDestSurface();
+        SurfaceType vImgSurfaceType =
+                vImgSurface.getTransparency() == Transparency.OPAQUE ? SurfaceType.IntRgb : SurfaceType.IntArgbPre;
+        Blit swToSurfaceBlit = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, vImgSurfaceType);
         if (swToSurfaceBlit.getNativePrim() == 0) {
             // Avoid XGetImage round trip to XServer by using write-only native Blit
             src = convertToTmpBuffer(src, vImgSurfaceType, w, h, sx, sy);
