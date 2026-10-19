@@ -56,5 +56,18 @@ Java_sun_java2d_skia_SKEnvironment_gpuApiNative(JNIEnv *env, jclass clazz)
     return JNU_NewStringPlatform(env, "metal");
 }
 
+// Apple GPUs read the framebuffer in the fragment shader (Graphite's
+// MtlCaps: fFBFetchSupport for the Apple families); Intel and AMD GPUs do not.
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_skia_SKEnvironment_framebufferFetchNative(JNIEnv *env, jclass clazz)
+{
+    @autoreleasepool {
+        id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+        BOOL apple = device != nil && [device supportsFamily:MTLGPUFamilyApple1];
+        [device release];
+        return apple ? JNI_TRUE : JNI_FALSE;
+    }
+}
+
 
 } // extern "C"

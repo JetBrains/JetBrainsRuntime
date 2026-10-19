@@ -55,4 +55,12 @@ Java_sun_java2d_skia_SKEnvironment_gpuApiNative(JNIEnv *env, jclass clazz)
     return env->NewStringUTF("dawn");
 }
 
+// Dawn reads the destination from a copy on every backend used here (Graphite's
+// DstReadStrategy::kTextureCopy).
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_skia_SKEnvironment_framebufferFetchNative(JNIEnv *env, jclass clazz)
+{
+    return JNI_FALSE;
+}
+
 } // extern "C"

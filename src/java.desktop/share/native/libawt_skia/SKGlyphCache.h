@@ -40,7 +40,7 @@ struct SKGlyphCache;
 // are freed), an SkSurface as the atlas texture, and a sprite batch drawn as
 // one mesh (SKQuadBatch). Grayscale caches are alpha-only and take the paint
 // colour; LCD caches hold RGB coverage and are drawn through the paint's
-// blender (see SKBackend_DrawGlyphList).
+// blender, in two passes, or accumulated first (see SKBackend_DrawGlyphList).
 SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd);
 void SKGlyphCache_Free(SKGlyphCache *gc);
 
@@ -50,7 +50,8 @@ bool SKGlyphCache_Fits(const SKGlyphCache *gc, const GlyphInfo *glyph);
 // A glyph list starts: the canvas and paint its glyphs are drawn with. Sprites
 // of consecutive glyph lists with the same canvas and paint accumulate in one
 // batch; a different paint draws the previous batch first.
-void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint);
+void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint,
+                        const struct SKQuadBatchTwoPass *passes = nullptr);
 
 // Queues one glyph (sub)image at device position x, y; uploads it into a cell
 // first if it is not cached yet. Returns false if no cell could be allocated.

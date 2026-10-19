@@ -92,11 +92,13 @@ static void flushAllBatches();
 static struct {
     jint msaaSamples = 1;
     bool edgeAAQuads = false;
+    bool lcdTwoPass = false;
 } gConfig;
 
-void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads) {
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, bool lcdTwoPass) {
     gConfig.msaaSamples = msaaSamples;
     gConfig.edgeAAQuads = edgeAAQuads;
+    gConfig.lcdTwoPass = lcdTwoPass;
 }
 
 bool SKBackend_Multisampled() {
@@ -1276,6 +1278,99 @@ static sk_sp<SkBlender> lcdBlender(jint contrast) {
     return last;
 }
 
+// LCD text without a destination read (sun.java2d.skia.lcd=twopass): the
+// blend  Cr = Cd * (1 - cov) + Cs * cov  per channel as two fixed-function
+// passes, kModulate with (1 - cov) and kPlus with Cs * cov, which is how
+// DirectWrite composites ClearType (dual-source blending does both at once;
+// Graphite does not expose it). The destination's gamma cannot be applied
+// without reading it; instead the coverage is corrected so that the linear
+// blend reproduces the gamma blend on a white and on a black background,
+// mixed by the channel's text value (dark text is mostly read on light
+// backgrounds): exact for black on white and white on black, up to about
+// fifteen levels off at glyph edges for light text on dark mid-tones. The
+// coverage arrives in the atlas' RGB channels. Both passes write alpha 1 over
+// the whole quad and ignore the paint's alpha, which holds because LCD text is
+// only requested for an opaque colour on an opaque destination
+// (SKSurfaceData.canRenderLCDText).
+struct LcdTwoPassUniforms {
+    float src[3], srcGamma[3], invGamma;
+};
+static_assert(sizeof(LcdTwoPassUniforms) == 7 * sizeof(float), "uniform block layout");
+
+static sk_sp<SkShader> lcdTwoPassShader(const sk_sp<SkShader> &atlas, const SkPaint &paint, jint contrast, bool second) {
+    static const SkRuntimeEffect *effects[2] = { nullptr, nullptr };
+    static bool compiled = false;
+    if (!compiled) {
+        compiled = true;
+        const char *common = R"(
+            uniform shader atlas;
+            uniform half3 src;
+            uniform half3 srcGamma;
+            uniform half invGamma;
+            half3 coverage(float2 xy) {
+                half3 cov = atlas.eval(xy).rgb;
+                // the linear weights that reproduce the gamma blend on white and
+                // on black (the result's distance from the background over the
+                // text colour's), mixed by the channel's text value
+                half3 onWhite = 1 - pow(mix(half3(1), srcGamma, cov), half3(invGamma));
+                half3 onBlack = pow(srcGamma * cov, half3(invGamma));
+                return saturate(mix(onWhite, onBlack, src) / mix(1 - src, src, src));
+            }
+        )";
+        const char *mains[2] = {
+            "half4 main(float2 xy) { return half4(1 - coverage(xy), 1); }",
+            "half4 main(float2 xy) { return half4(src * coverage(xy), 1); }",
+        };
+        for (int i = 0; i < 2; i++) {
+            auto result = SkRuntimeEffect::MakeForShader(SkStringPrintf("%s%s", common, mains[i]));
+            if (!result.effect) {
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend: LCD two-pass shader does not compile: %s", result.errorText.c_str());
+                break;
+            }
+            effects[i] = result.effect.release();
+        }
+    }
+    if (effects[1] == nullptr) {
+        return nullptr;
+    }
+    const float gamma = contrast / 100.0f;
+    SkColor4f c = SkColor4f::FromColor(paint.getColor());
+    LcdTwoPassUniforms u;
+    const float src[3] = { c.fR, c.fG, c.fB };
+    for (int i = 0; i < 3; i++) {
+        u.src[i] = src[i];
+        u.srcGamma[i] = powf(src[i], gamma);
+    }
+    u.invGamma = 1.0f / gamma;
+    SkRuntimeEffect::ChildPtr child(atlas);
+    return effects[second ? 1 : 0]->makeShader(SkData::MakeWithCopy(&u, sizeof(u)), SkSpan(&child, 1));
+}
+
+// The batch's paint keys the colour, the key the contrast of the glyph list
+// being drawn.
+static SKQuadBatch::TwoPass gLcdTwoPass = {
+    [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdTwoPassShader(atlas, paint, gLcdTwoPass.key, false); },
+    [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdTwoPassShader(atlas, paint, gLcdTwoPass.key, true); },
+    SkBlendMode::kModulate,
+    SkBlendMode::kPlus,
+    140,
+};
+
+// An uncached LCD glyph image in two passes: the image shader stands in for
+// the atlas, positioned at (x, y).
+static void drawLcdTwoPassImage(const sk_sp<SkImage> &cov, float x, float y, const SkPaint &paint) {
+    SkMatrix at = SkMatrix::Translate(x, y);
+    sk_sp<SkShader> image = cov->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, SkSamplingOptions(SkFilterMode::kNearest), &at);
+    SkRect rect = SkRect::MakeXYWH(x, y, (float) cov->width(), (float) cov->height());
+    SkPaint p = paint;
+    p.setShader(gLcdTwoPass.firstShader(image, paint));
+    p.setBlendMode(gLcdTwoPass.firstBlend);
+    g.canvas->drawRect(rect, p);
+    p.setShader(gLcdTwoPass.secondShader(image, paint));
+    p.setBlendMode(gLcdTwoPass.secondBlend);
+    g.canvas->drawRect(rect, p);
+}
+
 static SKGlyphCache *glyphCache(bool lcd) {
     SKGlyphCache *&slot = lcd ? g.cc->glyphCacheLCD : g.cc->glyphCacheAA;
     if (slot == nullptr) {
@@ -1310,7 +1405,11 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint rowBytesOffset, jbo
     }
     SkPixmap pm(SkImageInfo::Make(w, h, kRGBA_8888_SkColorType, kOpaque_SkAlphaType), rgba.data(), (size_t) w * 4);
     if (sk_sp<SkImage> cov = uploadPixmap(pm)) {
-        g.canvas->drawImage(cov, x, y, SkSamplingOptions(SkFilterMode::kNearest), &paint);
+        if (gConfig.lcdTwoPass) {
+            drawLcdTwoPassImage(cov, x, y, paint);
+        } else {
+            g.canvas->drawImage(cov, x, y, SkSamplingOptions(SkFilterMode::kNearest), &paint);
+        }
     }
 }
 
@@ -1396,10 +1495,17 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                 flushBatches();
             }
             // LCD: the three coverage channels are blended per channel against
-            // the destination, in the destination's gamma.
+            // the destination, in the destination's gamma (blender), or in two
+            // passes without reading it (lcdTwoPass; the paint carries the
+            // colour, which keys the batch).
             if (!lcdPaintReady) {
-                lcdPaint.setColor(SK_ColorWHITE);
-                lcdPaint.setBlender(lcdBlender(lcdContrast));
+                if (gConfig.lcdTwoPass) {
+                    lcdPaint.setColor(g.color);
+                    gLcdTwoPass.key = lcdContrast;
+                } else {
+                    lcdPaint.setColor(SK_ColorWHITE);
+                    lcdPaint.setBlender(lcdBlender(lcdContrast));
+                }
                 lcdPaintReady = true;
             }
             jint rowBytesOffset = 0;
@@ -1411,7 +1517,7 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                 }
             }
             if (lcd == nullptr && (lcd = glyphCache(true)) != nullptr) {
-                SKGlyphCache_Begin(lcd, g.canvas, lcdPaint);
+                SKGlyphCache_Begin(lcd, g.canvas, lcdPaint, gConfig.lcdTwoPass ? &gLcdTwoPass : nullptr);
             }
             if (rowBytesOffset == 0 && SKGlyphCache_Fits(lcd, ginfo)
                     && SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, 0, rgbOrder, fx, fy)) {

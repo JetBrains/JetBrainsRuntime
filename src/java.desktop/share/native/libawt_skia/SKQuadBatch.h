@@ -35,6 +35,7 @@
 #include "include/core/SkShader.h"
 #include "include/core/SkVertices.h"
 #include "jni.h"
+#include <cmath>
 #include <functional>
 #include <vector>
 
@@ -47,13 +48,26 @@
 // atlas the paint's shader is sampled in canvas coordinates; with an atlas the
 // quads carry texture coordinates and the atlas is the paint's shader: an
 // alpha-only atlas takes the paint colour, an RGB atlas feeds the blender.
+// Two draws of every mesh instead of one, for sources that blend per colour
+// channel without reading the destination (LCD text as DirectWrite composites
+// it): each pass gets its blend mode and a shader built over the atlas shader
+// for the batch's paint (its colour).
+struct SKQuadBatchTwoPass {
+    std::function<sk_sp<SkShader>(const sk_sp<SkShader> &atlas, const SkPaint &paint)> firstShader;
+    std::function<sk_sp<SkShader>(const sk_sp<SkShader> &atlas, const SkPaint &paint)> secondShader;
+    SkBlendMode firstBlend = SkBlendMode::kModulate;
+    SkBlendMode secondBlend = SkBlendMode::kPlus;
+    int key = 0;   // part of the batch key: what else the shaders depend on (the LCD contrast)
+};
+
 class SKQuadBatch {
 public:
     SKQuadBatch() {
-        positions.reserve(4 * 1024);
-        texCoords.reserve(4 * 1024);
+        // 1024 quads: a frame's worth of glyphs or tiles without a reallocation
+        base.positions.reserve(4 * 1024);
+        base.texCoords.reserve(4 * 1024);
+        base.indices.reserve(6 * 1024);
         colors.reserve(4 * 1024);
-        indices.reserve(6 * 1024);
     }
 
     // Starts (or continues) a batch for canvas/paint/atlas; a different triple
@@ -66,19 +80,31 @@ public:
     // Plain quads keep a batch per colour: a coloured-vertex mesh costs more
     // than their separate draws (measured on D3D11). Blenders that take the
     // colour as a uniform (LCD, XOR) keep a batch per colour too.
-    void begin(SkCanvas *c, const SkPaint &p, const sk_sp<SkImage> &atlas = nullptr) {
+    void begin(SkCanvas *c, const SkPaint &p, const sk_sp<SkImage> &atlas = nullptr, const SKQuadBatchTwoPass *passes = nullptr) {
         // A runtime blender (XOR, LCD) reads the destination. Backends without
         // framebuffer fetch (Dawn on D3D11) read it from a copy taken before the
         // draw, so overlapping quads of one draw would all see the state before
         // any of them (a crossing of two XOR strokes stays XORed once, the second
+        // of two overlapping LCD glyphs loses the first's coverage). Two passes
+        // over one mesh are not sequential either (both quads' second passes add
+        // to the product of their first). Such quads go to mesh layers drawn
+        // after the quads they overlap (push()).
+        splitOnOverlap = (!p.asBlendMode().has_value() && splitBlenders) || passes != nullptr;
+        // Colours are not merged with an afterDraw hook either: it receives the
+        // batch's paint and reads the colour from it.
+        const bool mergeColors = atlas != nullptr && passes == nullptr && !afterDraw && p.getShader() == nullptr
         // of two overlapping LCD glyphs loses the first's coverage): a quad that
-        // overlaps a pending one starts a new draw (push()).
-        splitOnOverlap = !p.asBlendMode().has_value();
-        const bool mergeColors = atlas != nullptr && p.getShader() == nullptr && p.asBlendMode().has_value()
-                                 && p.getColorFilter() == nullptr && p.getMaskFilter() == nullptr;
+        // overlaps a pending one starts a new draw (push()). Two passes over one
+        // mesh are not sequential either (both quads' second passes add to the
+        // product of their first), so they split on overlap too.
+        splitOnOverlap = !p.asBlendMode().has_value() || passes != nullptr;
+        const bool mergeColors = atlas != nullptr && passes == nullptr && p.getShader() == nullptr
+                                 && p.asBlendMode().has_value() && p.getColorFilter() == nullptr
+                                 && p.getMaskFilter() == nullptr;
         // begin() runs per primitive (thousands per frame): no paint copy on the
         // plain path; with merged colours the key is the paint in white
-        bool same = canvas == c && atlasImage.get() == atlas.get();
+        bool same = canvas == c && atlasImage.get() == atlas.get() && twoPass == passes
+                    && twoPassKey == (passes != nullptr ? passes->key : 0);
         if (same) {
             if (mergeColors) {
                 SkPaint key = p;
@@ -91,7 +117,7 @@ public:
         if (same) {
             if (mergeColors && p.getColor() != color) {
                 if (!colorPerVertex) {   // promote: the quads so far all have the first colour
-                    colors.assign(positions.size(), color);
+                    colors.assign(base.positions.size(), color);
                     colorPerVertex = true;
                 }
                 color = p.getColor();
@@ -107,20 +133,39 @@ public:
         color = p.getColor();
         colorPerVertex = false;
         atlasImage = atlas;
+        twoPass = passes;
+        twoPassKey = passes != nullptr ? passes->key : 0;
         meshPaint = p;
         if (atlas) {
-            meshPaint.setShader(atlas->makeShader(SkTileMode::kClamp, SkTileMode::kClamp,
-                                                  SkSamplingOptions(SkFilterMode::kNearest)));
+            sk_sp<SkShader> atlasShader = atlas->makeShader(SkTileMode::kClamp, SkTileMode::kClamp,
+                                                            SkSamplingOptions(SkFilterMode::kNearest));
+            if (passes != nullptr) {
+                meshPaint.setShader(passes->firstShader(atlasShader, p));
+                meshPaint.setBlendMode(passes->firstBlend);
+                secondPaint = p;
+                secondPaint.setShader(passes->secondShader(atlasShader, p));
+                secondPaint.setBlendMode(passes->secondBlend);
+            } else {
+                meshPaint.setShader(std::move(atlasShader));
+            }
         }
     }
 
     bool active() const { return canvas != nullptr; }
 
-    // Axis-aligned sprite from the atlas at (tx, ty).
-    void addSprite(float x, float y, float w, float h, float tx, float ty) {
+    // Axis-aligned sprite from the atlas at (tx, ty). `ink`, if given, is the
+    // part of the sprite that carries coverage, relative to its origin: the
+    // extent the overlap test uses (glyph images are padded; neighbours whose
+    // boxes touch rarely have overlapping ink).
+    void addSprite(float x, float y, float w, float h, float tx, float ty, const SkIRect *ink = nullptr) {
         const SkPoint pos[4] = {{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}};
         const SkPoint tex[4] = {{tx, ty}, {tx + w, ty}, {tx + w, ty + h}, {tx, ty + h}};
-        push(pos, tex);
+        if (ink != nullptr) {
+            const SkRect extent = SkRect::MakeLTRB(x + ink->fLeft, y + ink->fTop, x + ink->fRight, y + ink->fBottom);
+            push(pos, tex, &extent);
+        } else {
+            push(pos, tex);
+        }
     }
 
     // Integer rect [l, r) x [t, b), as spans and runs are given.
@@ -158,77 +203,170 @@ public:
     }
 
 private:
-    void push(const SkPoint pos[4], const SkPoint *tex) {
-        SkRect bounds;
-        bounds.setBounds(SkSpan(pos, 4));
-        if (positions.size() + 4 > 0xffff) {
-            drawPending();   // 16-bit indices
-        } else if (splitOnOverlap) {
-            for (const SkRect &pending : pendingBounds) {
-                if (SkRect::Intersects(pending, bounds)) {
-                    drawPending();
-                    break;
+    // The vertices of one draw. While splitOnOverlap, a quad that overlaps a
+    // pending quad goes to the layer after the last one it overlaps instead of
+    // ending the batch: within a layer no two quads overlap, so one draw (or
+    // one pass pair) composes them correctly, and a quad is drawn after every
+    // quad it overlaps, since the layers are drawn in order. A line of text is
+    // one or two draws rather than one per glyph. The overlap extents are kept
+    // in a hashed grid of 64-pixel cells, so a test touches the few quads
+    // nearby.
+    struct Mesh {
+        static constexpr int kCellShift = 6;   // 64-pixel grid cells
+        static constexpr int kBuckets = 64;    // a 512x512 region of cells before the hash wraps
+
+        std::vector<SkPoint> positions;
+        std::vector<SkPoint> texCoords;
+        std::vector<uint16_t> indices;
+        std::vector<SkRect> bounds;
+        std::vector<uint16_t> buckets[kBuckets];   // indices into `bounds` by grid cell
+
+        void clear() {
+            positions.clear();
+            texCoords.clear();
+            indices.clear();
+            bounds.clear();
+            for (auto &bucket : buckets) {
+                bucket.clear();
+            }
+        }
+
+        template <typename F> static void cells(const SkRect &r, F &&f) {
+            const int x0 = (int) floorf(r.fLeft) >> kCellShift, x1 = ((int) ceilf(r.fRight) - 1) >> kCellShift;
+            const int y0 = (int) floorf(r.fTop) >> kCellShift, y1 = ((int) ceilf(r.fBottom) - 1) >> kCellShift;
+            for (int y = y0; y <= y1; y++) {
+                for (int x = x0; x <= x1; x++) {
+                    f((x * 7 + y * 13) & (kBuckets - 1));
                 }
             }
         }
-        if (splitOnOverlap) {
-            pendingBounds.push_back(bounds);
+
+        void addBounds(const SkRect &r) {
+            const uint16_t index = (uint16_t) bounds.size();
+            bounds.push_back(r);
+            cells(r, [&](int bucket) { buckets[bucket].push_back(index); });
         }
-        uint16_t base = (uint16_t) positions.size();
-        positions.insert(positions.end(), pos, pos + 4);
+
+        bool overlaps(const SkRect &r) const {
+            bool hit = false;
+            cells(r, [&](int bucket) {
+                for (uint16_t index : buckets[bucket]) {
+                    hit |= SkRect::Intersects(bounds[index], r);
+                }
+            });
+            return hit;
+        }
+    };
+
+    // Under splitOnOverlap the base layer is drawn once it holds this many
+    // quads: bounds the grid's occupancy, and the 16-bit bound indices.
+    static constexpr size_t kMaxOverlapTested = 1024;
+
+    void push(const SkPoint pos[4], const SkPoint *tex, const SkRect *extent = nullptr) {
+        Mesh *target = &base;
+        if (splitOnOverlap) {
+            // The inked extent suffices for two passes (a pixel without coverage
+            // is multiplied by one and added nothing). A blender that reads a
+            // copy of the destination writes the stale copy back wherever its
+            // quad has no coverage, so there the whole quad counts.
+            SkRect bounds;
+            if (extent != nullptr && twoPass != nullptr) {
+                bounds = *extent;
+            } else {
+                bounds.setBounds(SkSpan(pos, 4));
+            }
+            if (base.bounds.size() >= kMaxOverlapTested) {
+                drawPending();
+            }
+            if (!bounds.isEmpty()) {
+                // the layer after the last one holding a quad this one overlaps
+                size_t depth = 0;
+                if (base.overlaps(bounds)) {
+                    depth = 1;
+                    for (size_t i = 0; i < layerCount; i++) {
+                        if (layers[i].overlaps(bounds)) {
+                            depth = i + 2;
+                        }
+                    }
+                }
+                target = layer(depth);
+                if (target->positions.size() + 4 > 0xffff) {   // 16-bit indices
+                    drawPending();
+                    target = &base;
+                }
+                target->addBounds(bounds);
+            }
+        } else if (base.positions.size() + 4 > 0xffff) {
+            drawPending();   // 16-bit indices
+        }
+        uint16_t first = (uint16_t) target->positions.size();
+        target->positions.insert(target->positions.end(), pos, pos + 4);
         if (tex != nullptr) {
-            texCoords.insert(texCoords.end(), tex, tex + 4);
+            target->texCoords.insert(target->texCoords.end(), tex, tex + 4);
         }
         if (colorPerVertex) {
-            colors.insert(colors.end(), 4, color);
+            colors.insert(colors.end(), 4, color);   // base only: colours are never merged under splitOnOverlap
         }
-        const uint16_t quad[6] = { base, (uint16_t) (base + 1), (uint16_t) (base + 2),
-                                   base, (uint16_t) (base + 2), (uint16_t) (base + 3) };
-        indices.insert(indices.end(), quad, quad + 6);
+        const uint16_t quad[6] = { first, (uint16_t) (first + 1), (uint16_t) (first + 2),
+                                   first, (uint16_t) (first + 2), (uint16_t) (first + 3) };
+        target->indices.insert(target->indices.end(), quad, quad + 6);
+    }
+
+    void draw(const Mesh &m, bool withColors) {
+        // kModulate: with per-vertex colours the mesh paint is white, so the
+        // result is vertex colour x atlas alpha (an alpha-only shader yields
+        // the paint colour times the coverage); without an atlas the vertex
+        // colour is the source.
+        SkASSERT(m.texCoords.empty() || m.texCoords.size() == m.positions.size());   // a batch is textured or not
+        sk_sp<SkVertices> mesh = SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode,
+                                                      (int) m.positions.size(), m.positions.data(),
+                                                      m.texCoords.empty() ? nullptr : m.texCoords.data(),
+                                                      withColors ? colors.data() : nullptr,
+                                                      (int) m.indices.size(), m.indices.data());
+        if (withColors) {
+            SkPaint white = meshPaint;
+            white.setColor(SK_ColorWHITE);
+            canvas->drawVertices(mesh, SkBlendMode::kModulate, white);
+        } else {
+            canvas->drawVertices(mesh, SkBlendMode::kModulate, meshPaint);
+            if (twoPass != nullptr) {
+                canvas->drawVertices(mesh, SkBlendMode::kModulate, secondPaint);
+            }
+        }
     }
 
     void drawPending() {
-        if (canvas != nullptr && !indices.empty()) {
+        if (canvas != nullptr && !base.indices.empty()) {
             if (beforeDraw) {
                 beforeDraw();
             }
-            // kModulate: with per-vertex colours the mesh paint is white, so the
-            // result is vertex colour x atlas alpha (an alpha-only shader yields
-            // the paint colour times the coverage); without an atlas the vertex
-            // colour is the source.
-            SkASSERT(texCoords.empty() || texCoords.size() == positions.size());   // a batch is textured or not
-            sk_sp<SkVertices> mesh = SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode,
-                                                          (int) positions.size(), positions.data(),
-                                                          texCoords.empty() ? nullptr : texCoords.data(),
-                                                          colorPerVertex ? colors.data() : nullptr,
-                                                          (int) indices.size(), indices.data());
-            if (colorPerVertex) {
-                SkPaint white = meshPaint;
-                white.setColor(SK_ColorWHITE);
-                canvas->drawVertices(mesh, SkBlendMode::kModulate, white);
-            } else {
-                canvas->drawVertices(mesh, SkBlendMode::kModulate, meshPaint);
+            draw(base, colorPerVertex);
+            for (size_t i = 0; i < layerCount; i++) {
+                draw(layers[i], false);
             }
         }
-        positions.clear();
-        pendingBounds.clear();
-        texCoords.clear();
+        base.clear();
+        for (size_t i = 0; i < layerCount; i++) {
+            layers[i].clear();
+        }
+        layerCount = 0;
         colors.clear();
-        indices.clear();
     }
 
     SkCanvas *canvas = nullptr;
     SkPaint paint;          // the batch key: the paint, colour white if colours are merged
     SkPaint meshPaint;      // the first paint of the batch, with the atlas as its shader
+    SkPaint secondPaint;    // the second pass (SKQuadBatchTwoPass)
+    const SKQuadBatchTwoPass *twoPass = nullptr;
+    int twoPassKey = 0;
     bool colorPerVertex = false;     // a second colour arrived: `colors` is filled
-    bool splitOnOverlap = false;     // the paint has a runtime blender: overlapping quads do not share a draw
-    std::vector<SkRect> pendingBounds;   // device bounds of the pending quads while splitOnOverlap
+    bool splitOnOverlap = false;     // a runtime blender or two passes: overlapping quads do not share a draw
     SkColor color = SK_ColorWHITE;   // of the quads being added
     sk_sp<SkImage> atlasImage;
-    std::vector<SkPoint> positions;
-    std::vector<SkPoint> texCoords;
-    std::vector<SkColor> colors;
-    std::vector<uint16_t> indices;
+    Mesh base;                       // the quads of the batch, or its first layer
+    std::vector<Mesh> layers;        // quads overlapping an earlier layer's, drawn after it
+    size_t layerCount = 0;           // layers in use; the rest keep their vectors for reuse
+    std::vector<SkColor> colors;     // per vertex of `base` when colorPerVertex
 };
 
 #endif /* SKQuadBatch_h_Included */

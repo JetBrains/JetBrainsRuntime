@@ -84,7 +84,7 @@ SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops);
 // Contexts
 // Architecture-dependent configuration (SKEnvironment decides the values per
 // GPU API and system property before the first context is created).
-void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads);
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, bool lcdTwoPass);
 bool SKBackend_Multisampled();
 bool SKBackend_EdgeAAQuads();
 SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config);
