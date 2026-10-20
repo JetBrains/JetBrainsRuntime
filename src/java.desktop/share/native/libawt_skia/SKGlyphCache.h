@@ -64,4 +64,8 @@ bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboole
 // other draw, state or destination change, and before ending a recording.
 void SKGlyphCache_Flush(SKGlyphCache *gc);
 
+// The cache's sprite batch, for its draw hooks (SKQuadBatch::beforeDraw,
+// afterDraw).
+class SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc);
+
 #endif /* SKGlyphCache_h_Included */

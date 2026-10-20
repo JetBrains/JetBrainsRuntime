@@ -128,6 +128,7 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd) {
     gc->cc = cc;
     gc->lcd = lcd;
     gc->ink.resize((size_t) CELLS_PER_ROW * CELLS_PER_ROW, SkIRect::MakeEmpty());
+    gc->batch.splitBlenders = !SKBackend_FramebufferFetch();
     gc->info = AccelGlyphCache_Init(CACHE_SIZE, CACHE_SIZE, CELL_SIZE, CELL_SIZE, flushForEviction);
     if (gc->info == nullptr) {
         delete gc;
@@ -206,7 +207,7 @@ bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboole
     if (!gc->batch.active()) {
         gc->batch.begin(gc->canvas, gc->paint, gc->atlasImage, gc->passes);
     }
-    gc->batch.addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y);
+    gc->batch.addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(cell)]);
     return true;
 }
 
@@ -214,4 +215,8 @@ void SKGlyphCache_Flush(SKGlyphCache *gc) {
     if (gc != nullptr) {
         gc->batch.flush();
     }
+}
+
+SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc) {
+    return gc->batch;
 }

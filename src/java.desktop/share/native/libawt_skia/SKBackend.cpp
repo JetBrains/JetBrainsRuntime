@@ -34,12 +34,11 @@
 #include "fontscalerdefs.h"
 #include "sun_font_StrikeCache.h"
 #include "java_awt_AlphaComposite.h"
-#include "sun_java2d_pipe_BufferedContext.h"
 #include "sun_java2d_pipe_hw_AccelSurface.h"
 #include "sun_java2d_skia_SKBlitLoops.h"
+#include "sun_java2d_skia_SKShapePipe.h"
 #include "sun_java2d_skia_SKSurfaceData.h"
 
-#include "include/core/SkBitmap.h"
 #include "include/core/SkBlender.h"
 #include "include/core/SkData.h"
 #include "include/effects/SkRuntimeEffect.h"
@@ -92,13 +91,22 @@ static void flushAllBatches();
 static struct {
     jint msaaSamples = 1;
     bool edgeAAQuads = false;
-    bool lcdTwoPass = false;
+    SKLcdMode lcdMode = SKLcdMode::Blend;
+    bool framebufferFetch = false;
 } gConfig;
 
-void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, bool lcdTwoPass) {
+static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
+
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch) {
     gConfig.msaaSamples = msaaSamples;
     gConfig.edgeAAQuads = edgeAAQuads;
-    gConfig.lcdTwoPass = lcdTwoPass;
+    gConfig.lcdMode = lcdMode;
+    gConfig.framebufferFetch = framebufferFetch;
+    gRects.splitBlenders = !framebufferFetch;
+}
+
+bool SKBackend_FramebufferFetch() {
+    return gConfig.framebufferFetch;
 }
 
 bool SKBackend_Multisampled() {
@@ -138,9 +146,14 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create Graphite context");
         return nullptr;
     }
+    std::unique_ptr<Recorder> recorder = context->makeRecorder();
+    if (!recorder) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create a Graphite recorder");
+        return nullptr;
+    }
     auto *cc = new SKConfigContext();
     cc->config = config;
-    cc->recorder = context->makeRecorder();
+    cc->recorder = std::move(recorder);
     cc->context = std::move(context);
     gContexts[config] = cc;
     J2dTraceLn(J2D_TRACE_INFO, "SKBackend_ContextFor: created Graphite context for config %p", config);
@@ -169,6 +182,8 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     SKMaskCache_Free(cc->maskCache);
     SKGlyphCache_Free(cc->glyphCacheAA);
     SKGlyphCache_Free(cc->glyphCacheLCD);
+    cc->lcdTables.clear();
+    cc->lcdCoverage.reset();
     cc->recorder.reset();
     cc->context.reset();
     delete cc;
@@ -367,7 +382,7 @@ static void markTouched() {
 // pixels), so the pixmap is wrapped, not copied first.
 static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
     if (g.cc == nullptr) {
-        return SkImages::RasterFromPixmapCopy(pm);
+        return nullptr;   // every caller has a destination, and with it a context
     }
     sk_sp<SkImage> raster = SkImages::RasterFromPixmap(pm, nullptr, nullptr);
     return raster ? SkImages::TextureFromImage(g.cc->recorder.get(), raster.get()) : nullptr;
@@ -568,11 +583,14 @@ static sk_sp<SkColorSpace> stopColorSpace(jboolean linear) {
 // (a 20000th of a cycle) makes the boundary pixel wrap the same way.
 static const float REPEAT_SEAM_BIAS = 1e-5f;
 
+// MultipleGradientPaint.CycleMethod ordinals as sent by BufferedPaints.
+static const jint CYCLE_METHOD_REFLECT = 1, CYCLE_METHOD_REPEAT = 2;
+
 static SkTileMode tileModeFor(jint cycleMethod) {
     switch (cycleMethod) {
-        case 1:  return SkTileMode::kMirror;   // REFLECT
-        case 2:  return SkTileMode::kRepeat;   // REPEAT
-        default: return SkTileMode::kClamp;    // NO_CYCLE
+        case CYCLE_METHOD_REFLECT: return SkTileMode::kMirror;
+        case CYCLE_METHOD_REPEAT:  return SkTileMode::kRepeat;
+        default:                   return SkTileMode::kClamp;   // NO_CYCLE
     }
 }
 
@@ -624,7 +642,7 @@ void SKBackend_SetLinearGradientPaint(jboolean linear, jint cycleMethod, jint nu
     for (int i = 0; i < numStops; i++) {
         colors[i] = argbPreToColor4f(pixels[i]);
     }
-    if (cycleMethod == 2) {
+    if (cycleMethod == CYCLE_METHOD_REPEAT) {
         const SkVector d = pts[1] - pts[0];
         pts[0] -= d * REPEAT_SEAM_BIAS;
         pts[1] -= d * REPEAT_SEAM_BIAS;
@@ -656,7 +674,8 @@ void SKBackend_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint nu
     SkGradient grad(SkGradient::Colors(SkSpan(colors.data(), numStops), SkSpan(fractions, numStops),
                                        tileModeFor(cycleMethod), stopColorSpace(linear)),
                     premulInterpolation(linear));
-    const float radius = cycleMethod == 2 ? 1.0f / (1.0f + REPEAT_SEAM_BIAS) : 1.0f;
+    // t = d / r, so a slightly smaller radius biases t upward at the cycle boundary
+    const float radius = cycleMethod == CYCLE_METHOD_REPEAT ? 1.0f / (1.0f + REPEAT_SEAM_BIAS) : 1.0f;
     g.shader = atPixelOrigin(SkShaders::TwoPointConicalGradient(SkPoint::Make(focusX, 0), 0.0f,
                                                                 SkPoint::Make(0, 0), radius, grad, &local));
 }
@@ -739,6 +758,23 @@ static void setTexturePaintShader(sk_sp<SkImage> image, jboolean filter,
     g.shader = atPixelOrigin(image->makeShader(SkTileMode::kRepeat, SkTileMode::kRepeat, sampling, &local));
 }
 
+// A source on another adapter cannot be wrapped by this context (a window
+// dragged between the displays of two GPUs): nothing is drawn rather than a
+// texture handle of a foreign device handed to the driver; such a blit would
+// need a readback. A source on another display's context and queue is usable
+// once its work is complete.
+static bool sourceUsable(SKSDOps *src, const char *who) {
+    SKPlatformConfig *srcConfig = SKPlatform_ConfigOf(src->platform);
+    if (srcConfig != g.cc->config && !SKPlatform_SameDevice(srcConfig, g.cc->config)) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "%s: source %p is on another device, skipped", who, src);
+        return false;
+    }
+    if (src->state != nullptr && src->state->cc != nullptr && src->state->cc != g.cc) {
+        SKBackend_Submit(src->state->cc, true);
+    }
+    return true;
+}
+
 void SKBackend_SetTexturePaint(JNIEnv *env, jboolean filter, jlong pSrc,
                                  jdouble xp0, jdouble xp1, jdouble xp3, jdouble yp0, jdouble yp1, jdouble yp3) {
     // SKPaints accepts a TexturePaint only once the proxy has cached its image
@@ -750,15 +786,9 @@ void SKBackend_SetTexturePaint(JNIEnv *env, jboolean filter, jlong pSrc,
         return;
     }
     SKSDOps *skSrc = (SKSDOps *) src;
-    SKPlatformConfig *srcConfig = SKPlatform_ConfigOf(skSrc->platform);
-    if (g.cc != nullptr && srcConfig != g.cc->config && !SKPlatform_SameDevice(srcConfig, g.cc->config)) {
-        J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_SetTexturePaint: source %p is on another device, skipped", src);
+    if (g.cc != nullptr && !sourceUsable(skSrc, "SKBackend_SetTexturePaint")) {
         g.shader.reset();
         return;
-    }
-    if (skSrc->state != nullptr && skSrc->state->cc != nullptr && skSrc->state->cc != g.cc) {
-        // another display's context and queue: its work must be complete
-        SKBackend_Submit(skSrc->state->cc, true);
     }
     sk_sp<SkImage> image = SKBackend_GetImage(skSrc);
     if (!image) {
@@ -866,25 +896,31 @@ static void flushGlyphBatches() {
     }
 }
 
-static void flushTextBatches() {   // all batches
+// The glyph and Marlin tile batches of a context, then the rect batch.
+static void flushBatchesOf(SKConfigContext *cc) {
+    if (cc != nullptr) {
+        SKGlyphCache_Flush(cc->glyphCacheAA);
+        SKGlyphCache_Flush(cc->glyphCacheLCD);
+        SKMaskCache_Flush(cc->maskCache);
+    }
+    gRects.flush();
+}
+
+static void flushAtlasBatches() {
     flushGlyphBatches();
     if (g.cc != nullptr) {
         SKMaskCache_Flush(g.cc->maskCache);
     }
 }
 
-// Non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h).
-static SKQuadBatch gRects;
-
 static void flushAllBatches() {
-    flushTextBatches();
-    gRects.flush();
+    flushBatchesOf(g.cc);
 }
 
 #define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches()
 #define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); if (g.cc != nullptr) SKMaskCache_Flush(g.cc->maskCache)
 #define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); flushGlyphBatches()
-#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushTextBatches()
+#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushAtlasBatches()
 
 void SKBackend_FillRect(jint x, jint y, jint w, jint h) {
     REQUIRE_CANVAS_RECT();
@@ -980,7 +1016,6 @@ void SKBackend_FillSpans(jint count, const jint *spans) {
 void SKBackend_DrawPoly(jint nPoints, jboolean isClosed, jint transX, jint transY,
                           const jint *xPoints, const jint *yPoints) {
     REQUIRE_CANVAS_RECT();
-    if (nPoints <= 0) return;
     if (nPoints < 2) {
         return;   // a single point draws nothing (DrawPolygons.c)
     }
@@ -1141,14 +1176,14 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
         g.canvas->concat(m);
     }
     switch (kind) {
-        case 0:
+        case sun_java2d_skia_SKShapePipe_KIND_RECT:
             g.canvas->drawRect(SkRect::MakeXYWH(params[0], params[1], params[2], params[3]), p);
             break;
-        case 1:
+        case sun_java2d_skia_SKShapePipe_KIND_ROUND_RECT:
             g.canvas->drawRRect(SkRRect::MakeRectXY(SkRect::MakeXYWH(params[0], params[1], params[2], params[3]),
                                                     params[4] / 2, params[5] / 2), p);
             break;
-        case 2:
+        case sun_java2d_skia_SKShapePipe_KIND_OVAL:
             g.canvas->drawOval(SkRect::MakeXYWH(params[0], params[1], params[2], params[3]), p);
             break;
         default: {
@@ -1191,25 +1226,28 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
     if (w <= 0 || h <= 0) return;
     SkPaint p = SKBackend_MakePaint(false);
     const bool solidTile = mask == nullptr || masklen == 0;
+    if (solidTile && (g.shader || !SKMaskCache_Fits(w, h))) {
+        // a solid tile under a shader paint, or an oversized one, is a plain rect
+        SKMaskCache_Flush(g.cc->maskCache);
+        g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
+        return;
+    }
     if (SKMaskCache_Fits(w, h)) {
-        if (g.cc->maskCache == nullptr) {
+        if (g.cc->maskCache == nullptr && !g.cc->maskCacheFailed) {
             g.cc->maskCache = SKMaskCache_Create(g.cc);
+            g.cc->maskCacheFailed = g.cc->maskCache == nullptr;
         }
         if (g.cc->maskCache != nullptr) {
-            if (solidTile && !g.shader) {
+            if (solidTile) {
                 // a shape's interior tiles stay in the mesh with its edge tiles
                 SKMaskCache_DrawSolid(g.cc->maskCache, g.canvas, p, x, y, w, h);
-            } else if (!solidTile) {
-                SKMaskCache_Draw(g.cc->maskCache, g.canvas, p, x, y, w, h, mask + maskoff, maskscan);
             } else {
-                SKMaskCache_Flush(g.cc->maskCache);
-                g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
+                SKMaskCache_Draw(g.cc->maskCache, g.canvas, p, x, y, w, h, mask + maskoff, maskscan);
             }
             return;
         }
     }
     if (solidTile) {
-        SKMaskCache_Flush(g.cc->maskCache);
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
     }
@@ -1278,43 +1316,76 @@ static sk_sp<SkBlender> lcdBlender(jint contrast) {
     return last;
 }
 
-// LCD text without a destination read (sun.java2d.skia.lcd=twopass): the
-// blend  Cr = Cd * (1 - cov) + Cs * cov  per channel as two fixed-function
-// passes, kModulate with (1 - cov) and kPlus with Cs * cov, which is how
-// DirectWrite composites ClearType (dual-source blending does both at once;
-// Graphite does not expose it). The destination's gamma cannot be applied
-// without reading it; instead the coverage is corrected so that the linear
-// blend reproduces the gamma blend on a white and on a black background,
-// mixed by the channel's text value (dark text is mostly read on light
-// backgrounds): exact for black on white and white on black, up to about
+// LCD text without a destination read (sun.java2d.skia.lcd=twopass and
+// accumulate): the blend  Cr = Cd * (1 - cov) + Cs * cov  per channel as two
+// fixed-function passes, kModulate with (1 - cov) and kPlus with Cs * cov,
+// which is how DirectWrite composites ClearType (dual-source blending does both
+// at once; Graphite does not expose it). The destination's gamma cannot be
+// applied without reading it; instead the coverage is corrected so that the
+// linear blend reproduces the gamma blend on a white and on a black
+// background, mixed by the channel's text value (dark text is mostly read on
+// light backgrounds): exact for black on white and white on black, up to about
 // fifteen levels off at glyph edges for light text on dark mid-tones. The
-// coverage arrives in the atlas' RGB channels. Both passes write alpha 1 over
-// the whole quad and ignore the paint's alpha, which holds because LCD text is
-// only requested for an opaque colour on an opaque destination
-// (SKSurfaceData.canRenderLCDText).
-struct LcdTwoPassUniforms {
-    float src[3], srcGamma[3], invGamma;
-};
-static_assert(sizeof(LcdTwoPassUniforms) == 7 * sizeof(float), "uniform block layout");
+// correction depends on the coverage and the text colour only, so it is a
+// 256-entry table per channel, built once per colour and contrast and sampled
+// as a 256x1 texture (lcdTable). The coverage arrives in the atlas' RGB
+// channels. Both passes write alpha 1 over the whole quad and ignore the
+// paint's alpha, which holds because LCD text is only requested for an opaque
+// colour on an opaque destination (SKSurfaceData.canRenderLCDText).
 
-static sk_sp<SkShader> lcdTwoPassShader(const sk_sp<SkShader> &atlas, const SkPaint &paint, jint contrast, bool second) {
+// The linear weight that reproduces the gamma blend on white and on black (the
+// result's distance from the background over the text colour's), mixed by the
+// channel's text value.
+static float lcdCorrectedCoverage(float cov, float src, float gamma) {
+    const float srcGamma = powf(src, gamma), invGamma = 1.0f / gamma;
+    const float onWhite = 1.0f - powf(1.0f + (srcGamma - 1.0f) * cov, invGamma);
+    const float onBlack = powf(srcGamma * cov, invGamma);
+    const float w = ((1.0f - src) * onWhite + src * onBlack) / ((1.0f - src) * (1.0f - src) + src * src);
+    return std::clamp(w, 0.0f, 1.0f);
+}
+
+static sk_sp<SkImage> lcdTable(SkColor color, jint contrast) {
+    const uint64_t key = ((uint64_t) (uint32_t) color << 32) | (uint32_t) contrast;
+    auto &tables = g.cc->lcdTables;
+    auto found = tables.find(key);
+    if (found != tables.end()) {
+        return found->second;
+    }
+    if (tables.size() >= 64) {
+        tables.clear();   // a frame uses a handful of text colours
+    }
+    const float gamma = contrast / 100.0f;
+    SkColor4f c = SkColor4f::FromColor(color);
+    const float src[3] = { c.fR, c.fG, c.fB };
+    uint8_t pixels[256 * 4];
+    for (int i = 0; i < 256; i++) {
+        for (int ch = 0; ch < 3; ch++) {
+            pixels[i * 4 + ch] = (uint8_t) lroundf(lcdCorrectedCoverage(i / 255.0f, src[ch], gamma) * 255.0f);
+        }
+        pixels[i * 4 + 3] = 0xff;
+    }
+    sk_sp<SkImage> table = uploadPixmap(SkPixmap(SkImageInfo::Make(256, 1, kRGBA_8888_SkColorType, kOpaque_SkAlphaType),
+                                                 pixels, 256 * 4));
+    if (table) {
+        tables[key] = table;   // a failed upload is retried by the next glyph list
+    }
+    return table;
+}
+
+static sk_sp<SkShader> lcdPassShader(const sk_sp<SkShader> &coverage, const SkPaint &paint, jint contrast, bool second) {
     static const SkRuntimeEffect *effects[2] = { nullptr, nullptr };
     static bool compiled = false;
     if (!compiled) {
         compiled = true;
         const char *common = R"(
             uniform shader atlas;
+            uniform shader table;
             uniform half3 src;
-            uniform half3 srcGamma;
-            uniform half invGamma;
             half3 coverage(float2 xy) {
                 half3 cov = atlas.eval(xy).rgb;
-                // the linear weights that reproduce the gamma blend on white and
-                // on black (the result's distance from the background over the
-                // text colour's), mixed by the channel's text value
-                half3 onWhite = 1 - pow(mix(half3(1), srcGamma, cov), half3(invGamma));
-                half3 onBlack = pow(srcGamma * cov, half3(invGamma));
-                return saturate(mix(onWhite, onBlack, src) / mix(1 - src, src, src));
+                return half3(table.eval(float2(cov.r * 255 + 0.5, 0.5)).r,
+                             table.eval(float2(cov.g * 255 + 0.5, 0.5)).g,
+                             table.eval(float2(cov.b * 255 + 0.5, 0.5)).b);
             }
         )";
         const char *mains[2] = {
@@ -1333,48 +1404,144 @@ static sk_sp<SkShader> lcdTwoPassShader(const sk_sp<SkShader> &atlas, const SkPa
     if (effects[1] == nullptr) {
         return nullptr;
     }
-    const float gamma = contrast / 100.0f;
-    SkColor4f c = SkColor4f::FromColor(paint.getColor());
-    LcdTwoPassUniforms u;
-    const float src[3] = { c.fR, c.fG, c.fB };
-    for (int i = 0; i < 3; i++) {
-        u.src[i] = src[i];
-        u.srcGamma[i] = powf(src[i], gamma);
+    sk_sp<SkImage> table = lcdTable(paint.getColor(), contrast);
+    if (!table) {
+        return nullptr;
     }
-    u.invGamma = 1.0f / gamma;
-    SkRuntimeEffect::ChildPtr child(atlas);
-    return effects[second ? 1 : 0]->makeShader(SkData::MakeWithCopy(&u, sizeof(u)), SkSpan(&child, 1));
+    SkColor4f c = SkColor4f::FromColor(paint.getColor());
+    const float u[3] = { c.fR, c.fG, c.fB };   // the shader's `src` uniform
+    SkRuntimeEffect::ChildPtr children[2] = {
+        SkRuntimeEffect::ChildPtr(coverage),
+        SkRuntimeEffect::ChildPtr(table->makeShader(SkTileMode::kClamp, SkTileMode::kClamp,
+                                                    SkSamplingOptions(SkFilterMode::kNearest))),
+    };
+    return effects[second ? 1 : 0]->makeShader(SkData::MakeWithCopy(u, sizeof(u)), SkSpan(children, 2));
 }
 
 // The batch's paint keys the colour, the key the contrast of the glyph list
 // being drawn.
-static SKQuadBatch::TwoPass gLcdTwoPass = {
-    [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdTwoPassShader(atlas, paint, gLcdTwoPass.key, false); },
-    [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdTwoPassShader(atlas, paint, gLcdTwoPass.key, true); },
-    SkBlendMode::kModulate,
-    SkBlendMode::kPlus,
-    140,
+static SKQuadBatchTwoPass gLcdTwoPass = {
+    [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdPassShader(atlas, paint, gLcdTwoPass.key, false); },
+    [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdPassShader(atlas, paint, gLcdTwoPass.key, true); },
 };
 
-// An uncached LCD glyph image in two passes: the image shader stands in for
-// the atlas, positioned at (x, y).
-static void drawLcdTwoPassImage(const sk_sp<SkImage> &cov, float x, float y, const SkPaint &paint) {
+// The two passes over a coverage image (device coordinates) within `bounds`,
+// with the batch's blend modes.
+static void drawLcdPasses(SkCanvas *dst, const sk_sp<SkShader> &coverage, const SkRect &bounds, const SkPaint &paint,
+                          jint contrast) {
+    SkPaint p = paint;
+    p.setShader(lcdPassShader(coverage, paint, contrast, false));
+    p.setBlendMode(gLcdTwoPass.firstBlend);
+    dst->drawRect(bounds, p);
+    p.setShader(lcdPassShader(coverage, paint, contrast, true));
+    p.setBlendMode(gLcdTwoPass.secondBlend);
+    dst->drawRect(bounds, p);
+}
+
+// sun.java2d.skia.lcd=accumulate: the glyphs of a batch are drawn into a
+// destination-sized coverage texture with kScreen (1 - (1 - a)(1 - b), the
+// union of coverages, which is what compositing same-coloured glyphs in
+// sequence leaves; fixed-function and ordered, so overlapping glyphs need no
+// splitting), and the batch's bounds are then composited onto the destination
+// in the two passes. Two draws per batch and a clear, whatever the glyph
+// count or overlap depth; a scratch texture per context in return.
+// The accumulating batch's hooks run when the batch is drawn, which may be
+// after the destination has left the render state (a surface disposed behind
+// queued text), so they keep their own destination and context.
+static struct {
+    SkCanvas *dst = nullptr;
+    SKConfigContext *cc = nullptr;
+    jint contrast = 0;   // set with the destination, per glyph list
+} gLcdAccumulate;
+
+static SkCanvas *lcdCoverageCanvas() {
+    const int w = g.canvas->imageInfo().width(), h = g.canvas->imageInfo().height();
+    sk_sp<SkSurface> &scratch = g.cc->lcdCoverage;
+    if (!scratch || scratch->width() < w || scratch->height() < h) {
+        SKGlyphCache_Flush(g.cc->glyphCacheLCD);   // a pending batch draws into the old scratch
+        const int sw = scratch ? std::max(scratch->width(), w) : w, sh = scratch ? std::max(scratch->height(), h) : h;
+        scratch = SkSurfaces::RenderTarget(g.cc->recorder.get(),
+                                           SkImageInfo::Make(sw, sh, kRGBA_8888_SkColorType, kOpaque_SkAlphaType));
+        if (!scratch) {
+            static bool reported = false;
+            if (!reported) {
+                reported = true;
+                J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend: cannot create the %dx%d LCD coverage surface", sw, sh);
+            }
+            return nullptr;
+        }
+    }
+    return scratch->getCanvas();
+}
+
+static void clearLcdCoverage(SKConfigContext *cc, const SkRect &bounds) {
+    SkPaint clear;
+    clear.setColor(SK_ColorBLACK);
+    clear.setBlendMode(SkBlendMode::kSrc);
+    cc->lcdCoverage->getCanvas()->drawRect(bounds, clear);
+}
+
+static sk_sp<SkShader> lcdCoverageShader(SKConfigContext *cc) {
+    sk_sp<SkImage> image = SkSurfaces::AsImage(cc->lcdCoverage);
+    return image ? image->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, SkSamplingOptions(SkFilterMode::kNearest))
+                 : nullptr;
+}
+
+static void compositeLcdCoverage(const SkRect &bounds, const SkPaint &paint) {
+    drawLcdPasses(gLcdAccumulate.dst, lcdCoverageShader(gLcdAccumulate.cc), bounds, paint, gLcdAccumulate.contrast);
+}
+
+// A glyph list accumulates: the LCD cache's batch draws into the coverage
+// surface, clears its bounds first and composites them afterwards.
+static SkCanvas *beginLcdAccumulation(SKGlyphCache *lcd, SkPaint &lcdPaint, jint lcdContrast) {
+    SkCanvas *scratch = lcdCoverageCanvas();
+    if (scratch == nullptr) {
+        return nullptr;
+    }
+    if (gLcdAccumulate.contrast != lcdContrast || gLcdAccumulate.dst != g.canvas || gLcdAccumulate.cc != g.cc) {
+        SKGlyphCache_Flush(lcd);   // neither is part of the batch key
+        gLcdAccumulate.contrast = lcdContrast;
+        gLcdAccumulate.dst = g.canvas;
+        gLcdAccumulate.cc = g.cc;
+    }
+    SKQuadBatch &batch = SKGlyphCache_Batch(lcd);
+    if (!batch.afterDraw) {
+        batch.beforeDraw = [](const SkRect &bounds) { clearLcdCoverage(gLcdAccumulate.cc, bounds); };
+        batch.afterDraw = [](const SkRect &bounds, const SkPaint &paint) { compositeLcdCoverage(bounds, paint); };
+    }
+    lcdPaint.setColor(g.color);   // the key; the atlas shader ignores it
+    lcdPaint.setBlendMode(SkBlendMode::kScreen);
+    return scratch;
+}
+
+// An uncached LCD glyph image without a destination read: in two passes with
+// the image shader standing in for the atlas, positioned at (x, y), or through
+// the coverage surface.
+static void drawLcdImageNoDstRead(const sk_sp<SkImage> &cov, float x, float y, const SkPaint &paint, jint contrast) {
+    SkRect rect = SkRect::MakeXYWH(x, y, (float) cov->width(), (float) cov->height());
+    if (gConfig.lcdMode == SKLcdMode::Accumulate) {
+        SkCanvas *scratch = lcdCoverageCanvas();
+        if (scratch == nullptr) {
+            return;
+        }
+        clearLcdCoverage(g.cc, rect);
+        SkPaint screen;
+        screen.setBlendMode(SkBlendMode::kScreen);
+        scratch->drawImage(cov, x, y, SkSamplingOptions(SkFilterMode::kNearest), &screen);
+        drawLcdPasses(g.canvas, lcdCoverageShader(g.cc), rect, paint, contrast);
+        return;
+    }
     SkMatrix at = SkMatrix::Translate(x, y);
     sk_sp<SkShader> image = cov->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, SkSamplingOptions(SkFilterMode::kNearest), &at);
-    SkRect rect = SkRect::MakeXYWH(x, y, (float) cov->width(), (float) cov->height());
-    SkPaint p = paint;
-    p.setShader(gLcdTwoPass.firstShader(image, paint));
-    p.setBlendMode(gLcdTwoPass.firstBlend);
-    g.canvas->drawRect(rect, p);
-    p.setShader(gLcdTwoPass.secondShader(image, paint));
-    p.setBlendMode(gLcdTwoPass.secondBlend);
-    g.canvas->drawRect(rect, p);
+    drawLcdPasses(g.canvas, image, rect, paint, contrast);
 }
 
 static SKGlyphCache *glyphCache(bool lcd) {
     SKGlyphCache *&slot = lcd ? g.cc->glyphCacheLCD : g.cc->glyphCacheAA;
-    if (slot == nullptr) {
+    bool &failed = lcd ? g.cc->glyphCacheLCDFailed : g.cc->glyphCacheAAFailed;
+    if (slot == nullptr && !failed) {
         slot = SKGlyphCache_Create(g.cc, lcd);
+        failed = slot == nullptr;
     }
     return slot;
 }
@@ -1405,8 +1572,8 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint rowBytesOffset, jbo
     }
     SkPixmap pm(SkImageInfo::Make(w, h, kRGBA_8888_SkColorType, kOpaque_SkAlphaType), rgba.data(), (size_t) w * 4);
     if (sk_sp<SkImage> cov = uploadPixmap(pm)) {
-        if (gConfig.lcdTwoPass) {
-            drawLcdTwoPassImage(cov, x, y, paint);
+        if (gConfig.lcdMode != SKLcdMode::Blend) {
+            drawLcdImageNoDstRead(cov, x, y, paint, gLcdTwoPass.key);
         } else {
             g.canvas->drawImage(cov, x, y, SkSamplingOptions(SkFilterMode::kNearest), &paint);
         }
@@ -1439,6 +1606,8 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
     SKGlyphCache *aa = nullptr, *lcd = nullptr;
     SkPaint lcdPaint;
     bool lcdPaintReady = false;
+    SkCanvas *lcdCanvas = g.canvas;   // the coverage surface when accumulating
+    bool lcdBegun = false;
 
     for (jint i = 0; i < numGlyphs; i++) {
         const GlyphInfo *ginfo = (const GlyphInfo *) jlong_to_ptr(images[i]);
@@ -1474,6 +1643,7 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             flushGlyphBatches();
             aa = nullptr;
             lcd = nullptr;
+            lcdBegun = false;
         };
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             if (lcd != nullptr) {
@@ -1495,16 +1665,30 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                 flushBatches();
             }
             // LCD: the three coverage channels are blended per channel against
-            // the destination, in the destination's gamma (blender), or in two
-            // passes without reading it (lcdTwoPass; the paint carries the
-            // colour, which keys the batch).
+            // the destination, in the destination's gamma (blender), in two
+            // passes without reading it, or accumulated in a coverage texture
+            // first; in the latter two the paint carries the colour, which keys
+            // the batch.
             if (!lcdPaintReady) {
-                if (gConfig.lcdTwoPass) {
-                    lcdPaint.setColor(g.color);
-                    gLcdTwoPass.key = lcdContrast;
-                } else {
-                    lcdPaint.setColor(SK_ColorWHITE);
-                    lcdPaint.setBlender(lcdBlender(lcdContrast));
+                gLcdTwoPass.key = lcdContrast;
+                switch (gConfig.lcdMode) {
+                    case SKLcdMode::TwoPass:
+                        lcdPaint.setColor(g.color);
+                        break;
+                    case SKLcdMode::Accumulate:
+                        if (lcd == nullptr) {
+                            lcd = glyphCache(true);
+                        }
+                        lcdCanvas = lcd != nullptr ? beginLcdAccumulation(lcd, lcdPaint, lcdContrast) : nullptr;
+                        if (lcdCanvas == nullptr) {
+                            lcd = nullptr;
+                            continue;   // no coverage surface: the glyph is skipped
+                        }
+                        break;
+                    case SKLcdMode::Blend:
+                        lcdPaint.setColor(SK_ColorWHITE);
+                        lcdPaint.setBlender(lcdBlender(lcdContrast));
+                        break;
                 }
                 lcdPaintReady = true;
             }
@@ -1516,8 +1700,12 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                     fx += 1;
                 }
             }
-            if (lcd == nullptr && (lcd = glyphCache(true)) != nullptr) {
-                SKGlyphCache_Begin(lcd, g.canvas, lcdPaint, gConfig.lcdTwoPass ? &gLcdTwoPass : nullptr);
+            if (lcd == nullptr) {
+                lcd = glyphCache(true);
+            }
+            if (lcd != nullptr && !lcdBegun) {
+                SKGlyphCache_Begin(lcd, lcdCanvas, lcdPaint, gConfig.lcdMode == SKLcdMode::TwoPass ? &gLcdTwoPass : nullptr);
+                lcdBegun = true;
             }
             if (rowBytesOffset == 0 && SKGlyphCache_Fits(lcd, ginfo)
                     && SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, 0, rgbOrder, fx, fy)) {
@@ -1527,7 +1715,7 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             drawLcdGlyphNoCache(ginfo, rowBytesOffset, rgbOrder, fx, fy, lcdPaint);
         }
     }
-    // batches stay open for the next glyph list; see flushTextBatches()
+    // batches stay open for the next glyph list; see flushAtlasBatches()
 }
 
 static SkSamplingOptions samplingForHint(jint hint) {
@@ -1590,6 +1778,15 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
         texCoords.insert(texCoords.end(), corners, corners + 4);
         for (uint16_t i : quadIndices) indices.push_back(base + i);
     };
+    auto drawSpans = [&]() {   // the mesh so far, in device space
+        g.canvas->save();
+        g.canvas->resetMatrix();
+        g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
+                                                    texCoords.data(), nullptr, (int) indices.size(), indices.data()),
+                               SkBlendMode::kModulate, paint);
+        g.canvas->restore();
+        positions.clear(); texCoords.clear(); indices.clear();
+    };
     if (toDevice.rectStaysRect()) {
         SkRect dev = toDevice.mapRect(dstRect);
         const float l = std::ceil(dev.fLeft - 0.5f), t = std::ceil(dev.fTop - 0.5f);
@@ -1598,23 +1795,13 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
     } else {
         convexQuadSpans(quad, [&](jint y, jint l, jint r) {
             if (r > l) addSpanQuad(l, y, r, y + 1);
-            if (positions.size() + 4 > 0xffff) {
-                g.canvas->save(); g.canvas->resetMatrix();
-                g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
-                                                            texCoords.data(), nullptr, (int) indices.size(), indices.data()),
-                                       SkBlendMode::kModulate, paint);
-                g.canvas->restore();
-                positions.clear(); texCoords.clear(); indices.clear();
+            if (positions.size() + 4 > 0xffff) {   // 16-bit indices
+                drawSpans();
             }
         });
     }
     if (!indices.empty()) {
-        g.canvas->save();
-        g.canvas->resetMatrix();
-        g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
-                                                    texCoords.data(), nullptr, (int) indices.size(), indices.data()),
-                               SkBlendMode::kModulate, paint);
-        g.canvas->restore();
+        drawSpans();
     }
 }
 
@@ -1678,20 +1865,8 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     SkRect srcRect;
     if (isoblit) {
         SKSDOps *src = (SKSDOps *) jlong_to_ptr(pSrc);
-        if (src != nullptr) {
-            SKPlatformConfig *srcConfig = SKPlatform_ConfigOf(src->platform);
-            if (srcConfig != g.cc->config && !SKPlatform_SameDevice(srcConfig, g.cc->config)) {
-                // Another adapter's texture cannot be wrapped by this context (a
-                // window dragged between the displays of two GPUs): nothing is
-                // drawn rather than a texture handle of a foreign device handed
-                // to the driver. Such a blit would need a readback.
-                J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_Blit: source %p is on another device, skipped", src);
-                return;
-            }
-            if (src->state != nullptr && src->state->cc != nullptr && src->state->cc != g.cc) {
-                // another display's context and queue: its work must be complete
-                SKBackend_Submit(src->state->cc, true);
-            }
+        if (src != nullptr && !sourceUsable(src, "SKBackend_Blit")) {
+            return;
         }
         if (src != nullptr && src->state != nullptr && src->state->surface && src->state->cc == g.cc
                 && src->platform != nullptr && src->state->wrappedTexture == SKPlatform_TextureHandle(src->platform)) {
@@ -1843,10 +2018,7 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return;
     }
-    SKGlyphCache_Flush(cc->glyphCacheAA);
-    SKGlyphCache_Flush(cc->glyphCacheLCD);
-    SKMaskCache_Flush(cc->maskCache);
-    gRects.flush();
+    flushBatchesOf(cc);
     std::unique_ptr<Recording> recording = cc->recorder->snap();
     if (recording) {
         InsertRecordingInfo info;

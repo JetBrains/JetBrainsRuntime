@@ -46,6 +46,7 @@
 #include "include/gpu/graphite/Recorder.h"
 
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
 
 struct SKGlyphCache;
@@ -55,10 +56,13 @@ struct SKConfigContext {
     SKPlatformConfig *config = nullptr;
     std::unique_ptr<skgpu::graphite::Context> context;
     std::unique_ptr<skgpu::graphite::Recorder> recorder;
-    SKGlyphCache *glyphCacheAA = nullptr;    // created on first use
+    SKGlyphCache *glyphCacheAA = nullptr;    // created on first use; a failed creation is not retried
     SKGlyphCache *glyphCacheLCD = nullptr;
-    SKMaskCache *maskCache = nullptr;        // created on first use
+    SKMaskCache *maskCache = nullptr;
+    bool glyphCacheAAFailed = false, glyphCacheLCDFailed = false, maskCacheFailed = false;
     std::unordered_set<struct SKSurfaceState *> surfaces;   // wrapped with this recorder
+    std::unordered_map<uint64_t, sk_sp<SkImage>> lcdTables;   // coverage correction per text colour and contrast
+    sk_sp<SkSurface> lcdCoverage;            // scratch for sun.java2d.skia.lcd=accumulate, destination-sized
 };
 
 struct SKSurfaceState {
@@ -81,12 +85,20 @@ bool SKSurfaceData_IsSkiaOps(SurfaceDataOps *ops);
 // The platform surface behind a Skia surface's ops (null if not Skia's or already disposed).
 SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops);
 
-// Contexts
-// Architecture-dependent configuration (SKEnvironment decides the values per
-// GPU API and system property before the first context is created).
-void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, bool lcdTwoPass);
+// Configuration
+// Architecture-dependent values (SKEnvironment decides them by whether the GPU
+// reads the framebuffer in the shader, and by system property, before the
+// first context is created).
+// How LCD text is composited (SKEnvironment.LcdMode, same order).
+enum class SKLcdMode { Blend = 0, TwoPass = 1, Accumulate = 2 };
+
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch);
 bool SKBackend_Multisampled();
 bool SKBackend_EdgeAAQuads();
+// Whether a blender reads the live framebuffer (in order, per fragment) rather
+// than a copy taken before the draw: overlapping quads may then share a draw.
+bool SKBackend_FramebufferFetch();
+// Contexts
 SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config);
 void SKBackend_DisposeContext(SKPlatformConfig *config);
 
@@ -154,8 +166,8 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
 void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const void *pixels);
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
                              jboolean rgbOrder, jint lcdContrast,
-                               jfloat glyphListOrigX, jfloat glyphListOrigY,
-                               const jlong *images, const jfloat *positions);
+                             jfloat glyphListOrigX, jfloat glyphListOrigY,
+                             const jlong *images, const jfloat *positions);
 void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2, jlong pSrc, jlong pDst);
 void SKBackend_SurfaceToSwBlit(JNIEnv *env, jint sx, jint sy, jint dx, jint dy, jint w, jint h,

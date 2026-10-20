@@ -35,6 +35,7 @@
 #include "include/core/SkShader.h"
 #include "include/core/SkVertices.h"
 #include "jni.h"
+#include <algorithm>
 #include <cmath>
 #include <functional>
 #include <vector>
@@ -93,12 +94,6 @@ public:
         // Colours are not merged with an afterDraw hook either: it receives the
         // batch's paint and reads the colour from it.
         const bool mergeColors = atlas != nullptr && passes == nullptr && !afterDraw && p.getShader() == nullptr
-        // of two overlapping LCD glyphs loses the first's coverage): a quad that
-        // overlaps a pending one starts a new draw (push()). Two passes over one
-        // mesh are not sequential either (both quads' second passes add to the
-        // product of their first), so they split on overlap too.
-        splitOnOverlap = !p.asBlendMode().has_value() || passes != nullptr;
-        const bool mergeColors = atlas != nullptr && passes == nullptr && p.getShader() == nullptr
                                  && p.asBlendMode().has_value() && p.getColorFilter() == nullptr
                                  && p.getMaskFilter() == nullptr;
         // begin() runs per primitive (thousands per frame): no paint copy on the
@@ -193,7 +188,15 @@ public:
     // Runs right before a mesh is drawn, whoever triggers the draw. The mask
     // cache uploads its staged atlas cells here: an upload is only ordered ahead
     // of the destination's pass if a draw sampling the atlas is recorded after it.
-    std::function<void()> beforeDraw;
+    std::function<void(const SkRect &bounds)> beforeDraw;
+
+    // Runs right after the meshes of a draw, with their bounds (the coverage
+    // accumulation composites them onto the destination here).
+    std::function<void(const SkRect &bounds, const SkPaint &paint)> afterDraw;
+
+    // Whether a runtime blender's quads split on overlap: not where the
+    // blender reads the live framebuffer (SKBackend_FramebufferFetch).
+    bool splitBlenders = true;
 
     // Draws what is queued and closes the batch.
     void flush() {
@@ -335,14 +338,49 @@ private:
         }
     }
 
+    // Layer `depth` (0 is the base); the vectors of a used layer are kept.
+    Mesh *layer(size_t depth) {
+        if (depth == 0) {
+            return &base;
+        }
+        while (layerCount < depth) {
+            if (layerCount == layers.size()) {
+                layers.emplace_back();
+            }
+            layerCount++;
+        }
+        return &layers[depth - 1];
+    }
+
+    static void extend(SkRect &bounds, const Mesh &m) {
+        for (const SkPoint &pt : m.positions) {
+            bounds.fLeft = std::min(bounds.fLeft, pt.fX);
+            bounds.fTop = std::min(bounds.fTop, pt.fY);
+            bounds.fRight = std::max(bounds.fRight, pt.fX);
+            bounds.fBottom = std::max(bounds.fBottom, pt.fY);
+        }
+    }
+
     void drawPending() {
         if (canvas != nullptr && !base.indices.empty()) {
+            // the bounds matter to the composite after the draw only; the mask
+            // cache's beforeDraw ignores them
+            SkRect bounds = SkRect::MakeLTRB(SK_ScalarMax, SK_ScalarMax, -SK_ScalarMax, -SK_ScalarMax);
+            if (afterDraw) {
+                extend(bounds, base);
+                for (size_t i = 0; i < layerCount; i++) {
+                    extend(bounds, layers[i]);
+                }
+            }
             if (beforeDraw) {
-                beforeDraw();
+                beforeDraw(bounds);
             }
             draw(base, colorPerVertex);
             for (size_t i = 0; i < layerCount; i++) {
                 draw(layers[i], false);
+            }
+            if (afterDraw) {
+                afterDraw(bounds, paint);
             }
         }
         base.clear();

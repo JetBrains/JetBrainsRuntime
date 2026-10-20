@@ -94,7 +94,8 @@ SKMaskCache *SKMaskCache_Create(SKConfigContext *cc) {
         return nullptr;
     }
     mc->staging.resize((size_t) CACHE_SIZE * CELL_SIZE);
-    mc->batch.beforeDraw = [mc] { uploadStaging(mc); };
+    mc->batch.beforeDraw = [mc](const SkRect &) { uploadStaging(mc); };
+    mc->batch.splitBlenders = !SKBackend_FramebufferFetch();
     // cell 0 is the opaque cell for fully covered tiles (SKMaskCache_DrawSolid)
     std::vector<unsigned char> opaque((size_t) CELL_SIZE * CELL_SIZE, 0xff);
     mc->atlas->writePixels(SkPixmap(SkImageInfo::MakeA8(CELL_SIZE, CELL_SIZE), opaque.data(), CELL_SIZE), 0, 0);

@@ -24,7 +24,8 @@
  */
 
 // Platform-independent part of sun.java2d.skia.SKEnvironment's native side;
-// initNative and gpuApiNative live with the platform (MTLSKEnvironment.mm on macOS).
+// initNative, gpuApiNative and framebufferFetchNative live with the platform
+// (MTLSKEnvironment.mm on macOS, DawnSKEnvironment.cpp on Windows).
 
 #include "jni.h"
 #include "sun_java2d_skia_SKEnvironment.h"
@@ -34,9 +35,9 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads,
-                                                   jboolean lcdTwoPass)
+                                                   jint lcdMode, jboolean framebufferFetch)
 {
-    SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, lcdTwoPass == JNI_TRUE);
+    SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE);
 }
 
 } // extern "C"
