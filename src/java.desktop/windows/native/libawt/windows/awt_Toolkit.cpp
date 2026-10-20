@@ -1331,7 +1331,7 @@ LRESULT CALLBACK AwtToolkit::WndProc(HWND hWnd, UINT message,
               return 0;
           }
 
-          if (!tk.m_breakMessageLoop && !tk.IsDisposed()) {
+          if (!tk.m_areAllMessageLoopsShuttingDown && !tk.IsDisposed()) {
               // Keep pumping messages until the shutdown sequence halts the VM,
               // or we exit the MessageLoop because of a WM_QUIT message.
 
@@ -1552,6 +1552,31 @@ void VerifyWindowMoveLockReleased()
     }
 }
 
+class AwtToolkit::NestedMessageLoopFrameGuard {
+public:
+
+    NestedMessageLoopFrameGuard(AwtToolkit& toolkit, MessageLoopFrame& frame, jlong token)
+        : toolkit(toolkit), frame(frame) {
+        frame.breakMessageLoop = FALSE;
+        frame.token = token;
+        frame.enclosingLoop = toolkit.m_innermostSecondaryLoop;
+        toolkit.m_innermostSecondaryLoop = &frame;
+    }
+
+    ~NestedMessageLoopFrameGuard() {
+        toolkit.m_innermostSecondaryLoop = frame.enclosingLoop;
+    }
+
+    NestedMessageLoopFrameGuard(const NestedMessageLoopFrameGuard&) = delete;
+    NestedMessageLoopFrameGuard(NestedMessageLoopFrameGuard&&) = delete;
+    NestedMessageLoopFrameGuard& operator=(const NestedMessageLoopFrameGuard&) = delete;
+    NestedMessageLoopFrameGuard& operator=(NestedMessageLoopFrameGuard&&) = delete;
+
+private:
+    AwtToolkit& toolkit;
+    MessageLoopFrame& frame;
+};
+
 void
 AwtToolkit::MessageLoop(IDLEPROC lpIdleFunc,
                         PEEKMESSAGEPROC lpPeekMessageFunc)
@@ -1561,13 +1586,10 @@ AwtToolkit::MessageLoop(IDLEPROC lpIdleFunc,
     DASSERT(lpIdleFunc != NULL);
     DASSERT(lpPeekMessageFunc != NULL);
 
-    MessageLoopFrame frame;
-    frame.breakMessageLoop = FALSE;
-    frame.token = m_nextSecondaryLoopToken++;
-    frame.enclosingLoop = m_innermostSecondaryLoop;
+    {
+        MessageLoopFrame frame;
+        NestedMessageLoopFrameGuard frameGuard(*this, frame, m_nextSecondaryLoopToken++);
 
-    m_innermostSecondaryLoop = &frame;
-    try {
         while (!frame.breakMessageLoop) {
 
             (*lpIdleFunc)();
@@ -1581,10 +1603,6 @@ AwtToolkit::MessageLoop(IDLEPROC lpIdleFunc,
             // if held.
             VerifyWindowMoveLockReleased();
         }
-        m_innermostSecondaryLoop = frame.enclosingLoop;
-    } catch (...) {
-        m_innermostSecondaryLoop = frame.enclosingLoop;
-        throw;
     }
 
     if (m_areAllMessageLoopsShuttingDown)
@@ -1693,28 +1711,42 @@ BOOL AwtToolkit::PumpWaitingMessages(PEEKMESSAGEPROC lpPeekMessageFunc)
 
 void AwtToolkit::PumpToDestroy(class AwtComponent* p)
 {
-    MessageLoopFrame* frame = m_innermostSecondaryLoop;
-    DASSERT(frame != NULL);
+    // Use a separate frame instead of re-using an existing loop.
+    {
+        MessageLoopFrame frame;
+        NestedMessageLoopFrameGuard frameGuard(*this, frame, 0);
 
-    MSG  msg;
+        // We might block forever here if the shutdown message was already processed,
+        // so in case of shutdown, do not run the loop at all.
+        frame.breakMessageLoop = m_areAllMessageLoopsShuttingDown;
 
-    DASSERT(AwtToolkit::PrimaryIdleFunc != NULL);
-    DASSERT(AwtToolkit::CommonPeekMessageFunc != NULL);
+        MSG  msg;
 
-    while (p->IsDestroyPaused() && !frame->breakMessageLoop) {
+        DASSERT(AwtToolkit::PrimaryIdleFunc != NULL);
+        DASSERT(AwtToolkit::CommonPeekMessageFunc != NULL);
 
-        PrimaryIdleFunc();
+        while (p->IsDestroyPaused() && !frame.breakMessageLoop) {
 
-        while (p->IsDestroyPaused() && !frame->breakMessageLoop && CommonPeekMessageFunc(msg)) {
-            ProcessMsg(msg, frame);
+            PrimaryIdleFunc();
+
+            while (p->IsDestroyPaused() && !frame.breakMessageLoop && CommonPeekMessageFunc(msg)) {
+                ProcessMsg(msg, &frame);
+            }
         }
     }
+    if (m_areAllMessageLoopsShuttingDown)
+        ::PostQuitMessage(0);
 }
 
 void AwtToolkit::ProcessMsg(MSG& msg, MessageLoopFrame* frame)
 {
     if (msg.message == WM_QUIT) {
         frame->breakMessageLoop = TRUE;
+        // Preserve the behavior of treating
+        // WM_QUIT(EXIT_ALL_ENCLOSING_LOOPS) as exit-all,
+        // even though m_areAllMessageLoopsShuttingDown is used for this purpose now.
+        if (static_cast<UINT>(msg.wParam) == EXIT_ALL_ENCLOSING_LOOPS)
+            m_areAllMessageLoopsShuttingDown = TRUE;
         if (m_areAllMessageLoopsShuttingDown)
             ::PostQuitMessage(0);  // make sure all loops exit
     }

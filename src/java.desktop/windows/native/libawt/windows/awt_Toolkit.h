@@ -371,6 +371,8 @@ public:
         MessageLoopFrame* enclosingLoop;
     };
 
+    class NestedMessageLoopFrameGuard;
+
     void QuitMessageLoop(jlong token);
     jlong GetNextMessageLoopToken() const { return m_nextSecondaryLoopToken; }
     void MessageLoop(IDLEPROC lpIdleFunc, PEEKMESSAGEPROC lpPeekMessageFunc);
