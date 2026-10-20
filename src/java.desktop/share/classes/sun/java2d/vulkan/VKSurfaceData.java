@@ -32,12 +32,12 @@ import sun.awt.image.PixelConverter;
 import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.java2d.SurfaceDataProxy;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.MaskFill;
 import sun.java2d.loops.SurfaceType;
-import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.ParallelogramPipe;
@@ -326,9 +326,13 @@ public abstract class VKSurfaceData extends SurfaceData
 
     }
 
-    // TODO this is only used for caps checks, refactor and remove this method
     public VKGraphicsConfig getGraphicsConfig() {
         return (VKGraphicsConfig) getDeviceConfiguration();
+    }
+
+    @Override
+    public SurfaceDataProxy makeProxyFor(SurfaceData srcData) {
+        return VKSurfaceDataProxy.createProxy(srcData, getGraphicsConfig());
     }
 
     protected int revalidate(VKGraphicsConfig gc) {
@@ -340,22 +344,25 @@ public abstract class VKSurfaceData extends SurfaceData
         return VolatileImage.IMAGE_RESTORED;
     }
 
-    protected void configure() {
+    private native boolean configureNow(long pData, long pDevice, int width, int height);
+
+    /**
+     * For any surface, this can return false in case of an allocation failure.
+     * For a window surface, this can also return false when reallocation is deferred until the end of the frame.
+     * @return true iff image is immediately ready at the requested dimensions.
+     */
+    protected boolean configure() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
+        boolean[] imageReady = {false};
         try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(24, 4);
-            buf.putInt(CONFIGURE_SURFACE);
-            buf.putLong(getNativeOps());
-            buf.putLong(gc.getGPU().getNativeHandle());
-            buf.putInt(width);
-            buf.putInt(height);
-
-            rq.flushNow();
+            rq.flushAndInvokeNow(() -> {
+                imageReady[0] = configureNow(getNativeOps(), gc.getGPU().getNativeHandle(), width, height);
+            });
         } finally {
             rq.unlock();
         }
+        return imageReady[0];
     }
 
     @Override
