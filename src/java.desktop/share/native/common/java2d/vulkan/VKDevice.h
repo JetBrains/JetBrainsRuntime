@@ -49,6 +49,7 @@ struct VKDevice {
     char*                name;
     VkPhysicalDeviceType type;
     VkDeviceSize         nonCoherentAtomSize;
+    uint32_t             maxImageDimension2D;
     uint32_t             queueFamily;
     pchar_array_t         enabledLayers;
     pchar_array_t         enabledExtensions;
