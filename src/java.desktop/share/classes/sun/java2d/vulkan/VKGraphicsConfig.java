@@ -33,6 +33,7 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.SurfaceManager;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.Surface;
+import sun.java2d.SurfaceData;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.hw.AccelGraphicsConfig;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
@@ -112,6 +113,11 @@ public interface VKGraphicsConfig extends AccelGraphicsConfig,
             vi = null;
         }
         return vi;
+    }
+
+    default SurfaceData createManagedSurface(int w, int h, int transparency) {
+        // Use offscreenConfig - the surface should not be affected by scaling.
+        return new VKOffScreenSurfaceData(getOffscreenConfig(), w, h, null, transparency, TEXTURE);
     }
 
     default String descriptorString() {

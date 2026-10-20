@@ -68,6 +68,12 @@ VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
                         VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
                         VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback) {
     assert(device != NULL && device->allocator != NULL);
+
+    // attempting to create an oversized image is undefined in Vulkan
+    if (width > device->maxImageDimension2D || height > device->maxImageDimension2D) {
+        return NULL;
+    }
+
     VKImage* image = calloc(1, sizeof(VKImage));
     VK_RUNTIME_ASSERT(image);
 
