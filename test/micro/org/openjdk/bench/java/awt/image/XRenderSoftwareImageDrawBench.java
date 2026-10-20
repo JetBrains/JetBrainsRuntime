@@ -85,6 +85,12 @@ public class XRenderSoftwareImageDrawBench {
         INT_ARGB,
         INT_ARGB_PRE,
         FOUR_BYTE_ABGR,
+        INT_RGB,
+        INT_BGR,
+        TYPE_3BYTE_BGR,
+        USHORT_565_RGB,
+        USHORT_555_RGB,
+        BYTE_INDEXED
     }
 
     @Param("SVG_ICON_CACHE")
@@ -173,6 +179,12 @@ public class XRenderSoftwareImageDrawBench {
             case INT_ARGB -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
             case INT_ARGB_PRE -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB_PRE);
             case FOUR_BYTE_ABGR -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_4BYTE_ABGR);
+            case INT_RGB -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_RGB);
+            case INT_BGR -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_BGR);
+            case TYPE_3BYTE_BGR -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_3BYTE_BGR);
+            case USHORT_565_RGB -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_USHORT_565_RGB);
+            case USHORT_555_RGB -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_USHORT_555_RGB);
+            case BYTE_INDEXED -> new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_BYTE_INDEXED);
         };
         Graphics2D g2d = icon.createGraphics();
         g2d.setColor(new Color(80, 160, 240, 200));
