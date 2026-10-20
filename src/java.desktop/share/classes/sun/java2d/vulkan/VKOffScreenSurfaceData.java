@@ -41,12 +41,17 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
 
     private native void initOps(int format);
 
-    public VKOffScreenSurfaceData(Image image, VKFormat format, int transparency, int type, int width, int height) {
+    public VKOffScreenSurfaceData(VKGraphicsConfig gc, int width, int height, Image image, int transparency, int type) {
+        VKFormat format = gc.getFormat();
         super(format, transparency, type);
         this.userWidth = width;
         this.userHeight = height;
         offscreenImage = image;
         initOps(format.getValue(transparency));
+        revalidate(gc);
+        if (!configure()) {
+            throw new OutOfMemoryError("Failed to allocate VKOffScreenSurfaceData");
+        }
     }
 
     @Override
