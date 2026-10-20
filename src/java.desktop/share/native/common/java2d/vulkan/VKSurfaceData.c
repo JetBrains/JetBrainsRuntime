@@ -167,7 +167,11 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
                                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                         VK_IMAGE_USAGE_SAMPLED_BIT,
                                         VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
-        VK_RUNTIME_ASSERT(image);
+        if (image == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_ConfigureImageSurface(%p): VKImage_Create failed (%dx%d, format=%d)",
+                vksdo, vksdo->requestedExtent.width, vksdo->requestedExtent.height, format);
+            return VK_FALSE;
+        }
         VKSD_ResetImageSurface(vksdo);
         vksdo->image = image;
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, image->extent.width, image->extent.height);
@@ -187,7 +191,11 @@ VkBool32 VKSD_ConfigureImageSurfaceStencil(VKSDOps* vksdo) {
                                         0, VK_FORMAT_S8_UINT, VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
                                         VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
-        VK_RUNTIME_ASSERT(vksdo->stencil);
+        if (vksdo->stencil == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_ConfigureImageSurfaceStencil(%p): VKImage_Create failed %dx%d",
+                vksdo, vksdo->image->extent.width, vksdo->image->extent.height);
+            return VK_FALSE;
+        }
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurfaceStencil(%p): stencil image updated %dx%d",
                       vksdo, vksdo->stencil->extent.width, vksdo->stencil->extent.height);
     }
@@ -412,15 +420,34 @@ JNIEXPORT void VKSD_InitWindowSurface(JNIEnv* env, jobject vksd, VKWinSD_Surface
     if (sd->surface != VK_NULL_HANDLE) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p): surface created", vksd);
     }
-    // Swapchain will be created later after CONFIGURE_SURFACE.
+    // Swapchain will be created later after configure.
 }
 
 /*
  * Class:     sun_java2d_vulkan_VKOffScreenSurfaceData
  * Method:    initOps
- * Signature: ()V
+ * Signature: (I)V
  */
 JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv* env, jobject vksd, jint format) {
     VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, NULL);
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKSurfaceData
+ * Method:    configureNow
+ * Signature: (JJII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_java2d_vulkan_VKSurfaceData_configureNow(JNIEnv* env, jobject vksd,
+    jlong pData, jlong pDevice, jint width, jint height) {
+    VKSDOps* surface = jlong_to_ptr(pData);
+    VKDevice* device = jlong_to_ptr(pDevice);
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSurfaceData_configureNow (%p) %dx%d", surface, width, height);
+    VKRenderer_ConfigureSurface(surface, (VkExtent2D) { width, height }, device);
+    // Return whether image is immediately ready at the requested dimensions.
+    // For any surface, this can be false in case of an allocation failure.
+    // For a window surface, this can also be false when reallocation is deferred until the end of the frame.
+    return surface->image != NULL && surface->device == device &&
+           surface->image->extent.width == (uint32_t)width &&
+           surface->image->extent.height == (uint32_t)height;
 }
 
