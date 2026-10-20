@@ -55,7 +55,8 @@ abstract class VKPaints {
         impls.put(SunGraphics2D.PAINT_GRADIENT, new Gradient());
         impls.put(SunGraphics2D.PAINT_LIN_GRADIENT, new LinearGradient());
         impls.put(SunGraphics2D.PAINT_RAD_GRADIENT, new RadialGradient());
-        impls.put(SunGraphics2D.PAINT_TEXTURE, new Texture());
+        // TODO: only register Texture when it's actually supported, otherwise the registration will produce incorrect draws
+        // impls.put(SunGraphics2D.PAINT_TEXTURE, new Texture());
     }
 
     /**
@@ -172,7 +173,7 @@ abstract class VKPaints {
             }
 
             VKSurfaceData dstData = (VKSurfaceData)sg2d.surfaceData;
-            VKGraphicsConfig gc = dstData.getGraphicsConfig();
+            VKGraphicsConfig gc = (VKGraphicsConfig) dstData.getDeviceConfiguration();
             if (!gc.isCapPresent(CAPS_EXT_GRAD_SHADER)) {
                 return false;
             }

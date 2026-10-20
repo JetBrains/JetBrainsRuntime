@@ -39,17 +39,19 @@ public class X11VKWindowSurfaceData extends VKSurfaceData {
     private final X11ComponentPeer peer;
 
     X11VKWindowSurfaceData(X11ComponentPeer peer) {
-        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(), peer.getColorModel().getTransparency(), WINDOW);
+        VKGraphicsConfig gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
+        super(gc.getFormat(), peer.getColorModel().getTransparency(), WINDOW);
 
-        X11GraphicsConfig x11gc = (X11GraphicsConfig) peer.getGraphicsConfiguration();
+        X11GraphicsConfig x11gc = (X11GraphicsConfig) gc;
         int x11Scale = x11gc.getScale();
 
-        this.gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
         this.peer = peer;
         Rectangle bounds = peer.getBounds();
         this.width = bounds.width * x11Scale;
         this.height = bounds.height * x11Scale;
         this.scale = x11Scale;
+
+        revalidate(gc);
 
         SurfaceData oldSurfaceData = peer.getSurfaceData();
         if (oldSurfaceData instanceof X11VKWindowSurfaceData) {
@@ -59,7 +61,6 @@ public class X11VKWindowSurfaceData extends VKSurfaceData {
             assignWindow(peer.getWindow());
         }
 
-        revalidate(gc);
         configure();
     }
 

@@ -49,10 +49,6 @@ final class VKContext extends BufferedContext {
         super(rq);
     }
 
-    public static void setScratchSurface(VKGraphicsConfig gc) {
-        log.info("Not implemented: VKContext.setScratchSurface(VKGraphicsConfig)");
-    }
-
     public static class VKContextCaps extends ContextCapabilities {
 
         /** Indicates that the context is doublebuffered. */

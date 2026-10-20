@@ -47,26 +47,27 @@ public class WLVKWindowSurfaceData extends VKSurfaceData
     private native void assignWlSurface(long surfacePtr);
 
     public WLVKWindowSurfaceData(WLComponentPeer peer) {
-        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(), peer.getColorModel().getTransparency(), WINDOW);
+        VKGraphicsConfig gc = (WLVKGraphicsConfig) peer.getGraphicsConfiguration();
+        super(gc.getFormat(), peer.getColorModel().getTransparency(), WINDOW);
         this.target = peer.getTarget();
         this.sizeListener = peer;
-        this.gc = (WLVKGraphicsConfig) peer.getGraphicsConfiguration();
         this.width = peer.getBufferWidth();
         this.height = peer.getBufferHeight();
 
+        revalidate(gc);
         initOps(getFormat().getValue(getTransparency()));
     }
 
     public WLVKWindowSurfaceData(WLSurfaceSizeListener sizeListener, int width, int height, WLVKGraphicsConfig gc) {
+        Objects.requireNonNull(sizeListener);
+        Objects.requireNonNull(gc);
+
         super(gc.getFormat(), gc.getColorModel().getTransparency(), WINDOW);
         this.target = null;
         this.sizeListener = sizeListener;
-        this.gc = gc;
+        revalidate(gc);
         this.width = width;
         this.height = height;
-
-        Objects.requireNonNull(sizeListener);
-        Objects.requireNonNull(gc);
 
         initOps(getFormat().getValue(getTransparency()));
     }
