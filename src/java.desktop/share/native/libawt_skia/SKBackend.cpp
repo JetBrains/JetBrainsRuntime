@@ -2019,6 +2019,7 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
         return;
     }
     flushBatchesOf(cc);
+    cc->recordingGeneration++;
     std::unique_ptr<Recording> recording = cc->recorder->snap();
     if (recording) {
         InsertRecordingInfo info;

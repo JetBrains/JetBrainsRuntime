@@ -185,9 +185,15 @@ public:
         }
     }
 
-    // Runs right before a mesh is drawn, whoever triggers the draw. The mask
-    // cache uploads its staged atlas cells here: an upload is only ordered ahead
-    // of the destination's pass if a draw sampling the atlas is recorded after it.
+    // Runs first when the batch draws, whoever triggers the draw. The glyph
+    // caches upload their staged atlas rows here: an upload is only ordered
+    // ahead of the destination's pass if a draw sampling the atlas is recorded
+    // after it.
+    std::function<void()> beforeUpload;
+
+    // Runs right before a mesh is drawn, after beforeUpload, with the bounds of
+    // the draw if an afterDraw hook wants them. The mask cache uploads its
+    // staged atlas cells here, the coverage accumulation clears the bounds.
     std::function<void(const SkRect &bounds)> beforeDraw;
 
     // Runs right after the meshes of a draw, with their bounds (the coverage
@@ -371,6 +377,9 @@ private:
                 for (size_t i = 0; i < layerCount; i++) {
                     extend(bounds, layers[i]);
                 }
+            }
+            if (beforeUpload) {
+                beforeUpload();
             }
             if (beforeDraw) {
                 beforeDraw(bounds);
