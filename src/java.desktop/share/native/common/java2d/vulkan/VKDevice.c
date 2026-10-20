@@ -293,6 +293,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .name = deviceName,
         .type = deviceProperties2.properties.deviceType,
         .nonCoherentAtomSize = deviceProperties2.properties.limits.nonCoherentAtomSize,
+        .maxImageDimension2D = deviceProperties2.properties.limits.maxImageDimension2D,
         .handle = VK_NULL_HANDLE,
         .physicalDevice = physicalDevice,
         .queueFamily = queueFamily,

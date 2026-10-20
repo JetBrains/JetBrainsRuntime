@@ -69,11 +69,7 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
             if (type == AccelSurface.UNDEFINED) {
                 type = AccelSurface.RT_TEXTURE;
             }
-            VKOffScreenSurfaceData sd = new VKOffScreenSurfaceData(vImg, gc.getFormat(), vImg.getTransparency(), type,
-                                                                   vImg.getWidth(), vImg.getHeight());
-            sd.revalidate(gc);
-            sd.configure();
-            return sd;
+            return new VKOffScreenSurfaceData(gc, vImg.getWidth(), vImg.getHeight(), vImg, vImg.getTransparency(), type);
         } catch (NullPointerException | OutOfMemoryError ignored) {
             return null;
         }
