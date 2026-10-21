@@ -208,6 +208,9 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     J2dRlsTraceLn(J2D_TRACE_INFO, "    logicOp = %s", deviceFeatures2.features.logicOp ? "true" : "false");
     if (deviceFeatures2.features.logicOp) caps |= sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT;
 
+    J2dRlsTraceLn(J2D_TRACE_INFO, "    dualSrcBlend = %s", deviceFeatures2.features.dualSrcBlend ? "true" : "false");
+    if (deviceFeatures2.features.dualSrcBlend) caps |= sun_java2d_vulkan_VKGPU_CAP_DUAL_SRC_BLEND_BIT;
+
     J2dRlsTraceLn(J2D_TRACE_INFO, "    timelineSemaphore = %s", device12Features.timelineSemaphore ? "true" : "false");
     if (!device12Features.timelineSemaphore) ARRAY_PUSH_BACK(errors) = "timelineSemaphore not supported";
 
@@ -357,7 +360,10 @@ Java_sun_java2d_vulkan_VKGPU_init(JNIEnv *env, jclass jClass, jlong jDevice) {
             .pQueuePriorities = &queuePriority
     };
 
-    VkPhysicalDeviceFeatures features10 = { .logicOp = device->caps & sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT ? VK_TRUE : VK_FALSE };
+    VkPhysicalDeviceFeatures features10 = {
+        .logicOp = device->caps & sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT ? VK_TRUE : VK_FALSE,
+        .dualSrcBlend = device->caps & sun_java2d_vulkan_VKGPU_CAP_DUAL_SRC_BLEND_BIT ? VK_TRUE : VK_FALSE,
+    };
     VkPhysicalDeviceVulkan12Features features12 = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .timelineSemaphore = VK_TRUE

@@ -38,8 +38,9 @@ import java.util.stream.Stream;
  */
 public class VKGPU {
 
-    @Native public static final int CAP_PRESENTABLE_BIT = 0x80000000;
-    @Native public static final int CAP_LOGIC_OP_BIT    = 0x40000000;
+    @Native public static final int CAP_PRESENTABLE_BIT    = 0x80000000;
+    @Native public static final int CAP_LOGIC_OP_BIT       = 0x40000000;
+    @Native public static final int CAP_DUAL_SRC_BLEND_BIT = 0x20000000;
     @Native public static final int CAP_SAMPLED_4BYTE_BIT = 0; // Considered always supported.
     @Native public static final int CAP_SAMPLED_3BYTE_BIT = 1;
     @Native public static final int CAP_SAMPLED_565_BIT   = 2;
