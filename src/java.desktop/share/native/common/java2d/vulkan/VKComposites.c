@@ -25,14 +25,14 @@
 
 #include <stdbool.h>
 
-#define ALPHA_BLEND(NAME, SRC_COLOR, DST_COLOR, SRC_ALPHA, DST_ALPHA)           \
+#define ALPHA_BLEND(NAME, SRC_FACTOR, DST_FACTOR)                               \
     VKComposites_AddState(&composites, ALPHA_COMPOSITE_ ## NAME, (VKCompositeState)    \
     {{ .blendEnable = VK_TRUE,                                                  \
-       .srcColorBlendFactor = VK_BLEND_FACTOR_ ## SRC_COLOR,                    \
-       .dstColorBlendFactor = VK_BLEND_FACTOR_ ## DST_COLOR,                    \
+       .srcColorBlendFactor = VK_BLEND_FACTOR_ ## SRC_FACTOR,                   \
+       .dstColorBlendFactor = VK_BLEND_FACTOR_ ## DST_FACTOR,                   \
        .colorBlendOp = VK_BLEND_OP_ADD,                                         \
-       .srcAlphaBlendFactor = VK_BLEND_FACTOR_ ## SRC_ALPHA,                    \
-       .dstAlphaBlendFactor = VK_BLEND_FACTOR_ ## DST_ALPHA,                    \
+       .srcAlphaBlendFactor = VK_BLEND_FACTOR_ ## SRC_FACTOR,                   \
+       .dstAlphaBlendFactor = VK_BLEND_FACTOR_ ## DST_FACTOR,                   \
        .alphaBlendOp = VK_BLEND_OP_ADD,                                         \
        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |  \
                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT }, \
@@ -60,19 +60,19 @@ VKComposites VKComposites_Create() {
         {   .logicOpEnable = VK_TRUE,
             .logicOp = VK_LOGIC_OP_XOR }, ALPHA_TYPE_STRAIGHT });
 
-    //                NAME |      SRC_COLOR       |       DST_COLOR      |      SRC_ALPHA       |       DST_ALPHA     ||
-    ALPHA_BLEND(     CLEAR , ZERO                 , ZERO                 , ZERO                 , ZERO                );
-    ALPHA_BLEND(       SRC , ONE                  , ZERO                 , ONE                  , ZERO                );
-    ALPHA_BLEND(  SRC_OVER , ONE                  , ONE_MINUS_SRC_ALPHA  , ONE                  , ONE_MINUS_SRC_ALPHA );
-    ALPHA_BLEND(  DST_OVER , ONE_MINUS_DST_ALPHA  , ONE                  , ONE_MINUS_DST_ALPHA  , ONE                 );
-    ALPHA_BLEND(    SRC_IN , DST_ALPHA            , ZERO                 , DST_ALPHA            , ZERO                );
-    ALPHA_BLEND(    DST_IN , ZERO                 , SRC_ALPHA            , ZERO                 , SRC_ALPHA           );
-    ALPHA_BLEND(   SRC_OUT , ONE_MINUS_DST_ALPHA  , ZERO                 , ONE_MINUS_DST_ALPHA  , ZERO                );
-    ALPHA_BLEND(   DST_OUT , ZERO                 , ONE_MINUS_SRC_ALPHA  , ZERO                 , ONE_MINUS_SRC_ALPHA );
-    ALPHA_BLEND(       DST , ZERO                 , ONE                  , ZERO                 , ONE                 );
-    ALPHA_BLEND(  SRC_ATOP , DST_ALPHA            , ONE_MINUS_SRC_ALPHA  , ZERO                 , ONE                 );
-    ALPHA_BLEND(  DST_ATOP , ONE_MINUS_DST_ALPHA  , SRC_ALPHA            , ONE                  , ZERO                );
-    ALPHA_BLEND(       XOR , ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA  , ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA );
+    //                NAME |      SRC_FACTOR      |       DST_FACTOR    ||
+    ALPHA_BLEND(     CLEAR , ZERO                 , ZERO                );
+    ALPHA_BLEND(       SRC , ONE                  , ZERO                );
+    ALPHA_BLEND(  SRC_OVER , ONE                  , ONE_MINUS_SRC_ALPHA );
+    ALPHA_BLEND(  DST_OVER , ONE_MINUS_DST_ALPHA  , ONE                 );
+    ALPHA_BLEND(    SRC_IN , DST_ALPHA            , ZERO                );
+    ALPHA_BLEND(    DST_IN , ZERO                 , SRC_ALPHA           );
+    ALPHA_BLEND(   SRC_OUT , ONE_MINUS_DST_ALPHA  , ZERO                );
+    ALPHA_BLEND(   DST_OUT , ZERO                 , ONE_MINUS_SRC_ALPHA );
+    ALPHA_BLEND(       DST , ZERO                 , ONE                 );
+    ALPHA_BLEND(  SRC_ATOP , DST_ALPHA            , ONE_MINUS_SRC_ALPHA );
+    ALPHA_BLEND(  DST_ATOP , ONE_MINUS_DST_ALPHA  , SRC_ALPHA           );
+    ALPHA_BLEND(       XOR , ONE_MINUS_DST_ALPHA  , ONE_MINUS_SRC_ALPHA );
 
     VKComposites_AddState(&composites, NO_COMPOSITE, (VKCompositeState) {
         {   .blendEnable = VK_FALSE,
