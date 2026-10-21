@@ -29,6 +29,7 @@
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_vulkan_VKBlitLoops.h"
+#include "sun_java2d_vulkan_VKRichBufferedOpCodes.h"
 #include "fontscalerdefs.h"
 #include "Trace.h"
 #include "jlong.h"
@@ -249,6 +250,20 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 // TODO this is not AA!
                 VKRenderer_RenderParallelogram(VK_TRUE, x11, y11, dx21, dy21,
                                                dx12, dy12);
+            }
+            break;
+
+        case sun_java2d_vulkan_VKRichBufferedOpCodes_FILL_AARRECT:
+            {
+                jfloat x = NEXT_FLOAT(b);
+                jfloat y = NEXT_FLOAT(b);
+                jfloat w = NEXT_FLOAT(b);
+                jfloat h = NEXT_FLOAT(b);
+                jfloat cornerDiameter = NEXT_FLOAT(b);
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: FILL_AARRECT(%f, %f, %f, %f, %f)",
+                    x, y, w, h, cornerDiameter);
+                VKRenderer_FillAARect(x, y, w, h, cornerDiameter);
             }
             break;
 
