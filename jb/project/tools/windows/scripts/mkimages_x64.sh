@@ -26,6 +26,16 @@ WORK_DIR=$(pwd)
 JCEF_PATH=${JCEF_PATH:=$WORK_DIR/jcef_win_x64}
 NVDA_PATH=${NVDA_PATH:=$WORK_DIR/nvda_controllerClient}
 
+# WITH_SKIA=1 builds the Skia Graphite backend (libawt_skia, -Dsun.java2d.skia=true)
+# against the pinned prebuilt, fetched and verified by fetch_skia.sh into
+# SKIA_PREBUILT_ROOT (the script's default is build/deps/skia, git-ignored; cache it on build agents).
+WITH_SKIA_CONF=""
+if [ -n "${WITH_SKIA:-}" ]; then
+  SKIA_DIR=$(bash jb/project/tools/common/scripts/fetch_skia.sh -q -t windows -a x64 \
+               ${SKIA_PREBUILT_ROOT:+-o "$SKIA_PREBUILT_ROOT"}) || do_exit $?
+  WITH_SKIA_CONF="--with-skia=$SKIA_DIR"
+fi
+
 function do_configure {
   sh ./configure \
     $WITH_DEBUG_LEVEL \
@@ -43,6 +53,7 @@ function do_configure {
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
+    $WITH_SKIA_CONF \
     || do_exit $?
 }
 

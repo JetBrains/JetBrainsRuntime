@@ -50,6 +50,16 @@ else
   WITH_SYSROOT=""
 fi
 
+# WITH_SKIA=1 builds the Skia Graphite backend (libawt_skia, -Dsun.java2d.skia=true)
+# against the pinned prebuilt, fetched and verified by fetch_skia.sh into
+# SKIA_PREBUILT_ROOT (the script's default is build/deps/skia, git-ignored; cache it on build agents).
+WITH_SKIA_CONF=""
+if [ -n "${WITH_SKIA:-}" ]; then
+  SKIA_DIR=$(bash jb/project/tools/common/scripts/fetch_skia.sh -q -t macos -a "$architecture" \
+               ${SKIA_PREBUILT_ROOT:+-o "$SKIA_PREBUILT_ROOT"}) || do_exit $?
+  WITH_SKIA_CONF="--with-skia=$SKIA_DIR"
+fi
+
 function do_configure {
   sh configure \
     $WITH_DEBUG_LEVEL \
@@ -70,6 +80,7 @@ function do_configure {
     $WITH_XCODE_PATH \
     $WITH_SYSROOT \
     $ENABLE_DEPRECATED_PORTS \
+    $WITH_SKIA_CONF \
     || do_exit $?
 }
 

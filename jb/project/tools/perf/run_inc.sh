@@ -32,6 +32,10 @@ rendering_options:
   -metal  # Metal pipeline (macOS)
   -vulkan # Vulkan pipeline (WLToolkit)
   -accelsd # Vulkan full acceleration (WLToolkit, Vulkan)
+  -skia   # Skia Graphite pipeline (macOS, Windows; -Dsun.java2d.skia=true)
+  -skia-shapes mode # analytic|marlin|skia (sun.java2d.skia.shapes)
+  -skia-lcd mode    # blend|twopass|accumulate (sun.java2d.skia.lcd)
+  -skia-msaa n      # Graphite internal sample count (sun.java2d.skia.msaa)
   -tk tk_name # AWT toolkit (linux: WLToolkit|XToolkit)
   -scale # UI scale
   -N num # Number of iterations (JVM runs)
@@ -52,6 +56,36 @@ while [ $# -ge 1 ] ; do
     -accelsd) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.vulkan.accelsd=true"
       shift
         ;;
+    -skia) J2D_OPTS=$J2D_OPTS" -Dsun.java2d.skia=true"
+      shift
+        ;;
+    -skia-shapes) shift
+      if [ $# -ge 1 ] ; then
+        J2D_OPTS=$J2D_OPTS" -Dsun.java2d.skia.shapes="$1
+         shift
+      else
+         echo "Invalid parameters for -skia-shapes option. Use: -skia-shapes analytic|marlin|skia"
+         exit 1
+      fi
+      ;;
+    -skia-lcd) shift
+      if [ $# -ge 1 ] ; then
+        J2D_OPTS=$J2D_OPTS" -Dsun.java2d.skia.lcd="$1
+         shift
+      else
+         echo "Invalid parameters for -skia-lcd option. Use: -skia-lcd blend|twopass|accumulate"
+         exit 1
+      fi
+      ;;
+    -skia-msaa) shift
+      if [ $# -ge 1 ] ; then
+        J2D_OPTS=$J2D_OPTS" -Dsun.java2d.skia.msaa="$1
+         shift
+      else
+         echo "Invalid parameters for -skia-msaa option. Use: -skia-msaa 1|2|4|8"
+         exit 1
+      fi
+      ;;
     -tk) shift
       if [ $# -ge 1 ] ; then
         J2D_OPTS=$J2D_OPTS" -Dawt.toolkit.name="$1

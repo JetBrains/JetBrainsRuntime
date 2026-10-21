@@ -107,8 +107,15 @@ mkdir -p "${out_root}"
 tmp_zip="$(mktemp "${out_root}/${asset}.XXXXXX")"
 trap 'rm -f "${tmp_zip}"' EXIT
 
+# On Cygwin the curl in PATH is usually the native Windows one, which cannot
+# open a /cygdrive path (it fails on the first write); give it a Windows path.
+curl_out="${tmp_zip}"
+if command -v cygpath >/dev/null 2>&1; then
+  curl_out="$(cygpath -w "${tmp_zip}")"
+fi
+
 log "Downloading ${url}"
-curl -fsSL --retry 3 -o "${tmp_zip}" "${url}"
+curl -fsSL --retry 3 -o "${curl_out}" "${url}"
 
 actual_sha="$(sha256_of "${tmp_zip}")"
 if [[ "${actual_sha}" != "${expected_sha}" ]]; then
@@ -121,7 +128,11 @@ log "SHA-256 verified"
 
 rm -rf "${dest}"
 mkdir -p "${dest}"
-unzip -q "${tmp_zip}" -d "${dest}"
+if command -v unzip >/dev/null 2>&1; then
+  unzip -q "${tmp_zip}" -d "${dest}"
+else
+  python3 -c 'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "${tmp_zip}" "${dest}"
+fi
 echo "${expected_sha}" > "${marker}"
 log "Unpacked to ${dest}"
 echo "${dest}"
