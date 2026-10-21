@@ -9,8 +9,8 @@ layout(origin_upper_left) in vec4 gl_FragCoord;
 layout(location = 0) in flat ivec4 in_OriginOffsetAndScanline;
 layout(location = 1) in flat  vec4 in_Color;
 
-layout(location = 0) out vec4 out_Color;
+COLOR_OUT_DECL()
 
 void main() {
-    out_Color = APPLY_MASK(in_Color);
+    OUTPUT_SKIP_COMPOSITE(in_Color);
 }

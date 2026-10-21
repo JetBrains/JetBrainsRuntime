@@ -3,6 +3,14 @@
 #define SHADER_MOD_XOR  1U // Xor composite mode
 #define SHADER_MOD_MASK 2U // MASK_FILL / MASK_BLIT
 
+#ifdef SHADER_COMPILE_MOD_DUAL_SRC_MASK
+#define SHADER_MOD_GET_DST_PORTER_DUFF_FACTOR(x) ((x) >> 30) // bits 31, 30 used for passing Fd when
+#define DST_PORTER_DUFF_FACTOR_ZERO                0
+#define DST_PORTER_DUFF_FACTOR_ONE                 1
+#define DST_PORTER_DUFF_FACTOR_SRC_ALPHA           2
+#define DST_PORTER_DUFF_FACTOR_ONE_MINUS_SRC_ALPHA 3
+#endif // SHADER_COMPILE_MOD_DUAL_SRC_MASK
+
 layout (constant_id = 0) const uint const_InAlphaType    = 0;
 layout (constant_id = 1) const uint const_OutAlphaType   = 0;
 layout (constant_id = 2) const uint const_ShaderVariant  = 0;
@@ -93,11 +101,37 @@ vec4 applyMaskOp(vec4 color, float mask) {
     if ((const_ShaderModifier & SHADER_MOD_XOR) != 0) return color * float(mask > 0.0);
     else return color * alphaMask(mask, const_OutAlphaType);
 }
-#define APPLY_MASK(COLOR) applyMaskOp(COLOR, imageLoad(u_Mask, calculateMaskIndex(gl_FragCoord.xy, in_OriginOffsetAndScanline)).r)
+#define GET_MASK() imageLoad(u_Mask, calculateMaskIndex(gl_FragCoord.xy, in_OriginOffsetAndScanline)).r
+
+#ifdef SHADER_COMPILE_MOD_DUAL_SRC_MASK
+
+float getSrc1AlphaForDualSrcMask(float srcAlphaMultipliedByMask, float mask) {
+    if (SHADER_MOD_GET_DST_PORTER_DUFF_FACTOR(const_ShaderModifier) == DST_PORTER_DUFF_FACTOR_ZERO) {
+        return mask;
+    } else if (SHADER_MOD_GET_DST_PORTER_DUFF_FACTOR(const_ShaderModifier) == DST_PORTER_DUFF_FACTOR_ONE) {
+        return 0;
+    } else if (SHADER_MOD_GET_DST_PORTER_DUFF_FACTOR(const_ShaderModifier) == DST_PORTER_DUFF_FACTOR_SRC_ALPHA) {
+        return mask - srcAlphaMultipliedByMask;
+    } else {
+        return srcAlphaMultipliedByMask;
+    }
+}
+
+#define SET_SRC1_ALPHA(SRC_ALPHA_MULTIPLIED_BY_MASK, MASK) out_Color1.a = getSrc1AlphaForDualSrcMask(SRC_ALPHA_MULTIPLIED_BY_MASK, MASK)
+#define SRC1_OUT_DECL() layout(location = 0, index = 1) out vec4 out_Color1;
+
+#else // SHADER_COMPILE_MOD_DUAL_SRC_MASK
+
+#define SET_SRC1_ALPHA(SRC_ALPHA_MULTIPLIED_BY_MASK, MASK)
+#define SRC1_OUT_DECL()
+
+#endif // SHADER_COMPILE_MOD_DUAL_SRC_MASK
+
+#define COLOR_OUT_DECL() layout(location = 0, index = 0) out vec4 out_Color; SRC1_OUT_DECL()
 
 // Generic shader support.
 #define GENERIC_INOUT()                                            \
-    layout(location = 0) out      vec4 out_Color;                  \
+    COLOR_OUT_DECL()                                               \
     layout(location = 0) in       vec2 in_Position;                \
     layout(location = 1) in flat  uint in_Data;                    \
     layout(location = 2) in flat ivec4 in_OriginOffsetAndScanline; \
@@ -105,6 +139,14 @@ vec4 applyMaskOp(vec4 color, float mask) {
     layout(set = 0, binding = 0, r8) uniform readonly restrict imageBuffer u_Mask
 
 // Generic color output - handles composite and mask automatically.
-#define OUTPUT(COLOR) out_Color = COLOR; out_Color = APPLY_COMPOSITE(out_Color); \
-    if ((const_ShaderModifier & SHADER_MOD_MASK) != 0) out_Color = APPLY_MASK(out_Color)
+#define APPLY_COMPOSITE_INPLACE() out_Color = APPLY_COMPOSITE(out_Color)
+#define APPLY_MASK_INPLACE() \
+    if ((const_ShaderModifier & SHADER_MOD_MASK) != 0) { \
+        float mask = GET_MASK(); \
+        out_Color = applyMaskOp(out_Color, mask); \
+        SET_SRC1_ALPHA(out_Color.a, mask); \
+    }
+
+#define OUTPUT_SKIP_COMPOSITE(COLOR) out_Color = COLOR; APPLY_MASK_INPLACE()
+#define OUTPUT(COLOR) out_Color = COLOR; APPLY_COMPOSITE_INPLACE(); APPLY_MASK_INPLACE()
 #endif
