@@ -132,6 +132,20 @@ public final class FontUtilities {
         return subpixelResolution;
     }
 
+    @JBRApi.Provides("FontExtensions")
+    private static boolean canDisplayWithoutFallback(Font font, int codePoint) {
+        if (!Character.isValidCodePoint(codePoint)) {
+            throw new IllegalArgumentException("Invalid code point: " + Integer.toHexString(codePoint));
+        }
+        Font2D font2D = getFont2D(font);
+        if (font2D instanceof FontSubstitution sub) {
+            CompositeFont compFont = sub.getCompositeFont2D();
+            int glyphCode = compFont.charToGlyph(codePoint);
+            return glyphCode != compFont.getMissingGlyphCode() && compFont.decodeSlot(glyphCode) == 0;
+        }
+        return font2D.canDisplay(codePoint);
+    }
+
     /**
      * Referenced by code in the JDK which wants to test for the
      * minimum char code for which layout may be required.
