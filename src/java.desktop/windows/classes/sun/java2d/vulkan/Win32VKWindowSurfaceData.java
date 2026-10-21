@@ -35,13 +35,13 @@ public class Win32VKWindowSurfaceData extends VKSurfaceData {
     private final WComponentPeer peer;
 
     public Win32VKWindowSurfaceData(WComponentPeer peer) {
-        super(((VKGraphicsConfig) peer.getGraphicsConfiguration()).getFormat(),
-              peer.getColorModel().getTransparency(), WINDOW);
+        VKGraphicsConfig gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
+        super(gc.getFormat(), peer.getColorModel().getTransparency(), WINDOW);
         this.peer = peer;
-        this.gc = (VKGraphicsConfig) peer.getGraphicsConfiguration();
 
         long hwnd = peer.getHWnd();
         updateBoundsFromNativeData(hwnd);
+        revalidate(gc);
         initOps(getFormat().getValue(getTransparency()));
         assignWindow(hwnd);
         configure();

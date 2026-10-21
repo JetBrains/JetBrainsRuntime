@@ -85,7 +85,9 @@ public abstract class VKSurfaceData extends SurfaceData
     }
 
     private final VKFormat format;
-    protected VKGraphicsConfig gc;
+    // Kept private to avoid subclasses setting gc without updating the blit cache.
+    // Use revalidate(gc) to set.
+    private VKGraphicsConfig gc;
     protected double scale;
     protected int width;
     protected int height;
