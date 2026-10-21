@@ -1,41 +1,73 @@
-
-// Shader specialization.
-#define SHADER_MOD_XOR  1U // Xor composite mode
-#define SHADER_MOD_MASK 2U // MASK_FILL / MASK_BLIT
-
+////////////////////////////////////////////////////////////////////////////////
+//// SHADER_SPECIALIZATION /////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 layout (constant_id = 0) const uint const_InAlphaType    = 0;
 layout (constant_id = 1) const uint const_OutAlphaType   = 0;
 layout (constant_id = 2) const uint const_ShaderVariant  = 0;
 layout (constant_id = 3) const uint const_ShaderModifier = 0;
 
-// Host structs.
+#define SHADER_MOD_XOR (1U << 0) // bit 0 - Xor composite mode
+
+// bits 1-2 - coverage source
+#define SHADER_MOD_GET_COVERAGE_SOURCE() ((const_ShaderModifier >> 1) & 3)
+#define SHADER_COVERAGE_NONE 0
+#define SHADER_COVERAGE_MASK 1
+#define SHADER_COVERAGE_AA_RRECT 2
+
+#define SHADER_MOD_PASS_DATA_AS_COLOR (1U << 3) // bit 3 - pass vertex data as out_Color instead of out_Data, used for simple color paints
+
+////////////////////////////////////////////////////////////////////////////////
+//// Vertex shader common outputs and transform push constants /////////////////
+////////////////////////////////////////////////////////////////////////////////
+#ifdef STAGE_VERT
+layout(location = 15) out flat uint  out_Data;
+layout(location = 14) out flat vec4  out_Color;
+layout(location = 13) out flat vec4  out_GenericFlatVec4_1;
+layout(location = 12) out flat vec4  out_GenericFlatVec4_2;
+layout(location = 11) out flat ivec4 out_GenericFlatIvec4_1;
+
 struct VKTransform {
     float m00, m01, m02;
     float m10, m11, m12;
 };
-struct VKCompositeConstants {
-    uint xorColor;
-    float extraAlpha;
-};
-
-// Vertex shader transformation support.
-#ifdef STAGE_VERT
 layout(push_constant) uniform PushConstants { VKTransform transform; } push;
 
 vec4 transformToDeviceSpace(vec2 v) {
     return vec4(vec3(v, 1.0) * mat2x3(push.transform.m00, push.transform.m01, push.transform.m02, push.transform.m10, push.transform.m11, push.transform.m12), 0.0, 1.0);
 }
-#endif
+#endif // STAGE_VERT
 
-// Fragment shader push constant support.
+////////////////////////////////////////////////////////////////////////////////
+//// Fragment shader common inputs and push constants //////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #ifdef STAGE_FRAG
+layout(origin_upper_left) in  vec4  gl_FragCoord;
+layout(location = 15) in flat uint  in_Data;
+layout(location = 14) in flat vec4  in_Color;
+layout(location = 13) in flat vec4  in_GenericFlatVec4_1;
+layout(location = 12) in flat vec4  in_GenericFlatVec4_2;
+layout(location = 11) in flat ivec4 in_GenericFlatIvec4_1;
+
+// TODO: we should change this logic when adding support for masked blits
+#ifndef SHADER_NO_MASK_BUFFER
+layout(set = 0, binding = 0, r8) uniform readonly restrict imageBuffer u_Mask;
+#endif // SHADER_NO_MASK_BUFFER
+
+layout(location = 0, index = 0) out vec4 out_Color;
+
+struct VKCompositeConstants {
+    uint xorColor;
+    float extraAlpha;
+};
 #define PUSH_CONSTANTS_IMPL(STATEMENT) \
     layout(push_constant) uniform PushConstants { layout(offset = 24 /* == sizeof(VKTransform) */) VKCompositeConstants push_composite; STATEMENT }
 #define DEFAULT_PUSH_CONSTANTS() PUSH_CONSTANTS_IMPL(STAGE_FRAG)
 #define PUSH_CONSTANTS(TYPE) PUSH_CONSTANTS_IMPL(TYPE push;)
-#endif
+#endif // STAGE_FRAG
 
-// Color conversion support.
+////////////////////////////////////////////////////////////////////////////////
+//// Color conversion support //////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #define ALPHA_TYPE_PRE_MULTIPLIED 0U
 #define ALPHA_TYPE_STRAIGHT       1U
 
@@ -70,6 +102,10 @@ vec3 fromLinear3(vec3 c) {
 }
 
 #ifdef STAGE_FRAG
+
+////////////////////////////////////////////////////////////////////////////////
+//// Composite support /////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Before outputting the color, some post-processing is needed:
 // - For alpha composite, apply extra alpha.
 // - For XOR composite, apply xor.
@@ -80,31 +116,66 @@ vec4 applyComposite(vec4 color, VKCompositeConstants composite) {
         return vec4(xor) / 255.0;
     } else return color * alphaMask(composite.extraAlpha, const_OutAlphaType);
 }
-#define APPLY_COMPOSITE(COLOR) applyComposite(COLOR, push_composite)
 
-// MASK_FILL / MASK_BLIT support.
+////////////////////////////////////////////////////////////////////////////////
+//// Coverage support //////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+vec4 applyMaskOp(vec4 color, float mask) {
+    if ((const_ShaderModifier & SHADER_MOD_XOR) != 0) return color * float(mask > 0.0);
+    else return color * alphaMask(mask, const_OutAlphaType);
+}
+
+// used for coverage source MASK
 int calculateMaskIndex(vec2 localCoord, ivec4 originOffsetAndScanline) {
     ivec2 maskPos = ivec2(localCoord - vec2(originOffsetAndScanline.xy));
     int offset = originOffsetAndScanline.z;
     int scanline = originOffsetAndScanline.w;
     return offset + scanline * maskPos.y + min(scanline, maskPos.x);
 }
-vec4 applyMaskOp(vec4 color, float mask) {
-    if ((const_ShaderModifier & SHADER_MOD_XOR) != 0) return color * float(mask > 0.0);
-    else return color * alphaMask(mask, const_OutAlphaType);
+
+float getRRectCoverage(vec2 fragCoord, vec4 corners, float radius) {
+    return 1.0f; // TODO!
 }
-#define APPLY_MASK(COLOR) applyMaskOp(COLOR, imageLoad(u_Mask, calculateMaskIndex(gl_FragCoord.xy, in_OriginOffsetAndScanline)).r)
 
-// Generic shader support.
-#define GENERIC_INOUT()                                            \
-    layout(location = 0) out      vec4 out_Color;                  \
-    layout(location = 0) in       vec2 in_Position;                \
-    layout(location = 1) in flat  uint in_Data;                    \
-    layout(location = 2) in flat ivec4 in_OriginOffsetAndScanline; \
-    layout(origin_upper_left) in  vec4 gl_FragCoord;               \
-    layout(set = 0, binding = 0, r8) uniform readonly restrict imageBuffer u_Mask
+float getCoverage(vec2 fragCoord) {
+    if (SHADER_MOD_GET_COVERAGE_SOURCE() == SHADER_COVERAGE_AA_RRECT) {
+        return getRRectCoverage(fragCoord, in_GenericFlatVec4_1, in_GenericFlatVec4_2.x);
+    }
+#ifndef SHADER_NO_MASK_BUFFER
+    else if(SHADER_MOD_GET_COVERAGE_SOURCE() == SHADER_COVERAGE_MASK) {
+        return imageLoad(u_Mask, calculateMaskIndex(fragCoord, in_GenericFlatIvec4_1)).r;
+    }
+#endif // SHADER_NO_MASK_BUFFER
+    else {
+        return 1.0f;
+    }
+}
 
-// Generic color output - handles composite and mask automatically.
-#define OUTPUT(COLOR) out_Color = COLOR; out_Color = APPLY_COMPOSITE(out_Color); \
-    if ((const_ShaderModifier & SHADER_MOD_MASK) != 0) out_Color = APPLY_MASK(out_Color)
-#endif
+#endif // STAGE_FRAG
+
+////////////////////////////////////////////////////////////////////////////////
+//// Shader public API /////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+#ifdef STAGE_VERT
+void passVertexData(uint data) {
+    if ((const_ShaderModifier & SHADER_MOD_PASS_DATA_AS_COLOR) != 0) {
+        out_Color = convertAlpha(decodeColor(data));
+    } else {
+        out_Data = data;
+    }
+}
+#endif // STAGE_VERT
+
+#ifdef STAGE_FRAG
+// Generic color output - handles composite and coverage automatically.
+void outputColorWithCompositePreApplied(vec4 color) {
+    out_Color = color;
+    if (SHADER_MOD_GET_COVERAGE_SOURCE() != SHADER_COVERAGE_NONE) {
+        float coverage = getCoverage(gl_FragCoord.xy);
+        out_Color = applyMaskOp(out_Color, coverage);
+    }
+}
+
+#define outputColor(COLOR) outputColorWithCompositePreApplied(applyComposite((COLOR), push_composite))
+
+#endif // STAGE_FRAG

@@ -209,6 +209,10 @@ public class MaskFill extends GraphicsPrimitive
         return new TraceMaskFill(this);
     }
 
+    public static MaskFill getTraceWrapTarget(MaskFill maskFill) {
+        return maskFill instanceof TraceMaskFill traceMaskFill ? traceMaskFill.target : maskFill;
+    }
+
     private static class TraceMaskFill extends MaskFill {
         MaskFill target;
         MaskFill fillPgramTarget;

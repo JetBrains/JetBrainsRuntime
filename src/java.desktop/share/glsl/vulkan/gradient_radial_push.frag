@@ -12,8 +12,6 @@ struct VKRadialGradientPaintConstants {
 };
 PUSH_CONSTANTS(VKRadialGradientPaintConstants);
 
-GENERIC_INOUT();
-
 /*
  * Explanation duplicated from D3DShaderGen.c; The same algorithm is used in MTLPaints.m.
  *
@@ -35,9 +33,9 @@ GENERIC_INOUT();
  */
 
 void main() {
-    float x = dot(vec3(in_Position, 1.0), push.m0);
-    float y = dot(vec3(in_Position, 1.0), push.m1);
+    float x = dot(vec3(gl_FragCoord.xy, 1.0), push.m0);
+    float y = dot(vec3(gl_FragCoord.xy, 1.0), push.m1);
     float xfx = x - push.precalc_x;
     float t = (push.precalc_x * xfx + sqrt(xfx * xfx + y * y * push.precalc_y)) * push.precalc_z;
-    OUTPUT(convertAlpha(interpolateMultiGradient(t, push.stops)));
+    outputColor(convertAlpha(interpolateMultiGradient(t, push.stops)));
 }

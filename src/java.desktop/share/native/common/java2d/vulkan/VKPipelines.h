@@ -37,6 +37,15 @@
 #define CLIP_STENCIL_INCLUDE_VALUE 0x80U
 #define CLIP_STENCIL_EXCLUDE_VALUE 0U
 
+typedef enum {
+    SHADER_COVERAGE_NONE     = 0, // no coverage (non-AA drawing)
+    SHADER_COVERAGE_MASK     = 1, // MASK_FILL / MASK_BLIT opcodes
+    SHADER_COVERAGE_AA_RRECT = 2, // AA_RRECT opcode
+
+    // Number of bits required to store this value
+    SHADER_COVERAGE_ENUM_BITS     = 2,
+} VKShaderCoverageSource;
+
 /**
  * Shader programs.
  */
@@ -48,10 +57,18 @@ typedef enum {
     SHADER_GRADIENT_RADIAL_PUSH,
     SHADER_BLIT,
     SHADER_CLIP,
-    NO_SHADER = 0x7FFFFFFF,
-    // Mask modifier bit (MASK_FILL & MASK_BLIT).
-    SHADER_MASK = ~NO_SHADER
+
+    // The sign bit (bit 31) is unused for portability reasons.
+    // Then, the top SHADER_COVERAGE_ENUM_BITS store the VKShaderCoverageSource.
+    SHADER_COVERAGE_ENUM_OFFSET = 31 - SHADER_COVERAGE_ENUM_BITS,
+
+    SHADER_ENUM_BASE_MASK = (1 << SHADER_COVERAGE_ENUM_OFFSET) - 1,
+    NO_SHADER = SHADER_ENUM_BASE_MASK
 } VKShader;
+
+static inline VKShaderCoverageSource VKShader_GetCoverageSource(VKShader shader) {
+    return (shader >> SHADER_COVERAGE_ENUM_OFFSET) & ((1 << SHADER_COVERAGE_ENUM_BITS) - 1);
+}
 
 /**
  * Shader variant.
@@ -89,6 +106,7 @@ typedef struct {
     VkPipeline       pipeline;
     VkPipelineLayout layout;
     AlphaType        outAlphaType;
+    uint32_t         verticesPerInstance;
 } VKPipelineInfo;
 
 /**
@@ -198,6 +216,12 @@ typedef struct {
     int x, y, maskOffset, maskScanline;
     unsigned int data;
 } VKMaskFillVertex;
+
+typedef struct {
+    float x1, y1, x2, y2;
+    float r;
+    unsigned int data;
+} VKAARRectInstance;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
