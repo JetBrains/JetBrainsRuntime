@@ -311,7 +311,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             const jfloat *stroke = nullptr;
             if (!fill) {
                 stroke = (const jfloat *) b;
-                b += (6 + (jint) stroke[5]) * sizeof(jfloat);
+                b += 4 * sizeof(jfloat);   // width, cap, join, miter limit
             }
             if (kind == sun_java2d_skia_SKShapePipe_KIND_PATH) {
                 jint rule = NEXT_INT(b), numTypes = NEXT_INT(b), numCoords = NEXT_INT(b);
@@ -479,7 +479,7 @@ Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean f
     if (stroke != nullptr) env->ReleasePrimitiveArrayCritical(strokeArr, stroke, JNI_ABORT);
     if (xform != nullptr) env->ReleasePrimitiveArrayCritical(xformArr, xform, JNI_ABORT);
     SKBackend_EndOfFlush();
-    } // autoreleasepool
+    } // SKPlatformScope
 }
 
 JNIEXPORT void JNICALL

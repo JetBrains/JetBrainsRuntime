@@ -1150,7 +1150,7 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
     REQUIRE_CANVAS();
     SkPaint p = SKBackend_MakePaint(true);
     if (!fill) {
-        // BasicStroke: width, cap, join, miter limit, dash phase, dash count, dashes
+        // BasicStroke: width, cap, join, miter limit (dashed strokes arrive as fills)
         p.setStyle(SkPaint::kStroke_Style);
         p.setStrokeWidth(stroke[0]);
         static const SkPaint::Cap caps[] = { SkPaint::kButt_Cap, SkPaint::kRound_Cap, SkPaint::kSquare_Cap };
@@ -1158,8 +1158,6 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
         p.setStrokeCap(caps[std::clamp((int) stroke[1], 0, 2)]);
         p.setStrokeJoin(joins[std::clamp((int) stroke[2], 0, 2)]);
         p.setStrokeMiter(stroke[3]);
-        // stroke[4] (dash phase) and stroke[5] (dash count) are always 0: dashed
-        // strokes are dashed by Java's stroker and arrive as fills
     }
     const SkMatrix m = SkMatrix::MakeAll(xform[0], xform[2], xform[4],
                                          xform[1], xform[3], xform[5],

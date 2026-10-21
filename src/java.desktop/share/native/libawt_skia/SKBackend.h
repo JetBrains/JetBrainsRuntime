@@ -154,11 +154,11 @@ void SKBackend_DrawPoly(jint nPoints, jboolean isClosed, jint transX, jint trans
 void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, jfloat dy21, jfloat dx12, jfloat dy12);
 void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, jfloat dy21, jfloat dx12, jfloat dy12,
                                    jfloat lwr21, jfloat lwr12);
-// Antialiased shapes rasterized by Skia (SKShapePipe). kind: 0 rect, 1 round
-// rect, 2 oval (params x y w h [arcw arch]) or 3 path (types/coords). xform is
-// an AffineTransform matrix (m00 m10 m01 m11 m02 m12) applied around the draw;
-// stroke (DRAW only): width, cap, join, miter limit, dash phase, dash count,
-// dashes.
+// Antialiased shapes rasterized by Skia (SKShapePipe). kind: SKShapePipe.KIND_*
+// (rect, round rect, oval with params x y w h [arcw arch], or a path with
+// types/coords). xform is an AffineTransform matrix (m00 m10 m01 m11 m02 m12)
+// applied around the draw; stroke (DRAW only): width, cap, join, miter limit.
+// Dashed strokes never arrive: Java's stroker dashes them and they come as fills.
 void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat *stroke,
                          const jfloat *params, jint windingRule, jint numTypes, const jint *types,
                          jint numCoords, const jfloat *coords);

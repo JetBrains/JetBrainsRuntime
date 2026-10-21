@@ -40,20 +40,21 @@ import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.Arrays;
 
 /**
- * Antialiased shapes rasterized by Skia ({@code -Dsun.java2d.skia.shapes=skia})
- * instead of Marlin's coverage tiles. Rectangles, round rectangles and ellipses
- * under axis-aligned transforms reach Skia's analytic renderers; everything
- * else is a path.
+ * Antialiased shapes rasterized by Skia instead of Marlin's coverage tiles:
+ * all of them with {@code -Dsun.java2d.skia.shapes=skia}, by default only the
+ * ones Skia renders analytically (rectangles, round rectangles and ellipses
+ * under any transform, see {@link Hybrid}); everything else is a path.
  * <p>
  * Geometry is prepared the way Marlin sees it, so that the remaining
- * differences are coverage computation only: with {@code STROKE_NORMALIZE}
- * (the default) the device-space path end points are snapped to pixel centres
- * and the control points shifted along, as Marlin's normalizing iterator does
- * for antialiased rendering. Fills are sent in device space. Strokes are
- * applied in user space under the transform, as {@code BasicStroke} defines
- * them, so a normalized path is mapped back to user space before it is sent.
+ * differences are coverage computation only. Strokes are normalized: with
+ * {@code STROKE_NORMALIZE} (the default) the device-space path end points are
+ * snapped to pixel centres and the control points shifted along, as Marlin's
+ * normalizing iterator does for antialiased rendering, and the path is mapped
+ * back to user space because {@code BasicStroke} applies under the transform.
+ * Fills are sent in device space as they are.
  */
 final class SKShapePipe implements ShapeDrawPipe {
 
@@ -123,7 +124,13 @@ final class SKShapePipe implements ShapeDrawPipe {
         }
     }
 
-    /** Whether {@link #render} would reach one of Skia's analytic renderers. */
+    /**
+     * Whether {@link #render} would reach one of Skia's analytic renderers:
+     * rectangles, ellipses and round rectangles, filled, or stroked where
+     * Skia's result can match Java's. Dashes are measured along Java's cubic
+     * ellipse, not Skia's conic one, and Skia's analytic oval stroke degrades
+     * at one device pixel or less.
+     */
     static boolean isAnalytic(SunGraphics2D sg2d, Shape s, BasicStroke bs) {
         if (!(s instanceof Rectangle2D || s instanceof Ellipse2D || s instanceof RoundRectangle2D)) {
             return false;
@@ -132,9 +139,13 @@ final class SKShapePipe implements ShapeDrawPipe {
         if (bs == null) {
             return true;
         }
-        boolean thin = sg2d.strokeState <= SunGraphics2D.STROKE_THINDASHED;
-        double lw = thin ? userSpaceLineWidth(at, THIN_PEN_SIZE) : bs.getLineWidth();
-        return bs.getDashArray() == null && lw * Math.sqrt(Math.abs(at.getDeterminant())) > 1.0;
+        return bs.getDashArray() == null && lineWidth(sg2d, bs) * Math.sqrt(Math.abs(at.getDeterminant())) > 1.0;
+    }
+
+    /** The stroke's width in user space; thin strokes are one device pixel wide. */
+    private static double lineWidth(SunGraphics2D sg2d, BasicStroke bs) {
+        return sg2d.strokeState <= SunGraphics2D.STROKE_THINDASHED
+                ? userSpaceLineWidth(sg2d.transform, THIN_PEN_SIZE) : bs.getLineWidth();
     }
 
     @Override
@@ -157,36 +168,24 @@ final class SKShapePipe implements ShapeDrawPipe {
 
     private void render(SunGraphics2D sg2d, Shape s, BasicStroke bs) {
         AffineTransform at = sg2d.transform;
-        boolean normalize = sg2d.strokeHint != SunHints.INTVAL_STROKE_PURE;
+        // Java normalizes strokes only (AAShapePipe.renderPath: adjust = bs != null
+        // && !PURE): the outline of an antialiased fill is rasterized where it is,
+        // so an edge on a pixel boundary is crisp and a fractional edge covers
+        // the outer pixel by its fraction. Snapping fill edges to pixel centres
+        // spilled half a device pixel over the right and bottom of every
+        // rounded panel and tab (AnalyticShapeEdgeTest).
+        boolean normalize = bs != null && sg2d.strokeHint != SunHints.INTVAL_STROKE_PURE;
         boolean axisAligned = (at.getType() & AXIS_ALIGNED_MASK) == 0;
         Geometry geo = new Geometry();
-        float[] stroke = null;
+        float[] stroke = null;   // width, cap, join, miter limit; dashes never reach the native side
         if (bs != null) {
-            boolean thin = sg2d.strokeState <= SunGraphics2D.STROKE_THINDASHED;
-            double lw = thin ? userSpaceLineWidth(at, THIN_PEN_SIZE) : bs.getLineWidth();
-            float[] dashes = bs.getDashArray();
-            int dashCount = dashes != null ? dashes.length : 0;
-            stroke = new float[6 + dashCount];
-            stroke[0] = (float) lw;
-            stroke[1] = bs.getEndCap();
-            stroke[2] = bs.getLineJoin();
-            stroke[3] = bs.getMiterLimit();
-            stroke[4] = bs.getDashPhase();
-            stroke[5] = dashCount;
-            if (dashCount > 0) {
-                System.arraycopy(dashes, 0, stroke, 6, dashCount);
-            }
+            stroke = new float[] { (float) lineWidth(sg2d, bs), bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit() };
         }
-        // Analytic rects/ovals/round rects only when Skia's result can match:
-        // dashes are measured along Java's cubic ellipse, not Skia's conic one,
-        // and Skia's analytic oval stroke degrades at one device pixel or less.
-        boolean analyticStroke = bs == null
-                || (bs.getDashArray() == null && stroke[0] * Math.sqrt(Math.abs(at.getDeterminant())) > 1.0);
-        if (analyticStroke && analytic(s, at, axisAligned && normalize, axisAligned, bs != null, geo)) {
+        if (isAnalytic(sg2d, s, bs) && analytic(s, at, axisAligned && normalize, axisAligned, bs != null, geo)) {
             // ready
         } else if (bs == null) {
-            // fill: the device-space path, normalized like Marlin's
-            path(s.getPathIterator(at), normalize, geo);
+            // fill: the device-space path as it is (no normalization for fills)
+            path(s.getPathIterator(at), geo);
         } else {
             // stroke: normalized in device space, stroked in user space
             Shape userShape = s;
@@ -206,11 +205,11 @@ final class SKShapePipe implements ShapeDrawPipe {
                 // only fills the outline, in device space.
                 BasicStroke dashed = new BasicStroke(stroke[0], bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(),
                                                      bs.getDashArray(), bs.getDashPhase());
-                path(dashed.createStrokedShape(userShape).getPathIterator(at), false, geo);
+                path(dashed.createStrokedShape(userShape).getPathIterator(at), geo);
                 enqueue(sg2d, true, geo, null);
                 return;
             }
-            path(userShape.getPathIterator(null), false, geo);
+            path(userShape.getPathIterator(null), geo);
             geo.xform = matrix(at);
         }
         enqueue(sg2d, bs == null, geo, stroke);
@@ -239,7 +238,11 @@ final class SKShapePipe implements ShapeDrawPipe {
         } else if (s instanceof RoundRectangle2D rr) {
             geo.kind = KIND_ROUND_RECT;
             x = rr.getX(); y = rr.getY(); w = rr.getWidth(); h = rr.getHeight();
-            aw = rr.getArcWidth(); ah = rr.getArcHeight();
+            // Java clamps each arc to its own side (RoundRectIterator): arcs wider
+            // than the shape make a pill with semicircular ends. Skia's rounded
+            // rect scales both radii by one factor instead, which flattens the
+            // ends of a pill (60 levels and more at the arcs).
+            aw = Math.min(w, Math.abs(rr.getArcWidth())); ah = Math.min(h, Math.abs(rr.getArcHeight()));
         } else {
             return false;
         }
@@ -292,10 +295,7 @@ final class SKShapePipe implements ShapeDrawPipe {
         return scale > 0 ? deviceWidth / scale : deviceWidth;
     }
 
-    private static void path(PathIterator pi, boolean normalize, Geometry geo) {
-        if (normalize) {
-            pi = new NormalizingIterator(pi);
-        }
+    private static void path(PathIterator pi, Geometry geo) {
         geo.kind = KIND_PATH;
         geo.windingRule = pi.getWindingRule();
         int[] types = new int[64];
@@ -311,10 +311,10 @@ final class SKShapePipe implements ShapeDrawPipe {
                 default -> 0;
             };
             if (nt == types.length) {
-                types = java.util.Arrays.copyOf(types, nt * 2);
+                types = Arrays.copyOf(types, nt * 2);
             }
             if (nc + n > coords.length) {
-                coords = java.util.Arrays.copyOf(coords, Math.max(coords.length * 2, nc + n));
+                coords = Arrays.copyOf(coords, Math.max(coords.length * 2, nc + n));
             }
             types[nt++] = type;
             System.arraycopy(seg, 0, coords, nc, n);
@@ -413,9 +413,7 @@ final class SKShapePipe implements ShapeDrawPipe {
             int bytes = 4 * (2 + 6 + strokeInts + geometryInts);
             RenderBuffer buf = rq.getBuffer();
             if (bytes <= buf.capacity()) {
-                if (bytes > buf.remaining()) {
-                    rq.flushNow();
-                }
+                rq.ensureCapacity(bytes);
                 buf.putInt(fill ? FILL_SHAPE : DRAW_SHAPE);
                 buf.putInt(geo.kind);
                 buf.put(geo.xform, 0, 6);
