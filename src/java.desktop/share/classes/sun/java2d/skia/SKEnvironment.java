@@ -51,11 +51,23 @@ public final class SKEnvironment {
      * the rest),
      * {@code marlin} (coverage tiles for everything) or {@code skia}
      * (everything through Skia, general paths via Graphite's path atlas).
+     * Anything else counts as {@code marlin}.
      */
-    private static final String SHAPES =
-            System.getProperty("sun.java2d.skia.shapes", "analytic");
+    private static final String SHAPES = shapesProperty();
 
-    private static boolean initialized;
+    private static String shapesProperty() {
+        String shapes = System.getProperty("sun.java2d.skia.shapes", "analytic");
+        if (!shapes.equalsIgnoreCase("analytic") && !shapes.equalsIgnoreCase("marlin")
+                && !shapes.equalsIgnoreCase("skia")) {
+            if (VERBOSE) {
+                System.err.println("sun.java2d.skia.shapes=" + shapes + " is not analytic, marlin or skia; using marlin");
+            }
+            return "marlin";
+        }
+        return shapes;
+    }
+
+    private static volatile boolean initialized;
     private static String description;
 
     /** How LCD text is composited; the ordinals are what the native side receives. */
@@ -63,16 +75,17 @@ public final class SKEnvironment {
 
     /**
      * Configuration of the native backend that depends on the GPU architecture
-     * rather than on Java2D semantics, with defaults per GPU API and system
-     * properties to override them:
+     * rather than on Java2D semantics, with defaults by whether the shader can
+     * read the framebuffer and system properties to override them:
      * <ul>
      * <li>{@code sun.java2d.skia.msaa}: Graphite's internal sample count (1, 2,
      *     4, 8). Multisampling quantizes antialiased coverage to that many
      *     levels but makes general paths cheap; non-AA geometry stays
      *     pixel-exact either way.</li>
      * <li>{@code sun.java2d.skia.blitQuads}: {@code mesh} (textured
-     *     two-triangle mesh) or {@code edgeAA} (Graphite's per-edge-AA image
-     *     draw with no AA edges) for image blits.</li>
+     *     two-triangle mesh, the default) or {@code edgeAA} (Graphite's
+     *     per-edge-AA image draw with no AA edges) for image blits; anything
+     *     else counts as {@code mesh}.</li>
      * <li>{@code sun.java2d.skia.lcd}: how LCD (subpixel) text is composited.
      *     {@code blend}: a blender reads the destination and blends each
      *     colour channel in the destination's gamma, as the software loops
@@ -91,15 +104,18 @@ public final class SKEnvironment {
      * fourth knob; it is decided on the Java side.
      */
     private record Configuration(int msaaSamples, boolean edgeAAQuads, LcdMode lcdMode, boolean framebufferFetch) {
-        static Configuration defaultsFor(String gpuApi, boolean framebufferFetch) {
+        static Configuration defaultsFor(boolean framebufferFetch) {
             // Measured on Metal (Apple M1 Max) and Dawn/D3D11: the path atlas beats
             // 4x MSAA on fidelity and MSAA only wins on general paths; meshes and
             // the edge-AA draw measured equal, the mesh is the exact one. Vulkan
             // inherits these values until measured. A destination read without
             // framebuffer fetch costs a render pass and a copy per draw (Dawn on
             // Direct3D, Metal on Intel and AMD GPUs), which LCD text cannot
-            // afford once overlapping glyphs are drawn separately.
-            return new Configuration(1, false, framebufferFetch ? LcdMode.BLEND : LcdMode.TWOPASS, framebufferFetch);
+            // afford once overlapping glyphs are drawn separately. Of the two
+            // modes without a destination read, accumulate is the faster one
+            // (one layer per batch, no split) and the closer one at overlaps;
+            // in IDE scenes the two are indistinguishable (2026-10-21).
+            return new Configuration(1, false, framebufferFetch ? LcdMode.BLEND : LcdMode.ACCUMULATE, framebufferFetch);
         }
 
         Configuration withProperties() {
@@ -139,8 +155,10 @@ public final class SKEnvironment {
      * Returns whether the Skia backend was requested and the GPU API is
      * available. Triggers initialization on first call.
      */
-    public static synchronized boolean isSkiaEnabled() {
-        init();
+    public static boolean isSkiaEnabled() {
+        if (!initialized) {
+            init();
+        }
         return description != null;
     }
 
@@ -158,17 +176,26 @@ public final class SKEnvironment {
      * Human-readable description of the GPU API, device and Skia milestone,
      * or {@code null} if the backend is not enabled.
      */
-    public static synchronized String getDescription() {
-        init();
+    public static String getDescription() {
+        if (!initialized) {
+            init();
+        }
         return description;
     }
 
-    @SuppressWarnings("restricted")
-    private static void init() {
+    private static synchronized void init() {
         if (initialized) {
             return;
         }
-        initialized = true;
+        try {
+            initOnce();
+        } finally {
+            initialized = true;
+        }
+    }
+
+    @SuppressWarnings("restricted")
+    private static void initOnce() {
         if (!REQUESTED) {
             return;
         }
@@ -176,7 +203,7 @@ public final class SKEnvironment {
             System.loadLibrary("awt_skia");
             description = initNative();
             if (description != null) {
-                configuration = Configuration.defaultsFor(gpuApiNative(), framebufferFetchNative()).withProperties();
+                configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();
                 configureNative(configuration.msaaSamples(), configuration.edgeAAQuads(),
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch());
             }
@@ -202,9 +229,6 @@ public final class SKEnvironment {
 
     /** Describes the GPU API and device Skia will run on; {@code null} if unavailable. */
     private static native String initNative();
-
-    /** The GPU API Graphite runs on here: {@code metal}, {@code vulkan} or {@code dawn}. */
-    private static native String gpuApiNative();
 
     /** Whether the GPU reads the framebuffer in the shader, so that a destination read costs nothing. */
     private static native boolean framebufferFetchNative();

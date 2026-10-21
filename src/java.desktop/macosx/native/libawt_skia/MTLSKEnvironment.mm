@@ -29,7 +29,6 @@
 #import <Metal/Metal.h>
 #include <string>
 #include "jni.h"
-#include "jni_util.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "include/core/SkMilestone.h"
 
@@ -43,17 +42,12 @@ Java_sun_java2d_skia_SKEnvironment_initNative(JNIEnv *env, jclass clazz)
         if (device == nil) {
             return nullptr;
         }
+        // the device name is UTF-8, as the Dawn half's adapter names are
         std::string description = std::string("Skia m") + std::to_string(SK_MILESTONE)
                 + " Graphite/Metal on " + [[device name] UTF8String];
         [device release];
-        return JNU_NewStringPlatform(env, description.c_str());
+        return env->NewStringUTF(description.c_str());
     }
-}
-
-JNIEXPORT jstring JNICALL
-Java_sun_java2d_skia_SKEnvironment_gpuApiNative(JNIEnv *env, jclass clazz)
-{
-    return JNU_NewStringPlatform(env, "metal");
 }
 
 // Apple GPUs read the framebuffer in the fragment shader (Graphite's
@@ -68,6 +62,5 @@ Java_sun_java2d_skia_SKEnvironment_framebufferFetchNative(JNIEnv *env, jclass cl
         return apple ? JNI_TRUE : JNI_FALSE;
     }
 }
-
 
 } // extern "C"
