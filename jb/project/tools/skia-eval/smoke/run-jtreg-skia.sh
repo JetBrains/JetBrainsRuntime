@@ -3,7 +3,8 @@
 # as plain java (no jtreg on the VM): run-jtreg-skia.sh <jdk image> [out dir]
 # Prints one line per run line: PASS / FAIL, and the test's own summary line.
 set -u
-JDK=$1; OUT="${2:-/d/Projects/JetBrainsRuntime/build/jtreg-out-main}"; R=/d/Projects/JetBrainsRuntime
+R="${R:-$(cd "$(dirname "$0")/../../../../.." && pwd)}"
+JDK=$1; OUT="${2:-$R/build/skia-eval-out/jtreg}"
 X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.java2d.pipe=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.font=ALL-UNNAMED --add-exports java.desktop/sun.java2d.loops=ALL-UNNAMED --add-exports java.desktop/sun.awt.image=ALL-UNNAMED"
 mkdir -p "$OUT"; cd "$OUT" || exit 2
 pass=0; fail=0
