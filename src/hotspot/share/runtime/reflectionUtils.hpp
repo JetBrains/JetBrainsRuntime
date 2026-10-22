@@ -153,7 +153,7 @@ class FieldStream : public KlassStream {
   // bridge to a heavier API:
   fieldDescriptor& field_descriptor() const {
     fieldDescriptor& field = const_cast<fieldDescriptor&>(_fd_buf);
-    field.reinitialize(_klass, _index);
+    field.reinitialize(_klass, _klass->field(_index));
     return field;
   }
 };

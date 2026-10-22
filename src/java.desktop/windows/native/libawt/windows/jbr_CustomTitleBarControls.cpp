@@ -236,41 +236,43 @@ namespace CustomTitleBarControlsSupport {
         }
 
         // Choose Win10/11 style
-        JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
-        bool win11OrNewer = (bool) JNU_GetStaticFieldByName(env, nullptr, "sun/awt/windows/WFramePeer", "WIN11_OR_NEWER", "Z").z;
-        if (win11OrNewer) {
-            PaintIcon = PaintIconWin11;
-            DEFAULT_COLORS = DEFAULT_COLORS_WIN11;
-        } else {
-            PaintIcon = PaintIconWin10;
-            DEFAULT_COLORS = DEFAULT_COLORS_WIN10;
+        {
+            JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+            bool win11OrNewer = (bool) JNU_GetStaticFieldByName(env, nullptr, "sun/awt/windows/WFramePeer", "WIN11_OR_NEWER", "Z").z;
+            if (win11OrNewer) {
+                PaintIcon = PaintIconWin11;
+                DEFAULT_COLORS = DEFAULT_COLORS_WIN11;
+            } else {
+                PaintIcon = PaintIconWin10;
+                DEFAULT_COLORS = DEFAULT_COLORS_WIN10;
+            }
+
+            // Find internalCustomTitleBarUpdateInsets java method
+            jclass jcWindow = env->FindClass("java/awt/Window");
+            if (!jcWindow) goto fail;
+            jmUpdateInsets = env->GetMethodID(jcWindow, "internalCustomTitleBarUpdateInsets", "(FF)V");
+            env->DeleteLocalRef(jcWindow);
+            if (!jmUpdateInsets) goto fail;
+
+            // Register class
+            WNDCLASSEX wc;
+            wc.cbSize        = sizeof(WNDCLASSEX);
+            wc.style         = 0L;
+            wc.lpfnWndProc   = (WNDPROC)DefWindowProc;
+            wc.cbClsExtra    = 0;
+            wc.cbWndExtra    = 0;
+            wc.hInstance     = AwtToolkit::GetInstance().GetModuleHandle();
+            wc.hIcon         = nullptr;
+            wc.hCursor       = nullptr;
+            wc.hbrBackground = nullptr;
+            wc.lpszMenuName  = nullptr;
+            wc.lpszClassName = CLASS;
+            wc.hIconSm       = nullptr;
+            RegisterClassEx(&wc);
+
+            availability = Availability::AVAILABLE;
+            return true;
         }
-
-        // Find internalCustomTitleBarUpdateInsets java method
-        jclass jcWindow = env->FindClass("java/awt/Window");
-        if (!jcWindow) goto fail;
-        jmUpdateInsets = env->GetMethodID(jcWindow, "internalCustomTitleBarUpdateInsets", "(FF)V");
-        env->DeleteLocalRef(jcWindow);
-        if (!jmUpdateInsets) goto fail;
-
-        // Register class
-        WNDCLASSEX wc;
-        wc.cbSize        = sizeof(WNDCLASSEX);
-        wc.style         = 0L;
-        wc.lpfnWndProc   = (WNDPROC)DefWindowProc;
-        wc.cbClsExtra    = 0;
-        wc.cbWndExtra    = 0;
-        wc.hInstance     = AwtToolkit::GetInstance().GetModuleHandle();
-        wc.hIcon         = nullptr;
-        wc.hCursor       = nullptr;
-        wc.hbrBackground = nullptr;
-        wc.lpszMenuName  = nullptr;
-        wc.lpszClassName = CLASS;
-        wc.hIconSm       = nullptr;
-        RegisterClassEx(&wc);
-
-        availability = Availability::AVAILABLE;
-        return true;
 
         fail:
         availability = Availability::UNAVAILABLE;
