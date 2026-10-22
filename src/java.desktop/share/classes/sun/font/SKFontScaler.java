@@ -41,7 +41,8 @@ import sun.java2d.skia.SKEnvironment;
  * from the font file; a scaler context is one {@code SkFont} per strike.
  * <p>
  * Lives in {@code libawt_skia}; only created when the Skia backend is
- * available ({@link SKEnvironment#isSkiaEnabled()}). Selected for the
+ * available ({@link SKEnvironment#loadLibrary()}; the GPU backend need not be
+ * enabled, the software loops and the platform's pipeline draw its images). Selected for the
  * platform's fonts with {@code -Dsun.java2d.font.scaler=skia}
  * ({@link FontUtilities#useSkiaScaler}): {@code CFont} strikes become
  * {@link SKFontStrike}s, file fonts get this scaler behind their
@@ -89,10 +90,10 @@ public final class SKFontScaler extends FontScaler {
         return new SKFontScaler(font, createNative(0, path, index));
     }
 
-    /** The natives live in libawt_skia, which SKEnvironment loads on its first query. */
+    /** The natives live in libawt_skia; the scaler needs the library, not the GPU backend. */
     private static void requireAvailable() {
         if (!isAvailable()) {
-            throw new IllegalStateException("the Skia backend is not available");
+            throw new IllegalStateException("the Skia library is not available");
         }
     }
 
@@ -109,7 +110,7 @@ public final class SKFontScaler extends FontScaler {
 
     /** Whether a scaler can be made at all here (the platform has a font host). */
     public static boolean isAvailable() {
-        return SKEnvironment.isSkiaEnabled();
+        return SKEnvironment.loadLibrary();
     }
 
     @Override

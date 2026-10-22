@@ -197,6 +197,30 @@ public final class SKEnvironment {
         return STROKES_BY_JAVA;
     }
 
+    private static Boolean libraryLoaded;
+
+    /**
+     * Loads libawt_skia once and tells whether it is there. The font scaler
+     * ({@code sun.font.SKFontScaler}) needs only the library, not the GPU
+     * backend, so it can serve the software loops and the platform's pipeline.
+     */
+    @SuppressWarnings("restricted")
+    public static synchronized boolean loadLibrary() {
+        if (libraryLoaded == null) {
+            try {
+                System.loadLibrary("awt_skia");
+                libraryLoaded = true;
+            } catch (UnsatisfiedLinkError e) {
+                if (VERBOSE) {
+                    System.err.println("Skia library is not available: " + e);
+                }
+                log.warning("Skia library is not available", e);
+                libraryLoaded = false;
+            }
+        }
+        return libraryLoaded;
+    }
+
     /**
      * Human-readable description of the GPU API, device and Skia milestone,
      * or {@code null} if the backend is not enabled.
@@ -219,13 +243,14 @@ public final class SKEnvironment {
         }
     }
 
-    @SuppressWarnings("restricted")
     private static void initOnce() {
         if (!REQUESTED) {
             return;
         }
         try {
-            System.loadLibrary("awt_skia");
+            if (!loadLibrary()) {
+                return;
+            }
             description = initNative();
             if (description != null) {
                 configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();
