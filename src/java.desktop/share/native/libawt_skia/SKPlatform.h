@@ -112,9 +112,11 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // smoothing on, as it draws text of the given luminance (0..255): an A8
 // coverage mask of width x height bytes, the glyph origin at (originX,
 // originY) in the mask, glyphToDevice the transform of the glyph's design
-// space in pixels (size included, y down). False where the platform has no
-// such renderer (the caller falls back to Skia's coverage).
+// space in pixels (size included, y down). strokeWidth > 0 (device pixels)
+// emboldens the glyph by that much, the way Java synthesizes bold for a font
+// without a bold face (FreeType's embolden by 1/24 em). False where the
+// platform has no such renderer (the caller falls back to Skia's coverage).
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  float originX, float originY, int width, int height, uint8_t *mask);
+                                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask);
 
 #endif /* SKPlatform_h_Included */

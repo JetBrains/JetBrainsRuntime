@@ -236,7 +236,7 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // that luminance. Text space is y up: the device matrix (y down) gets its y
 // flipped into the text matrix.
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  float originX, float originY, int width, int height, uint8_t *mask)
+                                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
 {
     if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0) {
         return false;
@@ -281,6 +281,13 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
     const CGGlyph cgGlyph = glyph;
     const CGPoint zero = CGPointZero;
     CTFontDrawGlyphs(font, &cgGlyph, &zero, 1, cg);
+    if (strokeWidth > 0) {
+        // synthetic bold: the glyph drawn a second time, shifted right by the emboldening, as WebKit
+        // does on macOS — CoreGraphics does not smooth stroked glyphs, so a fill-and-stroke would
+        // lose the smoothing and its luminance dependence
+        CGContextSetTextPosition(cg, originX + strokeWidth, originY);
+        CTFontDrawGlyphs(font, &cgGlyph, &zero, 1, cg);
+    }
     CGContextRelease(cg);
     CFRelease(font);
     // coverage = what the paper lost, relative to full ink

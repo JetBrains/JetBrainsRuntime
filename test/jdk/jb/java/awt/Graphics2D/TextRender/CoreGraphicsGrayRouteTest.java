@@ -19,11 +19,14 @@
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontFormatException;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 /**
  * @test
@@ -38,11 +41,15 @@ import java.awt.image.BufferedImage;
  *          Without the luminance property the route takes the luminance from the
  *          text colour itself: black and white text drawn alternately in one
  *          process, with drawString and with a GlyphVector, each get their own
- *          glyph images.
+ *          glyph images. Synthetic bold (a file font without a bold face) goes
+ *          through CoreGraphics too: its white text carries at least 12 % more
+ *          ink relative to its black text than plain coverage would (the
+ *          platform's smoothing gains +40 % for white and +15 % for black).
  * @requires os.family == "mac"
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text.cgLuminance=255 CoreGraphicsGrayRouteTest light
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text.cgLuminance=0 CoreGraphicsGrayRouteTest dark
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg CoreGraphicsGrayRouteTest colours
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg CoreGraphicsGrayRouteTest bold
  */
 public class CoreGraphicsGrayRouteTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
@@ -50,6 +57,10 @@ public class CoreGraphicsGrayRouteTest {
 
     public static void main(String[] args) {
         Font font = new Font("Helvetica Neue", Font.PLAIN, 13);
+        if (args[0].equals("bold")) {
+            checkSyntheticBold();
+            return;
+        }
         if (args[0].equals("colours")) {
             // alternate, so a shared image for both colours would show
             for (int i = 0; i < 2; i++) {
@@ -61,6 +72,24 @@ public class CoreGraphicsGrayRouteTest {
             return;
         }
         check(font, args[0].equals("light"), false);
+    }
+
+    /** A single-file family has no bold face: Font.BOLD is synthesized by the scaler. */
+    static void checkSyntheticBold() {
+        File file = new File(System.getProperty("java.home"), "lib/fonts/Inter-Regular.otf");
+        Font bold;
+        try {
+            bold = Font.createFont(Font.TRUETYPE_FONT, file).deriveFont(Font.BOLD, 13f);
+        } catch (IOException | FontFormatException e) {
+            throw new RuntimeException(e);
+        }
+        long white = ink(render(bold, Color.WHITE, Color.BLACK, Mode.STRING), Color.BLACK);
+        long black = ink(render(bold, Color.BLACK, Color.WHITE, Mode.STRING), Color.WHITE);
+        double ratio = (double) white / black;
+        System.out.println("synthetic bold: white ink " + white + ", black ink " + black + ", ratio " + ratio);
+        if (ratio < 1.12) {
+            throw new RuntimeException("synthetic bold is not rasterized by the platform for the text luminance: white/black ink ratio " + ratio + " < 1.12");
+        }
     }
 
     static void check(Font font, boolean light, boolean glyphVector) {

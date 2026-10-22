@@ -441,9 +441,9 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const bool darkenedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_DARKENED
                               && context->grayDarkening > 0;
     // the platform's own smoothed rendering for the text luminance (SKPlatform_SmoothedGlyphMask);
-    // synthetic bold has no platform equivalent and keeps Skia's coverage
-    const bool platformGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_CG
-                              && !font.isEmbolden();
+    // synthetic bold strokes the outline by 1/24 em there, as FreeType's embolden does
+    const bool platformGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_CG;
+    const float platformStroke = font.isEmbolden() ? font.getSize() / 24 : 0;
     if (smoothedGray) {
         font.setEdging(SkFont::Edging::kSubpixelAntiAlias);
     }
@@ -521,7 +521,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
         for (int sx = 0; sx < resX; sx++) {
             UInt8 *variant = info->image + imageSize * (size_t) (sy * resX + sx);
             if (platformGray && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, context->grayLuminance,
-                                                             (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
+                                                             platformStroke, (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
                                                              width, height, variant)) {
                 continue;
             }
