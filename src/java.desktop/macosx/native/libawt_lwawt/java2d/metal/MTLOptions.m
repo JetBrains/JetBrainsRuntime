@@ -82,3 +82,8 @@ BOOL MTLOptions_GpuOptimizedTextures(void) {
     static int cache = -1;
     return boolOption(@"sun.java2d.metal.gpuOptimizedTextures", YES, &cache);
 }
+
+BOOL MTLOptions_TextGammaCorrection(void) {
+    static int cache = -1;
+    return boolOption(@"sun.java2d.metal.textGammaCorrection", YES, &cache);
+}

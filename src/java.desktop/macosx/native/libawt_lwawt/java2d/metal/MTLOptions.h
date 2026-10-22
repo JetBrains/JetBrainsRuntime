@@ -54,4 +54,12 @@ BOOL MTLOptions_GlyphCacheSync(void);
 // those caches plain copies.
 BOOL MTLOptions_GpuOptimizedTextures(void);
 
+/**
+ * sun.java2d.metal.textGammaCorrection (default true): grayscale text blended
+ * with the brightness-dependent coverage exponent of JBR-3820 (frag_gmc_text).
+ * False blends it like the software loops (frag_text), for glyph images that
+ * already carry the text luminance (the Skia scaler's CoreGraphics route).
+ */
+BOOL MTLOptions_TextGammaCorrection(void);
+
 #endif /* MTLOptions_h_Included */

@@ -24,6 +24,7 @@
  */
 
 #include "MTLPaints.h"
+#include "MTLOptions.h"
 #include "MTLClip.h"
 #include "common.h"
 
@@ -229,8 +230,10 @@ jint _color;
             colorBuffer = NO;
         }
         if (renderOptions->isGMCText) {
-            fragShader = @"frag_gmc_text";
-            gmcText = YES;
+            // grayscale text: the brightness-dependent coverage exponent (JBR-3820) unless
+            // sun.java2d.metal.textGammaCorrection=false asks for the plain blend of the software loops
+            gmcText = MTLOptions_TextGammaCorrection();
+            fragShader = gmcText ? @"frag_gmc_text" : @"frag_text";
             colorBuffer = NO;
         }
         if (renderOptions->isLCD) {
