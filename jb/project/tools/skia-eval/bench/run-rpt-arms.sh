@@ -27,15 +27,26 @@ if [ ! -f "$CLASSES/renderperf/RenderPerfTest.class" ]; then
   "$JDK/bin/javac.exe" -d "$CLASSES" "$S/src/renderperf/RenderPerfTest.java" || exit 2
   cp "$S"/resources/renderperf/images/* "$CLASSES/renderperf/images/"
 fi
+
+# The full list, unless $TESTS names tests. Direct3D 9 renders XOR so slowly that a single test runs
+# for longer than ten minutes (FlatOval_XOR, 2026-10-22), so the arms in $XOR_SKIP_ARMS (default d3d)
+# leave out the *_XOR tests.
+ALL_TESTS=${TESTS:-$("$JDK/bin/java.exe" -cp "$CLASSES" renderperf.RenderPerfTest -h 2>&1 | tr -d '\r' \
+    | sed -n 's/.*Supported test arguments <tests>://p')}
+XOR_SKIP_ARMS=${XOR_SKIP_ARMS-d3d}
+NO_XOR_TESTS=$(printf '%s\n' $ALL_TESTS | grep -v '_XOR$' | tr '\n' ' ')
+
 mkdir -p "$OUT/$MODE"
-FIRST=${REP_START:-1}   # to continue a series in another batch
+FIRST=${REP_START:-1}
 for rep in $(seq "$FIRST" $((FIRST + REPS - 1))); do
   for arm in $(printf '%s\n' "${ARMS[@]}" | shuf); do
     log="$OUT/$MODE/$arm-$rep.log"
+    tests=$ALL_TESTS
+    case " $XOR_SKIP_ARMS " in *" $arm "*) tests=$NO_XOR_TESTS ;; esac
     start=$(date +%s)
-    # shellcheck disable=SC2046
-    timeout 1800 "$JDK/bin/java.exe" $(props "$arm") -Dsun.java2d.uiScale=1 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 \
-        -cp "$CLASSES" renderperf.RenderPerfTest -e="$MODE" ${TESTS:-} > "$log" 2>&1
+    # shellcheck disable=SC2046,SC2086
+    timeout 900 "$JDK/bin/java.exe" $(props "$arm") -Dsun.java2d.uiScale=1 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 \
+        -cp "$CLASSES" renderperf.RenderPerfTest -e="$MODE" $tests > "$log" 2>&1
     rc=$?
     echo "rep $rep $arm: exit=$rc $(( $(date +%s) - start )) s, $(grep -c ' FPS$' "$log") results"
   done
