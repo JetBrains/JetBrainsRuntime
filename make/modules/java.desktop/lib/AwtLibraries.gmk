@@ -239,21 +239,46 @@ ifeq ($(call isTargetOs, windows)+$(ENABLE_HEADLESS_ONLY)+$(A11Y_NVDA_ANNOUNCING
 endif
 
 # Compile Vulkan shaders
+# $1 - extra compile flags
 define compile-spirv
   $(call MakeTargetDir)
-  $(VULKAN_SHADER_COMPILER) -D$(call uppercase,$(patsubst .%,STAGE_%,$(suffix $<))) -o '$(call FixPath,$(call DecodeSpace,$@))' '$(call FixPath,$(call DecodeSpace,$<))'
+  $(VULKAN_SHADER_COMPILER) $(strip $1) -D$(call uppercase,$(patsubst .%,STAGE_%,$(suffix $<))) -o '$(call FixPath,$(call DecodeSpace,$@))' '$(call FixPath,$(call DecodeSpace,$<))'
 endef
-spirv-name = $(strip $1).h
+
+# $1 - shader filename
+# $2 - modifiers separated with '+' (e.g. FOO+BAR), optional
+spirv-name = $(basename $(strip $1))$(addprefix _,$(subst +, ,$(strip $2)))$(suffix $(strip $1)).h
+
+vulkan-shader-variant = $(basename $(strip $1))_$(subst +,_,$(strip $2))$(suffix $(strip $1))
+
+# Compiles the shader, potentially with flags like -DSHADER_COMPILE_MOD_FOO -DSHADER_COMPILE_MOD_BAR
+# $1 - shader filename
+# $2 - modifiers separated with '+' (e.g. FOO+BAR), optional
+define SetupVulkanSpirvCompilation
+  $$(VULKAN_SHADER_OUT_DIR)/$$(call spirv-name,$1,$2): $$(VULKAN_SHADER_SRC_DIR)/$1
+	$$(call compile-spirv,$$(addprefix -DSHADER_COMPILE_MOD_,$$(subst +, ,$2)))
+
+  COMPILE_VULKAN_SHADERS += $$(VULKAN_SHADER_OUT_DIR)/$$(call spirv-name,$1,$2)
+endef
 
 ifeq ($(VULKAN_ENABLED), true)
   VULKAN_SHADER_SRC_DIR := $(TOPDIR)/src/$(MODULE)/share/glsl/vulkan
-  $(eval $(call SetupCopyFiles, COMPILE_VULKAN_SHADERS, \
-      SRC := $(VULKAN_SHADER_SRC_DIR), \
-      FILES := $(filter-out %.glsl, $(call FindFiles, $(VULKAN_SHADER_SRC_DIR))), \
-      DEST := $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/spirv, \
-      MACRO := compile-spirv, \
-      NAME_MACRO := spirv-name, \
-  ))
+  VULKAN_SHADER_OUT_DIR := $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/spirv
+  VULKAN_SHADER_SRC_FILENAMES := $(patsubst $(VULKAN_SHADER_SRC_DIR)/%,%,$(filter-out %.glsl, $(call FindFiles, $(VULKAN_SHADER_SRC_DIR))))
+
+  VULKAN_SHADER_SRC_WITH_MODIFIERS := \
+    gradient.frag:DUAL_SRC_MASK \
+    gradient_linear_push.frag:DUAL_SRC_MASK \
+    gradient_radial_push.frag:DUAL_SRC_MASK \
+    mask_fill_color.frag:DUAL_SRC_MASK
+
+  # Compile every found shader with no modifiers,
+  # additionally compile everything as listed above.
+  VULKAN_SHADER_SRC_WITH_MODIFIERS := $(VULKAN_SHADER_SRC_FILENAMES) $(VULKAN_SHADER_SRC_WITH_MODIFIERS)
+
+  $(foreach v, $(VULKAN_SHADER_SRC_WITH_MODIFIERS), \
+    $(eval $(call SetupVulkanSpirvCompilation,$(word 1,$(subst :, ,$v)),$(word 2,$(subst :, ,$v)))) \
+  )
 
   # Every shader also depends on every *.glsl include unconditionally; much easier to implement than -MD support.
   $(COMPILE_VULKAN_SHADERS): $(filter %.glsl, $(call FindFiles, $(VULKAN_SHADER_SRC_DIR)))
@@ -261,7 +286,7 @@ ifeq ($(VULKAN_ENABLED), true)
   VULKAN_SHADER_LIST = $(SUPPORT_OUTPUTDIR)/headers/java.desktop/vulkan/shader_list.h
   $(VULKAN_SHADER_LIST): $(COMPILE_VULKAN_SHADERS)
 	> $(VULKAN_SHADER_LIST) $(NEWLINE) \
-	$(foreach f, $(patsubst $(VULKAN_SHADER_SRC_DIR)/%,%,$(filter-out %.glsl, $(call FindFiles, $(VULKAN_SHADER_SRC_DIR)))), \
+	$(foreach f, $(patsubst $(VULKAN_SHADER_OUT_DIR)/%.h,%,$(COMPILE_VULKAN_SHADERS)), \
 	$(ECHO) SHADER_ENTRY\($(subst .,$(COMMA),$(subst /,_,$f))\) >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
 	$(ECHO) '#ifdef INCLUDE_BYTECODE' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
 	$(ECHO) '#include "spirv/$f.h"' >> $(VULKAN_SHADER_LIST) $(NEWLINE) \
