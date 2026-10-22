@@ -103,5 +103,9 @@ private:
 // the CTFontRef behind CFont). Null if the platform has no font host yet.
 sk_sp<SkFontMgr> SKPlatform_FontManager();
 sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
+// The platform's font fallback for a code point the font lacks (macOS: the
+// mapper hands such characters to CoreText as negative glyph codes): the
+// typeface that has it and the glyph in it; null if the platform has none.
+sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, uint16_t *glyph);
 
 #endif /* SKPlatform_h_Included */

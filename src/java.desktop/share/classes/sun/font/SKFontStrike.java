@@ -52,6 +52,8 @@ public final class SKFontStrike extends PhysicalStrike {
     private final long[] glyphImages;
     private final FontStrikeDisposer disposer;
     private ConcurrentHashMap<Integer, Rectangle2D.Float> boundsMap;
+    /** Images of fallback characters (negative codes), freed with the strike. */
+    private final ConcurrentHashMap<Integer, Long> fallbackImages = new ConcurrentHashMap<>();
 
     SKFontStrike(PhysicalFont font, FontStrikeDesc desc, SKFontScaler scaler) {
         super(font, desc);
@@ -74,6 +76,13 @@ public final class SKFontStrike extends PhysicalStrike {
         this.glyphImages = new long[Math.max(1, mapper.getNumGlyphs())];
         this.disposer = new FontStrikeDisposer(font, desc, pScalerContext, glyphImages);
         Disposer.addObjectRecord(this, disposer);
+        ConcurrentHashMap<Integer, Long> fallbacks = fallbackImages;
+        Disposer.addObjectRecord(this, () -> {
+            for (long ptr : fallbacks.values()) {
+                StrikeCache.freeLongPointer(ptr);
+            }
+            fallbacks.clear();
+        });
         // the images carry the advance, so advances never need a second scaler call
         this.getImageWithAdvance = true;
     }
@@ -100,9 +109,12 @@ public final class SKFontStrike extends PhysicalStrike {
         if (glyphCode >= INVISIBLE_GLYPHS) {
             return StrikeCache.invisibleGlyphPtr;
         }
-        // CFont's mapper hands fallback characters to CoreText as negative
-        // codes; the scaler has no typeface for them yet, so they stay empty.
-        if (glyphCode < 0 || glyphCode >= glyphImages.length) {
+        if (glyphCode < 0) {
+            // CFont's mapper hands a character the font lacks to the platform's
+            // fallback as -codePoint; the scaler resolves it the same way
+            return fallbackImages.computeIfAbsent(glyphCode, code -> scaler.getGlyphImage(pScalerContext, code));
+        }
+        if (glyphCode >= glyphImages.length) {
             return StrikeCache.invisibleGlyphPtr;
         }
         long ptr = glyphImages[glyphCode];
@@ -144,7 +156,7 @@ public final class SKFontStrike extends PhysicalStrike {
     @Override
     Point2D.Float getGlyphMetrics(int glyphCode) {
         Point2D.Float metrics = new Point2D.Float();
-        if (glyphCode >= 0 && glyphCode < glyphImages.length) {
+        if (glyphCode < glyphImages.length) {
             long ptr = getGlyphImagePtr(glyphCode);
             metrics.x = StrikeCache.getGlyphXAdvance(ptr);
             metrics.y = StrikeCache.getGlyphYAdvance(ptr);
@@ -182,7 +194,7 @@ public final class SKFontStrike extends PhysicalStrike {
     /** The outline in device space at {@code x}, {@code y}, as the layout code expects it. */
     @Override
     GeneralPath getGlyphOutline(int glyphCode, float x, float y) {
-        if (glyphCode < 0 || glyphCode >= INVISIBLE_GLYPHS) {
+        if (glyphCode >= INVISIBLE_GLYPHS) {
             return new GeneralPath();
         }
         return scaler.getGlyphOutline(pScalerContext, glyphCode, x, y);

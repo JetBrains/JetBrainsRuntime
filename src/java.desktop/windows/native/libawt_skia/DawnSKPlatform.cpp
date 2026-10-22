@@ -524,3 +524,7 @@ sk_sp<SkFontMgr> SKPlatform_FontManager() {
 sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong) {
     return nullptr;
 }
+
+sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong, int, uint16_t *) {
+    return nullptr;   // Windows resolves fallback through composite fonts, with non-negative codes
+}

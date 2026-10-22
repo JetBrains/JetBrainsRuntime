@@ -30,6 +30,8 @@
 #include "SKPlatform.h"
 
 #include <cmath>
+#include <mutex>
+#include <unordered_map>
 #include <optional>
 #include <vector>
 #include "jlong.h"
@@ -54,14 +56,23 @@
 
 namespace {
 
+struct Fallback {
+    sk_sp<SkTypeface> typeface;
+    SkGlyphID glyph = 0;
+};
+
 struct SKScaler {
     sk_sp<SkTypeface> typeface;
+    jlong nativeFont = 0;   // for the platform's fallback (0 for file fonts)
+    std::mutex fallbackLock;
+    std::unordered_map<int, Fallback> fallbacks;   // code point -> the platform's fallback glyph
 };
 
 // One per FontStrikeDesc: the glyph transform split into the SkFont's size and
 // the remaining matrix (device transform, skew, non-uniform scale), which the
 // glyph images and outlines are mapped through.
 struct SKScalerContext {
+    SKScaler *scaler = nullptr;
     SkFont font;
     SkMatrix remainder;   // glyphTx / size
     bool fractionalMetrics = false;
@@ -70,6 +81,49 @@ struct SKScalerContext {
     jint grayMode = 0;          // SKFontScaler.GRAY_*
     float grayDarkening = 0;    // fraction of the em added to the outline's width in the darkened mode
 };
+
+// The font and glyph to use for a Java glyph code: the strike's own font for
+// a glyph of it, the platform's fallback font for a negative code (CFont's
+// mapper encodes a character the font lacks as -codePoint). False if there
+// is nothing to draw.
+bool resolveGlyph(SKScalerContext *context, jint glyphCode, SkFont *font, SkGlyphID *glyph) {
+    if (context == nullptr) {
+        return false;
+    }
+    if (glyphCode >= 0) {
+        if (glyphCode > 0xffff) {
+            return false;
+        }
+        *font = context->font;
+        *glyph = (SkGlyphID) glyphCode;
+        return true;
+    }
+    SKScaler *scaler = context->scaler;
+    if (scaler == nullptr || scaler->nativeFont == 0) {
+        return false;
+    }
+    const int codePoint = -glyphCode;
+    Fallback fallback;
+    {
+        std::lock_guard<std::mutex> guard(scaler->fallbackLock);
+        auto it = scaler->fallbacks.find(codePoint);
+        if (it != scaler->fallbacks.end()) {
+            fallback = it->second;
+        } else {
+            uint16_t id = 0;
+            fallback.typeface = SKPlatform_FallbackTypeface(scaler->nativeFont, codePoint, &id);
+            fallback.glyph = id;
+            scaler->fallbacks[codePoint] = fallback;
+        }
+    }
+    if (!fallback.typeface || fallback.glyph == 0) {
+        return false;
+    }
+    *font = context->font;
+    font->setTypeface(fallback.typeface);
+    *glyph = fallback.glyph;
+    return true;
+}
 
 jobject strikeMetrics(JNIEnv *env, float ay, float dy, float ly, float mx) {
     jclass cls = env->FindClass("sun/font/StrikeMetrics");
@@ -109,7 +163,10 @@ Java_sun_font_SKFontScaler_createNative(JNIEnv *env, jclass clazz, jlong nativeF
         J2dRlsTraceLn(J2D_TRACE_WARNING, "SKFontScaler: no typeface for native font %p / file", jlong_to_ptr(nativeFont));
         return 0;
     }
-    return ptr_to_jlong(new SKScaler{ std::move(typeface) });
+    auto *scaler = new SKScaler();
+    scaler->typeface = std::move(typeface);
+    scaler->nativeFont = nativeFont;
+    return ptr_to_jlong(scaler);
 }
 
 JNIEXPORT void JNICALL
@@ -156,6 +213,7 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
         return 0;
     }
     auto *context = new SKScalerContext();
+    context->scaler = scaler;
     context->font = SkFont(scaler->typeface, (SkScalar) size);
     // AffineTransform order: m00 m10 m01 m11
     context->remainder = SkMatrix::MakeAll((SkScalar) (m[0] / size), (SkScalar) (m[2] / size), 0,
@@ -213,12 +271,13 @@ JNIEXPORT jfloat JNICALL
 Java_sun_font_SKFontScaler_getGlyphAdvanceNative(JNIEnv *env, jclass clazz, jlong pContext, jint glyphCode)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
-    if (context == nullptr || glyphCode < 0 || glyphCode > 0xffff) {
+    SkFont font;
+    SkGlyphID glyph;
+    if (!resolveGlyph(context, glyphCode, &font, &glyph)) {
         return 0;
     }
-    const SkGlyphID glyph = (SkGlyphID) glyphCode;
     SkScalar width = 0;
-    context->font.getWidths({&glyph, 1}, {&width, 1});
+    font.getWidths({&glyph, 1}, {&width, 1});
     if (!context->identityRemainder) {
         width = context->remainder.mapVector({width, 0}).fX;
     }
@@ -245,8 +304,9 @@ Java_sun_font_SKFontScaler_getGlyphOutlineNative(JNIEnv *env, jclass clazz, jlon
     if (gpCtor == nullptr || gpEmpty == nullptr) {
         return nullptr;
     }
-    std::optional<SkPath> path = context != nullptr && glyphCode >= 0 && glyphCode <= 0xffff
-                                 ? context->font.getPath((SkGlyphID) glyphCode) : std::nullopt;
+    SkFont font;
+    SkGlyphID glyph;
+    std::optional<SkPath> path = resolveGlyph(context, glyphCode, &font, &glyph) ? font.getPath(glyph) : std::nullopt;
     if (!path || path->isEmpty()) {
         return env->NewObject(gpClass, gpEmpty);
     }
@@ -289,9 +349,9 @@ Java_sun_font_SKFontScaler_getGlyphOutlineNative(JNIEnv *env, jclass clazz, jlon
 namespace {
 
 // The strike's advance for the glyph record (same rule as getGlyphAdvanceNative).
-float recordAdvance(const SKScalerContext *context, SkGlyphID glyph) {
+float recordAdvance(const SKScalerContext *context, const SkFont &font, SkGlyphID glyph) {
     SkScalar width = 0;
-    context->font.getWidths({&glyph, 1}, {&width, 1});
+    font.getWidths({&glyph, 1}, {&width, 1});
     if (!context->identityRemainder) {
         width = context->remainder.mapVector({width, 0}).fX;
     }
@@ -318,6 +378,34 @@ const int MAX_GLYPH_DIMENSION = 1024;   // as the FreeType scaler's MAX_GLYPH_DI
 
 } // namespace
 
+// The glyph's bounds in device space (Rectangle2D.Float): the outline's exact
+// bounds, or the font host's for a bitmap glyph without an outline (its
+// bounds are whole pixels, a pixel wider than the ink).
+JNIEXPORT jobject JNICALL
+Java_sun_font_SKFontScaler_getGlyphBoundsNative(JNIEnv *env, jclass clazz, jlong pContext, jint glyphCode)
+{
+    jclass rectClass = env->FindClass("java/awt/geom/Rectangle2D$Float");
+    jmethodID ctor = rectClass != nullptr ? env->GetMethodID(rectClass, "<init>", "(FFFF)V") : nullptr;
+    if (ctor == nullptr) {
+        return nullptr;
+    }
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    SkFont font;
+    SkGlyphID glyph;
+    SkRect bounds = SkRect::MakeEmpty();
+    if (resolveGlyph(context, glyphCode, &font, &glyph)) {
+        if (std::optional<SkPath> path = font.getPath(glyph)) {
+            bounds = path->computeTightBounds();
+        } else {
+            font.getBounds({&glyph, 1}, {&bounds, 1}, nullptr);
+        }
+        if (!context->identityRemainder) {
+            bounds = context->remainder.mapRect(bounds);
+        }
+    }
+    return env->NewObject(rectClass, ctor, bounds.fLeft, bounds.fTop, bounds.width(), bounds.height());
+}
+
 // A StrikeCache GlyphInfo with the glyph drawn by the SkFont in device space:
 // A8 coverage for grayscale and aliased text, RGB coverage triplets for LCD
 // text (Skia's sub-pixel edging on an opaque RGB canvas, the ink's inverse).
@@ -329,12 +417,12 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
                                                jint subX, jint subY)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
-    if (context == nullptr || glyphCode < 0 || glyphCode > 0xffff) {
+    SkFont font;
+    SkGlyphID glyph;
+    if (!resolveGlyph(context, glyphCode, &font, &glyph)) {
         return ptr_to_jlong(emptyGlyph(0));
     }
-    const SkGlyphID glyph = (SkGlyphID) glyphCode;
-    const float advance = recordAdvance(context, glyph);
-    SkFont font = context->font;
+    const float advance = recordAdvance(context, font, glyph);
     const bool lcd = font.getEdging() == SkFont::Edging::kSubpixelAntiAlias;
     const bool aa = font.getEdging() != SkFont::Edging::kAlias;
     const bool subpixel = aa && !lcd && context->fractionalMetrics && (subX > 1 || subY > 1);
@@ -344,13 +432,16 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     // channels (CGGlyphImages.m, CGGI_ConvertBWPixelToByteGray); Skia's host
     // smooths only with sub-pixel edging. Measured against it: plain coverage
     // 15 % less ink, the sub-pixel render averaged 13 % more.
-    const bool smoothedGray = aa && !lcd && context->grayMode == sun_font_SKFontScaler_GRAY_SMOOTHED;
-    const bool darkenedGray = aa && !lcd && context->grayMode == sun_font_SKFontScaler_GRAY_DARKENED
+    // A glyph without an outline is a bitmap glyph (colour emoji): it is drawn
+    // in colour into a premultiplied BGRA record, the JDK's colour glyph format.
+    const bool colorGlyph = !font.getPath(glyph).has_value();
+    const bool smoothedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_SMOOTHED;
+    const bool darkenedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_DARKENED
                               && context->grayDarkening > 0;
     if (smoothedGray) {
         font.setEdging(SkFont::Edging::kSubpixelAntiAlias);
     }
-    const bool colorCanvas = lcd || smoothedGray;
+    const bool colorCanvas = (lcd || smoothedGray) && !colorGlyph;
 
     SkRect bounds;
     font.getBounds({&glyph, 1}, {&bounds, 1}, nullptr);
@@ -362,7 +453,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     }
     // a pixel of padding for the antialiasing filter, two more on each side
     // for the LCD filter's spill, and the sub-pixel offsets to the right/bottom
-    const int pad = lcd ? 3 : smoothedGray ? 2 : aa ? 1 : 0;
+    const int pad = colorGlyph ? 1 : lcd ? 3 : smoothedGray ? 2 : aa ? 1 : 0;
     const int left = (int) std::floor(bounds.fLeft) - pad, top = (int) std::floor(bounds.fTop) - pad;
     const int right = (int) std::ceil(bounds.fRight) + pad + (resX > 1 ? 1 : 0);
     const int bottom = (int) std::ceil(bounds.fBottom) + pad + (resY > 1 ? 1 : 0);
@@ -370,7 +461,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     if (width <= 0 || height <= 0 || width > MAX_GLYPH_DIMENSION || height > MAX_GLYPH_DIMENSION) {
         return ptr_to_jlong(emptyGlyph(advance));
     }
-    const int bytesPerPixel = lcd ? 3 : 1;
+    const int bytesPerPixel = colorGlyph ? 4 : lcd && !colorGlyph ? 3 : 1;
     const size_t rowBytes = (size_t) width * bytesPerPixel, imageSize = rowBytes * height;
     auto *info = (GlyphInfo *) calloc(sizeof(GlyphInfo) + imageSize * resX * resY, 1);
     if (info == nullptr) {
@@ -382,7 +473,8 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     info->height = (UInt16) height;
     info->rowBytes = (UInt16) rowBytes;
     info->managed = UNMANAGED_GLYPH;
-    info->format = lcd ? sun_font_StrikeCache_PIXEL_FORMAT_LCD : sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
+    info->format = colorGlyph ? sun_font_StrikeCache_PIXEL_FORMAT_BGRA
+                 : lcd ? sun_font_StrikeCache_PIXEL_FORMAT_LCD : sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
     info->subpixelResolutionX = (UInt8) resX;
     info->subpixelResolutionY = (UInt8) resY;
     info->topLeftX = (float) left;
@@ -391,8 +483,9 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     info->image = (UInt8 *) (info + 1);
 
     SkBitmap bitmap;
-    const SkImageInfo imageInfo = colorCanvas ? SkImageInfo::MakeN32(width, height, kOpaque_SkAlphaType)
-                                              : SkImageInfo::MakeA8(width, height);
+    const SkImageInfo imageInfo = colorGlyph ? SkImageInfo::Make(width, height, kBGRA_8888_SkColorType, kPremul_SkAlphaType)
+                                 : colorCanvas ? SkImageInfo::MakeN32(width, height, kOpaque_SkAlphaType)
+                                               : SkImageInfo::MakeA8(width, height);
     if (!bitmap.tryAllocPixels(imageInfo)) {
         return ptr_to_jlong(info);   // an empty image of the right size
     }
@@ -412,7 +505,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     }
     for (int sy = 0; sy < resY; sy++) {
         for (int sx = 0; sx < resX; sx++) {
-            canvas.clear(colorCanvas ? SK_ColorWHITE : SK_ColorTRANSPARENT);
+            canvas.clear(colorCanvas && !colorGlyph ? SK_ColorWHITE : SK_ColorTRANSPARENT);
             canvas.save();
             canvas.translate((SkScalar) -left + (SkScalar) sx / resX, (SkScalar) -top + (SkScalar) sy / resY);
             if (!context->identityRemainder) {
@@ -423,7 +516,9 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
             canvas.restore();
             UInt8 *dst = info->image + imageSize * (size_t) (sy * resX + sx);
             for (int y = 0; y < height; y++) {
-                if (lcd) {
+                if (colorGlyph) {
+                    memcpy(dst + (size_t) y * rowBytes, bitmap.getAddr32(0, y), rowBytes);   // B, G, R, A premultiplied
+                } else if (lcd) {
                     const uint32_t *src = bitmap.getAddr32(0, y);
                     UInt8 *row = dst + (size_t) y * rowBytes;
                     for (int x = 0; x < width; x++) {

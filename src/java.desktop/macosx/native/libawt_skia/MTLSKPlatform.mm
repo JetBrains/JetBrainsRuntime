@@ -36,6 +36,8 @@
 #include "include/ports/SkFontMgr_mac_ct.h"
 #include "include/ports/SkTypeface_mac.h"
 #import <objc/runtime.h>
+#include <mutex>
+#include <vector>
 #include "include/gpu/graphite/mtl/MtlBackendContext.h"
 #include "include/gpu/graphite/mtl/MtlGraphiteTypes.h"
 #include "include/gpu/graphite/mtl/MtlGraphiteTypes_cpp.h"
@@ -148,16 +150,78 @@ sk_sp<SkFontMgr> SKPlatform_FontManager() {
     return manager;
 }
 
-// CFont's native font is libawt_lwawt's AWTFont wrapper; its NSFont is
-// toll-free bridged to the CTFontRef Skia's CoreText port wraps, and the
-// typeface retains it. The ivar is read through the runtime because this
-// library does not link against libawt_lwawt.
-sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont) {
+// CFont's native font is libawt_lwawt's AWTFont wrapper; its NSFont (and the
+// fallback base the system font carries) are toll-free bridged to the
+// CTFontRefs Skia's CoreText port wraps. The ivars are read through the
+// runtime because this library does not link against libawt_lwawt.
+static CTFontRef awtFontIvar(jlong nativeFont, const char *name) {
     id awtFont = (id) jlong_to_ptr(nativeFont);
     if (awtFont == nil) {
         return nullptr;
     }
-    Ivar ivar = class_getInstanceVariable([awtFont class], "fFont");
-    id font = ivar != NULL ? object_getIvar(awtFont, ivar) : nil;
-    return font != nil ? SkMakeTypefaceFromCTFont((CTFontRef) font) : nullptr;
+    Ivar ivar = class_getInstanceVariable([awtFont class], name);
+    return ivar != NULL ? (CTFontRef) object_getIvar(awtFont, ivar) : nullptr;
+}
+
+sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont) {
+    CTFontRef font = awtFontIvar(nativeFont, "fFont");
+    return font != nullptr ? SkMakeTypefaceFromCTFont(font) : nullptr;   // a new reference; the CTFont is retained
+}
+
+// One SkTypeface per distinct fallback CTFont, so that the glyph caches key on
+// a stable typeface (CTFontCreateForString returns a new object every time).
+static sk_sp<SkTypeface> typefaceForCTFont(CTFontRef font) {
+    static std::mutex lock;
+    static std::vector<std::pair<CTFontRef, sk_sp<SkTypeface>>> cache;
+    std::lock_guard<std::mutex> guard(lock);
+    for (auto &entry : cache) {
+        if (CFEqual(entry.first, font)) {
+            return entry.second;
+        }
+    }
+    sk_sp<SkTypeface> typeface = SkMakeTypefaceFromCTFont(font);
+    if (typeface) {
+        cache.emplace_back((CTFontRef) CFRetain(font), typeface);
+    }
+    return typeface;
+}
+
+// As CoreTextSupport.m's CTS_CopyCTFallbackFontAndGlyphForUnicode: the primary
+// font if it has the character, else CoreText's fallback for the string
+// (from the fallback base when the font has one), else the primary font.
+sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, uint16_t *glyph) {
+    CTFontRef primary = awtFontIvar(nativeFont, "fFont");
+    if (primary == nullptr || codePoint < 0 || codePoint > 0x10FFFF) {
+        return nullptr;
+    }
+    CTFontRef base = awtFontIvar(nativeFont, "fFallbackBase");
+    UniChar chars[2];
+    CFIndex count = 1;
+    if (codePoint >= 0x10000) {
+        const int value = codePoint - 0x10000;
+        chars[0] = (UniChar) (0xD800 | (value >> 10));
+        chars[1] = (UniChar) (0xDC00 | (value & 0x3FF));
+        count = 2;
+    } else {
+        chars[0] = (UniChar) codePoint;
+    }
+    CGGlyph glyphs[2] = { 0, 0 };
+    if (base != nullptr && CTFontGetGlyphsForCharacters(primary, chars, glyphs, count) && glyphs[0] != 0) {
+        *glyph = glyphs[0];
+        return typefaceForCTFont(primary);
+    }
+    CFStringRef string = CFStringCreateWithCharacters(kCFAllocatorDefault, chars, count);
+    CTFontRef fallback = string != nullptr
+            ? CTFontCreateForString(base != nullptr ? base : primary, string, CFRangeMake(0, count)) : nullptr;
+    if (string != nullptr) {
+        CFRelease(string);
+    }
+    if (fallback == nullptr) {
+        fallback = (CTFontRef) CFRetain(primary);
+    }
+    CTFontGetGlyphsForCharacters(fallback, chars, glyphs, count);
+    *glyph = glyphs[0];
+    sk_sp<SkTypeface> typeface = typefaceForCTFont(fallback);
+    CFRelease(fallback);
+    return typeface;
 }
