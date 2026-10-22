@@ -46,6 +46,8 @@ public final class FontUtilities {
     public static boolean isMacOSX14;
 
     public static boolean useJDKScaler;
+    /** {@code -Dsun.java2d.font.scaler=skia}: the Skia font scaler (SKFontScaler) for every font. */
+    public static boolean useSkiaScaler;
 
     public static boolean isWindows;
 
@@ -94,8 +96,10 @@ public final class FontUtilities {
         String scalerStr = System.getProperty("sun.java2d.font.scaler");
         if (scalerStr != null) {
             useJDKScaler = "jdk".equals(scalerStr);
+            useSkiaScaler = "skia".equals(scalerStr);
         } else {
             useJDKScaler = false;
+            useSkiaScaler = false;
         }
         isWindows = OSInfo.getOSType() == OSInfo.OSType.WINDOWS;
         String debugLevel =

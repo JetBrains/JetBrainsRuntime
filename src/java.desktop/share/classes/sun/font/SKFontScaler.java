@@ -41,9 +41,37 @@ import sun.java2d.skia.SKEnvironment;
  * from the font file; a scaler context is one {@code SkFont} per strike.
  * <p>
  * Lives in {@code libawt_skia}; only created when the Skia backend is
- * available ({@link SKEnvironment#isSkiaEnabled()}).
+ * available ({@link SKEnvironment#isSkiaEnabled()}). Selected for the
+ * platform's fonts with {@code -Dsun.java2d.font.scaler=skia}
+ * ({@link FontUtilities#useSkiaScaler}): {@code CFont} strikes become
+ * {@link SKFontStrike}s, file fonts get this scaler behind their
+ * {@code FileFontStrike}.
  */
 public final class SKFontScaler extends FontScaler {
+
+    /**
+     * How grayscale (non-LCD) antialiased glyphs are rasterized, since the
+     * JDK's CoreGraphics renderer applies font smoothing without sub-pixels,
+     * which Skia's font host does not expose ({@code sun.java2d.skia.text.gray}):
+     * {@code coverage} (the default: the host's plain antialiased coverage,
+     * about 15 % less ink than the platform's text on macOS), {@code smoothed}
+     * (the host's sub-pixel render with the channels averaged, as the JDK does
+     * with CoreGraphics; about 13 % more ink) or {@code darkened} (coverage of
+     * the outline widened by {@code sun.java2d.skia.text.grayDarkening} of the
+     * em, default 0.013, rasterized by Skia; CoreGraphics' smoothing measured
+     * as a widening proportional to the size, 0.17 px at 13 px, 0.35 px at 26).
+     */
+    static final int GRAY_COVERAGE = 0, GRAY_SMOOTHED = 1, GRAY_DARKENED = 2;
+    private static final int GRAY_MODE = grayModeProperty();
+    private static final float GRAY_DARKENING = Float.parseFloat(System.getProperty("sun.java2d.skia.text.grayDarkening", "0.013"));
+
+    private static int grayModeProperty() {
+        return switch (System.getProperty("sun.java2d.skia.text.gray", "coverage").toLowerCase(java.util.Locale.ROOT)) {
+            case "smoothed" -> GRAY_SMOOTHED;
+            case "darkened" -> GRAY_DARKENED;
+            default -> GRAY_COVERAGE;
+        };
+    }
 
     private final Font2D font;
     private final long unitsPerEm;
@@ -102,12 +130,15 @@ public final class SKFontScaler extends FontScaler {
 
     @Override
     long getGlyphImage(long pScalerContext, int glyphCode) {
-        return getGlyphImageNative(pScalerContext, glyphCode);
+        return getGlyphImageNative(pScalerContext, glyphCode,
+                                   FontUtilities.subpixelResolution.width, FontUtilities.subpixelResolution.height);
     }
 
     @Override
     Rectangle2D.Float getGlyphOutlineBounds(long pScalerContext, int glyphCode) {
-        return (Rectangle2D.Float) getGlyphOutline(pScalerContext, glyphCode, 0, 0).getBounds2D();
+        Rectangle2D bounds = getGlyphOutline(pScalerContext, glyphCode, 0, 0).getBounds2D();
+        return new Rectangle2D.Float((float) bounds.getX(), (float) bounds.getY(),
+                                     (float) bounds.getWidth(), (float) bounds.getHeight());
     }
 
     @Override
@@ -154,7 +185,7 @@ public final class SKFontScaler extends FontScaler {
      */
     @Override
     long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0);
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, GRAY_MODE, GRAY_DARKENING);
     }
 
     /**
@@ -163,7 +194,7 @@ public final class SKFontScaler extends FontScaler {
      * scale of the device transform, which the glyph transform includes.
      */
     long createScalerContext(double[] matrix, double deviceScale, int aa, int fm, float boldness, float italic) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale);
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, GRAY_MODE, GRAY_DARKENING);
     }
 
     @Override
@@ -190,10 +221,10 @@ public final class SKFontScaler extends FontScaler {
     private static native int getGlyphCodeNative(long pScaler, char charCode);
     private static native long getUnitsPerEmNative(long pScaler);
     private static native long createContextNative(long pScaler, double[] matrix, int aa, int fm, float boldness, float italic,
-                                                   double deviceScale);
+                                                   double deviceScale, int grayMode, float grayDarkening);
     private static native void disposeContextNative(long pContext);
     private static native StrikeMetrics getFontMetricsNative(long pContext);
     private static native float getGlyphAdvanceNative(long pContext, int glyphCode);
     private static native GeneralPath getGlyphOutlineNative(long pContext, int glyphCode, float x, float y);
-    private static native long getGlyphImageNative(long pContext, int glyphCode);
+    private static native long getGlyphImageNative(long pContext, int glyphCode, int subpixelResolutionX, int subpixelResolutionY);
 }

@@ -246,7 +246,31 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
             desc = new FontStrikeDesc(desc);
             desc.glyphTx.concatenate(AffineTransform.getShearInstance(-0.2, 0));
         }
+        if (FontUtilities.useSkiaScaler && SKFontScaler.isAvailable()) {
+            SKFontScaler scaler = skiaScaler();
+            if (scaler != null) {
+                return new SKFontStrike(this, desc, scaler);
+            }
+        }
         return new CStrike(this, desc);
+    }
+
+    private SKFontScaler skiaScaler;
+    private boolean skiaScalerFailed;
+
+    /** The Skia scaler over this font's native font, created once; null if Skia has no typeface for it. */
+    private synchronized SKFontScaler skiaScaler() {
+        if (skiaScaler == null && !skiaScalerFailed) {
+            try {
+                skiaScaler = SKFontScaler.forNativeFont(this, getNativeFontPtr());
+            } catch (RuntimeException e) {
+                skiaScalerFailed = true;
+                if (FontUtilities.isLogging()) {
+                    FontUtilities.logInfo("Skia scaler unavailable for " + this + ", using CoreText: " + e);
+                }
+            }
+        }
+        return skiaScaler;
     }
 
     boolean isFakeItalic() {

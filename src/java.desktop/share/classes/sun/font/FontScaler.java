@@ -99,8 +99,19 @@ public abstract class FontScaler implements DisposerRecord {
         FontScaler scaler = null;
 
         try {
-            scaler = new FreetypeFontScaler(font, indexInCollection,
-                                            supportsCJK, filesize);
+            if (FontUtilities.useSkiaScaler && SKFontScaler.isAvailable() && font instanceof PhysicalFont pf) {
+                try {
+                    scaler = SKFontScaler.forFile(font, pf.platName, indexInCollection);
+                } catch (RuntimeException e) {
+                    if (FontUtilities.isLogging()) {
+                        FontUtilities.logInfo("Skia scaler unavailable for " + font + ", using FreeType: " + e);
+                    }
+                }
+            }
+            if (scaler == null) {
+                scaler = new FreetypeFontScaler(font, indexInCollection,
+                                                supportsCJK, filesize);
+            }
             Disposer.addObjectRecord(font, scaler);
         } catch (Throwable e) {
             scaler = getNullScaler();
