@@ -1,5 +1,5 @@
-# Forces a real GPU device loss (TDR) under TdrProbe, once on Skia and once on the default Direct3D 9
-# pipeline, then runs DisplayChangeProbe on Skia. Needs an elevated shell and the "Graphics Tools"
+# Forces a real GPU device loss (TDR) under TdrProbe per arm (skia, d3d = Direct3D 9, gdi = no acceleration;
+# -Arms selects), then runs DisplayChangeProbe on Skia. Needs an elevated shell and the "Graphics Tools"
 # optional feature (dxcap.exe). Every process on the GPU sees the reset: close unrelated work first.
 #
 #   powershell -ExecutionPolicy Bypass -File run-tdr.ps1 -Jdk <image> -Out <dir>
@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory)] [string] $Jdk,
     [Parameter(Mandatory)] [string] $Out,
     [int] $Seconds = 60,
-    [int] $TdrAfter = 20
+    [int] $TdrAfter = 20,
+    [string[]] $Arms = @('skia', 'd3d', 'gdi')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,14 +30,15 @@ $summary = Join-Path $Out 'summary.txt'
 "run-tdr.ps1 $(Get-Date -Format s) jdk=$Jdk seconds=$Seconds tdrAfter=$TdrAfter" | Set-Content -Encoding utf8 $summary
 $env:J2D_TRACE_LEVEL = '3'
 
-$arms = [ordered]@{
+$armProperties = [ordered]@{
     'skia' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true')
-    'd3d'  = @()
+    'd3d'  = @('-Dsun.java2d.d3d=true', '-Dsun.java2d.d3d.verbose=true')
+    'gdi'  = @('-Dsun.java2d.d3d=false')
 }
-foreach ($arm in $arms.Keys) {
+foreach ($arm in @($armProperties.Keys | Where-Object { $Arms -contains $_ })) {
     $armOut = Join-Path $Out $arm
     New-Item -ItemType Directory -Force $armOut | Out-Null
-    $javaArgs = @($exports) + $arms[$arm] + @('-Dsun.java2d.uiScale=1', '-cp', $classes, 'TdrProbe', $Seconds, $armOut)
+    $javaArgs = @($exports) + $armProperties[$arm] + @('-Dsun.java2d.uiScale=1', '-cp', $classes, 'TdrProbe', $Seconds, $armOut)
     $started = Get-Date
     $p = Start-Process -FilePath "$Jdk\bin\java.exe" -ArgumentList $javaArgs -PassThru -NoNewWindow `
         -RedirectStandardOutput "$armOut\stdout.txt" -RedirectStandardError "$armOut\stderr.txt"
