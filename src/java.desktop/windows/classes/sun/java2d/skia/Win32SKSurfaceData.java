@@ -178,6 +178,7 @@ public abstract class Win32SKSurfaceData extends SKSurfaceData {
                                   Math.max(1, Region.clipRound(bounds.width * gc.getDevice().getDefaultScaleX())),
                                   Math.max(1, Region.clipRound(bounds.height * gc.getDevice().getDefaultScaleY())),
                                   previous, cm));
+            enableFrameCounters();
         }
 
         @Override

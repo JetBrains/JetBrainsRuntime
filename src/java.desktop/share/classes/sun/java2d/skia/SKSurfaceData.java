@@ -24,6 +24,7 @@
  */
 package sun.java2d.skia;
 
+import sun.awt.AWTAccessor;
 import sun.awt.SunHints;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
@@ -43,6 +44,7 @@ import sun.java2d.pipe.hw.AccelSurface;
 import java.awt.AlphaComposite;
 import java.awt.Composite;
 import java.awt.Transparency;
+import java.awt.Window;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
@@ -148,6 +150,38 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
 
     /** Whether this is a window surface the platform presents. */
     public abstract boolean isOnScreen();
+
+    // ---- awt.window.counters ----------------------------------------------
+
+    private native void setCountFrames(boolean countFrames);
+
+    /**
+     * Reports this window surface's presents to JBR's {@code awt.window.counters}
+     * ({@code java2d.native.frames}, {@code java2d.native.framesDropped}), as
+     * {@code MTLLayer} and the Wayland surfaces do, when they are on for its window.
+     */
+    protected final void enableFrameCounters() {
+        if (getDestination() instanceof Window window && AWTAccessor.getWindowAccessor().countersEnabled(window)) {
+            setCountFrames(true);
+        }
+    }
+
+    private void countNewFrame() {
+        // Called from the native code after this window surface was presented
+        countFrame("java2d.native.frames");
+    }
+
+    private void countDroppedFrame() {
+        // Called from the native code when this window surface had new content
+        // but could not be presented (no swap chain image, a lost device)
+        countFrame("java2d.native.framesDropped");
+    }
+
+    private void countFrame(String counterName) {
+        if (getDestination() instanceof Window window) {
+            AWTAccessor.getWindowAccessor().incrementCounter(window, counterName);
+        }
+    }
 
     // ---- SurfaceData -------------------------------------------------------
 

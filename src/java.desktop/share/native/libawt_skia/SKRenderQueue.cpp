@@ -374,7 +374,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             break;
         }
         OP(SYNC): {
-            SKBackend_EndOfFlush(true);
+            SKBackend_EndOfFlush(env, true);
             break;
         }
         OP(FLUSH_BUFFER): {
@@ -478,11 +478,11 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
 
         default:
             J2dRlsTraceLn(J2D_TRACE_ERROR, "SKRenderQueue_flushBuffer: invalid opcode=%d", opcode);
-            SKBackend_EndOfFlush();
+            SKBackend_EndOfFlush(env);
             return;
         }
     }
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
     SKStats_EndOfEntry();
 }
@@ -504,7 +504,7 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
         }
         env->ReleasePrimitiveArrayCritical(xpointsArray, xPoints, JNI_ABORT);
     }
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
     SKStats_EndOfEntry();
 }
@@ -529,7 +529,7 @@ Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean f
     if (types != nullptr) env->ReleasePrimitiveArrayCritical(typesArr, types, JNI_ABORT);
     if (stroke != nullptr) env->ReleasePrimitiveArrayCritical(strokeArr, stroke, JNI_ABORT);
     if (xform != nullptr) env->ReleasePrimitiveArrayCritical(xformArr, xform, JNI_ABORT);
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
     SKStats_EndOfEntry();
 }
@@ -552,7 +552,7 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
     if (mask != nullptr) {
         env->ReleasePrimitiveArrayCritical(maskArray, mask, JNI_ABORT);
     }
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
     SKStats_EndOfEntry();
 }
@@ -584,8 +584,9 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, 
     }
     SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, smoothing, originX, originY, codes.data(),
                                imgArray != nullptr ? images.data() : nullptr, usePositions ? positions.data() : nullptr);
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 JNIEXPORT void JNICALL
@@ -600,8 +601,9 @@ Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, 
     }
     SKBackend_DrawShapedBySkia(pScalerContext, smoothing, originX, originY, chars, length);
     env->ReleaseStringChars(text, chars);
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 JNIEXPORT void JNICALL
@@ -630,8 +632,9 @@ Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass claz
     SKBackend_DrawParagraphBySkia(smoothing, originX, originY, chars, length, runs, ends.data(), contexts.data(),
                                   colours.data(), flags.data());
     env->ReleaseStringChars(text, chars);
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 JNIEXPORT void JNICALL
@@ -659,7 +662,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
         env->ReleasePrimitiveArrayCritical(posArray, positions, JNI_ABORT);
     }
     env->ReleasePrimitiveArrayCritical(imgArray, images, JNI_ABORT);
-    SKBackend_EndOfFlush();
+    SKBackend_EndOfFlush(env);
     } // SKPlatformScope
     SKStats_EndOfEntry();
 }

@@ -125,15 +125,16 @@ bool SKPlatform_IsWindow(SKPlatformSurface *surface) {
     return ops != nullptr && MTLSK_PrivOps(ops) != nullptr && MTLSK_PrivOps(ops)->layer != nil;
 }
 
-void SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
+bool SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
     BMTLSDOps *ops = mtlOps(surface);
     MTLSDOps *priv = ops != nullptr ? MTLSK_PrivOps(ops) : nullptr;
     if (priv == nullptr || priv->layer == nil) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "SKPlatform_RequestRedraw: window surface %p has no layer", surface);
-        return;
+        return false;
     }
     J2dTraceLn(J2D_TRACE_VERBOSE, "SKPlatform_RequestRedraw: startRedraw layer=%p", (void *) priv->layer);
     [(id<MTLSKLayerLike>) (id) priv->layer startRedraw];
+    return true;
 }
 
 void SKPlatform_DisposeSurface(SKPlatformSurface *surface) {

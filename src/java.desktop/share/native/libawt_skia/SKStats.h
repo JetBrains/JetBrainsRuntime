@@ -30,8 +30,8 @@
 
 // Opt-in statistics of the flusher's work, enabled by the J2D_SKIA_STATS
 // environment variable (after Wayland's J2D_STATS): time and count per phase
-// and per render-queue opcode, plus counts of mesh draws and atlas uploads,
-// printed on stderr about once a second. Off, every hook is one
+// and per render-queue opcode, plus counts of mesh draws, uploads and failed
+// presents, printed on stderr about once a second. Off, every hook is one
 // predictable branch. The flusher holds the AWT lock while it works, so the
 // accumulators are not synchronised.
 //
@@ -57,6 +57,7 @@ enum SKStatsSpan {
 enum SKStatsCounter {
     SK_COUNT_MESH_DRAWS,        // drawVertices calls (batched quads, tiles, glyphs)
     SK_COUNT_ATLAS_UPLOADS,     // writePixels into the glyph and mask atlases
+    SK_COUNT_PRESENTS_FAILED,   // a window to present but no swap chain image
     SK_COUNT_COUNT
 };
 

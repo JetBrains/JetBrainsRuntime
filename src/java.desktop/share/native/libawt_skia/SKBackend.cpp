@@ -37,6 +37,7 @@
 #include "SKStats.h"
 
 #include "jlong.h"
+#include "jni_util.h"
 #include "fontscalerdefs.h"
 #include "sun_font_StrikeCache.h"
 #include "java_awt_AlphaComposite.h"
@@ -2488,7 +2489,23 @@ jlong SKBackend_Flushes() {
     return gFlushes.load(std::memory_order_relaxed);
 }
 
-void SKBackend_EndOfFlush(bool syncToCpu) {
+// Tells the Java surface of a window that it was presented or that presenting
+// failed, for JBR's awt.window.counters (MTLLayer.countNewFrame on macOS).
+static void countFrame(JNIEnv *env, SKSDOps *dst, bool presented) {
+    if (env == nullptr || dst->sdOps.sdObject == nullptr) {
+        return;
+    }
+    jobject sd = env->NewLocalRef(dst->sdOps.sdObject);
+    if (sd != nullptr) {
+        JNU_CallMethodByName(env, nullptr, sd, presented ? "countNewFrame" : "countDroppedFrame", "()V");
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+        env->DeleteLocalRef(sd);
+    }
+}
+
+void SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu) {
     gFlushes.fetch_add(1, std::memory_order_relaxed);
     for (SKConfigContext *cc : g.touchedContexts) {
         SKBackend_Submit(cc, syncToCpu);
@@ -2497,8 +2514,17 @@ void SKBackend_EndOfFlush(bool syncToCpu) {
     // Ask the platform to present the windows we drew into.
     for (SKSDOps *dst : g.touchedWindows) {
         if (dst->platform != nullptr) {
-            SKStatsScope presentStats(SK_SPAN_PRESENT);
-            SKPlatform_RequestRedraw(dst->platform);
+            bool presented;
+            {
+                SKStatsScope presentStats(SK_SPAN_PRESENT);
+                presented = SKPlatform_RequestRedraw(dst->platform);
+            }
+            if (!presented) {
+                SKStats_Count(SK_COUNT_PRESENTS_FAILED);
+            }
+            if (dst->countFrames) {
+                countFrame(env, dst, presented);
+            }
         }
     }
     g.touchedWindows.clear();

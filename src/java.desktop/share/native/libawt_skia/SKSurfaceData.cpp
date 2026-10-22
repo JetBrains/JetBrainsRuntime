@@ -70,8 +70,18 @@ Java_sun_java2d_skia_SKSurfaceData_initOps(JNIEnv *env, jobject skiasd,
     ops->platform = (SKPlatformSurface *) jlong_to_ptr(platformOps);
     ops->type     = type;
     ops->isOpaque = isOpaque;
+    ops->countFrames = JNI_FALSE;
     ops->state    = nullptr;
     J2dTraceLn(J2D_TRACE_VERBOSE, "SKSurfaceData_initOps: ops=%p platform=%p type=%d", ops, ops->platform, type);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKSurfaceData_setCountFrames(JNIEnv *env, jobject skiasd, jboolean countFrames)
+{
+    SKSDOps *ops = (SKSDOps *) SurfaceData_GetOps(env, skiasd);
+    if (ops != nullptr) {
+        ops->countFrames = countFrames;
+    }
 }
 
 } // extern "C"

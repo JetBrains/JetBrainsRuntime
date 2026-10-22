@@ -77,8 +77,9 @@ bool SKPlatform_BackendTexture(SKPlatformSurface *surface, skgpu::graphite::Back
 // Whether the surface is an on-screen window surface the platform presents.
 bool SKPlatform_IsWindow(SKPlatformSurface *surface);
 
-// The window surface's texture has new content: present it.
-void SKPlatform_RequestRedraw(SKPlatformSurface *surface);
+// The window surface's texture has new content: present it. Returns whether a
+// present was issued (false: no swap chain image, a lost device, a replaced surface).
+bool SKPlatform_RequestRedraw(SKPlatformSurface *surface);
 
 // The Skia wrapper of the surface is gone (DISPOSE_SURFACE): release what the
 // platform half allocated for it. Nothing on macOS, where the Metal surface

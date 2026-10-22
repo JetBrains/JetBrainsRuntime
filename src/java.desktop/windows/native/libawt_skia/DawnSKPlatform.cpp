@@ -468,12 +468,12 @@ bool SKPlatform_IsWindow(SKPlatformSurface *surface) {
 // Copies the surface texture into the swap chain's current image and presents
 // it. Runs on the flusher thread after Graphite's submit; the copy goes to the
 // same queue, so it is ordered after the rendering without a CPU wait.
-void SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
+bool SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
     DawnSKSurface *s = surfaceOf(surface);
     if (s == nullptr || s->window == nullptr || s->gpu->lost->load()) {
         // a replaced window surface (its swap chain moved on), not a window, or a lost device
         J2dTraceLn(J2D_TRACE_VERBOSE, "SKPlatform_RequestRedraw: nothing to present for %p", surface);
-        return;
+        return false;
     }
     wgpu::SurfaceTexture current;
     s->window.GetCurrentTexture(&current);
@@ -491,7 +491,7 @@ void SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
                           (int) current.status);
         }
         DawnSK_Instance().ProcessEvents();   // deliver the error message behind the status
-        return;
+        return false;
     }
     s->noImageReported = false;
     // the client-area part of the texture, as much of it as both sides have
@@ -508,6 +508,7 @@ void SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
     s->gpu->queue.Submit(1, &commands);
     s->window.Present();
     J2dTraceLn(J2D_TRACE_VERBOSE, "SKPlatform_RequestRedraw: presented %p", surface);
+    return true;
 }
 
 void SKPlatform_DisposeSurface(SKPlatformSurface *surface) {
