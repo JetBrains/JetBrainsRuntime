@@ -6,7 +6,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.List;
 
-/** Compares RenderMatrix sheets per cell: software vs Metal vs Skia; classifies and lists suspects. */
+/** Compares RenderMatrix sheets per cell: software vs a GPU reference (Metal, or Direct3D on Windows) vs Skia; classifies and lists suspects. Usage: MatrixDiff [suspect threshold] [reference sheet name, default metal] */
 public class MatrixDiff {
     static final int CELL = 64, COLS = 16;
     record Stat(int diff, int big, int max) {}
@@ -20,7 +20,7 @@ public class MatrixDiff {
         return new Stat(diff, big, max);
     }
     public static void main(String[] args) throws Exception {
-        BufferedImage sw = ImageIO.read(new File("matrix-software.png")), mt = ImageIO.read(new File("matrix-metal.png")), sk = ImageIO.read(new File("matrix-skia.png"));
+        BufferedImage sw = ImageIO.read(new File("matrix-software.png")), mt = ImageIO.read(new File("matrix-" + (args.length > 1 ? args[1] : "metal") + ".png")), sk = ImageIO.read(new File("matrix-skia.png"));
         List<String> names = Files.readAllLines(Path.of("matrix-cells.txt"));
         int filter = args.length > 0 ? Integer.parseInt(args[0]) : 40;   // "suspect" threshold on metal-vs-skia max
         record Row(int i, String name, Stat sm, Stat ss, Stat ms, String cls) {}
