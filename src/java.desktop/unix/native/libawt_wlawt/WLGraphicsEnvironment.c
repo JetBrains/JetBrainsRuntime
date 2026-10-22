@@ -42,6 +42,14 @@ typedef struct WLOutput {
     struct zxdg_output_v1 * zxdg_output;
     uint32_t id;
 
+    // For versions of zxdg_output < 3, the compositor might send both wl_output.done and zxdg_output.done,
+    // or it might not, especially if zxdg_output properties haven't changed.
+    // Upon receiving the first done() in this situation, we create a wl_callback, which will be signaled by
+    // the compositor when it finishes processing all pending events.
+    // We will notify Java about the pending state after that callback triggers.
+    // We store a reference to that callback here:
+    struct wl_callback * configure_callback;
+
     int32_t x;
     int32_t y;
     int32_t width;
@@ -191,12 +199,52 @@ NotifyOutputConfigured(WLOutput* output)
 }
 
 static void
+configure_callback_done(void *data, struct wl_callback *wl_callback, uint32_t callback_data)
+{
+    (void)callback_data;
+    WLOutput * output = data;
+
+    output->configure_callback = NULL;
+    wl_callback_destroy(wl_callback);
+
+    NotifyOutputConfigured(output);
+
+    --num_of_outstanding_sync;
+}
+
+static void
+NotifyOutputConfiguredLater(WLOutput *output)
+{
+    if (output->configure_callback != NULL) {
+        return;
+    }
+
+    output->configure_callback = wl_display_sync(wl_display);
+    if (output->configure_callback == NULL) {
+        JNIEnv *env = getEnv();
+        JNU_ThrowOutOfMemoryError(env, "wl_display_sync() returned NULL");
+        wlListenerCheckException(env);
+        NotifyOutputConfigured(output);
+        return;
+    }
+
+    static const struct wl_callback_listener callback_listener = {
+        .done = configure_callback_done,
+    };
+    wl_callback_add_listener(output->configure_callback, &callback_listener, output);
+    // we might be in toolkit initialization right now, increase the counter of callbacks we need to wait for
+    ++num_of_outstanding_sync;
+}
+
+static void
 wl_output_done(void *data, struct wl_output *wl_output)
 {
     WLOutput * output = data;
-    // When the manager is present we'll wait for another 'done' event (see zxdg_output_done()).
-    bool wait_for_zxdg_output_done = zxdg_output_manager_v1 != NULL;
-    if (!wait_for_zxdg_output_done) {
+    bool defer_done_event =
+        zxdg_output_manager_v1 != NULL && zxdg_output_manager_v1_get_version(zxdg_output_manager_v1) < 3;
+    if (defer_done_event) {
+        NotifyOutputConfiguredLater(output);
+    } else {
         NotifyOutputConfigured(output);
     }
 }
@@ -226,7 +274,9 @@ static void
 zxdg_output_done(void *data, struct zxdg_output_v1 *zxdg_output_v1)
 {
     WLOutput * output = data;
-    NotifyOutputConfigured(output);
+    if (zxdg_output_v1_get_version(zxdg_output_v1) < 3) {
+        NotifyOutputConfiguredLater(output);
+    }
 }
 
 static void
@@ -344,6 +394,10 @@ WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id)
             }
             if (cur->zxdg_output != NULL) {
                 zxdg_output_v1_destroy(cur->zxdg_output);
+            }
+            if (cur->configure_callback != NULL) {
+                wl_callback_destroy(cur->configure_callback);
+                --num_of_outstanding_sync;
             }
             wl_output_destroy(cur->wl_output);
             WLOutput * next = cur->next;
