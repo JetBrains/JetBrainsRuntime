@@ -54,6 +54,26 @@ public final class SKEnvironment {
      * Anything else counts as {@code marlin}.
      */
     private static final String SHAPES = shapesProperty();
+    /**
+     * Who strokes antialiased shapes that Skia rasterizes: {@code skia} (the
+     * default: Skia's stroker, analytic for ovals and round rectangles) or
+     * {@code java} (Java's stroker produces the outline, as for Marlin, and
+     * Skia fills it; dashed strokes always take this route). The two differ
+     * at joins and along curves by the two strokers' geometry, by up to 50
+     * levels on one-pixel strokes; anything else counts as {@code skia}.
+     */
+    private static final boolean STROKES_BY_JAVA = strokesProperty();
+
+    private static boolean strokesProperty() {
+        String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
+        if (!strokes.equalsIgnoreCase("skia") && !strokes.equalsIgnoreCase("java")) {
+            if (VERBOSE) {
+                System.err.println("sun.java2d.skia.strokes=" + strokes + " is not skia or java; using skia");
+            }
+            return false;
+        }
+        return strokes.equalsIgnoreCase("java");
+    }
 
     private static String shapesProperty() {
         String shapes = System.getProperty("sun.java2d.skia.shapes", "analytic");
@@ -172,6 +192,11 @@ public final class SKEnvironment {
         return "analytic".equalsIgnoreCase(SHAPES);
     }
 
+    /** Whether Java's stroker outlines the strokes Skia rasterizes, instead of Skia's. */
+    public static boolean strokesByJava() {
+        return STROKES_BY_JAVA;
+    }
+
     /**
      * Human-readable description of the GPU API, device and Skia milestone,
      * or {@code null} if the backend is not enabled.
@@ -216,7 +241,8 @@ public final class SKEnvironment {
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
             String msg = "Skia rendering enabled: " + (description != null
-                    ? "YES (" + description + ", shapes: " + SHAPES + ", msaa: " + configuration.msaaSamples()
+                    ? "YES (" + description + ", shapes: " + SHAPES + ", strokes: " + (STROKES_BY_JAVA ? "java" : "skia")
+                      + ", msaa: " + configuration.msaaSamples()
                       + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh")
                       + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT) + ")"
                     : "NO");

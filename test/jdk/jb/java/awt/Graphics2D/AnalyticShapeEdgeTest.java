@@ -32,13 +32,15 @@
  *          the right and bottom edges of every rounded panel and tab. Fills
  *          get the first tolerance; strokes the second, wider one: the
  *          analytic oval stroke and the parallelogram stroke differ from
- *          Marlin's cubic ellipse and its stroker by a few levels at joins.
- *          Metal composites Marlin's tiles with its own blend and sits
+ *          Marlin's cubic ellipse and its stroker by a few levels at joins;
+ *          with sun.java2d.skia.strokes=java the outline comes from Java's
+ *          stroker and only the coverage differs. Metal composites Marlin's tiles with its own blend and sits
  *          further from the loops, hence its wider tolerances.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 AnalyticShapeEdgeTest skia 8 32
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.shapes=marlin -Dsun.java2d.uiScale=1 AnalyticShapeEdgeTest skia 8 32
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.strokes=java -Dsun.java2d.uiScale=1 AnalyticShapeEdgeTest skia 8 32
  * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.uiScale=1 AnalyticShapeEdgeTest metal 32 48
  */
 

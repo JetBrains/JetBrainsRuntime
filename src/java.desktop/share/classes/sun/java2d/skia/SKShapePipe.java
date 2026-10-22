@@ -54,7 +54,9 @@ import java.util.Arrays;
  * snapped to pixel centres and the control points shifted along, as Marlin's
  * normalizing iterator does for antialiased rendering, and the path is mapped
  * back to user space because {@code BasicStroke} applies under the transform.
- * Fills are sent in device space as they are.
+ * Fills are sent in device space as they are. With
+ * {@code -Dsun.java2d.skia.strokes=java} every stroke is outlined by Java's
+ * stroker and the outline filled, as dashed strokes always are.
  */
 final class SKShapePipe implements ShapeDrawPipe {
 
@@ -181,7 +183,8 @@ final class SKShapePipe implements ShapeDrawPipe {
         if (bs != null) {
             stroke = new float[] { (float) lineWidth(sg2d, bs), bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit() };
         }
-        if (isAnalytic(sg2d, s, bs) && analytic(s, at, axisAligned && normalize, axisAligned, bs != null, geo)) {
+        boolean analyticStroke = bs == null || !SKEnvironment.strokesByJava();   // Java's stroker outlines instead
+        if (analyticStroke && isAnalytic(sg2d, s, bs) && analytic(s, at, axisAligned && normalize, axisAligned, bs != null, geo)) {
             // ready
         } else if (bs == null) {
             // fill: the device-space path as it is (no normalization for fills)
@@ -199,13 +202,14 @@ final class SKShapePipe implements ShapeDrawPipe {
                 }
                 userShape = p;
             }
-            if (bs.getDashArray() != null) {
+            if (bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
                 // Dashes are measured by Java's own stroker: Skia's dasher measures
                 // curves differently and the dash ends drift along the path. Skia
-                // only fills the outline, in device space.
-                BasicStroke dashed = new BasicStroke(stroke[0], bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(),
-                                                     bs.getDashArray(), bs.getDashPhase());
-                path(dashed.createStrokedShape(userShape).getPathIterator(at), geo);
+                // only fills the outline, in device space. The same route for
+                // every stroke is the comparison mode sun.java2d.skia.strokes=java.
+                BasicStroke outline = new BasicStroke(stroke[0], bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(),
+                                                      bs.getDashArray(), bs.getDashPhase());
+                path(outline.createStrokedShape(userShape).getPathIterator(at), geo);
                 enqueue(sg2d, true, geo, null);
                 return;
             }
