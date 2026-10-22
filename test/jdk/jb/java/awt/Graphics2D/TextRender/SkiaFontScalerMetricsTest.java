@@ -75,6 +75,12 @@ public class SkiaFontScalerMetricsTest {
         for (String family : new String[] {Font.DIALOG, Font.SANS_SERIF, Font.MONOSPACED}) {
             Font base = new Font(family, Font.PLAIN, 12);
             Font2D font2D = FontUtilities.getFont2D(base);
+            Class<?> composite = classOrNull("sun.font.CompositeFont");
+            if (composite != null && composite.isInstance(font2D)) {
+                // Windows and Linux: the logical font is a composite; its first slot is the physical
+                // file font whose strike renders the ASCII range, so that is the scaler to compare
+                font2D = (Font2D) accessible(composite.getDeclaredMethod("getSlotFont", int.class)).invoke(font2D, 0);
+            }
             SKFontScaler scaler;
             boolean userSpaceRounding;
             if (cfont != null && cfont.isInstance(font2D)) {
