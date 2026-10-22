@@ -58,12 +58,22 @@ typedef enum {
 typedef struct {
     VKCompositeMode mode;
     VkBool32        dstOpaque;
+    VkBool32        useDualSrcMask;
 } VKCompositeDescriptor;
+
+// Must stay in sync with common.glsl
+typedef enum {
+    DST_PORTER_DUFF_FACTOR_ZERO                = 0,
+    DST_PORTER_DUFF_FACTOR_ONE                 = 1,
+    DST_PORTER_DUFF_FACTOR_SRC_ALPHA           = 2,
+    DST_PORTER_DUFF_FACTOR_ONE_MINUS_SRC_ALPHA = 3,
+} VKDstPorterDuffFactor;
 
 typedef struct {
     VkPipelineColorBlendAttachmentState attachmentState;
     VkPipelineColorBlendStateCreateInfo blendState;
     AlphaType                           outAlphaType;
+    VKDstPorterDuffFactor               dstFactorForDualSrcMask;
 } VKCompositeState;
 
 typedef struct {
@@ -73,6 +83,6 @@ typedef struct {
 VKComposites VKComposites_Create();
 void VKComposites_Destroy(VKComposites composites);
 void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCompositeState state);
-const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode, VkBool32 dstOpaque);
+const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode, VkBool32 dstOpaque, VkBool32 useDualSrcMask);
 
 #endif //VKComposites_h_Included

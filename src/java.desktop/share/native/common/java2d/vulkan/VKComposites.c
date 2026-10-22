@@ -36,16 +36,16 @@
        .alphaBlendOp = VK_BLEND_OP_ADD,                                         \
        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |  \
                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT }, \
-    { .logicOpEnable = VK_FALSE }, ALPHA_TYPE_PRE_MULTIPLIED })
+    { .logicOpEnable = VK_FALSE }, ALPHA_TYPE_PRE_MULTIPLIED, 0 })
 
 static size_t hash(const void* ptr) {
     const VKCompositeDescriptor* d = ptr;
-    return (size_t) (d->mode | (d->dstOpaque << 31));
+    return (size_t) (d->mode | (d->dstOpaque << 31) | (d->useDualSrcMask << 30));
 }
 
 static bool equals(const void* ap, const void* bp) {
     const VKCompositeDescriptor *a = ap, *b = bp;
-    return a->mode == b->mode && a->dstOpaque == b->dstOpaque;
+    return a->mode == b->mode && a->dstOpaque == b->dstOpaque && a->useDualSrcMask == b->useDualSrcMask;
 }
 
 VKComposites VKComposites_Create() {
@@ -58,7 +58,7 @@ VKComposites VKComposites_Create() {
             .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT },
         {   .logicOpEnable = VK_TRUE,
-            .logicOp = VK_LOGIC_OP_XOR }, ALPHA_TYPE_STRAIGHT });
+            .logicOp = VK_LOGIC_OP_XOR }, ALPHA_TYPE_STRAIGHT, 0 });
 
     //                NAME |      SRC_FACTOR      |       DST_FACTOR    ||
     ALPHA_BLEND(     CLEAR , ZERO                 , ZERO                );
@@ -77,7 +77,7 @@ VKComposites VKComposites_Create() {
     VKComposites_AddState(&composites, NO_COMPOSITE, (VKCompositeState) {
         {   .blendEnable = VK_FALSE,
             .colorWriteMask = 0 }, // For stencil-only operations.
-        {   .logicOpEnable = VK_FALSE }, ALPHA_TYPE_PRE_MULTIPLIED });
+        {   .logicOpEnable = VK_FALSE }, ALPHA_TYPE_PRE_MULTIPLIED, 0 });
 
     return composites;
 }
@@ -136,12 +136,7 @@ static void VKComposites_CollapseCommonMultipliers(VKBlendVariables* vars, VkBle
     }
 }
 
-void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCompositeState state) {
-    state.blendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    state.blendState.pNext = NULL;
-    state.blendState.attachmentCount = 1;
-    MAP_AT(composites->map, (VKCompositeDescriptor) { mode, VK_FALSE }) = state;
-
+static void VKComposites_AddStateForOpaqueDst(VKComposites* composites, VKCompositeMode mode, VKCompositeState state, VkBool32 useDualSrcMask) {
     // Using pre-multiplied alpha is necessary for correct blending,
     // but it can lead to information loss, which is crucial in case of opaque destinations.
     // For instance, doing SRC blend onto an opaque surface is expected to simply discard the (straight) alpha,
@@ -205,11 +200,50 @@ void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCom
             state.outAlphaType = straightSrcAlpha ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
         }
     }
-    MAP_AT(composites->map, (VKCompositeDescriptor) { mode, VK_TRUE }) = state;
+    MAP_AT(composites->map, (VKCompositeDescriptor) { .mode = mode, .dstOpaque = VK_TRUE, .useDualSrcMask = useDualSrcMask }) = state;
 }
 
-const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode, VkBool32 dstOpaque) {
-    VKCompositeState* state = MAP_FIND(composites->map, (VKCompositeDescriptor) { mode, dstOpaque });
+void VKComposites_AddState(VKComposites* composites, VKCompositeMode mode, VKCompositeState state) {
+    state.blendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    state.blendState.pNext = NULL;
+    state.blendState.attachmentCount = 1;
+    MAP_AT(composites->map, (VKCompositeDescriptor) { .mode = mode, .dstOpaque = VK_FALSE, .useDualSrcMask = VK_FALSE }) = state;
+    VKComposites_AddStateForOpaqueDst(composites, mode, state, VK_FALSE);
+
+    // For Porter-Duff composites, generate a dualSrcMask variant
+    if (!state.blendState.logicOpEnable && state.attachmentState.blendEnable &&
+        state.attachmentState.colorBlendOp == VK_BLEND_OP_ADD && state.attachmentState.alphaBlendOp == VK_BLEND_OP_ADD &&
+        state.attachmentState.srcColorBlendFactor == state.attachmentState.srcAlphaBlendFactor &&
+        state.attachmentState.dstColorBlendFactor == state.attachmentState.dstAlphaBlendFactor) {
+
+        bool createDualSrcMaskVariant = true;
+        switch (state.attachmentState.dstColorBlendFactor) {
+        case VK_BLEND_FACTOR_ZERO:
+            state.dstFactorForDualSrcMask = DST_PORTER_DUFF_FACTOR_ZERO;
+            break;
+        case VK_BLEND_FACTOR_ONE:
+            state.dstFactorForDualSrcMask = DST_PORTER_DUFF_FACTOR_ONE;
+            break;
+        case VK_BLEND_FACTOR_SRC_ALPHA:
+            state.dstFactorForDualSrcMask = DST_PORTER_DUFF_FACTOR_SRC_ALPHA;
+            break;
+        case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+            state.dstFactorForDualSrcMask = DST_PORTER_DUFF_FACTOR_ONE_MINUS_SRC_ALPHA;
+            break;
+        default:
+            createDualSrcMaskVariant = false;
+            break;
+        }
+        if (createDualSrcMaskVariant) {
+            state.attachmentState.dstColorBlendFactor = state.attachmentState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+            MAP_AT(composites->map, (VKCompositeDescriptor) { .mode = mode, .dstOpaque = VK_FALSE, .useDualSrcMask = VK_TRUE }) = state;
+            VKComposites_AddStateForOpaqueDst(composites, mode, state, VK_TRUE);
+        }
+    }
+}
+
+const VKCompositeState* VKComposites_GetState(VKComposites* composites, VKCompositeMode mode, VkBool32 dstOpaque, VkBool32 useDualSrcMask) {
+    VKCompositeState* state = MAP_FIND(composites->map, (VKCompositeDescriptor) { .mode = mode, .dstOpaque = dstOpaque, .useDualSrcMask = useDualSrcMask });
     state->blendState.pAttachments = &state->attachmentState;
     return state;
 }
