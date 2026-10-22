@@ -931,6 +931,11 @@ public class StandardGlyphVector extends GlyphVector {
      * initialized the positions and devTX.
      */
     Object setupGlyphImages(long[] images, float[] positions, double[] devTX) {
+        return setupGlyphImages(images, positions, devTX, -1);
+    }
+
+    /** luminance: the text luminance class the glyph images are for (FontStrikeDesc.luminance), -1 if none. */
+    Object setupGlyphImages(long[] images, float[] positions, double[] devTX, int luminance) {
         initPositions(); // FIRST ensure we have positions based on our frctx
         setRenderTransform(devTX); // THEN make sure we are using the desired devTX
 
@@ -938,7 +943,7 @@ public class StandardGlyphVector extends GlyphVector {
             return gti.setupGlyphImages(images, positions, dtx);
         }
 
-        GlyphStrike gs = getDefaultStrike();
+        GlyphStrike gs = getDefaultStrike(luminance);
         gs.strike.getGlyphImagePtrs(glyphs, images, glyphs.length);
 
         if (positions != null) {
@@ -1365,12 +1370,16 @@ public class StandardGlyphVector extends GlyphVector {
 
     // encapsulate access to cached default glyph strike
     private GlyphStrike getDefaultStrike() {
+        return getDefaultStrike(-1);
+    }
+
+    private GlyphStrike getDefaultStrike(int luminance) {
         GlyphStrike gs = null;
         if (fsref != null) {
             gs = fsref.get();
         }
-        if (gs == null) {
-            gs = GlyphStrike.create(this, dtx, null);
+        if (gs == null || gs.luminance != luminance) {
+            gs = GlyphStrike.create(this, dtx, null, luminance);
             fsref = new SoftReference<>(gs);
         }
         return gs;
@@ -1706,8 +1715,13 @@ public class StandardGlyphVector extends GlyphVector {
         FontStrike strike; // hard reference
         float dx;
         float dy;
+        int luminance = -1;   // FontStrikeDesc.luminance of the strike
 
         static GlyphStrike create(StandardGlyphVector sgv, AffineTransform dtx, AffineTransform gtx) {
+            return create(sgv, dtx, gtx, -1);
+        }
+
+        static GlyphStrike create(StandardGlyphVector sgv, AffineTransform dtx, AffineTransform gtx, int luminance) {
             float dx = 0;
             float dy = 0;
 
@@ -1749,7 +1763,7 @@ public class StandardGlyphVector extends GlyphVector {
             FontStrikeDesc desc = new FontStrikeDesc(dtx,
                                                      tx,
                                                      sgv.font.getStyle(),
-                                                     aa, fm);
+                                                     aa, fm, luminance);
             // Get the strike via the handle. Shouldn't matter
             // if we've invalidated the font but its an extra precaution.
             // do we want the CompFont from CFont here ?
@@ -1759,7 +1773,9 @@ public class StandardGlyphVector extends GlyphVector {
             }
             FontStrike strike = f2d.handle.font2D.getStrike(desc);  // !!! getStrike(desc, false)
 
-            return new GlyphStrike(sgv, strike, dx, dy);
+            GlyphStrike gs = new GlyphStrike(sgv, strike, dx, dy);
+            gs.luminance = luminance;
+            return gs;
         }
 
         private GlyphStrike(StandardGlyphVector sgv, FontStrike strike, float dx, float dy) {

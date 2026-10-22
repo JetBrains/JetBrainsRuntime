@@ -768,8 +768,9 @@ public final class SunGraphics2D
             }
         }
         info.aaHint = aahint;
+        info.luminance = textLuminance();
         info.fontStrike = info.font2D.getStrike(font, devAt, textAt,
-                                                aahint, fmhint);
+                                                aahint, fmhint, info.luminance);
         return info;
     }
 
@@ -810,8 +811,26 @@ public final class SunGraphics2D
         }
     }
 
+    /**
+     * The luminance class (FontStrikeDesc.luminance) of the current colour when
+     * glyph images depend on it: 16 classes of 16 levels, the class centre;
+     * -1 otherwise, and for paints that are not a colour.
+     */
+    private int textLuminance() {
+        if (!FontUtilities.textLuminanceDependent || paintState > PAINT_ALPHACOLOR) {
+            return -1;
+        }
+        int c = eargb;
+        int luminance = (((c >> 16) & 0xff) * 299 + ((c >> 8) & 0xff) * 587 + (c & 0xff) * 114) / 1000;
+        return (luminance & ~0xf) | 0x8;
+    }
+
+    private boolean fontInfoLuminanceStale(FontInfo info) {
+        return FontUtilities.textLuminanceDependent && info != null && info.luminance != textLuminance();
+    }
+
     public FontInfo getFontInfo() {
-        if (!validFontInfo) {
+        if (!validFontInfo || fontInfoLuminanceStale(fontInfo)) {
             this.fontInfo = checkFontInfo(this.fontInfo, font, null);
             validFontInfo = true;
         }
@@ -822,7 +841,8 @@ public final class SunGraphics2D
     public FontInfo getGVFontInfo(Font font, FontRenderContext frc) {
         if (glyphVectorFontInfo != null &&
             glyphVectorFontInfo.font == font &&
-            glyphVectorFRC == frc) {
+            glyphVectorFRC == frc &&
+            !fontInfoLuminanceStale(glyphVectorFontInfo)) {
             return glyphVectorFontInfo;
         } else {
             glyphVectorFRC = frc;

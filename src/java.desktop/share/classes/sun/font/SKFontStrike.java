@@ -72,7 +72,7 @@ public final class SKFontStrike extends PhysicalStrike {
         this.invertDevTx = inverse;
         double[] matrix = new double[4];
         desc.glyphTx.getMatrix(matrix);
-        this.pScalerContext = scaler.createScalerContext(matrix, deviceScale, desc.aaHint, desc.fmHint, 1f, 0f);
+        this.pScalerContext = scaler.createScalerContext(matrix, deviceScale, desc.aaHint, desc.fmHint, 1f, 0f, desc.luminance);
         this.glyphImages = new long[Math.max(1, mapper.getNumGlyphs())];
         this.disposer = new FontStrikeDisposer(font, desc, pScalerContext, glyphImages);
         Disposer.addObjectRecord(this, disposer);

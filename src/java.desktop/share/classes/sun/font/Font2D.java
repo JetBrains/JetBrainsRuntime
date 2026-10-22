@@ -289,13 +289,20 @@ public abstract class Font2D {
     public FontStrike getStrike(Font font, AffineTransform devTx,
                                 AffineTransform glyphTx,
                                 int aa, int fm) {
+        return getStrike(font, devTx, glyphTx, aa, fm, -1);
+    }
+
+    /** The strike for text of the luminance class (FontStrikeDesc.luminance); -1 for colour-independent glyphs. */
+    public FontStrike getStrike(Font font, AffineTransform devTx,
+                                AffineTransform glyphTx,
+                                int aa, int fm, int luminance) {
 
         /* Create the descriptor which is used to identify a strike
          * in the strike cache/map. A strike is fully described by
          * the attributes of this descriptor.
          */
         FontStrikeDesc desc = new FontStrikeDesc(devTx, glyphTx,
-                                                 font.getStyle(), aa, fm);
+                                                 font.getStyle(), aa, fm, luminance);
         return getStrike(desc, false);
     }
 

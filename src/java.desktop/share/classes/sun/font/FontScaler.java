@@ -218,6 +218,11 @@ public abstract class FontScaler implements DisposerRecord {
                                       int aa, int fm,
                                       float boldness, float italic);
 
+    /** With the text luminance class the glyph images are for (FontStrikeDesc.luminance); ignored by scalers whose images do not depend on the colour. */
+    long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic, int luminance) {
+        return createScalerContext(matrix, aa, fm, boldness, italic);
+    }
+
     /* Marks context as invalid because native scaler is invalid.
        Notes:
          - pointer itself is still valid and has to be released

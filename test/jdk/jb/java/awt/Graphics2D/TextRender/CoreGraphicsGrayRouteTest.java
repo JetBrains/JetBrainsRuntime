@@ -35,25 +35,43 @@ import java.awt.image.BufferedImage;
  *          the plain coverage of the same glyph outlines filled with
  *          antialiasing: white text must carry at least a quarter more ink,
  *          black text between 3 and 25 % more.
+ *          Without the luminance property the route takes the luminance from the
+ *          text colour itself: black and white text drawn alternately in one
+ *          process, with drawString and with a GlyphVector, each get their own
+ *          glyph images.
  * @requires os.family == "mac"
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text.cgLuminance=255 CoreGraphicsGrayRouteTest light
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text.cgLuminance=0 CoreGraphicsGrayRouteTest dark
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg CoreGraphicsGrayRouteTest colours
  */
 public class CoreGraphicsGrayRouteTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
     static final int W = 400, H = 40;
 
     public static void main(String[] args) {
-        boolean light = args[0].equals("light");
         Font font = new Font("Helvetica Neue", Font.PLAIN, 13);
+        if (args[0].equals("colours")) {
+            // alternate, so a shared image for both colours would show
+            for (int i = 0; i < 2; i++) {
+                for (boolean glyphVector : new boolean[] {false, true}) {
+                    check(font, true, glyphVector);
+                    check(font, false, glyphVector);
+                }
+            }
+            return;
+        }
+        check(font, args[0].equals("light"), false);
+    }
+
+    static void check(Font font, boolean light, boolean glyphVector) {
         // the route under test: text drawn in the luminance the property names, on the far paper
         Color ink = light ? Color.WHITE : Color.BLACK, paper = light ? Color.BLACK : Color.WHITE;
-        BufferedImage text = render(font, ink, paper, false);
+        BufferedImage text = render(font, ink, paper, glyphVector ? Mode.GLYPH_VECTOR : Mode.STRING);
         // plain coverage: the same outlines filled with antialiasing by Java's own rasterizer
-        BufferedImage outline = render(font, ink, paper, true);
+        BufferedImage outline = render(font, ink, paper, Mode.OUTLINE);
         long textInk = ink(text, paper), outlineInk = ink(outline, paper);
         double ratio = (double) textInk / outlineInk;
-        System.out.println((light ? "white" : "black") + " text: route ink " + textInk + ", coverage ink " + outlineInk + ", ratio " + ratio);
+        System.out.println((light ? "white" : "black") + " text" + (glyphVector ? " (GlyphVector)" : "") + ": route ink " + textInk + ", coverage ink " + outlineInk + ", ratio " + ratio);
         if (light && ratio < 1.25) {
             throw new RuntimeException("white text is not darkened like the platform's smoothing does: ratio " + ratio + " < 1.25");
         }
@@ -62,7 +80,9 @@ public class CoreGraphicsGrayRouteTest {
         }
     }
 
-    static BufferedImage render(Font font, Color ink, Color paper, boolean outlines) {
+    enum Mode { STRING, GLYPH_VECTOR, OUTLINE }
+
+    static BufferedImage render(Font font, Color ink, Color paper, Mode mode) {
         BufferedImage image = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();
         g.setColor(paper);
@@ -72,12 +92,11 @@ public class CoreGraphicsGrayRouteTest {
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setColor(ink);
         g.setFont(font);
-        if (outlines) {
-            FontRenderContext frc = g.getFontRenderContext();
-            GlyphVector gv = font.createGlyphVector(frc, TEXT);
-            g.fill(gv.getOutline(4, 26));
-        } else {
-            g.drawString(TEXT, 4, 26);
+        FontRenderContext frc = g.getFontRenderContext();
+        switch (mode) {
+            case OUTLINE -> g.fill(font.createGlyphVector(frc, TEXT).getOutline(4, 26));
+            case GLYPH_VECTOR -> g.drawGlyphVector(font.createGlyphVector(frc, TEXT), 4, 26);
+            case STRING -> g.drawString(TEXT, 4, 26);
         }
         g.dispose();
         return image;

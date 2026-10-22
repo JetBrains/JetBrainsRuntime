@@ -69,8 +69,10 @@ public final class SKFontScaler extends FontScaler {
      * itself with font smoothing on, for the text luminance
      * {@code sun.java2d.skia.text.cgLuminance} (0..255; the platform darkens light
      * text more than dark text), the coverage recovered from the render. The
-     * platform's own look by construction for that luminance; until the text
-     * pipes pass the colour, the luminance is one per process. macOS only.
+     * platform's own look by construction for that luminance. The graphics
+     * state passes its colour's luminance class through the strike
+     * (FontStrikeDesc.luminance); the property is the fallback for strikes
+     * without one. macOS only.
      */
     private static final int GRAY_LUMINANCE = Math.max(0, Math.min(255, Integer.getInteger("sun.java2d.skia.text.cgLuminance", 0)));
     private static final float GRAY_DARKENING = Float.parseFloat(System.getProperty("sun.java2d.skia.text.grayDarkening", "0.013"));
@@ -199,6 +201,12 @@ public final class SKFontScaler extends FontScaler {
         return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, GRAY_MODE, GRAY_DARKENING, GRAY_LUMINANCE);
     }
 
+    @Override
+    long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic, int luminance) {
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, GRAY_MODE, GRAY_DARKENING,
+                                   luminance >= 0 ? luminance : GRAY_LUMINANCE);
+    }
+
     /**
      * A context for a strike that rounds whole-pixel advances in user space,
      * as the CoreText strike ({@code CStrike}) does: {@code deviceScale} is the
@@ -206,6 +214,12 @@ public final class SKFontScaler extends FontScaler {
      */
     long createScalerContext(double[] matrix, double deviceScale, int aa, int fm, float boldness, float italic) {
         return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, GRAY_MODE, GRAY_DARKENING, GRAY_LUMINANCE);
+    }
+
+    /** With the text luminance class (FontStrikeDesc.luminance) for the CoreGraphics route; -1 falls back to the property. */
+    long createScalerContext(double[] matrix, double deviceScale, int aa, int fm, float boldness, float italic, int luminance) {
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, GRAY_MODE, GRAY_DARKENING,
+                                   luminance >= 0 ? luminance : GRAY_LUMINANCE);
     }
 
     @Override

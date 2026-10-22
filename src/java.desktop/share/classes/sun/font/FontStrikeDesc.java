@@ -73,13 +73,20 @@ public class FontStrikeDesc {
     int style;
     int aaHint;
     int fmHint;
+    /**
+     * The luminance class (0..255) of the text colour the glyph images are
+     * rasterized for, or -1 when they do not depend on the colour. Only a
+     * scaler whose rendering depends on the colour (the Skia scaler's
+     * CoreGraphics route) makes strikes differ by it.
+     */
+    int luminance = -1;
     private int hashCode;
     private int valuemask;
 
     public int hashCode() {
         /* Can cache hashcode since a strike(desc) is immutable.*/
         if (hashCode == 0) {
-            hashCode = glyphTx.hashCode() + devTx.hashCode() + valuemask;
+            hashCode = glyphTx.hashCode() + devTx.hashCode() + valuemask + 31 * luminance;
         }
         return hashCode;
     }
@@ -90,6 +97,7 @@ public class FontStrikeDesc {
         }
         return obj instanceof FontStrikeDesc desc &&
             desc.valuemask == this.valuemask &&
+            desc.luminance == this.luminance &&
             desc.glyphTx.equals(this.glyphTx) &&
             desc.devTx.equals(this.devTx);
     }
@@ -214,6 +222,12 @@ public class FontStrikeDesc {
 
     public FontStrikeDesc(AffineTransform devAt, AffineTransform at,
                           int fStyle, int aa, int fm) {
+        this(devAt, at, fStyle, aa, fm, -1);
+    }
+
+    public FontStrikeDesc(AffineTransform devAt, AffineTransform at,
+                          int fStyle, int aa, int fm, int luminance) {
+        this.luminance = luminance;
         devTx = devAt;
         glyphTx = at; // not cloning glyphTx. Callers trusted to not mutate it.
         style = fStyle;
@@ -251,11 +265,12 @@ public class FontStrikeDesc {
         fmHint = desc.fmHint;
         hashCode = desc.hashCode;
         valuemask = desc.valuemask;
+        luminance = desc.luminance;
     }
 
 
     public String toString() {
-        return "FontStrikeDesc: Style="+style+ " AA="+aaHint+ " FM="+fmHint+
+        return "FontStrikeDesc: Style="+style+ " AA="+aaHint+ " FM="+fmHint+ (luminance >= 0 ? " Lum="+luminance : "")+
             " devTx="+devTx+ " devTx.FontTx.ptSize="+glyphTx;
     }
 }

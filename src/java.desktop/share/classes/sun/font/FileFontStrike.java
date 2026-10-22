@@ -222,7 +222,7 @@ public class FileFontStrike extends PhysicalStrike {
         } else {
             pScalerContext = fileFont.getScaler().createScalerContext(matrix,
                                     desc.aaHint, desc.fmHint,
-                                    boldness, italic);
+                                    boldness, italic, desc.luminance);
         }
 
         mapper = fileFont.getMapper();

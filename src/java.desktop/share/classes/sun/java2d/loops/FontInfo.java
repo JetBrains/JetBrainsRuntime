@@ -56,6 +56,8 @@ public final class FontInfo implements Cloneable {
     public boolean lcdRGBOrder;
     /* lcdSubPixPos is used if FM is ON for HRGB/HBGR LCD text mode */
     public boolean lcdSubPixPos;
+    /** The text luminance class the strike rasterizes for, -1 when the glyphs do not depend on the colour. */
+    public int luminance = -1;
 
     @Override
     public Object clone() {

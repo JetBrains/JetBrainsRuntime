@@ -48,6 +48,12 @@ public final class FontUtilities {
     public static boolean useJDKScaler;
     /** {@code -Dsun.java2d.font.scaler=skia}: the Skia font scaler (SKFontScaler) for every font. */
     public static boolean useSkiaScaler;
+    /**
+     * Whether glyph images depend on the text colour's luminance (the Skia
+     * scaler's CoreGraphics route, {@code sun.java2d.skia.text.gray=cg}): the
+     * graphics state then keys its strikes by the luminance class.
+     */
+    public static boolean textLuminanceDependent;
 
     public static boolean isWindows;
 
@@ -97,6 +103,8 @@ public final class FontUtilities {
         if (scalerStr != null) {
             useJDKScaler = "jdk".equals(scalerStr);
             useSkiaScaler = "skia".equals(scalerStr);
+            textLuminanceDependent = useSkiaScaler
+                    && "cg".equalsIgnoreCase(System.getProperty("sun.java2d.skia.text.gray", ""));
         } else {
             useJDKScaler = false;
             useSkiaScaler = false;

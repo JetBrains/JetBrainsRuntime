@@ -273,7 +273,7 @@ public final class GlyphList {
         ensureCapacity(len);
         strikelist = sgv.setupGlyphImages(images,
                                           usePositions ? positions : null,
-                                          info.devTx);
+                                          info.devTx, info.luminance);
         glyphindex = -1;
     }
 
