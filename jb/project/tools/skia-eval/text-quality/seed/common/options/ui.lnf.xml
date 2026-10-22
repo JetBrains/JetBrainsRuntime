@@ -1,0 +1,15 @@
+<application>
+  <component name="UISettings">
+    <option name="FONT_FACE" value="Inter" />
+    <option name="FONT_SIZE" value="13" />
+    <option name="FONT_SIZE_2" value="13.0" />
+    <option name="OVERRIDE_NONIDEA_LAF_FONTS" value="true" />
+    <option name="IDE_AA_TYPE" value="SUBPIXEL" />
+    <option name="EDITOR_AA_TYPE" value="SUBPIXEL" />
+    <option name="ANIMATE_WINDOWS" value="false" />
+    <option name="SHOW_MAIN_MENU_MODE" value="MERGED_WITH_MAIN_TOOLBAR" />
+    <option name="SHOW_TOOL_WINDOW_NUMBERS" value="false" />
+    <option name="PRESENTATION_MODE_FONT_SIZE" value="24" />
+    <option name="DIFFERENTIATE_PROJECTS" value="false" />
+  </component>
+</application>

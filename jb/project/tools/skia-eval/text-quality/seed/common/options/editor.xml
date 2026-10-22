@@ -1,0 +1,12 @@
+<application>
+  <component name="EditorSettings">
+    <option name="IS_CARET_BLINKING" value="false" />
+    <option name="IS_WHITESPACES_SHOWN" value="false" />
+    <option name="SHOW_INTENTION_BULB" value="false" />
+    <option name="IS_ANIMATED_SCROLLING" value="false" />
+    <option name="SHOW_INSPECTION_WIDGET" value="false" />
+  </component>
+  <component name="CodeInsightSettings">
+    <option name="SHOW_PARAMETER_NAME_HINTS" value="true" />
+  </component>
+</application>

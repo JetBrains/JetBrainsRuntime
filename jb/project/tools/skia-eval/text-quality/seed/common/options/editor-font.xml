@@ -1,0 +1,10 @@
+<application>
+  <component name="DefaultFont">
+    <option name="FONT_FAMILY" value="JetBrains Mono" />
+    <option name="FONT_SIZE" value="13" />
+    <option name="FONT_SIZE_2" value="13.0" />
+    <option name="LINE_SPACING" value="1.2" />
+    <option name="USE_LIGATURES" value="true" />
+    <option name="VERSION" value="1" />
+  </component>
+</application>

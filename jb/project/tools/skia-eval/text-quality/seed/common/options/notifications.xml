@@ -1,0 +1,6 @@
+<application>
+  <component name="NotificationConfiguration">
+    <option name="SHOW_BALLOONS" value="false" />
+    <option name="SYSTEM_NOTIFICATIONS" value="false" />
+  </component>
+</application>

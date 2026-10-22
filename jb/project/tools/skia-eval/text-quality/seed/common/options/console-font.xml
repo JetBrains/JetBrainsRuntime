@@ -1,0 +1,8 @@
+<application>
+  <component name="ConsoleFont">
+    <option name="FONT_FAMILY" value="JetBrains Mono" />
+    <option name="FONT_SIZE" value="13" />
+    <option name="FONT_SIZE_2" value="13.0" />
+    <option name="VERSION" value="1" />
+  </component>
+</application>
