@@ -34,6 +34,7 @@
 #include "sun_font_SKFontScaler.h"
 #include "SKMaskCache.h"
 #include "SKQuadBatch.h"
+#include "SKStats.h"
 
 #include "jlong.h"
 #include "fontscalerdefs.h"
@@ -428,6 +429,7 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
     if (g.cc == nullptr) {
         return nullptr;   // every caller has a destination, and with it a context
     }
+    SKStatsScope uploadStats(SK_SPAN_IMAGE_UPLOAD);
     sk_sp<SkImage> raster = SkImages::RasterFromPixmap(pm, nullptr, nullptr);
     return raster ? SkImages::TextureFromImage(g.cc->recorder.get(), raster.get()) : nullptr;
 }
@@ -955,6 +957,7 @@ static void flushGlyphBatches() {
 
 // The glyph and Marlin tile batches of a context, then the rect batch.
 static void flushBatchesOf(SKConfigContext *cc) {
+    SKStatsScope batchStats(SK_SPAN_BATCHES);
     if (cc != nullptr) {
         flushGlyphCaches(cc);
         SKMaskCache_Flush(cc->maskCache);
@@ -2183,6 +2186,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
                                       {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
         const SkPoint texCoords[4] = {{srcRect.fLeft, srcRect.fTop}, {srcRect.fRight, srcRect.fTop},
                                       {srcRect.fRight, srcRect.fBottom}, {srcRect.fLeft, srcRect.fBottom}};
+        SKStats_Count(SK_COUNT_MESH_DRAWS);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
                                                     nullptr, 6, quadIndices),
                                SkBlendMode::kModulate, paint);
@@ -2213,6 +2217,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
     auto drawSpans = [&]() {   // the mesh so far, in device space
         g.canvas->save();
         g.canvas->resetMatrix();
+        SKStats_Count(SK_COUNT_MESH_DRAWS);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
                                                     texCoords.data(), nullptr, (int) indices.size(), indices.data()),
                                SkBlendMode::kModulate, paint);
@@ -2391,6 +2396,7 @@ void SKBackend_SurfaceToSwBlit(JNIEnv *env, jint sx, jint sy, jint dx, jint dy, 
                 // Read the premultiplied bytes as they are and unpremultiply like the
                 // Java loops (div8table) do, so results equal the software pipeline's.
                 SkImageInfo info = SkImageInfo::Make(clipped.width(), clipped.height(), kBGRA_8888_SkColorType, kPremul_SkAlphaType);
+                SKStatsScope readbackStats(SK_SPAN_READBACK);
                 auto *req = new ReadbackRequest();
                 req->w = clipped.width();
                 req->h = clipped.height();
@@ -2452,10 +2458,15 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     }
     flushBatchesOf(cc);
     cc->recordingGeneration++;
-    std::unique_ptr<Recording> recording = cc->recorder->snap();
+    std::unique_ptr<Recording> recording;
+    {
+        SKStatsScope snapStats(SK_SPAN_SNAP);
+        recording = cc->recorder->snap();
+    }
     if (recording) {
         InsertRecordingInfo info;
         info.fRecording = recording.get();
+        SKStatsScope insertStats(SK_SPAN_INSERT);
         if (!cc->context->insertRecording(info)) {
             J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_FlushRecording: insertRecording failed");
         }
@@ -2467,6 +2478,7 @@ void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
         return;
     }
     SKBackend_FlushRecording(cc);
+    SKStatsScope submitStats(syncToCpu ? SK_SPAN_SUBMIT_WAIT : SK_SPAN_SUBMIT);
     cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
 }
 
@@ -2485,6 +2497,7 @@ void SKBackend_EndOfFlush(bool syncToCpu) {
     // Ask the platform to present the windows we drew into.
     for (SKSDOps *dst : g.touchedWindows) {
         if (dst->platform != nullptr) {
+            SKStatsScope presentStats(SK_SPAN_PRESENT);
             SKPlatform_RequestRedraw(dst->platform);
         }
     }

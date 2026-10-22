@@ -25,6 +25,7 @@
 
 #include "SKMaskCache.h"
 #include "SKBackend.h"
+#include "SKStats.h"
 #include "SKQuadBatch.h"
 
 #include "Trace.h"
@@ -69,6 +70,7 @@ static void uploadStaging(SKMaskCache *mc) {
     if (mc->stagingX0 < mc->stagingX1) {
         SkPixmap pm(SkImageInfo::MakeA8(mc->stagingX1 - mc->stagingX0, CELL_SIZE),
                     mc->staging.data() + mc->stagingX0, (size_t) CACHE_SIZE);
+        SKStats_Count(SK_COUNT_ATLAS_UPLOADS);
         mc->atlas->writePixels(pm, mc->stagingX0, mc->stagingRow);
         mc->stagingX0 = CACHE_SIZE;
         mc->stagingX1 = 0;
@@ -97,6 +99,7 @@ SKMaskCache *SKMaskCache_Create(SKConfigContext *cc) {
     mc->batch.beforeDraw = [mc](const SkRect &) { uploadStaging(mc); };
     // cell 0 is the opaque cell for fully covered tiles (SKMaskCache_DrawSolid)
     std::vector<unsigned char> opaque((size_t) CELL_SIZE * CELL_SIZE, 0xff);
+    SKStats_Count(SK_COUNT_ATLAS_UPLOADS);
     mc->atlas->writePixels(SkPixmap(SkImageInfo::MakeA8(CELL_SIZE, CELL_SIZE), opaque.data(), CELL_SIZE), 0, 0);
     mc->nextCell = FIRST_CELL;
     return mc;
@@ -152,6 +155,7 @@ void SKMaskCache_Draw(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &paint,
     // from overwriting the cell with stale data.
     mc->batch.flush();
     SkPixmap tile(SkImageInfo::MakeA8(w, h), mask, (size_t) maskscan);
+    SKStats_Count(SK_COUNT_ATLAS_UPLOADS);
     mc->atlas->writePixels(tile, cx, cy);
     canvas->drawImageRect(mc->atlasImage.get(), SkRect::MakeXYWH(cx, cy, w, h), SkRect::MakeXYWH(x, y, w, h),
                           SkSamplingOptions(SkFilterMode::kNearest), &paint, SkCanvas::kStrict_SrcRectConstraint);

@@ -27,6 +27,7 @@
 // queue buffer (flushAndInvokeNow).
 
 #include "SKBackend.h"
+#include "SKStats.h"
 #include <vector>
 
 #include "jlong.h"
@@ -80,9 +81,10 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
     }
     unsigned char *end = b + limit;
 
-    { SKPlatformScope scope;
+    { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     while (b < end) {
         jint opcode = NEXT_INT(b);
+        SKStatsOpScope opStats(opcode);
         switch (opcode) {
 
         // draw ops
@@ -482,6 +484,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
     }
     SKBackend_EndOfFlush();
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 // ---- direct entry points (flushAndInvokeNow: operations larger than the render buffer) ----
@@ -491,7 +494,7 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
                                            jintArray xpointsArray, jintArray ypointsArray,
                                            jint nPoints, jboolean isClosed, jint transX, jint transY)
 {
-    { SKPlatformScope scope;
+    { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     jint *xPoints = (jint *) env->GetPrimitiveArrayCritical(xpointsArray, nullptr);
     if (xPoints != nullptr) {
         jint *yPoints = (jint *) env->GetPrimitiveArrayCritical(ypointsArray, nullptr);
@@ -503,6 +506,7 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
     }
     SKBackend_EndOfFlush();
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 JNIEXPORT void JNICALL
@@ -510,7 +514,7 @@ Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean f
                                            jfloatArray xformArr, jfloatArray strokeArr, jint windingRule,
                                            jintArray typesArr, jint numTypes, jfloatArray coordsArr, jint numCoords)
 {
-    { SKPlatformScope scope;
+    { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     jfloat *xform = (jfloat *) env->GetPrimitiveArrayCritical(xformArr, nullptr);
     jfloat *stroke = strokeArr != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(strokeArr, nullptr) : nullptr;
     jint *types = typesArr != nullptr ? (jint *) env->GetPrimitiveArrayCritical(typesArr, nullptr) : nullptr;
@@ -527,6 +531,7 @@ Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean f
     if (xform != nullptr) env->ReleasePrimitiveArrayCritical(xformArr, xform, JNI_ABORT);
     SKBackend_EndOfFlush();
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 JNIEXPORT void JNICALL
@@ -535,7 +540,7 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
                                            jint maskoff, jint maskscan, jint masklen,
                                            jbyteArray maskArray)
 {
-    { SKPlatformScope scope;
+    { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     unsigned char *mask = nullptr;
     if (maskArray != nullptr) {
         mask = (unsigned char *) env->GetPrimitiveArrayCritical(maskArray, nullptr);
@@ -549,6 +554,7 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
     }
     SKBackend_EndOfFlush();
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 JNIEXPORT void JNICALL
@@ -636,7 +642,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
                                                     jfloat glyphListOrigX, jfloat glyphListOrigY,
                                                     jlongArray imgArray, jfloatArray posArray)
 {
-    { SKPlatformScope scope;
+    { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     jlong *images = (jlong *) env->GetPrimitiveArrayCritical(imgArray, nullptr);
     if (images == nullptr) {
         return;
@@ -655,6 +661,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
     env->ReleasePrimitiveArrayCritical(imgArray, images, JNI_ABORT);
     SKBackend_EndOfFlush();
     } // SKPlatformScope
+    SKStats_EndOfEntry();
 }
 
 } // extern "C"

@@ -26,6 +26,8 @@
 #ifndef SKQuadBatch_h_Included
 #define SKQuadBatch_h_Included
 
+#include "SKStats.h"
+
 #include "include/core/SkCanvas.h"
 #include "include/core/SkRect.h"
 #include "include/core/SkColor.h"
@@ -335,10 +337,13 @@ private:
         if (withColors) {
             SkPaint white = meshPaint;
             white.setColor(SK_ColorWHITE);
+            SKStats_Count(SK_COUNT_MESH_DRAWS);
             canvas->drawVertices(mesh, SkBlendMode::kModulate, white);
         } else {
+            SKStats_Count(SK_COUNT_MESH_DRAWS);
             canvas->drawVertices(mesh, SkBlendMode::kModulate, meshPaint);
             if (twoPass != nullptr) {
+                SKStats_Count(SK_COUNT_MESH_DRAWS);
                 canvas->drawVertices(mesh, SkBlendMode::kModulate, secondPaint);
             }
         }

@@ -25,6 +25,7 @@
 
 #include "SKGlyphCache.h"
 #include "SKBackend.h"
+#include "SKStats.h"
 #include "SKQuadBatch.h"
 
 #include "AccelGlyphCache.h"
@@ -218,6 +219,7 @@ static void uploadDirtyRows(SKGlyphCache *gc) {
         if (!dirty.isEmpty()) {
             SkPixmap sub;
             if (all.extractSubset(&sub, dirty)) {
+                SKStats_Count(SK_COUNT_ATLAS_UPLOADS);
                 gc->atlas->writePixels(sub, dirty.fLeft, dirty.fTop);
                 SKGlyphCache_CountStat(SK_ATLAS_UPLOADS);
             }
