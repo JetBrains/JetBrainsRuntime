@@ -37,6 +37,10 @@
 #include "include/gpu/graphite/ContextOptions.h"
 
 #include <memory>
+#include "jni.h"
+
+class SkFontMgr;
+class SkTypeface;
 
 // The platform's graphics configuration a Graphite context is created for
 // (macOS: MTLGraphicsConfigInfo; Windows: Win32SKGraphicsConfig's native
@@ -92,5 +96,12 @@ public:
 private:
     void *handle;
 };
+
+// Text (SKFontScaler): the platform's font host, which is also what the
+// platform's own text stack uses (macOS: CoreText; Windows: DirectWrite), and
+// a typeface over the font object the platform's Font2D already holds (macOS:
+// the CTFontRef behind CFont). Null if the platform has no font host yet.
+sk_sp<SkFontMgr> SKPlatform_FontManager();
+sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
 
 #endif /* SKPlatform_h_Included */

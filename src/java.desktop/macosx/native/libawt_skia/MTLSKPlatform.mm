@@ -30,6 +30,12 @@
 #include "SKPlatform.h"
 #include "MTLSKInterop.h"
 
+#include "jlong.h"
+#include "include/core/SkFontMgr.h"
+#include "include/core/SkTypeface.h"
+#include "include/ports/SkFontMgr_mac_ct.h"
+#include "include/ports/SkTypeface_mac.h"
+#import <objc/runtime.h>
 #include "include/gpu/graphite/mtl/MtlBackendContext.h"
 #include "include/gpu/graphite/mtl/MtlGraphiteTypes.h"
 #include "include/gpu/graphite/mtl/MtlGraphiteTypes_cpp.h"
@@ -133,4 +139,25 @@ SKPlatformScope::SKPlatformScope() : handle([[NSAutoreleasePool alloc] init]) {}
 
 SKPlatformScope::~SKPlatformScope() {
     [(NSAutoreleasePool *) handle drain];
+}
+
+// ---- text ------------------------------------------------------------------
+
+sk_sp<SkFontMgr> SKPlatform_FontManager() {
+    static sk_sp<SkFontMgr> manager = SkFontMgr_New_CoreText(nullptr);
+    return manager;
+}
+
+// CFont's native font is libawt_lwawt's AWTFont wrapper; its NSFont is
+// toll-free bridged to the CTFontRef Skia's CoreText port wraps, and the
+// typeface retains it. The ivar is read through the runtime because this
+// library does not link against libawt_lwawt.
+sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont) {
+    id awtFont = (id) jlong_to_ptr(nativeFont);
+    if (awtFont == nil) {
+        return nullptr;
+    }
+    Ivar ivar = class_getInstanceVariable([awtFont class], "fFont");
+    id font = ivar != NULL ? object_getIvar(awtFont, ivar) : nil;
+    return font != nil ? SkMakeTypefaceFromCTFont((CTFontRef) font) : nullptr;
 }

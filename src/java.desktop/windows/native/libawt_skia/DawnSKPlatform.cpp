@@ -511,3 +511,16 @@ void SKPlatform_DisposeSurface(SKPlatformSurface *surface) {
 SKPlatformScope::SKPlatformScope() : handle(nullptr) {}
 
 SKPlatformScope::~SKPlatformScope() {}
+
+// ---- text ------------------------------------------------------------------
+
+// The DirectWrite host (SkFontMgr_New_DirectWrite) joins when the text track
+// reaches Windows; until then SKFontScaler is unavailable here and the JDK's
+// own scalers render text.
+sk_sp<SkFontMgr> SKPlatform_FontManager() {
+    return nullptr;
+}
+
+sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong) {
+    return nullptr;
+}
