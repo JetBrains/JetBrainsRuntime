@@ -35,25 +35,39 @@ import sun.java2d.pipe.BufferedMaskFill;
 
 import java.awt.Composite;
 
+import static sun.java2d.loops.CompositeType.AnyAlpha;
 import static sun.java2d.loops.CompositeType.SrcNoEa;
 import static sun.java2d.loops.CompositeType.SrcOver;
 import static sun.java2d.loops.SurfaceType.*;
 
 class VKMaskFill extends BufferedMaskFill {
 
-    static void register() {
-        GraphicsPrimitive[] primitives = {
-                new VKMaskFill(AnyColor,                  SrcOver),
-                new VKMaskFill(OpaqueColor,               SrcNoEa),
-                new VKMaskFill(GradientPaint,             SrcOver),
-                new VKMaskFill(OpaqueGradientPaint,       SrcNoEa),
-                new VKMaskFill(LinearGradientPaint,       SrcOver),
-                new VKMaskFill(OpaqueLinearGradientPaint, SrcNoEa),
-                new VKMaskFill(RadialGradientPaint,       SrcOver),
-                new VKMaskFill(OpaqueRadialGradientPaint, SrcNoEa),
-                new VKMaskFill(TexturePaint,              SrcOver),
-                new VKMaskFill(OpaqueTexturePaint,        SrcNoEa),
-        };
+    static void register(boolean dualSrcBlendSupported) {
+        GraphicsPrimitive[] primitives;
+        if (dualSrcBlendSupported) {
+            primitives = new GraphicsPrimitive[]{
+                    new VKMaskFill(AnyColor, AnyAlpha),
+                    new VKMaskFill(GradientPaint, AnyAlpha),
+                    new VKMaskFill(LinearGradientPaint, AnyAlpha),
+                    new VKMaskFill(RadialGradientPaint, AnyAlpha),
+
+                    new VKMaskFill(TexturePaint, SrcOver),
+                    new VKMaskFill(OpaqueTexturePaint, SrcNoEa),
+            };
+        } else {
+            primitives = new GraphicsPrimitive[]{
+                    new VKMaskFill(AnyColor, SrcOver),
+                    new VKMaskFill(OpaqueColor, SrcNoEa),
+                    new VKMaskFill(GradientPaint, SrcOver),
+                    new VKMaskFill(OpaqueGradientPaint, SrcNoEa),
+                    new VKMaskFill(LinearGradientPaint, SrcOver),
+                    new VKMaskFill(OpaqueLinearGradientPaint, SrcNoEa),
+                    new VKMaskFill(RadialGradientPaint, SrcOver),
+                    new VKMaskFill(OpaqueRadialGradientPaint, SrcNoEa),
+                    new VKMaskFill(TexturePaint, SrcOver),
+                    new VKMaskFill(OpaqueTexturePaint, SrcNoEa),
+            };
+        }
         GraphicsPrimitiveMgr.register(primitives);
     }
 
@@ -77,5 +91,11 @@ class VKMaskFill extends BufferedMaskFill {
         VKContext.validateContext(dstData, dstData,
                 sg2d.getCompClip(), comp,
                 null, sg2d.paint, sg2d, ctxflags);
+    }
+
+    @Override
+    protected boolean shouldOverrideCompositeToSrcOver() {
+        // TODO: What if we're on another GPU??? How do we determine this?
+        return !VKEnv.getDevices().findFirst().get().hasCap(VKGPU.CAP_DUAL_SRC_BLEND_BIT);
     }
 }

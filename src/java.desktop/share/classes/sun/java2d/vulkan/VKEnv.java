@@ -108,8 +108,9 @@ public final class VKEnv {
                         }
                     }
 
+                    boolean dualSrcBlendSupported = defaultDevice.hasCap(VKGPU.CAP_DUAL_SRC_BLEND_BIT);
                     VKBlitLoops.register();
-                    VKMaskFill.register();
+                    VKMaskFill.register(dualSrcBlendSupported);
                     VKMaskBlit.register();
                 }
             } catch (UnsatisfiedLinkError | VKInitializationException e) {

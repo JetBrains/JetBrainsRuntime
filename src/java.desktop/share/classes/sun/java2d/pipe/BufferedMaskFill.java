@@ -69,6 +69,8 @@ public abstract class BufferedMaskFill extends MaskFill {
         this.rq = rq;
     }
 
+    protected boolean shouldOverrideCompositeToSrcOver() { return true; }
+
     @Override
     public void MaskFill(SunGraphics2D sg2d, SurfaceData sData,
                          Composite comp,
@@ -77,7 +79,7 @@ public abstract class BufferedMaskFill extends MaskFill {
                          final int maskoff, final int maskscan)
     {
         AlphaComposite acomp = (AlphaComposite)comp;
-        if (acomp.getRule() != AlphaComposite.SRC_OVER) {
+        if (shouldOverrideCompositeToSrcOver() && acomp.getRule() != AlphaComposite.SRC_OVER) {
             comp = AlphaComposite.SrcOver;
         }
 
