@@ -85,7 +85,7 @@ struct ext_data_control_manager_v1 *ext_data_control_manager = NULL; // optional
 
 struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, check for NULL before use
 
-static uint32_t num_of_outstanding_sync = 0;
+int num_of_outstanding_sync = 0;
 static bool waiting_for_xdg_toplevel_icon_manager_done = false;
 
 // This group of definitions corresponds to declarations from awt.h
@@ -686,7 +686,8 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, wp_viewporter_interface.name) == 0) {
         wp_viewporter = wl_registry_bind(wl_registry, name, &wp_viewporter_interface, 1);
     } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
-        zxdg_output_manager_v1 = wl_registry_bind(wl_registry, name, &zxdg_output_manager_v1_interface, 2);
+        uint32_t versionToBind = version >= 3 ? 3 : version;
+        zxdg_output_manager_v1 = wl_registry_bind(wl_registry, name, &zxdg_output_manager_v1_interface, versionToBind);
         if (zxdg_output_manager_v1 != NULL) {
             WLOutputXdgOutputManagerBecameAvailable();
             process_new_listener_before_end_of_init();

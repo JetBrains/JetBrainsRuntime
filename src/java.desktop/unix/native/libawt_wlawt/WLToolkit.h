@@ -79,6 +79,8 @@ extern struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager; // option
 extern struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, check for NULL before use
 extern struct ext_data_control_manager_v1 *ext_data_control_manager; // optional, check for NULL before use
 
+extern int num_of_outstanding_sync;
+
 JNIEnv *getEnv();
 
 // Utilities for managing exceptions in Wayland callbacks, where we can't throw
