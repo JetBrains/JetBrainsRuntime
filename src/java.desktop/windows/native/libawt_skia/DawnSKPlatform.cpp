@@ -32,6 +32,8 @@
 
 #include "Trace.h"
 #include "include/core/SkColorType.h"
+#include "include/core/SkFontMgr.h"
+#include "include/core/SkTypeface.h"
 #include "include/gpu/graphite/dawn/DawnBackendContext.h"
 #include "include/gpu/graphite/dawn/DawnGraphiteTypes.h"
 #include "dawn/dawn_proc.h"
