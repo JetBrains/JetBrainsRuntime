@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
+#include "sun_java2d_vulkan_VKGPU.h"
 #include "VKUtil.h"
 #include "VKEnv.h"
 #include "VKPipelines.h"
@@ -132,6 +133,8 @@ for (uint32_t i = 0; i < SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTES_##NAME); i++) { 
         VKUtil_GetFormatGroup(INPUT_STATE_ATTRIBUTE_FORMATS_##NAME[i]).bytes;              \
 } if (sizeof(TYPE) != INPUT_STATE_BINDING_SIZE_##NAME) VK_FATAL_ERROR("Vertex size mismatch for input state " #NAME)
 
+#define SELECT_SHADER(BASE_NAME, TYPE, DUAL_SRC_MASK) ((DUAL_SRC_MASK) ? shaders->BASE_NAME##_DUAL_SRC_MASK##_##TYPE : shaders->BASE_NAME##_##TYPE)
+
 static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPassContext, uint32_t count,
                                                   const VKPipelineDescriptor* descriptors) {
     assert(renderPassContext != NULL && renderPassContext->pipelineContext != NULL);
@@ -187,26 +190,10 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     };
 
     for (uint32_t i = 0; i < count; i++) {
-        const VKCompositeState* compositeState =
-            VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque);
-        pipelineInfos[i].outAlphaType = compositeState->outAlphaType;
         // Init default pipeline state. Some members are left uninitialized:
         // - pStages (but stageCount is set to 2)
         // - pVertexInputState
         // - createInfo.layout
-        specializations[i] = (Specialization) {
-            .info = {
-                .mapEntryCount = SARRAY_COUNT_OF(SPECIALIZATION_ENTRIES),
-                .pMapEntries = SPECIALIZATION_ENTRIES,
-                .dataSize = sizeof(SpecializationData),
-                .pData = &specializations[i].data
-            },
-            .data = {
-                descriptors[i].inAlphaType, pipelineInfos[i].outAlphaType, (uint32_t) descriptors[i].shaderVariant,
-                (descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) |
-                (descriptors[i].shader & SHADER_MASK ? 2 : 0)
-            }
-        };
         inputAssemblyStates[i] = (VkPipelineInputAssemblyStateCreateInfo) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = descriptors[i].topology
@@ -254,7 +241,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             .pRasterizationState = &rasterizationState,
             .pMultisampleState = &multisampleState,
             .pDepthStencilState = &depthStencilStates[i],
-            .pColorBlendState = &compositeState->blendState,
             .pDynamicState = &dynamicStates[i],
             .renderPass = renderPassContext->renderPass[descriptors[i].stencilMode != STENCIL_MODE_NONE],
             .subpass = 0,
@@ -269,6 +255,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     MAKE_INPUT_STATE(BLIT, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
     MAKE_INPUT_STATE(CLIP, VKIntVertex, VK_FORMAT_R32G32_SINT);
 
+    bool dualSrcBlendSupported = (device->caps & sun_java2d_vulkan_VKGPU_CAP_DUAL_SRC_BLEND_BIT);
+    bool useDualSrcMask = false;
     for (uint32_t i = 0; i < count; i++) {
         // Setup shader-specific pipeline parameters.
         switch ((int) descriptors[i].shader) {
@@ -280,7 +268,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         case SHADER_COLOR | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_color_vert, shaders->mask_fill_color_frag }};
+            useDualSrcMask = dualSrcBlendSupported;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_color_vert, SELECT_SHADER(mask_fill_color, frag, useDualSrcMask) }};
             break;
         case SHADER_GRADIENT:
             createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
@@ -290,7 +279,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         case SHADER_GRADIENT | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_frag }};
+            useDualSrcMask = dualSrcBlendSupported;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, SELECT_SHADER(gradient, frag, useDualSrcMask) }};
             break;
         case SHADER_GRADIENT_LINEAR_PUSH:
             createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
@@ -300,7 +290,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         case SHADER_GRADIENT_LINEAR_PUSH | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_linear_push_frag }};
+            useDualSrcMask = dualSrcBlendSupported;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, SELECT_SHADER(gradient_linear_push, frag, useDualSrcMask) }};
             break;
         case SHADER_GRADIENT_RADIAL_PUSH:
             createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
@@ -310,7 +301,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         case SHADER_GRADIENT_RADIAL_PUSH | SHADER_MASK:
             createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_radial_push_frag }};
+            useDualSrcMask = dualSrcBlendSupported;
+            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, SELECT_SHADER(gradient_radial_push, frag, useDualSrcMask) }};
             break;
         case SHADER_BLIT:
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
@@ -341,6 +333,29 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         default:
             VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
         }
+        const VKCompositeState* compositeState =
+            VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque, useDualSrcMask);
+        createInfos[i].pColorBlendState = &compositeState->blendState;
+        pipelineInfos[i].outAlphaType = compositeState->outAlphaType;
+
+        specializations[i] = (Specialization) {
+            .info = {
+                .mapEntryCount = SARRAY_COUNT_OF(SPECIALIZATION_ENTRIES),
+                .pMapEntries = SPECIALIZATION_ENTRIES,
+                .dataSize = sizeof(SpecializationData),
+                .pData = &specializations[i].data
+            },
+            .data = {
+                .inAlphaType = descriptors[i].inAlphaType,
+                .outAlphaType = pipelineInfos[i].outAlphaType,
+                .shaderVariant = (uint32_t)descriptors[i].shaderVariant,
+                .shaderModifier =
+                    (descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) |
+                    (descriptors[i].shader & SHADER_MASK ? 2 : 0) |
+                    (compositeState->dstFactorForDualSrcMask << 30)
+            }
+        };
+
         for (uint32_t j = 0; j < createInfos[i].stageCount; j++) {
             stages[i].createInfos[j].pSpecializationInfo = &specializations[i].info;
         }
