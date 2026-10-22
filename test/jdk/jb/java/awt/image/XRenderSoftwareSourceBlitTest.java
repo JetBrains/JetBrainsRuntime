@@ -95,7 +95,7 @@ public class XRenderSoftwareSourceBlitTest {
                     (g, img) -> g.drawImage(img, 10, 10, null)),
     };
 
-    public static void main() {
+    public static void main(String[] args) {
         GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
         GraphicsConfiguration defaultConfig = device.getDefaultConfiguration();
         if (!defaultConfig.getClass().getName().equals("sun.java2d.xr.XRGraphicsConfig")) {
