@@ -34,6 +34,7 @@
 #include "include/core/SkColorType.h"
 #include "include/core/SkFontMgr.h"
 #include "include/core/SkTypeface.h"
+#include "include/ports/SkTypeface_win.h"
 #include "include/gpu/graphite/dawn/DawnBackendContext.h"
 #include "include/gpu/graphite/dawn/DawnGraphiteTypes.h"
 #include "dawn/dawn_proc.h"
@@ -516,11 +517,13 @@ SKPlatformScope::~SKPlatformScope() {}
 
 // ---- text ------------------------------------------------------------------
 
-// The DirectWrite host (SkFontMgr_New_DirectWrite) joins when the text track
-// reaches Windows; until then SKFontScaler is unavailable here and the JDK's
-// own scalers render text.
+// The DirectWrite host: the font manager the platform's own text stack uses,
+// over DirectWrite's own factory (no COM initialization needed). The JDK's
+// Windows fonts are all file fonts, so this is the only way a typeface is
+// made here; the manager is shared and lives as long as the library.
 sk_sp<SkFontMgr> SKPlatform_FontManager() {
-    return nullptr;
+    static sk_sp<SkFontMgr> manager = SkFontMgr_New_DirectWrite();
+    return manager;
 }
 
 sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong) {
