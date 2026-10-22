@@ -80,6 +80,7 @@ struct SKScalerContext {
     double deviceScale = 1.0;   // whole-pixel advances are rounded in user space when it is not 1
     jint grayMode = 0;          // SKFontScaler.GRAY_*
     float grayDarkening = 0;    // fraction of the em added to the outline's width in the darkened mode
+    jint grayLuminance = 0;     // the text luminance the cg mode rasterizes for
 };
 
 // The font and glyph to use for a Java glyph code: the strike's own font for
@@ -200,7 +201,7 @@ Java_sun_font_SKFontScaler_getUnitsPerEmNative(JNIEnv *env, jclass clazz, jlong 
 JNIEXPORT jlong JNICALL
 Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong pScaler, jdoubleArray matrix,
                                                jint aa, jint fm, jfloat boldness, jfloat italic, jdouble deviceScale,
-                                               jint grayMode, jfloat grayDarkening)
+                                               jint grayMode, jfloat grayDarkening, jint grayLuminance)
 {
     auto *scaler = (SKScaler *) jlong_to_ptr(pScaler);
     if (scaler == nullptr || matrix == nullptr || env->GetArrayLength(matrix) < 4) {
@@ -224,6 +225,7 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     context->deviceScale = deviceScale > 0 ? deviceScale : 1.0;
     context->grayMode = grayMode;
     context->grayDarkening = grayDarkening;
+    context->grayLuminance = grayLuminance;
     // Like the CoreText scaler behind CStrike: design metrics scaled linearly,
     // no hinting; sub-pixel positions only with fractional metrics.
     context->font.setHinting(SkFontHinting::kNone);
@@ -438,6 +440,10 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const bool smoothedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_SMOOTHED;
     const bool darkenedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_DARKENED
                               && context->grayDarkening > 0;
+    // the platform's own smoothed rendering for the text luminance (SKPlatform_SmoothedGlyphMask);
+    // synthetic bold has no platform equivalent and keeps Skia's coverage
+    const bool platformGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_CG
+                              && !font.isEmbolden();
     if (smoothedGray) {
         font.setEdging(SkFont::Edging::kSubpixelAntiAlias);
     }
@@ -503,8 +509,22 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
         paint.setStrokeWidth(context->grayDarkening * font.getSize());
         paint.setStrokeJoin(SkPaint::kRound_Join);
     }
+    // the glyph's design space in device pixels: size, synthetic italic and the transform's remainder
+    SkMatrix glyphToDevice = SkMatrix::Scale(font.getSize(), font.getSize());
+    if (font.getSkewX() != 0) {
+        glyphToDevice.postConcat(SkMatrix::Skew(font.getSkewX(), 0));
+    }
+    if (!context->identityRemainder) {
+        glyphToDevice.postConcat(context->remainder);
+    }
     for (int sy = 0; sy < resY; sy++) {
         for (int sx = 0; sx < resX; sx++) {
+            UInt8 *variant = info->image + imageSize * (size_t) (sy * resX + sx);
+            if (platformGray && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, context->grayLuminance,
+                                                             (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
+                                                             width, height, variant)) {
+                continue;
+            }
             canvas.clear(colorCanvas && !colorGlyph ? SK_ColorWHITE : SK_ColorTRANSPARENT);
             canvas.save();
             canvas.translate((SkScalar) -left + (SkScalar) sx / resX, (SkScalar) -top + (SkScalar) sy / resY);

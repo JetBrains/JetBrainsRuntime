@@ -528,3 +528,8 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong) {
 sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong, int, uint16_t *) {
     return nullptr;   // Windows resolves fallback through composite fonts, with non-negative codes
 }
+
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *, uint16_t, const SkMatrix &, int, float, float, int, int, uint8_t *)
+{
+    return false;   // no CoreGraphics here; DirectWrite's rendering modes are a separate experiment
+}

@@ -35,6 +35,9 @@
 #include "include/core/SkTypeface.h"
 #include "include/ports/SkFontMgr_mac_ct.h"
 #include "include/ports/SkTypeface_mac.h"
+#include "include/core/SkMatrix.h"
+#import <CoreGraphics/CoreGraphics.h>
+#import <CoreText/CoreText.h>
 #import <objc/runtime.h>
 #include <mutex>
 #include <vector>
@@ -224,4 +227,76 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
     sk_sp<SkTypeface> typeface = typefaceForCTFont(fallback);
     CFRelease(fallback);
     return typeface;
+}
+
+// CoreGraphics draws the glyph with font smoothing on in the gray of the text's
+// luminance, on white for dark text and on black for light text, and the
+// coverage is what the paper lost: CoreGraphics' smoothing depends on the text
+// luminance only (not on the destination), so this is the platform's look for
+// that luminance. Text space is y up: the device matrix (y down) gets its y
+// flipped into the text matrix.
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
+                                  float originX, float originY, int width, int height, uint8_t *mask)
+{
+    if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0) {
+        return false;
+    }
+    CTFontRef base = SkTypeface_GetCTFontRef(typeface);
+    if (base == nullptr) {
+        return false;
+    }
+    // the size is in the matrix: a unit-size font, the matrix as the text matrix
+    CTFontRef font = CTFontCreateCopyWithAttributes(base, 1.0, nullptr, nullptr);
+    if (font == nullptr) {
+        return false;
+    }
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    std::vector<uint8_t> pixels((size_t) width * height * 4);
+    CGContextRef cg = CGBitmapContextCreate(pixels.data(), width, height, 8, (size_t) width * 4, colorSpace,
+                                            kCGImageAlphaNoneSkipLast);
+    CGColorSpaceRelease(colorSpace);
+    if (cg == nullptr) {
+        CFRelease(font);
+        return false;
+    }
+    const bool lightText = luminance >= 128;
+    const CGFloat paper = lightText ? 0.0 : 1.0, ink = luminance / 255.0;
+    CGContextSetGrayFillColor(cg, paper, 1.0);
+    CGContextFillRect(cg, CGRectMake(0, 0, width, height));
+    CGContextSetShouldAntialias(cg, true);
+    CGContextSetAllowsFontSmoothing(cg, true);
+    CGContextSetShouldSmoothFonts(cg, true);
+    CGContextSetAllowsFontSubpixelPositioning(cg, true);
+    CGContextSetShouldSubpixelPositionFonts(cg, true);
+    CGContextSetAllowsFontSubpixelQuantization(cg, false);
+    CGContextSetShouldSubpixelQuantizeFonts(cg, false);
+    CGContextSetGrayFillColor(cg, ink, 1.0);
+    // y down like the mask, then the glyph's design space (y up) through the device matrix with y flipped
+    CGContextTranslateCTM(cg, 0, height);
+    CGContextScaleCTM(cg, 1, -1);
+    CGContextSetTextMatrix(cg, CGAffineTransformMake(glyphToDevice.getScaleX(), glyphToDevice.getSkewY(),
+                                                     -glyphToDevice.getSkewX(), -glyphToDevice.getScaleY(), 0, 0));
+    // glyph positions go through the text matrix (the size!): the origin belongs in the text position
+    CGContextSetTextPosition(cg, originX, originY);
+    const CGGlyph cgGlyph = glyph;
+    const CGPoint zero = CGPointZero;
+    CTFontDrawGlyphs(font, &cgGlyph, &zero, 1, cg);
+    CGContextRelease(cg);
+    CFRelease(font);
+    // coverage = what the paper lost, relative to full ink
+    const int paperByte = lightText ? 0 : 255, inkByte = luminance;
+    const int range = std::abs(paperByte - inkByte);
+    if (range == 0) {
+        return false;
+    }
+    for (int y = 0; y < height; y++) {
+        const uint8_t *row = pixels.data() + (size_t) y * width * 4;
+        uint8_t *dst = mask + (size_t) y * width;
+        for (int x = 0; x < width; x++) {
+            const int value = row[x * 4];   // the channels are equal: no colour sub-pixels
+            const int coverage = std::abs(paperByte - value) * 255 / range;
+            dst[x] = (uint8_t) std::min(255, coverage);
+        }
+    }
+    return true;
 }

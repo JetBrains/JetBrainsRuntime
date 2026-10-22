@@ -62,14 +62,24 @@ public final class SKFontScaler extends FontScaler {
      * em, default 0.013, rasterized by Skia; CoreGraphics' smoothing measured
      * as a widening proportional to the size, 0.17 px at 13 px, 0.35 px at 26).
      */
-    static final int GRAY_COVERAGE = 0, GRAY_SMOOTHED = 1, GRAY_DARKENED = 2;
+    static final int GRAY_COVERAGE = 0, GRAY_SMOOTHED = 1, GRAY_DARKENED = 2, GRAY_CG = 3;
     private static final int GRAY_MODE = grayModeProperty();
+    /**
+     * {@code sun.java2d.skia.text.gray=cg}: the glyph rasterized by CoreGraphics
+     * itself with font smoothing on, for the text luminance
+     * {@code sun.java2d.skia.text.cgLuminance} (0..255; the platform darkens light
+     * text more than dark text), the coverage recovered from the render. The
+     * platform's own look by construction for that luminance; until the text
+     * pipes pass the colour, the luminance is one per process. macOS only.
+     */
+    private static final int GRAY_LUMINANCE = Math.max(0, Math.min(255, Integer.getInteger("sun.java2d.skia.text.cgLuminance", 0)));
     private static final float GRAY_DARKENING = Float.parseFloat(System.getProperty("sun.java2d.skia.text.grayDarkening", "0.013"));
 
     private static int grayModeProperty() {
         return switch (System.getProperty("sun.java2d.skia.text.gray", "coverage").toLowerCase(java.util.Locale.ROOT)) {
             case "smoothed" -> GRAY_SMOOTHED;
             case "darkened" -> GRAY_DARKENED;
+            case "cg" -> GRAY_CG;
             default -> GRAY_COVERAGE;
         };
     }
@@ -186,7 +196,7 @@ public final class SKFontScaler extends FontScaler {
      */
     @Override
     long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, GRAY_MODE, GRAY_DARKENING);
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, GRAY_MODE, GRAY_DARKENING, GRAY_LUMINANCE);
     }
 
     /**
@@ -195,7 +205,7 @@ public final class SKFontScaler extends FontScaler {
      * scale of the device transform, which the glyph transform includes.
      */
     long createScalerContext(double[] matrix, double deviceScale, int aa, int fm, float boldness, float italic) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, GRAY_MODE, GRAY_DARKENING);
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, GRAY_MODE, GRAY_DARKENING, GRAY_LUMINANCE);
     }
 
     @Override
@@ -222,7 +232,7 @@ public final class SKFontScaler extends FontScaler {
     private static native int getGlyphCodeNative(long pScaler, char charCode);
     private static native long getUnitsPerEmNative(long pScaler);
     private static native long createContextNative(long pScaler, double[] matrix, int aa, int fm, float boldness, float italic,
-                                                   double deviceScale, int grayMode, float grayDarkening);
+                                                   double deviceScale, int grayMode, float grayDarkening, int grayLuminance);
     private static native void disposeContextNative(long pContext);
     private static native StrikeMetrics getFontMetricsNative(long pContext);
     private static native float getGlyphAdvanceNative(long pContext, int glyphCode);

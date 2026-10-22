@@ -41,6 +41,7 @@
 
 class SkFontMgr;
 class SkTypeface;
+class SkMatrix;
 
 // The platform's graphics configuration a Graphite context is created for
 // (macOS: MTLGraphicsConfigInfo; Windows: Win32SKGraphicsConfig's native
@@ -107,5 +108,13 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
 // mapper hands such characters to CoreText as negative glyph codes): the
 // typeface that has it and the glyph in it; null if the platform has none.
 sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, uint16_t *glyph);
+// The glyph rasterized by the platform's own text renderer with its font
+// smoothing on, as it draws text of the given luminance (0..255): an A8
+// coverage mask of width x height bytes, the glyph origin at (originX,
+// originY) in the mask, glyphToDevice the transform of the glyph's design
+// space in pixels (size included, y down). False where the platform has no
+// such renderer (the caller falls back to Skia's coverage).
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
+                                  float originX, float originY, int width, int height, uint8_t *mask);
 
 #endif /* SKPlatform_h_Included */
