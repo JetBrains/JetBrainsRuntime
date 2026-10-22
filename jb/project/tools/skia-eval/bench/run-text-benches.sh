@@ -20,7 +20,7 @@ declare -A ARM=(
 )
 
 mkdir -p "$OUT/classes" "$OUT/logs"
-"$JDK/bin/javac.exe" $X -d "$OUT/classes" "$K/smoke/LcdTextBench.java" "$K/smoke/StartupCost.java" "$K/bench/GlyphChurnBench.java" || exit 2
+"$JDK/bin/javac.exe" $X -d "$OUT/classes" "$K/smoke/LcdTextBench.java" "$K/smoke/StartupCost.java" "$K/smoke/SkiaRender.java" "$K/bench/GlyphChurnBench.java" || exit 2
 
 jobs=()
 for arm in skia skia-lcd-twopass skia-lcd-blend software d3d; do
