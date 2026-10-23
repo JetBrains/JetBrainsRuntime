@@ -72,6 +72,10 @@ struct SKScaler {
 // One per FontStrikeDesc: the glyph transform split into the SkFont's size and
 // the remaining matrix (device transform, skew, non-uniform scale), which the
 // glyph images and outlines are mapped through.
+// The JDK's synthetic italic (freetypeScaler.c): FreeType's oblique matrix entry, 12 degrees.
+// The synthetic bold strength is SK_SYNTHETIC_BOLD_EM (SKPlatform.h).
+const float SYNTHETIC_ITALIC_SHEAR = 0x366A / 65536.0f;
+
 struct SKScalerContext {
     SKScaler *scaler = nullptr;
     SkFont font;
@@ -239,11 +243,15 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     context->font.setEdging(aa == sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_OFF ? SkFont::Edging::kAlias
                           : aa == sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_ON ? SkFont::Edging::kAntiAlias
                                                                             : SkFont::Edging::kSubpixelAntiAlias);
+    // Synthetic styles as the JDK's FreeType scaler makes them (freetypeScaler.c), so text laid
+    // out with either scaler agrees: boldness and italic are the strike's flags, not amounts.
+    // The oblique shear is FreeType's own (FT_GlyphSlot_Oblique, 0x366A / 0x10000, 12 degrees);
+    // the bold emboldens by 1/32 em and adds that to every advance (recordAdvance).
     if (boldness != 1.0f) {
         context->font.setEmbolden(true);
     }
     if (italic != 0.0f) {
-        context->font.setSkewX(-italic);
+        context->font.setSkewX(-SYNTHETIC_ITALIC_SHEAR);
     }
     return ptr_to_jlong(context);
 }
@@ -375,6 +383,14 @@ namespace {
 float recordAdvance(const SKScalerContext *context, const SkFont &font, SkGlyphID glyph) {
     SkScalar width = 0;
     font.getWidths({&glyph, 1}, {&width, 1});
+    if (font.isEmbolden() && width != 0) {
+        // as the JDK's GlyphSlot_Embolden adds to the advance of every glyph that has ink (not a space)
+        SkRect bounds;
+        font.getBounds({&glyph, 1}, {&bounds, 1}, nullptr);
+        if (!bounds.isEmpty()) {
+            width += font.getSize() * SK_SYNTHETIC_BOLD_EM;
+        }
+    }
     if (!context->identityRemainder) {
         width = context->remainder.mapVector({width, 0}).fX;
     }
@@ -484,7 +500,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     // luminance (the native look), or as linear coverage (luminance -1) for the pipes' own
     // gamma; grayscale and LCD alike where the platform provides both (DirectWrite does,
     // CoreGraphics only the smoothed grayscale). Synthetic bold strokes the outline by
-    // 1/24 em there, as FreeType's embolden does.
+    // SK_SYNTHETIC_BOLD_EM there, as the JDK's FreeType scaler does.
     const bool platformMask = aa && !colorGlyph && (context->grayMode == sun_font_SKFontScaler_GRAY_CG
                                                     || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE);
     const int platformLuminance = context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE ? -1 : context->grayLuminance;

@@ -124,11 +124,13 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // of 1.8 on, so the two differ; DirectWrite's linear coverage does not).
 // strokeWidth > 0 (device pixels)
 // emboldens the glyph by that much, the way Java synthesizes bold for a font
-// without a bold face (FreeType's embolden by 1/24 em). False where the
+// without a bold face (SK_SYNTHETIC_BOLD_EM of the em). False where the
 // platform has no such renderer for the request (the caller falls back to
 // Skia's coverage).
-// Java's synthetic bold widens a glyph by this fraction of the em (FreeType's embolden rule).
-constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 24;
+// Java's synthetic bold widens a glyph by this fraction of the em: the strength the JDK's
+// FreeType scaler chose over FreeType's 1/24 em ("something a little less bold",
+// freetypeScaler.c); the same amount is added to every inked glyph's advance.
+constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 32;
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
                                   int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
                                   uint8_t *mask);
