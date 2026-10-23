@@ -66,6 +66,12 @@ public class PlatformPlacementGridTest {
             {new Font("Segoe UI", Font.PLAIN, 13), 8, "Segoe UI 13 at 1.25x (natural mode)", 1.25},
             {interOrNull(), 4, "Inter 13 at 1.25x", 1.25},
             {interOrNull(), 4, "Inter 13 at 1.5x", 1.5},
+            // ClearType: DirectWrite positions on sixths of a pixel (half a colour sub-pixel) in
+            // both modes at every scale; the JDK's own LCD placement shifts the glyph image by
+            // whole sub-pixels (thirds), which is 3 positions
+            {new Font("Segoe UI", Font.PLAIN, 13), 6, "Segoe UI 13 LCD", 1.0, true},
+            {interOrNull(), 6, "Inter 13 LCD", 1.0, true},
+            {interOrNull(), 6, "Inter 13 LCD at 2x", 2.0, true},
         };
         for (Object[] c : cases) {
             Font font = (Font) c[0];
@@ -75,6 +81,7 @@ public class PlatformPlacementGridTest {
             int expected = (Integer) c[1];
             String what = (String) c[2];
             double scale = (Double) c[3];
+            boolean lcd = c.length > 4 && (Boolean) c[4];
             if (!font.getFamily().equalsIgnoreCase(font.getFontName().split(" ")[0]) && !font.getFamily().contains("Inter")
                 && !font.getFamily().equalsIgnoreCase("Segoe UI") && !font.getFamily().equalsIgnoreCase("Consolas")) {
                 System.out.println(what + ": font not available, skipped");
@@ -89,7 +96,8 @@ public class PlatformPlacementGridTest {
                     g.setColor(Color.WHITE);
                     g.fillRect(0, 0, w, h);
                     g.scale(scale, scale);
-                    g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                    g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                                       lcd ? RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB : RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
                     g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
                     g.setColor(Color.BLACK);
                     g.setFont(font);
@@ -100,7 +108,8 @@ public class PlatformPlacementGridTest {
                 StringBuilder key = new StringBuilder();
                 for (int y = 0; y < h; y++) {
                     for (int x = 0; x < w; x++) {
-                        key.append((char) ('0' + ((image.getRGB(x, y) & 255) >> 4)));
+                        int p = image.getRGB(x, y);   // all three channels: LCD renderings differ per channel
+                        key.append((char) ('0' + ((p >> 20) & 15))).append((char) ('0' + ((p >> 12) & 15))).append((char) ('0' + ((p >> 4) & 15)));
                     }
                 }
                 distinct.add(key.toString());

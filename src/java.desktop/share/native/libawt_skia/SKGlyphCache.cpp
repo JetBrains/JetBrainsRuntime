@@ -227,9 +227,10 @@ static void stageGlyph(SKGlyphCache *gc, const GlyphInfo *glyph, const CacheCell
         return;
     }
     // LCD glyph: 3 bytes of coverage per pixel, in the order the strike asked for.
-    gc->ink[cellIndex(cell)] = inkBounds(glyph->image, w, h, glyph->rowBytes, 3);
+    const unsigned char *image = glyph->image + (size_t) glyph->rowBytes * h * subimage;
+    gc->ink[cellIndex(cell)] = inkBounds(image, w, h, glyph->rowBytes, 3);
     for (int row = 0; row < h; row++) {
-        const unsigned char *src = glyph->image + (size_t) row * glyph->rowBytes;
+        const unsigned char *src = image + (size_t) row * glyph->rowBytes;
         unsigned char *dst = (unsigned char *) gc->shadow.getAddr32(cell->x, cell->y + row);
         for (int col = 0; col < w; col++, src += 3, dst += 4) {
             dst[0] = rgbOrder ? src[0] : src[2];

@@ -878,8 +878,9 @@ const float HIGH_DPI_SCALE = 1.8f;
 // display scale (dwref --scale, Direct2D targets from 96 to 384 dpi): quarter
 // pixels up to a scale of 1.79, half pixels from 1.81 on (and 2 x 2 coverage
 // samples per pixel instead of 4 x 4), whatever the pixel size; the natural
-// mode keeps its eighths at every scale.
-int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale)
+// mode keeps its eighths at every scale. ClearType (dwref --scale-lcd) positions
+// on sixths of a pixel - half a colour sub-pixel - in both modes at every scale.
+int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale, bool lcd)
 {
     if (typeface == nullptr || pixelSize <= 0) {
         return 0;
@@ -897,8 +898,8 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, f
         return 0;
     }
     switch (recommendedMode(text, face.Get(), pixelSize)) {
-        case DWRITE_RENDERING_MODE_NATURAL: return 8;
-        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: return displayScale >= HIGH_DPI_SCALE ? 2 : 4;
+        case DWRITE_RENDERING_MODE_NATURAL: return lcd ? 6 : 8;
+        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: return lcd ? 6 : displayScale >= HIGH_DPI_SCALE ? 2 : 4;
         default: return 1;
     }
 }

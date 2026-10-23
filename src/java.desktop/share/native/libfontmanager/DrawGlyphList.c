@@ -638,7 +638,18 @@ JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
              * case we cannot apply sub-pixel positioning so ignore it.
              * This is handled on a per glyph basis.
              */
-            if (subPixPos) {
+            if (ginfo->subpixelResolutionX > 1) {
+                /* The scaler rendered the sub-pixel variants itself (the platform's own
+                 * placement grid, e.g. DirectWrite's six positions per pixel for ClearType):
+                 * the variant for the fractional position, as for grayscale, no channel shift.
+                 */
+                ADJUST_SUBPIXEL_GLYPH_POSITION(px, ginfo->subpixelResolutionX);
+                gbv->glyphs[g].pixels = getSubpixelGlyphImage(ginfo,
+                                                              px + ginfo->topLeftX,
+                                                              py + ginfo->topLeftY);
+                FLOOR_ASSIGN(gbv->glyphs[g].x, px + ginfo->topLeftX);
+                gbv->glyphs[g].rowBytesOffset = 0;
+            } else if (subPixPos) {
                 int frac;
                 float pos;
 
@@ -699,7 +710,18 @@ JNIEXPORT GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist,
             gbv->glyphs[g].rowBytes = ginfo->rowBytes;
             gbv->glyphs[g].height = ginfo->height;
 
-            if (subPixPos) {
+            if (ginfo->subpixelResolutionX > 1) {
+                /* The scaler rendered the sub-pixel variants itself (the platform's own
+                 * placement grid, e.g. DirectWrite's six positions per pixel for ClearType):
+                 * the variant for the fractional position, as for grayscale, no channel shift.
+                 */
+                ADJUST_SUBPIXEL_GLYPH_POSITION(px, ginfo->subpixelResolutionX);
+                gbv->glyphs[g].pixels = getSubpixelGlyphImage(ginfo,
+                                                              px + ginfo->topLeftX,
+                                                              py + ginfo->topLeftY);
+                FLOOR_ASSIGN(gbv->glyphs[g].x, px + ginfo->topLeftX);
+                gbv->glyphs[g].rowBytesOffset = 0;
+            } else if (subPixPos) {
                 int frac;
                 float pos;
 

@@ -1570,12 +1570,13 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
     }
 }
 
-static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint rowBytesOffset, jboolean rgbOrder,
+static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
     const int w = ginfo->width, h = ginfo->height;
     std::vector<unsigned char> rgba((size_t) w * h * 4);
+    const unsigned char *image = ginfo->image + (size_t) ginfo->rowBytes * h * subimage;
     for (int row = 0; row < h; row++) {
-        const unsigned char *src = ginfo->image + (size_t) row * ginfo->rowBytes + rowBytesOffset;
+        const unsigned char *src = image + (size_t) row * ginfo->rowBytes + rowBytesOffset;
         unsigned char *dst = rgba.data() + (size_t) row * w * 4;
         for (int col = 0; col < w; col++, src += 3, dst += 4) {
             dst[0] = rgbOrder ? src[0] : src[2];
@@ -2044,8 +2045,10 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                 }
                 lcdPaintReady = true;
             }
+            // the scaler's own variants (the platform's placement grid) take precedence over
+            // the JDK's channel shift by thirds
             jint rowBytesOffset = 0;
-            if (subPixPos) {
+            if (subPixPos && rx <= 1) {
                 jint frac = (jint) ((gx - fx) * 3);
                 if (frac != 0) {
                     rowBytesOffset = 3 - frac;
@@ -2060,11 +2063,11 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                 lcdBegun = true;
             }
             if (rowBytesOffset == 0 && SKGlyphCache_Fits(lcd, ginfo)
-                    && SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, 0, rgbOrder, fx, fy)) {
+                    && SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, subimage, rgbOrder, fx, fy)) {
                 continue;
             }
             flushBatches();
-            drawLcdGlyphNoCache(ginfo, rowBytesOffset, rgbOrder, fx, fy, lcdPaint);
+            drawLcdGlyphNoCache(ginfo, subimage, rowBytesOffset, rgbOrder, fx, fy, lcdPaint);
         }
     }
     // batches stay open for the next glyph list; see flushAtlasBatches()

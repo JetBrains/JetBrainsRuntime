@@ -448,16 +448,18 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const float advance = recordAdvance(context, font, glyph);
     const bool lcd = font.getEdging() == SkFont::Edging::kSubpixelAntiAlias;
     const bool aa = font.getEdging() != SkFont::Edging::kAlias;
-    const bool subpixel = aa && !lcd && context->fractionalMetrics && (subX > 1 || subY > 1);
     // Under the platform's mask routes the variants follow the platform rasterizer's own
-    // placement grid (DirectWrite: 4 or 8 positions per device-independent pixel by rendering
-    // mode, so fewer per device pixel on a scaled display), so a glyph lands where the platform
-    // would put it; otherwise the JDK's resolution.
+    // placement grid (DirectWrite: 4 or 8 positions per pixel for grayscale by rendering mode
+    // and display scale, 6 for ClearType), so a glyph lands where the platform would put it;
+    // otherwise the JDK's resolution (java2d.font.subpixelResolution). LCD glyphs get variants
+    // only on the platform routes: they replace the JDK's channel shift by thirds, which the
+    // pipes apply to LCD glyphs without variants.
     const bool platformRoute = context->grayMode == sun_font_SKFontScaler_GRAY_CG
                                || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE;
+    const bool subpixel = aa && context->fractionalMetrics && (lcd ? platformRoute : (subX > 1 || subY > 1));
     const int platformGrid = subpixel && platformRoute
-                             ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize(), (float) context->displayScale) : 0;
-    const int resX = subpixel ? (platformGrid > 0 ? platformGrid : subX) : 1, resY = subpixel ? subY : 1;
+                             ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize(), (float) context->displayScale, lcd) : 0;
+    const int resX = subpixel ? (platformGrid > 0 ? platformGrid : subX) : 1, resY = subpixel && !lcd ? subY : 1;
     // Grayscale variants (SKFontScaler, sun.java2d.skia.text.gray). The JDK's
     // CoreGraphics renderer smooths without sub-pixels and averages the
     // channels (CGGlyphImages.m, CGGI_ConvertBWPixelToByteGray); Skia's host
