@@ -144,6 +144,11 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
 // (2 from a display scale of 1.8 on) and 8 in the natural mode for grayscale,
 // 6 for ClearType in both modes at every scale; macOS: 0 (CoreGraphics
 // positions continuously).
+// The sign is the rounding rule: positive, the platform rounds a position to the
+// nearest step (DirectWrite; the pipes' own rule); negative, it rounds down to the
+// step (CoreGraphics' sub-pixel quantization), which the scaler emulates with twice
+// the variants and a half-step shift of the glyph origin, so the pipes need no rule
+// of their own.
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale, bool lcd);
 
 #endif /* SKPlatform_h_Included */

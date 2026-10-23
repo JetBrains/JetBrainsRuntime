@@ -459,8 +459,16 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
                                || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE;
     const int platformGrid = aa && context->fractionalMetrics && platformRoute
                              ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize(), (float) context->displayScale, lcd) : 0;
-    const bool subpixel = aa && context->fractionalMetrics && (lcd ? platformGrid > 0 : (subX > 1 || subY > 1));
-    const int resX = subpixel ? (platformGrid > 0 ? platformGrid : subX) : 1, resY = subpixel && !lcd ? subY : 1;
+    const bool subpixel = aa && context->fractionalMetrics && (lcd ? platformGrid != 0 : (subX > 1 || subY > 1));
+    // A platform that rounds positions down to its grid of g steps (negative grid): the pipes
+    // round to the nearest variant (their half-pixel origin offset plus the half-step of
+    // ADJUST_SUBPIXEL_GLYPH_POSITION), so the record carries 2g variants and its origin is
+    // shifted left by half a variant step, which turns the pipes' pick into floor(position * 2g);
+    // variant j then holds the platform's rendering at the grid step floor(j / 2) / g, exactly
+    // where the platform puts a glyph at that position. (Pairs of variants are equal: 2g images.)
+    const int floorGrid = platformGrid < 0 ? -platformGrid : 0;
+    const int resX = subpixel ? (floorGrid > 0 ? 2 * floorGrid : platformGrid > 0 ? platformGrid : subX) : 1,
+              resY = subpixel && !lcd ? subY : 1;
     // Grayscale variants (SKFontScaler, sun.java2d.skia.text.gray). The JDK's
     // CoreGraphics renderer smooths without sub-pixels and averages the
     // channels (CGGlyphImages.m, CGGI_ConvertBWPixelToByteGray); Skia's host
@@ -522,7 +530,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
                  : lcd ? sun_font_StrikeCache_PIXEL_FORMAT_LCD : sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
     info->subpixelResolutionX = (UInt8) resX;
     info->subpixelResolutionY = (UInt8) resY;
-    info->topLeftX = (float) left;
+    info->topLeftX = (float) left - (floorGrid > 0 ? 0.5f / (float) resX : 0.0f);   // the half-step shift of the rounding-down emulation
     info->topLeftY = (float) top;
     info->cellInfo = nullptr;
     info->image = (UInt8 *) (info + 1);
@@ -559,15 +567,17 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     for (int sy = 0; sy < resY; sy++) {
         for (int sx = 0; sx < resX; sx++) {
             UInt8 *variant = info->image + imageSize * (size_t) (sy * resX + sx);
+            // the variant's sub-pixel offset: the pipes' step, or the platform's rounded-down grid step
+            const float offsetX = floorGrid > 0 ? (float) (sx / 2) / (float) floorGrid : (float) sx / resX;
             if (platformMask && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, (float) context->displayScale,
                                                              platformLuminance, lcd, platformStroke,
-                                                             (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
+                                                             (float) -left + offsetX, (float) -top + (float) sy / resY,
                                                              width, height, variant)) {
                 continue;
             }
             canvas.clear(colorCanvas && !colorGlyph ? SK_ColorWHITE : SK_ColorTRANSPARENT);
             canvas.save();
-            canvas.translate((SkScalar) -left + (SkScalar) sx / resX, (SkScalar) -top + (SkScalar) sy / resY);
+            canvas.translate((SkScalar) -left + offsetX, (SkScalar) -top + (SkScalar) sy / resY);
             if (!context->identityRemainder) {
                 canvas.concat(context->remainder);
             }

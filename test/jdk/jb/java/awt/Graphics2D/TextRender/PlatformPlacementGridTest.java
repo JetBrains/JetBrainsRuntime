@@ -36,7 +36,12 @@
  *          mode has two regimes: quarter pixels up to a display scale of 1.79,
  *          half pixels from 1.81 on (measured 96 to 384 dpi), whatever the
  *          pixel size; the natural mode keeps its eighths at every scale.
- * @requires (os.family == "windows")
+ *          On macOS CoreGraphics quantizes glyph positions by default, as
+ *          AppKit draws: thirds of a device pixel at 1x, halves at 2x, rounding
+ *          down (measured with gridprobe, 2026-10-23); the cg route renders the
+ *          platform's masks on that grid. LCD glyphs there keep the JDK's three
+ *          positions (no colour sub-pixels from CoreGraphics).
+ * @requires (os.family == "windows") | (os.family == "mac")
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform PlatformPlacementGridTest
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platformCoverage PlatformPlacementGridTest
  */
@@ -57,7 +62,16 @@ public class PlatformPlacementGridTest {
         // every face is in the symmetric mode, and the symmetric mode's high-scale regime has two
         // positions per device pixel. At 1.25 and 1.5 the grids are those of 1x: Segoe UI is still
         // in the natural mode at 16.25 px (eighths), and symmetric faces keep their quarters.
-        Object[][] cases = {
+        boolean mac = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac");
+        Object[][] macCases = {
+            {new Font("Helvetica Neue", Font.PLAIN, 13), 3, "Helvetica Neue 13 (CoreGraphics quantization: thirds)", 1.0},
+            {new Font("Menlo", Font.PLAIN, 12), 3, "Menlo 12 (thirds)", 1.0},
+            {interOrNull(), 3, "Inter 13 (thirds)", 1.0},
+            {new Font("Helvetica Neue", Font.PLAIN, 13), 2, "Helvetica Neue 13 at 2x (halves)", 2.0},
+            {interOrNull(), 2, "Inter 13 at 2x (halves)", 2.0},
+            {new Font("Helvetica Neue", Font.PLAIN, 13), 3, "Helvetica Neue 13 LCD (the JDK's thirds, no platform LCD)", 1.0, true},
+        };
+        Object[][] windowsCases = {
             {new Font("Segoe UI", Font.PLAIN, 13), 8, "Segoe UI 13 (natural mode)", 1.0},
             {new Font("Consolas", Font.PLAIN, 12), 8, "Consolas 12 (natural mode)", 1.0},
             {interOrNull(), 4, "Inter 13 (natural-symmetric mode)", 1.0},
@@ -73,7 +87,7 @@ public class PlatformPlacementGridTest {
             {interOrNull(), 6, "Inter 13 LCD", 1.0, true},
             {interOrNull(), 6, "Inter 13 LCD at 2x", 2.0, true},
         };
-        for (Object[] c : cases) {
+        for (Object[] c : mac ? macCases : windowsCases) {
             Font font = (Font) c[0];
             if (font == null) {
                 continue;
@@ -83,7 +97,8 @@ public class PlatformPlacementGridTest {
             double scale = (Double) c[3];
             boolean lcd = c.length > 4 && (Boolean) c[4];
             if (!font.getFamily().equalsIgnoreCase(font.getFontName().split(" ")[0]) && !font.getFamily().contains("Inter")
-                && !font.getFamily().equalsIgnoreCase("Segoe UI") && !font.getFamily().equalsIgnoreCase("Consolas")) {
+                && !font.getFamily().equalsIgnoreCase("Segoe UI") && !font.getFamily().equalsIgnoreCase("Consolas")
+                && !font.getFamily().equalsIgnoreCase("Helvetica Neue") && !font.getFamily().equalsIgnoreCase("Menlo")) {
                 System.out.println(what + ": font not available, skipped");
                 continue;
             }
@@ -114,12 +129,16 @@ public class PlatformPlacementGridTest {
                 }
                 distinct.add(key.toString());
             }
-            // the offsets cover [0, 1): the positions that round up to the next pixel give one more
-            // rendering than the grid has steps (the glyph a whole pixel to the right)
-            System.out.println(what + ": " + distinct.size() + " distinct renderings across one pixel, expected " + (expected + 1)
-                               + " (" + expected + " grid steps and the wrap to the next pixel)");
-            if (distinct.size() != expected + 1) {
-                failures.append(what).append(": ").append(distinct.size() - 1).append(" positions per pixel, DirectWrite uses ").append(expected).append("; ");
+            // The offsets cover [0, 1). Where the platform rounds to the nearest step (DirectWrite), the
+            // positions that round up to the next pixel give one more rendering than the grid has steps
+            // (the glyph a whole pixel to the right); where it rounds down (CoreGraphics), exactly the
+            // grid's steps appear. The JDK's own LCD placement on macOS rounds to the nearest third.
+            boolean roundsDown = mac && !lcd;
+            int expectedRenderings = roundsDown ? expected : expected + 1;
+            System.out.println(what + ": " + distinct.size() + " distinct renderings across one pixel, expected " + expectedRenderings
+                               + " (" + expected + " grid steps" + (roundsDown ? ", rounded down" : " and the wrap to the next pixel") + ")");
+            if (distinct.size() != expectedRenderings) {
+                failures.append(what).append(": ").append(distinct.size() - 1).append(" positions per pixel, the platform uses ").append(expected).append("; ");
             }
         }
         if (failures.length() > 0) {

@@ -235,9 +235,17 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // luminance only (not on the destination), so this is the platform's look for
 // that luminance. Text space is y up: the device matrix (y down) gets its y
 // flipped into the text matrix.
-int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float, bool)
+// CoreGraphics' sub-pixel quantization, on by default and what AppKit draws with
+// (gridprobe, 2026-10-23): glyph positions rounded DOWN to thirds of a device
+// pixel at 1x, halves at 1.5x and 2x, whole pixels from 3x; LCD has no grid here
+// (no colour sub-pixels), the JDK's own LCD placement stays. Negative: see
+// SKPlatform.h, the rounding-down rule.
+int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float displayScale, bool lcd)
 {
-    return 0;   // CoreGraphics positions glyphs continuously; the JDK's variants stay
+    if (lcd) {
+        return 0;
+    }
+    return displayScale >= 2.5f ? -1 : displayScale >= 1.5f ? -2 : -3;
 }
 
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
@@ -276,8 +284,11 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
     CGContextSetShouldSmoothFonts(cg, true);
     CGContextSetAllowsFontSubpixelPositioning(cg, true);
     CGContextSetShouldSubpixelPositionFonts(cg, true);
-    CGContextSetAllowsFontSubpixelQuantization(cg, false);
-    CGContextSetShouldSubpixelQuantizeFonts(cg, false);
+    // quantization on, as AppKit draws: the glyph origin arrives on the platform's grid
+    // (SKPlatform_GlyphPlacementGrid), and CoreGraphics' quantized rendering differs from
+    // its continuous one even at a grid position
+    CGContextSetAllowsFontSubpixelQuantization(cg, true);
+    CGContextSetShouldSubpixelQuantizeFonts(cg, true);
     CGContextSetGrayFillColor(cg, ink, 1.0);
     // y down like the mask, then the glyph's design space (y up) through the device matrix with y flipped
     CGContextTranslateCTM(cg, 0, height);
