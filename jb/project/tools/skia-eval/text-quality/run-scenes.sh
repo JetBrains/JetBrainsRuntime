@@ -65,6 +65,11 @@ elif grep -q "popup did not open: no key" "$DEST/scenes.log"; then
   echo "INVALID RUN: a popup did not open, the scenes were aborted" | tee "$DEST/INVALID.txt" >&2
   INVALID=1
 fi
+# JFR_DUMP=<recording name>: dump that recording (started through IDE_EXTRA_VMOPTIONS) into the
+# destination before the stop, which would lose it otherwise (the stop is a forced kill)
+if [ -n "${JFR_DUMP:-}" ]; then
+  "$JDK/bin/jcmd" "$IDE_PID" JFR.dump name="$JFR_DUMP" filename="$(cygpath -w "$DEST")\\recording.jfr" > "$DEST/jfr-dump.txt" 2>&1
+fi
 # stop the isolated IDE, and anything of ours that survived
 taskkill //PID "$IDE_PID" //T //F > /dev/null 2>&1
 stop_ours

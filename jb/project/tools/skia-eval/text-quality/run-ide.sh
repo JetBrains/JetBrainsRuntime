@@ -75,6 +75,8 @@ CP=$(cat "$STATE/classpath.txt")
   echo "-Didea.jre.check=false"
   echo "-Didea.is.internal=false"
   for p in $PROPS; do echo "$p"; done
+  # IDE_EXTRA_VMOPTIONS: further options, one per line (a JFR recording, for instance)
+  [ -n "${IDE_EXTRA_VMOPTIONS:-}" ] && printf '%s\n' "$IDE_EXTRA_VMOPTIONS"
 } > "$STATE/idea.vmoptions"
 
 echo "$NAME: IDE $IDE_WIN, JDK $JDK, state $STATE_WIN"
