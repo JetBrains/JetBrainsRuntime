@@ -108,17 +108,22 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
 // mapper hands such characters to CoreText as negative glyph codes): the
 // typeface that has it and the glyph in it; null if the platform has none.
 sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, uint16_t *glyph);
-// The glyph rasterized by the platform's own text renderer with its font
-// smoothing on, as it draws text of the given luminance (0..255): an A8
-// coverage mask of width x height bytes, the glyph origin at (originX,
-// originY) in the mask, glyphToDevice the transform of the glyph's design
-// space in pixels (size included, y down). strokeWidth > 0 (device pixels)
-// emboldens the glyph by that much, the way Java synthesizes bold for a font
-// without a bold face (FreeType's embolden by 1/24 em). False where the
-// platform has no such renderer (the caller falls back to Skia's coverage).
+// The glyph rasterized by the platform's own text renderer (CoreGraphics on
+// macOS, DirectWrite on Windows). luminance 0..255: with the platform's font
+// smoothing on, as it draws text of that luminance (the native look, exact
+// by construction where the platform's weight depends on the text colour
+// alone); luminance -1: the platform rasterizer's plain linear coverage, for
+// the pipes that apply the gamma themselves. The mask is width x height
+// bytes of coverage, or width x height x 3 bytes of per-channel (R, G, B)
+// coverage when lcd is set; the glyph origin is at (originX, originY) in the
+// mask, glyphToDevice the transform of the glyph's design space in pixels
+// (size included, y down). strokeWidth > 0 (device pixels) emboldens the
+// glyph by that much, the way Java synthesizes bold for a font without a bold
+// face (FreeType's embolden by 1/24 em). False where the platform has no such
+// renderer for the request (the caller falls back to Skia's coverage).
 // Java's synthetic bold widens a glyph by this fraction of the em (FreeType's embolden rule).
 constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 24;
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask);
+                                  bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask);
 
 #endif /* SKPlatform_h_Included */

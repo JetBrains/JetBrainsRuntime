@@ -260,6 +260,23 @@ Java_sun_font_SKFontScaler_getFontMetricsNative(JNIEnv *env, jclass clazz, jlong
     }
     SkFontMetrics metrics;
     context->font.getMetrics(&metrics);
+#if defined(_WIN32)
+    // The Windows strike rule (FreeType scaler, freetypeScaler.c): ascent and
+    // descent are the OS/2 table's usWinAscent and usWinDescent, and the line
+    // height is their sum, so the leading is zero. GDI's convention, which the
+    // layouts of every Windows Java application were measured with; the font
+    // host reports the hhea or typo values and a line gap instead.
+    uint8_t usWin[4];
+    const SkTypeface *typeface = context->font.getTypeface();
+    if (typeface != nullptr && typeface->getUnitsPerEm() > 0
+        && typeface->getTableData(SkSetFourByteTag('O', 'S', '/', '2'), 74, 4, usWin) == 4) {
+        const float scale = context->font.getSize() / (float) typeface->getUnitsPerEm();
+        const float winAscent = (float) ((usWin[0] << 8) | usWin[1]), winDescent = (float) ((usWin[2] << 8) | usWin[3]);
+        metrics.fAscent = -winAscent * scale;
+        metrics.fDescent = winDescent * scale;
+        metrics.fLeading = 0;
+    }
+#endif
     // Skia has no maximum advance; the widest glyph box is the nearest value
     // (FontDesignMetrics.getMaxAdvance).
     return strikeMetrics(env, metrics.fAscent, metrics.fDescent, metrics.fLeading, metrics.fMaxCharWidth);
@@ -441,9 +458,14 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const bool smoothedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_SMOOTHED;
     const bool darkenedGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_DARKENED
                               && context->grayDarkening > 0;
-    // the platform's own smoothed rendering for the text luminance (SKPlatform_SmoothedGlyphMask);
-    // synthetic bold strokes the outline by 1/24 em there, as FreeType's embolden does
-    const bool platformGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_CG;
+    // the platform's own rasterizer (SKPlatform_SmoothedGlyphMask): smoothed for the text
+    // luminance (the native look), or as linear coverage (luminance -1) for the pipes' own
+    // gamma; grayscale and LCD alike where the platform provides both (DirectWrite does,
+    // CoreGraphics only the smoothed grayscale). Synthetic bold strokes the outline by
+    // 1/24 em there, as FreeType's embolden does.
+    const bool platformMask = aa && !colorGlyph && (context->grayMode == sun_font_SKFontScaler_GRAY_CG
+                                                    || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE);
+    const int platformLuminance = context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE ? -1 : context->grayLuminance;
     const float platformStroke = font.isEmbolden() ? font.getSize() * SK_SYNTHETIC_BOLD_EM : 0;
     if (smoothedGray) {
         font.setEdging(SkFont::Edging::kSubpixelAntiAlias);
@@ -460,8 +482,9 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     }
     // a pixel of padding for the antialiasing filter, two more on each side
     // for the LCD filter's spill, and the sub-pixel offsets to the right/bottom
-    // room for the smoothing's dilation, the LCD filter and the synthetic bold's second draw
-    const int pad = (colorGlyph ? 1 : lcd ? 3 : smoothedGray ? 2 : aa ? 1 : 0) + (int) std::ceil(platformStroke);
+    // room for the platform's vertical hinting (an edge may move by a pixel: two for its
+    // grayscale), the smoothing's dilation, the LCD filter and the synthetic bold's second draw
+    const int pad = (colorGlyph ? 1 : lcd ? 3 : smoothedGray || platformMask ? 2 : aa ? 1 : 0) + (int) std::ceil(platformStroke);
     const int left = (int) std::floor(bounds.fLeft) - pad, top = (int) std::floor(bounds.fTop) - pad;
     const int right = (int) std::ceil(bounds.fRight) + pad + (resX > 1 ? 1 : 0);
     const int bottom = (int) std::ceil(bounds.fBottom) + pad + (resY > 1 ? 1 : 0);
@@ -522,7 +545,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     for (int sy = 0; sy < resY; sy++) {
         for (int sx = 0; sx < resX; sx++) {
             UInt8 *variant = info->image + imageSize * (size_t) (sy * resX + sx);
-            if (platformGray && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, context->grayLuminance,
+            if (platformMask && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, platformLuminance, lcd,
                                                              platformStroke, (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
                                                              width, height, variant)) {
                 continue;

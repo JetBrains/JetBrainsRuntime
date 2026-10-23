@@ -666,7 +666,7 @@ ifeq ($(SKIA_ENABLED), true)
       EXTRA_LINK_DEPS := $(LIBAWT_SKIA_LINK_DEPS), \
       LIBS := $(SKIA_LIBS), \
       LIBS_windows := d3d11.lib d3d12.lib dxgi.lib dxguid.lib user32.lib \
-          mincore.lib winmm.lib, \
+          mincore.lib winmm.lib dwrite.lib d2d1.lib gdi32.lib, \
       LIBS_macosx := \
           -framework CoreFoundation \
           -framework CoreGraphics \

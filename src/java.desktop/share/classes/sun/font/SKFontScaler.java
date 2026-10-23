@@ -62,7 +62,7 @@ public final class SKFontScaler extends FontScaler {
      * em, default 0.013, rasterized by Skia; CoreGraphics' smoothing measured
      * as a widening proportional to the size, 0.17 px at 13 px, 0.35 px at 26).
      */
-    static final int GRAY_COVERAGE = 0, GRAY_SMOOTHED = 1, GRAY_DARKENED = 2, GRAY_CG = 3;
+    static final int GRAY_COVERAGE = 0, GRAY_SMOOTHED = 1, GRAY_DARKENED = 2, GRAY_CG = 3, GRAY_PLATFORM_COVERAGE = 4;
     private static final int GRAY_MODE = grayModeProperty();
     /**
      * {@code sun.java2d.skia.text.gray=cg}: the glyph rasterized by CoreGraphics
@@ -81,7 +81,8 @@ public final class SKFontScaler extends FontScaler {
         return switch (System.getProperty("sun.java2d.skia.text.gray", "coverage").toLowerCase(java.util.Locale.ROOT)) {
             case "smoothed" -> GRAY_SMOOTHED;
             case "darkened" -> GRAY_DARKENED;
-            case "cg" -> GRAY_CG;
+            case "cg", "platform" -> GRAY_CG;   // the platform's smoothed rendering: CoreGraphics on macOS, DirectWrite on Windows
+            case "platformcoverage" -> GRAY_PLATFORM_COVERAGE;   // the platform's rasterizer as linear coverage (Windows: DirectWrite's alpha texture)
             default -> GRAY_COVERAGE;
         };
     }

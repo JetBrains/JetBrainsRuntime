@@ -33,8 +33,19 @@
 #include "Trace.h"
 #include "include/core/SkColorType.h"
 #include "include/core/SkFontMgr.h"
+#include "include/core/SkMatrix.h"
+#include "include/core/SkStream.h"
 #include "include/core/SkTypeface.h"
 #include "include/ports/SkTypeface_win.h"
+// the DirectWrite glyph masks (SKPlatform_SmoothedGlyphMask)
+#include <d2d1.h>
+#include <dwrite_2.h>   // the JDK builds for Windows 8 (_WIN32_WINNT 0x0602): no dwrite_3 interfaces
+#include <wrl/client.h>
+#include <memory>
+#include <cmath>
+#include <mutex>
+#include <unordered_map>
+#include <vector>
 #include "include/gpu/graphite/dawn/DawnBackendContext.h"
 #include "include/gpu/graphite/dawn/DawnGraphiteTypes.h"
 #include "dawn/dawn_proc.h"
@@ -534,7 +545,324 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong, int, uint16_t *) {
     return nullptr;   // Windows resolves fallback through composite fonts, with non-negative codes
 }
 
-bool SKPlatform_SmoothedGlyphMask(const SkTypeface *, uint16_t, const SkMatrix &, int, float, float, float, int, int, uint8_t *)
+// ---- DirectWrite glyph masks ------------------------------------------------
+//
+// The platform's own rasterizer for the Skia scaler's glyph images, in the two
+// forms the pipes can use. Linear coverage (luminance -1): the alpha texture of
+// a glyph run analysis, which DirectWrite produces before any gamma or contrast
+// (those belong to its blend, IDWriteGlyphRunAnalysis::GetAlphaBlendParams), so
+// the pipes apply their own gamma to it as they do to FreeType's masks. The
+// native look (luminance 0..255): the glyph drawn by Direct2D with the system's
+// rendering parameters, text of that luminance on the opposite paper, and the
+// coverage recovered from what the paper lost. DirectWrite's weight depends on
+// the text luminance alone (measured on this project: equal for black text on
+// white and on mid-gray, and so on), so the mask is exact on any background.
+// Rendering mode and pixel geometry are DirectWrite's recommendation for the
+// size and the system parameters, i.e. vertical hinting at text sizes, which
+// is what snaps x-heights the way Windows 11 text has them.
+//
+// The typeface's font face comes from its font data through an in-memory
+// loader: the Skia host keeps its own face private, and this way a font the JDK
+// created from a file or stream at run time renders exactly like an installed
+// one, which is what the DirectWrite font model is designed for (no registry).
+
+namespace {
+
+using Microsoft::WRL::ComPtr;
+
+// A font file loader over the typefaces' font data (DirectWrite 1, so it builds
+// against the JDK's Windows 8 headers; IDWriteInMemoryFontFileLoader needs
+// Windows 10). The key of a font file reference is the typeface's id.
+struct MemoryFontStream : IDWriteFontFileStream {
+    std::shared_ptr<std::vector<uint8_t>> data;
+    ULONG refs = 1;
+    explicit MemoryFontStream(std::shared_ptr<std::vector<uint8_t>> d) : data(std::move(d)) {}
+    HRESULT __stdcall QueryInterface(REFIID riid, void **out) override {
+        if (riid == __uuidof(IUnknown) || riid == __uuidof(IDWriteFontFileStream)) { *out = this; AddRef(); return S_OK; }
+        *out = nullptr; return E_NOINTERFACE;
+    }
+    ULONG __stdcall AddRef() override { return ++refs; }
+    ULONG __stdcall Release() override { ULONG n = --refs; if (n == 0) delete this; return n; }
+    HRESULT __stdcall ReadFileFragment(const void **start, UINT64 offset, UINT64 size, void **context) override {
+        if (offset + size > data->size()) { *start = nullptr; *context = nullptr; return E_INVALIDARG; }
+        *start = data->data() + offset; *context = nullptr; return S_OK;
+    }
+    void __stdcall ReleaseFileFragment(void *) override {}
+    HRESULT __stdcall GetFileSize(UINT64 *size) override { *size = data->size(); return S_OK; }
+    HRESULT __stdcall GetLastWriteTime(UINT64 *time) override { *time = 0; return S_OK; }
+};
+
+struct MemoryFontLoader : IDWriteFontFileLoader {
+    std::unordered_map<SkTypefaceID, std::shared_ptr<std::vector<uint8_t>>> fonts;
+    ULONG refs = 1;
+    HRESULT __stdcall QueryInterface(REFIID riid, void **out) override {
+        if (riid == __uuidof(IUnknown) || riid == __uuidof(IDWriteFontFileLoader)) { *out = this; AddRef(); return S_OK; }
+        *out = nullptr; return E_NOINTERFACE;
+    }
+    ULONG __stdcall AddRef() override { return ++refs; }
+    ULONG __stdcall Release() override { return --refs; }   // owned by DWriteText for the process lifetime
+    HRESULT __stdcall CreateStreamFromKey(const void *key, UINT32 keySize, IDWriteFontFileStream **stream) override {
+        if (key == nullptr || keySize != sizeof(SkTypefaceID)) { return E_INVALIDARG; }
+        auto found = fonts.find(*(const SkTypefaceID *) key);
+        if (found == fonts.end()) { return E_INVALIDARG; }
+        *stream = new MemoryFontStream(found->second);
+        return S_OK;
+    }
+};
+
+struct DWriteText {
+    std::mutex lock;
+    ComPtr<IDWriteFactory2> factory;
+    MemoryFontLoader loader;
+    ComPtr<IDWriteRenderingParams> params;   // the primary monitor's system parameters
+    ComPtr<ID2D1Factory> d2d;
+    ComPtr<ID2D1DCRenderTarget> target;
+    std::unordered_map<SkTypefaceID, ComPtr<IDWriteFontFace>> faces;
+    bool initialized = false, failed = false;
+
+    bool init() {
+        if (initialized) {
+            return !failed;
+        }
+        initialized = true;
+        failed = true;
+        if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory2), (IUnknown **) factory.GetAddressOf()))
+            || FAILED(factory->RegisterFontFileLoader(&loader))
+            || FAILED(factory->CreateRenderingParams(&params))
+            || FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, d2d.GetAddressOf()))) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "SKPlatform: DirectWrite is unavailable for glyph masks");
+            return false;
+        }
+        const D2D1_RENDER_TARGET_PROPERTIES properties = D2D1::RenderTargetProperties(
+            D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE), 96, 96);
+        if (FAILED(d2d->CreateDCRenderTarget(&properties, &target))) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "SKPlatform: Direct2D is unavailable for glyph masks");
+            return false;
+        }
+        target->SetTextRenderingParams(params.Get());
+        failed = false;
+        return true;
+    }
+
+    // The typeface's face, made once from its font data.
+    ComPtr<IDWriteFontFace> faceFor(const SkTypeface *typeface) {
+        auto found = faces.find(typeface->uniqueID());
+        if (found != faces.end()) {
+            return found->second;
+        }
+        ComPtr<IDWriteFontFace> face;
+        int index = 0;
+        std::unique_ptr<SkStreamAsset> stream = typeface->openStream(&index);
+        if (stream && stream->getLength() > 0) {
+            auto data = std::make_shared<std::vector<uint8_t>>(stream->getLength());
+            if (stream->read(data->data(), data->size()) == data->size()) {
+                const SkTypefaceID key = typeface->uniqueID();
+                loader.fonts[key] = data;
+                ComPtr<IDWriteFontFile> file;
+                BOOL supported = FALSE;
+                DWRITE_FONT_FILE_TYPE fileType;
+                DWRITE_FONT_FACE_TYPE faceType = DWRITE_FONT_FACE_TYPE_UNKNOWN;
+                UINT32 faceCount = 0;
+                if (SUCCEEDED(factory->CreateCustomFontFileReference(&key, sizeof key, &loader, &file))
+                    && SUCCEEDED(file->Analyze(&supported, &fileType, &faceType, &faceCount)) && supported) {
+                    IDWriteFontFile *files[] = {file.Get()};
+                    if (FAILED(factory->CreateFontFace(faceType, 1, files, (UINT32) index, DWRITE_FONT_SIMULATIONS_NONE, &face))) {
+                        face.Reset();
+                    }
+                }
+            }
+        }
+        if (!face) {
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "SKPlatform: DirectWrite cannot load the font data of typeface %u", typeface->uniqueID());
+        }
+        faces[typeface->uniqueID()] = face;   // a null entry remembers the failure
+        return face;
+    }
+};
+
+DWriteText &dwriteText() {
+    static DWriteText text;
+    return text;
+}
+
+// The run and its transform: a unit-em glyph through glyphToDevice, split into
+// the pixel size (for DirectWrite's rendering-mode and hinting decisions) and
+// the remaining shape; the mask origin goes into the transform's translation.
+struct GlyphRunSetup {
+    UINT16 index;
+    FLOAT advance = 0;
+    DWRITE_GLYPH_OFFSET offset = {0, 0};
+    DWRITE_GLYPH_RUN run = {};
+    DWRITE_MATRIX matrix = {};
+    float pixelSize = 0;
+
+    GlyphRunSetup(IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, float originX, float originY) : index(glyph) {
+        pixelSize = std::sqrt(std::fabs(glyphToDevice.getScaleX() * glyphToDevice.getScaleY()
+                                        - glyphToDevice.getSkewX() * glyphToDevice.getSkewY()));
+        if (pixelSize <= 0) {
+            pixelSize = 1;
+        }
+        run.fontFace = face;
+        run.fontEmSize = pixelSize;
+        run.glyphCount = 1;
+        run.glyphIndices = &index;
+        run.glyphAdvances = &advance;
+        run.glyphOffsets = &offset;
+        run.isSideways = FALSE;
+        run.bidiLevel = 0;
+        matrix.m11 = glyphToDevice.getScaleX() / pixelSize;
+        matrix.m12 = glyphToDevice.getSkewY() / pixelSize;
+        matrix.m21 = glyphToDevice.getSkewX() / pixelSize;
+        matrix.m22 = glyphToDevice.getScaleY() / pixelSize;
+        matrix.dx = originX;
+        matrix.dy = originY;
+    }
+};
+
+DWRITE_RENDERING_MODE recommendedMode(DWriteText &text, IDWriteFontFace *face, float pixelSize) {
+    DWRITE_RENDERING_MODE mode = DWRITE_RENDERING_MODE_NATURAL;
+    if (FAILED(face->GetRecommendedRenderingMode(pixelSize, 1.0f, DWRITE_MEASURING_MODE_NATURAL, text.params.Get(), &mode))
+        || mode == DWRITE_RENDERING_MODE_DEFAULT || mode == DWRITE_RENDERING_MODE_OUTLINE) {
+        mode = DWRITE_RENDERING_MODE_NATURAL;
+    }
+    return mode;
+}
+
+// Linear coverage: the analysis' alpha texture, grayscale or ClearType 3x1.
+bool coverageMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, bool lcd,
+                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
 {
-    return false;   // no CoreGraphics here; DirectWrite's rendering modes are a separate experiment
+    const int channels = lcd ? 3 : 1;
+    memset(mask, 0, (size_t) width * height * channels);
+    const int passes = strokeWidth > 0 ? 2 : 1;   // synthetic bold: the glyph again, shifted by the emboldening
+    for (int pass = 0; pass < passes; pass++) {
+        GlyphRunSetup setup(face, glyph, glyphToDevice, originX + (pass == 1 ? strokeWidth : 0), originY);
+        ComPtr<IDWriteGlyphRunAnalysis> analysis;
+        if (FAILED(text.factory->CreateGlyphRunAnalysis(&setup.run, &setup.matrix, recommendedMode(text, face, setup.pixelSize),
+                                                       DWRITE_MEASURING_MODE_NATURAL, DWRITE_GRID_FIT_MODE_DEFAULT,
+                                                       lcd ? DWRITE_TEXT_ANTIALIAS_MODE_CLEARTYPE : DWRITE_TEXT_ANTIALIAS_MODE_GRAYSCALE,
+                                                       0, 0, &analysis))) {
+            return false;
+        }
+        const DWRITE_TEXTURE_TYPE type = lcd ? DWRITE_TEXTURE_CLEARTYPE_3x1 : DWRITE_TEXTURE_ALIASED_1x1;
+        RECT bounds = {};
+        if (FAILED(analysis->GetAlphaTextureBounds(type, &bounds)) || bounds.right <= bounds.left || bounds.bottom <= bounds.top) {
+            continue;   // nothing inked (a space)
+        }
+        const int tw = bounds.right - bounds.left, th = bounds.bottom - bounds.top;
+        std::vector<uint8_t> texture((size_t) tw * th * channels);
+        if (FAILED(analysis->CreateAlphaTexture(type, &bounds, texture.data(), (UINT32) texture.size()))) {
+            return false;
+        }
+        for (int y = 0; y < th; y++) {
+            const int my = bounds.top + y;
+            if (my < 0 || my >= height) {
+                continue;
+            }
+            for (int x = 0; x < tw; x++) {
+                const int mx = bounds.left + x;
+                if (mx < 0 || mx >= width) {
+                    continue;
+                }
+                for (int c = 0; c < channels; c++) {
+                    uint8_t &dst = mask[((size_t) my * width + mx) * channels + c];
+                    const uint8_t src = texture[((size_t) y * tw + x) * channels + c];
+                    dst = (uint8_t) std::max<int>(dst, src);   // the union of the two bold passes
+                }
+            }
+        }
+    }
+    return true;
+}
+
+// The native look: Direct2D with the system's parameters, text of the given
+// luminance on the opposite paper, coverage = what the paper lost.
+bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance, bool lcd,
+                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
+{
+    const bool lightText = luminance >= 128;
+    const int paperByte = lightText ? 0 : 255, inkByte = luminance;
+    const int range = std::abs(paperByte - inkByte);
+    if (range == 0) {
+        return false;
+    }
+    BITMAPINFO info = {};
+    info.bmiHeader.biSize = sizeof(info.bmiHeader);
+    info.bmiHeader.biWidth = width;
+    info.bmiHeader.biHeight = -height;
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+    void *bits = nullptr;
+    HDC dc = CreateCompatibleDC(nullptr);
+    HBITMAP dib = CreateDIBSection(dc, &info, DIB_RGB_COLORS, &bits, nullptr, 0);
+    if (dib == nullptr || bits == nullptr) {
+        DeleteDC(dc);
+        return false;
+    }
+    HGDIOBJ previous = SelectObject(dc, dib);
+    const RECT rect = {0, 0, width, height};
+    bool ok = false;
+    if (SUCCEEDED(text.target->BindDC(dc, &rect))) {
+        ComPtr<ID2D1SolidColorBrush> brush;
+        const float ink = inkByte / 255.0f;
+        if (SUCCEEDED(text.target->CreateSolidColorBrush(D2D1::ColorF(ink, ink, ink), &brush))) {
+            text.target->SetTextAntialiasMode(lcd ? D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE : D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
+            text.target->BeginDraw();
+            const float paper = paperByte / 255.0f;
+            text.target->SetTransform(D2D1::Matrix3x2F::Identity());
+            text.target->Clear(D2D1::ColorF(paper, paper, paper));
+            const int passes = strokeWidth > 0 ? 2 : 1;
+            for (int pass = 0; pass < passes; pass++) {
+                GlyphRunSetup setup(face, glyph, glyphToDevice, originX + (pass == 1 ? strokeWidth : 0), originY);
+                text.target->SetTransform(D2D1::Matrix3x2F(setup.matrix.m11, setup.matrix.m12, setup.matrix.m21, setup.matrix.m22,
+                                                           setup.matrix.dx, setup.matrix.dy));
+                text.target->DrawGlyphRun(D2D1::Point2F(0, 0), &setup.run, brush.Get(), DWRITE_MEASURING_MODE_NATURAL);
+            }
+            ok = SUCCEEDED(text.target->EndDraw());
+        }
+    }
+    GdiFlush();
+    if (ok) {
+        const int channels = lcd ? 3 : 1;
+        for (int y = 0; y < height; y++) {
+            const uint8_t *row = (const uint8_t *) bits + (size_t) y * width * 4;   // B, G, R, x
+            uint8_t *dst = mask + (size_t) y * width * channels;
+            for (int x = 0; x < width; x++) {
+                if (lcd) {
+                    for (int c = 0; c < 3; c++) {
+                        const int value = row[x * 4 + (2 - c)];   // R, G, B order in the mask
+                        dst[x * 3 + c] = (uint8_t) std::min(255, std::abs(value - paperByte) * 255 / range);
+                    }
+                } else {
+                    dst[x] = (uint8_t) std::min(255, std::abs((int) row[x * 4 + 1] - paperByte) * 255 / range);
+                }
+            }
+        }
+    }
+    SelectObject(dc, previous);
+    DeleteObject(dib);
+    DeleteDC(dc);
+    return ok;
+}
+
+} // namespace
+
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
+                                  bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
+{
+    if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0) {
+        return false;
+    }
+    DWriteText &text = dwriteText();
+    std::lock_guard<std::mutex> guard(text.lock);
+    if (!text.init()) {
+        return false;
+    }
+    ComPtr<IDWriteFontFace> face = text.faceFor(typeface);
+    if (!face) {
+        return false;
+    }
+    return luminance < 0 ? coverageMask(text, face.Get(), glyph, glyphToDevice, lcd, strokeWidth, originX, originY, width, height, mask)
+                         : smoothedMask(text, face.Get(), glyph, glyphToDevice, luminance, lcd, strokeWidth, originX, originY, width, height, mask);
 }

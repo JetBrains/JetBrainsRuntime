@@ -236,9 +236,11 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // that luminance. Text space is y up: the device matrix (y down) gets its y
 // flipped into the text matrix.
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
+                                  bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
 {
-    if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0) {
+    // CoreGraphics emits no colour sub-pixels and its unsmoothed coverage is
+    // Skia's own; the LCD and the linear-coverage requests stay with Skia here
+    if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0 || lcd || luminance < 0) {
         return false;
     }
     CTFontRef base = SkTypeface_GetCTFontRef(typeface);

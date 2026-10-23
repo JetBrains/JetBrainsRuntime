@@ -103,8 +103,11 @@ public final class FontUtilities {
         if (scalerStr != null) {
             useJDKScaler = "jdk".equals(scalerStr);
             useSkiaScaler = "skia".equals(scalerStr);
+            // the platform's smoothed rendering is rasterized per text luminance class
+            // (CoreGraphics on macOS as "cg", DirectWrite on Windows as "platform")
+            String gray = System.getProperty("sun.java2d.skia.text.gray", "");
             textLuminanceDependent = useSkiaScaler
-                    && "cg".equalsIgnoreCase(System.getProperty("sun.java2d.skia.text.gray", ""));
+                    && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray));
         } else {
             useJDKScaler = false;
             useSkiaScaler = false;
