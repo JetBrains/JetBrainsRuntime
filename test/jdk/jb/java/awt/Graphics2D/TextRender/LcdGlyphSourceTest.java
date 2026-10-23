@@ -29,7 +29,11 @@
  *          any scaler for every installed font at 3 to 100 px, so the Skia
  *          scaler's LCD rendering never reached the screen for them. The
  *          strike of an installed font at 13 px with LCD antialiasing is
- *          inspected through reflection for the source it will use.
+ *          inspected through reflection for the source it will use. A stated
+ *          source applies by configuration, not by origin: the JDK's bundled
+ *          fonts (Inter here, registered with the Java-rasterizer flag and
+ *          with GDI alike) follow it too; without a statement they keep the
+ *          JDK's own scaler as they always did.
  * @requires (os.family == "windows")
  * @modules java.desktop/sun.font
  * @run main/othervm -Dsun.java2d.uiScale=1 LcdGlyphSourceTest gdi
@@ -39,6 +43,10 @@
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.lcdGlyphs=directwrite LcdGlyphSourceTest directwrite
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dfreetype.font.rendering=true LcdGlyphSourceTest scaler
  * @run main/othervm -Dsun.java2d.uiScale=1 -Ddirectwrite.font.rendering=true LcdGlyphSourceTest directwrite
+ * @run main/othervm -Dsun.java2d.uiScale=1 LcdGlyphSourceTest scaler Inter
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.lcdGlyphs=gdi LcdGlyphSourceTest gdi Inter
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.lcdGlyphs=directwrite LcdGlyphSourceTest directwrite Inter
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia LcdGlyphSourceTest scaler Inter
  */
 
 import java.awt.Font;
@@ -52,10 +60,10 @@ import sun.font.FontUtilities;
 public class LcdGlyphSourceTest {
 
     public static void main(String[] args) throws Exception {
-        String expected = args[0];
-        Font font = new Font("Segoe UI", Font.PLAIN, 13);
-        if (!font.getFamily().equalsIgnoreCase("Segoe UI")) {
-            System.out.println("Segoe UI not installed: nothing to test");
+        String expected = args[0], family = args.length > 1 ? args[1] : "Segoe UI";
+        Font font = new Font(family, Font.PLAIN, 13);
+        if (!font.getFamily().equalsIgnoreCase(family)) {
+            System.out.println(family + " not available (" + font.getFamily() + " resolved): nothing to test");
             return;
         }
         FontRenderContext frc = new FontRenderContext(null, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB,
@@ -74,7 +82,7 @@ public class LcdGlyphSourceTest {
         useDirectWrite.setAccessible(true);
         boolean natives = useNatives.getBoolean(strike), directWrite = useDirectWrite.getBoolean(null);
         String actual = !natives ? "scaler" : directWrite ? "directwrite" : "gdi";
-        System.out.println("LCD glyph source for Segoe UI 13: " + actual + " (useNatives " + natives
+        System.out.println("LCD glyph source for " + family + " 13: " + actual + " (useNatives " + natives
                            + ", useDirectWrite " + directWrite + ", Skia scaler " + FontUtilities.useSkiaScaler + ")");
         if (!actual.equals(expected)) {
             throw new RuntimeException("LCD glyphs come from " + actual + ", expected " + expected);

@@ -140,6 +140,14 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
     private static boolean forceFreeTypeRendering;
     private static boolean useDirectWrite;
     private static String lcdGlyphSource = "gdi";
+    /* A stated source applies by configuration, not by the font's origin: the
+     * JDK's own fonts are registered with the Java-rasterizer flag (the JRE's
+     * bundled fonts were to look alike on every platform) and were therefore
+     * never sent to GDI, although Windows registers them with GDI as well. With
+     * a stated source only fonts the platform cannot know, those created at
+     * run time from a file or stream (unknown rank), stay with the scaler.
+     */
+    private static boolean lcdGlyphSourceStated;
 
     // DirectWrite rendering options' values can be found in MSDN documentation
     // for IDWriteBitmapRenderTarget::DrawGlyphRun method and its parameters
@@ -185,6 +193,8 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
                 source = "gdi";
             }
             lcdGlyphSource = source;
+            lcdGlyphSourceStated = System.getProperty("sun.java2d.font.lcdGlyphs") != null
+                    || Boolean.getBoolean("freetype.font.rendering") || Boolean.getBoolean("directwrite.font.rendering");
             forceFreeTypeRendering = source.equals("scaler");
             useDirectWrite = source.equals("directwrite");
             if (useDirectWrite) {
@@ -320,7 +330,7 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
         if (FontUtilities.isWindows &&
             !FontUtilities.useJDKScaler &&
             !GraphicsEnvironment.isHeadless() &&
-            !fileFont.useJavaRasterizer &&
+            (lcdGlyphSourceStated ? fileFont.getRank() != Font2D.UNKNOWN_RANK : !fileFont.useJavaRasterizer) &&
             (desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HRGB ||
              desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR)) {
             double pts = 0;
