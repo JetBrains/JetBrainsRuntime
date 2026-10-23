@@ -98,5 +98,8 @@ echo "--- idea.log: JRE, Skia, errors"
 grep -E "JRE:|Skia|ERROR" "$STATE/log/idea.log" 2>/dev/null | grep -v "\[cds\]" | head -8
 echo "--- stdout: Skia line, native warnings"
 grep -iE "Skia rendering|\[E\]|\[W\]|device lost|Exception" "$STATE/stdout.txt" | head -8
-taskkill //PID $PID //T //F > /dev/null 2>&1 || true
-echo "stopped"
+# $PID is the shell's (POSIX) pid; taskkill needs the Windows one (MSYS2 and Cygwin: /proc/<pid>/winpid)
+WINPID=$(cat "/proc/$PID/winpid" 2>/dev/null || echo "$PID")
+taskkill //PID "$WINPID" //T //F > /dev/null 2>&1 || true
+sleep 1
+if kill -0 "$PID" 2>/dev/null; then echo "warning: the IDE (pid $PID, Windows pid $WINPID) is still running" >&2; else echo "stopped"; fi
