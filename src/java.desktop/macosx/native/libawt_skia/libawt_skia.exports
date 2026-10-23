@@ -4,3 +4,6 @@
 # in-process coexistence with another Skia copy (Skiko) fragile.
 _Java_sun_java2d_skia_*
 _Java_sun_font_SKFontScaler_*
+_Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia
+_Java_sun_java2d_skia_SKEnvironment_glyphsDrawnBySkiaNative
+_Java_sun_font_SKFontScaler_contextIsAxisAlignedNative

@@ -28,6 +28,7 @@
 // questions (metrics, advances, outlines; glyph images follow).
 
 #include "SKPlatform.h"
+#include "SKFontScaler.h"
 
 #include <cmath>
 #include <mutex>
@@ -564,3 +565,21 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
 }
 
 } // extern "C"
+
+bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkGlyphID *glyph)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context != nullptr && resolveGlyph(context, glyphCode, font, glyph);
+}
+
+bool SKFontScaler_IsAxisAligned(jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context != nullptr && context->identityRemainder;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_sun_font_SKFontScaler_contextIsAxisAlignedNative(JNIEnv *env, jclass clazz, jlong pContext)
+{
+    return SKFontScaler_IsAxisAligned(pContext) ? JNI_TRUE : JNI_FALSE;
+}

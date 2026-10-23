@@ -27,6 +27,7 @@
 
 #include "SKBackend.h"
 #include "SKGlyphCache.h"
+#include "SKFontScaler.h"
 #include "SKMaskCache.h"
 #include "SKQuadBatch.h"
 
@@ -1593,6 +1594,62 @@ static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
 // fractional position (MTLTextRenderer's ADJUST_SUBPIXEL_GLYPH_POSITION).
 static inline float adjustSubpixel(float coord, int res) {
     return res > 1 ? coord + 0.5f / (float) res - 0.5f : coord;
+}
+
+static jlong gGlyphsDrawnBySkia = 0;
+
+jlong SKBackend_GlyphsDrawnBySkia() {
+    return gGlyphsDrawnBySkia;
+}
+
+void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions,
+                                jfloat originX, jfloat originY, const jint *codes, const jlong *images,
+                                const jfloat *positions) {
+    REQUIRE_CANVAS_TEXT();
+    flushGlyphBatches();   // glyph-image draws queued before this list stay in order
+    SkPaint paint = SKBackend_MakePaint(true);
+    // runs of glyphs sharing a font (the strike's own, or a platform fallback font)
+    std::vector<SkGlyphID> ids;
+    std::vector<SkPoint> points;
+    SkFont runFont;
+    const SkTypeface *runTypeface = nullptr;
+    auto flushRun = [&] {
+        if (!ids.empty()) {
+            g.canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+            gGlyphsDrawnBySkia += (jlong) ids.size();
+            ids.clear();
+            points.clear();
+        }
+    };
+    float penX = originX, penY = originY;
+    for (jint i = 0; i < numGlyphs; i++) {
+        float gx, gy;
+        if (usePositions) {
+            gx = originX + positions[2 * i];
+            gy = originY + positions[2 * i + 1];
+        } else {
+            gx = penX;
+            gy = penY;
+            const GlyphInfo *ginfo = images != nullptr ? (const GlyphInfo *) jlong_to_ptr(images[i]) : nullptr;
+            if (ginfo != nullptr && ginfo != (const GlyphInfo *) -1) {
+                penX += ginfo->advanceX;
+                penY += ginfo->advanceY;
+            }
+        }
+        SkFont font;
+        SkGlyphID glyph;
+        if (!SKFontScaler_ResolveGlyph(pScalerContext, codes[i], &font, &glyph)) {
+            continue;
+        }
+        if (font.getTypeface() != runTypeface) {
+            flushRun();
+            runFont = font;
+            runTypeface = font.getTypeface();
+        }
+        ids.push_back(glyph);
+        points.push_back({gx, gy});
+    }
+    flushRun();
 }
 
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,

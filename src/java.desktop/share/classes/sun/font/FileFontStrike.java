@@ -39,7 +39,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import static sun.awt.SunHints.*;
 import sun.java2d.pipe.OutlineTextRenderer;
 
-public class FileFontStrike extends PhysicalStrike {
+public class FileFontStrike extends PhysicalStrike implements SkiaDrawable {
+
+    @Override
+    public long skiaScalerContext() {
+        return fileFont.getScaler() instanceof SKFontScaler ? pScalerContext : 0;
+    }
+
+    @Override
+    public boolean drawsBySkia() {
+        return fileFont.getScaler() instanceof SKFontScaler scaler && scaler.contextIsAxisAligned(pScalerContext);
+    }
 
     /* fffe and ffff are values we specially interpret as meaning
      * invisible glyphs.

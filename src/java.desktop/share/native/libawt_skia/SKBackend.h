@@ -165,6 +165,13 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
 void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen,
                           const unsigned char *mask);
 void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const void *pixels);
+// Skia's own text path: the glyph codes of one strike with Java's positions (or the
+// images' advances when usePositions is false) drawn with the strike's SkFont through
+// Skia's strike cache, glyph atlas and blending (sun.java2d.skia.text=skia).
+void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions,
+                                jfloat originX, jfloat originY, const jint *codes, const jlong *images,
+                                const jfloat *positions);
+jlong SKBackend_GlyphsDrawnBySkia();
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
                              jboolean rgbOrder, jint lcdContrast,
                              jfloat glyphListOrigX, jfloat glyphListOrigY,

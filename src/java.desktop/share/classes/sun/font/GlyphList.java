@@ -383,6 +383,11 @@ public final class GlyphList {
         return y;
     }
 
+    /** The glyph codes of the list, for a pipe that draws from codes rather than images (the Skia text path). */
+    public int[] getGlyphCodes() {
+        return glyphData;
+    }
+
     public Object getStrike() {
         return strikelist;
     }

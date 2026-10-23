@@ -245,6 +245,13 @@ public final class SKFontScaler extends FontScaler {
     private static native int getNumGlyphsNative(long pScaler);
     private static native int getGlyphCodeNative(long pScaler, char charCode);
     private static native long getUnitsPerEmNative(long pScaler);
+    /** Whether the context's glyph transform is axis-aligned (size and optional synthetic italic only), so Skia's text path can draw it. */
+    boolean contextIsAxisAligned(long pContext) {
+        return contextIsAxisAlignedNative(pContext);
+    }
+
+    private static native boolean contextIsAxisAlignedNative(long pContext);
+
     private static native long createContextNative(long pScaler, double[] matrix, int aa, int fm, float boldness, float italic,
                                                    double deviceScale, int grayMode, float grayDarkening, int grayLuminance);
     private static native void disposeContextNative(long pContext);

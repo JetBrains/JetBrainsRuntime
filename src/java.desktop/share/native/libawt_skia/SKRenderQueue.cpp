@@ -505,6 +505,33 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
 }
 
 JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, jlong pScalerContext,
+                                                       jint numGlyphs, jboolean usePositions,
+                                                       jfloat originX, jfloat originY,
+                                                       jintArray codeArray, jlongArray imgArray, jfloatArray posArray)
+{
+    { SKPlatformScope scope;
+    jint *codes = (jint *) env->GetPrimitiveArrayCritical(codeArray, nullptr);
+    if (codes == nullptr) {
+        return;
+    }
+    jlong *images = imgArray != nullptr ? (jlong *) env->GetPrimitiveArrayCritical(imgArray, nullptr) : nullptr;
+    jfloat *positions = usePositions && posArray != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(posArray, nullptr) : nullptr;
+    if (!usePositions || positions != nullptr) {
+        SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, originX, originY, codes, images, positions);
+    }
+    if (positions != nullptr) {
+        env->ReleasePrimitiveArrayCritical(posArray, positions, JNI_ABORT);
+    }
+    if (images != nullptr) {
+        env->ReleasePrimitiveArrayCritical(imgArray, images, JNI_ABORT);
+    }
+    env->ReleasePrimitiveArrayCritical(codeArray, codes, JNI_ABORT);
+    SKBackend_EndOfFlush();
+    } // SKPlatformScope
+}
+
+JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
                                                     jint numGlyphs, jboolean usePositions,
                                                     jboolean subPixPos, jboolean rgbOrder,

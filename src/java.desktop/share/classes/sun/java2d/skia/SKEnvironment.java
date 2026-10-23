@@ -63,6 +63,14 @@ public final class SKEnvironment {
      * levels on one-pixel strokes; anything else counts as {@code skia}.
      */
     private static final boolean STROKES_BY_JAVA = strokesProperty();
+    /**
+     * {@code sun.java2d.skia.text=skia}: text drawn through Skia's own text
+     * path (Skia's strike, glyph atlas and blending) from the glyph codes and
+     * positions Java laid out, instead of Java2D's glyph images; needs the Skia
+     * font scaler. Default {@code glyphs}: the glyph images through the
+     * backend's atlas.
+     */
+    private static final boolean TEXT_BY_SKIA = "skia".equalsIgnoreCase(System.getProperty("sun.java2d.skia.text", "glyphs"));
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -197,6 +205,16 @@ public final class SKEnvironment {
         return STROKES_BY_JAVA;
     }
 
+    /** Whether text goes through Skia's own text path (strike, atlas, blending) rather than Java2D's glyph images. */
+    public static boolean textBySkia() {
+        return TEXT_BY_SKIA;
+    }
+
+    /** How many glyphs the backend has drawn through Skia's text path so far (diagnostics, tests). */
+    public static long glyphsDrawnBySkia() {
+        return isSkiaEnabled() ? glyphsDrawnBySkiaNative() : 0;
+    }
+
     private static Boolean libraryLoaded;
 
     /**
@@ -266,7 +284,7 @@ public final class SKEnvironment {
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
             String msg = "Skia rendering enabled: " + (description != null
-                    ? "YES (" + description + ", shapes: " + SHAPES + ", strokes: " + (STROKES_BY_JAVA ? "java" : "skia")
+                    ? "YES (" + description + ", shapes: " + SHAPES + ", strokes: " + (STROKES_BY_JAVA ? "java" : "skia") + ", text: " + (TEXT_BY_SKIA ? "skia" : "glyphs")
                       + ", msaa: " + configuration.msaaSamples()
                       + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh")
                       + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT) + ")"
@@ -286,4 +304,5 @@ public final class SKEnvironment {
 
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch);
+    private static native long glyphsDrawnBySkiaNative();
 }
