@@ -72,7 +72,8 @@ final class SKTextRenderer extends BufferedTextPipe {
             try {
                 validateContext(sg2d, comp);
                 rq.addReference(strike);
-                rq.flushAndInvokeNow(() -> drawGlyphsBySkia(context, n, usePositions, x, y, codes, images, positions));
+                final boolean smoothing = SKEnvironment.textSmoothing();
+                rq.flushAndInvokeNow(() -> drawGlyphsBySkia(context, n, usePositions, smoothing, x, y, codes, images, positions));
             } finally {
                 rq.unlock();
             }
@@ -82,7 +83,7 @@ final class SKTextRenderer extends BufferedTextPipe {
     }
 
     /** Skia's text path: glyph codes with Java's positions (or the images' advances) through the strike's SkFont. */
-    private static native void drawGlyphsBySkia(long pScalerContext, int numGlyphs, boolean usePositions,
+    private static native void drawGlyphsBySkia(long pScalerContext, int numGlyphs, boolean usePositions, boolean smoothing,
                                                 float originX, float originY, int[] codes, long[] images, float[] positions);
 
     @Override

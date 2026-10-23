@@ -71,6 +71,13 @@ public final class SKEnvironment {
      * backend's atlas.
      */
     private static final boolean TEXT_BY_SKIA = "skia".equalsIgnoreCase(System.getProperty("sun.java2d.skia.text", "glyphs"));
+    /**
+     * {@code sun.java2d.skia.text.smoothing=true}: Skia's text path asks the
+     * platform for smoothed glyph masks (Skia's hinting "normal", which on the
+     * CoreText host takes CoreGraphics' font smoothing) as Chrome does; default
+     * off: Skia's plain coverage.
+     */
+    private static final boolean TEXT_SMOOTHING = Boolean.getBoolean("sun.java2d.skia.text.smoothing");
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -208,6 +215,11 @@ public final class SKEnvironment {
     /** Whether text goes through Skia's own text path (strike, atlas, blending) rather than Java2D's glyph images. */
     public static boolean textBySkia() {
         return TEXT_BY_SKIA;
+    }
+
+    /** Whether Skia's text path requests the platform's font smoothing for its glyph masks. */
+    public static boolean textSmoothing() {
+        return TEXT_SMOOTHING;
     }
 
     /** How many glyphs the backend has drawn through Skia's text path so far (diagnostics, tests). */

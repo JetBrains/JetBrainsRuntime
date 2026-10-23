@@ -38,17 +38,24 @@ import java.lang.reflect.Method;
  *          way, and the text lands where the glyph-image path puts it, with a
  *          comparable amount of ink (Skia applies its own gamma model, so the ink
  *          is not identical). Both strike kinds take the path: the system font's
- *          and the file font's.
+ *          and the file font's. With sun.java2d.skia.text.smoothing=true the path
+ *          asks the platform for smoothed glyphs (as Chrome does): black text on
+ *          white then carries at least as much ink as the glyph-image path's
+ *          plain coverage, instead of a fifth less.
  * @requires os.family == "mac"
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia SkiaTextPathTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.smoothing=true SkiaTextPathTest smoothing
  */
 public class SkiaTextPathTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
     static final int W = 400, H = 40;
 
+    static boolean smoothing;
+
     public static void main(String[] args) throws Exception {
+        smoothing = args.length > 0 && args[0].equals("smoothing");
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
         if (!gc.getClass().getName().contains("MTL")) {
             throw new RuntimeException("not an accelerated configuration: " + gc.getClass().getName());
@@ -93,6 +100,9 @@ public class SkiaTextPathTest {
         }
         if (ratio < 0.7 || ratio > 1.5) {
             throw new RuntimeException("implausible ink from Skia's text path: ratio " + ratio);
+        }
+        if (smoothing && ratio < 1.0) {
+            throw new RuntimeException(what + ": with platform smoothing requested the text should not be lighter than plain coverage: ratio " + ratio);
         }
     }
 

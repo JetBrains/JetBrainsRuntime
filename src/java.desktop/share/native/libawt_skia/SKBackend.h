@@ -168,7 +168,9 @@ void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const voi
 // Skia's own text path: the glyph codes of one strike with Java's positions (or the
 // images' advances when usePositions is false) drawn with the strike's SkFont through
 // Skia's strike cache, glyph atlas and blending (sun.java2d.skia.text=skia).
-void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions,
+// smoothing: the masks come from the platform's font smoothing (Skia's hinting "normal" on the
+// CoreText host), as Chrome's do; otherwise Skia's plain coverage.
+void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions);
 jlong SKBackend_GlyphsDrawnBySkia();

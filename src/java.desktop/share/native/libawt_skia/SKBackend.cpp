@@ -1602,7 +1602,7 @@ jlong SKBackend_GlyphsDrawnBySkia() {
     return gGlyphsDrawnBySkia;
 }
 
-void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions,
+void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
@@ -1644,6 +1644,9 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
         if (font.getTypeface() != runTypeface) {
             flushRun();
             runFont = font;
+            if (smoothing) {
+                runFont.setHinting(SkFontHinting::kNormal);   // the CoreText host: masks from CoreGraphics with font smoothing on
+            }
             runTypeface = font.getTypeface();
         }
         ids.push_back(glyph);
