@@ -1004,11 +1004,49 @@ void SKBackend_DrawRect(jint x, jint y, jint w, jint h) {
     gRects.addRect(x + w, y + 1, x + w + 1, y + h);      // right
 }
 
+// A diagonal 1-pixel line as one quad: per pixel column (row, for a y-major
+// line) a band one pixel high centred on the ideal line through the end
+// points' pixel centres, so the rasterizer's pixel-centre rule picks the pixel
+// nearest to the line in every column, as the Bresenham stepping does. The
+// band is shifted towards the end point by a quarter of the smallest distance
+// a pixel centre can have from it, so a tie (the line half-way between two
+// pixel centres) goes the way the error term sends it. Exact while that
+// distance stays above the rasterizer's vertex precision (1/256 px on D3D11):
+// to a major extent of about 128 px; past it an occasional pixel moves by one
+// across the line (LineConformance: 3.5 % of lines at 256 px, a few pixels
+// each), still far closer to the loops than the line primitives of the other
+// pipelines. One quad instead of one per run: a long diagonal costs what a
+// short one does.
+static void lineAsBand(jint x1, jint y1, jint x2, jint y2, bool shorten, bool xMajor, jint amajor) {
+    // the major-axis extent in pixel edges; the end point dropped if shortened
+    const jint m1 = xMajor ? x1 : y1, m2 = xMajor ? x2 : y2, step = (m2 > m1) ? 1 : -1;
+    const jint last = shorten ? m2 - step : m2;
+    if ((last - m1) * step < 0) {
+        return;
+    }
+    const float lo = (float) std::min(m1, last), hi = (float) std::max(m1, last) + 1.0f;
+    const jint dmajor = xMajor ? x2 - x1 : y2 - y1, dminor = xMajor ? y2 - y1 : x2 - x1;
+    const float slope = (float) dminor / (float) dmajor;
+    const float bias = (dminor > 0 ? 1.0f : -1.0f) / (4.0f * (float) amajor);
+    const float minor1 = (float) (xMajor ? y1 : x1) + 0.5f, major1 = (float) m1 + 0.5f;
+    const float a = minor1 + (lo - major1) * slope + bias, b = minor1 + (hi - major1) * slope + bias;
+    SkPoint pts[4];
+    if (xMajor) {
+        pts[0] = {lo, a - 0.5f}; pts[1] = {hi, b - 0.5f}; pts[2] = {hi, b + 0.5f}; pts[3] = {lo, a + 0.5f};
+    } else {
+        pts[0] = {a - 0.5f, lo}; pts[1] = {a + 0.5f, lo}; pts[2] = {b + 0.5f, hi}; pts[3] = {b - 0.5f, hi};
+    }
+    gRects.addQuad(pts);
+}
+
 // Java2D's 1-pixel lines: the Bresenham stepping of the software loops
 // (SETUP_BRESENHAM in DrawLine.c and the DRAWLINE loop), both endpoints
 // inclusive unless `shorten` drops the pixel at (x2, y2) as DrawPolygons.c does
-// for the inner joints of a polyline. The pixels are emitted as horizontal or
-// vertical runs, one rect per run, so nothing depends on Skia's stroking.
+// for the inner joints of a polyline. Horizontal and vertical lines are one
+// rect; diagonal ones one quad (lineAsBand), except under MSAA, which would
+// cover the quad's slanted edges partially: there, and only there, the pixels
+// are emitted as horizontal or vertical runs, one rect per run, as the other
+// non-aligned non-AA geometry is decomposed into spans under MSAA.
 static void bresenhamLine(jint x1, jint y1, jint x2, jint y2, bool shorten = false) {
     const jint dx = x2 - x1, dy = y2 - y1;
     const jint ax = std::abs(dx), ay = std::abs(dy);
@@ -1021,6 +1059,10 @@ static void bresenhamLine(jint x1, jint y1, jint x2, jint y2, bool shorten = fal
         return;
     }
     const bool xMajor = ax >= ay;
+    if (!SKBackend_Multisampled()) {
+        lineAsBand(x1, y1, x2, y2, shorten, xMajor, xMajor ? ax : ay);
+        return;
+    }
     const jint errMajor = xMajor ? 2 * ay : 2 * ax;
     jint errMinor = xMajor ? 2 * ax : 2 * ay;
     jint steps = (xMajor ? ax : ay) + 1 - (shorten ? 1 : 0);
