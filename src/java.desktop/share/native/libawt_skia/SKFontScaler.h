@@ -29,5 +29,8 @@
 // context's glyph transform is axis-aligned, which the text path requires.
 bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkGlyphID *glyph);
 bool SKFontScaler_IsAxisAligned(jlong pContext);
+// The strike's own SkFont (size, edging, sub-pixel positioning, synthetic styles), for
+// shaping the strike's text with Skia's shaper.
+bool SKFontScaler_Font(jlong pContext, SkFont *font);
 
 #endif /* SKFontScaler_h_Included */

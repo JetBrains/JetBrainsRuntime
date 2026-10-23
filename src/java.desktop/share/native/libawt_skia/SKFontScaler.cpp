@@ -572,6 +572,16 @@ bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkG
     return context != nullptr && resolveGlyph(context, glyphCode, font, glyph);
 }
 
+bool SKFontScaler_Font(jlong pContext, SkFont *font)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    if (context == nullptr) {
+        return false;
+    }
+    *font = context->font;
+    return true;
+}
+
 bool SKFontScaler_IsAxisAligned(jlong pContext)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);

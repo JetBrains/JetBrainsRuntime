@@ -26,6 +26,8 @@
 // All functions run on the Skia queue flusher thread unless noted.
 
 #include "SKBackend.h"
+#include "Trace.h"
+#include "SKPlatform.h"
 #include "SKGlyphCache.h"
 #include "SKFontScaler.h"
 #include "SKMaskCache.h"
@@ -53,6 +55,12 @@
 #include "include/core/SkRRect.h"
 #include "include/core/SkPathUtils.h"
 #include "include/core/SkSpan.h"
+#include "include/core/SkTextBlob.h"
+#include "modules/skshaper/include/SkShaper.h"
+#include "modules/skshaper/include/SkShaper_harfbuzz.h"
+#include "modules/skshaper/include/SkShaper_skunicode.h"
+#include "modules/skunicode/include/SkUnicode.h"
+#include "modules/skunicode/include/SkUnicode_icu.h"
 #include "include/core/SkTileMode.h"
 #include "include/core/SkVertices.h"
 #include "include/effects/SkGradient.h"
@@ -1653,6 +1661,111 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
         points.push_back({gx, gy});
     }
     flushRun();
+}
+
+static jlong gGlyphsShapedBySkia = 0;
+
+jlong SKBackend_GlyphsShapedBySkia() {
+    return gGlyphsShapedBySkia;
+}
+
+namespace {
+
+// Collects the shaper's runs into one text blob with the baseline at y = 0 and the
+// runs following each other from x = 0, so the blob is drawn at Java's baseline
+// origin. (SkTextBlobBuilderRunHandler puts the first baseline one ascent below
+// its origin, the top of the line.)
+class BaselineRunHandler final : public SkShaper::RunHandler {
+public:
+    void beginLine() override { pen = {0, 0}; }
+    void runInfo(const RunInfo &) override {}
+    void commitRunInfo() override {}
+    Buffer runBuffer(const RunInfo &info) override {
+        const SkTextBlobBuilder::RunBuffer &run = builder.allocRunPos(info.fFont, (int) info.glyphCount);
+        return {run.glyphs, run.points(), nullptr, nullptr, pen};
+    }
+    void commitRunBuffer(const RunInfo &info) override {
+        pen += info.fAdvance;
+        glyphs += info.glyphCount;
+    }
+    void commitLine() override {}
+    sk_sp<SkTextBlob> makeBlob() { return builder.make(); }
+
+    size_t glyphs = 0;
+private:
+    SkTextBlobBuilder builder;
+    SkPoint pen = {0, 0};
+};
+
+// HarfBuzz through SkShaper, with Skia's ICU for the bidi and script runs and the
+// platform font manager for the characters the strike's font lacks. Built once, on
+// the render thread.
+struct Shaping {
+    sk_sp<SkUnicode> unicode;
+    std::unique_ptr<SkShaper> shaper;
+};
+
+const Shaping &shaping() {
+    static const Shaping instance = [] {
+        Shaping s;
+        s.unicode = SkUnicodes::ICU::Make();
+        if (s.unicode) {
+            s.shaper = SkShapers::HB::ShaperDrivenWrapper(s.unicode, SKPlatform_FontManager());
+        }
+        if (!s.shaper) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend: Skia's shaper is unavailable (no ICU or HarfBuzz)");
+        }
+        return s;
+    }();
+    return instance;
+}
+
+} // namespace
+
+void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat originX, jfloat originY,
+                                const jchar *chars, jint length) {
+    REQUIRE_CANVAS_TEXT();
+    flushGlyphBatches();   // glyph-image draws queued before this text stay in order
+    SkFont font;
+    if (length <= 0 || !SKFontScaler_Font(pScalerContext, &font)) {
+        return;
+    }
+    const Shaping &s = shaping();
+    if (!s.shaper) {
+        return;
+    }
+    if (smoothing) {
+        font.setHinting(SkFontHinting::kNormal);   // as DrawGlyphsBySkia: the CoreText host's smoothed masks
+    }
+    const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
+    // Paragraph direction left to right (the shaper reorders right-to-left runs within it);
+    // Java's drawString takes it from the first strong character.
+    auto fonts = SkShaper::MakeFontMgrRunIterator(utf8.c_str(), utf8.size(), font, SKPlatform_FontManager());
+    auto bidi = SkShapers::unicode::BidiRunIterator(s.unicode, utf8.c_str(), utf8.size(), 0);
+    auto script = SkShapers::HB::ScriptRunIterator(utf8.c_str(), utf8.size());
+    auto language = SkShaper::MakeStdLanguageRunIterator(utf8.c_str(), utf8.size());
+    if (!fonts || !bidi || !script || !language) {
+        return;
+    }
+    // Java's drawString applies no kerning and no ligatures (TextAttribute.KERNING and
+    // LIGATURES go through TextLayout, i.e. a glyph vector); HarfBuzz turns them on by
+    // default, so they are switched off here to keep Java's line widths.
+    static const SkShaper::Feature javaDefaults[] = {
+        {SkSetFourByteTag('k', 'e', 'r', 'n'), 0, 0, ~0u},
+        {SkSetFourByteTag('l', 'i', 'g', 'a'), 0, 0, ~0u},
+        {SkSetFourByteTag('c', 'l', 'i', 'g'), 0, 0, ~0u},
+        {SkSetFourByteTag('c', 'a', 'l', 't'), 0, 0, ~0u},
+    };
+    BaselineRunHandler handler;
+    s.shaper->shape(utf8.c_str(), utf8.size(), *fonts, *bidi, *script, *language,
+                    javaDefaults, std::size(javaDefaults), SK_ScalarMax, &handler);
+    sk_sp<SkTextBlob> blob = handler.makeBlob();
+    if (!blob) {
+        return;
+    }
+    g.canvas->drawTextBlob(blob, originX, originY, SKBackend_MakePaint(true));
+    gGlyphsShapedBySkia += (jlong) handler.glyphs;
+    gGlyphsDrawnBySkia += (jlong) handler.glyphs;
 }
 
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,

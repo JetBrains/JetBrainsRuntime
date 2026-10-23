@@ -532,6 +532,22 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, 
 }
 
 JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, jlong pScalerContext,
+                                                       jboolean smoothing, jfloat originX, jfloat originY, jstring text)
+{
+    { SKPlatformScope scope;
+    const jint length = env->GetStringLength(text);
+    const jchar *chars = env->GetStringChars(text, nullptr);
+    if (chars == nullptr) {
+        return;
+    }
+    SKBackend_DrawShapedBySkia(pScalerContext, smoothing, originX, originY, chars, length);
+    env->ReleaseStringChars(text, chars);
+    SKBackend_EndOfFlush();
+    } // SKPlatformScope
+}
+
+JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
                                                     jint numGlyphs, jboolean usePositions,
                                                     jboolean subPixPos, jboolean rgbOrder,

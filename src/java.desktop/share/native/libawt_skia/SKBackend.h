@@ -174,6 +174,13 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions);
 jlong SKBackend_GlyphsDrawnBySkia();
+// Skia's shaper (sun.java2d.skia.text=shaper): the characters of a drawString shaped by
+// HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs)
+// and the platform font manager's fallback, drawn as one text blob at the baseline
+// origin (device space) with the strike's SkFont; smoothing as for DrawGlyphsBySkia.
+void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat originX, jfloat originY,
+                                const jchar *chars, jint length);
+jlong SKBackend_GlyphsShapedBySkia();
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
                              jboolean rgbOrder, jint lcdContrast,
                              jfloat glyphListOrigX, jfloat glyphListOrigY,

@@ -39,6 +39,12 @@ Java_sun_java2d_skia_SKEnvironment_glyphsDrawnBySkiaNative(JNIEnv *env, jclass c
     return SKBackend_GlyphsDrawnBySkia();
 }
 
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_glyphsShapedBySkiaNative(JNIEnv *env, jclass clazz)
+{
+    return SKBackend_GlyphsShapedBySkia();
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads,
                                                    jint lcdMode, jboolean framebufferFetch)

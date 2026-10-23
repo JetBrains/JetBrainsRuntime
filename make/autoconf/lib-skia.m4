@@ -131,10 +131,13 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
       AC_MSG_ERROR([--with-skia: the Skia backend has no platform half for $OPENJDK_TARGET_OS])
     fi
 
-    # Link order: GPU extension libs first, then core, then bundled dependencies.
+    # Link order: text modules (SkShaper and SkUnicode need core symbols) and the
+    # GPU extension libs first, then core, then bundled dependencies. HarfBuzz is
+    # not listed: the core archive already carries it (libharfbuzz.a would be a
+    # duplicate); ICU is SkUnicode's, with its data compiled in.
     # The codec targets are named libpng, libjpeg, libwebp in GN, so on Windows
     # their files keep that "lib" (libpng.lib) while the others do not (skia.lib).
-    for lib in $skia_libs skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
+    for lib in skshaper skunicode_icu skunicode_core $skia_libs icu skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
         wuffs piex dng_sdk expat; do
       for candidate in "${skia_lib_prefix}${lib}" "lib${lib}"; do
         if test -s "${SKIA_LIB_DIR}/${candidate}${skia_lib_suffix}"; then
