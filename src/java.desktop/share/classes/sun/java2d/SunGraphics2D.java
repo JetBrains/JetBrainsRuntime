@@ -822,6 +822,7 @@ public final class SunGraphics2D
             return -1;
         }
         int c = eargb;
+        // SKBackend.cpp's luminanceClass() computes the same class for Skia's text path; keep the two in step
         int luminance = (((c >> 16) & 0xff) * 299 + ((c >> 8) & 0xff) * 587 + (c & 0xff) * 114) / 1000;
         return (luminance & ~0xf) | 0x8;
     }

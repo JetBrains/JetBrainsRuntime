@@ -68,8 +68,6 @@
 #include "modules/skparagraph/include/ParagraphStyle.h"
 #include "modules/skparagraph/include/TextStyle.h"
 #include "modules/skparagraph/include/TypefaceFontProvider.h"
-#include <map>
-#include <unordered_set>
 #include "include/core/SkTileMode.h"
 #include "include/core/SkVertices.h"
 #include "include/effects/SkGradient.h"
@@ -82,6 +80,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstring>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
@@ -120,7 +119,6 @@ void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, 
     gConfig.edgeAAQuads = edgeAAQuads;
     gConfig.lcdMode = lcdMode;
     gConfig.framebufferFetch = framebufferFetch;
-    gRects.splitBlenders = !framebufferFetch;
 }
 
 bool SKBackend_FramebufferFetch() {
@@ -1613,16 +1611,17 @@ static inline float adjustSubpixel(float coord, int res) {
     return res > 1 ? coord + 0.5f / (float) res - 0.5f : coord;
 }
 
-static jlong gGlyphsDrawnBySkia = 0;
+static std::atomic<jlong> gGlyphsDrawnBySkia{0};   // written by the flusher, read by any Java thread
 
 jlong SKBackend_GlyphsDrawnBySkia() {
-    return gGlyphsDrawnBySkia;
+    return gGlyphsDrawnBySkia.load(std::memory_order_relaxed);
 }
 
 // The cg grayscale route on Skia's text path (sun.java2d.skia.text.gray=cg): the strike's
 // typeface is replaced by the luminance proxy for the paint colour's class (the Java side's
 // classes: 16 levels, the class representative at its middle), so the masks in Skia's
 // strike and atlas are CoreGraphics' smoothed rendering for that colour.
+// SunGraphics2D.textLuminance() computes the same class on the Java side; keep the two in step.
 static int luminanceClass(const SkPaint &paint) {
     const SkColor c = paint.getColor();
     const int luminance = (SkColorGetR(c) * 299 + SkColorGetG(c) * 587 + SkColorGetB(c) * 114) / 1000;
@@ -1661,7 +1660,7 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
     auto flushRun = [&] {
         if (!ids.empty()) {
             g.canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
-            gGlyphsDrawnBySkia += (jlong) ids.size();
+            gGlyphsDrawnBySkia.fetch_add((jlong) ids.size(), std::memory_order_relaxed);
             ids.clear();
             points.clear();
         }
@@ -1701,10 +1700,10 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
     flushRun();
 }
 
-static jlong gGlyphsShapedBySkia = 0;
+static std::atomic<jlong> gGlyphsShapedBySkia{0};   // written by the flusher, read by any Java thread
 
 jlong SKBackend_GlyphsShapedBySkia() {
-    return gGlyphsShapedBySkia;
+    return gGlyphsShapedBySkia.load(std::memory_order_relaxed);
 }
 
 namespace {
@@ -1805,14 +1804,14 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
         return;
     }
     g.canvas->drawTextBlob(blob, originX, originY, paint);
-    gGlyphsShapedBySkia += (jlong) handler.glyphs;
-    gGlyphsDrawnBySkia += (jlong) handler.glyphs;
+    gGlyphsShapedBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
+    gGlyphsDrawnBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
 }
 
-static jlong gParagraphsBySkia = 0;
+static std::atomic<jlong> gParagraphsBySkia{0};   // written by the flusher, read by any Java thread
 
 jlong SKBackend_ParagraphsBySkia() {
-    return gParagraphsBySkia;
+    return gParagraphsBySkia.load(std::memory_order_relaxed);
 }
 
 namespace {
@@ -1893,7 +1892,9 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         }
         SkFont font;
         if (!SKFontScaler_Font(contexts[r], &font) || !font.getTypeface()) {
-            return;
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_DrawParagraphBySkia: run %d has no font, skipped", r);
+            start = end;   // SKTextRenderer checked every strike; a missing font here is a disposed one
+            continue;
         }
         if (smoothing) {
             font.setHinting(SkFontHinting::kNormal);
@@ -1920,7 +1921,6 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
             ts.addFontFeature(SkString(feature), 0);
         }
         ts.setForegroundPaint(runPaint);
-        ts.setColor(runPaint.getColor());
         unsigned decoration = tl::kNoDecoration;
         if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
             decoration |= tl::kUnderline;
@@ -1944,9 +1944,9 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
     }
     paragraph->layout(1e9f);   // one line: no wrapping
     paragraph->paint(g.canvas, originX, originY - paragraph->getAlphabeticBaseline());
-    gParagraphsBySkia++;
-    gGlyphsShapedBySkia += length;   // the character count stands in for the glyph count
-    gGlyphsDrawnBySkia += length;
+    gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
+    gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);   // the character count stands in for the glyph count
+    gGlyphsDrawnBySkia.fetch_add(length, std::memory_order_relaxed);
 }
 
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,

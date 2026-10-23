@@ -39,6 +39,7 @@ import sun.font.SKFontScaler;
  *          scaler silently because its library was only loaded with the
  *          backend.
  * @modules java.desktop/sun.font
+ * @requires os.family == "mac"
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia SkiaScalerWithoutBackendTest
  */
 public class SkiaScalerWithoutBackendTest {

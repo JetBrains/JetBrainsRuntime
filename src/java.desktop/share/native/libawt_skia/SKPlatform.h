@@ -116,6 +116,8 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // emboldens the glyph by that much, the way Java synthesizes bold for a font
 // without a bold face (FreeType's embolden by 1/24 em). False where the
 // platform has no such renderer (the caller falls back to Skia's coverage).
+// Java's synthetic bold widens a glyph by this fraction of the em (FreeType's embolden rule).
+constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 24;
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
                                   float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask);
 

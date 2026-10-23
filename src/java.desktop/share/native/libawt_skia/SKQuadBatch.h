@@ -36,6 +36,10 @@
 #include "include/core/SkVertices.h"
 #include "jni.h"
 #include <algorithm>
+
+// A runtime blender's quads split on overlap unless the blender reads the live
+// framebuffer (SKBackend.h; declared here to keep this header free of it).
+bool SKBackend_FramebufferFetch();
 #include <cmath>
 #include <functional>
 #include <vector>
@@ -90,7 +94,7 @@ public:
         // over one mesh are not sequential either (both quads' second passes add
         // to the product of their first). Such quads go to mesh layers drawn
         // after the quads they overlap (push()).
-        splitOnOverlap = (!p.asBlendMode().has_value() && splitBlenders) || passes != nullptr;
+        splitOnOverlap = (!p.asBlendMode().has_value() && !SKBackend_FramebufferFetch()) || passes != nullptr;
         // Colours are not merged with an afterDraw hook either: it receives the
         // batch's paint and reads the colour from it.
         const bool mergeColors = atlas != nullptr && passes == nullptr && !afterDraw && p.getShader() == nullptr
@@ -199,10 +203,6 @@ public:
     // Runs right after the meshes of a draw, with their bounds (the coverage
     // accumulation composites them onto the destination here).
     std::function<void(const SkRect &bounds, const SkPaint &paint)> afterDraw;
-
-    // Whether a runtime blender's quads split on overlap: not where the
-    // blender reads the live framebuffer (SKBackend_FramebufferFetch).
-    bool splitBlenders = true;
 
     // Draws what is queued and closes the batch.
     void flush() {

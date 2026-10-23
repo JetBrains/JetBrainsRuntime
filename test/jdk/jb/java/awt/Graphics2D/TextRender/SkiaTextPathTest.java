@@ -98,11 +98,12 @@ public class SkiaTextPathTest {
         if (Math.abs(rb.x - sb.x) > 2 || Math.abs(rb.y - sb.y) > 2 || Math.abs(rb.width - sb.width) > 4 || Math.abs(rb.height - sb.height) > 4) {
             throw new RuntimeException("the text is not where the glyph-image path puts it: " + rb + " vs " + sb);
         }
-        if (ratio < 0.7 || ratio > 1.5) {
-            throw new RuntimeException("implausible ink from Skia's text path: ratio " + ratio);
+        // measured: plain coverage ≈ 0.79 of the glyph-image path's ink, platform smoothing ≈ 1.0–1.05
+        if (!smoothing && (ratio < 0.72 || ratio > 0.9)) {
+            throw new RuntimeException(what + ": Skia's plain coverage should be 10–28 % lighter than the glyph images: ratio " + ratio);
         }
-        if (smoothing && ratio < 1.0) {
-            throw new RuntimeException(what + ": with platform smoothing requested the text should not be lighter than plain coverage: ratio " + ratio);
+        if (smoothing && (ratio < 0.95 || ratio > 1.15)) {
+            throw new RuntimeException(what + ": with platform smoothing requested the ink should match the glyph images within 15 %: ratio " + ratio);
         }
     }
 

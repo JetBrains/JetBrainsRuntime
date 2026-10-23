@@ -40,9 +40,9 @@ import sun.java2d.skia.SKEnvironment;
  * platform's {@code Font2D} already holds (the {@code CFont}'s native font) or
  * from the font file; a scaler context is one {@code SkFont} per strike.
  * <p>
- * Lives in {@code libawt_skia}; only created when the Skia backend is
- * available ({@link SKEnvironment#loadLibrary()}; the GPU backend need not be
- * enabled, the software loops and the platform's pipeline draw its images). Selected for the
+ * Lives in {@code libawt_skia}, which it loads itself
+ * ({@link SKEnvironment#loadLibrary()}); the GPU backend need not be enabled:
+ * the software loops and the platform's pipeline draw its images. Selected for the
  * platform's fonts with {@code -Dsun.java2d.font.scaler=skia}
  * ({@link FontUtilities#useSkiaScaler}): {@code CFont} strikes become
  * {@link SKFontStrike}s, file fonts get this scaler behind their
@@ -71,8 +71,8 @@ public final class SKFontScaler extends FontScaler {
      * text more than dark text), the coverage recovered from the render. The
      * platform's own look by construction for that luminance. The graphics
      * state passes its colour's luminance class through the strike
-     * (FontStrikeDesc.luminance); the property is the fallback for strikes
-     * without one. macOS only.
+     * (FontStrikeDesc.luminance); the property only decides for paints that are
+     * not a colour, and lets a test pin the class. macOS only.
      */
     private static final int GRAY_LUMINANCE = Math.max(0, Math.min(255, Integer.getInteger("sun.java2d.skia.text.cgLuminance", 0)));
     private static final float GRAY_DARKENING = Float.parseFloat(System.getProperty("sun.java2d.skia.text.grayDarkening", "0.013"));
@@ -198,7 +198,7 @@ public final class SKFontScaler extends FontScaler {
      */
     @Override
     long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, GRAY_MODE, GRAY_DARKENING, GRAY_LUMINANCE);
+        return createScalerContext(matrix, aa, fm, boldness, italic, -1);
     }
 
     @Override
@@ -213,7 +213,7 @@ public final class SKFontScaler extends FontScaler {
      * scale of the device transform, which the glyph transform includes.
      */
     long createScalerContext(double[] matrix, double deviceScale, int aa, int fm, float boldness, float italic) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, GRAY_MODE, GRAY_DARKENING, GRAY_LUMINANCE);
+        return createScalerContext(matrix, deviceScale, aa, fm, boldness, italic, -1);
     }
 
     /** With the text luminance class (FontStrikeDesc.luminance) for the CoreGraphics route; -1 falls back to the property. */

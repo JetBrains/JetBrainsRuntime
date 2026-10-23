@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.Map;
 import sun.java2d.pipe.AttributedTextPipe;
 import sun.font.GlyphList;
-import sun.font.SkiaDrawable;
+import sun.font.SKDrawableStrike;
 
 /**
  * Text pipe of the Skia backend. Java computes the glyph images and positions
@@ -56,11 +56,39 @@ import sun.font.SkiaDrawable;
  * shaper too, instead of Java's layout ({@link SKEnvironment#textShapedBySkia()});
  * with {@code =paragraph}, attributed strings are laid out by Skia's paragraph
  * engine ({@link SKEnvironment#textParagraphBySkia()}).
+ * <p>
+ * The three Skia text-path entries run through {@link RenderQueue#flushAndInvokeNow},
+ * a flush and GPU submit per call: the experimental shortcut. A queued opcode
+ * carrying the glyph codes or the string is the prerequisite of any
+ * performance comparison (ledger §19b).
  */
 final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPipe {
 
     SKTextRenderer(RenderQueue rq) {
         super(rq);
+    }
+
+    /** Paragraph run flags, as SKBackend.h's SK_PARAGRAPH_*: the colour flag says colours[r] applies. */
+    private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4;
+
+    /** The strike when Skia's text path can draw it (on the Skia scaler, axis-aligned transform), else null. */
+    private static SKDrawableStrike skiaStrike(Object strike) {   // a FontStrike; GlyphList hands it out as Object
+        return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.drawsBySkia() ? s : null;
+    }
+
+    /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */
+    private static float[] deviceOrigin(SunGraphics2D sg2d, double x, double y) {
+        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+            double[] origin = {x, y};
+            sg2d.transform.transform(origin, 0, origin, 0, 1);
+            return new float[] {(float) origin[0], (float) origin[1]};
+        }
+        return new float[] {(float) (x + sg2d.transX), (float) (y + sg2d.transY)};
+    }
+
+    /** As BufferedTextPipe: with an opaque colour, Src equals SrcOver. */
+    private static Composite textComposite(SunGraphics2D sg2d) {
+        return sg2d.composite == AlphaComposite.Src ? AlphaComposite.SrcOver : sg2d.composite;
     }
 
     @Override
@@ -94,34 +122,20 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             return false;
         }
         FontInfo info = sg2d.getFontInfo();
-        if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD
-                || !(info.fontStrike instanceof SkiaDrawable strike) || strike.skiaScalerContext() == 0 || !strike.drawsBySkia()) {
+        SKDrawableStrike strike = skiaStrike(info.fontStrike);
+        if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
             return false;
         }
-        // The baseline origin in device space. Whole-pixel positioning is the SkFont's:
-        // the shaper rounds the advances when sub-pixel positioning is off, which lands
-        // the glyphs where Java's rounded advances do.
-        final float devx, devy;
-        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
-            double[] origin = {x, y};
-            sg2d.transform.transform(origin, 0, origin, 0, 1);
-            devx = (float) origin[0];
-            devy = (float) origin[1];
-        } else {
-            devx = (float) (x + sg2d.transX);
-            devy = (float) (y + sg2d.transY);
-        }
-        Composite comp = sg2d.composite;
-        if (comp == AlphaComposite.Src) {
-            comp = AlphaComposite.SrcOver;
-        }
+        // Whole-pixel positioning is the SkFont's: the shaper rounds the advances when
+        // sub-pixel positioning is off, which lands the glyphs where Java's rounded advances do.
+        final float[] origin = deviceOrigin(sg2d, x, y);
         final long context = strike.skiaScalerContext();
         rq.lock();
         try {
-            validateContext(sg2d, comp);
+            validateContext(sg2d, textComposite(sg2d));
             rq.addReference(strike);
             final boolean smoothing = SKEnvironment.textSmoothing();
-            rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, devx, devy, s));
+            rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, origin[0], origin[1], s));
         } finally {
             rq.unlock();
         }
@@ -151,7 +165,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         List<Long> contexts = new ArrayList<>();
         List<Integer> colours = new ArrayList<>();
         List<Integer> flags = new ArrayList<>();
-        List<SkiaDrawable> strikes = new ArrayList<>();
+        List<SKDrawableStrike> strikes = new ArrayList<>();
         for (int pos = begin; pos < end; ) {
             it.setIndex(pos);
             final int limit = it.getRunLimit();
@@ -182,12 +196,12 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     if (!TextAttribute.UNDERLINE_ON.equals(v)) {
                         return false;
                     }
-                    runFlags |= 1;
+                    runFlags |= PARAGRAPH_UNDERLINE;
                 } else if (a == TextAttribute.STRIKETHROUGH) {
                     if (!TextAttribute.STRIKETHROUGH_ON.equals(v)) {
                         return false;
                     }
-                    runFlags |= 2;
+                    runFlags |= PARAGRAPH_STRIKETHROUGH;
                 } else {
                     return false;
                 }
@@ -199,31 +213,18 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 font = Font.getFont(attrs);
             }
             FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
-            if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD
-                    || !(info.fontStrike instanceof SkiaDrawable strike) || strike.skiaScalerContext() == 0 || !strike.drawsBySkia()) {
+            SKDrawableStrike strike = skiaStrike(info.fontStrike);
+            if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
                 return false;
             }
             ends.add(limit - begin);
             contexts.add(strike.skiaScalerContext());
             colours.add(colour != null ? colour.getRGB() : 0);
-            flags.add(runFlags | (colour != null ? 4 : 0));
+            flags.add(runFlags | (colour != null ? PARAGRAPH_COLOUR : 0));
             strikes.add(strike);
             pos = limit;
         }
-        final float devx, devy;
-        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
-            double[] origin = {x, y};
-            sg2d.transform.transform(origin, 0, origin, 0, 1);
-            devx = (float) origin[0];
-            devy = (float) origin[1];
-        } else {
-            devx = x + sg2d.transX;
-            devy = y + sg2d.transY;
-        }
-        Composite comp = sg2d.composite;
-        if (comp == AlphaComposite.Src) {
-            comp = AlphaComposite.SrcOver;
-        }
+        final float[] origin = deviceOrigin(sg2d, x, y);
         final String string = text.toString();
         final int[] endArray = ends.stream().mapToInt(Integer::intValue).toArray();
         final long[] contextArray = contexts.stream().mapToLong(Long::longValue).toArray();
@@ -231,12 +232,12 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         final int[] flagArray = flags.stream().mapToInt(Integer::intValue).toArray();
         rq.lock();
         try {
-            validateContext(sg2d, comp);
-            for (SkiaDrawable strike : strikes) {
+            validateContext(sg2d, textComposite(sg2d));
+            for (SKDrawableStrike strike : strikes) {
                 rq.addReference(strike);
             }
             final boolean smoothing = SKEnvironment.textSmoothing();
-            rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, devx, devy, string, endArray, contextArray, colourArray, flagArray));
+            rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray));
         } finally {
             rq.unlock();
         }
@@ -249,21 +250,19 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {
-        if (SKEnvironment.textBySkia() && gl.getStrike() instanceof SkiaDrawable strike && strike.skiaScalerContext() != 0 && strike.drawsBySkia()) {
-            Composite comp = sg2d.composite;
-            if (comp == AlphaComposite.Src) {
-                comp = AlphaComposite.SrcOver;   // as BufferedTextPipe: opaque colour, SrcNoEa equals SrcOverNoEa
-            }
+        SKDrawableStrike strike = SKEnvironment.textBySkia() ? skiaStrike(gl.getStrike()) : null;
+        if (strike != null) {
             final int n = gl.getNumGlyphs();
             final boolean usePositions = gl.usePositions();
             final float x = gl.getX(), y = gl.getY();
+            // the GlyphList singleton's own arrays: safe only because the call below is synchronous
             final int[] codes = gl.getGlyphCodes();
             final long[] images = gl.getImages();
             final float[] positions = usePositions ? gl.getPositions() : null;
             final long context = strike.skiaScalerContext();
             rq.lock();
             try {
-                validateContext(sg2d, comp);
+                validateContext(sg2d, textComposite(sg2d));
                 rq.addReference(strike);
                 final boolean smoothing = SKEnvironment.textSmoothing();
                 rq.flushAndInvokeNow(() -> drawGlyphsBySkia(context, n, usePositions, smoothing, x, y, codes, images, positions));

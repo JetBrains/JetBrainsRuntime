@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -15,12 +17,17 @@
  * You should have received a copy of the GNU General Public License version
  * 2 along with this work; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
 
 #include "SKLuminanceTypeface.h"
 #include "SKPlatform.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <memory>
@@ -36,7 +43,7 @@
 #include "src/core/SkAdvancedTypefaceMetrics.h"
 #include "src/core/SkFontDescriptor.h"
 #include "src/core/SkGlyph.h"
-#include "src/core/SkScalerContext.h"
+#include "src/core/SkScalerContext.h"   // Skia-internal: the prebuilt ships src/ (lib-skia.m4)
 
 namespace {
 
@@ -56,7 +63,9 @@ protected:
         metrics.advance = innerGlyph.advanceVector();
         metrics.bounds = innerGlyph.rect();
         if (innerGlyph.maskFormat() == SkMask::kA8_Format && !innerGlyph.isEmpty()) {
-            metrics.bounds.outset(1, 1);   // room for the smoothing's dilation
+            // room for the smoothing's dilation and the synthetic bold's second draw
+            const float stroke = (fRec.fFlags & kEmbolden_Flag) ? fRec.fTextSize * SK_SYNTHETIC_BOLD_EM : 0;
+            metrics.bounds.outset(1 + std::ceil(stroke), 1);
         }
         return metrics;
     }
@@ -95,7 +104,7 @@ private:
         }
         // the glyph's design space in device pixels: size, synthetic skew and the 2x2 remainder
         const SkMatrix glyphToDevice = fRec.getSingleMatrix();
-        const float stroke = (fRec.fFlags & kEmbolden_Flag) ? fRec.fTextSize / 24 : 0;   // as Java's synthetic bold
+        const float stroke = (fRec.fFlags & kEmbolden_Flag) ? fRec.fTextSize * SK_SYNTHETIC_BOLD_EM : 0;   // as Java's synthetic bold
         const float originX = (float) -glyph.left() + SkFixedToFloat(glyph.getSubXFixed());
         const float originY = (float) -glyph.top() + SkFixedToFloat(glyph.getSubYFixed());
         std::vector<uint8_t> mask((size_t) width * height);

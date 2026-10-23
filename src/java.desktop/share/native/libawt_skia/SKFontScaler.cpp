@@ -444,7 +444,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     // the platform's own smoothed rendering for the text luminance (SKPlatform_SmoothedGlyphMask);
     // synthetic bold strokes the outline by 1/24 em there, as FreeType's embolden does
     const bool platformGray = aa && !lcd && !colorGlyph && context->grayMode == sun_font_SKFontScaler_GRAY_CG;
-    const float platformStroke = font.isEmbolden() ? font.getSize() / 24 : 0;
+    const float platformStroke = font.isEmbolden() ? font.getSize() * SK_SYNTHETIC_BOLD_EM : 0;
     if (smoothedGray) {
         font.setEdging(SkFont::Edging::kSubpixelAntiAlias);
     }
@@ -460,7 +460,8 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     }
     // a pixel of padding for the antialiasing filter, two more on each side
     // for the LCD filter's spill, and the sub-pixel offsets to the right/bottom
-    const int pad = colorGlyph ? 1 : lcd ? 3 : smoothedGray ? 2 : aa ? 1 : 0;
+    // room for the smoothing's dilation, the LCD filter and the synthetic bold's second draw
+    const int pad = (colorGlyph ? 1 : lcd ? 3 : smoothedGray ? 2 : aa ? 1 : 0) + (int) std::ceil(platformStroke);
     const int left = (int) std::floor(bounds.fLeft) - pad, top = (int) std::floor(bounds.fTop) - pad;
     const int right = (int) std::ceil(bounds.fRight) + pad + (resX > 1 ? 1 : 0);
     const int bottom = (int) std::ceil(bounds.fBottom) + pad + (resY > 1 ? 1 : 0);
@@ -564,6 +565,13 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     return ptr_to_jlong(info);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_sun_font_SKFontScaler_contextIsAxisAlignedNative(JNIEnv *env, jclass clazz, jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context != nullptr && context->identityRemainder ? JNI_TRUE : JNI_FALSE;
+}
+
 } // extern "C"
 
 bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkGlyphID *glyph)
@@ -588,14 +596,3 @@ jint SKFontScaler_GrayMode(jlong pContext)
     return context != nullptr ? context->grayMode : 0;
 }
 
-bool SKFontScaler_IsAxisAligned(jlong pContext)
-{
-    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
-    return context != nullptr && context->identityRemainder;
-}
-
-extern "C" JNIEXPORT jboolean JNICALL
-Java_sun_font_SKFontScaler_contextIsAxisAlignedNative(JNIEnv *env, jclass clazz, jlong pContext)
-{
-    return SKFontScaler_IsAxisAligned(pContext) ? JNI_TRUE : JNI_FALSE;
-}

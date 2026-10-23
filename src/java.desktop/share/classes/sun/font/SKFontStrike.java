@@ -43,7 +43,7 @@ import sun.java2d.Disposer;
  * in user space, {@code CStrike}'s rule, so text keeps its metrics when the
  * scaler is switched.
  */
-public final class SKFontStrike extends PhysicalStrike implements SkiaDrawable {
+public final class SKFontStrike extends PhysicalStrike implements SKDrawableStrike {
 
     private static final int INVISIBLE_GLYPHS = CharToGlyphMapper.INVISIBLE_GLYPHS;
 

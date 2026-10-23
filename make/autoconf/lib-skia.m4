@@ -131,20 +131,33 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
       AC_MSG_ERROR([--with-skia: the Skia backend has no platform half for $OPENJDK_TARGET_OS])
     fi
 
-    # Link order: text modules (SkShaper and SkUnicode need core symbols) and the
-    # GPU extension libs first, then core, then bundled dependencies. HarfBuzz is
-    # not listed: the core archive already carries it (libharfbuzz.a would be a
-    # duplicate); ICU is SkUnicode's, with its data compiled in.
+    # Link order: text modules (SkParagraph, SkShaper and SkUnicode need core
+    # symbols) and the GPU extension libs first, then core, then ICU (SkUnicode's,
+    # with its data compiled in; after core because skunicode_icu references it)
+    # and the bundled dependencies. HarfBuzz is not listed: the core archive
+    # already carries it (libharfbuzz.a would be a duplicate). The text modules
+    # are required: SKBackend.cpp includes them unconditionally, and the backend
+    # also reads Skia's internal src/core headers, which the release ships.
     # The codec targets are named libpng, libjpeg, libwebp in GN, so on Windows
     # their files keep that "lib" (libpng.lib) while the others do not (skia.lib).
-    for lib in skparagraph skshaper skunicode_icu skunicode_core $skia_libs icu skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
-        wuffs piex dng_sdk expat; do
+    skia_text_libs="skparagraph skshaper skunicode_icu skunicode_core"
+    for lib in $skia_text_libs $skia_libs icu skcms zlib png jpeg jpeg12 jpeg16 \
+        webp webp_sse41 wuffs piex dng_sdk expat; do
+      skia_lib_found=no
       for candidate in "${skia_lib_prefix}${lib}" "lib${lib}"; do
         if test -s "${SKIA_LIB_DIR}/${candidate}${skia_lib_suffix}"; then
           SKIA_LIBS="$SKIA_LIBS ${SKIA_LIB_DIR}/${candidate}${skia_lib_suffix}"
+          skia_lib_found=yes
           break
         fi
       done
+      case " $skia_text_libs icu " in
+        *" $lib "*)
+          if test "x$skia_lib_found" = xno; then
+            AC_MSG_ERROR([--with-skia: the release under '${with_skia}' has no ${lib} library (the text modules are required)])
+          fi
+          ;;
+      esac
     done
 
     SKIA_ENABLED=true

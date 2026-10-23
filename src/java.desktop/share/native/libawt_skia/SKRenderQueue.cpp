@@ -512,22 +512,26 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, 
                                                        jintArray codeArray, jlongArray imgArray, jfloatArray posArray)
 {
     { SKPlatformScope scope;
-    jint *codes = (jint *) env->GetPrimitiveArrayCritical(codeArray, nullptr);
-    if (codes == nullptr) {
+    // copies, not critical regions: the backend rasterizes glyphs (CoreGraphics on the cg route) in here
+    if (numGlyphs <= 0 || env->GetArrayLength(codeArray) < numGlyphs
+        || (imgArray != nullptr && env->GetArrayLength(imgArray) < numGlyphs)
+        || (usePositions && (posArray == nullptr || env->GetArrayLength(posArray) < 2 * numGlyphs))) {
         return;
     }
-    jlong *images = imgArray != nullptr ? (jlong *) env->GetPrimitiveArrayCritical(imgArray, nullptr) : nullptr;
-    jfloat *positions = usePositions && posArray != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(posArray, nullptr) : nullptr;
-    if (!usePositions || positions != nullptr) {
-        SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, smoothing, originX, originY, codes, images, positions);
+    std::vector<jint> codes(numGlyphs);
+    env->GetIntArrayRegion(codeArray, 0, numGlyphs, codes.data());
+    std::vector<jlong> images;
+    if (imgArray != nullptr) {
+        images.resize(numGlyphs);
+        env->GetLongArrayRegion(imgArray, 0, numGlyphs, images.data());
     }
-    if (positions != nullptr) {
-        env->ReleasePrimitiveArrayCritical(posArray, positions, JNI_ABORT);
+    std::vector<jfloat> positions;
+    if (usePositions) {
+        positions.resize(2 * (size_t) numGlyphs);
+        env->GetFloatArrayRegion(posArray, 0, 2 * numGlyphs, positions.data());
     }
-    if (images != nullptr) {
-        env->ReleasePrimitiveArrayCritical(imgArray, images, JNI_ABORT);
-    }
-    env->ReleasePrimitiveArrayCritical(codeArray, codes, JNI_ABORT);
+    SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, smoothing, originX, originY, codes.data(),
+                               imgArray != nullptr ? images.data() : nullptr, usePositions ? positions.data() : nullptr);
     SKBackend_EndOfFlush();
     } // SKPlatformScope
 }
@@ -557,6 +561,10 @@ Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass claz
     { SKPlatformScope scope;
     const jint length = env->GetStringLength(text);
     const jint runs = env->GetArrayLength(endArray);
+    if (runs <= 0 || env->GetArrayLength(contextArray) < runs || env->GetArrayLength(colourArray) < runs
+        || env->GetArrayLength(flagArray) < runs) {
+        return;
+    }
     std::vector<jint> ends(runs), colours(runs), flags(runs);
     std::vector<jlong> contexts(runs);
     env->GetIntArrayRegion(endArray, 0, runs, ends.data());

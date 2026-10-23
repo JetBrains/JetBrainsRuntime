@@ -70,7 +70,8 @@ public final class SKEnvironment {
      * font scaler. Default {@code glyphs}: the glyph images through the
      * backend's atlas.
      */
-    private static final boolean TEXT_BY_SKIA = textProperty().equals("skia") || textProperty().equals("shaper") || textProperty().equals("paragraph");
+    private static final String TEXT = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);
+    private static final boolean TEXT_BY_SKIA = TEXT.equals("skia") || TEXT.equals("shaper") || TEXT.equals("paragraph");
     /**
      * {@code sun.java2d.skia.text=shaper}: in addition, {@code drawString} and
      * {@code drawChars} hand the characters to Skia's shaper (HarfBuzz with
@@ -78,7 +79,7 @@ public final class SKEnvironment {
      * blob, instead of Java's layout ({@code GlyphList}, {@code TextLayout}).
      * Glyph vectors still carry Java's layout.
      */
-    private static final boolean TEXT_SHAPED_BY_SKIA = textProperty().equals("shaper") || textProperty().equals("paragraph");
+    private static final boolean TEXT_SHAPED_BY_SKIA = TEXT.equals("shaper") || TEXT.equals("paragraph");
     /**
      * {@code sun.java2d.skia.text=paragraph}: in addition, attributed strings
      * ({@code drawString(AttributedCharacterIterator)}) are laid out by Skia's
@@ -86,7 +87,7 @@ public final class SKEnvironment {
      * strikethrough) instead of Java's {@code TextLayout}; attributes the route
      * does not model fall back to it.
      */
-    private static final boolean TEXT_PARAGRAPH_BY_SKIA = textProperty().equals("paragraph");
+    private static final boolean TEXT_PARAGRAPH_BY_SKIA = TEXT.equals("paragraph");
     /**
      * {@code sun.java2d.skia.text.smoothing=true}: Skia's text path asks the
      * platform for smoothed glyph masks (Skia's hinting "normal", which on the
@@ -94,10 +95,6 @@ public final class SKEnvironment {
      * off: Skia's plain coverage.
      */
     private static final boolean TEXT_SMOOTHING = Boolean.getBoolean("sun.java2d.skia.text.smoothing");
-
-    private static String textProperty() {
-        return System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);
-    }
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");

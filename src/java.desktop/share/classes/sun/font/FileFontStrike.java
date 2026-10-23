@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static sun.awt.SunHints.*;
 import sun.java2d.pipe.OutlineTextRenderer;
 
-public class FileFontStrike extends PhysicalStrike implements SkiaDrawable {
+public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
 
     @Override
     public long skiaScalerContext() {

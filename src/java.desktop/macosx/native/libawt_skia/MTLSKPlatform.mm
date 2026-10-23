@@ -292,10 +292,7 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
     CFRelease(font);
     // coverage = what the paper lost, relative to full ink
     const int paperByte = lightText ? 0 : 255, inkByte = luminance;
-    const int range = std::abs(paperByte - inkByte);
-    if (range == 0) {
-        return false;
-    }
+    const int range = std::abs(paperByte - inkByte);   // >= 128: the paper is the far one
     for (int y = 0; y < height; y++) {
         const uint8_t *row = pixels.data() + (size_t) y * width * 4;
         uint8_t *dst = mask + (size_t) y * width;
