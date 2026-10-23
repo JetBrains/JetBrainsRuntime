@@ -1851,6 +1851,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         ts.setFontFamilies({typefaceAlias(typeface.get())});
         ts.setFontSize(font.getSize());
         ts.setFontStyle(typeface->fontStyle());
+        ts.setFontEdging(font.getEdging());
         ts.setSubpixel(font.isSubpixel());
         ts.setFontHinting(font.getHinting());
         // as DrawShapedBySkia: Java's drawString applies no kerning and no ligatures
@@ -1858,6 +1859,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
             ts.addFontFeature(SkString(feature), 0);
         }
         SkPaint runPaint = paint;
+        runPaint.setAntiAlias(font.getEdging() != SkFont::Edging::kAlias);   // the decorations follow the text's edging
         if (flags[r] & SK_PARAGRAPH_COLOUR) {
             runPaint.setColor((SkColor) colours[r]);
         }

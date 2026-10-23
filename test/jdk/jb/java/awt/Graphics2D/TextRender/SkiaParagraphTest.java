@@ -39,8 +39,9 @@ import java.util.function.Consumer;
  *          engine (SkParagraph: runs of fonts and colours, underline, strikethrough)
  *          instead of Java's TextLayout: the backend counts the paragraphs it laid
  *          out, the text lands within two pixels of Java's layout, the underline is
- *          drawn below the baseline, and an attribute the route does not support
- *          (superscript) still draws, through Java's layout.
+ *          drawn below the baseline, an attribute the route does not support
+ *          (superscript) still draws, through Java's layout, and the strike's
+ *          edging reaches the paragraph (aliased text has no gray pixels).
  * @requires os.family == "mac"
  * @key headful
  * @modules java.desktop/sun.java2d.skia
@@ -122,6 +123,32 @@ public class SkiaParagraphTest {
         System.out.println("superscript (Java's layout): " + fb);
         if (fb.width < 200) {
             throw new RuntimeException("the superscript string was not drawn: " + fb);
+        }
+
+        // 4. the strike's edging reaches the paragraph: aliased text has no gray pixels
+        checkAliased(gc, font);
+    }
+
+    static void checkAliased(GraphicsConfiguration gc, Font font) throws Exception {
+        Consumer<Graphics2D> aliased = g -> {
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
+            AttributedString as = new AttributedString(TEXT);
+            as.addAttribute(TextAttribute.FONT, font);
+            g.drawString(as.getIterator(), 4, BASE);
+        };
+        long before = paragraphs();
+        BufferedImage im = onScreen(gc, aliased);
+        if (paragraphs() - before < 1) {
+            throw new RuntimeException("the aliased string was not laid out by Skia");
+        }
+        int gray = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            int v = im.getRGB(x, y) & 0xff;
+            if (v != 0 && v != 0xff) gray++;
+        }
+        System.out.println("aliased: " + gray + " gray pixels, bounds " + inkBounds(im));
+        if (gray > 0) {
+            throw new RuntimeException("aliased text was drawn anti-aliased by Skia's paragraph: " + gray + " gray pixels");
         }
     }
 
