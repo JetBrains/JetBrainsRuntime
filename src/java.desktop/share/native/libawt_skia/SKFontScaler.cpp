@@ -556,8 +556,9 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     for (int sy = 0; sy < resY; sy++) {
         for (int sx = 0; sx < resX; sx++) {
             UInt8 *variant = info->image + imageSize * (size_t) (sy * resX + sx);
-            if (platformMask && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, platformLuminance, lcd,
-                                                             platformStroke, (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
+            if (platformMask && SKPlatform_SmoothedGlyphMask(font.getTypeface(), glyph, glyphToDevice, (float) context->displayScale,
+                                                             platformLuminance, lcd, platformStroke,
+                                                             (float) -left + (float) sx / resX, (float) -top + (float) sy / resY,
                                                              width, height, variant)) {
                 continue;
             }

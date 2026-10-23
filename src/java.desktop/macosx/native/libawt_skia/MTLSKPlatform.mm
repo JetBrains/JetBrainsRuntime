@@ -240,8 +240,9 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float)
     return 0;   // CoreGraphics positions glyphs continuously; the JDK's variants stay
 }
 
-bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
+                                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
+                                  uint8_t *mask)
 {
     // CoreGraphics emits no colour sub-pixels and its unsmoothed coverage is
     // Skia's own; the LCD and the linear-coverage requests stay with Skia here

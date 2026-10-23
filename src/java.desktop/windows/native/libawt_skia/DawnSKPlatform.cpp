@@ -688,6 +688,9 @@ DWriteText &dwriteText() {
 // The run and its transform: a unit-em glyph through glyphToDevice, split into
 // the pixel size (for DirectWrite's rendering-mode and hinting decisions) and
 // the remaining shape; the mask origin goes into the transform's translation.
+// With pixelsPerDip above 1 the em size and the origin are in DIPs of a target
+// at that DPI (Direct2D's DPI for the smoothed look on a scaled display); the
+// pixel size stays the device one.
 struct GlyphRunSetup {
     UINT16 index;
     FLOAT advance = 0;
@@ -696,14 +699,18 @@ struct GlyphRunSetup {
     DWRITE_MATRIX matrix = {};
     float pixelSize = 0;
 
-    GlyphRunSetup(IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, float originX, float originY) : index(glyph) {
+    GlyphRunSetup(IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, float originX, float originY,
+                  float pixelsPerDip = 1) : index(glyph) {
         pixelSize = std::sqrt(std::fabs(glyphToDevice.getScaleX() * glyphToDevice.getScaleY()
                                         - glyphToDevice.getSkewX() * glyphToDevice.getSkewY()));
         if (pixelSize <= 0) {
             pixelSize = 1;
         }
+        if (!(pixelsPerDip > 0)) {
+            pixelsPerDip = 1;
+        }
         run.fontFace = face;
-        run.fontEmSize = pixelSize;
+        run.fontEmSize = pixelSize / pixelsPerDip;
         run.glyphCount = 1;
         run.glyphIndices = &index;
         run.glyphAdvances = &advance;
@@ -714,8 +721,8 @@ struct GlyphRunSetup {
         matrix.m12 = glyphToDevice.getSkewY() / pixelSize;
         matrix.m21 = glyphToDevice.getSkewX() / pixelSize;
         matrix.m22 = glyphToDevice.getScaleY() / pixelSize;
-        matrix.dx = originX;
-        matrix.dy = originY;
+        matrix.dx = originX / pixelsPerDip;
+        matrix.dy = originY / pixelsPerDip;
     }
 };
 
@@ -776,10 +783,19 @@ bool coverageMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
 }
 
 // The native look: Direct2D with the system's parameters, text of the given
-// luminance on the opposite paper, coverage = what the paper lost.
-bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance, bool lcd,
-                  float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
+// luminance on the opposite paper, coverage = what the paper lost. The target
+// runs at the display's DPI and the glyph is drawn in DIPs there, as every
+// Windows application draws its text: in the natural-symmetric mode Direct2D
+// samples the outline on a 4 x 4 grid per DIP, so a 13 DIP glyph at 192 dpi
+// has 4 coverage steps per device pixel where a 26 px glyph at 96 dpi has 16
+// (measured with dwref --dpi: same total ink, same blend parameters, the
+// natural mode and DirectWrite's own analysis textures are DPI-invariant).
+bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
+                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
 {
+    if (!(displayScale > 0)) {
+        displayScale = 1;
+    }
     const bool lightText = luminance >= 128;
     const int paperByte = lightText ? 0 : 255, inkByte = luminance;
     const int range = std::abs(paperByte - inkByte);
@@ -803,6 +819,7 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
     HGDIOBJ previous = SelectObject(dc, dib);
     const RECT rect = {0, 0, width, height};
     bool ok = false;
+    text.target->SetDpi(96 * displayScale, 96 * displayScale);
     if (SUCCEEDED(text.target->BindDC(dc, &rect))) {
         ComPtr<ID2D1SolidColorBrush> brush;
         const float ink = inkByte / 255.0f;
@@ -814,7 +831,7 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
             text.target->Clear(D2D1::ColorF(paper, paper, paper));
             const int passes = strokeWidth > 0 ? 2 : 1;
             for (int pass = 0; pass < passes; pass++) {
-                GlyphRunSetup setup(face, glyph, glyphToDevice, originX + (pass == 1 ? strokeWidth : 0), originY);
+                GlyphRunSetup setup(face, glyph, glyphToDevice, originX + (pass == 1 ? strokeWidth : 0), originY, displayScale);
                 text.target->SetTransform(D2D1::Matrix3x2F(setup.matrix.m11, setup.matrix.m12, setup.matrix.m21, setup.matrix.m22,
                                                            setup.matrix.dx, setup.matrix.dy));
                 text.target->DrawGlyphRun(D2D1::Point2F(0, 0), &setup.run, brush.Get(), DWRITE_MEASURING_MODE_NATURAL);
@@ -882,8 +899,9 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, f
     return perDevicePixel < 1 ? 1 : (int) perDevicePixel;
 }
 
-bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
+                                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
+                                  uint8_t *mask)
 {
     if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0) {
         return false;
@@ -898,5 +916,6 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
         return false;
     }
     return luminance < 0 ? coverageMask(text, face.Get(), glyph, glyphToDevice, lcd, strokeWidth, originX, originY, width, height, mask)
-                         : smoothedMask(text, face.Get(), glyph, glyphToDevice, luminance, lcd, strokeWidth, originX, originY, width, height, mask);
+                         : smoothedMask(text, face.Get(), glyph, glyphToDevice, displayScale, luminance, lcd, strokeWidth, originX, originY,
+                                        width, height, mask);
 }

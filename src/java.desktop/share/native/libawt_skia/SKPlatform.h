@@ -117,14 +117,21 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // bytes of coverage, or width x height x 3 bytes of per-channel (R, G, B)
 // coverage when lcd is set; the glyph origin is at (originX, originY) in the
 // mask, glyphToDevice the transform of the glyph's design space in pixels
-// (size included, y down). strokeWidth > 0 (device pixels) emboldens the
-// glyph by that much, the way Java synthesizes bold for a font without a bold
-// face (FreeType's embolden by 1/24 em). False where the platform has no such
-// renderer for the request (the caller falls back to Skia's coverage).
+// (size included, y down). displayScale is the scale of the strike's device
+// transform (2 on a 200 % display): the platform smooths text of a given size
+// in device-independent pixels at that display scale, not text of the device
+// pixel size at scale 1 (Direct2D samples coverage on a grid per
+// device-independent pixel, so the two differ; DirectWrite's linear coverage
+// does not). strokeWidth > 0 (device pixels)
+// emboldens the glyph by that much, the way Java synthesizes bold for a font
+// without a bold face (FreeType's embolden by 1/24 em). False where the
+// platform has no such renderer for the request (the caller falls back to
+// Skia's coverage).
 // Java's synthetic bold widens a glyph by this fraction of the em (FreeType's embolden rule).
 constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 24;
-bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
-                                  bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask);
+bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
+                                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
+                                  uint8_t *mask);
 // The platform rasterizer's horizontal placement grid for a typeface at a
 // pixel size: how many sub-pixel positions per pixel it distinguishes (it
 // rounds a glyph origin to the nearest one), so the scaler renders that many
