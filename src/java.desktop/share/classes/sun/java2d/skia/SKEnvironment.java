@@ -26,6 +26,9 @@ package sun.java2d.skia;
 
 import sun.font.FontUtilities;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Locale;
 
 import sun.util.logging.PlatformLogger;
@@ -225,6 +228,7 @@ public final class SKEnvironment {
     }
 
     private static Configuration configuration;
+    private static String pipelineCache;   // the directory, null when off
 
     private SKEnvironment() {}
 
@@ -370,6 +374,8 @@ public final class SKEnvironment {
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
+                pipelineCache = pipelineCacheDirectory();
+                setPipelineCacheNative(pipelineCache);
             }
         } catch (UnsatisfiedLinkError e) {
             if (VERBOSE) {
@@ -383,7 +389,8 @@ public final class SKEnvironment {
                     ? "YES (" + description + ", shapes: " + SHAPES + ", strokes: " + (STROKES_BY_JAVA ? "java" : "skia") + ", text: " + (TEXT_PARAGRAPH_BY_SKIA ? "paragraph" : TEXT_SHAPED_BY_SKIA ? "shaper" : TEXT_BY_SKIA ? "skia" : "glyphs")
                       + ", msaa: " + configuration.msaaSamples()
                       + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh")
-                      + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT) + ")"
+                      + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT)
+                      + ", pipelineCache: " + (pipelineCache != null ? pipelineCache : "off") + ")"
                     : "NO");
             if (VERBOSE) {
                 System.err.println(msg);
@@ -449,6 +456,49 @@ public final class SKEnvironment {
     }
 
     private static native long[] glyphCacheStatsNative();
+
+    /**
+     * Where the GPU backends keep what they compiled, across sessions
+     * ({@code sun.java2d.skia.pipelineCache}): a directory, {@code off}, or by
+     * default {@code ${user.home}/.java/skia/<java.version>}, after the
+     * fontconfig cache. Dawn stores the shaders and pipelines it compiled by its
+     * own key (the adapter, the driver and Dawn's version are part of it, so one
+     * directory serves every GPU and update), Graphite's Vulkan backend stores
+     * its pipeline cache data; a later session then compiles next to nothing.
+     * Null when off or when the directory cannot be created, in which case the
+     * backend compiles as before.
+     */
+    private static String pipelineCacheDirectory() {
+        String value = System.getProperty("sun.java2d.skia.pipelineCache");
+        if ("off".equalsIgnoreCase(value)) {
+            return null;
+        }
+        Path dir = value != null && !value.isEmpty()
+                ? Path.of(value)
+                : Path.of(System.getProperty("user.home"), ".java", "skia", System.getProperty("java.version"));
+        try {
+            Files.createDirectories(dir);
+            return dir.toAbsolutePath().toString();
+        } catch (IOException | RuntimeException e) {
+            if (VERBOSE) {
+                System.err.println("Skia pipeline cache off: cannot create " + dir + ": " + e);
+            }
+            log.warning("Skia pipeline cache off: cannot create " + dir, e);
+            return null;
+        }
+    }
+
+    /**
+     * Cache lookups, of which found, and blobs stored, since start-up (all zero
+     * when Skia is unavailable or the cache is off); for tests.
+     */
+    public static long[] pipelineCacheCounters() {
+        return isSkiaEnabled() ? pipelineCacheCountersNative() : new long[3];
+    }
+
+    private static native void setPipelineCacheNative(String directory);
+
+    private static native long[] pipelineCacheCountersNative();
 
     // EXPERIMENT (x64hw, 2026-10-23): with J2D_SKIA_PIPELINE_CACHE set, the native context of a new
     // configuration is created on the flusher right away, so the precompile of the stored pipeline keys

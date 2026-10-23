@@ -34,6 +34,7 @@
 #include "sun_font_SKFontScaler.h"
 #include "SKMaskCache.h"
 #include "SKQuadBatch.h"
+#include "SKPipelineCache.h"
 #include "SKStats.h"
 
 #include "jlong.h"
@@ -189,6 +190,20 @@ void storePipelineKey(uint32_t hash, const sk_sp<SkData> &key) {
     out.write((const char *) key->data(), length);
 }
 
+
+// Offers the context's pipeline data to sun.java2d.skia.pipelineCache (Graphite's
+// native Vulkan backend has some, Dawn and Metal none): every 10 s and on dispose.
+void syncPipelineData(SKConfigContext *cc, bool force) {
+    if (!cc->context || !SKPipelineCache_Enabled()) {
+        return;
+    }
+    const uint64_t now = SKStats_Now();
+    if (force || now - cc->lastPipelineSync > 10ull * 1000 * 1000 * 1000) {
+        cc->lastPipelineSync = now;
+        cc->context->syncPipelineData(16u << 20);
+    }
+}
+
 } // namespace
 
 static void pipelineCacheEvent(ContextOptions::PipelineCallbackContext, ContextOptions::PipelineCacheOp op,
@@ -292,6 +307,9 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     // Every pipeline Graphite builds or finds: the count and the labels of the built ones,
     // for J2D_SKIA_STATS (compile waits) and as the input of a precompile list.
     options.fPipelineCachingCallback = pipelineCacheEvent;
+    // sun.java2d.skia.pipelineCache for the backends Graphite caches for itself (Vulkan); one file,
+    // Graphite checks vendor, device and cache UUID before using it.
+    options.fPersistentPipelineStorage = SKPipelineCache_Storage("graphite");
     if (const char *threads = envOrNull("J2D_SKIA_EXECUTOR")) {   // EXPERIMENT, see pipelineCacheEvent
         if (!gExecutor) {
             gExecutor = SkExecutor::MakeFIFOThreadPool(std::max(1, atoi(threads)));
@@ -326,6 +344,7 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     SKConfigContext *cc = it->second;
     J2dTraceLn(J2D_TRACE_VERBOSE, "SKBackend_DisposeContext: config=%p cc=%p surfaces=%zu", config, cc, cc->surfaces.size());
     SKBackend_Submit(cc, true);
+    syncPipelineData(cc, true);
     gContexts.erase(it);
     forgetContext(cc);
     // Surfaces wrapped with this recorder cannot be drawn to any more; they are
@@ -2677,6 +2696,7 @@ void SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu) {
     gFlushes.fetch_add(1, std::memory_order_relaxed);
     for (SKConfigContext *cc : g.touchedContexts) {
         SKBackend_Submit(cc, syncToCpu);
+        syncPipelineData(cc, false);
     }
     g.touchedContexts.clear();
     // Ask the platform to present the windows we drew into.

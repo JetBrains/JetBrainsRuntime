@@ -32,6 +32,7 @@
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "SKBackend.h"
 #include "SKGlyphCache.h"
+#include "SKPipelineCache.h"
 #include "Trace.h"
 #include "include/core/SkGraphics.h"
 
@@ -114,6 +115,33 @@ Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, ji
 {
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses);
+}
+
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_setPipelineCacheNative(JNIEnv *env, jclass clazz, jstring directory)
+{
+    if (directory == nullptr) {
+        SKPipelineCache_SetDirectory(nullptr);
+        return;
+    }
+    const char *chars = env->GetStringUTFChars(directory, nullptr);
+    if (chars != nullptr) {
+        SKPipelineCache_SetDirectory(chars);
+        env->ReleaseStringUTFChars(directory, chars);
+    }
+}
+
+JNIEXPORT jlongArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_pipelineCacheCountersNative(JNIEnv *env, jclass clazz)
+{
+    const SKPipelineCacheCounters c = SKPipelineCache_Counters();
+    const jlong values[3] = { (jlong) c.loads, (jlong) c.hits, (jlong) c.stores };
+    jlongArray array = env->NewLongArray(3);
+    if (array != nullptr) {
+        env->SetLongArrayRegion(array, 0, 3, values);
+    }
+    return array;
 }
 
 } // extern "C"

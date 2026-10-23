@@ -29,6 +29,7 @@
 
 #include "DawnSKPlatform.h"
 #include "SKPlatform.h"
+#include "SKPipelineCache.h"
 #include "SKStats.h"
 
 #include "Trace.h"
@@ -53,15 +54,11 @@
 #include "dawn/native/DawnNative.h"
 
 #include <algorithm>
-#include <cstdlib>
-#include <cstring>
-#include <fstream>
 #include <cstdint>
 #include <mutex>
 #include <span>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 using namespace skgpu::graphite;
 
@@ -168,71 +165,8 @@ std::string DawnSK_DescribeAdapter() {
     return adapter != nullptr ? describe(adapter, backendType) : std::string();
 }
 
-// EXPERIMENT (x64hw, 2026-10-23): J2D_SKIA_DAWN_CACHE=<file> gives Dawn a place for
-// the blobs it caches itself (compiled shaders and pipelines, keyed by its own hash),
-// through wgpu::DawnCacheDeviceDescriptor; what Chromium's GPU process plugs its disk
-// cache into. One append-only file of (key size, value size, key, value) records,
-// read once at start-up; store() appends at once. Default off.
-class DawnSKBlobCache {
-public:
-    explicit DawnSKBlobCache(const char *path) : path(path) {
-        std::ifstream in(path, std::ios::binary);
-        uint32_t sizes[2];
-        while (in.read((char *) sizes, sizeof sizes)) {
-            std::string key(sizes[0], '\0'), value(sizes[1], '\0');
-            if (!in.read(key.data(), sizes[0]) || !in.read(value.data(), sizes[1])) {
-                break;
-            }
-            blobs[key] = std::move(value);
-        }
-        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: %zu blobs from %s", blobs.size(), path);
-    }
-
-    size_t load(const void *key, size_t keySize, void *value, size_t valueSize) {
-        std::lock_guard<std::mutex> lock(mutex);
-        SKStats_Count(SK_COUNT_BLOB_LOADS);
-        auto it = blobs.find(std::string((const char *) key, keySize));
-        if (it == blobs.end()) {
-            return 0;
-        }
-        SKStats_Count(SK_COUNT_BLOB_HITS);
-        if (value != nullptr) {
-            memcpy(value, it->second.data(), std::min(valueSize, it->second.size()));
-        }
-        return it->second.size();
-    }
-
-    void store(const void *key, size_t keySize, const void *value, size_t valueSize) {
-        std::lock_guard<std::mutex> lock(mutex);
-        SKStats_Count(SK_COUNT_BLOB_STORES);
-        std::string k((const char *) key, keySize);
-        if (blobs.count(k) != 0) {
-            return;
-        }
-        blobs[k] = std::string((const char *) value, valueSize);
-        std::ofstream out(path, std::ios::binary | std::ios::app);
-        const uint32_t sizes[2] = { (uint32_t) keySize, (uint32_t) valueSize };
-        out.write((const char *) sizes, sizeof sizes);
-        out.write((const char *) key, (std::streamsize) keySize);
-        out.write((const char *) value, (std::streamsize) valueSize);
-    }
-
-private:
-    std::string path;
-    std::mutex mutex;
-    std::unordered_map<std::string, std::string> blobs;
-};
-
-static DawnSKBlobCache *blobCache() {
-    static DawnSKBlobCache *cache = [] {
-        const char *path = getenv("J2D_SKIA_DAWN_CACHE");
-        return path != nullptr && *path != 0 ? new DawnSKBlobCache(path) : nullptr;   // lives as long as the devices
-    }();
-    return cache;
-}
-
 static wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Adapter &adapter,
-                                  const std::shared_ptr<std::atomic<bool>> &lost) {
+                                  const std::shared_ptr<std::atomic<bool>> &lost, const std::string &description) {
     wgpu::DeviceDescriptor descriptor;
     // Off-screen surfaces are created on the EDT while the flusher records and
     // submits on the same device; Dawn serializes device access with this.
@@ -251,17 +185,20 @@ static wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Ad
     if (adapter.GetLimits(&limits) == wgpu::Status::Success) {
         descriptor.requiredLimits = &limits;
     }
-    wgpu::DawnCacheDeviceDescriptor cache;   // EXPERIMENT, see DawnSKBlobCache
-    if (blobCache() != nullptr) {
+    // sun.java2d.skia.pipelineCache: Dawn asks for the shaders and pipelines it compiled in
+    // earlier sessions by its own key (adapter, driver, toggles and Dawn version are part of
+    // it) and hands over new ones; the store lives as long as the process (SKPipelineCache).
+    wgpu::DawnCacheDeviceDescriptor cache;
+    if (SKBlobStore *store = SKPipelineCache_BlobStore("dawn-" + description)) {
         cache.isolationKey = "jbr-skia";
         cache.SetDawnLoadCacheDataCallback(
-                [](std::span<const std::byte> key, std::span<std::byte> value, DawnSKBlobCache *c) {
-                    return c->load(key.data(), key.size(), value.data(), value.size());
-                }, blobCache());
+                [](std::span<const std::byte> key, std::span<std::byte> value, SKBlobStore *s) {
+                    return s->load(key.data(), key.size(), value.data(), value.size());
+                }, store);
         cache.SetDawnStoreCacheDataCallback(
-                [](std::span<const std::byte> key, std::span<const std::byte> value, DawnSKBlobCache *c) {
-                    c->store(key.data(), key.size(), value.data(), value.size());
-                }, blobCache());
+                [](std::span<const std::byte> key, std::span<const std::byte> value, SKBlobStore *s) {
+                    s->store(key.data(), key.size(), value.data(), value.size());
+                }, store);
         descriptor.nextInChain = &cache;
     }
     descriptor.SetUncapturedErrorCallback(
@@ -311,7 +248,7 @@ DawnSKConfigInfo *DawnSK_CreateConfig() {
                 continue;
             }
             gpu = std::make_shared<DawnSKDevice>();
-            gpu->device = requestDevice(instance, adapter, gpu->lost);
+            gpu->device = requestDevice(instance, adapter, gpu->lost, describe(adapter, backendType));
             if (gpu->device == nullptr) {
                 continue;
             }
