@@ -12,7 +12,7 @@ mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd) || exit 2; cd "$OUT"   # absolute: the 
 OUTW=$(pwd -W 2>/dev/null || pwd)   # Windows path for the property (a POSIX one would land in C:/c/...)
 G="$R/test/jdk/jb/java/awt/Graphics2D"
 X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.java2d.pipe=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.font=ALL-UNNAMED --add-exports java.desktop/sun.java2d.loops=ALL-UNNAMED --add-exports java.desktop/sun.awt.image=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED"
-XR="$X --add-opens java.desktop/sun.font=ALL-UNNAMED -Dtest.jdk=$JDKW -Dsun.java2d.skia.pipelineCache=$OUTW/pipeline-cache"   # the cache stays out of the home directory
+XR="$X --add-opens java.desktop/sun.font=ALL-UNNAMED -Dtest.jdk=$JDKW -Dsun.java2d.skia.pipelineCache=$OUTW/pipeline-cache ${JTREG_EXTRA_OPTS:-}"   # the cache stays out of the home directory; JTREG_EXTRA_OPTS: more -D options for every run
 pass=0; fail=0
 for f in "$G"/*.java "$G"/TextRender/*.java; do
   grep -q "sun.java2d.skia=true" "$f" || continue

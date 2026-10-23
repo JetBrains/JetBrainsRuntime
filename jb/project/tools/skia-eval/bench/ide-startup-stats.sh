@@ -11,11 +11,12 @@ label=$1; wait=${2:-90}
 export J2D_SKIA_STATS=1
 passthrough=""   # only the variables that are set, so that an empty value cannot switch an experiment on
 pc=${PIPELINE_CACHE:-off}; [ "$pc" != off ] && pc=$(cygpath -w "$pc" 2>/dev/null || echo "$pc")   # a POSIX path would land in C:...
-export IDE_EXTRA_VMOPTIONS="-Dsun.java2d.skia.pipelineCache=$pc"
+nl=$'\n'; export IDE_EXTRA_VMOPTIONS="-Dsun.java2d.skia.pipelineCache=$pc${IDE_EXTRA_VMOPTIONS:+$nl$IDE_EXTRA_VMOPTIONS}"   # the caller's options stay
+arm=${ARM:-A3}   # ARM=A4: present per paint cycle
 for v in J2D_SKIA_PIPELINE_CACHE J2D_SKIA_EXECUTOR IDE_EXTRA_VMOPTIONS; do [ -n "${!v:-}" ] && passthrough="$passthrough $v='${!v}'"; done
-bash build/scripts/msys2.sh "export J2D_SKIA_STATS=1 $passthrough; source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-ide.sh A3 --wait $wait -- jb/project/tools/skia-eval/text-quality/text-scene" > "build/tmp/ide-startup-$label.txt" 2>&1
+bash build/scripts/msys2.sh "export J2D_SKIA_STATS=1 $passthrough; source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-ide.sh $arm --wait $wait -- jb/project/tools/skia-eval/text-quality/text-scene" > "build/tmp/ide-startup-$label.txt" 2>&1
 sleep 3
-s=build/skia-eval-out/ide/A3-accumulate/stdout.txt
+s=$(ls -d build/skia-eval-out/ide/$arm-*/stdout.txt)
 cp "$s" "build/skia-eval-out/ide/startup-$label.stdout.txt"
 built=$(grep -c 'pipeline built' "$s"); pre=$(grep -c 'pipeline precompiled' "$s")
 keys=$(grep -oE 'precompiled [0-9]+ of [0-9]+ stored pipelines|[0-9]+ pipeline keys from' "$s" | tr '\n' ';')
