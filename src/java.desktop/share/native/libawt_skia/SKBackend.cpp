@@ -119,6 +119,18 @@ static struct {
 
 static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
 
+// Graphics pipelines Graphite has built so far, over all contexts (flusher thread only).
+static uint64_t gPipelinesBuilt = 0;
+
+static void pipelineCacheEvent(ContextOptions::PipelineCallbackContext, ContextOptions::PipelineCacheOp op,
+                               const std::string &label, uint32_t keyHash, bool, sk_sp<SkData>) {
+    const bool added = op == ContextOptions::PipelineCacheOp::kAddingPipeline;
+    if (added) {
+        gPipelinesBuilt++;
+    }
+    SKStats_PipelineEvent(added, label.c_str(), keyHash);
+}
+
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses) {
     if (luminanceClasses >= 1 && luminanceClasses <= 256 && (luminanceClasses & (luminanceClasses - 1)) == 0) {
@@ -185,6 +197,9 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     if (gConfig.glyphAtlasBytes != 0) {
         options.fGlyphCacheTextureMaximumBytes = gConfig.glyphAtlasBytes;
     }
+    // Every pipeline Graphite builds or finds: the count and the labels of the built ones,
+    // for J2D_SKIA_STATS (compile waits) and as the input of a precompile list.
+    options.fPipelineCachingCallback = pipelineCacheEvent;
     std::unique_ptr<Context> context = SKPlatform_MakeContext(config, options);
     if (!context) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create Graphite context");
@@ -2501,6 +2516,10 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     }
     flushBatchesOf(cc);
     cc->recordingGeneration++;
+    // Graphite registers a recording's new pipelines while snap() builds its draw passes and
+    // compiles them in insertRecording (tint, the D3D shader compiler, the driver's compiler
+    // threads): such an insert costs tens of milliseconds where a warm one costs a fraction of one
+    const uint64_t pipelinesBefore = gPipelinesBuilt;
     std::unique_ptr<Recording> recording;
     {
         SKStatsScope snapStats(SK_SPAN_SNAP);
@@ -2509,9 +2528,13 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (recording) {
         InsertRecordingInfo info;
         info.fRecording = recording.get();
+        const uint64_t start = SKStats_IsEnabled() ? SKStats_Now() : 0;
         SKStatsScope insertStats(SK_SPAN_INSERT);
         if (!cc->context->insertRecording(info)) {
             J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_FlushRecording: insertRecording failed");
+        }
+        if (start != 0 && gPipelinesBuilt != pipelinesBefore) {
+            SKStats_AddSpan(SK_SPAN_INSERT_COMPILING, SKStats_Now() - start);
         }
     }
 }

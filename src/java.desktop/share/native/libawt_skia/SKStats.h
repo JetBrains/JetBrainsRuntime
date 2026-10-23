@@ -46,6 +46,7 @@ enum SKStatsSpan {
     SK_SPAN_BATCHES,        // glyph, tile and rect batches drawn into the canvas
     SK_SPAN_SNAP,           // Recorder::snap
     SK_SPAN_INSERT,         // Context::insertRecording
+    SK_SPAN_INSERT_COMPILING,   // of which: inserts that built at least one new pipeline (the compile waits)
     SK_SPAN_SUBMIT,         // Context::submit at the end of a flush, no CPU wait
     SK_SPAN_SUBMIT_WAIT,    // Context::submit(SyncToCpu::kYes) for SYNC
     SK_SPAN_READBACK,       // surface-to-software blits, with their submit and wait
@@ -61,6 +62,8 @@ enum SKStatsCounter {
     SK_COUNT_MESH_DRAWS,        // drawVertices calls (batched quads, tiles, glyphs)
     SK_COUNT_ATLAS_UPLOADS,     // writePixels into the glyph and mask atlases
     SK_COUNT_PRESENTS_FAILED,   // a window to present but no swap chain image
+    SK_COUNT_PIPELINES_ADDED,   // graphics pipelines Graphite built (compiled) for the first time
+    SK_COUNT_PIPELINES_FOUND,   // pipeline lookups that hit the cache
     SK_COUNT_COUNT
 };
 
@@ -69,6 +72,9 @@ uint64_t SKStats_Now();     // nanoseconds, monotonic
 void SKStats_AddSpan(SKStatsSpan span, uint64_t nanos);
 void SKStats_AddOp(int opcode, uint64_t nanos);
 void SKStats_Count(SKStatsCounter counter, uint64_t n = 1);
+// Graphite added a pipeline to its cache (built it) or found one; with the statistics on, an added
+// pipeline's label and key hash are printed, the input of a precompile list.
+void SKStats_PipelineEvent(bool added, const char *label, uint32_t keyHash);
 // Called at the end of every queue entry: prints and resets once a second has passed.
 void SKStats_EndOfEntry();
 

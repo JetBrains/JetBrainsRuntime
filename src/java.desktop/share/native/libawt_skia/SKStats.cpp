@@ -55,7 +55,7 @@ Stats stats;
 const uint64_t origin = SKStats_Now();
 
 const char *const SPAN_NAMES[SK_SPAN_COUNT] = {
-    "queue", "batches", "snap", "insert", "submit", "submit+wait", "readback", "image upload", "present",
+    "queue", "batches", "snap", "insert", "insert:compiling", "submit", "submit+wait", "readback", "image upload", "present",
     "present:acquire", "present:copy", "present:call"
 };
 
@@ -100,10 +100,12 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu, atlas uploads %llu, presents failed %llu\n",
+    fprintf(stderr, " | mesh draws %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu, found %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_ATLAS_UPLOADS],
-            (unsigned long long) stats.counters[SK_COUNT_PRESENTS_FAILED]);
+            (unsigned long long) stats.counters[SK_COUNT_PRESENTS_FAILED],
+            (unsigned long long) stats.counters[SK_COUNT_PIPELINES_ADDED],
+            (unsigned long long) stats.counters[SK_COUNT_PIPELINES_FOUND]);
 
     int order[OPCODE_SLOTS];
     int n = 0;
@@ -155,6 +157,17 @@ void SKStats_AddOp(int opcode, uint64_t nanos) {
 void SKStats_Count(SKStatsCounter counter, uint64_t n) {
     if (SKStats_IsEnabled()) {
         stats.counters[counter] += n;
+    }
+}
+
+void SKStats_PipelineEvent(bool added, const char *label, uint32_t keyHash) {
+    if (!SKStats_IsEnabled()) {
+        return;
+    }
+    stats.counters[added ? SK_COUNT_PIPELINES_ADDED : SK_COUNT_PIPELINES_FOUND]++;
+    if (added) {
+        fprintf(stderr, "[%7llums] SKStats pipeline built: %08x %s\n",
+                (unsigned long long) ((SKStats_Now() - origin) / 1000000), (unsigned) keyHash, label);
     }
 }
 
