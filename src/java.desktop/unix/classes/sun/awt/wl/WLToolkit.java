@@ -58,6 +58,7 @@ import java.awt.dnd.DropTarget;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
@@ -165,6 +166,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     static {
         // This field must be initialized BEFORE initIDs is called because it'll be read there
         ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
+        // Same for this one
+        ENABLE_PINCH_AS_CTRL_WHEEL = Boolean.getBoolean("sun.awt.wl.PinchAsCtrlWheel");
 
         if (!GraphicsEnvironment.isHeadless()) {
             initLibwaylandLogging();
@@ -323,6 +326,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return result;
     }
 
+    // If true, touchpad pinch gestures are translated into Ctrl + mouse wheel events, like on Windows.
+    // Read by the native code.
+    private final static boolean ENABLE_PINCH_AS_CTRL_WHEEL;
+
     private final Semaphore eventsQueued = new Semaphore(0);
 
     @Override
@@ -397,6 +404,65 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static void dispatchRelativePointerEvent(double dx, double dy) {
         WLMouseInfoPeer.getInstance().accumulatePointerDelta(dx, dy);
+    }
+
+    // Wheel rotations per the natural logarithm of the pinch scale: zooming 2x gives about 4 rotations
+    private static final double PINCH_ROTATIONS_PER_LOG_SCALE = 6.0;
+    private static final int PINCH_SCROLL_AMOUNT = 3;
+    private static final int PINCH_FINGERS = 2;
+
+    // The state of the current pinch gesture. Only used on EDT.
+    private static long pinchSurfacePtr;
+    private static double pinchPrevTotal;
+    private static int pinchDispatchedRound;
+
+    private static void dispatchPinchBeginEvent(long surfacePtr, int fingers) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        pinchSurfacePtr = (fingers == PINCH_FINGERS) ? surfacePtr : 0;
+        pinchPrevTotal = 0;
+        pinchDispatchedRound = 0;
+    }
+
+    private static void dispatchPinchUpdateEvent(double scale) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        if (pinchSurfacePtr == 0 || !(scale > 0) || Double.isInfinite(scale)) return;
+
+        // The scale is relative to the beginning of the gesture; spreading the fingers gives negative rotations (zoom in)
+        final double total = -Math.log(scale) * PINCH_ROTATIONS_PER_LOG_SCALE;
+        final double precise = total - pinchPrevTotal;
+        final int round = (int) total - pinchDispatchedRound;
+        pinchPrevTotal = total;
+        pinchDispatchedRound += round;
+
+        final WLWindowPeer peer = peerFromSurface(pinchSurfacePtr);
+        if (peer == null || peer != inputState.peerForPointerEvents()) return;
+
+        final int x = inputState.getPointerX();
+        final int y = inputState.getPointerY();
+        final Point abs = peer.relativePointToAbsolute(new Point(x, y));
+        // Like on Windows, a pinch is a mouse wheel event with Ctrl down, but no Ctrl key events are generated
+        peer.getMouseEventDispatcher().notifyMouseWheelEvent(
+                System.currentTimeMillis(),
+                x, y,
+                abs.x, abs.y,
+                inputState.getModifiers() | KeyEvent.CTRL_DOWN_MASK,
+                1,
+                false,
+                MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                PINCH_SCROLL_AMOUNT,
+                round,
+                precise);
+    }
+
+    private static void dispatchPinchEndEvent() {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        pinchSurfacePtr = 0;
     }
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
