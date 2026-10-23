@@ -8,11 +8,11 @@ set -u
 R="${R:-$(cd "$(dirname "$0")/../../../../.." && pwd)}"
 JDK=$(cd "$1" && pwd); OUT="${2:-$R/build/skia-eval-out/jtreg}"
 JDKW=$(cd "$JDK" && (pwd -W 2>/dev/null || pwd)); RW=$(cd "$R" && (pwd -W 2>/dev/null || pwd))   # Windows paths: javac's source path list, the test library's JDK
+mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd) || exit 2; cd "$OUT"   # absolute: the logs are written after the cd
+OUTW=$(pwd -W 2>/dev/null || pwd)   # Windows path for the property (a POSIX one would land in C:/c/...)
 G="$R/test/jdk/jb/java/awt/Graphics2D"
 X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.java2d.pipe=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.font=ALL-UNNAMED --add-exports java.desktop/sun.java2d.loops=ALL-UNNAMED --add-exports java.desktop/sun.awt.image=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED"
 XR="$X --add-opens java.desktop/sun.font=ALL-UNNAMED -Dtest.jdk=$JDKW -Dsun.java2d.skia.pipelineCache=$OUTW/pipeline-cache"   # the cache stays out of the home directory
-mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd) || exit 2; cd "$OUT"   # absolute: the logs are written after the cd
-OUTW=$(pwd -W 2>/dev/null || pwd)   # Windows path for the property (a POSIX one would land in C:/c/...)
 pass=0; fail=0
 for f in "$G"/*.java "$G"/TextRender/*.java; do
   grep -q "sun.java2d.skia=true" "$f" || continue
