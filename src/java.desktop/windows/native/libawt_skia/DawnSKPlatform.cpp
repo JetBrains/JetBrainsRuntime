@@ -851,11 +851,17 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
 // Measured with dwref --grid (one glyph at 64 offsets across a pixel, through the
 // glyph run analysis and Direct2D alike): the natural-symmetric mode positions
 // glyphs on quarter pixels, the natural mode on eighths, both to the nearest;
-// aliased and GDI-compatible modes on whole pixels.
-int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize)
+// aliased and GDI-compatible modes on whole pixels. The grid is per
+// device-independent pixel (dwref --grid on a 192 dpi target: 2 positions per
+// device pixel), so a display scale above 1 leaves fewer positions in a device
+// pixel; an integer scale (100 %, 200 %) is exact, 125 % and 150 % are rounded.
+int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale)
 {
     if (typeface == nullptr || pixelSize <= 0) {
         return 0;
+    }
+    if (!(displayScale > 0)) {
+        displayScale = 1;
     }
     DWriteText &text = dwriteText();
     std::lock_guard<std::mutex> guard(text.lock);
@@ -866,11 +872,14 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize)
     if (!face) {
         return 0;
     }
+    int perDip;
     switch (recommendedMode(text, face.Get(), pixelSize)) {
-        case DWRITE_RENDERING_MODE_NATURAL: return 8;
-        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: return 4;
+        case DWRITE_RENDERING_MODE_NATURAL: perDip = 8; break;
+        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: perDip = 4; break;
         default: return 1;
     }
+    const long perDevicePixel = std::lround(perDip / displayScale);
+    return perDevicePixel < 1 ? 1 : (int) perDevicePixel;
 }
 
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,

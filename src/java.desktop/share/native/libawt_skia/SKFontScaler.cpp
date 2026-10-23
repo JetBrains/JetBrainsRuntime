@@ -79,6 +79,8 @@ struct SKScalerContext {
     bool fractionalMetrics = false;
     bool identityRemainder = true;
     double deviceScale = 1.0;   // whole-pixel advances are rounded in user space when it is not 1
+    double displayScale = 1.0;  // scale of the strike's device transform (2 on a 200 % display); the
+                                // platform's placement grid is per device-independent pixel
     jint grayMode = 0;          // SKFontScaler.GRAY_*
     float grayDarkening = 0;    // fraction of the em added to the outline's width in the darkened mode
     jint grayLuminance = 0;     // the text luminance the cg mode rasterizes for
@@ -202,7 +204,7 @@ Java_sun_font_SKFontScaler_getUnitsPerEmNative(JNIEnv *env, jclass clazz, jlong 
 JNIEXPORT jlong JNICALL
 Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong pScaler, jdoubleArray matrix,
                                                jint aa, jint fm, jfloat boldness, jfloat italic, jdouble deviceScale,
-                                               jint grayMode, jfloat grayDarkening, jint grayLuminance)
+                                               jdouble displayScale, jint grayMode, jfloat grayDarkening, jint grayLuminance)
 {
     auto *scaler = (SKScaler *) jlong_to_ptr(pScaler);
     if (scaler == nullptr || matrix == nullptr || env->GetArrayLength(matrix) < 4) {
@@ -224,6 +226,7 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     context->identityRemainder = context->remainder.isIdentity();
     context->fractionalMetrics = fm == sun_awt_SunHints_INTVAL_FRACTIONALMETRICS_ON;
     context->deviceScale = deviceScale > 0 ? deviceScale : 1.0;
+    context->displayScale = displayScale > 0 ? displayScale : 1.0;
     context->grayMode = grayMode;
     context->grayDarkening = grayDarkening;
     context->grayLuminance = grayLuminance;
@@ -447,11 +450,13 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const bool aa = font.getEdging() != SkFont::Edging::kAlias;
     const bool subpixel = aa && !lcd && context->fractionalMetrics && (subX > 1 || subY > 1);
     // Under the platform's mask routes the variants follow the platform rasterizer's own
-    // placement grid (DirectWrite: 4 or 8 positions per pixel by rendering mode), so a glyph
-    // lands where the platform would put it; otherwise the JDK's resolution.
+    // placement grid (DirectWrite: 4 or 8 positions per device-independent pixel by rendering
+    // mode, so fewer per device pixel on a scaled display), so a glyph lands where the platform
+    // would put it; otherwise the JDK's resolution.
     const bool platformRoute = context->grayMode == sun_font_SKFontScaler_GRAY_CG
                                || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE;
-    const int platformGrid = subpixel && platformRoute ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize()) : 0;
+    const int platformGrid = subpixel && platformRoute
+                             ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize(), (float) context->displayScale) : 0;
     const int resX = subpixel ? (platformGrid > 0 ? platformGrid : subX) : 1, resY = subpixel ? subY : 1;
     // Grayscale variants (SKFontScaler, sun.java2d.skia.text.gray). The JDK's
     // CoreGraphics renderer smooths without sub-pixels and averages the

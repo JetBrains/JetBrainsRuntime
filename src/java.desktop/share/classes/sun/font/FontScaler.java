@@ -226,6 +226,15 @@ public abstract class FontScaler implements DisposerRecord {
         return createScalerContext(matrix, aa, fm, boldness, italic);
     }
 
+    /**
+     * With the display scale as well: the scale of the strike's device transform (FontStrikeDesc.devTx),
+     * 2 on a 200 % display, for a scaler that places glyphs on a platform grid defined per
+     * device-independent pixel; ignored by the others.
+     */
+    long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic, int luminance, double displayScale) {
+        return createScalerContext(matrix, aa, fm, boldness, italic, luminance);
+    }
+
     /* Marks context as invalid because native scaler is invalid.
        Notes:
          - pointer itself is still valid and has to be released

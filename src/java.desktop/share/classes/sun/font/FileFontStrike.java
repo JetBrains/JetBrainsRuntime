@@ -247,10 +247,12 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
         double[] matrix = new double[4];
         AffineTransform at = desc.glyphTx;
         at.getMatrix(matrix);
+        double displayScale = 1.0;
         if (!desc.devTx.isIdentity() &&
             desc.devTx.getType() != AffineTransform.TYPE_TRANSLATION) {
             try {
                 invertDevTx = desc.devTx.createInverse();
+                displayScale = Math.sqrt(Math.abs(desc.devTx.getDeterminant()));
             } catch (NoninvertibleTransformException e) {
             }
         }
@@ -268,7 +270,7 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
         } else {
             pScalerContext = fileFont.getScaler().createScalerContext(matrix,
                                     desc.aaHint, desc.fmHint,
-                                    boldness, italic, desc.luminance);
+                                    boldness, italic, desc.luminance, displayScale);
         }
 
         mapper = fileFont.getMapper();

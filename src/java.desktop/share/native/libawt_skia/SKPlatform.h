@@ -130,8 +130,11 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
 // rounds a glyph origin to the nearest one), so the scaler renders that many
 // variants and the pipes land glyphs where the platform does. 0 where the
 // platform has no such grid or no mask route (the caller keeps the JDK's).
-// Windows: DirectWrite, measured 4 in the natural-symmetric mode and 8 in the
-// natural mode; macOS: 0 (CoreGraphics positions continuously).
-int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize);
+// The grid is per device-independent pixel where the platform has one:
+// displayScale is the scale of the strike's device transform (2 on a 200 %
+// display), and the result is positions per device pixel.
+// Windows: DirectWrite, measured 4 per DIP in the natural-symmetric mode and 8
+// in the natural mode; macOS: 0 (CoreGraphics positions continuously).
+int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale);
 
 #endif /* SKPlatform_h_Included */
