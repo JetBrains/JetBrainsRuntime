@@ -69,8 +69,11 @@ static UInt8* getSubpixelGlyphImage(GlyphInfo *glyph, float x, float y) {
 #define FLOOR_ASSIGN(l, r)\
  if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
 
+/* Nearest step, a half-step tie rounding up (DirectWrite's rule; the nudge of
+ * 1/4096 px keeps float rounding noise from deciding a tie either way). */
+#define SUBPIXEL_TIE_NUDGE 0.000244140625f
 #define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
- if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f;
+ if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f + SUBPIXEL_TIE_NUDGE;
 
 JNIEXPORT GlyphBlitVector* setupBlitVector(JNIEnv *env, jobject glyphlist,
                                  jint fromGlyph, jint toGlyph) {

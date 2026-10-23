@@ -1608,8 +1608,10 @@ static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
 
 // Sub-pixel strikes render rx*ry variants of each glyph; pick the one for the
 // fractional position (MTLTextRenderer's ADJUST_SUBPIXEL_GLYPH_POSITION).
+// Nearest step, a half-step tie rounding up (DirectWrite's rule; the nudge of
+// 1/4096 px keeps float rounding noise from deciding a tie either way).
 static inline float adjustSubpixel(float coord, int res) {
-    return res > 1 ? coord + 0.5f / (float) res - 0.5f : coord;
+    return res > 1 ? coord + 0.5f / (float) res - 0.5f + 0.000244140625f : coord;
 }
 
 static std::atomic<jlong> gGlyphsDrawnBySkia{0};   // written by the flusher, read by any Java thread

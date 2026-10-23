@@ -1216,8 +1216,10 @@ extern int lcdSubPixelPosSupported;
 extern int useFontSmoothing;
 #endif
 
+/* Nearest step, a half-step tie rounding up (DirectWrite's rule; the nudge of
+ * 1/4096 px keeps float rounding noise from deciding a tie either way). */
 #define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
-    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
+    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f + 0.000244140625f
 
 void
 OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
