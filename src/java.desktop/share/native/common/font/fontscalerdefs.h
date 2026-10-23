@@ -109,6 +109,15 @@ typedef struct GlyphInfo {
 */
 int isNullScalerContext(void *context);
 
+/* A glyph's sub-pixel variant: the nearest of res steps per pixel, a half-step
+ * tie rounding up, as DirectWrite's placement does; the nudge of 1/4096 px keeps
+ * float rounding noise from deciding a tie either way. The same rule in every
+ * pipe (software loops, OpenGL, Metal, Skia), so they pick the same variant.
+ */
+#define SUBPIXEL_TIE_NUDGE 0.000244140625f
+#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
+    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f + SUBPIXEL_TIE_NUDGE
+
 #ifdef  __cplusplus
 }
 #endif

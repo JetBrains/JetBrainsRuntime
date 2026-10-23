@@ -108,8 +108,10 @@ private:
         const float originX = (float) -glyph.left() + SkFixedToFloat(glyph.getSubXFixed());
         const float originY = (float) -glyph.top() + SkFixedToFloat(glyph.getSubYFixed());
         std::vector<uint8_t> mask((size_t) width * height);
-        if (!SKPlatform_SmoothedGlyphMask(fInner->getTypeface(), glyph.getGlyphID(), glyphToDevice, fLuminance, stroke,
-                                          originX, originY, width, height, mask.data())) {
+        // displayScale 1: the rec carries no display scale; CoreGraphics takes the device transform
+        // (a Windows platform route through Skia's own text path would need the strike's scale here)
+        if (!SKPlatform_SmoothedGlyphMask(fInner->getTypeface(), glyph.getGlyphID(), glyphToDevice, 1.0f, fLuminance, false,
+                                          stroke, originX, originY, width, height, mask.data())) {
             return false;
         }
         const size_t rowBytes = glyph.rowBytes();

@@ -34,8 +34,13 @@
  *          the glyph drawn at the upper step, through a BufferedImage (the
  *          software loops) and a VolatileImage (the accelerated pipe), for
  *          grayscale (4 steps at 1x) and LCD (6 steps at 1x and 1.25x).
- * @requires (os.family == "windows")
+ *          On macOS only the grayscale case applies (CoreGraphics draws no colour
+ *          sub-pixels, so LCD glyphs there have no variants): the platform scaler on
+ *          Metal and the software loops, and the Skia scaler on the Skia pipe.
+ * @requires (os.family == "windows") | (os.family == "mac")
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform SubpixelVariantTieTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 SubpixelVariantTieTest gray
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia SubpixelVariantTieTest gray
  */
 
 import java.awt.Color;
@@ -58,7 +63,13 @@ public class SubpixelVariantTieTest {
         }
         StringBuilder failures = new StringBuilder();
         // {lcd, scale, steps}: the ties are at (k + 0.5) / steps device pixels
-        Object[][] cases = {{false, 1.0, 4}, {true, 1.0, 6}, {true, 1.25, 6}};
+        boolean grayOnly = args.length > 0 && args[0].equals("gray");
+        boolean windows = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows");
+        if (!grayOnly && !windows) {
+            System.out.println("the LCD cases need the platform's LCD variants (Windows); skipped");
+            return;
+        }
+        Object[][] cases = grayOnly ? new Object[][] {{false, 1.0, 4}} : new Object[][] {{false, 1.0, 4}, {true, 1.0, 6}, {true, 1.25, 6}};
         for (boolean accelerated : new boolean[] {false, true}) {
             String pipe = accelerated ? "accelerated pipe" : "software loops";
             for (Object[] c : cases) {

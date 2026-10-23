@@ -37,6 +37,7 @@
 #import "MTLOptions.h"
 #include "MTLVertexCache.h"
 #include "MTLGlyphCache.h"
+#include "fontscalerdefs.h"
 #include "MTLBlitLoops.h"
 
 /**
@@ -620,9 +621,6 @@ MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc,
 
     return JNI_TRUE;
 }
-
-#define ADJUST_SUBPIXEL_GLYPH_POSITION(coord, res) \
-    if ((res) > 1) (coord) += 0.5f / ((float)(res)) - 0.5f
 
 void
 MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,

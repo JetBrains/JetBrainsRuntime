@@ -54,6 +54,8 @@ public final class FontUtilities {
      * graphics state then keys its strikes by the luminance class.
      */
     public static boolean textLuminanceDependent;
+    /** Whether the luminance-dependent route also supplies LCD masks (see initStatic). */
+    public static boolean platformLcdMasks;
 
     public static boolean isWindows;
 
@@ -108,11 +110,17 @@ public final class FontUtilities {
             String gray = System.getProperty("sun.java2d.skia.text.gray", "");
             textLuminanceDependent = useSkiaScaler
                     && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray));
+
         } else {
             useJDKScaler = false;
             useSkiaScaler = false;
         }
         isWindows = OSInfo.getOSType() == OSInfo.OSType.WINDOWS;
+        // Whether the luminance-dependent route also supplies the LCD glyph masks, so the LCD
+        // pipes must blend plainly (SunGraphics2D.lcdTextContrast): DirectWrite does; CoreGraphics
+        // draws no colour sub-pixels (measured 2026-10-22), so on macOS LCD glyphs stay Skia's own
+        // coverage and keep the pipes' gamma.
+        platformLcdMasks = textLuminanceDependent && isWindows;
         String debugLevel =
             System.getProperty("sun.java2d.debugfonts");
 

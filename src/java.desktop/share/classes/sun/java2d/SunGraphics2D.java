@@ -228,11 +228,13 @@ public final class SunGraphics2D
     public int lcdTextContrast;
     /* The LCD blend's gamma (the contrast / 100 exponent of the LCD loops and the GPU
      * pipes' tables). When the Skia scaler's glyph masks already carry the platform's
-     * own text weighting for the text luminance (sun.java2d.skia.text.gray=platform or
-     * cg, FontUtilities.textLuminanceDependent), a second gamma on top would double it:
-     * such masks are composited plainly, contrast 100, whatever the hint says.
+     * own text weighting for the text luminance and the platform supplies the LCD masks
+     * too (sun.java2d.skia.text.gray=platform on Windows, FontUtilities.platformLcdMasks),
+     * a second gamma on top would double it: such masks are composited plainly, contrast
+     * 100, whatever the hint says. CoreGraphics supplies grayscale only, so macOS keeps the
+     * pipes' gamma for LCD text.
      */
-    private static int lcdTextContrastDefaultValue = sun.font.FontUtilities.textLuminanceDependent ? 100 : 140;
+    private static int lcdTextContrastDefaultValue = sun.font.FontUtilities.platformLcdMasks ? 100 : 140;
 
     private int interpolationHint;      // raw value of rendering Hint
     public int strokeHint;
@@ -1248,7 +1250,7 @@ public final class SunGraphics2D
             case SunHints.INTKEY_AATEXT_LCD_CONTRAST:
                 stateChanged = false;
                 /* Already have validated it is an int 100 <= newHint <= 250 */
-                lcdTextContrast = sun.font.FontUtilities.textLuminanceDependent ? 100 : newHint;
+                lcdTextContrast = sun.font.FontUtilities.platformLcdMasks ? 100 : newHint;
                 break;
             case SunHints.INTKEY_INTERPOLATION:
                 interpolationHint = newHint;
