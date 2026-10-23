@@ -45,8 +45,10 @@
 #include "include/core/SkSurface.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/Recorder.h"
+#include "include/gpu/graphite/PrecompileContext.h"
 
 #include <memory>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -66,6 +68,10 @@ struct SKConfigContext {
     std::unordered_map<uint64_t, sk_sp<SkImage>> lcdTables;   // coverage correction per text colour and contrast
     sk_sp<SkSurface> lcdCoverage;            // scratch for sun.java2d.skia.lcd=accumulate, destination-sized
     uint32_t recordingGeneration = 1;        // advanced by every SKBackend_FlushRecording; the glyph caches date cells by it
+    // EXPERIMENT (x64hw): the pipeline keys of earlier sessions compiled ahead, off the flusher,
+    // on the context's executor (J2D_SKIA_PIPELINE_CACHE, J2D_SKIA_EXECUTOR)
+    std::unique_ptr<skgpu::graphite::PrecompileContext> precompileContext;
+    std::thread precompileThread;
 };
 
 struct SKSurfaceState {

@@ -48,6 +48,7 @@
 
 #include "include/core/SkBlender.h"
 #include "include/core/SkData.h"
+#include "include/core/SkExecutor.h"
 #include "include/effects/SkRuntimeEffect.h"
 #include "include/core/SkColorSpace.h"
 #include "include/core/SkMatrix.h"
@@ -80,6 +81,10 @@
 #include "include/gpu/graphite/Surface.h"
 
 #include <atomic>
+#include <cstdlib>
+#include <fstream>
+#include <mutex>
+#include <thread>
 #include <cmath>
 #include <cstring>
 #include <map>
@@ -122,13 +127,95 @@ static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as o
 // Graphics pipelines Graphite has built so far, over all contexts (flusher thread only).
 static uint64_t gPipelinesBuilt = 0;
 
+// EXPERIMENT (x64hw, 2026-10-23): pipelines compiled ahead of their first draw.
+// J2D_SKIA_PIPELINE_CACHE=<file> keeps the serialized key of every pipeline a
+// session built; the next session's context precompiles them on a thread of
+// its own (PrecompileContext) before the flusher needs them. J2D_SKIA_EXECUTOR=<n>
+// gives Graphite n worker threads for pipeline compilation (SkExecutor), so the
+// pipelines of one recording compile in parallel and the flusher waits for the
+// longest instead of the sum. Both default to off.
+// File layout: records of uint32 key hash, uint32 length, the key's bytes.
+namespace {
+
+std::unique_ptr<SkExecutor> gExecutor;
+std::mutex gPipelineCacheLock;                   // the callback runs on the compiling thread
+std::unordered_set<uint32_t> gStoredPipelineKeys;
+
+const char *pipelineCachePath() {
+    static const char *path = getenv("J2D_SKIA_PIPELINE_CACHE");
+    return path;
+}
+
+std::vector<sk_sp<SkData>> loadPipelineKeys() {
+    std::vector<sk_sp<SkData>> keys;
+    const char *path = pipelineCachePath();
+    if (path == nullptr) {
+        return keys;
+    }
+    std::ifstream in(path, std::ios::binary);
+    uint32_t hash, length;
+    while (in.read((char *) &hash, sizeof hash) && in.read((char *) &length, sizeof length) && length < (1u << 20)) {
+        sk_sp<SkData> key = SkData::MakeUninitialized(length);
+        if (!in.read((char *) key->writable_data(), length)) {
+            break;
+        }
+        std::lock_guard<std::mutex> lock(gPipelineCacheLock);
+        if (gStoredPipelineKeys.insert(hash).second) {
+            keys.push_back(std::move(key));
+        }
+    }
+    J2dRlsTraceLn(J2D_TRACE_INFO, "SKBackend: %zu pipeline keys from %s", keys.size(), path);
+    return keys;
+}
+
+void storePipelineKey(uint32_t hash, const sk_sp<SkData> &key) {
+    const char *path = pipelineCachePath();
+    if (path == nullptr || !key) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(gPipelineCacheLock);
+    if (!gStoredPipelineKeys.insert(hash).second) {
+        return;
+    }
+    std::ofstream out(path, std::ios::binary | std::ios::app);
+    const uint32_t length = (uint32_t) key->size();
+    out.write((const char *) &hash, sizeof hash);
+    out.write((const char *) &length, sizeof length);
+    out.write((const char *) key->data(), length);
+}
+
+} // namespace
+
 static void pipelineCacheEvent(ContextOptions::PipelineCallbackContext, ContextOptions::PipelineCacheOp op,
-                               const std::string &label, uint32_t keyHash, bool, sk_sp<SkData>) {
+                               const std::string &label, uint32_t keyHash, bool fromPrecompile, sk_sp<SkData> key) {
     const bool added = op == ContextOptions::PipelineCacheOp::kAddingPipeline;
     if (added) {
         gPipelinesBuilt++;
+        storePipelineKey(keyHash, key);
     }
-    SKStats_PipelineEvent(added, label.c_str(), keyHash);
+    SKStats_PipelineEvent(added, fromPrecompile, label.c_str(), keyHash);
+}
+
+// Compiles the stored keys of earlier sessions on a thread of the context's own.
+static void precompileStoredPipelines(SKConfigContext *cc) {
+    std::vector<sk_sp<SkData>> keys = loadPipelineKeys();
+    if (keys.empty()) {
+        return;
+    }
+    cc->precompileContext = cc->context->makePrecompileContext();
+    if (!cc->precompileContext) {
+        return;
+    }
+    PrecompileContext *pc = cc->precompileContext.get();
+    cc->precompileThread = std::thread([pc, keys = std::move(keys)]() {
+        int compiled = 0;
+        for (const sk_sp<SkData> &key : keys) {
+            if (pc->precompile(key)) {
+                compiled++;
+            }
+        }
+        J2dRlsTraceLn(J2D_TRACE_INFO, "SKBackend: precompiled %d of %zu stored pipelines", compiled, keys.size());
+    });
 }
 
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
@@ -200,6 +287,12 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     // Every pipeline Graphite builds or finds: the count and the labels of the built ones,
     // for J2D_SKIA_STATS (compile waits) and as the input of a precompile list.
     options.fPipelineCachingCallback = pipelineCacheEvent;
+    if (const char *threads = getenv("J2D_SKIA_EXECUTOR")) {   // EXPERIMENT, see pipelineCacheEvent
+        if (!gExecutor) {
+            gExecutor = SkExecutor::MakeFIFOThreadPool(std::max(1, atoi(threads)));
+        }
+        options.fExecutor = gExecutor.get();
+    }
     std::unique_ptr<Context> context = SKPlatform_MakeContext(config, options);
     if (!context) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create Graphite context");
@@ -216,6 +309,7 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     cc->context = std::move(context);
     gContexts[config] = cc;
     J2dTraceLn(J2D_TRACE_INFO, "SKBackend_ContextFor: created Graphite context for config %p", config);
+    precompileStoredPipelines(cc);   // EXPERIMENT, see pipelineCacheEvent
     return cc;
 }
 
@@ -245,6 +339,10 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     }
     cc->lcdTables.clear();
     cc->lcdCoverage.reset();
+    if (cc->precompileThread.joinable()) {   // a precompile still running must end before its context
+        cc->precompileThread.join();
+    }
+    cc->precompileContext.reset();
     cc->recorder.reset();
     cc->context.reset();
     delete cc;

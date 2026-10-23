@@ -100,11 +100,12 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu, found %llu\n",
+    fprintf(stderr, " | mesh draws %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_ATLAS_UPLOADS],
             (unsigned long long) stats.counters[SK_COUNT_PRESENTS_FAILED],
             (unsigned long long) stats.counters[SK_COUNT_PIPELINES_ADDED],
+            (unsigned long long) stats.counters[SK_COUNT_PIPELINES_PRECOMPILED],
             (unsigned long long) stats.counters[SK_COUNT_PIPELINES_FOUND]);
 
     int order[OPCODE_SLOTS];
@@ -160,14 +161,17 @@ void SKStats_Count(SKStatsCounter counter, uint64_t n) {
     }
 }
 
-void SKStats_PipelineEvent(bool added, const char *label, uint32_t keyHash) {
+void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash) {
     if (!SKStats_IsEnabled()) {
         return;
     }
     stats.counters[added ? SK_COUNT_PIPELINES_ADDED : SK_COUNT_PIPELINES_FOUND]++;
+    if (added && fromPrecompile) {
+        stats.counters[SK_COUNT_PIPELINES_PRECOMPILED]++;
+    }
     if (added) {
-        fprintf(stderr, "[%7llums] SKStats pipeline built: %08x %s\n",
-                (unsigned long long) ((SKStats_Now() - origin) / 1000000), (unsigned) keyHash, label);
+        fprintf(stderr, "[%7llums] SKStats pipeline %s: %08x %s\n", (unsigned long long) ((SKStats_Now() - origin) / 1000000),
+                fromPrecompile ? "precompiled" : "built", (unsigned) keyHash, label);
     }
 }
 

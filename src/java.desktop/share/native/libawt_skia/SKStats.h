@@ -64,6 +64,7 @@ enum SKStatsCounter {
     SK_COUNT_PRESENTS_FAILED,   // a window to present but no swap chain image
     SK_COUNT_PIPELINES_ADDED,   // graphics pipelines Graphite built (compiled) for the first time
     SK_COUNT_PIPELINES_FOUND,   // pipeline lookups that hit the cache
+    SK_COUNT_PIPELINES_PRECOMPILED,   // of the built ones, those built ahead from a stored key
     SK_COUNT_COUNT
 };
 
@@ -74,7 +75,7 @@ void SKStats_AddOp(int opcode, uint64_t nanos);
 void SKStats_Count(SKStatsCounter counter, uint64_t n = 1);
 // Graphite added a pipeline to its cache (built it) or found one; with the statistics on, an added
 // pipeline's label and key hash are printed, the input of a precompile list.
-void SKStats_PipelineEvent(bool added, const char *label, uint32_t keyHash);
+void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash);
 // Called at the end of every queue entry: prints and resets once a second has passed.
 void SKStats_EndOfEntry();
 
