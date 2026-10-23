@@ -12,7 +12,7 @@ export IDE_STATE_ROOT="${IDE_STATE_ROOT:-$HERE/ide}"
 CLASSES="${SCENE_CLASSES:-$HERE/out-classes}"
 JDK_WIN=$(cygpath -w "$(cd "$JDK" && pwd)")   # the isolated IDE is the java of this image, and nothing else
 ARM=$1; THEME=$2; SCALE=$3; OUT="${4:-$HERE/out/$(date +%F)/scenes}"; SCENES="${5:-}"
-case "$ARM" in A0) NAME=A0-software;; A1) NAME=A1-blend;; A2) NAME=A2-twopass;; A3) NAME=A3-accumulate;; R1) NAME=R1-d3d9;; *) echo "unknown arm" >&2; exit 2;; esac
+case "$ARM" in A0) NAME=A0-software;; A1) NAME=A1-blend;; A2) NAME=A2-twopass;; A3) NAME=A3-accumulate;; A4) NAME=A4-cycle;; R1) NAME=R1-d3d9;; *) echo "unknown arm" >&2; exit 2;; esac
 SEED="$IDE_STATE_ROOT/seed-$THEME"
 rm -rf "$SEED"; mkdir -p "$SEED"
 cp -r "$HERE/seed/common/." "$SEED/"; cp -r "$HERE/seed/$THEME/." "$SEED/"
