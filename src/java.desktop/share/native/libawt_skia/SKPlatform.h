@@ -120,9 +120,9 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // (size included, y down). displayScale is the scale of the strike's device
 // transform (2 on a 200 % display): the platform smooths text of a given size
 // in device-independent pixels at that display scale, not text of the device
-// pixel size at scale 1 (Direct2D samples coverage on a grid per
-// device-independent pixel, so the two differ; DirectWrite's linear coverage
-// does not). strokeWidth > 0 (device pixels)
+// pixel size at scale 1 (Direct2D halves its coverage sampling from a scale
+// of 1.8 on, so the two differ; DirectWrite's linear coverage does not).
+// strokeWidth > 0 (device pixels)
 // emboldens the glyph by that much, the way Java synthesizes bold for a font
 // without a bold face (FreeType's embolden by 1/24 em). False where the
 // platform has no such renderer for the request (the caller falls back to
@@ -137,11 +137,11 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
 // rounds a glyph origin to the nearest one), so the scaler renders that many
 // variants and the pipes land glyphs where the platform does. 0 where the
 // platform has no such grid or no mask route (the caller keeps the JDK's).
-// The grid is per device-independent pixel where the platform has one:
 // displayScale is the scale of the strike's device transform (2 on a 200 %
-// display), and the result is positions per device pixel.
-// Windows: DirectWrite, measured 4 per DIP in the natural-symmetric mode and 8
-// in the natural mode; macOS: 0 (CoreGraphics positions continuously).
+// display) for a platform whose grid depends on it; the result is positions
+// per device pixel. Windows: DirectWrite, measured 4 in the natural-symmetric
+// mode (2 from a display scale of 1.8 on) and 8 in the natural mode; macOS: 0
+// (CoreGraphics positions continuously).
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale);
 
 #endif /* SKPlatform_h_Included */

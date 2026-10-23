@@ -56,9 +56,15 @@ public class PlatformSmoothingSampleGridTest {
                 System.out.println(font.getName() + " not available, skipped");
                 continue;
             }
-            TreeSet<Integer> at1 = levels(font, 1), at2 = levels(font, 2);
+            TreeSet<Integer> at1 = levels(font, 1), at15 = levels(font, 1.5), at2 = levels(font, 2);
             System.out.println(font.getName() + " at 1x: " + at1.size() + " gray levels " + at1);
+            System.out.println(font.getName() + " at 1.5x: " + at15.size() + " gray levels " + at15);
             System.out.println(font.getName() + " at 2x: " + at2.size() + " gray levels " + at2);
+            // the coarse regime starts at a display scale of 1.8 (measured between 1.79 and 1.81): at
+            // 1.5 the sampling is still the fine one
+            if (at15.size() < 9) {
+                failures.append(font.getName()).append(" at 1.5x: ").append(at15.size()).append(" gray levels, Direct2D keeps its fine sampling below a scale of 1.8; ");
+            }
             // at 1x 16 steps in the symmetric mode (Inter), 8 in the natural mode (Segoe UI, hinted
             // TrueType at text sizes), plus the two ends; at 2x the platform's 4 steps plus the ends,
             // with a little room for a level the blend rounds apart
@@ -76,8 +82,8 @@ public class PlatformSmoothingSampleGridTest {
     }
 
     /** The distinct gray values of the line drawn black on white at the device scale. */
-    static TreeSet<Integer> levels(Font font, int scale) {
-        int w = 260 * scale, h = 24 * scale;
+    static TreeSet<Integer> levels(Font font, double scale) {
+        int w = (int) (260 * scale), h = (int) (24 * scale);
         BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = image.createGraphics();
         try {

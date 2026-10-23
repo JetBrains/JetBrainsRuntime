@@ -31,10 +31,11 @@
  *          faces landed up to 1/8 px off the platform's rendering (37 levels on
  *          stems). A single 'l' is drawn at 32 offsets across one pixel with
  *          fractional metrics; the number of distinct renderings is the grid.
- *          The grid is per device-independent pixel: on a 200 % display (a
- *          scale transform of 2, as Java's HiDPI support applies it) every face
- *          is in the symmetric mode and its 4 positions per DIP are 2 per
- *          device pixel.
+ *          The grid is per device pixel at every display scale (a scale
+ *          transform, as Java's HiDPI support applies it), but the symmetric
+ *          mode has two regimes: quarter pixels up to a display scale of 1.79,
+ *          half pixels from 1.81 on (measured 96 to 384 dpi), whatever the
+ *          pixel size; the natural mode keeps its eighths at every scale.
  * @requires (os.family == "windows")
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform PlatformPlacementGridTest
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platformCoverage PlatformPlacementGridTest
@@ -52,15 +53,19 @@ public class PlatformPlacementGridTest {
 
     public static void main(String[] args) throws Exception {
         StringBuilder failures = new StringBuilder();
-        // DirectWrite's grid is per DIP: at a device scale of 2 (a 200 % display, Java's scale
-        // transform) a 13 pt face is 26 px, every face is in the symmetric mode, and the four
-        // positions per DIP are two per device pixel
+        // At a device scale of 2 (a 200 % display, Java's scale transform) a 13 pt face is 26 px,
+        // every face is in the symmetric mode, and the symmetric mode's high-scale regime has two
+        // positions per device pixel. At 1.25 and 1.5 the grids are those of 1x: Segoe UI is still
+        // in the natural mode at 16.25 px (eighths), and symmetric faces keep their quarters.
         Object[][] cases = {
-            {new Font("Segoe UI", Font.PLAIN, 13), 8, "Segoe UI 13 (natural mode)", 1},
-            {new Font("Consolas", Font.PLAIN, 12), 8, "Consolas 12 (natural mode)", 1},
-            {interOrNull(), 4, "Inter 13 (natural-symmetric mode)", 1},
-            {new Font("Segoe UI", Font.PLAIN, 13), 2, "Segoe UI 13 at 2x (symmetric mode, 4 per DIP)", 2},
-            {interOrNull(), 2, "Inter 13 at 2x (4 per DIP)", 2},
+            {new Font("Segoe UI", Font.PLAIN, 13), 8, "Segoe UI 13 (natural mode)", 1.0},
+            {new Font("Consolas", Font.PLAIN, 12), 8, "Consolas 12 (natural mode)", 1.0},
+            {interOrNull(), 4, "Inter 13 (natural-symmetric mode)", 1.0},
+            {new Font("Segoe UI", Font.PLAIN, 13), 2, "Segoe UI 13 at 2x (symmetric mode, high-scale regime)", 2.0},
+            {interOrNull(), 2, "Inter 13 at 2x (high-scale regime)", 2.0},
+            {new Font("Segoe UI", Font.PLAIN, 13), 8, "Segoe UI 13 at 1.25x (natural mode)", 1.25},
+            {interOrNull(), 4, "Inter 13 at 1.25x", 1.25},
+            {interOrNull(), 4, "Inter 13 at 1.5x", 1.5},
         };
         for (Object[] c : cases) {
             Font font = (Font) c[0];
@@ -69,14 +74,14 @@ public class PlatformPlacementGridTest {
             }
             int expected = (Integer) c[1];
             String what = (String) c[2];
-            int scale = (Integer) c[3];
+            double scale = (Double) c[3];
             if (!font.getFamily().equalsIgnoreCase(font.getFontName().split(" ")[0]) && !font.getFamily().contains("Inter")
                 && !font.getFamily().equalsIgnoreCase("Segoe UI") && !font.getFamily().equalsIgnoreCase("Consolas")) {
                 System.out.println(what + ": font not available, skipped");
                 continue;
             }
             Set<String> distinct = new HashSet<>();
-            int w = 24 * scale, h = 28 * scale;
+            int w = (int) Math.ceil(24 * scale), h = (int) Math.ceil(28 * scale);
             for (int k = 0; k < 32; k++) {
                 BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
                 Graphics2D g = image.createGraphics();
@@ -88,7 +93,7 @@ public class PlatformPlacementGridTest {
                     g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
                     g.setColor(Color.BLACK);
                     g.setFont(font);
-                    g.drawString("l", (4 + k / 32f) / scale, 20f / scale);   // k/32 device pixels
+                    g.drawString("l", (float) ((4 + k / 32.0) / scale), (float) (20 / scale));   // k/32 device pixels
                 } finally {
                     g.dispose();
                 }

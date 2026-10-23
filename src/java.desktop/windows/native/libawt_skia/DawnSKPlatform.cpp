@@ -785,11 +785,12 @@ bool coverageMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
 // The native look: Direct2D with the system's parameters, text of the given
 // luminance on the opposite paper, coverage = what the paper lost. The target
 // runs at the display's DPI and the glyph is drawn in DIPs there, as every
-// Windows application draws its text: in the natural-symmetric mode Direct2D
-// samples the outline on a 4 x 4 grid per DIP, so a 13 DIP glyph at 192 dpi
-// has 4 coverage steps per device pixel where a 26 px glyph at 96 dpi has 16
-// (measured with dwref --dpi: same total ink, same blend parameters, the
-// natural mode and DirectWrite's own analysis textures are DPI-invariant).
+// Windows application draws its text: from a display scale of 1.8 on, Direct2D
+// samples natural-symmetric coverage on a 2 x 2 grid per device pixel instead
+// of 4 x 4, so a 13 DIP glyph at 192 dpi has 4 coverage steps per pixel where a
+// 26 px glyph at 96 dpi has 16 (dwref --dpi, --scale: same total ink, same
+// blend parameters, the natural mode and DirectWrite's own analysis textures
+// are DPI-invariant).
 bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
                   int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
 {
@@ -865,13 +866,19 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
 
 } // namespace
 
+// The display scale from which DirectWrite's symmetric mode halves its placement
+// and coverage sampling (measured between 1.792 and 1.8125; 173 dpi).
+const float HIGH_DPI_SCALE = 1.8f;
+
 // Measured with dwref --grid (one glyph at 64 offsets across a pixel, through the
 // glyph run analysis and Direct2D alike): the natural-symmetric mode positions
 // glyphs on quarter pixels, the natural mode on eighths, both to the nearest;
-// aliased and GDI-compatible modes on whole pixels. The grid is per
-// device-independent pixel (dwref --grid on a 192 dpi target: 2 positions per
-// device pixel), so a display scale above 1 leaves fewer positions in a device
-// pixel; an integer scale (100 %, 200 %) is exact, 125 % and 150 % are rounded.
+// aliased and GDI-compatible modes on whole pixels. The grid is per device
+// pixel at every display scale, but the symmetric mode has two regimes by the
+// display scale (dwref --scale, Direct2D targets from 96 to 384 dpi): quarter
+// pixels up to a scale of 1.79, half pixels from 1.81 on (and 2 x 2 coverage
+// samples per pixel instead of 4 x 4), whatever the pixel size; the natural
+// mode keeps its eighths at every scale.
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale)
 {
     if (typeface == nullptr || pixelSize <= 0) {
@@ -889,14 +896,11 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, f
     if (!face) {
         return 0;
     }
-    int perDip;
     switch (recommendedMode(text, face.Get(), pixelSize)) {
-        case DWRITE_RENDERING_MODE_NATURAL: perDip = 8; break;
-        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: perDip = 4; break;
+        case DWRITE_RENDERING_MODE_NATURAL: return 8;
+        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: return displayScale >= HIGH_DPI_SCALE ? 2 : 4;
         default: return 1;
     }
-    const long perDevicePixel = std::lround(perDip / displayScale);
-    return perDevicePixel < 1 ? 1 : (int) perDevicePixel;
 }
 
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
