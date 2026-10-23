@@ -80,13 +80,18 @@ public:
     // Starts (or continues) a batch for canvas/paint/atlas; a different triple
     // draws the open batch first. A plain colour paint (a blend mode, no
     // shader or runtime blender) does not end a batch when only its colour
-    // differs, if the batch samples an atlas: from the second colour on, the
-    // colour travels per vertex and the mesh paint is white, so tiles and
-    // glyphs of many colours share one draw, and one upload of the atlas
-    // cells staged for them. A batch of one colour carries no colour data.
-    // Plain quads keep a batch per colour: a coloured-vertex mesh costs more
-    // than their separate draws (measured on D3D11). Blenders that take the
-    // colour as a uniform (LCD, XOR) keep a batch per colour too.
+    // differs: from the second colour on, the colour travels per vertex and the
+    // mesh paint is white, so tiles, glyphs and plain quads (spans, runs, rect
+    // fills and outlines, lines) of many colours share one draw, and an atlas
+    // batch one upload of the cells staged for them. A batch of one colour
+    // carries no colour data. Blenders that take the colour as a uniform (LCD,
+    // XOR) keep a batch per colour. For plain quads the trade depends on the
+    // GPU: on the Parallels VM's paravirtual D3D11 a coloured-vertex mesh was
+    // slower than separate single-colour draws (2026-10-15); on an RTX 3080 Ti
+    // the separate draws are the cost (about 0.56 us of recording each), and
+    // merging makes small primitives of many colours 2.6 to 2.8x faster, with
+    // span-heavy fills (dozens of wide spans per primitive, RenderPerfTest
+    // FlatQuad) about 11 % slower for the colours they carry (2026-10-23).
     void begin(SkCanvas *c, const SkPaint &p, const sk_sp<SkImage> &atlas = nullptr, const SKQuadBatchTwoPass *passes = nullptr) {
         // A runtime blender (XOR, LCD) reads the destination. Backends without
         // framebuffer fetch (Dawn on D3D11) read it from a copy taken before the
@@ -99,7 +104,7 @@ public:
         splitOnOverlap = (!p.asBlendMode().has_value() && !SKBackend_FramebufferFetch()) || passes != nullptr;
         // Colours are not merged with an afterDraw hook either: it receives the
         // batch's paint and reads the colour from it.
-        const bool mergeColors = atlas != nullptr && passes == nullptr && !afterDraw && p.getShader() == nullptr
+        const bool mergeColors = passes == nullptr && !afterDraw && p.getShader() == nullptr
                                  && p.asBlendMode().has_value() && p.getColorFilter() == nullptr
                                  && p.getMaskFilter() == nullptr;
         // begin() runs per primitive (thousands per frame): no paint copy on the
