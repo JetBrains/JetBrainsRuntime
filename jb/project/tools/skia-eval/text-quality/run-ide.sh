@@ -38,7 +38,7 @@ case "$ARM" in
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 
-STATE="$HERE/ide/$NAME"
+STATE="${IDE_STATE_ROOT:-$HERE/ide}/$NAME"   # IDE_STATE_ROOT: where the arms' state lives (default: ide/ next to this script)
 mkdir -p "$STATE"/{config,system,log,plugins}
 if [ -n "$SEED" ]; then
   cp -r "$SEED"/. "$STATE/config/"
@@ -90,7 +90,7 @@ fi
 echo "pid $PID, waiting ${WAIT}s"
 sleep "$WAIT"
 if [ -n "$SHOT" ]; then
-  "$JDK/bin/java" -cp "$HERE/../skia-smoke/out" ScreenShot "$SHOT" 0
+  "$JDK/bin/java" -cp "${SMOKE_CLASSES:-$HERE/../skia-smoke/out}" ScreenShot "$SHOT" 0
 fi
 echo "--- idea.log: JRE, Skia, errors"
 grep -E "JRE:|Skia|ERROR" "$STATE/log/idea.log" 2>/dev/null | grep -v "\[cds\]" | head -8
