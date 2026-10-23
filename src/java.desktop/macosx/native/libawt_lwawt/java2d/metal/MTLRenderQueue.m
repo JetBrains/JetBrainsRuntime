@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -651,6 +651,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
+                        // the glyph caches belong to the context, not to the
+                        // destination: encode their pending quads, keep the cells
+                        [mtlc.glyphCacheAA flush];
+                        [mtlc.glyphCacheLCD flush];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                         } else {
@@ -669,13 +673,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
+                        [mtlc.glyphCacheAA flush];
+                        [mtlc.glyphCacheLCD flush];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                         } else {
                             [mtlc commitCommandBuffer:NO display:NO];
                         }
                     }
-
                     if (mtlInfo != NULL) {
                         mtlc = mtlInfo->context;
                     } else {
@@ -691,6 +696,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
+                            [mtlc.glyphCacheAA flush];
+                            [mtlc.glyphCacheLCD flush];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
@@ -706,6 +713,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
+                            [mtlc.glyphCacheAA flush];
+                            [mtlc.glyphCacheLCD flush];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }

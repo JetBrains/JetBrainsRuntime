@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,8 @@
  * been used relatively less than the others (and we will save the cells that
  * have been rendered more than the threshold defined here).
  */
-#define TIMES_RENDERED_THRESHOLD 5
+#define TIMES_RENDERED_THRESHOLD    5
+#define TRACE_TEXTURE               0
 
 @implementation MTLGlyphCache {
     MTLContext* _ctx;
@@ -99,12 +100,28 @@
     _cacheInfo->Flush = func;
     _cacheInfo->mtlc = _ctx;
     _cacheInfo->encoder = nil;
-    MTLTextureDescriptor *textureDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pixelFormat
-                                                               width:width
-                                                              height:height
-                                                           mipmapped:NO];
-    _cacheInfo->texture = [_ctx.device newTextureWithDescriptor:textureDescriptor];
+
+    // The texture comes from the context's pool: a freed cache returns it
+    // there once the command buffer that may still sample it has completed,
+    // and the next cache takes it back instead of allocating.
+
+    // TODO: add special usage flags in MTLTexturePool.getTexture(..., USAGE)
+    // usage = MTLTextureUsageShaderRead
+    // storage = MTLStorageModeManaged
+
+    _cacheInfo->texHandle = [_ctx.texturePool getTexture:width height:height format:pixelFormat];
+    [_cacheInfo->texHandle retain]; // keep reference alive
+    _cacheInfo->texture = [_cacheInfo->texHandle texture];
+
+    if (_cacheInfo->texture == nil) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGlyphCache.glyphCacheInitWidth: could not obtain a %dx%d texture", width, height);
+        [_cacheInfo->texHandle release];
+        free(_cacheInfo);
+        _cacheInfo = NULL;
+        return NO;
+    }
+    if (TRACE_TEXTURE) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLGlyphCache.glyphCacheInitWidth: texHandle=%p",
+                                     _cacheInfo->texHandle);
 
     return YES;
 }
@@ -217,6 +234,22 @@
 }
 
 /**
+ * Encodes the pending glyph quads that reference this cache. Unlike free,
+ * the cells and the texture stay valid, so a destination change does not
+ * cost the cached glyphs.
+ */
+- (void) flush
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.flush");
+    if (_cacheInfo == NULL) {
+        return;
+    }
+    if (_cacheInfo->Flush != NULL) {
+        _cacheInfo->Flush(_cacheInfo->mtlc);
+    }
+}
+
+/**
  * Invalidates and frees all cells and the cache itself. The "cache" pointer
  * becomes invalid after this function returns.
  */
@@ -229,20 +262,23 @@
 
     // flush any pending vertices that may be depending on the current
     // glyph cache
-    if (_cacheInfo->Flush != NULL) {
-        _cacheInfo->Flush(_cacheInfo->mtlc);
+    if (_ctx != nil) {
+        [self flush];
     }
-    if (_cacheInfo->texture != nil) {
+
+    if (_cacheInfo->texHandle != nil) {
+        if (TRACE_TEXTURE) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLGlyphCache.free: release texHandle=%p",
+                                         _cacheInfo->texHandle);
         if (_ctx != nil) {
-            // Encoded commands may still read the texture. The command
-            // buffer keeps it alive until it completes, so the caller
-            // does not need to wait for the GPU here.
+            // Encoded commands may still read the texture.
             // texture is retained by MTLCommandBufferWrapper
             // (released once the command buffer is completed):
-            [[_ctx getCommandBufferWrapper] registerResource:_cacheInfo->texture];
+            [[_ctx getCommandBufferWrapper] registerPooledTexture:_cacheInfo->texHandle];
+        } else {
+            [_cacheInfo->texHandle releaseTexture];
         }
-        // release texture reference anyway:
-        [_cacheInfo->texture release];
+        [_cacheInfo->texHandle release]; // free reference
+        _cacheInfo->texHandle = nil;
         _cacheInfo->texture = nil;
     }
 
@@ -261,8 +297,7 @@
 }
 
 - (void) dealloc {
-    // the context is being destroyed: release the texture directly
-    // ie avoid MTLCommandBufferWrapper registerAllocation():
+    // the context is being destroyed: release the textureHandle directly
     _ctx = nil;
     [self free];
     [super dealloc];

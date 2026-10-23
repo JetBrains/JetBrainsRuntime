@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -576,9 +576,10 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     vertexCacheIndex = 0;
     [mtlc.encoderManager endEncoder];
-    [blitTexture release];
 
     [mtlc commitCommandBuffer:YES display:NO];
+    [blitTexture release];
+
     return JNI_TRUE;
 }
 
@@ -782,6 +783,7 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTextRenderer_drawGlyphList");
 
+    JNI_COCOA_ENTER(env);
     images = (unsigned char *)
         (*env)->GetPrimitiveArrayCritical(env, imgArray, NULL);
     if (images != NULL) {
@@ -815,4 +817,5 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
         (*env)->ReleasePrimitiveArrayCritical(env, imgArray,
                                               images, JNI_ABORT);
     }
+    JNI_COCOA_EXIT(env);
 }
