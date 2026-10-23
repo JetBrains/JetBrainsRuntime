@@ -216,6 +216,9 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
         rq.lock();
         try {
             RenderBuffer buf = rq.getBuffer();
+            if (buf.position() == 0 && !rq.hasPendingPresent()) {
+                return;   // nothing was drawn since the last flush, and nothing waits to be presented
+            }
             rq.ensureCapacityAndAlignment(12, 4);
             buf.putInt(FLUSH_BUFFER);
             buf.putLong(getNativeOps());

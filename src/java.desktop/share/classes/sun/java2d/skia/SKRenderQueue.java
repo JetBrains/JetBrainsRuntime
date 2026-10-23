@@ -113,7 +113,12 @@ public final class SKRenderQueue extends RenderQueue {
     private native boolean flushBuffer(long buf, int limit, boolean presentAll);
 
     /** Windows drawn into but not presented yet; the flusher's timeout flush presents them. */
-    private boolean pendingPresent;
+    private volatile boolean pendingPresent;
+
+    /** Whether windows drawn into wait to be presented (read under the queue lock). */
+    boolean hasPendingPresent() {
+        return pendingPresent;
+    }
 
     private void flushBuffer(boolean timedOut) {
         int limit = buf.position();
