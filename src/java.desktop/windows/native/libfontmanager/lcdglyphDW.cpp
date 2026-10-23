@@ -200,6 +200,13 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindowsUsingDirectWrite
         if (FAILED(hr)) {
             FREE_AND_RETURN
         }
+        // The strike passes device pixels as the em size; the target's default
+        // pixels-per-DIP is the display's scale factor, which rendered every
+        // glyph that factor too large on a scaled display.
+        hr = target->SetPixelsPerDip(1.0f);
+        if (FAILED(hr)) {
+            FREE_AND_RETURN
+        }
         hr = target->SetCurrentTransform(&mx);
         if (FAILED(hr)) {
             FREE_AND_RETURN
