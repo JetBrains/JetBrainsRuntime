@@ -30,6 +30,8 @@
 #include "SKPlatform.h"
 #include "SKGlyphCache.h"
 #include "SKFontScaler.h"
+#include "SKLuminanceTypeface.h"
+#include "sun_font_SKFontScaler.h"
 #include "SKMaskCache.h"
 #include "SKQuadBatch.h"
 
@@ -66,6 +68,7 @@
 #include "modules/skparagraph/include/ParagraphStyle.h"
 #include "modules/skparagraph/include/TextStyle.h"
 #include "modules/skparagraph/include/TypefaceFontProvider.h"
+#include <map>
 #include <unordered_set>
 #include "include/core/SkTileMode.h"
 #include "include/core/SkVertices.h"
@@ -1616,6 +1619,34 @@ jlong SKBackend_GlyphsDrawnBySkia() {
     return gGlyphsDrawnBySkia;
 }
 
+// The cg grayscale route on Skia's text path (sun.java2d.skia.text.gray=cg): the strike's
+// typeface is replaced by the luminance proxy for the paint colour's class (the Java side's
+// classes: 16 levels, the class representative at its middle), so the masks in Skia's
+// strike and atlas are CoreGraphics' smoothed rendering for that colour.
+static int luminanceClass(const SkPaint &paint) {
+    const SkColor c = paint.getColor();
+    const int luminance = (SkColorGetR(c) * 299 + SkColorGetG(c) * 587 + SkColorGetB(c) * 114) / 1000;
+    return (luminance & ~0xf) | 0x8;
+}
+
+static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
+    return SKFontScaler_GrayMode(pScalerContext) == sun_font_SKFontScaler_GRAY_CG
+           && font.getEdging() == SkFont::Edging::kAntiAlias && font.getTypeface() != nullptr;
+}
+
+static void applyGrayRoute(SkFont &font, jlong pScalerContext, const SkPaint &paint) {
+    if (takesGrayRoute(font, pScalerContext)) {
+        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(paint)));
+    }
+}
+
+// The font manager for the fallback runs: the platform's, or its luminance proxy when the
+// strike takes the cg route, so the characters the strike's font lacks get the route too.
+static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, const SkPaint &paint) {
+    sk_sp<SkFontMgr> platform = SKPlatform_FontManager();
+    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(paint)) : platform;
+}
+
 void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions) {
@@ -1655,6 +1686,7 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
         if (!SKFontScaler_ResolveGlyph(pScalerContext, codes[i], &font, &glyph)) {
             continue;
         }
+        applyGrayRoute(font, pScalerContext, paint);
         if (font.getTypeface() != runTypeface) {
             flushRun();
             runFont = font;
@@ -1743,10 +1775,13 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     if (smoothing) {
         font.setHinting(SkFontHinting::kNormal);   // as DrawGlyphsBySkia: the CoreText host's smoothed masks
     }
+    const SkPaint paint = SKBackend_MakePaint(true);
+    sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, paint);
+    applyGrayRoute(font, pScalerContext, paint);
     const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
     // Paragraph direction left to right (the shaper reorders right-to-left runs within it);
     // Java's drawString takes it from the first strong character.
-    auto fonts = SkShaper::MakeFontMgrRunIterator(utf8.c_str(), utf8.size(), font, SKPlatform_FontManager());
+    auto fonts = SkShaper::MakeFontMgrRunIterator(utf8.c_str(), utf8.size(), font, fallback);
     auto bidi = SkShapers::unicode::BidiRunIterator(s.unicode, utf8.c_str(), utf8.size(), 0);
     auto script = SkShapers::HB::ScriptRunIterator(utf8.c_str(), utf8.size());
     auto language = SkShaper::MakeStdLanguageRunIterator(utf8.c_str(), utf8.size());
@@ -1769,7 +1804,7 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     if (!blob) {
         return;
     }
-    g.canvas->drawTextBlob(blob, originX, originY, SKBackend_MakePaint(true));
+    g.canvas->drawTextBlob(blob, originX, originY, paint);
     gGlyphsShapedBySkia += (jlong) handler.glyphs;
     gGlyphsDrawnBySkia += (jlong) handler.glyphs;
 }
@@ -1788,18 +1823,25 @@ namespace tl = skia::textlayout;
 // (TextStyle selects fonts by family name), the platform font manager for fallback.
 struct Paragraphs {
     sk_sp<tl::TypefaceFontProvider> provider;
-    sk_sp<tl::FontCollection> collection;
+    std::map<const SkFontMgr *, sk_sp<tl::FontCollection>> collections;   // by fallback manager
     std::unordered_set<SkTypefaceID> registered;
+
+    const sk_sp<tl::FontCollection> &collection(const sk_sp<SkFontMgr> &fallback) {
+        sk_sp<tl::FontCollection> &c = collections[fallback.get()];
+        if (!c) {
+            c = sk_make_sp<tl::FontCollection>();
+            c->setAssetFontManager(provider);
+            c->setDefaultFontManager(fallback);
+            c->enableFontFallback();
+        }
+        return c;
+    }
 };
 
 Paragraphs &paragraphs() {
     static Paragraphs instance = [] {
         Paragraphs p;
         p.provider = sk_make_sp<tl::TypefaceFontProvider>();
-        p.collection = sk_make_sp<tl::FontCollection>();
-        p.collection->setAssetFontManager(p.provider);
-        p.collection->setDefaultFontManager(SKPlatform_FontManager());
-        p.collection->enableFontFallback();
         return p;
     }();
     return instance;
@@ -1825,11 +1867,24 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
     style.setTextAlign(tl::TextAlign::kLeft);
     style.setTextDirection(tl::TextDirection::kLtr);
     style.setApplyRoundingHack(false);
-    std::unique_ptr<tl::ParagraphBuilder> builder = tl::ParagraphBuilder::make(style, p.collection, s.unicode);
+    const SkPaint paint = SKBackend_MakePaint(true);
+    // the fallback manager of the first run decides for the paragraph (runs of other colours
+    // get its luminance class for their fallback glyphs)
+    sk_sp<SkFontMgr> fallback = SKPlatform_FontManager();
+    {
+        SkFont first;
+        SkPaint firstPaint = paint;
+        if (flags[0] & SK_PARAGRAPH_COLOUR) {
+            firstPaint.setColor((SkColor) colours[0]);
+        }
+        if (SKFontScaler_Font(contexts[0], &first)) {
+            fallback = fallbackManager(first, contexts[0], firstPaint);
+        }
+    }
+    std::unique_ptr<tl::ParagraphBuilder> builder = tl::ParagraphBuilder::make(style, p.collection(fallback), s.unicode);
     if (!builder) {
         return;
     }
-    const SkPaint paint = SKBackend_MakePaint(true);
     jint start = 0;
     for (jint r = 0; r < runCount; r++) {
         const jint end = std::min(runEnds[r], length);
@@ -1843,6 +1898,12 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         if (smoothing) {
             font.setHinting(SkFontHinting::kNormal);
         }
+        SkPaint runPaint = paint;
+        runPaint.setAntiAlias(font.getEdging() != SkFont::Edging::kAlias);   // the decorations follow the text's edging
+        if (flags[r] & SK_PARAGRAPH_COLOUR) {
+            runPaint.setColor((SkColor) colours[r]);
+        }
+        applyGrayRoute(font, contexts[r], runPaint);
         sk_sp<SkTypeface> typeface = font.refTypeface();
         if (p.registered.insert(typeface->uniqueID()).second) {
             p.provider->registerTypeface(typeface, typefaceAlias(typeface.get()));
@@ -1857,11 +1918,6 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         // as DrawShapedBySkia: Java's drawString applies no kerning and no ligatures
         for (const char *feature : {"kern", "liga", "clig", "calt"}) {
             ts.addFontFeature(SkString(feature), 0);
-        }
-        SkPaint runPaint = paint;
-        runPaint.setAntiAlias(font.getEdging() != SkFont::Edging::kAlias);   // the decorations follow the text's edging
-        if (flags[r] & SK_PARAGRAPH_COLOUR) {
-            runPaint.setColor((SkColor) colours[r]);
         }
         ts.setForegroundPaint(runPaint);
         ts.setColor(runPaint.getColor());

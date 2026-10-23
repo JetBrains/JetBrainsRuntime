@@ -32,5 +32,7 @@ bool SKFontScaler_IsAxisAligned(jlong pContext);
 // The strike's own SkFont (size, edging, sub-pixel positioning, synthetic styles), for
 // shaping the strike's text with Skia's shaper.
 bool SKFontScaler_Font(jlong pContext, SkFont *font);
+// The strike's grayscale route (sun.font.SKFontScaler.GRAY_*), for the text path to apply it.
+jint SKFontScaler_GrayMode(jlong pContext);
 
 #endif /* SKFontScaler_h_Included */

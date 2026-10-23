@@ -582,6 +582,12 @@ bool SKFontScaler_Font(jlong pContext, SkFont *font)
     return true;
 }
 
+jint SKFontScaler_GrayMode(jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context != nullptr ? context->grayMode : 0;
+}
+
 bool SKFontScaler_IsAxisAligned(jlong pContext)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
