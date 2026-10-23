@@ -70,12 +70,14 @@ public class PlatformGlyphMaskTest {
             // weights light text over dark text by itself. A mask that already carries the platform's
             // weighting must be composited plainly (contrast 100, the linear blend) to show the
             // platform's ratio; the default contrast on top of it doubles the effect (printed).
-            int contrast = route.equals("smoothed") && mode.equals("lcd") ? 100 : 140;
-            double dark = ink(font, aa, Color.BLACK, Color.WHITE, contrast);
-            double light = ink(font, aa, Color.WHITE, Color.BLACK, contrast);
-            if (contrast == 100) {
-                System.out.printf("%s lcd at the default contrast 140: light/dark %.3f%n", route,
-                                  ink(font, aa, Color.WHITE, Color.BLACK, 140) / ink(font, aa, Color.BLACK, Color.WHITE, 140));
+            // With the platform route active the graphics state blends plainly whatever contrast
+            // is asked for (SunGraphics2D.lcdTextContrast), so the hint is left at 140 here and the
+            // ratio must still be DirectWrite's; the explicit 100 is printed as the control.
+            double dark = ink(font, aa, Color.BLACK, Color.WHITE, 140);
+            double light = ink(font, aa, Color.WHITE, Color.BLACK, 140);
+            if (route.equals("smoothed") && mode.equals("lcd")) {
+                System.out.printf("%s lcd at an explicit contrast 100: light/dark %.3f%n", route,
+                                  ink(font, aa, Color.WHITE, Color.BLACK, 100) / ink(font, aa, Color.BLACK, Color.WHITE, 100));
             }
             double area = outlineArea(font);
             double ratio = light / dark;

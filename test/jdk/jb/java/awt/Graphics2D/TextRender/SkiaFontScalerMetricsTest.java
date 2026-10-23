@@ -114,9 +114,22 @@ public class SkiaFontScalerMetricsTest {
                         throw new RuntimeException(where + ": " + names[i] + " " + b + " (Skia) vs " + a + " (platform)");
                     }
                 }
+                // Windows, whole pixels: the FreeType strike rounds the *hinted* advance (a
+                // bytecode-hinted font like Arial moves stems and widths by a pixel), the Skia
+                // scaler rounds the linear one, as DirectWrite's natural layout does. Decision of
+                // 2026-10-23 (linear rounding, to be reviewed for the final verification): the
+                // reference for whole-pixel advances on Windows is the platform's fractional
+                // advance rounded in device pixels.
+                boolean windows = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows");
+                Object linearStrike = windows && !fm ? getStrike.invoke(font2D, font, new FontRenderContext(
+                        AffineTransform.getScaleInstance(scale, scale), RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
+                        RenderingHints.VALUE_FRACTIONALMETRICS_ON)) : null;
                 for (int c = 32; c <= 126; c++) {
                     int glyph = (int) charToGlyph.invoke(mapper, (char) c);
                     float a = (float) strikeAdvance.invoke(strike, glyph);
+                    if (linearStrike != null) {
+                        a = (float) (Math.round((float) strikeAdvance.invoke(linearStrike, glyph) * scale) / scale);
+                    }
                     float b = (float) scalerAdvance.invoke(scaler, context, glyph) / (float) scale;
                     if (Math.abs(a - b) > 1e-3f) {
                         throw new RuntimeException(where + ": advance of '" + (char) c + "' " + b + " (Skia) vs " + a + " (platform)");

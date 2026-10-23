@@ -226,7 +226,13 @@ public final class SunGraphics2D
 
     /* A gamma adjustment to the colour used in lcd text blitting */
     public int lcdTextContrast;
-    private static int lcdTextContrastDefaultValue = 140;
+    /* The LCD blend's gamma (the contrast / 100 exponent of the LCD loops and the GPU
+     * pipes' tables). When the Skia scaler's glyph masks already carry the platform's
+     * own text weighting for the text luminance (sun.java2d.skia.text.gray=platform or
+     * cg, FontUtilities.textLuminanceDependent), a second gamma on top would double it:
+     * such masks are composited plainly, contrast 100, whatever the hint says.
+     */
+    private static int lcdTextContrastDefaultValue = sun.font.FontUtilities.textLuminanceDependent ? 100 : 140;
 
     private int interpolationHint;      // raw value of rendering Hint
     public int strokeHint;
@@ -1242,7 +1248,7 @@ public final class SunGraphics2D
             case SunHints.INTKEY_AATEXT_LCD_CONTRAST:
                 stateChanged = false;
                 /* Already have validated it is an int 100 <= newHint <= 250 */
-                lcdTextContrast = newHint;
+                lcdTextContrast = sun.font.FontUtilities.textLuminanceDependent ? 100 : newHint;
                 break;
             case SunHints.INTKEY_INTERPOLATION:
                 interpolationHint = newHint;
