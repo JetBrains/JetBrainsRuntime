@@ -848,6 +848,31 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
 
 } // namespace
 
+// Measured with dwref --grid (one glyph at 64 offsets across a pixel, through the
+// glyph run analysis and Direct2D alike): the natural-symmetric mode positions
+// glyphs on quarter pixels, the natural mode on eighths, both to the nearest;
+// aliased and GDI-compatible modes on whole pixels.
+int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize)
+{
+    if (typeface == nullptr || pixelSize <= 0) {
+        return 0;
+    }
+    DWriteText &text = dwriteText();
+    std::lock_guard<std::mutex> guard(text.lock);
+    if (!text.init()) {
+        return 0;
+    }
+    ComPtr<IDWriteFontFace> face = text.faceFor(typeface);
+    if (!face) {
+        return 0;
+    }
+    switch (recommendedMode(text, face.Get(), pixelSize)) {
+        case DWRITE_RENDERING_MODE_NATURAL: return 8;
+        case DWRITE_RENDERING_MODE_NATURAL_SYMMETRIC: return 4;
+        default: return 1;
+    }
+}
+
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
                                   bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask)
 {

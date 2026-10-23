@@ -125,5 +125,13 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 24;
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, int luminance,
                                   bool lcd, float strokeWidth, float originX, float originY, int width, int height, uint8_t *mask);
+// The platform rasterizer's horizontal placement grid for a typeface at a
+// pixel size: how many sub-pixel positions per pixel it distinguishes (it
+// rounds a glyph origin to the nearest one), so the scaler renders that many
+// variants and the pipes land glyphs where the platform does. 0 where the
+// platform has no such grid or no mask route (the caller keeps the JDK's).
+// Windows: DirectWrite, measured 4 in the natural-symmetric mode and 8 in the
+// natural mode; macOS: 0 (CoreGraphics positions continuously).
+int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize);
 
 #endif /* SKPlatform_h_Included */

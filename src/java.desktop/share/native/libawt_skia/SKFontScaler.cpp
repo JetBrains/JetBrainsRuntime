@@ -446,7 +446,13 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const bool lcd = font.getEdging() == SkFont::Edging::kSubpixelAntiAlias;
     const bool aa = font.getEdging() != SkFont::Edging::kAlias;
     const bool subpixel = aa && !lcd && context->fractionalMetrics && (subX > 1 || subY > 1);
-    const int resX = subpixel ? subX : 1, resY = subpixel ? subY : 1;
+    // Under the platform's mask routes the variants follow the platform rasterizer's own
+    // placement grid (DirectWrite: 4 or 8 positions per pixel by rendering mode), so a glyph
+    // lands where the platform would put it; otherwise the JDK's resolution.
+    const bool platformRoute = context->grayMode == sun_font_SKFontScaler_GRAY_CG
+                               || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE;
+    const int platformGrid = subpixel && platformRoute ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize()) : 0;
+    const int resX = subpixel ? (platformGrid > 0 ? platformGrid : subX) : 1, resY = subpixel ? subY : 1;
     // Grayscale variants (SKFontScaler, sun.java2d.skia.text.gray). The JDK's
     // CoreGraphics renderer smooths without sub-pixels and averages the
     // channels (CGGlyphImages.m, CGGI_ConvertBWPixelToByteGray); Skia's host
