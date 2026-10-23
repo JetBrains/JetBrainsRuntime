@@ -129,10 +129,17 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
 
     private static boolean useNativesForRotatedText;
 
-    // force text-rendering pipeline to use FreeType
+    /* The source of LCD glyph images for installed fonts on Windows is a stated
+     * choice, sun.java2d.font.lcdGlyphs = gdi | directwrite | scaler, never an
+     * override of the selected scaler: with no choice stated, the JDK's own
+     * scaler keeps GDI's ClearType glyphs (what Windows users have seen since
+     * JDK 6) and a selected scaler (sun.java2d.font.scaler=skia) rasterizes its
+     * own. The older JBR properties freetype.font.rendering (= scaler) and
+     * directwrite.font.rendering (= directwrite) remain as aliases.
+     */
     private static boolean forceFreeTypeRendering;
-
     private static boolean useDirectWrite;
+    private static String lcdGlyphSource = "gdi";
 
     // DirectWrite rendering options' values can be found in MSDN documentation
     // for IDWriteBitmapRenderTarget::DrawGlyphRun method and its parameters
@@ -159,8 +166,27 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
         if (FontUtilities.isWindows && !FontUtilities.useJDKScaler && !GraphicsEnvironment.isHeadless()) {
             String rotatedProperty = System.getProperty("rotated.text.native.rendering");
             useNativesForRotatedText = rotatedProperty == null || Boolean.parseBoolean(rotatedProperty);
-            forceFreeTypeRendering = Boolean.getBoolean("freetype.font.rendering");
-            useDirectWrite = Boolean.getBoolean("directwrite.font.rendering") && isDirectWriteAvailable();
+            String source = System.getProperty("sun.java2d.font.lcdGlyphs");
+            if (source == null) {
+                source = Boolean.getBoolean("freetype.font.rendering") ? "scaler"
+                       : Boolean.getBoolean("directwrite.font.rendering") ? "directwrite"
+                       : FontUtilities.useSkiaScaler ? "scaler" : "gdi";
+            }
+            if (!source.equals("gdi") && !source.equals("directwrite") && !source.equals("scaler")) {
+                if (FontUtilities.isLogging()) {
+                    FontUtilities.logWarning("sun.java2d.font.lcdGlyphs=" + source + " is not gdi, directwrite or scaler; using gdi");
+                }
+                source = "gdi";
+            }
+            if (source.equals("directwrite") && !isDirectWriteAvailable()) {
+                if (FontUtilities.isLogging()) {
+                    FontUtilities.logWarning("DirectWrite glyph rendering is not available; LCD glyphs come from GDI");
+                }
+                source = "gdi";
+            }
+            lcdGlyphSource = source;
+            forceFreeTypeRendering = source.equals("scaler");
+            useDirectWrite = source.equals("directwrite");
             if (useDirectWrite) {
                 String options = System.getProperty("directwrite.font.rendering.options");
                 if (options != null) {
