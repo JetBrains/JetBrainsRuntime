@@ -65,6 +65,9 @@ enum SKStatsCounter {
     SK_COUNT_PIPELINES_ADDED,   // graphics pipelines Graphite built (compiled) for the first time
     SK_COUNT_PIPELINES_FOUND,   // pipeline lookups that hit the cache
     SK_COUNT_PIPELINES_PRECOMPILED,   // of the built ones, those built ahead from a stored key
+    SK_COUNT_BLOB_LOADS,        // EXPERIMENT: Dawn blob cache lookups (J2D_SKIA_DAWN_CACHE)
+    SK_COUNT_BLOB_HITS,         // of those, found
+    SK_COUNT_BLOB_STORES,       // blobs Dawn handed over for storing
     SK_COUNT_COUNT
 };
 

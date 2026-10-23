@@ -141,8 +141,13 @@ std::unique_ptr<SkExecutor> gExecutor;
 std::mutex gPipelineCacheLock;                   // the callback runs on the compiling thread
 std::unordered_set<uint32_t> gStoredPipelineKeys;
 
+const char *envOrNull(const char *name) {   // an empty value counts as unset
+    const char *value = getenv(name);
+    return value != nullptr && *value != 0 ? value : nullptr;
+}
+
 const char *pipelineCachePath() {
-    static const char *path = getenv("J2D_SKIA_PIPELINE_CACHE");
+    static const char *path = envOrNull("J2D_SKIA_PIPELINE_CACHE");
     return path;
 }
 
@@ -287,7 +292,7 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     // Every pipeline Graphite builds or finds: the count and the labels of the built ones,
     // for J2D_SKIA_STATS (compile waits) and as the input of a precompile list.
     options.fPipelineCachingCallback = pipelineCacheEvent;
-    if (const char *threads = getenv("J2D_SKIA_EXECUTOR")) {   // EXPERIMENT, see pipelineCacheEvent
+    if (const char *threads = envOrNull("J2D_SKIA_EXECUTOR")) {   // EXPERIMENT, see pipelineCacheEvent
         if (!gExecutor) {
             gExecutor = SkExecutor::MakeFIFOThreadPool(std::max(1, atoi(threads)));
         }

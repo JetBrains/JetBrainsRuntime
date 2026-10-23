@@ -75,6 +75,7 @@ public final class Win32SKGraphicsConfig extends Win32GraphicsConfig
         this.pConfigInfo = pConfigInfo;
         this.contextCaps = new SKGraphicsConfig.ContextCaps(getAdapterDescription(pConfigInfo));
         Disposer.addRecord(disposerReferent, new Win32SKGCDisposerRecord(pConfigInfo));
+        SKEnvironment.prepareContextEarly(pConfigInfo);
     }
 
     /** The configuration for {@code device}, or null if Skia cannot run on it. */

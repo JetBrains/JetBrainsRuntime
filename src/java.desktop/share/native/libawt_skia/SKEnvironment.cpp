@@ -28,6 +28,7 @@
 // (MTLSKEnvironment.mm on macOS, DawnSKEnvironment.cpp on Windows).
 
 #include "jni.h"
+#include "jlong.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "SKBackend.h"
 #include "SKGlyphCache.h"
@@ -113,6 +114,22 @@ Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, ji
 {
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses);
+}
+
+} // extern "C"
+
+// EXPERIMENT (x64hw, 2026-10-23): the Graphite context of a configuration created
+// on the flusher before the first draw needs it (SKEnvironment.prepareContext
+// through flushAndInvokeNow), so the precompile of stored pipeline keys starts
+// earlier (SKBackend_ContextFor, J2D_SKIA_PIPELINE_CACHE).
+extern "C" {
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_prepareContext(JNIEnv *env, jclass clazz, jlong pConfig)
+{
+    { SKPlatformScope scope;
+    SKBackend_ContextFor((SKPlatformConfig *) jlong_to_ptr(pConfig));
+    } // SKPlatformScope
 }
 
 } // extern "C"

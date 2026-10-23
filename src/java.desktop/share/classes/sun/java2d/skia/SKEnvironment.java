@@ -449,4 +449,23 @@ public final class SKEnvironment {
     }
 
     private static native long[] glyphCacheStatsNative();
+
+    // EXPERIMENT (x64hw, 2026-10-23): with J2D_SKIA_PIPELINE_CACHE set, the native context of a new
+    // configuration is created on the flusher right away, so the precompile of the stored pipeline keys
+    // starts before the first draw rather than with it.
+    public static void prepareContextEarly(long pConfig) {
+        String cache = System.getenv("J2D_SKIA_PIPELINE_CACHE");
+        if (cache == null || cache.isEmpty()) {
+            return;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushAndInvokeNow(() -> prepareContext(pConfig));
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native void prepareContext(long pConfig);
 }
