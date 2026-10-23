@@ -32,7 +32,17 @@ import sun.java2d.pipe.OutlineTextRenderer;
 import sun.java2d.pipe.RenderQueue;
 
 import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Composite;
+import java.awt.Font;
+import java.awt.font.TextAttribute;
+import java.text.AttributedCharacterIterator;
+import java.text.AttributedCharacterIterator.Attribute;
+import java.text.CharacterIterator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import sun.java2d.pipe.AttributedTextPipe;
 import sun.font.GlyphList;
 import sun.font.SkiaDrawable;
 
@@ -43,9 +53,11 @@ import sun.font.SkiaDrawable;
  * codes and positions go to Skia's own text path instead (Skia's strike, atlas
  * and blending; {@link SKEnvironment#textBySkia()}). With {@code =shaper}, the
  * characters of {@code drawString} and {@code drawChars} are shaped by Skia's
- * shaper too, instead of Java's layout ({@link SKEnvironment#textShapedBySkia()}).
+ * shaper too, instead of Java's layout ({@link SKEnvironment#textShapedBySkia()});
+ * with {@code =paragraph}, attributed strings are laid out by Skia's paragraph
+ * engine ({@link SKEnvironment#textParagraphBySkia()}).
  */
-final class SKTextRenderer extends BufferedTextPipe {
+final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPipe {
 
     SKTextRenderer(RenderQueue rq) {
         super(rq);
@@ -118,6 +130,122 @@ final class SKTextRenderer extends BufferedTextPipe {
 
     /** Skia's shaper: the characters shaped by HarfBuzz with Skia's fallback and drawn as one text blob. */
     private static native void drawShapedBySkia(long pScalerContext, boolean smoothing, float originX, float originY, String text);
+
+    /**
+     * Lays out and draws the attributed string with Skia's paragraph engine when
+     * every run is a font (FONT, or FAMILY/SIZE/WEIGHT/POSTURE), a foreground colour,
+     * an underline or a strikethrough, and every run's strike is on the Skia scaler
+     * with an axis-aligned transform; false leaves it to Java's TextLayout.
+     */
+    @Override
+    public boolean drawString(SunGraphics2D sg2d, AttributedCharacterIterator it, float x, float y) {
+        if (!SKEnvironment.textParagraphBySkia()) {
+            return false;
+        }
+        final int begin = it.getBeginIndex(), end = it.getEndIndex();
+        StringBuilder text = new StringBuilder(end - begin);
+        for (char c = it.first(); c != CharacterIterator.DONE; c = it.next()) {
+            text.append(c);
+        }
+        List<Integer> ends = new ArrayList<>();
+        List<Long> contexts = new ArrayList<>();
+        List<Integer> colours = new ArrayList<>();
+        List<Integer> flags = new ArrayList<>();
+        List<SkiaDrawable> strikes = new ArrayList<>();
+        for (int pos = begin; pos < end; ) {
+            it.setIndex(pos);
+            final int limit = it.getRunLimit();
+            Map<Attribute, Object> attrs = it.getAttributes();
+            Font font = null;
+            boolean fontAttrs = false;
+            Color colour = null;
+            int runFlags = 0;
+            for (Map.Entry<Attribute, Object> e : attrs.entrySet()) {
+                Attribute a = e.getKey();
+                Object v = e.getValue();
+                if (v == null) {
+                    continue;
+                }
+                if (a == TextAttribute.FONT) {
+                    if (!(v instanceof Font f)) {
+                        return false;
+                    }
+                    font = f;
+                } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE) {
+                    fontAttrs = true;
+                } else if (a == TextAttribute.FOREGROUND) {
+                    if (!(v instanceof Color c)) {
+                        return false;
+                    }
+                    colour = c;
+                } else if (a == TextAttribute.UNDERLINE) {
+                    if (!TextAttribute.UNDERLINE_ON.equals(v)) {
+                        return false;
+                    }
+                    runFlags |= 1;
+                } else if (a == TextAttribute.STRIKETHROUGH) {
+                    if (!TextAttribute.STRIKETHROUGH_ON.equals(v)) {
+                        return false;
+                    }
+                    runFlags |= 2;
+                } else {
+                    return false;
+                }
+            }
+            if (font == null) {
+                if (!fontAttrs) {
+                    return false;   // TextLayout's default fonts: left to it
+                }
+                font = Font.getFont(attrs);
+            }
+            FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
+            if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD
+                    || !(info.fontStrike instanceof SkiaDrawable strike) || strike.skiaScalerContext() == 0 || !strike.drawsBySkia()) {
+                return false;
+            }
+            ends.add(limit - begin);
+            contexts.add(strike.skiaScalerContext());
+            colours.add(colour != null ? colour.getRGB() : 0);
+            flags.add(runFlags | (colour != null ? 4 : 0));
+            strikes.add(strike);
+            pos = limit;
+        }
+        final float devx, devy;
+        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+            double[] origin = {x, y};
+            sg2d.transform.transform(origin, 0, origin, 0, 1);
+            devx = (float) origin[0];
+            devy = (float) origin[1];
+        } else {
+            devx = x + sg2d.transX;
+            devy = y + sg2d.transY;
+        }
+        Composite comp = sg2d.composite;
+        if (comp == AlphaComposite.Src) {
+            comp = AlphaComposite.SrcOver;
+        }
+        final String string = text.toString();
+        final int[] endArray = ends.stream().mapToInt(Integer::intValue).toArray();
+        final long[] contextArray = contexts.stream().mapToLong(Long::longValue).toArray();
+        final int[] colourArray = colours.stream().mapToInt(Integer::intValue).toArray();
+        final int[] flagArray = flags.stream().mapToInt(Integer::intValue).toArray();
+        rq.lock();
+        try {
+            validateContext(sg2d, comp);
+            for (SkiaDrawable strike : strikes) {
+                rq.addReference(strike);
+            }
+            final boolean smoothing = SKEnvironment.textSmoothing();
+            rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, devx, devy, string, endArray, contextArray, colourArray, flagArray));
+        } finally {
+            rq.unlock();
+        }
+        return true;
+    }
+
+    /** Skia's paragraph engine: runs of (strike, colour, decorations) laid out on one line and painted at the baseline origin. */
+    private static native void drawParagraphBySkia(boolean smoothing, float originX, float originY, String text,
+                                                   int[] runEnds, long[] contexts, int[] colours, int[] flags);
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {

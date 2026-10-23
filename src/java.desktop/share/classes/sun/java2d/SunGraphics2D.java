@@ -94,6 +94,7 @@ import sun.java2d.pipe.PixelFillPipe;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.ShapeDrawPipe;
 import sun.java2d.pipe.ShapeSpanIterator;
+import sun.java2d.pipe.AttributedTextPipe;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.ValidatePipe;
 
@@ -2907,6 +2908,9 @@ public final class SunGraphics2D
         if (iterator.getBeginIndex() == iterator.getEndIndex()) {
             return; /* nothing to draw */
         }
+        if (textpipe instanceof AttributedTextPipe pipe && pipe.drawString(this, iterator, (float) x, (float) y)) {
+            return;
+        }
         TextLayout tl = new TextLayout(iterator, getFontRenderContext());
         tl.draw(this, (float) x, (float) y);
     }
@@ -2918,6 +2922,9 @@ public final class SunGraphics2D
         }
         if (iterator.getBeginIndex() == iterator.getEndIndex()) {
             return; /* nothing to draw */
+        }
+        if (textpipe instanceof AttributedTextPipe pipe && pipe.drawString(this, iterator, x, y)) {
+            return;
         }
         TextLayout tl = new TextLayout(iterator, getFontRenderContext());
         tl.draw(this, x, y);

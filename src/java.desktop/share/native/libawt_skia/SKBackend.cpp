@@ -61,6 +61,12 @@
 #include "modules/skshaper/include/SkShaper_skunicode.h"
 #include "modules/skunicode/include/SkUnicode.h"
 #include "modules/skunicode/include/SkUnicode_icu.h"
+#include "modules/skparagraph/include/FontCollection.h"
+#include "modules/skparagraph/include/ParagraphBuilder.h"
+#include "modules/skparagraph/include/ParagraphStyle.h"
+#include "modules/skparagraph/include/TextStyle.h"
+#include "modules/skparagraph/include/TypefaceFontProvider.h"
+#include <unordered_set>
 #include "include/core/SkTileMode.h"
 #include "include/core/SkVertices.h"
 #include "include/effects/SkGradient.h"
@@ -1766,6 +1772,123 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     g.canvas->drawTextBlob(blob, originX, originY, SKBackend_MakePaint(true));
     gGlyphsShapedBySkia += (jlong) handler.glyphs;
     gGlyphsDrawnBySkia += (jlong) handler.glyphs;
+}
+
+static jlong gParagraphsBySkia = 0;
+
+jlong SKBackend_ParagraphsBySkia() {
+    return gParagraphsBySkia;
+}
+
+namespace {
+
+namespace tl = skia::textlayout;
+
+// SkParagraph's font collection: the strikes' typefaces registered under an alias each
+// (TextStyle selects fonts by family name), the platform font manager for fallback.
+struct Paragraphs {
+    sk_sp<tl::TypefaceFontProvider> provider;
+    sk_sp<tl::FontCollection> collection;
+    std::unordered_set<SkTypefaceID> registered;
+};
+
+Paragraphs &paragraphs() {
+    static Paragraphs instance = [] {
+        Paragraphs p;
+        p.provider = sk_make_sp<tl::TypefaceFontProvider>();
+        p.collection = sk_make_sp<tl::FontCollection>();
+        p.collection->setAssetFontManager(p.provider);
+        p.collection->setDefaultFontManager(SKPlatform_FontManager());
+        p.collection->enableFontFallback();
+        return p;
+    }();
+    return instance;
+}
+
+SkString typefaceAlias(const SkTypeface *typeface) {
+    return SkStringPrintf("jb-typeface-%u", (unsigned) typeface->uniqueID());
+}
+
+} // namespace
+
+void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
+                                   jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
+                                   const jint *flags) {
+    REQUIRE_CANVAS_TEXT();
+    flushGlyphBatches();
+    const Shaping &s = shaping();
+    if (length <= 0 || runCount <= 0 || !s.unicode) {
+        return;
+    }
+    Paragraphs &p = paragraphs();
+    tl::ParagraphStyle style;
+    style.setTextAlign(tl::TextAlign::kLeft);
+    style.setTextDirection(tl::TextDirection::kLtr);
+    style.setApplyRoundingHack(false);
+    std::unique_ptr<tl::ParagraphBuilder> builder = tl::ParagraphBuilder::make(style, p.collection, s.unicode);
+    if (!builder) {
+        return;
+    }
+    const SkPaint paint = SKBackend_MakePaint(true);
+    jint start = 0;
+    for (jint r = 0; r < runCount; r++) {
+        const jint end = std::min(runEnds[r], length);
+        if (end <= start) {
+            continue;
+        }
+        SkFont font;
+        if (!SKFontScaler_Font(contexts[r], &font) || !font.getTypeface()) {
+            return;
+        }
+        if (smoothing) {
+            font.setHinting(SkFontHinting::kNormal);
+        }
+        sk_sp<SkTypeface> typeface = font.refTypeface();
+        if (p.registered.insert(typeface->uniqueID()).second) {
+            p.provider->registerTypeface(typeface, typefaceAlias(typeface.get()));
+        }
+        tl::TextStyle ts;
+        ts.setFontFamilies({typefaceAlias(typeface.get())});
+        ts.setFontSize(font.getSize());
+        ts.setFontStyle(typeface->fontStyle());
+        ts.setSubpixel(font.isSubpixel());
+        ts.setFontHinting(font.getHinting());
+        // as DrawShapedBySkia: Java's drawString applies no kerning and no ligatures
+        for (const char *feature : {"kern", "liga", "clig", "calt"}) {
+            ts.addFontFeature(SkString(feature), 0);
+        }
+        SkPaint runPaint = paint;
+        if (flags[r] & SK_PARAGRAPH_COLOUR) {
+            runPaint.setColor((SkColor) colours[r]);
+        }
+        ts.setForegroundPaint(runPaint);
+        ts.setColor(runPaint.getColor());
+        unsigned decoration = tl::kNoDecoration;
+        if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
+            decoration |= tl::kUnderline;
+        }
+        if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
+            decoration |= tl::kLineThrough;
+        }
+        ts.setDecoration((tl::TextDecoration) decoration);
+        ts.setDecorationMode(tl::kThrough);   // Java's underline runs through the descenders
+        ts.setDecorationStyle(tl::kSolid);
+        ts.setDecorationColor(runPaint.getColor());
+        builder->pushStyle(ts);
+        const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars + start, end - start);
+        builder->addText(utf8.c_str(), utf8.size());
+        builder->pop();
+        start = end;
+    }
+    std::unique_ptr<tl::Paragraph> paragraph = builder->Build();
+    if (!paragraph) {
+        return;
+    }
+    paragraph->layout(1e9f);   // one line: no wrapping
+    paragraph->paint(g.canvas, originX, originY - paragraph->getAlphabeticBaseline());
+    gParagraphsBySkia++;
+    gGlyphsShapedBySkia += length;   // the character count stands in for the glyph count
+    gGlyphsDrawnBySkia += length;
 }
 
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,

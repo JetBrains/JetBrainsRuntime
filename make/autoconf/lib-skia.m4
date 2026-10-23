@@ -137,7 +137,7 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
     # duplicate); ICU is SkUnicode's, with its data compiled in.
     # The codec targets are named libpng, libjpeg, libwebp in GN, so on Windows
     # their files keep that "lib" (libpng.lib) while the others do not (skia.lib).
-    for lib in skshaper skunicode_icu skunicode_core $skia_libs icu skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
+    for lib in skparagraph skshaper skunicode_icu skunicode_core $skia_libs icu skcms zlib png jpeg jpeg12 jpeg16 webp webp_sse41 \
         wuffs piex dng_sdk expat; do
       for candidate in "${skia_lib_prefix}${lib}" "lib${lib}"; do
         if test -s "${SKIA_LIB_DIR}/${candidate}${skia_lib_suffix}"; then

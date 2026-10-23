@@ -27,6 +27,7 @@
 // queue buffer (flushAndInvokeNow).
 
 #include "SKBackend.h"
+#include <vector>
 
 #include "jlong.h"
 #include "jni_util.h"
@@ -542,6 +543,32 @@ Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, 
         return;
     }
     SKBackend_DrawShapedBySkia(pScalerContext, smoothing, originX, originY, chars, length);
+    env->ReleaseStringChars(text, chars);
+    SKBackend_EndOfFlush();
+    } // SKPlatformScope
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass clazz, jboolean smoothing,
+                                                          jfloat originX, jfloat originY, jstring text,
+                                                          jintArray endArray, jlongArray contextArray,
+                                                          jintArray colourArray, jintArray flagArray)
+{
+    { SKPlatformScope scope;
+    const jint length = env->GetStringLength(text);
+    const jint runs = env->GetArrayLength(endArray);
+    std::vector<jint> ends(runs), colours(runs), flags(runs);
+    std::vector<jlong> contexts(runs);
+    env->GetIntArrayRegion(endArray, 0, runs, ends.data());
+    env->GetLongArrayRegion(contextArray, 0, runs, contexts.data());
+    env->GetIntArrayRegion(colourArray, 0, runs, colours.data());
+    env->GetIntArrayRegion(flagArray, 0, runs, flags.data());
+    const jchar *chars = env->GetStringChars(text, nullptr);
+    if (chars == nullptr) {
+        return;
+    }
+    SKBackend_DrawParagraphBySkia(smoothing, originX, originY, chars, length, runs, ends.data(), contexts.data(),
+                                  colours.data(), flags.data());
     env->ReleaseStringChars(text, chars);
     SKBackend_EndOfFlush();
     } // SKPlatformScope

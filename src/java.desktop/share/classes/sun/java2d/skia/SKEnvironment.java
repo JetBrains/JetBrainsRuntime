@@ -70,7 +70,7 @@ public final class SKEnvironment {
      * font scaler. Default {@code glyphs}: the glyph images through the
      * backend's atlas.
      */
-    private static final boolean TEXT_BY_SKIA = textProperty().equals("skia") || textProperty().equals("shaper");
+    private static final boolean TEXT_BY_SKIA = textProperty().equals("skia") || textProperty().equals("shaper") || textProperty().equals("paragraph");
     /**
      * {@code sun.java2d.skia.text=shaper}: in addition, {@code drawString} and
      * {@code drawChars} hand the characters to Skia's shaper (HarfBuzz with
@@ -78,7 +78,15 @@ public final class SKEnvironment {
      * blob, instead of Java's layout ({@code GlyphList}, {@code TextLayout}).
      * Glyph vectors still carry Java's layout.
      */
-    private static final boolean TEXT_SHAPED_BY_SKIA = textProperty().equals("shaper");
+    private static final boolean TEXT_SHAPED_BY_SKIA = textProperty().equals("shaper") || textProperty().equals("paragraph");
+    /**
+     * {@code sun.java2d.skia.text=paragraph}: in addition, attributed strings
+     * ({@code drawString(AttributedCharacterIterator)}) are laid out by Skia's
+     * paragraph engine (SkParagraph: runs of fonts and colours, underline and
+     * strikethrough) instead of Java's {@code TextLayout}; attributes the route
+     * does not model fall back to it.
+     */
+    private static final boolean TEXT_PARAGRAPH_BY_SKIA = textProperty().equals("paragraph");
     /**
      * {@code sun.java2d.skia.text.smoothing=true}: Skia's text path asks the
      * platform for smoothed glyph masks (Skia's hinting "normal", which on the
@@ -234,6 +242,11 @@ public final class SKEnvironment {
         return TEXT_SHAPED_BY_SKIA;
     }
 
+    /** Whether attributed strings are laid out by Skia's paragraph engine rather than Java's TextLayout. */
+    public static boolean textParagraphBySkia() {
+        return TEXT_PARAGRAPH_BY_SKIA;
+    }
+
     /** Whether Skia's text path requests the platform's font smoothing for its glyph masks. */
     public static boolean textSmoothing() {
         return TEXT_SMOOTHING;
@@ -247,6 +260,11 @@ public final class SKEnvironment {
     /** How many glyphs Skia's shaper has produced for the backend so far (diagnostics, tests). */
     public static long glyphsShapedBySkia() {
         return isSkiaEnabled() ? glyphsShapedBySkiaNative() : 0;
+    }
+
+    /** How many attributed strings Skia's paragraph engine has laid out so far (diagnostics, tests). */
+    public static long paragraphsBySkia() {
+        return isSkiaEnabled() ? paragraphsBySkiaNative() : 0;
     }
 
     private static Boolean libraryLoaded;
@@ -318,7 +336,7 @@ public final class SKEnvironment {
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
             String msg = "Skia rendering enabled: " + (description != null
-                    ? "YES (" + description + ", shapes: " + SHAPES + ", strokes: " + (STROKES_BY_JAVA ? "java" : "skia") + ", text: " + (TEXT_SHAPED_BY_SKIA ? "shaper" : TEXT_BY_SKIA ? "skia" : "glyphs")
+                    ? "YES (" + description + ", shapes: " + SHAPES + ", strokes: " + (STROKES_BY_JAVA ? "java" : "skia") + ", text: " + (TEXT_PARAGRAPH_BY_SKIA ? "paragraph" : TEXT_SHAPED_BY_SKIA ? "shaper" : TEXT_BY_SKIA ? "skia" : "glyphs")
                       + ", msaa: " + configuration.msaaSamples()
                       + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh")
                       + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT) + ")"
@@ -341,4 +359,6 @@ public final class SKEnvironment {
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();
+
+    private static native long paragraphsBySkiaNative();
 }

@@ -34,6 +34,7 @@ import java.awt.image.BufferedImageOp;
 import java.awt.image.ImageObserver;
 import sun.java2d.SunGraphics2D;
 import java.awt.font.GlyphVector;
+import java.text.AttributedCharacterIterator;
 
 /**
  * This class is used to force a revalidation of the pipelines of
@@ -43,7 +44,7 @@ import java.awt.font.GlyphVector;
  * the new valid pipe object.
  */
 public class ValidatePipe
-    implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, TextPipe,
+    implements PixelDrawPipe, PixelFillPipe, ShapeDrawPipe, AttributedTextPipe,
     DrawImagePipe
 {
     /*
@@ -164,6 +165,12 @@ public class ValidatePipe
         if (validate(sg)) {
             sg.textpipe.drawString(sg, s, x, y);
         }
+    }
+    public boolean drawString(SunGraphics2D sg, AttributedCharacterIterator iterator,
+                              float x, float y) {
+        return validate(sg)
+            && sg.textpipe instanceof AttributedTextPipe pipe
+            && pipe.drawString(sg, iterator, x, y);
     }
     public void drawGlyphVector(SunGraphics2D sg, GlyphVector g,
                                 float x, float y) {
