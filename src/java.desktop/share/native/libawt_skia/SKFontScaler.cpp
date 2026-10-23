@@ -452,13 +452,14 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     // placement grid (DirectWrite: 4 or 8 positions per pixel for grayscale by rendering mode
     // and display scale, 6 for ClearType), so a glyph lands where the platform would put it;
     // otherwise the JDK's resolution (java2d.font.subpixelResolution). LCD glyphs get variants
-    // only on the platform routes: they replace the JDK's channel shift by thirds, which the
-    // pipes apply to LCD glyphs without variants.
+    // only where the platform defines an LCD grid: they replace the JDK's channel shift by
+    // thirds, which the pipes apply to LCD glyphs without variants. A platform without one
+    // (CoreGraphics: no colour sub-pixels) keeps the JDK's LCD rendering under these routes.
     const bool platformRoute = context->grayMode == sun_font_SKFontScaler_GRAY_CG
                                || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE;
-    const bool subpixel = aa && context->fractionalMetrics && (lcd ? platformRoute : (subX > 1 || subY > 1));
-    const int platformGrid = subpixel && platformRoute
+    const int platformGrid = aa && context->fractionalMetrics && platformRoute
                              ? SKPlatform_GlyphPlacementGrid(font.getTypeface(), font.getSize(), (float) context->displayScale, lcd) : 0;
+    const bool subpixel = aa && context->fractionalMetrics && (lcd ? platformGrid > 0 : (subX > 1 || subY > 1));
     const int resX = subpixel ? (platformGrid > 0 ? platformGrid : subX) : 1, resY = subpixel && !lcd ? subY : 1;
     // Grayscale variants (SKFontScaler, sun.java2d.skia.text.gray). The JDK's
     // CoreGraphics renderer smooths without sub-pixels and averages the
