@@ -55,7 +55,8 @@ Stats stats;
 const uint64_t origin = SKStats_Now();
 
 const char *const SPAN_NAMES[SK_SPAN_COUNT] = {
-    "queue", "batches", "snap", "insert", "submit", "submit+wait", "readback", "image upload", "present"
+    "queue", "batches", "snap", "insert", "submit", "submit+wait", "readback", "image upload", "present",
+    "present:acquire", "present:copy", "present:call"
 };
 
 const char *opName(int opcode) {

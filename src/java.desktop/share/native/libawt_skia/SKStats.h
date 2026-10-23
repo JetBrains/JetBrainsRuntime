@@ -50,7 +50,10 @@ enum SKStatsSpan {
     SK_SPAN_SUBMIT_WAIT,    // Context::submit(SyncToCpu::kYes) for SYNC
     SK_SPAN_READBACK,       // surface-to-software blits, with their submit and wait
     SK_SPAN_IMAGE_UPLOAD,   // raster images made textures (one per software blit)
-    SK_SPAN_PRESENT,        // copy into the swap chain image and present
+    SK_SPAN_PRESENT,        // copy into the swap chain image and present, all of it
+    SK_SPAN_PRESENT_ACQUIRE,   // of which: GetCurrentTexture (may wait for a free image)
+    SK_SPAN_PRESENT_COPY,      // of which: the copy, its encoder and queue submit
+    SK_SPAN_PRESENT_CALL,      // of which: Present()
     SK_SPAN_COUNT
 };
 

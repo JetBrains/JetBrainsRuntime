@@ -29,6 +29,7 @@
 
 #include "DawnSKPlatform.h"
 #include "SKPlatform.h"
+#include "SKStats.h"
 
 #include "Trace.h"
 #include "include/core/SkColorType.h"
@@ -476,7 +477,10 @@ bool SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
         return false;
     }
     wgpu::SurfaceTexture current;
-    s->window.GetCurrentTexture(&current);
+    {
+        SKStatsScope acquireStats(SK_SPAN_PRESENT_ACQUIRE);
+        s->window.GetCurrentTexture(&current);
+    }
     if (current.status == wgpu::SurfaceGetCurrentTextureStatus::Outdated) {
         // the window changed under the swap chain; AWT replaces the surface on
         // its next bounds event, until then present at the configured size
@@ -494,19 +498,25 @@ bool SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
         return false;
     }
     s->noImageReported = false;
-    // the client-area part of the texture, as much of it as both sides have
-    wgpu::CommandEncoder encoder = s->gpu->device.CreateCommandEncoder();
-    wgpu::TexelCopyTextureInfo source;
-    source.texture = s->texture;
-    source.origin = { s->insetX, s->insetY, 0 };
-    wgpu::TexelCopyTextureInfo destination;
-    destination.texture = current.texture;
-    wgpu::Extent3D extent = { std::min(s->width - s->insetX, s->clientWidth),
-                              std::min(s->height - s->insetY, s->clientHeight), 1 };
-    encoder.CopyTextureToTexture(&source, &destination, &extent);
-    wgpu::CommandBuffer commands = encoder.Finish();
-    s->gpu->queue.Submit(1, &commands);
-    s->window.Present();
+    {
+        SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);
+        // the client-area part of the texture, as much of it as both sides have
+        wgpu::CommandEncoder encoder = s->gpu->device.CreateCommandEncoder();
+        wgpu::TexelCopyTextureInfo source;
+        source.texture = s->texture;
+        source.origin = { s->insetX, s->insetY, 0 };
+        wgpu::TexelCopyTextureInfo destination;
+        destination.texture = current.texture;
+        wgpu::Extent3D extent = { std::min(s->width - s->insetX, s->clientWidth),
+                                  std::min(s->height - s->insetY, s->clientHeight), 1 };
+        encoder.CopyTextureToTexture(&source, &destination, &extent);
+        wgpu::CommandBuffer commands = encoder.Finish();
+        s->gpu->queue.Submit(1, &commands);
+    }
+    {
+        SKStatsScope presentStats(SK_SPAN_PRESENT_CALL);
+        s->window.Present();
+    }
     J2dTraceLn(J2D_TRACE_VERBOSE, "SKPlatform_RequestRedraw: presented %p", surface);
     return true;
 }
