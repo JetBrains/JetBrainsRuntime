@@ -1195,6 +1195,6 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
     @Override
     public boolean needUpdateWindowAfterPaint() {
-        return VKEnv.isPresentationEnabled();
+        return VKEnv.isPresentationEnabled() || sun.java2d.skia.SKEnvironment.presentsPerCycle();
     }
 }

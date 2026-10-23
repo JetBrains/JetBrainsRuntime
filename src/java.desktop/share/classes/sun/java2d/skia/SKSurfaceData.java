@@ -50,6 +50,7 @@ import java.awt.image.ColorModel;
 import java.awt.image.Raster;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
 
 /**
@@ -202,6 +203,26 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
         }
         skRenderPipe.copyArea(sg2d, x, y, w, h, dx, dy);
         return true;
+    }
+
+    /**
+     * The window's paint cycle ended: present it at the end of the flush
+     * ({@code sun.java2d.skia.present=cycle}; nothing happens for a window the
+     * queue did not draw into). The platform window surfaces call this from
+     * their {@code BufferedSurfaceDataExt.commit()}.
+     */
+    protected void requestPresent() {
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(getNativeOps());
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
     }
 
     /** A flushed surface is invalid; subclasses release the platform surface afterwards. */

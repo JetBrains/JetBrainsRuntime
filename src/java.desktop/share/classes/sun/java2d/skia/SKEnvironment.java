@@ -132,6 +132,19 @@ public final class SKEnvironment {
         }
         return FontUtilities.textLuminanceDependent ? 2048 : 1024;
     }
+    /**
+     * When a window is presented ({@code sun.java2d.skia.present}): {@code flush}
+     * (the default) presents every window a queue flush drew into at the end of
+     * that flush; {@code cycle} presents a window when its paint cycle ends
+     * (Swing's {@code updateWindows}, an AWT paint event, {@code Toolkit.sync})
+     * or at the flusher's timeout flush, as the other pipelines do: fewer presents
+     * per frame, and the EDT no longer waits behind a present at every flush.
+     * Windows only so far: the macOS window surface does not signal its paint
+     * cycle to the Skia queue yet.
+     */
+    private static final boolean PRESENT_PER_CYCLE =
+            "cycle".equalsIgnoreCase(System.getProperty("sun.java2d.skia.present", "flush"))
+            && System.getProperty("os.name", "").startsWith("Windows");
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -252,6 +265,11 @@ public final class SKEnvironment {
         return description != null;
     }
 
+    /** Whether windows are presented once per paint cycle rather than at every flush ({@code sun.java2d.skia.present=cycle}). */
+    public static boolean presentsPerCycle() {
+        return PRESENT_PER_CYCLE && isSkiaEnabled();
+    }
+
     /** Whether every antialiased shape is rasterized by Skia rather than by Marlin. */
     public static boolean rasterizesShapes() {
         return "skia".equalsIgnoreCase(SHAPES);
@@ -370,7 +388,7 @@ public final class SKEnvironment {
                 configureNative(configuration.msaaSamples(), configuration.edgeAAQuads(),
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
-                                FontUtilities.textLuminanceClasses);
+                                FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE);
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
@@ -390,7 +408,8 @@ public final class SKEnvironment {
                       + ", msaa: " + configuration.msaaSamples()
                       + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh")
                       + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT)
-                      + ", pipelineCache: " + (pipelineCache != null ? pipelineCache : "off") + ")"
+                      + ", pipelineCache: " + (pipelineCache != null ? pipelineCache : "off")
+                      + ", present: " + (PRESENT_PER_CYCLE ? "cycle" : "flush") + ")"
                     : "NO");
             if (VERBOSE) {
                 System.err.println(msg);
@@ -407,7 +426,8 @@ public final class SKEnvironment {
 
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
-                                               long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses);
+                                               long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses,
+                                               boolean presentPerCycle);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();

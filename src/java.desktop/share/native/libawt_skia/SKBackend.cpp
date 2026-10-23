@@ -121,6 +121,7 @@ static struct {
     size_t glyphAtlasBytes = 0;   // Graphite's glyph-atlas budget, 0 = Skia's default
     jint glyphCacheTexels = 1024;  // the side of SKGlyphCache's textures (see SKEnvironment.glyphCacheTexels)
     jint luminanceClasses = 16;    // FontUtilities.textLuminanceClasses: the cg route's luminance classes
+    bool presentPerCycle = false;   // sun.java2d.skia.present=cycle: present on FLUSH_BUFFER, SYNC and the timeout flush only
 } gConfig;
 
 static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
@@ -239,7 +240,8 @@ static void precompileStoredPipelines(SKConfigContext *cc) {
 }
 
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
-                         jint glyphCacheTexels, jint luminanceClasses) {
+                         jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle) {
+    gConfig.presentPerCycle = presentPerCycle;
     if (luminanceClasses >= 1 && luminanceClasses <= 256 && (luminanceClasses & (luminanceClasses - 1)) == 0) {
         gConfig.luminanceClasses = luminanceClasses;
     }
@@ -505,7 +507,8 @@ struct RenderState {
     bool hasMatrix = false;
     SkMatrix matrix = SkMatrix::I();
 
-    std::unordered_set<SKSDOps *> touchedWindows;
+    std::unordered_set<SKSDOps *> touchedWindows;     // drawn into and not presented yet
+    std::unordered_set<SKSDOps *> requestedWindows;   // whose paint cycle ended in this flush (FLUSH_BUFFER)
     std::unordered_set<SKConfigContext *> touchedContexts;
 };
 
@@ -529,6 +532,7 @@ static void forgetSurface(SKSDOps *ops) {
         g.canvas = nullptr;
     }
     g.touchedWindows.erase(ops);   // a released window surface is not presented at the end of the flush
+    g.requestedWindows.erase(ops);
 }
 
 static void applyCanvasState() {
@@ -2692,15 +2696,30 @@ static void countFrame(JNIEnv *env, SKSDOps *dst, bool presented) {
     }
 }
 
-void SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu) {
+void SKBackend_RequestPresent(SKSDOps *ops) {
+    if (ops != nullptr && ops->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
+        g.requestedWindows.insert(ops);
+    }
+}
+
+bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
     gFlushes.fetch_add(1, std::memory_order_relaxed);
     for (SKConfigContext *cc : g.touchedContexts) {
         SKBackend_Submit(cc, syncToCpu);
         syncPipelineData(cc, false);
     }
     g.touchedContexts.clear();
-    // Ask the platform to present the windows we drew into.
-    for (SKSDOps *dst : g.touchedWindows) {
+    // Present the windows drawn into: every one at the end of every flush
+    // (sun.java2d.skia.present=flush), or only those whose paint cycle ended
+    // (=cycle, FLUSH_BUFFER); the rest stay dirty until theirs does, or a SYNC
+    // or the flusher's timeout flush presents them, as the other pipelines do.
+    const bool everything = !gConfig.presentPerCycle || syncToCpu || presentAll;
+    for (auto it = g.touchedWindows.begin(); it != g.touchedWindows.end(); ) {
+        SKSDOps *dst = *it;
+        if (!everything && g.requestedWindows.count(dst) == 0) {
+            ++it;
+            continue;
+        }
         if (dst->platform != nullptr) {
             bool presented;
             {
@@ -2714,6 +2733,8 @@ void SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu) {
                 countFrame(env, dst, presented);
             }
         }
+        it = g.touchedWindows.erase(it);
     }
-    g.touchedWindows.clear();
+    g.requestedWindows.clear();
+    return !g.touchedWindows.empty();
 }

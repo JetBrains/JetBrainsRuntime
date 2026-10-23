@@ -105,12 +105,20 @@ public final class SKRenderQueue extends RenderQueue {
         }
     }
 
-    private native void flushBuffer(long buf, int limit);
+    /**
+     * Runs the entries; presentAll presents every window drawn into and not yet
+     * presented (the timeout flush). Returns whether such windows remain
+     * ({@code sun.java2d.skia.present=cycle}; never under {@code flush}).
+     */
+    private native boolean flushBuffer(long buf, int limit, boolean presentAll);
 
-    private void flushBuffer() {
+    /** Windows drawn into but not presented yet; the flusher's timeout flush presents them. */
+    private boolean pendingPresent;
+
+    private void flushBuffer(boolean timedOut) {
         int limit = buf.position();
-        if (limit > 0) {
-            flushBuffer(buf.getAddress(), limit);
+        if (limit > 0 || (timedOut && pendingPresent)) {
+            pendingPresent = flushBuffer(buf.getAddress(), limit, timedOut);
         }
         buf.clear();
         refSet.clear();
@@ -163,7 +171,7 @@ public final class SKRenderQueue extends RenderQueue {
                         // Flush on the timeout only when the queue can be locked
                         // without blocking and holds something; otherwise keep waiting.
                         if (!needsFlush && (timedOut = tryLock())) {
-                            if (buf.position() > 0) {
+                            if (buf.position() > 0 || pendingPresent) {
                                 needsFlush = true;
                             } else {
                                 unlock();
@@ -175,7 +183,7 @@ public final class SKRenderQueue extends RenderQueue {
                 }
                 try {
                     error = null;
-                    flushBuffer();
+                    flushBuffer(timedOut);
                     if (task != null) {
                         task.run();
                     }

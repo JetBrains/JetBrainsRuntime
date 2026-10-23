@@ -71,14 +71,12 @@
 
 extern "C" {
 
-JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong buf, jint limit)
+// Runs the entries of one flush; presentAll (the flusher's timeout flush) presents every
+// window drawn into. Returns whether windows drawn into remain unpresented
+// (sun.java2d.skia.present=cycle).
+static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool presentAll)
 {
-    unsigned char *b = (unsigned char *) jlong_to_ptr(buf);
-    if (b == nullptr) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKRenderQueue_flushBuffer: cannot get direct buffer address");
-        return;
-    }
+    jboolean pending = JNI_FALSE;
     unsigned char *end = b + limit;
 
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
@@ -377,9 +375,9 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             SKBackend_EndOfFlush(env, true);
             break;
         }
-        OP(FLUSH_BUFFER): {
-            jlong pLayerPtr = NEXT_LONG(b);
-            (void) pLayerPtr;
+        OP(FLUSH_BUFFER): {   // the window's paint cycle ended (SKSurfaceData.requestPresent)
+            jlong pData = NEXT_LONG(b);
+            SKBackend_RequestPresent((SKSDOps *) jlong_to_ptr(pData));
             break;
         }
         OP(SWAP_BUFFERS): {
@@ -478,13 +476,25 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
 
         default:
             J2dRlsTraceLn(J2D_TRACE_ERROR, "SKRenderQueue_flushBuffer: invalid opcode=%d", opcode);
-            SKBackend_EndOfFlush(env);
-            return;
+            b = end;   // the rest of the entry cannot be read
+            break;
         }
     }
-    SKBackend_EndOfFlush(env);
+    pending = SKBackend_EndOfFlush(env, false, presentAll) ? JNI_TRUE : JNI_FALSE;
     } // SKPlatformScope
     SKStats_EndOfEntry();
+    return pending;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong buf, jint limit, jboolean presentAll)
+{
+    unsigned char *b = (unsigned char *) jlong_to_ptr(buf);
+    if (b == nullptr) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKRenderQueue_flushBuffer: cannot get direct buffer address");
+        return JNI_FALSE;
+    }
+    return flushEntries(env, b, limit, presentAll == JNI_TRUE);
 }
 
 // ---- direct entry points (flushAndInvokeNow: operations larger than the render buffer) ----

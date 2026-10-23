@@ -27,6 +27,7 @@ package sun.java2d.skia;
 import sun.awt.SunToolkit;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.windows.WComponentPeer;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.Region;
 
@@ -165,7 +166,7 @@ public abstract class Win32SKSurfaceData extends SKSurfaceData {
         return 0L;
     }
 
-    private static final class Window extends Win32SKSurfaceData {
+    private static final class Window extends Win32SKSurfaceData implements BufferedSurfaceDataExt {
 
         private Window(WComponentPeer peer, Win32SKGraphicsConfig gc, Win32SKSurfaceData previous) {
             this(peer, gc, previous, peer.getColorModel(), peer.getBounds());
@@ -184,6 +185,14 @@ public abstract class Win32SKSurfaceData extends SKSurfaceData {
         @Override
         public boolean isOnScreen() {
             return true;
+        }
+
+        /** Swing's {@code updateWindows} and the peer's paint events end a paint cycle here (WWindowPeer, WComponentPeer). */
+        @Override
+        public void commit() {
+            if (SKEnvironment.presentsPerCycle()) {
+                requestPresent();
+            }
         }
 
         @Override
