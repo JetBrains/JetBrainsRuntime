@@ -281,7 +281,9 @@ public class DockerTestUtils {
      * @throws Exception
      */
     public static void removeDockerImage(String imageNameAndTag) throws Exception {
+        if(!DockerTestUtils.RETAIN_IMAGE_AFTER_TEST) {
             execute(Container.ENGINE_COMMAND, "rmi", "--force", imageNameAndTag);
+        }
     }
 
 
@@ -320,7 +322,7 @@ public class DockerTestUtils {
         System.out.println("[ELAPSED: " + (System.currentTimeMillis() - started) + " ms]");
         System.out.println("[STDERR]\n" + output.getStderr());
         System.out.println("[STDOUT]\n" + stdoutLimited);
-        if (stdout != stdoutLimited) {
+        if (!stdout.equals(stdoutLimited)) {
             System.out.printf("Child process STDOUT is limited to %d lines\n",
                               max);
         }

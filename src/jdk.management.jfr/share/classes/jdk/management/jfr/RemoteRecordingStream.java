@@ -101,10 +101,12 @@ public final class RemoteRecordingStream implements EventStream {
 
         private final FlightRecorderMXBean mbean;
         private final long recordingId;
+        private final String identifier;
 
-        RemoteSettings(FlightRecorderMXBean mbean, long recordingId) {
+        RemoteSettings(FlightRecorderMXBean mbean, long recordingId, String identifier) {
             this.mbean = mbean;
             this.recordingId = recordingId;
+            this.identifier = identifier;
         }
 
         @Override
@@ -114,7 +116,7 @@ public final class RemoteRecordingStream implements EventStream {
             // FlightRecorderMXBean implementation always returns
             // new instance of Map so no need to create new here.
             Map<String, String> newSettings = getEventSettings();
-            newSettings.put(name, value);
+            newSettings.put(identifier + "#" + name, value);
             mbean.setRecordingSettings(recordingId, newSettings);
         }
 
@@ -356,9 +358,9 @@ public final class RemoteRecordingStream implements EventStream {
      */
     public EventSettings disable(String name) {
         Objects.requireNonNull(name, "name");
-        EventSettings s = ManagementSupport.newEventSettings(new RemoteSettings(mbean, recordingId));
+        EventSettings s = ManagementSupport.newEventSettings(new RemoteSettings(mbean, recordingId, name));
         try {
-            return s.with(name + "#" + ENABLED, "false");
+            return s.with(ENABLED, "false");
         } catch (Exception e) {
             ManagementSupport.logDebug(e.getMessage());
             close();
@@ -380,9 +382,9 @@ public final class RemoteRecordingStream implements EventStream {
      */
     public EventSettings enable(String name) {
         Objects.requireNonNull(name, "name");
-        EventSettings s = ManagementSupport.newEventSettings(new RemoteSettings(mbean, recordingId));
+        EventSettings s = ManagementSupport.newEventSettings(new RemoteSettings(mbean, recordingId, name));
         try {
-            return s.with(name + "#" + ENABLED, "true");
+            return s.with(ENABLED, "true");
         } catch (Exception e) {
             ManagementSupport.logDebug(e.getMessage());
             close();

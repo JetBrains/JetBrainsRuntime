@@ -35,7 +35,7 @@ class os::Aix {
 
  private:
 
-  static julong _physical_memory;
+  static physical_memory_size_type _physical_memory;
   static pthread_t _main_thread;
 
   // -1 = uninitialized, 0 = AIX, 1 = OS/400 (PASE)
@@ -58,9 +58,9 @@ class os::Aix {
   //  1 - EXTSHM=ON
   static int _extshm;
 
-  static julong available_memory();
-  static julong free_memory();
-  static julong physical_memory() { return _physical_memory; }
+  static bool available_memory(physical_memory_size_type& value);
+  static bool free_memory(physical_memory_size_type& value);
+  static physical_memory_size_type physical_memory() { return _physical_memory; }
   static void initialize_system_info();
 
   // OS recognitions (PASE/AIX, OS level) call this before calling any

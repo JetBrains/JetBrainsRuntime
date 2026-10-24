@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -764,15 +764,24 @@ class ServerImpl {
                             requestLine, "Bad request line");
                     return;
                 }
-                String uriStr = requestLine.substring (start, space);
+
+                // Read the request URI
+                String uriStr = requestLine.substring(start, space);
+                // Reject ambiguous URIs
+                if (uriStr.startsWith("//")) {
+                    reject(Code.HTTP_BAD_REQUEST,
+                            requestLine, "Bad request URI");
+                    return;
+                }
                 URI uri;
                 try {
                     uri = new URI (uriStr);
                 } catch (URISyntaxException e3) {
                     reject(Code.HTTP_BAD_REQUEST,
-                            requestLine, "URISyntaxException thrown");
+                            requestLine, "Bad request URI");
                     return;
                 }
+
                 start = space+1;
                 String version = requestLine.substring (start);
                 Headers headers = req.headers();

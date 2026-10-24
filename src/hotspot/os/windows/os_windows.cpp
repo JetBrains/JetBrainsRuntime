@@ -832,25 +832,30 @@ jlong os::elapsed_frequency() {
 }
 
 
-julong os::available_memory() {
-  return win32::available_memory();
+bool os::available_memory(physical_memory_size_type& value) {
+  return win32::available_memory(value);
 }
 
-julong os::free_memory() {
-  return win32::available_memory();
+bool os::free_memory(physical_memory_size_type& value) {
+  return win32::available_memory(value);
 }
 
-julong os::win32::available_memory() {
+bool os::win32::available_memory(physical_memory_size_type& value) {
   // Use GlobalMemoryStatusEx() because GlobalMemoryStatus() may return incorrect
   // value if total memory is larger than 4GB
   MEMORYSTATUSEX ms;
   ms.dwLength = sizeof(ms);
-  GlobalMemoryStatusEx(&ms);
-
-  return (julong)ms.ullAvailPhys;
+  BOOL res = GlobalMemoryStatusEx(&ms);
+  if (res == TRUE) {
+    value = static_cast<physical_memory_size_type>(ms.ullAvailPhys);
+    return true;
+  } else {
+    assert(false, "GlobalMemoryStatusEx failed in os::win32::available_memory(): %lu", ::GetLastError());
+    return false;
+  }
 }
 
-julong os::physical_memory() {
+physical_memory_size_type os::physical_memory() {
   return win32::physical_memory();
 }
 
@@ -1269,38 +1274,50 @@ void os::shutdown() {
 
 static HANDLE dumpFile = nullptr;
 
-// Check if dump file can be created.
-void os::check_dump_limit(char* buffer, size_t buffsz) {
-  bool status = true;
+// Check if core dump is active and if a core dump file can be created
+void os::check_core_dump_prerequisites(char* buffer, size_t bufferSize, bool check_only) {
   if (!FLAG_IS_DEFAULT(CreateCoredumpOnCrash) && !CreateCoredumpOnCrash) {
-    jio_snprintf(buffer, buffsz, "CreateCoredumpOnCrash is disabled from command line");
-    status = false;
-  }
-
+    jio_snprintf(buffer, bufferSize, "CreateCoredumpOnCrash is disabled from command line");
+    VMError::record_coredump_status(buffer, false);
+  } else {
+    bool success = true;
+    bool warn = true;
 #ifndef ASSERT
-  if (!os::win32::is_windows_server() && FLAG_IS_DEFAULT(CreateCoredumpOnCrash)) {
-    jio_snprintf(buffer, buffsz, "Minidumps are not enabled by default on client versions of Windows");
-    status = false;
-  }
+    if (!os::win32::is_windows_server() && FLAG_IS_DEFAULT(CreateCoredumpOnCrash)) {
+      jio_snprintf(buffer, bufferSize, "Minidumps are not enabled by default on client versions of Windows");
+      success = false;
+      warn = true;
+    }
 #endif
 
-  if (status) {
-    const char* cwd = get_current_directory(nullptr, 0);
-    int pid = current_process_id();
-    if (cwd != nullptr) {
-      jio_snprintf(buffer, buffsz, "%s\\hs_err_pid%u.mdmp", cwd, pid);
-    } else {
-      jio_snprintf(buffer, buffsz, ".\\hs_err_pid%u.mdmp", pid);
+    if (success) {
+      if (!check_only) {
+        const char* cwd = get_current_directory(nullptr, 0);
+        int pid = current_process_id();
+        if (cwd != nullptr) {
+          jio_snprintf(buffer, bufferSize, "%s\\hs_err_pid%u.mdmp", cwd, pid);
+        } else {
+          jio_snprintf(buffer, bufferSize, ".\\hs_err_pid%u.mdmp", pid);
+        }
+
+        if (dumpFile == nullptr &&
+            (dumpFile = CreateFile(buffer, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr))
+            == INVALID_HANDLE_VALUE) {
+          jio_snprintf(buffer, bufferSize, "Failed to create minidump file (0x%x).", GetLastError());
+          success = false;
+        }
+      } else {
+        // For now on Windows, there are no more checks that we can do
+        warn = false;
+      }
     }
 
-    if (dumpFile == nullptr &&
-       (dumpFile = CreateFile(buffer, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr))
-                 == INVALID_HANDLE_VALUE) {
-      jio_snprintf(buffer, buffsz, "Failed to create minidump file (0x%x).", GetLastError());
-      status = false;
+    if (!check_only) {
+      VMError::record_coredump_status(buffer, success);
+    } else if (warn) {
+      warning("CreateCoredumpOnCrash specified, but %s", buffer);
     }
   }
-  VMError::record_coredump_status(buffer, status);
 }
 
 void os::abort(bool dump_core, void* siginfo, const void* context) {
@@ -1844,6 +1861,7 @@ void * os::dll_load_utf8(const char *utf8_name, char *ebuf, int ebuflen) {
 
 void * os::dll_load(const char *name, char *ebuf, int ebuflen) {
   log_info(os)("attempting shared library load of %s", name);
+  Events::log_dll_message(nullptr, "Attempting to load shared library %s", name);
 
   void * result = LoadLibrary(name);
   if (result != nullptr) {
@@ -4274,25 +4292,25 @@ int os::current_process_id() {
   return (_initial_pid ? _initial_pid : _getpid());
 }
 
-int    os::win32::_processor_type            = 0;
+int                       os::win32::_processor_type            = 0;
 // Processor level is not available on non-NT systems, use vm_version instead
-int    os::win32::_processor_level           = 0;
-julong os::win32::_physical_memory           = 0;
+int                       os::win32::_processor_level           = 0;
+physical_memory_size_type os::win32::_physical_memory           = 0;
 
-bool   os::win32::_is_windows_server         = false;
+bool                      os::win32::_is_windows_server         = false;
 
 // 6573254
 // Currently, the bug is observed across all the supported Windows releases,
 // including the latest one (as of this writing - Windows Server 2012 R2)
-bool   os::win32::_has_exit_bug              = true;
+bool                      os::win32::_has_exit_bug              = true;
 
-int    os::win32::_major_version             = 0;
-int    os::win32::_minor_version             = 0;
-int    os::win32::_build_number              = 0;
-int    os::win32::_build_minor               = 0;
+int                       os::win32::_major_version             = 0;
+int                       os::win32::_minor_version             = 0;
+int                       os::win32::_build_number              = 0;
+int                       os::win32::_build_minor               = 0;
 
-bool   os::win32::_processor_group_warning_displayed = false;
-bool   os::win32::_job_object_processor_group_warning_displayed = false;
+bool                      os::win32::_processor_group_warning_displayed = false;
+bool                      os::win32::_job_object_processor_group_warning_displayed = false;
 
 void getWindowsInstallationType(char* buffer, int bufferSize) {
   HKEY hKey;
@@ -4507,8 +4525,11 @@ void os::win32::initialize_system_info() {
 
   // also returns dwAvailPhys (free physical memory bytes), dwTotalVirtual, dwAvailVirtual,
   // dwMemoryLoad (% of memory in use)
-  GlobalMemoryStatusEx(&ms);
-  _physical_memory = ms.ullTotalPhys;
+  BOOL res = GlobalMemoryStatusEx(&ms);
+  if (res != TRUE) {
+    assert(false, "GlobalMemoryStatusEx failed in os::win32::initialize_system_info(): %lu", ::GetLastError());
+  }
+  _physical_memory = static_cast<physical_memory_size_type>(ms.ullTotalPhys);
 
   if (FLAG_IS_DEFAULT(MaxRAM)) {
     // Adjust MaxRAM according to the maximum virtual address space available.

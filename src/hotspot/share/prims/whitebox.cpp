@@ -2408,8 +2408,8 @@ WB_END
 
 // Physical memory of the host machine (including containers)
 WB_ENTRY(jlong, WB_HostPhysicalMemory(JNIEnv* env, jobject o))
-  LINUX_ONLY(return os::Linux::physical_memory();)
-  return os::physical_memory();
+  LINUX_ONLY(return static_cast<jlong>(os::Linux::physical_memory());)
+  return static_cast<jlong>(os::physical_memory());
 WB_END
 
 // Physical swap of the host machine (including containers), Linux only.

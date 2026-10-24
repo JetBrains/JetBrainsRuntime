@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,22 +23,27 @@
 
 /*
  * @test
- * @bug 9999999
+ * @bug 8315851 8315588
  * @summary Tests for unnamed variables
  * @library /tools/lib
  * @modules jdk.compiler/com.sun.tools.javac.api
  *          jdk.compiler/com.sun.tools.javac.main
  *          jdk.jshell
  * @build Compiler KullaTesting TestingInputStream ExpectedDiagnostic
- * @run testng UnnamedTest
+ * @run junit UnnamedTest
  */
 
 import java.util.function.Consumer;
+
+import jdk.jshell.SourceCodeAnalysis;
 import jdk.jshell.VarSnippet;
-import org.testng.Assert;
-import org.testng.annotations.Test;
 
 import jdk.jshell.JShell;
+
+import static jdk.jshell.SourceCodeAnalysis.Completeness.COMPLETE;
+import static jdk.jshell.SourceCodeAnalysis.Completeness.DEFINITELY_INCOMPLETE;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class UnnamedTest extends KullaTesting {
 
@@ -46,8 +51,81 @@ public class UnnamedTest extends KullaTesting {
     public void unnamed() {
         VarSnippet sn1 = varKey(assertEval("int _ = 0;"));
         VarSnippet sn2 = varKey(assertEval("String _ = \"x\";"));
-        Assert.assertEquals(getState().varValue(sn1), "0");
-        Assert.assertEquals(getState().varValue(sn2), "\"x\"");
+        Assertions.assertEquals("0", getState().varValue(sn1));
+        Assertions.assertEquals("\"x\"", getState().varValue(sn2));
+    }
+
+    static final String[] definitely_incomplete = new String[]{
+            "int _ = ",
+            "int m(String v, int r) {\n" +
+                    "    try {\n" +
+                    "        return Integer.parseInt(v, r);\n" +
+                    "    } catch (NumberFormatException _) {",
+            "try (final Lock _ = ",
+            "try (Lock _ = null) {\n" +
+                "            try (Lock _ = null) {",
+            "for (var _ : strs",
+            "TwoParams p1 = (_, _) ->",
+            "for (int _ = 0, _ = 1, x = 1;",
+            "if (r instanceof R(_"
+    };
+
+    static final String[] complete = new String[]{
+            "int _ = 42;",
+            "int m(String v, int r) {\n" +
+                    "    try {\n" +
+                    "        return Integer.parseInt(v, r);\n" +
+                    "    } catch (NumberFormatException _) { } }",
+            "try (final Lock _ = TEST) {}",
+            "try (Lock _ = null) {\n" +
+                    "            try (Lock _ = null) { } }",
+            "for (var _ : strs) { }",
+            "TwoParams p1 = (_, _) -> {};",
+            "for (int _ = 0, _ = 1, x = 1; x <= 1 ; x++) {}",
+            "if (r instanceof R(_)) { }"
+    };
+
+    private void assertStatus(String input, SourceCodeAnalysis.Completeness status, String source) {
+        String augSrc;
+        switch (status) {
+            case COMPLETE_WITH_SEMI:
+                augSrc = source + ";";
+                break;
+
+            case DEFINITELY_INCOMPLETE:
+                augSrc = null;
+                break;
+
+            case CONSIDERED_INCOMPLETE:
+                augSrc = source + ";";
+                break;
+
+            case EMPTY:
+            case COMPLETE:
+            case UNKNOWN:
+                augSrc = source;
+                break;
+
+            default:
+                throw new AssertionError();
+        }
+        assertAnalyze(input, status, augSrc);
+    }
+
+    private void assertStatus(String[] ins, SourceCodeAnalysis.Completeness status) {
+        for (String input : ins) {
+            assertStatus(input, status, input);
+        }
+    }
+
+    @Test
+    public void test_definitely_incomplete() {
+        assertStatus(definitely_incomplete, DEFINITELY_INCOMPLETE);
+    }
+
+    @Test
+    public void test_definitely_complete() {
+        assertStatus(complete, COMPLETE);
     }
 
     @Override
