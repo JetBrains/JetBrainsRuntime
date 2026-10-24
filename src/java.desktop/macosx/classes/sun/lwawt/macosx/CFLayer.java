@@ -30,17 +30,25 @@ import sun.java2d.SurfaceData;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
 import java.awt.Transparency;
+import java.awt.Window;
+
+import javax.swing.JRootPane;
+import javax.swing.RootPaneContainer;
+
 import sun.lwawt.LWWindowPeer;
 
 /**
  * Common layer class between OpenGl and Metal.
  */
 public abstract class CFLayer extends CFRetainedResource {
+    protected final LWWindowPeer peer;
+    private final boolean windowSurfaceDisabled;
     protected SurfaceData surfaceData; // represents intermediate buffer (texture)
-    protected LWWindowPeer peer;
 
-    protected CFLayer(long ptr, boolean disposeOnAppKitThread) {
+    protected CFLayer(long ptr, boolean disposeOnAppKitThread, LWWindowPeer peer) {
         super(ptr, disposeOnAppKitThread);
+        this.peer = peer;
+        this.windowSurfaceDisabled = readWindowSurfaceDisabled(peer);
     }
 
     public abstract SurfaceData replaceSurfaceData(int scale);
@@ -84,5 +92,22 @@ public abstract class CFLayer extends CFRetainedResource {
 
     public Object getDestination() {
         return peer.getTarget();
+    }
+
+    protected final boolean isWindowSurfaceDisabled() {
+        return windowSurfaceDisabled;
+    }
+
+    private static boolean readWindowSurfaceDisabled(LWWindowPeer peer) {
+        if (peer == null) return false;
+        Window target = peer.getTarget();
+        if (target instanceof RootPaneContainer rpc) {
+            JRootPane rootPane = rpc.getRootPane();
+            if (rootPane != null) {
+                Object value = rootPane.getClientProperty(CPlatformWindow.WINDOW_SURFACE_DISABLED);
+                return value != null && Boolean.parseBoolean(value.toString());
+            }
+        }
+        return false;
     }
 }
