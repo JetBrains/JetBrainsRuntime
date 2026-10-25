@@ -37,6 +37,14 @@ typedef struct D3DAdapter
     HWND fsFocusWindow;
 } D3DAdapter;
 
+typedef struct ConfigureContextData {
+    D3DContext *pD3DContext;
+    D3DPRESENT_PARAMETERS *pD3DParams;
+    HRESULT res;
+} ConfigureContextData;
+
+void D3DContext_ConfigureContext(void *pData);
+
 class D3DPipelineManager
 {
     friend class D3DInitializer;
