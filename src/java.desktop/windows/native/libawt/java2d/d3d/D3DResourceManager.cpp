@@ -27,6 +27,7 @@
 #include "awt.h"
 #include "D3DPaints.h"
 #include "D3DTextRenderer.h"
+#include "D3DPipelineManager.h"
 
 void
 D3DResource::Init(IDirect3DResource9 *pRes, IDirect3DSwapChain9 *pSC)
@@ -460,7 +461,9 @@ D3DResourceManager::CreateSwapChain(HWND hWnd, UINT numBuffers,
             newParams.SwapEffect = swapEffect;
             newParams.PresentationInterval = presentationInterval;
 
-            res = pCtx->ConfigureContext(&newParams);
+            ConfigureContextData data = {pCtx, &newParams, S_OK};
+            AwtToolkit::GetInstance().InvokeFunction(D3DContext_ConfigureContext, &data);
+            res = data.res;
             RETURN_STATUS_IF_FAILED(res);
             // this reset will not have released the device, so our pd3dDevice
             // is still valid, but to be on a safe side, reset it
