@@ -249,6 +249,12 @@ void D3DContext_CheckAndResetDevice(void *pData) {
     ((CheckAndResetDeviceData*)(pData))->res = d3dc->CheckAndResetDevice();
 }
 
+void D3DContext_ConfigureContext(void *pData) {
+    D3DContext *pD3DContext = ((ConfigureContextData*)(pData))->pD3DContext;
+    D3DPRESENT_PARAMETERS *pD3DParams = ((ConfigureContextData*)(pData))->pD3DParams;
+    ((ConfigureContextData*)(pData))->res = pD3DContext->ConfigureContext(pD3DParams);
+}
+
 HRESULT D3DPipelineManager::HandleLostDevices()
 {
     J2dTraceLn(J2D_TRACE_INFO, "D3DPPLM::HandleLostDevices()");
