@@ -33,7 +33,7 @@ import java.lang.reflect.Method;
  *          glyphs drawn from the cache, cells staged, cells evicted, atlas row uploads,
  *          glyphs drawn uncached). Drawing the same line a second time, at 1x and at 2x,
  *          hits the cache for every glyph: no cell staged, no upload, nothing uncached.
- * @requires os.family == "mac"
+ * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaGlyphCacheStatsTest 1
@@ -46,7 +46,7 @@ public class SkiaGlyphCacheStatsTest {
     public static void main(String[] args) throws Exception {
         final int scale = Integer.parseInt(args[0]);
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-        if (!gc.getClass().getName().contains("MTL")) {
+        if (!gc.getClass().getName().contains("MTL") && !gc.getClass().getName().contains("Win32SK")) {   // Metal on macOS, the Skia (Dawn) configuration on Windows
             throw new RuntimeException("not an accelerated configuration: " + gc.getClass().getName());
         }
         VolatileImage vi = gc.createCompatibleVolatileImage(600 * scale, 40 * scale, Transparency.OPAQUE);

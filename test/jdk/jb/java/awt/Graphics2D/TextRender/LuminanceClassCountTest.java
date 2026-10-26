@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
  *          side (FontUtilities, the strikes) and the native side (Skia's text path)
  *          agree on the count. Skia's own text path's colour-keyed pre-blend is not
  *          affected (it is fixed in Skia's build).
- * @requires os.family == "mac"
+ * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.font java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg LuminanceClassCountTest 16 true 8 104 248

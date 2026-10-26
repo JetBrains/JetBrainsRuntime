@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
  *          own glyph cache (Java's glyph images) is 1024 texels a side, 2048 when text
  *          is rasterized per luminance class (the cg route: one strike per class
  *          multiplies the glyph set); -Dsun.java2d.skia.glyphCache=<texels> sets it.
- * @requires os.family == "mac"
+ * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true SkiaStrikeCacheBudgetTest 64 8 1024

@@ -37,7 +37,7 @@ import java.lang.reflect.Method;
  *          glyph drawn uncached and the result identical to the first paint. Before
  *          the buckets any glyph over 32 pixels was uploaded and drawn on its own
  *          every frame, which on a 2x display is every glyph above 16 pt.
- * @requires os.family == "mac"
+ * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaGlyphCacheBucketsTest
@@ -48,7 +48,7 @@ public class SkiaGlyphCacheBucketsTest {
 
     public static void main(String[] args) throws Exception {
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-        if (!gc.getClass().getName().contains("MTL")) {
+        if (!gc.getClass().getName().contains("MTL") && !gc.getClass().getName().contains("Win32SK")) {   // Metal on macOS, the Skia (Dawn) configuration on Windows
             throw new RuntimeException("not an accelerated configuration: " + gc.getClass().getName());
         }
         VolatileImage vi = gc.createCompatibleVolatileImage(W, H, Transparency.OPAQUE);

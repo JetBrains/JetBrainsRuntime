@@ -38,7 +38,7 @@ import java.text.AttributedString;
  *          of flushes, and the strings still all go through the Skia path (its
  *          counters advance by the whole paint). Rendering is covered by the
  *          other Skia text tests; this one counts flushes.
- * @requires os.family == "mac"
+ * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia SkiaTextPathQueuedTest
@@ -53,7 +53,7 @@ public class SkiaTextPathQueuedTest {
 
     public static void main(String[] args) throws Exception {
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-        if (!gc.getClass().getName().contains("MTL")) {
+        if (!gc.getClass().getName().contains("MTL") && !gc.getClass().getName().contains("Win32SK")) {   // Metal on macOS, the Skia (Dawn) configuration on Windows
             throw new RuntimeException("not an accelerated configuration: " + gc.getClass().getName());
         }
         final String mode = System.getProperty("sun.java2d.skia.text");
@@ -64,7 +64,7 @@ public class SkiaTextPathQueuedTest {
             default -> throw new RuntimeException("unexpected text route " + mode);
         };
         final long pathBefore = counter(counterName), flushesBefore = counter("flushes");
-        Font font = new Font("Helvetica Neue", Font.PLAIN, 11);
+        Font font = new Font(System.getProperty("os.name").startsWith("Windows") ? "Segoe UI" : "Helvetica Neue", Font.PLAIN, 11);   // an installed family: a logical font would be a composite strike, which the Skia path does not draw
         VolatileImage vi = gc.createCompatibleVolatileImage(W, H, Transparency.OPAQUE);
         BufferedImage out;
         do {

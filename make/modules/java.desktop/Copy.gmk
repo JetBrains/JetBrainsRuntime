@@ -82,6 +82,25 @@ $(eval $(call SetupCopyLegalFiles, COPY_LEGAL, \
 TARGETS += $(COPY_LEGAL)
 
 ################################################################################
+# Skia's ICU data on Windows. Skia's Unicode module (the shaper's bidi and script
+# runs, SkUnicodes::ICU) loads icudtl.dat from the directory of the module that
+# holds it (SkLoadICU), which is bin on Windows; without it the shaper and the
+# paragraph engine are unavailable and Skia's text path is not taken. The file
+# goes into the module's commands, which the image places in bin unconditionally
+# (module libraries other than DLLs land in lib).
+
+ifeq ($(call isTargetOs, windows)+$(SKIA_ENABLED), true+true)
+  ifneq ($(wildcard $(SKIA_LIB_DIR)/icudtl.dat), )
+    $(eval $(call SetupCopyFiles, COPY_SKIA_ICU_DATA, \
+        FILES := $(SKIA_LIB_DIR)/icudtl.dat, \
+        DEST := $(SUPPORT_OUTPUTDIR)/modules_cmds/java.desktop, \
+    ))
+
+    TARGETS += $(COPY_SKIA_ICU_DATA)
+  endif
+endif
+
+################################################################################
 
 FONTFILE_SRC_DIR := $(TOPDIR)/src/java.desktop/share
 FONTFILE_SRCS := $(wildcard $(FONTFILE_SRC_DIR)/fonts/*.ttf) $(wildcard $(FONTFILE_SRC_DIR)/fonts/*.otf) $(FONTFILE_SRC_DIR)/fonts/fonts.dir $(FONTFILE_SRC_DIR)/fonts/font.conf
