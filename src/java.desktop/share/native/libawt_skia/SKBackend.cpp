@@ -81,6 +81,7 @@
 #include "include/gpu/graphite/Recording.h"
 #include "include/gpu/graphite/Surface.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <fstream>
@@ -122,6 +123,7 @@ static struct {
     jint glyphCacheTexels = 1024;  // the side of SKGlyphCache's textures (see SKEnvironment.glyphCacheTexels)
     jint luminanceClasses = 16;    // FontUtilities.textLuminanceClasses: the cg route's luminance classes
     bool presentPerCycle = false;   // sun.java2d.skia.present=cycle: present on FLUSH_BUFFER, SYNC and the timeout flush only
+    bool submitPerPresent = false;  // sun.java2d.skia.submit=present: submit only for a present, a wait or the cap
 } gConfig;
 
 static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
@@ -240,7 +242,9 @@ static void precompileStoredPipelines(SKConfigContext *cc) {
 }
 
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
-                         jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle) {
+                         jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
+                         bool submitPerPresent) {
+    gConfig.submitPerPresent = submitPerPresent;
     gConfig.presentPerCycle = presentPerCycle;
     if (luminanceClasses >= 1 && luminanceClasses <= 256 && (luminanceClasses & (luminanceClasses - 1)) == 0) {
         gConfig.luminanceClasses = luminanceClasses;
@@ -512,6 +516,15 @@ struct RenderState {
     std::unordered_set<SKConfigContext *> touchedContexts;
 };
 
+// sun.java2d.skia.submit=present: contexts whose recordings were inserted but not
+// submitted, in insertion order. All contexts of an adapter share one queue, so a
+// later submit of another context must not overtake them: every submit sends these
+// first (submitPending). Bounded by MAX_DEFERRED_FLUSHES and the flusher's timeout.
+static std::vector<SKConfigContext *> gPendingSubmit;
+static int gDeferredFlushes = 0;
+constexpr int MAX_DEFERRED_FLUSHES = 16;   // upload buffers and scratch textures recycle only after a submit
+static void submitPending(SKConfigContext *except, bool syncToCpu);
+
 static RenderState g;
 
 static SKConfigContext *currentContext() {
@@ -520,6 +533,7 @@ static SKConfigContext *currentContext() {
 
 static void forgetContext(SKConfigContext *cc) {
     g.touchedContexts.erase(cc);
+    gPendingSubmit.erase(std::remove(gPendingSubmit.begin(), gPendingSubmit.end(), cc), gPendingSubmit.end());
     if (g.cc == cc) {
         g.cc = nullptr;
         g.canvas = nullptr;
@@ -2585,6 +2599,7 @@ void SKBackend_SurfaceToSwBlit(JNIEnv *env, jint sx, jint sy, jint dx, jint dy, 
                 req->w = clipped.width();
                 req->h = clipped.height();
                 req->pixels.resize((size_t) req->w * req->h * 4);
+                submitPending(cc, false);   // earlier work of other contexts first (submit=present)
                 SKBackend_FlushRecording(cc);
                 cc->context->asyncRescaleAndReadPixels(surface.get(), info, clipped,
                                                        SkImage::RescaleGamma::kSrc, SkImage::RescaleMode::kNearest,
@@ -2665,13 +2680,37 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     }
 }
 
+static void submitOne(SKConfigContext *cc, bool syncToCpu) {
+    SKBackend_FlushRecording(cc);
+    SKStatsScope submitStats(syncToCpu ? SK_SPAN_SUBMIT_WAIT : SK_SPAN_SUBMIT);
+    cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
+}
+
+// Submits the pending contexts in their order, except `except` (which its caller submits next).
+static void submitPending(SKConfigContext *except, bool syncToCpu) {
+    std::vector<SKConfigContext *> pending;
+    pending.swap(gPendingSubmit);
+    gDeferredFlushes = 0;
+    for (SKConfigContext *cc : pending) {
+        if (cc != except && cc->context) {
+            submitOne(cc, syncToCpu);
+        }
+    }
+}
+
+static void deferSubmit(SKConfigContext *cc) {
+    SKBackend_FlushRecording(cc);   // snap + insert; the GPU work waits for the next submit
+    if (std::find(gPendingSubmit.begin(), gPendingSubmit.end(), cc) == gPendingSubmit.end()) {
+        gPendingSubmit.push_back(cc);
+    }
+}
+
 void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
     if (cc == nullptr || !cc->context) {
         return;
     }
-    SKBackend_FlushRecording(cc);
-    SKStatsScope submitStats(syncToCpu ? SK_SPAN_SUBMIT_WAIT : SK_SPAN_SUBMIT);
-    cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
+    submitPending(cc, false);
+    submitOne(cc, syncToCpu);
 }
 
 static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any Java thread
@@ -2704,16 +2743,42 @@ void SKBackend_RequestPresent(SKSDOps *ops) {
 
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
     gFlushes.fetch_add(1, std::memory_order_relaxed);
-    for (SKConfigContext *cc : g.touchedContexts) {
-        SKBackend_Submit(cc, syncToCpu);
-        syncPipelineData(cc, false);
-    }
-    g.touchedContexts.clear();
-    // Present the windows drawn into: every one at the end of every flush
+    // Which windows to present: every one drawn into at the end of every flush
     // (sun.java2d.skia.present=flush), or only those whose paint cycle ended
     // (=cycle, FLUSH_BUFFER); the rest stay dirty until theirs does, or a SYNC
     // or the flusher's timeout flush presents them, as the other pipelines do.
     const bool everything = !gConfig.presentPerCycle || syncToCpu || presentAll;
+    bool presenting = false;
+    for (SKSDOps *dst : g.touchedWindows) {
+        if (everything || g.requestedWindows.count(dst) != 0) {
+            presenting = true;
+            break;
+        }
+    }
+    // A flush that presents nothing and waits for nothing only inserts its recordings
+    // (sun.java2d.skia.submit=present); the next submit sends them, in order.
+    const bool defer = gConfig.submitPerPresent && !syncToCpu && !presentAll && !presenting
+                       && gDeferredFlushes < MAX_DEFERRED_FLUSHES;
+    if (defer) {
+        for (SKConfigContext *cc : g.touchedContexts) {
+            deferSubmit(cc);
+        }
+        if (!g.touchedContexts.empty()) {
+            gDeferredFlushes++;
+        }
+    } else {
+        const std::vector<SKConfigContext *> sent = gPendingSubmit;   // submitted by submitPending
+        submitPending(nullptr, syncToCpu);
+        for (SKConfigContext *cc : g.touchedContexts) {
+            if (std::find(sent.begin(), sent.end(), cc) == sent.end()) {
+                submitOne(cc, syncToCpu);
+            }
+        }
+    }
+    for (SKConfigContext *cc : g.touchedContexts) {
+        syncPipelineData(cc, false);
+    }
+    g.touchedContexts.clear();
     for (auto it = g.touchedWindows.begin(); it != g.touchedWindows.end(); ) {
         SKSDOps *dst = *it;
         if (!everything && g.requestedWindows.count(dst) == 0) {
@@ -2736,5 +2801,5 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
         it = g.touchedWindows.erase(it);
     }
     g.requestedWindows.clear();
-    return !g.touchedWindows.empty();
+    return !g.touchedWindows.empty() || !gPendingSubmit.empty();
 }

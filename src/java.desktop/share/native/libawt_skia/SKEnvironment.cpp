@@ -111,11 +111,12 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads,
                                                    jint lcdMode, jboolean framebufferFetch,
                                                    jlong glyphAtlasBytes, jint glyphCacheTexels,
-                                                   jint luminanceClasses, jboolean presentPerCycle)
+                                                   jint luminanceClasses, jboolean presentPerCycle,
+                                                   jboolean submitPerPresent)
 {
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses,
-                       presentPerCycle == JNI_TRUE);
+                       presentPerCycle == JNI_TRUE, submitPerPresent == JNI_TRUE);
 }
 
 

@@ -107,12 +107,13 @@ public final class SKRenderQueue extends RenderQueue {
 
     /**
      * Runs the entries; presentAll presents every window drawn into and not yet
-     * presented (the timeout flush). Returns whether such windows remain
-     * ({@code sun.java2d.skia.present=cycle}; never under {@code flush}).
+     * presented and submits all pending work (the timeout flush). Returns whether
+     * such windows or submits remain ({@code sun.java2d.skia.present=cycle},
+     * {@code sun.java2d.skia.submit=present}; never under the defaults).
      */
     private native boolean flushBuffer(long buf, int limit, boolean presentAll);
 
-    /** Windows drawn into but not presented yet; the flusher's timeout flush presents them. */
+    /** Windows drawn into but not presented yet, or work not submitted; the flusher's timeout flush sends them. */
     private volatile boolean pendingPresent;
 
     /** Whether windows drawn into wait to be presented (read under the queue lock). */

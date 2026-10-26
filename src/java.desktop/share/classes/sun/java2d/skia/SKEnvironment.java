@@ -145,6 +145,17 @@ public final class SKEnvironment {
     private static final boolean PRESENT_PER_CYCLE =
             "cycle".equalsIgnoreCase(System.getProperty("sun.java2d.skia.present", "flush"))
             && System.getProperty("os.name", "").startsWith("Windows");
+    /**
+     * When recorded work is submitted to the GPU ({@code sun.java2d.skia.submit}):
+     * {@code flush} (the default) submits every context a queue flush drew into at
+     * the end of that flush; {@code present} submits only when the flush presents
+     * a window, syncs, reads back or disposes, when 16 flushes
+     * are pending, or at the flusher's timeout flush; other flushes only hand their
+     * recordings to Graphite. Pending contexts are submitted in the order their
+     * work was inserted, before any other submit.
+     */
+    private static final boolean SUBMIT_PER_PRESENT =
+            "present".equalsIgnoreCase(System.getProperty("sun.java2d.skia.submit", "flush"));
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -388,7 +399,8 @@ public final class SKEnvironment {
                 configureNative(configuration.msaaSamples(), configuration.edgeAAQuads(),
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
-                                FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE);
+                                FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE,
+                                SUBMIT_PER_PRESENT);
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
@@ -409,7 +421,8 @@ public final class SKEnvironment {
                       + ", blitQuads: " + (configuration.edgeAAQuads() ? "edgeAA" : "mesh")
                       + ", lcd: " + configuration.lcdMode().name().toLowerCase(Locale.ROOT)
                       + ", pipelineCache: " + (pipelineCache != null ? pipelineCache : "off")
-                      + ", present: " + (PRESENT_PER_CYCLE ? "cycle" : "flush") + ")"
+                      + ", present: " + (PRESENT_PER_CYCLE ? "cycle" : "flush")
+                      + ", submit: " + (SUBMIT_PER_PRESENT ? "present" : "flush") + ")"
                     : "NO");
             if (VERBOSE) {
                 System.err.println(msg);
@@ -427,7 +440,7 @@ public final class SKEnvironment {
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
                                                long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses,
-                                               boolean presentPerCycle);
+                                               boolean presentPerCycle, boolean submitPerPresent);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();

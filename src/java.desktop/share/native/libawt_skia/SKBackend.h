@@ -107,7 +107,8 @@ enum class SKLcdMode { Blend = 0, TwoPass = 1, Accumulate = 2 };
 // glyphCacheTexels: the side of SKGlyphCache's textures (Java's glyph images), validated by the Java side
 // luminanceClasses: FontUtilities.textLuminanceClasses (1, 2, 4, ... 256), the classes the cg route's masks are rasterized for
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
-                         jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle);
+                         jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
+                         bool submitPerPresent);
 jint SKBackend_LuminanceClasses();     // the count the text path quantizes with
 size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
 jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with
@@ -219,12 +220,13 @@ void SKBackend_CopyArea(jint x, jint y, jint w, jint h, jint dx, jint dy);
 
 // Submission / presentation
 void SKBackend_FlushRecording(SKConfigContext *cc);          // snap + insert, no submit
-void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu);  // flush + submit
+void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu);  // flush + submit, after every pending context (submit=present)
 // The window's paint cycle ended (FLUSH_BUFFER): present it at the end of this flush.
 void SKBackend_RequestPresent(SKSDOps *ops);
 // Submit all and present: every window drawn into (sun.java2d.skia.present=flush, a SYNC, or
 // presentAll, the flusher's timeout flush), else those requested (=cycle). SYNC waits for the
-// GPU. Returns whether windows drawn into remain unpresented.
+// GPU. Returns whether windows drawn into remain unpresented or submits pending
+// (sun.java2d.skia.submit=present), for the flusher's timeout flush.
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu = false, bool presentAll = false);
 jlong SKBackend_Flushes();                                     // how many times EndOfFlush ran (diagnostics, tests)
 

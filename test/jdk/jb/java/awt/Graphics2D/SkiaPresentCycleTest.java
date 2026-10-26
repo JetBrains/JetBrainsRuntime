@@ -39,12 +39,15 @@ import sun.java2d.skia.SKEnvironment;
  *          the other pipelines do. What reaches the screen must not change:
  *          a Swing repaint shows up, drawing on the window outside any paint
  *          cycle shows up within the timeout, and after Toolkit.sync it is
- *          there at once. Both modes run the same checks. When Skia is
+ *          there at once. Both modes run the same checks, also with
+ *          sun.java2d.skia.submit=present (a submit only for a present or a wait). When Skia is
  *          unavailable there is nothing to test.
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.present=flush -Dsun.java2d.uiScale=1 SkiaPresentCycleTest
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.present=cycle -Dsun.java2d.uiScale=1 SkiaPresentCycleTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.submit=present -Dsun.java2d.uiScale=1 SkiaPresentCycleTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.present=cycle -Dsun.java2d.skia.submit=present -Dsun.java2d.uiScale=1 SkiaPresentCycleTest
  */
 public class SkiaPresentCycleTest {
     static final int TIMEOUT_MS = 3000;
