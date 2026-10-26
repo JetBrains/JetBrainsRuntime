@@ -235,17 +235,19 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // luminance only (not on the destination), so this is the platform's look for
 // that luminance. Text space is y up: the device matrix (y down) gets its y
 // flipped into the text matrix.
+// macOS has no platform simulation to copy (measured 2026-10-26, probes synthprobe.swift and
+// derivedprobe.swift): CTFontCreateCopyWithSymbolicTraits returns nil for a face the font lacks
+// and NSFontManager hands the regular face back. The JDK's own convention is the reference, and
+// on macOS every font is a CFont, bundled files included: its fake italic is a 0.2 shear of the
+// strike's glyph transform (CFont.createStrike, so the scaler is never asked for one), and there
+// is no fake bold. These values are what a route asking the scaler would get, for consistency;
+// today none does here. SkiaSyntheticStyleMacTest measures both scalers.
 void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
 {
-    *obliqueShear = 0x366A / 65536.0f;   // the JDK's FreeType scaler, until CoreText's own values are measured
-    *boldEmFraction = 1.0f / 32;
+    *obliqueShear = 0.2f;
+    *boldEmFraction = 0.0f;
 }
 
-// CoreGraphics' sub-pixel quantization, on by default and what AppKit draws with
-// (gridprobe, 2026-10-23): glyph positions rounded DOWN to thirds of a device
-// pixel at 1x, halves at 1.5x and 2x, whole pixels from 3x; LCD has no grid here
-// (no colour sub-pixels), the JDK's own LCD placement stays. Negative: see
-// SKPlatform.h, the rounding-down rule.
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float displayScale, bool lcd)
 {
     if (lcd) {

@@ -142,8 +142,10 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
 // glyph to the right by that much and adds the same to every advance.
 // Windows: DirectWrite's font simulations, measured from the simulated faces'
 // outlines (dwref --simulations): shear 0.34, bold 1/50 em on every glyph.
-// macOS: the JDK's FreeType values until CoreText's are measured (0x366A /
-// 0x10000 = 0.2126, 1/32 em).
+// macOS: CoreText and AppKit synthesize nothing (measured 2026-10-26); the JDK's
+// convention for every font there (all are CFonts) is a 0.2 shear of the strike
+// transform and no fake bold, which this returns (0.2, 0) — the scaler is not asked
+// for a synthetic style on macOS today.
 void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction);
 // The platform rasterizer's horizontal placement grid for a typeface at a
 // pixel size: how many sub-pixel positions per pixel it distinguishes (it
