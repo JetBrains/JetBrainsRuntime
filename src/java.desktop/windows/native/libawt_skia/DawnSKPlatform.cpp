@@ -103,11 +103,54 @@ static std::shared_ptr<DawnSKDevice> gDevices[kBackendCount];
 // Instance, adapter, device
 // ---------------------------------------------------------------------------
 
+// J2D_SKIA_STATS: the render passes, texture copies, uploads and submits Graphite
+// issues, counted where they enter Dawn (its process-wide proc table, wrapped
+// once before the instance exists). Without the statistics the table is Dawn's own.
+static DawnProcTable gDawnProcs;
+
+static WGPURenderPassEncoder countingBeginRenderPass(WGPUCommandEncoder encoder, const WGPURenderPassDescriptor *descriptor) {
+    SKStats_Count(SK_COUNT_RENDER_PASSES);
+    return gDawnProcs.commandEncoderBeginRenderPass(encoder, descriptor);
+}
+
+static void countingCopyTextureToTexture(WGPUCommandEncoder encoder, const WGPUTexelCopyTextureInfo *source,
+                                         const WGPUTexelCopyTextureInfo *destination, const WGPUExtent3D *size) {
+    SKStats_Count(SK_COUNT_TEXTURE_COPIES);
+    gDawnProcs.commandEncoderCopyTextureToTexture(encoder, source, destination, size);
+}
+
+static void countingCopyBufferToTexture(WGPUCommandEncoder encoder, const WGPUTexelCopyBufferInfo *source,
+                                        const WGPUTexelCopyTextureInfo *destination, const WGPUExtent3D *size) {
+    SKStats_Count(SK_COUNT_BUFFER_UPLOADS);
+    gDawnProcs.commandEncoderCopyBufferToTexture(encoder, source, destination, size);
+}
+
+static void countingQueueSubmit(WGPUQueue queue, size_t commandCount, const WGPUCommandBuffer *commands) {
+    SKStats_Count(SK_COUNT_QUEUE_SUBMITS);
+    gDawnProcs.queueSubmit(queue, commandCount, commands);
+}
+
+static const DawnProcTable *dawnProcs() {
+    if (!SKStats_IsEnabled()) {
+        return &dawn::native::GetProcs();
+    }
+    static DawnProcTable counting = [] {
+        gDawnProcs = dawn::native::GetProcs();
+        DawnProcTable table = gDawnProcs;
+        table.commandEncoderBeginRenderPass = countingBeginRenderPass;
+        table.commandEncoderCopyTextureToTexture = countingCopyTextureToTexture;
+        table.commandEncoderCopyBufferToTexture = countingCopyBufferToTexture;
+        table.queueSubmit = countingQueueSubmit;
+        return table;
+    }();
+    return &counting;
+}
+
 wgpu::Instance DawnSK_Instance() {
     static wgpu::Instance instance = [] {
         // Dawn's C entry points dispatch through a process-wide proc table that
         // the native implementation has to be installed in first.
-        dawnProcSetProcs(&dawn::native::GetProcs());
+        dawnProcSetProcs(dawnProcs());
         wgpu::InstanceFeatureName timedWait = wgpu::InstanceFeatureName::TimedWaitAny;
         wgpu::InstanceDescriptor descriptor;
         descriptor.requiredFeatureCount = 1;

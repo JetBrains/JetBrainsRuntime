@@ -68,6 +68,10 @@ enum SKStatsCounter {
     SK_COUNT_BLOB_LOADS,        // EXPERIMENT: Dawn blob cache lookups (J2D_SKIA_DAWN_CACHE)
     SK_COUNT_BLOB_HITS,         // of those, found
     SK_COUNT_BLOB_STORES,       // blobs Dawn handed over for storing
+    SK_COUNT_RENDER_PASSES,     // render passes begun on the device (Dawn platform: through its proc table)
+    SK_COUNT_TEXTURE_COPIES,    // texture-to-texture copies encoded (destination reads, the present copy)
+    SK_COUNT_BUFFER_UPLOADS,    // buffer-to-texture copies encoded (texture uploads)
+    SK_COUNT_QUEUE_SUBMITS,     // command buffer submits to the device queue
     SK_COUNT_COUNT
 };
 
