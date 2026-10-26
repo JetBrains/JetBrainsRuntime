@@ -110,3 +110,12 @@ by submit. RenderMatrix, jtreg and LineConformance must stay identical all the s
    change of the window surface model, out of this plan's scope.
 
 Steps 2 and 3 stay on the x64hw branch behind their property until the Mac has measured them.
+
+## 6. Outcome of step 2 (2026-10-26)
+
+Implemented as `sun.java2d.skia.present=cycle` (opt-in). n = 5 in the IDE scenes: paint time
+−1.0 % (within the spread), flush time −3.1 %, flush calls +75 %; paint-to-present latency
+unchanged (0.02 ms, LatencyProbe). The estimate in §3 did not hold: Swing's back-buffer blit
+already ends each paint cycle with a flush, so presenting per cycle adds flushes instead of
+removing them. Step 3 (submit only when presenting, syncing, reading back or over the cap) is now
+the lever; under `cycle` it would drop the extra flushes' submits. Details in raw-x64hw-2026-10-23.md.
