@@ -225,10 +225,15 @@ public final class SKEnvironment {
             // framebuffer fetch costs a render pass and a copy per draw (Dawn on
             // Direct3D, Metal on Intel and AMD GPUs), which LCD text cannot
             // afford once overlapping glyphs are drawn separately. Of the two
-            // modes without a destination read, accumulate is the faster one
-            // (one layer per batch, no split) and the closer one at overlaps;
-            // in IDE scenes the two are indistinguishable (2026-10-21).
-            return new Configuration(1, false, framebufferFetch ? LcdMode.BLEND : LcdMode.ACCUMULATE, framebufferFetch);
+            // modes without a destination read, accumulate is the faster one on a
+            // single long batch and the closer one at overlaps, but in the IDE
+            // every small text batch gets its own coverage layer, which ends a
+            // render pass before it is sampled: on Dawn/D3D11 twopass paints the
+            // IDE scenes 13 % faster (n = 5, 2026-10-26); the two look the same
+            // there (2026-10-21). Intel and AMD Macs keep accumulate until measured.
+            LcdMode lcd = framebufferFetch ? LcdMode.BLEND
+                    : System.getProperty("os.name", "").startsWith("Windows") ? LcdMode.TWOPASS : LcdMode.ACCUMULATE;
+            return new Configuration(1, false, lcd, framebufferFetch);
         }
 
         Configuration withProperties() {
@@ -274,6 +279,11 @@ public final class SKEnvironment {
             init();
         }
         return description != null;
+    }
+
+    /** The LCD text mode the backend runs with (blend, twopass, accumulate); null when Skia is unavailable (tests). */
+    public static String lcdMode() {
+        return isSkiaEnabled() ? configuration.lcdMode().name().toLowerCase(Locale.ROOT) : null;
     }
 
     /** Whether windows are presented once per paint cycle rather than at every flush ({@code sun.java2d.skia.present=cycle}). */
