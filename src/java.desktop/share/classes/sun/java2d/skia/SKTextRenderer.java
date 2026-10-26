@@ -29,6 +29,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.FontInfo;
 import sun.java2d.pipe.BufferedTextPipe;
 import sun.java2d.pipe.OutlineTextRenderer;
+import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
 
 import java.awt.AlphaComposite;
@@ -36,6 +37,7 @@ import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Font;
 import java.awt.font.TextAttribute;
+import java.lang.annotation.Native;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.CharacterIterator;
@@ -57,10 +59,11 @@ import sun.font.SKDrawableStrike;
  * with {@code =paragraph}, attributed strings are laid out by Skia's paragraph
  * engine ({@link SKEnvironment#textParagraphBySkia()}).
  * <p>
- * The three Skia text-path entries run through {@link RenderQueue#flushAndInvokeNow},
- * a flush and GPU submit per call: the experimental shortcut. A queued opcode
- * carrying the glyph codes or the string is the prerequisite of any
- * performance comparison (ledger §19b).
+ * The three Skia text-path entries are render-queue operations carrying the
+ * glyph codes or the UTF-16 text (opcodes {@link #DRAW_GLYPHS_BY_SKIA} and the
+ * two others, dispatched by {@code SKRenderQueue.cpp}); only an operation larger
+ * than the render buffer runs through {@link RenderQueue#flushAndInvokeNow}, as
+ * {@code BufferedTextPipe} does with an oversized glyph list.
  */
 final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPipe {
 
@@ -70,6 +73,26 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /** Paragraph run flags, as SKBackend.h's SK_PARAGRAPH_*: the colour flag says colours[r] applies. */
     private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4;
+
+    /** Render-queue opcodes of the Skia text path: the backend's own range above {@code BufferedOpCodes}, after {@code SKShapePipe}'s. */
+    @Native static final int DRAW_GLYPHS_BY_SKIA = 210, DRAW_SHAPED_BY_SKIA = 211, DRAW_PARAGRAPH_BY_SKIA = 212;
+    /** Bits of the opcodes' packed parameters. */
+    @Native static final int OFFSET_USE_POSITIONS = 0, OFFSET_SMOOTHING = 1;
+
+    /** Bytes a string's UTF-16 units take on the queue: padded so the next operation stays 4-byte aligned. */
+    private static int paddedChars(int length) {
+        return (2 * length + 3) & ~3;
+    }
+
+    private static void putChars(RenderBuffer buf, String s) {
+        final int n = s.length();
+        for (int i = 0; i < n; i++) {
+            buf.putShort((short) s.charAt(i));
+        }
+        if ((n & 1) != 0) {
+            buf.putShort((short) 0);
+        }
+    }
 
     /** The strike when Skia's text path can draw it (on the Skia scaler, axis-aligned transform), else null. */
     private static SKDrawableStrike skiaStrike(Object strike) {   // a FontStrike; GlyphList hands it out as Object
@@ -135,14 +158,27 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             validateContext(sg2d, textComposite(sg2d));
             rq.addReference(strike);
             final boolean smoothing = SKEnvironment.textSmoothing();
-            rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, origin[0], origin[1], s));
+            final int length = s.length(), total = 28 + paddedChars(length);
+            RenderBuffer buf = rq.getBuffer();
+            if (total <= buf.capacity()) {
+                rq.ensureCapacityAndAlignment(total, 20);
+                buf.putInt(DRAW_SHAPED_BY_SKIA);
+                buf.putInt(length);
+                buf.putInt(smoothing ? 1 << OFFSET_SMOOTHING : 0);
+                buf.putFloat(origin[0]);
+                buf.putFloat(origin[1]);
+                buf.putLong(context);
+                putChars(buf, s);
+            } else {
+                rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, origin[0], origin[1], s));
+            }
         } finally {
             rq.unlock();
         }
         return true;
     }
 
-    /** Skia's shaper: the characters shaped by HarfBuzz with Skia's fallback and drawn as one text blob. */
+    /** Skia's shaper: the characters shaped by HarfBuzz with Skia's fallback and drawn as one text blob (oversized operations). */
     private static native void drawShapedBySkia(long pScalerContext, boolean smoothing, float originX, float originY, String text);
 
     /**
@@ -237,14 +273,32 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 rq.addReference(strike);
             }
             final boolean smoothing = SKEnvironment.textSmoothing();
-            rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray));
+            final int length = string.length(), runs = endArray.length;
+            final int total = 24 + runs * (8 + 3 * 4) + paddedChars(length);
+            RenderBuffer buf = rq.getBuffer();
+            if (total <= buf.capacity()) {
+                rq.ensureCapacityAndAlignment(total, 24);
+                buf.putInt(DRAW_PARAGRAPH_BY_SKIA);
+                buf.putInt(length);
+                buf.putInt(runs);
+                buf.putInt(smoothing ? 1 << OFFSET_SMOOTHING : 0);
+                buf.putFloat(origin[0]);
+                buf.putFloat(origin[1]);
+                buf.put(contextArray, 0, runs);
+                buf.put(endArray, 0, runs);
+                buf.put(colourArray, 0, runs);
+                buf.put(flagArray, 0, runs);
+                putChars(buf, string);
+            } else {
+                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray));
+            }
         } finally {
             rq.unlock();
         }
         return true;
     }
 
-    /** Skia's paragraph engine: runs of (strike, colour, decorations) laid out on one line and painted at the baseline origin. */
+    /** Skia's paragraph engine: runs of (strike, colour, decorations) laid out on one line and painted at the baseline origin (oversized operations). */
     private static native void drawParagraphBySkia(boolean smoothing, float originX, float originY, String text,
                                                    int[] runEnds, long[] contexts, int[] colours, int[] flags);
 
@@ -255,7 +309,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             final int n = gl.getNumGlyphs();
             final boolean usePositions = gl.usePositions();
             final float x = gl.getX(), y = gl.getY();
-            // the GlyphList singleton's own arrays: safe only because the call below is synchronous
+            // the GlyphList singleton's own arrays: copied onto the queue, or drawn, under the lock before the GlyphList is reused
             final int[] codes = gl.getGlyphCodes();
             final long[] images = gl.getImages();
             final float[] positions = usePositions ? gl.getPositions() : null;
@@ -265,7 +319,24 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 validateContext(sg2d, textComposite(sg2d));
                 rq.addReference(strike);
                 final boolean smoothing = SKEnvironment.textSmoothing();
-                rq.flushAndInvokeNow(() -> drawGlyphsBySkia(context, n, usePositions, smoothing, x, y, codes, images, positions));
+                final int total = 28 + n * (8 + 4 + (usePositions ? 8 : 0));
+                RenderBuffer buf = rq.getBuffer();
+                if (total <= buf.capacity()) {
+                    rq.ensureCapacityAndAlignment(total, 20);
+                    buf.putInt(DRAW_GLYPHS_BY_SKIA);
+                    buf.putInt(n);
+                    buf.putInt((usePositions ? 1 << OFFSET_USE_POSITIONS : 0) | (smoothing ? 1 << OFFSET_SMOOTHING : 0));
+                    buf.putFloat(x);
+                    buf.putFloat(y);
+                    buf.putLong(context);
+                    buf.put(images, 0, n);
+                    buf.put(codes, 0, n);
+                    if (usePositions) {
+                        buf.put(positions, 0, 2 * n);
+                    }
+                } else {
+                    rq.flushAndInvokeNow(() -> drawGlyphsBySkia(context, n, usePositions, smoothing, x, y, codes, images, positions));
+                }
             } finally {
                 rq.unlock();
             }
@@ -274,7 +345,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         super.drawGlyphList(sg2d, gl);
     }
 
-    /** Skia's text path: glyph codes with Java's positions (or the images' advances) through the strike's SkFont. */
+    /** Skia's text path: glyph codes with Java's positions (or the images' advances) through the strike's SkFont (oversized operations). */
     private static native void drawGlyphsBySkia(long pScalerContext, int numGlyphs, boolean usePositions, boolean smoothing,
                                                 float originX, float originY, int[] codes, long[] images, float[] positions);
 

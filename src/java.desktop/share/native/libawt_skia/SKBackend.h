@@ -204,5 +204,6 @@ void SKBackend_CopyArea(jint x, jint y, jint w, jint h, jint dx, jint dy);
 void SKBackend_FlushRecording(SKConfigContext *cc);          // snap + insert, no submit
 void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu);  // flush + submit
 void SKBackend_EndOfFlush(bool syncToCpu = false);             // submit all + request redraws; SYNC waits for the GPU
+jlong SKBackend_Flushes();                                     // how many times EndOfFlush ran (diagnostics, tests)
 
 #endif /* SKBackend_h_Included */

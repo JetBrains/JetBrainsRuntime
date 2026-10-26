@@ -2394,7 +2394,14 @@ void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
     cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
 }
 
+static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any Java thread
+
+jlong SKBackend_Flushes() {
+    return gFlushes.load(std::memory_order_relaxed);
+}
+
 void SKBackend_EndOfFlush(bool syncToCpu) {
+    gFlushes.fetch_add(1, std::memory_order_relaxed);
     for (SKConfigContext *cc : g.touchedContexts) {
         SKBackend_Submit(cc, syncToCpu);
     }

@@ -61,6 +61,12 @@
 #define EXTRACT_BOOLEAN(packed, offset) (((packed) >> (offset)) & 1)
 
 #define OP(name) case sun_java2d_pipe_BufferedOpCodes_##name
+// the Skia text path's own opcodes and packed-parameter bits (SKTextRenderer)
+#define TEXT_OP(name) case sun_java2d_skia_SKTextRenderer_##name
+#define OFFSET_USE_POSITIONS sun_java2d_skia_SKTextRenderer_OFFSET_USE_POSITIONS
+#define OFFSET_SMOOTHING     sun_java2d_skia_SKTextRenderer_OFFSET_SMOOTHING
+// a string's UTF-16 units on the queue, padded to keep the next operation 4-byte aligned
+#define PADDED_CHARS(length) ((((length) * (jint) sizeof(jchar)) + 3) & ~3)
 
 extern "C" {
 
@@ -168,6 +174,46 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
             const jfloat *positions = usePositions ? (const jfloat *) (b + numGlyphs * BYTES_PER_GLYPH_IMAGE) : nullptr;
             SKBackend_DrawGlyphList(numGlyphs, usePositions, subPixPos, rgbOrder, lcdContrast, origX, origY, images, positions);
             SKIP_BYTES(b, numGlyphs * (BYTES_PER_GLYPH_IMAGE + (usePositions ? BYTES_PER_GLYPH_POSITION : 0)));
+            break;
+        }
+        TEXT_OP(DRAW_GLYPHS_BY_SKIA): {
+            jint numGlyphs = NEXT_INT(b);
+            jint packedParams = NEXT_INT(b);
+            jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
+            jlong pScalerContext = NEXT_LONG(b);
+            jboolean usePositions = EXTRACT_BOOLEAN(packedParams, OFFSET_USE_POSITIONS);
+            jboolean smoothing = EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING);
+            const jlong *images = (const jlong *) b;
+            const jint *codes = (const jint *) (images + numGlyphs);
+            const jfloat *positions = usePositions ? (const jfloat *) (codes + numGlyphs) : nullptr;
+            SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, smoothing, origX, origY, codes, images, positions);
+            SKIP_BYTES(b, numGlyphs * (jint) (sizeof(jlong) + sizeof(jint) + (usePositions ? 2 * sizeof(jfloat) : 0)));
+            break;
+        }
+        TEXT_OP(DRAW_SHAPED_BY_SKIA): {
+            jint length = NEXT_INT(b);
+            jint packedParams = NEXT_INT(b);
+            jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
+            jlong pScalerContext = NEXT_LONG(b);
+            SKBackend_DrawShapedBySkia(pScalerContext, EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), origX, origY,
+                                       (const jchar *) b, length);
+            SKIP_BYTES(b, PADDED_CHARS(length));
+            break;
+        }
+        TEXT_OP(DRAW_PARAGRAPH_BY_SKIA): {
+            jint length = NEXT_INT(b);
+            jint runs = NEXT_INT(b);
+            jint packedParams = NEXT_INT(b);
+            jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
+            const jlong *contexts = (const jlong *) b;
+            const jint *ends = (const jint *) (contexts + runs);
+            const jint *colours = ends + runs, *flags = colours + runs;
+            const jchar *chars = (const jchar *) (flags + runs);
+            if (runs > 0) {
+                SKBackend_DrawParagraphBySkia(EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), origX, origY, chars, length,
+                                              runs, ends, contexts, colours, flags);
+            }
+            SKIP_BYTES(b, runs * (jint) (sizeof(jlong) + 3 * sizeof(jint)) + PADDED_CHARS(length));
             break;
         }
 
@@ -438,7 +484,7 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
     } // SKPlatformScope
 }
 
-// ---- direct entry points (flushAndInvokeNow) ------------------------------
+// ---- direct entry points (flushAndInvokeNow: operations larger than the render buffer) ----
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,

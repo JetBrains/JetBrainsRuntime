@@ -264,6 +264,14 @@ public final class SKEnvironment {
         return isSkiaEnabled() ? paragraphsBySkiaNative() : 0;
     }
 
+    /**
+     * How many times the native backend has finished a flush (a render-queue buffer
+     * or a direct entry) and submitted the GPU work so far (diagnostics, tests).
+     */
+    public static long flushes() {
+        return isSkiaEnabled() ? flushesNative() : 0;
+    }
+
     private static Boolean libraryLoaded;
 
     /**
@@ -358,4 +366,6 @@ public final class SKEnvironment {
     private static native long glyphsShapedBySkiaNative();
 
     private static native long paragraphsBySkiaNative();
+
+    private static native long flushesNative();
 }
