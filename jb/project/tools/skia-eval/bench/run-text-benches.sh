@@ -12,7 +12,8 @@ set -u
 R="${R:-$(cd "$(dirname "$0")/../../../../.." && pwd)}"
 JDK=$(cd "$1" && pwd); OUT=$(mkdir -p "$2" && cd "$2" && pwd); REPS=$3
 K="$R/jb/project/tools/skia-eval"
-X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED -Dsun.java2d.skia.pipelineCache=off"
+X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED"
+XR="-Dsun.java2d.skia.pipelineCache=off"   # java only (javac takes $X too)
 JDK_B=${JDK_B:+$(cd "$JDK_B" && pwd)}
 
 declare -A ARM=(
@@ -58,7 +59,7 @@ for rep in $(seq "$FIRST" $((FIRST + REPS - 1))); do
     log="$OUT/logs/$rep-$bench-${conf// /_}-$arm.log"
     # shellcheck disable=SC2086
     jdk=$JDK; a=$arm; [ "${arm#b-}" != "$arm" ] && { jdk=$JDK_B; a=${arm#b-}; }
-    timeout 600 "$jdk/bin/java.exe" $X ${ARM[$a]} -Dsun.java2d.uiScale=1 -cp "$OUT/classes" $cmd > "$log" 2>&1
+    timeout 600 "$jdk/bin/java.exe" $X $XR ${ARM[$a]} -Dsun.java2d.uiScale=1 -cp "$OUT/classes" $cmd > "$log" 2>&1
     case "$bench" in
       LcdTextBench)    v=$(grep -oE 'median=[0-9.]+' "$log" | cut -d= -f2); metric=median ;;
       GlyphChurnBench) v=$(grep -oE 'median [0-9.]+' "$log" | cut -d' ' -f2); metric=median ;;
