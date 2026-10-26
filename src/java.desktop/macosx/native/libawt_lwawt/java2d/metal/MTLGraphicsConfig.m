@@ -26,6 +26,7 @@
 #import "sun_java2d_metal_MTLGraphicsConfig.h"
 
 #import "MTLOptions.h"
+#import "MTLTextRenderer.h"
 #import "MTLGraphicsConfig.h"
 #import "ThreadUtilities.h"
 #import "awt.h"
@@ -118,6 +119,13 @@ Java_sun_java2d_metal_MTLGraphicsConfig_glyphCacheSize
     (JNIEnv *env, jclass mtlgc)
 {
     return MTLOptions_GlyphCacheSize();
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_metal_MTLGraphicsConfig_glyphsDrawnUncached
+    (JNIEnv *env, jclass mtlgc)
+{
+    return MTLTR_GlyphsDrawnUncached();
 }
 
 JNIEXPORT void JNICALL

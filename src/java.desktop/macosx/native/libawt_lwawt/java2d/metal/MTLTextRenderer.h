@@ -54,4 +54,6 @@ void MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                          jfloat glyphListOrigX, jfloat glyphListOrigY,
                          unsigned char *images, unsigned char *positions);
 
+jlong MTLTR_GlyphsDrawnUncached(void);   // glyphs drawn without a cache so far (diagnostics, tests)
+
 #endif /* MTLTextRenderer_h_Included */

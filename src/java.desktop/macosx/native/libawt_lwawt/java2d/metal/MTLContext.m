@@ -187,6 +187,8 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
 
 
 @implementation MTLContext {
+    MTLGlyphCache *_glyphCachesLCD[MTLTR_GLYPH_BUCKETS];
+    MTLGlyphCache *_glyphCachesAA[MTLTR_GLYPH_BUCKETS];
     MTLCommandBufferWrapper * _commandBufferWrapper;
     NSMutableSet*      _layers;
 
@@ -200,6 +202,22 @@ static const char* mtlContextStoreNotificationToStr(MTLContextStoreNotification 
     EncoderManager *   _encoderManager;
     MTLSamplerManager * _samplerManager;
     MTLStencilManager * _stencilManager;
+}
+
+- (MTLGlyphCache *) glyphCacheLCD {
+    return _glyphCachesLCD[_activeGlyphBucketLCD];
+}
+
+- (MTLGlyphCache *) glyphCacheAA {
+    return _glyphCachesAA[_activeGlyphBucketAA];
+}
+
+- (MTLGlyphCache *) glyphCacheAAForBucket:(jint)bucket {
+    return bucket >= 0 && bucket < MTLTR_GLYPH_BUCKETS ? _glyphCachesAA[bucket] : nil;
+}
+
+- (MTLGlyphCache *) glyphCacheLCDForBucket:(jint)bucket {
+    return bucket >= 0 && bucket < MTLTR_GLYPH_BUCKETS ? _glyphCachesLCD[bucket] : nil;
 }
 
 @synthesize textureFunction,
@@ -486,8 +504,12 @@ extern void initSamplers(id<MTLDevice> device);
             _displayLinkStates = nil;
             _layers = nil;
         }
-        _glyphCacheLCD = [[MTLGlyphCache alloc] initWithContext:self];
-        _glyphCacheAA = [[MTLGlyphCache alloc] initWithContext:self];
+        for (int b = 0; b < MTLTR_GLYPH_BUCKETS; b++) {
+            _glyphCachesLCD[b] = [[MTLGlyphCache alloc] initWithContext:self];
+            _glyphCachesAA[b] = [[MTLGlyphCache alloc] initWithContext:self];
+        }
+        _activeGlyphBucketLCD = 1;   // the 32-pixel bucket
+        _activeGlyphBucketAA = 1;
     }
     return self;
 }
@@ -671,8 +693,10 @@ extern void initSamplers(id<MTLDevice> device);
     // TODO : Check that texturePool is completely released.
     // texturePool content is released in MTLCommandBufferWrapper.onComplete()
     //self.texturePool = nil;
-    [_glyphCacheLCD release];
-    [_glyphCacheAA release];
+    for (int b = 0; b < MTLTR_GLYPH_BUCKETS; b++) {
+        [_glyphCachesLCD[b] release];
+        [_glyphCachesAA[b] release];
+    }
 
     self.vertexBuffer = nil;
     self.commandQueue = nil;

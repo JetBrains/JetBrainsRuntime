@@ -50,6 +50,64 @@
 #define MTLTR_CACHE_CELL_HEIGHT 32
 
 /**
+ * The glyph caches come in size buckets, one cache per cell size and kind
+ * (grayscale, LCD); a glyph image goes to the smallest cell it fits. One cell
+ * size for all glyphs either wastes most of a 32-pixel cell on 1x UI text or
+ * sends every glyph above 16 pt on a 2x display through the no-cache path (a
+ * texture upload per tile and a draw per glyph) every frame. The configured
+ * texture side (MTLOptions_GlyphCacheSize) is the 32-pixel bucket's; the
+ * 16-pixel bucket has half the side, the larger buckets the same side or
+ * whatever holds 256 cells, whichever is more.
+ */
+static const jint glyphBucketCells[MTLTR_GLYPH_BUCKETS] = {16, 32, 64, 128};
+
+// The bucket for one glyph image, or -1 if it exceeds the largest cell. A glyph list
+// uses one bucket, that of its largest glyph (MTLTR_ListGlyphBucket): a switch of the
+// bucket's texture costs a draw of the quads batched so far, and at 24-pixel text
+// lowercase glyphs fit a 16-pixel cell while capitals do not, so per-glyph buckets
+// broke a word into several draws (RenderPerfTest's TextGray doubled).
+static jint MTLTR_GlyphBucket(const GlyphInfo *ginfo) {
+    jint extent = ginfo->width > ginfo->height ? ginfo->width : ginfo->height;
+    for (jint b = 0; b < MTLTR_GLYPH_BUCKETS; b++) {
+        if (extent <= glyphBucketCells[b]) {
+            return b;
+        }
+    }
+    return -1;
+}
+
+// The bucket of a glyph list: its largest glyph image's; the largest bucket if some
+// glyph exceeds even that (those glyphs draw uncached, the rest from the cache).
+static jint MTLTR_ListGlyphBucket(const unsigned char *images, jint totalGlyphs) {
+    jint extent = 0;
+    for (jint i = 0; i < totalGlyphs; i++) {
+        const GlyphInfo *ginfo = (const GlyphInfo *) jlong_to_ptr(((const jlong *) images)[i]);
+        if (ginfo == NULL || ginfo == (const GlyphInfo *) -1) {
+            break;
+        }
+        if (ginfo->image != NULL && ginfo->format != sun_font_StrikeCache_PIXEL_FORMAT_BGRA) {
+            jint e = ginfo->width > ginfo->height ? ginfo->width : ginfo->height;
+            if (e > extent) {
+                extent = e;
+            }
+        }
+    }
+    for (jint b = 0; b < MTLTR_GLYPH_BUCKETS; b++) {
+        if (extent <= glyphBucketCells[b]) {
+            return b;
+        }
+    }
+    return MTLTR_GLYPH_BUCKETS - 1;
+}
+
+// Glyphs drawn without a cache (did not fit the largest cell), for diagnostics and tests.
+static volatile jlong glyphsDrawnUncached = 0;
+
+jlong MTLTR_GlyphsDrawnUncached(void) {
+    return glyphsDrawnUncached;
+}
+
+/**
  * The current "glyph mode" state.  This variable is used to track the
  * codepath used to render a particular glyph.  This variable is reset to
  * MODE_NOT_INITED at the beginning of every call to MTLTR_DrawGlyphList().
@@ -127,14 +185,25 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_InitGlyphCache");
     // init glyph cache data structure
     MTLGlyphCache* glyphCache = (lcdCache)?mtlc.glyphCacheLCD:mtlc.glyphCacheAA;
+    jint bucket = lcdCache ? mtlc.activeGlyphBucketLCD : mtlc.activeGlyphBucketAA;
+    jint cell = glyphBucketCells[bucket];
     jint cacheSize = MTLOptions_GlyphCacheSize();
     if (cacheSize <= 0) {
         cacheSize = MTLTR_CACHE_WIDTH;   // == MTLTR_CACHE_HEIGHT; the option resolves its own default
     }
+    if (cell < MTLTR_CACHE_CELL_WIDTH) {
+        cacheSize /= 2;   // the 16-pixel bucket: the same cell count on a quarter of the texels
+    } else if (cacheSize < cell * 16) {
+        cacheSize = cell * 16;   // the larger buckets hold at least 256 cells: a font's glyphs times their sub-pixel variants
+    }
+    cacheSize -= cacheSize % cell;
+    if (cacheSize < cell) {
+        cacheSize = cell;
+    }
     if (glyphCache.cacheInfo == NULL && ![glyphCache glyphCacheInitWidth:cacheSize
                                   height:cacheSize
-                               cellWidth:MTLTR_CACHE_CELL_WIDTH
-                              cellHeight:MTLTR_CACHE_CELL_HEIGHT
+                               cellWidth:cell
+                              cellHeight:cell
                              pixelFormat:(lcdCache)?MTLPixelFormatBGRA8Unorm:MTLPixelFormatA8Unorm
                                     func:MTLTR_SyncFlushGlyphVertexCache])
     {
@@ -305,7 +374,7 @@ static void DisableColorGlyphPainting(MTLContext *mtlc) {
 
 static jboolean
 MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
-                                 jint x, jint y, BMTLSDOps *dstOps, jint subimage)
+                                 jint x, jint y, BMTLSDOps *dstOps, jint subimage, jint bucket)
 {
     jfloat x1, y1, x2, y2;
 
@@ -317,8 +386,16 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
         } else if (glyphMode == MODE_NO_CACHE_COLOR) {
             DisableColorGlyphPainting(mtlc);
         }
+        mtlc.activeGlyphBucketAA = bucket;
         MTLTR_EnableGlyphVertexCache(mtlc, dstOps);
         glyphMode = MODE_USE_CACHE_GRAY;
+    } else if (bucket != mtlc.activeGlyphBucketAA) {
+        // another bucket's texture: draw the quads batched so far first
+        MTLVertexCache_FlushGlyphVertexCache(mtlc);
+        mtlc.activeGlyphBucketAA = bucket;
+        if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_FALSE)) {
+            return JNI_FALSE;
+        }
     }
 
     MTLCacheCellInfo *cell;
@@ -376,7 +453,7 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
 static jboolean
 MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
-                           jboolean rgbOrder, jint contrast)
+                           jboolean rgbOrder, jint contrast, jint bucket)
 {
     MTLCacheCellInfo *cell;
     jfloat tx1, ty1, tx2, ty2;
@@ -393,17 +470,25 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
         }
 
         if (rgbOrder != lastRGBOrder) {
-            // need to invalidate the cache in this case; see comments
+            // need to invalidate the caches in this case; see comments
             // for lastRGBOrder above
-            [mtlc.glyphCacheLCD free];
+            for (jint b = 0; b < MTLTR_GLYPH_BUCKETS; b++) {
+                [[mtlc glyphCacheLCDForBucket:b] free];
+            }
             lastRGBOrder = rgbOrder;
         }
 
+        mtlc.activeGlyphBucketLCD = bucket;
         if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_TRUE)) {
             return JNI_FALSE;
         }
 
         glyphMode = MODE_USE_CACHE_LCD;
+    } else if (bucket != mtlc.activeGlyphBucketLCD) {
+        mtlc.activeGlyphBucketLCD = bucket;   // LCD glyphs draw one by one: no batch to flush
+        if (!MTLTR_ValidateGlyphCache(mtlc, dstOps, JNI_TRUE)) {
+            return JNI_FALSE;
+        }
     }
 
     if (ginfo->cellInfo == NULL) {
@@ -445,6 +530,7 @@ static jboolean
 MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
                                 GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps, jint subimage)
 {
+    glyphsDrawnUncached++;
     jint tw, th;
     jint sx, sy, sw, sh;
     jint x0;
@@ -496,6 +582,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
                           jint rowBytesOffset,
                           jboolean rgbOrder, jint contrast)
 {
+    glyphsDrawnUncached++;
     jfloat tx1, ty1, tx2, ty2;
     jint tw, th;
     jint w = ginfo->width;
@@ -643,6 +730,8 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     glyphMode = MODE_NOT_INITED;
     J2dTraceLn(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
     jboolean flushBeforeLCD = JNI_FALSE;
+    const jint listBucket = MTLTR_ListGlyphBucket(images, totalGlyphs);
+    const jint listCell = glyphBucketCells[listBucket];
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -696,11 +785,10 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         J2dTraceLn(J2D_TRACE_INFO, "rowBytes = %d", ginfo->rowBytes);
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             // grayscale or monochrome glyph data
-            if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
-                ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
+            if (ginfo->width <= listCell && ginfo->height <= listCell)
             {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale cache");
-                ok = MTLTR_DrawGrayscaleGlyphViaCache(mtlc, ginfo, x, y, dstOps, subimage);
+                ok = MTLTR_DrawGrayscaleGlyphViaCache(mtlc, ginfo, x, y, dstOps, subimage, listBucket);
             } else {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale no cache");
                 ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps, subimage);
@@ -726,14 +814,12 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 }
             }
 
-            if (rowBytesOffset == 0 &&
-                ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
-                ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
+            if (rowBytesOffset == 0 && ginfo->width <= listCell && ginfo->height <= listCell)
             {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache");
                 ok = MTLTR_DrawLCDGlyphViaCache(mtlc, dstOps,
                                                 ginfo, x, y,
-                                                rgbOrder, lcdContrast);
+                                                rgbOrder, lcdContrast, listBucket);
             } else {
                 J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache");
                 ok = MTLTR_DrawLCDGlyphNoCache(mtlc, dstOps,

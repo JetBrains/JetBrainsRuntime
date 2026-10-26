@@ -41,6 +41,8 @@
 #include "MTLSamplerManager.h"
 #import "MTLGlyphCache.h"
 
+#define MTLTR_GLYPH_BUCKETS 4
+
 @class MTLStencilManager;
 @class MTLLayer;
 
@@ -85,8 +87,14 @@ typedef enum {
  * to use this one glyph cache for all screens in a multi-monitor
  * environment)
  */
+// The glyph caches come in size buckets (MTLTR_GLYPH_BUCKETS cells sizes, MTLTextRenderer);
+// glyphCacheLCD / glyphCacheAA are the active bucket's caches, chosen per glyph.
 @property (readonly) MTLGlyphCache *glyphCacheLCD;
 @property (readonly) MTLGlyphCache *glyphCacheAA;
+@property jint activeGlyphBucketLCD;
+@property jint activeGlyphBucketAA;
+- (MTLGlyphCache *) glyphCacheAAForBucket:(jint)bucket;
+- (MTLGlyphCache *) glyphCacheLCDForBucket:(jint)bucket;
 
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
