@@ -30,6 +30,8 @@
 #include "jni.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "SKBackend.h"
+#include "Trace.h"
+#include "include/core/SkGraphics.h"
 
 extern "C" {
 
@@ -55,6 +57,19 @@ JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKEnvironment_flushesNative(JNIEnv *env, jclass clazz)
 {
     return SKBackend_Flushes();
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_setStrikeCacheLimitNative(JNIEnv *env, jclass clazz, jlong bytes)
+{
+    const size_t previous = SkGraphics::SetFontCacheLimit((size_t) bytes);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "SKEnvironment: Skia strike cache limit %zu -> %lld bytes", previous, (long long) bytes);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_strikeCacheLimitNative(JNIEnv *env, jclass clazz)
+{
+    return (jlong) SkGraphics::GetFontCacheLimit();
 }
 
 JNIEXPORT void JNICALL

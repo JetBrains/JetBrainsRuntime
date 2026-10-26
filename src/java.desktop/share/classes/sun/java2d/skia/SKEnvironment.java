@@ -95,6 +95,12 @@ public final class SKEnvironment {
      * off: Skia's plain coverage.
      */
     private static final boolean TEXT_SMOOTHING = Boolean.getBoolean("sun.java2d.skia.text.smoothing");
+    /**
+     * {@code sun.java2d.skia.strikeCache=<MB>}: the budget of Skia's strike cache
+     * (the CPU-side glyph masks of Skia's text path, {@code SkGraphics::SetFontCacheLimit});
+     * 0 keeps Skia's default.
+     */
+    private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 0);
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -331,6 +337,9 @@ public final class SKEnvironment {
                 configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();
                 configureNative(configuration.msaaSamples(), configuration.edgeAAQuads(),
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch());
+                if (STRIKE_CACHE_MB > 0) {
+                    setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
+                }
             }
         } catch (UnsatisfiedLinkError e) {
             if (VERBOSE) {
@@ -368,4 +377,13 @@ public final class SKEnvironment {
     private static native long paragraphsBySkiaNative();
 
     private static native long flushesNative();
+
+    private static native void setStrikeCacheLimitNative(long bytes);
+
+    /** The budget of Skia's strike cache in bytes as the backend runs it (diagnostics, tests). */
+    public static long strikeCacheLimit() {
+        return isSkiaEnabled() ? strikeCacheLimitNative() : 0;
+    }
+
+    private static native long strikeCacheLimitNative();
 }
