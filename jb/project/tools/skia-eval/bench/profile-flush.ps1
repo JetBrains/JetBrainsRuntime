@@ -13,7 +13,8 @@ param(
     [string] $Probe = 'lines 256 horizontal pixel 1000',
     [string] $Class = 'SyncProbe',   # or PresentProbe with -Probe "<seconds> heavy big", ide (the IDE's start-up), or scenes (the IDE scenes)
     [int] $Scale = 1,               # sun.java2d.uiScale for the probe
-    [int] $Wait = 90                # ide: seconds the IDE runs
+    [int] $Wait = 90,               # ide: seconds the IDE runs
+    [string] $Lcd = 'accumulate'    # scenes, Skia arm: accumulate (A3) or twopass (A2)
 )
 $ErrorActionPreference = 'Stop'
 $identity = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -44,9 +45,11 @@ if ($Class -eq 'ide') {
     # the IDE scene workload (run-scenes.sh, light, 2x, pipeline cache warm); the recording covers
     # the scenes only, from IdeScenes' start (its scenes.log appears) to its end, not the IDE's
     # start, indexing and settle
-    $ideArm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }   # not $arm: PowerShell names ignore case, it would replace -Arm
+    $ideArm = if ($Arm -eq 'd3d') { 'R1' } elseif ($Lcd -eq 'twopass') { 'A2' } else { 'A3' }   # not $arm: PowerShell names ignore case, it would replace -Arm
+    $armDir = @{ R1 = 'R1-d3d9'; A2 = 'A2-twopass'; A3 = 'A3-accumulate' }[$ideArm]
     $dir = "$out\scenes-$Name"
-    $dest = if ($Arm -eq 'd3d') { "$dir\R1-d3d9\light-2x" } else { "$dir\A3-accumulate\light-2x" }
+    $dest = "$dir\$armDir\light-2x"
+    if ($ideArm -eq 'A2') { $etl = "$out\$Name-skia-twopass.etl" }
     if (Test-Path "$dest\scenes.log") { Remove-Item "$dest\scenes.log" }
     $cache = "$repo\build\skia-eval-out\pipeline-cache-ide"
     $posixDir = ($dir -replace '\\', '/') -replace '^C:', '/c'
