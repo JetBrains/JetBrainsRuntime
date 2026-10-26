@@ -84,13 +84,20 @@ Java_sun_java2d_skia_SKEnvironment_glyphCacheSizeNative(JNIEnv *env, jclass claz
     return SKBackend_GlyphCacheTexels();
 }
 
+JNIEXPORT jint JNICALL
+Java_sun_java2d_skia_SKEnvironment_luminanceClassesNative(JNIEnv *env, jclass clazz)
+{
+    return SKBackend_LuminanceClasses();
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads,
                                                    jint lcdMode, jboolean framebufferFetch,
-                                                   jlong glyphAtlasBytes, jint glyphCacheTexels)
+                                                   jlong glyphAtlasBytes, jint glyphCacheTexels,
+                                                   jint luminanceClasses)
 {
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
-                       (size_t) glyphAtlasBytes, glyphCacheTexels);
+                       (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses);
 }
 
 } // extern "C"

@@ -72,9 +72,16 @@ public final class SKFontScaler extends FontScaler {
      * platform's own look by construction for that luminance. The graphics
      * state passes its colour's luminance class through the strike
      * (FontStrikeDesc.luminance); the property only decides for paints that are
-     * not a colour, and lets a test pin the class. macOS only.
+     * not a colour, and lets a test pin the class; with
+     * {@code sun.java2d.skia.text.luminanceClasses=1} it is the luminance of
+     * every glyph mask. macOS only.
      */
     private static final int GRAY_LUMINANCE = Math.max(0, Math.min(255, Integer.getInteger("sun.java2d.skia.text.cgLuminance", 0)));
+
+    /** The luminance the cg route rasterizes for when the strike carries no class ({@code sun.java2d.skia.text.cgLuminance}). */
+    static int grayLuminance() {
+        return GRAY_LUMINANCE;
+    }
     private static final float GRAY_DARKENING = Float.parseFloat(System.getProperty("sun.java2d.skia.text.grayDarkening", "0.013"));
 
     private static int grayModeProperty() {

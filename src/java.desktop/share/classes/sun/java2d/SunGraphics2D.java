@@ -822,8 +822,9 @@ public final class SunGraphics2D
 
     /**
      * The luminance class (FontStrikeDesc.luminance) of the current colour when
-     * glyph images depend on it: 16 classes of 16 levels, the class centre;
-     * -1 otherwise, and for paints that are not a colour.
+     * glyph images depend on it ({@link FontUtilities#luminanceClass}: 16 classes
+     * of 16 levels by default, the class centre); -1 otherwise, and for paints
+     * that are not a colour.
      */
     private int textLuminance() {
         if (!FontUtilities.textLuminanceDependent || paintState > PAINT_ALPHACOLOR) {
@@ -832,7 +833,7 @@ public final class SunGraphics2D
         int c = eargb;
         // SKBackend.cpp's luminanceClass() computes the same class for Skia's text path; keep the two in step
         int luminance = (((c >> 16) & 0xff) * 299 + ((c >> 8) & 0xff) * 587 + (c & 0xff) * 114) / 1000;
-        return (luminance & ~0xf) | 0x8;
+        return FontUtilities.luminanceClass(luminance);
     }
 
     private boolean fontInfoLuminanceStale(FontInfo info) {

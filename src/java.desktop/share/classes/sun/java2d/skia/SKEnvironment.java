@@ -363,7 +363,8 @@ public final class SKEnvironment {
                 configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();
                 configureNative(configuration.msaaSamples(), configuration.edgeAAQuads(),
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
-                                GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels());
+                                GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
+                                FontUtilities.textLuminanceClasses);
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
@@ -397,7 +398,7 @@ public final class SKEnvironment {
 
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
-                                               long glyphAtlasBytes, int glyphCacheTexels);
+                                               long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();
@@ -428,4 +429,11 @@ public final class SKEnvironment {
     }
 
     private static native int glyphCacheSizeNative();
+
+    /** The text luminance classes Skia's text path uses for the cg route, as handed to the backend (tests). */
+    public static int luminanceClasses() {
+        return isSkiaEnabled() ? luminanceClassesNative() : 0;
+    }
+
+    private static native int luminanceClassesNative();
 }

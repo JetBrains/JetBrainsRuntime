@@ -660,3 +660,9 @@ jint SKFontScaler_GrayMode(jlong pContext)
     return context != nullptr ? context->grayMode : 0;
 }
 
+jint SKFontScaler_GrayLuminance(jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context != nullptr ? context->grayLuminance : 0;
+}
+

@@ -95,8 +95,10 @@ enum class SKLcdMode { Blend = 0, TwoPass = 1, Accumulate = 2 };
 
 // glyphAtlasBytes: Graphite's glyph-atlas budget (ContextOptions::fGlyphCacheTextureMaximumBytes), 0 = Skia's default
 // glyphCacheTexels: the side of SKGlyphCache's textures (Java's glyph images), validated by the Java side
+// luminanceClasses: FontUtilities.textLuminanceClasses (1, 2, 4, ... 256), the classes the cg route's masks are rasterized for
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
-                         jint glyphCacheTexels);
+                         jint glyphCacheTexels, jint luminanceClasses);
+jint SKBackend_LuminanceClasses();     // the count the text path quantizes with
 size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
 jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with
 bool SKBackend_Multisampled();

@@ -54,6 +54,39 @@ public final class FontUtilities {
      * graphics state then keys its strikes by the luminance class.
      */
     public static boolean textLuminanceDependent;
+    private static int luminanceClassesProperty() {
+        int classes = Integer.getInteger("sun.java2d.skia.text.luminanceClasses", 16);
+        return classes >= 1 && classes <= 256 && Integer.bitCount(classes) == 1 ? classes : 16;
+    }
+
+    /**
+     * The luminance class of a text luminance (0..255) under {@link #textLuminanceClasses}:
+     * the centre of its class, or the fixed {@code sun.java2d.skia.text.cgLuminance} with one
+     * class; {@code SKBackend.cpp}'s {@code luminanceClass()} computes the same for Skia's
+     * text path.
+     */
+    public static int luminanceClass(int luminance) {
+        if (textLuminanceClasses <= 1) {
+            return SKFontScaler.grayLuminance();
+        }
+        int width = 256 / textLuminanceClasses;
+        return (luminance & ~(width - 1)) | (width >> 1);
+    }
+
+    /**
+     * {@code sun.java2d.skia.text.luminanceClasses}: how many classes of text luminance
+     * the platform-rasterized routes ({@code sun.java2d.skia.text.gray=cg} or
+     * {@code =platform}) produce glyph masks for: 1, 2, 4, ... 256, default 16 (each
+     * class 16 levels wide, its representative at the centre). 256 is the exact
+     * luminance; 1 turns the dependence off, every colour getting the masks of
+     * {@code sun.java2d.skia.text.cgLuminance} as before the classes existed. More
+     * classes mean more strikes and glyph-cache cells per font, fewer a larger
+     * luminance error inside a class (up to 8/255 at 16). The count applies to these
+     * routes only; Skia's own text path ({@code sun.java2d.skia.text=skia} without
+     * the cg route) keys its masks by the quantized paint colour as Skia's build
+     * fixes it, which this property does not touch.
+     */
+    public static int textLuminanceClasses = 16;
     /** Whether the luminance-dependent route also supplies LCD masks (see initStatic). */
     public static boolean platformLcdMasks;
 
@@ -108,8 +141,10 @@ public final class FontUtilities {
             // the platform's smoothed rendering is rasterized per text luminance class
             // (CoreGraphics on macOS as "cg", DirectWrite on Windows as "platform")
             String gray = System.getProperty("sun.java2d.skia.text.gray", "");
+            textLuminanceClasses = luminanceClassesProperty();
             textLuminanceDependent = useSkiaScaler
-                    && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray));
+                    && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray))
+                    && textLuminanceClasses > 1;
 
         } else {
             useJDKScaler = false;

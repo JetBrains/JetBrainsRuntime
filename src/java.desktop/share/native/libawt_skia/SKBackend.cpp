@@ -112,12 +112,16 @@ static struct {
     bool framebufferFetch = false;
     size_t glyphAtlasBytes = 0;   // Graphite's glyph-atlas budget, 0 = Skia's default
     jint glyphCacheTexels = 1024;  // the side of SKGlyphCache's textures (see SKEnvironment.glyphCacheTexels)
+    jint luminanceClasses = 16;    // FontUtilities.textLuminanceClasses: the cg route's luminance classes
 } gConfig;
 
 static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
 
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
-                         jint glyphCacheTexels) {
+                         jint glyphCacheTexels, jint luminanceClasses) {
+    if (luminanceClasses >= 1 && luminanceClasses <= 256 && (luminanceClasses & (luminanceClasses - 1)) == 0) {
+        gConfig.luminanceClasses = luminanceClasses;
+    }
     gConfig.msaaSamples = msaaSamples;
     gConfig.edgeAAQuads = edgeAAQuads;
     gConfig.lcdMode = lcdMode;
@@ -130,6 +134,10 @@ void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, 
 
 jint SKBackend_GlyphCacheTexels() {
     return gConfig.glyphCacheTexels;
+}
+
+jint SKBackend_LuminanceClasses() {
+    return gConfig.luminanceClasses;
 }
 
 size_t SKBackend_GlyphAtlasBudget() {
@@ -1639,13 +1647,19 @@ jlong SKBackend_GlyphsDrawnBySkia() {
 
 // The cg grayscale route on Skia's text path (sun.java2d.skia.text.gray=cg): the strike's
 // typeface is replaced by the luminance proxy for the paint colour's class (the Java side's
-// classes: 16 levels, the class representative at its middle), so the masks in Skia's
-// strike and atlas are CoreGraphics' smoothed rendering for that colour.
-// SunGraphics2D.textLuminance() computes the same class on the Java side; keep the two in step.
-static int luminanceClass(const SkPaint &paint) {
+// classes, FontUtilities.textLuminanceClasses: 16 by default, the class representative at
+// its middle), so the masks in Skia's strike and atlas are CoreGraphics' smoothed rendering
+// for that colour. With one class the luminance dependence is off and every colour gets the
+// strike's fixed luminance (SKFontScaler.GRAY_LUMINANCE). FontUtilities.luminanceClass()
+// computes the same class on the Java side; keep the two in step.
+static int luminanceClass(const SkPaint &paint, jlong pScalerContext) {
+    if (gConfig.luminanceClasses <= 1) {
+        return SKFontScaler_GrayLuminance(pScalerContext);
+    }
     const SkColor c = paint.getColor();
     const int luminance = (SkColorGetR(c) * 299 + SkColorGetG(c) * 587 + SkColorGetB(c) * 114) / 1000;
-    return (luminance & ~0xf) | 0x8;
+    const int width = 256 / gConfig.luminanceClasses;
+    return (luminance & ~(width - 1)) | (width >> 1);
 }
 
 static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
@@ -1655,7 +1669,7 @@ static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
 
 static void applyGrayRoute(SkFont &font, jlong pScalerContext, const SkPaint &paint) {
     if (takesGrayRoute(font, pScalerContext)) {
-        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(paint)));
+        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(paint, pScalerContext)));
     }
 }
 
@@ -1663,7 +1677,7 @@ static void applyGrayRoute(SkFont &font, jlong pScalerContext, const SkPaint &pa
 // strike takes the cg route, so the characters the strike's font lacks get the route too.
 static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, const SkPaint &paint) {
     sk_sp<SkFontMgr> platform = SKPlatform_FontManager();
-    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(paint)) : platform;
+    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(paint, pScalerContext)) : platform;
 }
 
 void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
