@@ -30,8 +30,8 @@ $prop = if ($Arm -eq 'd3d') { '-Dsun.java2d.d3d=true' } else { '-Dsun.java2d.ski
 $uiScale = "-Dsun.java2d.uiScale=$Scale"
 if ($Class -eq 'ide') {
     # the IDE on the image through the kit's run-ide.sh (arm A3 = Skia accumulate, R1 = Direct3D 9), start-up and indexing
-    $arm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }
-    $cmd = "source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-ide.sh $arm --wait $Wait -- jb/project/tools/skia-eval/text-quality/text-scene"
+    $ideArm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }   # not $arm: PowerShell names ignore case, it would replace -Arm
+    $cmd = "source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-ide.sh $ideArm --wait $Wait -- jb/project/tools/skia-eval/text-quality/text-scene"
     & wpr.exe -start CPU -filemode
     try {
         $started = Get-Date
@@ -44,13 +44,13 @@ if ($Class -eq 'ide') {
     # the IDE scene workload (run-scenes.sh, light, 2x, pipeline cache warm); the recording covers
     # the scenes only, from IdeScenes' start (its scenes.log appears) to its end, not the IDE's
     # start, indexing and settle
-    $arm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }
+    $ideArm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }   # not $arm: PowerShell names ignore case, it would replace -Arm
     $dir = "$out\scenes-$Name"
     $dest = if ($Arm -eq 'd3d') { "$dir\R1-d3d9\light-2x" } else { "$dir\A3-accumulate\light-2x" }
     if (Test-Path "$dest\scenes.log") { Remove-Item "$dest\scenes.log" }
     $cache = "$repo\build\skia-eval-out\pipeline-cache-ide"
     $posixDir = ($dir -replace '\\', '/') -replace '^C:', '/c'
-    $cmd = "export IDE_EXTRA_VMOPTIONS='-Dsun.java2d.skia.pipelineCache=$cache'; source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-scenes.sh $arm light 2 $posixDir"
+    $cmd = "export IDE_EXTRA_VMOPTIONS='-Dsun.java2d.skia.pipelineCache=$cache'; source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-scenes.sh $ideArm light 2 $posixDir"
     $job = Start-Job -ScriptBlock {
         param($msys2, $cmd, $log)
         & 'C:/Program Files/Git/usr/bin/bash.exe' -l $msys2 $cmd *> $log
