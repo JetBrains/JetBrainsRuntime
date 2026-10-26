@@ -4,14 +4,14 @@
 # (tracerpt + the local PDB) runs without elevation afterwards.
 #
 #   powershell -ExecutionPolicy Bypass -File build\scripts\profile-flush.ps1 [-Name flush] [-Rounds 6]
-#     [-Arm skia|d3d] [-Probe "lines 256 horizontal pixel 1000"]
+#     [-Arm skia|d3d] [-Probe "lines 256 horizontal pixel 1000"] [-Class SyncProbe|PresentProbe|ide|scenes]
 
 param(
     [string] $Name = 'flush',
     [int] $Rounds = 6,
     [string] $Arm = 'skia',
     [string] $Probe = 'lines 256 horizontal pixel 1000',
-    [string] $Class = 'SyncProbe',   # or PresentProbe with -Probe "<seconds> heavy big", or ide (the IDE's start-up)
+    [string] $Class = 'SyncProbe',   # or PresentProbe with -Probe "<seconds> heavy big", ide (the IDE's start-up), or scenes (the IDE scenes)
     [int] $Scale = 1,               # sun.java2d.uiScale for the probe
     [int] $Wait = 90                # ide: seconds the IDE runs
 )
@@ -40,6 +40,47 @@ if ($Class -eq 'ide') {
     } finally {
         & wpr.exe -stop $etl
     }
+} elseif ($Class -eq 'scenes') {
+    # the IDE scene workload (run-scenes.sh, light, 2x, pipeline cache warm); the recording covers
+    # the scenes only, from IdeScenes' start (its scenes.log appears) to its end, not the IDE's
+    # start, indexing and settle
+    $arm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }
+    $dir = "$out\scenes-$Name"
+    $dest = if ($Arm -eq 'd3d') { "$dir\R1-d3d9\light-2x" } else { "$dir\A3-accumulate\light-2x" }
+    if (Test-Path "$dest\scenes.log") { Remove-Item "$dest\scenes.log" }
+    $cache = "$repo\build\skia-eval-out\pipeline-cache-ide"
+    $posixDir = ($dir -replace '\\', '/') -replace '^C:', '/c'
+    $cmd = "export IDE_EXTRA_VMOPTIONS='-Dsun.java2d.skia.pipelineCache=$cache'; source build/scripts/ide-env.sh && bash jb/project/tools/skia-eval/text-quality/run-scenes.sh $arm light 2 $posixDir"
+    $job = Start-Job -ScriptBlock {
+        param($msys2, $cmd, $log)
+        & 'C:/Program Files/Git/usr/bin/bash.exe' -l $msys2 $cmd *> $log
+    } -ArgumentList "$repo/build/scripts/msys2.sh", $cmd, "$out\scenes-$Name-$Arm.log"
+    $recording = $false
+    $started = $null
+    $deadline = (Get-Date).AddMinutes(25)
+    try {
+        while ($job.State -eq 'Running' -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 500
+            if (-not $recording -and (Test-Path "$dest\scenes.log")) {
+                & wpr.exe -start CPU -filemode
+                $recording = $true
+                $started = Get-Date
+                "recording from $started"
+            }
+            if ($recording -and (Select-String -Path "$dest\scenes.log" -Pattern 'scenes done|Exception' -Quiet)) {
+                break
+            }
+        }
+    } finally {
+        if ($recording) {
+            & wpr.exe -stop $etl
+            $seconds = ((Get-Date) - $started).TotalSeconds
+        }
+    }
+    Wait-Job $job -Timeout 300 | Out-Null
+    Remove-Job $job -Force
+    if (-not $recording) { throw "the scenes never started; see $out\scenes-$Name-$Arm.log" }
+    Get-Content "$dest\scenes.log" -Tail 1
 } else {
     # a cold round first, so the recording holds steady-state frames only
     & $java $prop $uiScale -cp $classes $Class $Probe.Split(' ') 2>&1 | Out-Null
