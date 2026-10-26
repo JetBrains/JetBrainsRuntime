@@ -42,12 +42,9 @@
 #include <cstring>
 #include <vector>
 
-// Same geometry as MTLTextRenderer's caches, a bigger side: an IDE frame holds
-// far more distinct glyphs than 256 cells. The side is the backend's
-// configuration (1024; 2048 under per-luminance strikes; sun.java2d.skia.glyphCache).
-static jint cacheSize() { return SKBackend_GlyphCacheTexels(); }
-static const jint CELL_SIZE  = 32;
-static jint cellsPerRow() { return cacheSize() / CELL_SIZE; }
+// Cell geometry as MTLTextRenderer's caches, per bucket (SK_GLYPH_BUCKET_CELLS); the
+// side comes from the backend's configuration (SKEnvironment.glyphCacheTexels: 1024
+// for the 32-pixel bucket, 2048 under per-luminance strikes; sun.java2d.skia.glyphCache).
 // Coverage up to this is the LCD filter's spill into the padding, not ink: it
 // does not count for the overlap test of two glyphs.
 static const unsigned char INK_THRESHOLD = 8;
@@ -57,6 +54,9 @@ static const jint TIMES_RENDERED_THRESHOLD = 5;
 struct SKGlyphCache {
     SKConfigContext *cc = nullptr;
     bool lcd = false;
+    jint cell = 32;          // the bucket's cell size
+    jint side = 1024;        // the atlas texture's side
+    jint cellsPerRow = 32;   // side / cell
     GlyphCacheInfo *info = nullptr;
     sk_sp<SkSurface> atlas;
     sk_sp<SkImage> atlasImage;
@@ -100,8 +100,8 @@ jlong SKGlyphCache_Stat(SKGlyphCacheStat stat) {
     return gStats[stat].load(std::memory_order_relaxed);
 }
 
-static inline size_t cellIndex(const CacheCellInfo *cell) {
-    return (size_t) (cell->y / CELL_SIZE) * cellsPerRow() + (size_t) (cell->x / CELL_SIZE);
+static inline size_t cellIndex(const SKGlyphCache *gc, const CacheCellInfo *cell) {
+    return (size_t) (cell->y / gc->cell) * gc->cellsPerRow + (size_t) (cell->x / gc->cell);
 }
 
 // Tight bounds of the pixels above the threshold; bytesPerPixel channels each.
@@ -143,12 +143,13 @@ static void flushForEviction() {
     SKBackend_FlushRecording(gAdding->cc);
 }
 
-SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd) {
-    if (cc == nullptr || !cc->recorder) {
+SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd, jint cellSize, jint side) {
+    if (cc == nullptr || !cc->recorder || cellSize <= 0 || side < cellSize) {
         return nullptr;
     }
-    SkImageInfo info = lcd ? SkImageInfo::Make(cacheSize(), cacheSize(), kRGBA_8888_SkColorType, kOpaque_SkAlphaType)
-                           : SkImageInfo::MakeA8(cacheSize(), cacheSize());
+    side -= side % cellSize;
+    SkImageInfo info = lcd ? SkImageInfo::Make(side, side, kRGBA_8888_SkColorType, kOpaque_SkAlphaType)
+                           : SkImageInfo::MakeA8(side, side);
     sk_sp<SkSurface> atlas = SkSurfaces::RenderTarget(cc->recorder.get(), info);
     if (!atlas) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKGlyphCache_Create: cannot create a %s atlas surface", lcd ? "RGBA" : "A8");
@@ -157,9 +158,12 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd) {
     auto *gc = new SKGlyphCache();
     gc->cc = cc;
     gc->lcd = lcd;
-    gc->ink.resize((size_t) cellsPerRow() * cellsPerRow(), SkIRect::MakeEmpty());
-    gc->lastUsed.resize((size_t) cellsPerRow() * cellsPerRow(), 0);
-    gc->info = AccelGlyphCache_Init(cacheSize(), cacheSize(), CELL_SIZE, CELL_SIZE, flushForEviction);
+    gc->cell = cellSize;
+    gc->side = side;
+    gc->cellsPerRow = side / cellSize;
+    gc->ink.resize((size_t) gc->cellsPerRow * gc->cellsPerRow, SkIRect::MakeEmpty());
+    gc->lastUsed.resize((size_t) gc->cellsPerRow * gc->cellsPerRow, 0);
+    gc->info = AccelGlyphCache_Init(side, side, cellSize, cellSize, flushForEviction);
     if (gc->info == nullptr) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKGlyphCache_Create: cannot allocate the cell table");
         delete gc;
@@ -178,7 +182,7 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd) {
         return nullptr;
     }
     gc->shadow.eraseColor(SK_ColorTRANSPARENT);
-    gc->dirtyRows.resize((size_t) cellsPerRow(), SkIRect::MakeEmpty());
+    gc->dirtyRows.resize((size_t) gc->cellsPerRow, SkIRect::MakeEmpty());
     gc->batch.beforeUpload = [gc]() { uploadDirtyRows(gc); };
     return gc;
 }
@@ -194,7 +198,7 @@ void SKGlyphCache_Free(SKGlyphCache *gc) {
 }
 
 bool SKGlyphCache_Fits(const SKGlyphCache *gc, const GlyphInfo *glyph) {
-    return gc != nullptr && glyph->width <= CELL_SIZE && glyph->height <= CELL_SIZE;
+    return gc != nullptr && glyph->width <= gc->cell && glyph->height <= gc->cell;
 }
 
 void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint, const SKQuadBatchTwoPass *passes) {
@@ -223,7 +227,7 @@ static void uploadDirtyRows(SKGlyphCache *gc) {
 }
 
 static void markDirty(SKGlyphCache *gc, const CacheCellInfo *cell, int w, int h) {
-    gc->dirtyRows[(size_t) (cell->y / CELL_SIZE)].join(SkIRect::MakeXYWH(cell->x, cell->y, w, h));
+    gc->dirtyRows[(size_t) (cell->y / gc->cell)].join(SkIRect::MakeXYWH(cell->x, cell->y, w, h));
 }
 
 // Writes the glyph into its cell of the shadow bitmap; the row goes to the GPU
@@ -235,13 +239,13 @@ static void stageGlyph(SKGlyphCache *gc, const GlyphInfo *glyph, const CacheCell
         for (int row = 0; row < h; row++) {
             memcpy(gc->shadow.getAddr8(cell->x, cell->y + row), data + (size_t) row * glyph->rowBytes, (size_t) w);
         }
-        gc->ink[cellIndex(cell)] = inkBounds(data, w, h, glyph->rowBytes, 1);
+        gc->ink[cellIndex(gc, cell)] = inkBounds(data, w, h, glyph->rowBytes, 1);
         markDirty(gc, cell, w, h);
         return;
     }
     // LCD glyph: 3 bytes of coverage per pixel, in the order the strike asked for.
     const unsigned char *image = glyph->image + (size_t) glyph->rowBytes * h * subimage;
-    gc->ink[cellIndex(cell)] = inkBounds(image, w, h, glyph->rowBytes, 3);
+    gc->ink[cellIndex(gc, cell)] = inkBounds(image, w, h, glyph->rowBytes, 3);
     for (int row = 0; row < h; row++) {
         const unsigned char *src = image + (size_t) row * glyph->rowBytes;
         unsigned char *dst = (unsigned char *) gc->shadow.getAddr32(cell->x, cell->y + row);
@@ -268,7 +272,7 @@ static CacheCellInfo *reusableCell(SKGlyphCache *gc, GlyphInfo *glyph) {
         const uint32_t current = gc->cc->recordingGeneration;
         for (size_t i = 0; i < cells; i++) {
             CacheCellInfo *cell = info->head;
-            const bool idle = gc->lastUsed[cellIndex(cell)] < current;
+            const bool idle = gc->lastUsed[cellIndex(gc, cell)] < current;
             const bool reusable = cell->glyphInfo == NULL || (idle && cell->timesRendered < TIMES_RENDERED_THRESHOLD);
             info->head = cell->next;
             info->tail->next = cell;
@@ -318,11 +322,11 @@ bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboole
     }
     SKGlyphCache_CountStat(SK_GLYPHS_CACHED);
     cell->timesRendered++;
-    gc->lastUsed[cellIndex(cell)] = gc->cc->recordingGeneration;
+    gc->lastUsed[cellIndex(gc, cell)] = gc->cc->recordingGeneration;
     if (!gc->batch.active()) {
         gc->batch.begin(gc->canvas, gc->paint, gc->atlasImage, gc->passes);
     }
-    gc->batch.addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(cell)]);
+    gc->batch.addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(gc, cell)]);
     return true;
 }
 

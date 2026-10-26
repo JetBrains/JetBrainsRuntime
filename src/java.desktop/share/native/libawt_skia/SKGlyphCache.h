@@ -41,7 +41,27 @@ struct SKGlyphCache;
 // one mesh (SKQuadBatch). Grayscale caches are alpha-only and take the paint
 // colour; LCD caches hold RGB coverage and are drawn through the paint's
 // blender, in two passes, or accumulated first (see SKBackend_DrawGlyphList).
-SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd);
+//
+// The caches come in size buckets: one cache per cell size, a glyph image going
+// to the smallest cell it fits (SKGlyphCache_BucketFor). One cell size for all
+// glyphs either wastes most of a 32-pixel cell on 1x UI text or sends every
+// glyph above 16 pt on a 2x display through an upload and a draw of its own
+// each frame (ledger §12 2026-10-26). A run's glyphs mostly share a bucket;
+// the buckets' batches stay open side by side through a glyph list.
+static const int SK_GLYPH_BUCKETS = 4;
+static const jint SK_GLYPH_BUCKET_CELLS[SK_GLYPH_BUCKETS] = {16, 32, 64, 128};
+// The bucket for a glyph image, or -1 if it exceeds the largest cell.
+inline int SKGlyphCache_BucketFor(const GlyphInfo *glyph) {
+    const jint extent = glyph->width > glyph->height ? glyph->width : glyph->height;
+    for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
+        if (extent <= SK_GLYPH_BUCKET_CELLS[b]) {
+            return b;
+        }
+    }
+    return -1;
+}
+// cellSize: the bucket's cell; side: the atlas texture's side in texels (a multiple of cellSize).
+SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd, jint cellSize, jint side);
 void SKGlyphCache_Free(SKGlyphCache *gc);
 
 // Fits the cells of this cache?

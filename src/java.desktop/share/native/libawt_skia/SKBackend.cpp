@@ -222,8 +222,10 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     }
     cc->surfaces.clear();
     SKMaskCache_Free(cc->maskCache);
-    SKGlyphCache_Free(cc->glyphCacheAA);
-    SKGlyphCache_Free(cc->glyphCacheLCD);
+    for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
+        SKGlyphCache_Free(cc->glyphCachesAA[b]);
+        SKGlyphCache_Free(cc->glyphCachesLCD[b]);
+    }
     cc->lcdTables.clear();
     cc->lcdCoverage.reset();
     cc->recorder.reset();
@@ -931,18 +933,30 @@ SkPaint SKBackend_MakePaint(bool aa) {
 // Pending glyph and mask batches of the current context are drawn before
 // anything else touches the canvas, so draw order is preserved. A batched
 // primitive flushes the other kinds only.
-static void flushGlyphBatches() {
-    if (g.cc != nullptr) {
-        SKGlyphCache_Flush(g.cc->glyphCacheAA);
-        SKGlyphCache_Flush(g.cc->glyphCacheLCD);
+static void flushGlyphCaches(SKConfigContext *cc, bool aa = true, bool lcd = true);
+
+// Every bucket's batch of a context: grayscale, LCD, or both.
+static void flushGlyphCaches(SKConfigContext *cc, bool aa, bool lcd) {
+    if (cc != nullptr) {
+        for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
+            if (aa) {
+                SKGlyphCache_Flush(cc->glyphCachesAA[b]);
+            }
+            if (lcd) {
+                SKGlyphCache_Flush(cc->glyphCachesLCD[b]);
+            }
+        }
     }
+}
+
+static void flushGlyphBatches() {
+    flushGlyphCaches(g.cc);
 }
 
 // The glyph and Marlin tile batches of a context, then the rect batch.
 static void flushBatchesOf(SKConfigContext *cc) {
     if (cc != nullptr) {
-        SKGlyphCache_Flush(cc->glyphCacheAA);
-        SKGlyphCache_Flush(cc->glyphCacheLCD);
+        flushGlyphCaches(cc);
         SKMaskCache_Flush(cc->maskCache);
     }
     gRects.flush();
@@ -1498,7 +1512,7 @@ static SkCanvas *lcdCoverageCanvas() {
     const int w = g.canvas->imageInfo().width(), h = g.canvas->imageInfo().height();
     sk_sp<SkSurface> &scratch = g.cc->lcdCoverage;
     if (!scratch || scratch->width() < w || scratch->height() < h) {
-        SKGlyphCache_Flush(g.cc->glyphCacheLCD);   // a pending batch draws into the old scratch
+        flushGlyphCaches(g.cc, false, true);   // a pending batch draws into the old scratch
         const int sw = scratch ? std::max(scratch->width(), w) : w, sh = scratch ? std::max(scratch->height(), h) : h;
         scratch = SkSurfaces::RenderTarget(g.cc->recorder.get(),
                                            SkImageInfo::Make(sw, sh, kRGBA_8888_SkColorType, kOpaque_SkAlphaType));
@@ -1531,27 +1545,31 @@ static void compositeLcdCoverage(const SkRect &bounds, const SkPaint &paint) {
     drawLcdPasses(gLcdAccumulate.dst, lcdCoverageShader(gLcdAccumulate.cc), bounds, paint, gLcdAccumulate.contrast);
 }
 
-// A glyph list accumulates: the LCD cache's batch draws into the coverage
-// surface, clears its bounds first and composites them afterwards.
-static SkCanvas *beginLcdAccumulation(SKGlyphCache *lcd, SkPaint &lcdPaint, jint lcdContrast) {
+// A glyph list accumulates: the LCD caches' batches draw into the coverage
+// surface, clear its bounds first and composite them afterwards
+// (hookLcdAccumulation on each bucket's batch).
+static SkCanvas *beginLcdAccumulation(SkPaint &lcdPaint, jint lcdContrast) {
     SkCanvas *scratch = lcdCoverageCanvas();
     if (scratch == nullptr) {
         return nullptr;
     }
     if (gLcdAccumulate.contrast != lcdContrast || gLcdAccumulate.dst != g.canvas || gLcdAccumulate.cc != g.cc) {
-        SKGlyphCache_Flush(lcd);   // neither is part of the batch key
+        flushGlyphCaches(g.cc, false, true);   // neither is part of the batch key
         gLcdAccumulate.contrast = lcdContrast;
         gLcdAccumulate.dst = g.canvas;
         gLcdAccumulate.cc = g.cc;
     }
+    lcdPaint.setColor(g.color);   // the key; the atlas shader ignores it
+    lcdPaint.setBlendMode(SkBlendMode::kScreen);
+    return scratch;
+}
+
+static void hookLcdAccumulation(SKGlyphCache *lcd) {
     SKQuadBatch &batch = SKGlyphCache_Batch(lcd);
     if (!batch.afterDraw) {
         batch.beforeDraw = [](const SkRect &bounds) { clearLcdCoverage(gLcdAccumulate.cc, bounds); };
         batch.afterDraw = [](const SkRect &bounds, const SkPaint &paint) { compositeLcdCoverage(bounds, paint); };
     }
-    lcdPaint.setColor(g.color);   // the key; the atlas shader ignores it
-    lcdPaint.setBlendMode(SkBlendMode::kScreen);
-    return scratch;
 }
 
 // An uncached LCD glyph image without a destination read: in two passes with
@@ -1576,11 +1594,23 @@ static void drawLcdImageNoDstRead(const sk_sp<SkImage> &cov, float x, float y, c
     drawLcdPasses(g.canvas, image, rect, paint, contrast);
 }
 
-static SKGlyphCache *glyphCache(bool lcd) {
-    SKGlyphCache *&slot = lcd ? g.cc->glyphCacheLCD : g.cc->glyphCacheAA;
-    bool &failed = lcd ? g.cc->glyphCacheLCDFailed : g.cc->glyphCacheAAFailed;
+// The bucket's cache for a glyph image (SKGlyphCache_BucketFor), created on first use;
+// nullptr if the image exceeds the largest cell or the creation failed. The configured
+// side (SKBackend_GlyphCacheTexels) is the 32-pixel bucket's; the 16-pixel bucket has
+// half the side (the same cell count), the larger buckets the same side or whatever
+// holds 256 cells (a font's glyphs times their sub-pixel variants), whichever is more.
+static SKGlyphCache *glyphCache(bool lcd, const GlyphInfo *ginfo) {
+    const int b = SKGlyphCache_BucketFor(ginfo);
+    if (b < 0 || g.cc == nullptr) {
+        return nullptr;
+    }
+    SKGlyphCache *&slot = lcd ? g.cc->glyphCachesLCD[b] : g.cc->glyphCachesAA[b];
+    bool &failed = lcd ? g.cc->glyphCachesLCDFailed[b] : g.cc->glyphCachesAAFailed[b];
     if (slot == nullptr && !failed) {
-        slot = SKGlyphCache_Create(g.cc, lcd);
+        const jint cell = SK_GLYPH_BUCKET_CELLS[b];
+        const jint configured = SKBackend_GlyphCacheTexels();
+        const jint side = cell < 32 ? configured / 2 : std::max(configured, cell * 16);
+        slot = SKGlyphCache_Create(g.cc, lcd, cell, side);
         failed = slot == nullptr;
     }
     return slot;
@@ -1991,11 +2021,14 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                              const jlong *images, const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
     SkPaint paint = SKBackend_MakePaint(false);
-    SKGlyphCache *aa = nullptr, *lcd = nullptr;
+    // The buckets' caches begun for this list, grayscale and LCD. The buckets' batches
+    // stay open side by side (glyphs of one paint commute under the blends used), but a
+    // switch between grayscale and LCD glyphs draws the pending batches first.
+    bool aaBegun[SK_GLYPH_BUCKETS] = {}, lcdBegun[SK_GLYPH_BUCKETS] = {};
+    bool anyAA = false, anyLcd = false;
     SkPaint lcdPaint;
     bool lcdPaintReady = false;
     SkCanvas *lcdCanvas = g.canvas;   // the coverage surface when accumulating
-    bool lcdBegun = false;
 
     for (jint i = 0; i < numGlyphs; i++) {
         const GlyphInfo *ginfo = (const GlyphInfo *) jlong_to_ptr(images[i]);
@@ -2025,23 +2058,32 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
         }
 
         // Glyphs of one list are drawn in order: an immediate draw (uncached
-        // glyph, colour glyph) or a switch between the AA and LCD caches first
+        // glyph, colour glyph) or a switch between grayscale and LCD glyphs first
         // draws whatever is batched.
         auto flushBatches = [&] {
             flushGlyphBatches();
-            aa = nullptr;
-            lcd = nullptr;
-            lcdBegun = false;
+            for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
+                aaBegun[b] = false;
+                lcdBegun[b] = false;
+            }
+            anyAA = false;
+            anyLcd = false;
         };
         if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
-            if (lcd != nullptr) {
+            if (anyLcd) {
                 flushBatches();
             }
-            if (aa == nullptr && (aa = glyphCache(false)) != nullptr) {
-                SKGlyphCache_Begin(aa, g.canvas, paint);
-            }
-            if (SKGlyphCache_Fits(aa, ginfo) && SKGlyphCache_Draw(aa, (GlyphInfo *) ginfo, subimage, false, fx, fy)) {
-                continue;
+            SKGlyphCache *aa = glyphCache(false, ginfo);
+            if (aa != nullptr) {
+                const int b = SKGlyphCache_BucketFor(ginfo);
+                if (!aaBegun[b]) {
+                    SKGlyphCache_Begin(aa, g.canvas, paint);
+                    aaBegun[b] = true;
+                    anyAA = true;
+                }
+                if (SKGlyphCache_Draw(aa, (GlyphInfo *) ginfo, subimage, false, fx, fy)) {
+                    continue;
+                }
             }
             flushBatches();
             drawGlyphNoCache(ginfo, subimage, fx, fy, paint);
@@ -2049,7 +2091,7 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             flushBatches();
             drawColorGlyph(ginfo, fx, fy);
         } else {
-            if (aa != nullptr) {
+            if (anyAA) {
                 flushBatches();
             }
             // LCD: the three coverage channels are blended per channel against
@@ -2064,12 +2106,8 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                         lcdPaint.setColor(g.color);
                         break;
                     case SKLcdMode::Accumulate:
-                        if (lcd == nullptr) {
-                            lcd = glyphCache(true);
-                        }
-                        lcdCanvas = lcd != nullptr ? beginLcdAccumulation(lcd, lcdPaint, lcdContrast) : nullptr;
+                        lcdCanvas = beginLcdAccumulation(lcdPaint, lcdContrast);
                         if (lcdCanvas == nullptr) {
-                            lcd = nullptr;
                             continue;   // no coverage surface: the glyph is skipped
                         }
                         break;
@@ -2090,16 +2128,20 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                     fx += 1;
                 }
             }
-            if (lcd == nullptr) {
-                lcd = glyphCache(true);
-            }
-            if (lcd != nullptr && !lcdBegun) {
-                SKGlyphCache_Begin(lcd, lcdCanvas, lcdPaint, gConfig.lcdMode == SKLcdMode::TwoPass ? &gLcdTwoPass : nullptr);
-                lcdBegun = true;
-            }
-            if (rowBytesOffset == 0 && SKGlyphCache_Fits(lcd, ginfo)
-                    && SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, subimage, rgbOrder, fx, fy)) {
-                continue;
+            SKGlyphCache *lcd = rowBytesOffset == 0 ? glyphCache(true, ginfo) : nullptr;
+            if (lcd != nullptr) {
+                const int b = SKGlyphCache_BucketFor(ginfo);
+                if (!lcdBegun[b]) {
+                    if (gConfig.lcdMode == SKLcdMode::Accumulate) {
+                        hookLcdAccumulation(lcd);
+                    }
+                    SKGlyphCache_Begin(lcd, lcdCanvas, lcdPaint, gConfig.lcdMode == SKLcdMode::TwoPass ? &gLcdTwoPass : nullptr);
+                    lcdBegun[b] = true;
+                    anyLcd = true;
+                }
+                if (SKGlyphCache_Draw(lcd, (GlyphInfo *) ginfo, subimage, rgbOrder, fx, fy)) {
+                    continue;
+                }
             }
             flushBatches();
             drawLcdGlyphNoCache(ginfo, subimage, rowBytesOffset, rgbOrder, fx, fy, lcdPaint);

@@ -114,10 +114,12 @@ public final class SKEnvironment {
     private static final int GLYPH_ATLAS_MB = Integer.getInteger("sun.java2d.skia.glyphAtlas", 0);
     /**
      * {@code sun.java2d.skia.glyphCache=<texels>}: the side of the pipe's glyph cache
-     * textures (Java's glyph images, {@code SKGlyphCache}; cells of 32 x 32), a multiple
-     * of 32 between 32 and 16384. Unset or invalid: 1024, or 2048 when glyphs are
-     * rasterized per text luminance class ({@link FontUtilities#textLuminanceDependent},
-     * the cg route): one strike per class multiplies the glyph set (ledger §19b.1).
+     * texture for the 32-pixel cell bucket (Java's glyph images, {@code SKGlyphCache}),
+     * a multiple of 32 between 32 and 16384; the 16-pixel bucket gets half the side,
+     * the 64- and 128-pixel buckets the same side. Unset or invalid: 1024, or 2048
+     * when glyphs are rasterized per text luminance class
+     * ({@link FontUtilities#textLuminanceDependent}, the cg route): one strike per
+     * class multiplies the glyph set (ledger §19b.1).
      */
     private static final int GLYPH_CACHE_TEXELS = Integer.getInteger("sun.java2d.skia.glyphCache", 0);
 

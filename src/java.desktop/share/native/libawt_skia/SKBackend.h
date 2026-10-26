@@ -31,6 +31,7 @@
 // a single render state owned by the flusher thread.
 
 #include "SKPlatform.h"
+#include "SKGlyphCache.h"
 
 #include "jni.h"
 #include "SurfaceData.h"
@@ -56,10 +57,11 @@ struct SKConfigContext {
     SKPlatformConfig *config = nullptr;
     std::unique_ptr<skgpu::graphite::Context> context;
     std::unique_ptr<skgpu::graphite::Recorder> recorder;
-    SKGlyphCache *glyphCacheAA = nullptr;    // created on first use; a failed creation is not retried
-    SKGlyphCache *glyphCacheLCD = nullptr;
+    SKGlyphCache *glyphCachesAA[SK_GLYPH_BUCKETS] = {};    // per size bucket, created on first use; a failed creation is not retried
+    SKGlyphCache *glyphCachesLCD[SK_GLYPH_BUCKETS] = {};
+    bool glyphCachesAAFailed[SK_GLYPH_BUCKETS] = {}, glyphCachesLCDFailed[SK_GLYPH_BUCKETS] = {};
     SKMaskCache *maskCache = nullptr;
-    bool glyphCacheAAFailed = false, glyphCacheLCDFailed = false, maskCacheFailed = false;
+    bool maskCacheFailed = false;
     std::unordered_set<struct SKSurfaceState *> surfaces;   // wrapped with this recorder
     std::unordered_map<uint64_t, sk_sp<SkImage>> lcdTables;   // coverage correction per text colour and contrast
     sk_sp<SkSurface> lcdCoverage;            // scratch for sun.java2d.skia.lcd=accumulate, destination-sized
