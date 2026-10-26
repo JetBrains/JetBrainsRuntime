@@ -72,11 +72,25 @@ Java_sun_java2d_skia_SKEnvironment_strikeCacheLimitNative(JNIEnv *env, jclass cl
     return (jlong) SkGraphics::GetFontCacheLimit();
 }
 
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_glyphAtlasBudgetNative(JNIEnv *env, jclass clazz)
+{
+    return (jlong) SKBackend_GlyphAtlasBudget();
+}
+
+JNIEXPORT jint JNICALL
+Java_sun_java2d_skia_SKEnvironment_glyphCacheSizeNative(JNIEnv *env, jclass clazz)
+{
+    return SKBackend_GlyphCacheTexels();
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads,
-                                                   jint lcdMode, jboolean framebufferFetch)
+                                                   jint lcdMode, jboolean framebufferFetch,
+                                                   jlong glyphAtlasBytes, jint glyphCacheTexels)
 {
-    SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE);
+    SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
+                       (size_t) glyphAtlasBytes, glyphCacheTexels);
 }
 
 } // extern "C"

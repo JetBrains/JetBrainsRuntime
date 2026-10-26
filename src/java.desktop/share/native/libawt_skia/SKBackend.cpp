@@ -110,15 +110,30 @@ static struct {
     bool edgeAAQuads = false;
     SKLcdMode lcdMode = SKLcdMode::Blend;
     bool framebufferFetch = false;
+    size_t glyphAtlasBytes = 0;   // Graphite's glyph-atlas budget, 0 = Skia's default
+    jint glyphCacheTexels = 1024;  // the side of SKGlyphCache's textures (see SKEnvironment.glyphCacheTexels)
 } gConfig;
 
 static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
 
-void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch) {
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
+                         jint glyphCacheTexels) {
     gConfig.msaaSamples = msaaSamples;
     gConfig.edgeAAQuads = edgeAAQuads;
     gConfig.lcdMode = lcdMode;
     gConfig.framebufferFetch = framebufferFetch;
+    gConfig.glyphAtlasBytes = glyphAtlasBytes;
+    if (glyphCacheTexels >= 32 && glyphCacheTexels <= 16384 && glyphCacheTexels % 32 == 0) {
+        gConfig.glyphCacheTexels = glyphCacheTexels;
+    }
+}
+
+jint SKBackend_GlyphCacheTexels() {
+    return gConfig.glyphCacheTexels;
+}
+
+size_t SKBackend_GlyphAtlasBudget() {
+    return gConfig.glyphAtlasBytes != 0 ? gConfig.glyphAtlasBytes : ContextOptions().fGlyphCacheTextureMaximumBytes;
 }
 
 bool SKBackend_FramebufferFetch() {
@@ -157,6 +172,9 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     // with full coverage precision like the Metal pipeline's shaders. Non-AA
     // geometry stays exact either way (span decomposition under MSAA).
     options.fInternalMultisampleCount = sampleCount(gConfig.msaaSamples);
+    if (gConfig.glyphAtlasBytes != 0) {
+        options.fGlyphCacheTextureMaximumBytes = gConfig.glyphAtlasBytes;
+    }
     std::unique_ptr<Context> context = SKPlatform_MakeContext(config, options);
     if (!context) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create Graphite context");

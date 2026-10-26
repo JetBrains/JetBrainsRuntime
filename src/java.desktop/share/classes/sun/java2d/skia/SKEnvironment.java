@@ -24,6 +24,8 @@
  */
 package sun.java2d.skia;
 
+import sun.font.FontUtilities;
+
 import java.util.Locale;
 
 import sun.util.logging.PlatformLogger;
@@ -97,10 +99,34 @@ public final class SKEnvironment {
     private static final boolean TEXT_SMOOTHING = Boolean.getBoolean("sun.java2d.skia.text.smoothing");
     /**
      * {@code sun.java2d.skia.strikeCache=<MB>}: the budget of Skia's strike cache
-     * (the CPU-side glyph masks of Skia's text path, {@code SkGraphics::SetFontCacheLimit});
-     * 0 keeps Skia's default.
+     * (the CPU-side glyph masks of Skia's text path, {@code SkGraphics::SetFontCacheLimit}).
+     * Default 64 MB: Skia keys a strike by the quantized paint colour as well as by the
+     * font, and the cg route adds one per text luminance class, so Skia's own 2 MB
+     * default re-rasterizes every frame once a few dozen colours are on screen
+     * (ledger §19b.1); 0 keeps Skia's default.
      */
-    private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 0);
+    private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 64);
+    /**
+     * {@code sun.java2d.skia.glyphAtlas=<MB>}: the budget of Graphite's glyph atlas
+     * ({@code ContextOptions::fGlyphCacheTextureMaximumBytes}, the GPU-side glyph
+     * masks of Skia's text path); 0 keeps Skia's default of 8 MB.
+     */
+    private static final int GLYPH_ATLAS_MB = Integer.getInteger("sun.java2d.skia.glyphAtlas", 0);
+    /**
+     * {@code sun.java2d.skia.glyphCache=<texels>}: the side of the pipe's glyph cache
+     * textures (Java's glyph images, {@code SKGlyphCache}; cells of 32 x 32), a multiple
+     * of 32 between 32 and 16384. Unset or invalid: 1024, or 2048 when glyphs are
+     * rasterized per text luminance class ({@link FontUtilities#textLuminanceDependent},
+     * the cg route): one strike per class multiplies the glyph set (ledger §19b.1).
+     */
+    private static final int GLYPH_CACHE_TEXELS = Integer.getInteger("sun.java2d.skia.glyphCache", 0);
+
+    private static int glyphCacheTexels() {
+        if (GLYPH_CACHE_TEXELS >= 32 && GLYPH_CACHE_TEXELS <= 16384 && GLYPH_CACHE_TEXELS % 32 == 0) {
+            return GLYPH_CACHE_TEXELS;
+        }
+        return FontUtilities.textLuminanceDependent ? 2048 : 1024;
+    }
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -336,7 +362,8 @@ public final class SKEnvironment {
             if (description != null) {
                 configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();
                 configureNative(configuration.msaaSamples(), configuration.edgeAAQuads(),
-                                configuration.lcdMode().ordinal(), configuration.framebufferFetch());
+                                configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
+                                GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels());
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
@@ -369,7 +396,8 @@ public final class SKEnvironment {
     private static native boolean framebufferFetchNative();
 
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
-    private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch);
+    private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
+                                               long glyphAtlasBytes, int glyphCacheTexels);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();
@@ -386,4 +414,18 @@ public final class SKEnvironment {
     }
 
     private static native long strikeCacheLimitNative();
+
+    /** The budget of Graphite's glyph atlas in bytes as the backend creates its contexts (diagnostics, tests). */
+    public static long glyphAtlasBudget() {
+        return isSkiaEnabled() ? glyphAtlasBudgetNative() : 0;
+    }
+
+    private static native long glyphAtlasBudgetNative();
+
+    /** The side of the pipe's glyph cache textures in texels, as the backend creates them (diagnostics, tests). */
+    public static int glyphCacheSize() {
+        return isSkiaEnabled() ? glyphCacheSizeNative() : 0;
+    }
+
+    private static native int glyphCacheSizeNative();
 }

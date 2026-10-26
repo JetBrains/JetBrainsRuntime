@@ -93,7 +93,12 @@ SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops);
 // How LCD text is composited (SKEnvironment.LcdMode, same order).
 enum class SKLcdMode { Blend = 0, TwoPass = 1, Accumulate = 2 };
 
-void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch);
+// glyphAtlasBytes: Graphite's glyph-atlas budget (ContextOptions::fGlyphCacheTextureMaximumBytes), 0 = Skia's default
+// glyphCacheTexels: the side of SKGlyphCache's textures (Java's glyph images), validated by the Java side
+void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
+                         jint glyphCacheTexels);
+size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
+jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with
 bool SKBackend_Multisampled();
 bool SKBackend_EdgeAAQuads();
 // Whether a blender reads the live framebuffer (in order, per fragment) rather
