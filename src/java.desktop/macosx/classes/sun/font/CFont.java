@@ -242,15 +242,18 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     @Override
     protected FontStrike createStrike(FontStrikeDesc desc) {
-        if (isFakeItalic) {
-            desc = new FontStrikeDesc(desc);
-            desc.glyphTx.concatenate(AffineTransform.getShearInstance(-0.2, 0));
-        }
         if (FontUtilities.useSkiaScaler && SKFontScaler.isAvailable()) {
             SKFontScaler scaler = skiaScaler();
             if (scaler != null) {
+                // No fake italic here: macOS synthesizes nothing for a face a font lacks (CoreText
+                // and AppKit draw the regular glyphs), and the Skia scaler route follows the platform.
                 return new SKFontStrike(this, desc, scaler);
             }
+        }
+        if (isFakeItalic) {
+            // the JDK's own convention for the platform scaler: a 0.2 shear of the glyph transform
+            desc = new FontStrikeDesc(desc);
+            desc.glyphTx.concatenate(AffineTransform.getShearInstance(-0.2, 0));
         }
         return new CStrike(this, desc);
     }

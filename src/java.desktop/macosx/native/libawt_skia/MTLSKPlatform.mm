@@ -235,16 +235,14 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // luminance only (not on the destination), so this is the platform's look for
 // that luminance. Text space is y up: the device matrix (y down) gets its y
 // flipped into the text matrix.
-// macOS has no platform simulation to copy (measured 2026-10-26, probes synthprobe.swift and
-// derivedprobe.swift): CTFontCreateCopyWithSymbolicTraits returns nil for a face the font lacks
-// and NSFontManager hands the regular face back. The JDK's own convention is the reference, and
-// on macOS every font is a CFont, bundled files included: its fake italic is a 0.2 shear of the
-// strike's glyph transform (CFont.createStrike, so the scaler is never asked for one), and there
-// is no fake bold. These values are what a route asking the scaler would get, for consistency;
-// today none does here. SkiaSyntheticStyleMacTest measures both scalers.
+// macOS synthesizes nothing for a face a font lacks (measured 2026-10-26, probes synthprobe.swift
+// and derivedprobe.swift): CTFontCreateCopyWithSymbolicTraits returns nil and NSFontManager hands
+// the regular face back, so AppKit draws the regular glyphs. The Skia scaler route follows the
+// platform: no shear, no emboldening (CFont.createStrike applies the JDK's own 0.2 shear to the
+// platform scaler's strikes only). SkiaSyntheticStyleMacTest.
 void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
 {
-    *obliqueShear = 0.2f;
+    *obliqueShear = 0.0f;
     *boldEmFraction = 0.0f;
 }
 
