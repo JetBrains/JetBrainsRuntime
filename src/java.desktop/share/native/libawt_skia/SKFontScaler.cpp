@@ -72,9 +72,17 @@ struct SKScaler {
 // One per FontStrikeDesc: the glyph transform split into the SkFont's size and
 // the remaining matrix (device transform, skew, non-uniform scale), which the
 // glyph images and outlines are mapped through.
-// The JDK's synthetic italic (freetypeScaler.c): FreeType's oblique matrix entry, 12 degrees.
-// The synthetic bold strength is SK_SYNTHETIC_BOLD_EM (SKPlatform.h).
-const float SYNTHETIC_ITALIC_SHEAR = 0x366A / 65536.0f;
+// The platform's synthetic styles (SKPlatform_SyntheticStyle): the oblique shear and the bold
+// emboldening in em, which widens a glyph to the right and grows every advance by that much.
+struct SyntheticStyle {
+    float obliqueShear = 0x366A / 65536.0f;
+    float boldEmFraction = 1.0f / 32;
+    SyntheticStyle() { SKPlatform_SyntheticStyle(&obliqueShear, &boldEmFraction); }
+};
+const SyntheticStyle &syntheticStyle() {
+    static const SyntheticStyle style;
+    return style;
+}
 
 struct SKScalerContext {
     SKScaler *scaler = nullptr;
@@ -88,6 +96,7 @@ struct SKScalerContext {
     jint grayMode = 0;          // SKFontScaler.GRAY_*
     float grayDarkening = 0;    // fraction of the em added to the outline's width in the darkened mode
     jint grayLuminance = 0;     // the text luminance the cg mode rasterizes for
+    bool syntheticBold = false; // the strike asked for a bold the font has no face for
 };
 
 // The font and glyph to use for a Java glyph code: the strike's own font for
@@ -243,15 +252,15 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     context->font.setEdging(aa == sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_OFF ? SkFont::Edging::kAlias
                           : aa == sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_ON ? SkFont::Edging::kAntiAlias
                                                                             : SkFont::Edging::kSubpixelAntiAlias);
-    // Synthetic styles as the JDK's FreeType scaler makes them (freetypeScaler.c), so text laid
-    // out with either scaler agrees: boldness and italic are the strike's flags, not amounts.
-    // The oblique shear is FreeType's own (FT_GlyphSlot_Oblique, 0x366A / 0x10000, 12 degrees);
-    // the bold emboldens by 1/32 em and adds that to every advance (recordAdvance).
+    // Synthetic styles: boldness and italic are the strike's flags (FileFontStrike's 1.33 and 0.7
+    // are T2K-era constants the FreeType scaler treats as flags too), the geometry is the
+    // platform's (SKPlatform_SyntheticStyle). The bold is drawn as DirectWrite's simulation draws
+    // it: the glyph again, moved right by the emboldening, and the advance grown by it.
     if (boldness != 1.0f) {
-        context->font.setEmbolden(true);
+        context->syntheticBold = true;
     }
     if (italic != 0.0f) {
-        context->font.setSkewX(-SYNTHETIC_ITALIC_SHEAR);
+        context->font.setSkewX(-syntheticStyle().obliqueShear);
     }
     return ptr_to_jlong(context);
 }
@@ -383,13 +392,8 @@ namespace {
 float recordAdvance(const SKScalerContext *context, const SkFont &font, SkGlyphID glyph) {
     SkScalar width = 0;
     font.getWidths({&glyph, 1}, {&width, 1});
-    if (font.isEmbolden() && width != 0) {
-        // as the JDK's GlyphSlot_Embolden adds to the advance of every glyph that has ink (not a space)
-        SkRect bounds;
-        font.getBounds({&glyph, 1}, {&bounds, 1}, nullptr);
-        if (!bounds.isEmpty()) {
-            width += font.getSize() * SK_SYNTHETIC_BOLD_EM;
-        }
+    if (context->syntheticBold) {
+        width += font.getSize() * syntheticStyle().boldEmFraction;   // every glyph, spaces included, as DirectWrite's simulation
     }
     if (!context->identityRemainder) {
         width = context->remainder.mapVector({width, 0}).fX;
@@ -504,7 +508,8 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     const bool platformMask = aa && !colorGlyph && (context->grayMode == sun_font_SKFontScaler_GRAY_CG
                                                     || context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE);
     const int platformLuminance = context->grayMode == sun_font_SKFontScaler_GRAY_PLATFORM_COVERAGE ? -1 : context->grayLuminance;
-    const float platformStroke = font.isEmbolden() ? font.getSize() * SK_SYNTHETIC_BOLD_EM : 0;
+    const float syntheticStroke = context->syntheticBold ? font.getSize() * syntheticStyle().boldEmFraction : 0;
+    const float platformStroke = syntheticStroke;
     if (smoothedGray) {
         font.setEdging(SkFont::Edging::kSubpixelAntiAlias);
     }
@@ -524,7 +529,7 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     // grayscale), the smoothing's dilation, the LCD filter and the synthetic bold's second draw
     const int pad = (colorGlyph ? 1 : lcd ? 3 : smoothedGray || platformMask ? 2 : aa ? 1 : 0) + (int) std::ceil(platformStroke);
     const int left = (int) std::floor(bounds.fLeft) - pad, top = (int) std::floor(bounds.fTop) - pad;
-    const int right = (int) std::ceil(bounds.fRight) + pad + (resX > 1 ? 1 : 0);
+    const int right = (int) std::ceil(bounds.fRight + syntheticStroke) + pad + (resX > 1 ? 1 : 0);   // the bold's second pass sits to the right
     const int bottom = (int) std::ceil(bounds.fBottom) + pad + (resY > 1 ? 1 : 0);
     const int width = right - left, height = bottom - top;
     if (width <= 0 || height <= 0 || width > MAX_GLYPH_DIMENSION || height > MAX_GLYPH_DIMENSION) {
@@ -599,6 +604,10 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
             }
             const SkPoint origin = {0, 0};
             canvas.drawGlyphs({&glyph, 1}, {&origin, 1}, {0, 0}, font, paint);
+            if (syntheticStroke > 0 && !colorGlyph) {
+                const SkPoint shifted = {syntheticStroke, 0};   // the platform's bold: the glyph again, moved right
+                canvas.drawGlyphs({&glyph, 1}, {&shifted, 1}, {0, 0}, font, paint);
+            }
             canvas.restore();
             UInt8 *dst = info->image + imageSize * (size_t) (sy * resX + sx);
             for (int y = 0; y < height; y++) {

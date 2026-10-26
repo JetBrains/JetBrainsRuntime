@@ -235,6 +235,12 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // luminance only (not on the destination), so this is the platform's look for
 // that luminance. Text space is y up: the device matrix (y down) gets its y
 // flipped into the text matrix.
+void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
+{
+    *obliqueShear = 0x366A / 65536.0f;   // the JDK's FreeType scaler, until CoreText's own values are measured
+    *boldEmFraction = 1.0f / 32;
+}
+
 // CoreGraphics' sub-pixel quantization, on by default and what AppKit draws with
 // (gridprobe, 2026-10-23): glyph positions rounded DOWN to thirds of a device
 // pixel at 1x, halves at 1.5x and 2x, whole pixels from 3x; LCD has no grid here

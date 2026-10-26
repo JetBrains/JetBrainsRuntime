@@ -866,6 +866,17 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
 
 } // namespace
 
+// DirectWrite's font simulations (DWRITE_FONT_SIMULATIONS_OBLIQUE / _BOLD),
+// read from the simulated faces' outlines with dwref --simulations: the oblique
+// shears every point by 0.3399 of its height (Inter, JetBrains Mono alike), the
+// bold moves the right side of every contour out by 20/1000 em and adds the
+// same 0.02 em to every glyph's advance, spaces included.
+void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
+{
+    *obliqueShear = 0.34f;
+    *boldEmFraction = 0.02f;
+}
+
 // The display scale from which DirectWrite's symmetric mode halves its placement
 // and coverage sampling (measured between 1.792 and 1.8125; 173 dpi).
 const float HIGH_DPI_SCALE = 1.8f;

@@ -134,6 +134,14 @@ constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 32;
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
                                   int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
                                   uint8_t *mask);
+// The platform's synthetic styles, for a face a font lacks: the oblique shear
+// (x per y) and the bold emboldening as a fraction of the em, which widens the
+// glyph to the right by that much and adds the same to every advance.
+// Windows: DirectWrite's font simulations, measured from the simulated faces'
+// outlines (dwref --simulations): shear 0.34, bold 1/50 em on every glyph.
+// macOS: the JDK's FreeType values until CoreText's are measured (0x366A /
+// 0x10000 = 0.2126, 1/32 em).
+void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction);
 // The platform rasterizer's horizontal placement grid for a typeface at a
 // pixel size: how many sub-pixel positions per pixel it distinguishes (it
 // rounds a glyph origin to the nearest one), so the scaler renders that many

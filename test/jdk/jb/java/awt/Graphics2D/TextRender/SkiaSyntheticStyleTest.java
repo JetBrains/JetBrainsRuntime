@@ -51,8 +51,11 @@ import java.io.File;
 public class SkiaSyntheticStyleTest {
 
     static final String LINE = "Appearance & Behavior";
-    static final double FREETYPE_SHEAR = 0x366A / 65536.0;   // FT_GlyphSlot_Oblique's matrix, used by the JDK's scaler
-    static final double BOLD_EM_FRACTION = 1.0 / 32;         // the JDK's BOLD_DIVISOR
+    // DirectWrite's font simulations, read from the simulated faces' outlines (dwref --simulations):
+    // the oblique shears by 0.3399 of the height, the bold widens every glyph by 20/1000 em to the
+    // right and adds 0.02 em to every advance, spaces included
+    static final double PLATFORM_SHEAR = 0.34;
+    static final double BOLD_EM_FRACTION = 0.02;
 
     public static void main(String[] args) throws Exception {
         File file = new File(System.getProperty("java.home"), "lib/fonts/Inter-Regular.otf");
@@ -66,16 +69,14 @@ public class SkiaSyntheticStyleTest {
         // synthetic italic: the shear of a tall straight glyph
         double upright = slant(regular, "H"), italic = slant(regular.deriveFont(Font.ITALIC), "H");
         double shear = italic - upright;
-        System.out.printf("synthetic italic shear %.3f (upright glyph %.3f, italic %.3f); FreeType's %.4f%n", shear, upright, italic, FREETYPE_SHEAR);
-        if (Math.abs(shear - FREETYPE_SHEAR) > 0.04) {
-            failures.append(String.format("synthetic italic shear %.3f, the JDK's FreeType scaler shears by %.4f; ", shear, FREETYPE_SHEAR));
+        System.out.printf("synthetic italic shear %.3f (upright glyph %.3f, italic %.3f); DirectWrite's %.4f%n", shear, upright, italic, PLATFORM_SHEAR);
+        if (Math.abs(shear - PLATFORM_SHEAR) > 0.04) {
+            failures.append(String.format("synthetic italic shear %.3f, DirectWrite's oblique simulation shears by %.4f; ", shear, PLATFORM_SHEAR));
         }
 
-        // synthetic bold: the advance of every glyph with ink (not the spaces) grows by 1/32 em;
-        // measured exactly with fractional metrics. Whole-pixel advances are rounded per glyph
-        // (FreeType from its hinted integer advance, so nothing grows below 16 px and a pixel
-        // per glyph from there), which is only checked to lie within that range.
-        int inked = LINE.replace(" ", "").length();
+        // synthetic bold: every advance grows by 0.02 em, measured exactly with fractional
+        // metrics; whole-pixel advances are rounded per glyph and only checked to lie within range
+        int inked = LINE.length();
         for (double scale : new double[] {1, 2}) {
             for (boolean fractional : new boolean[] {false, true}) {
                 Font plain = regular.deriveFont(13f), bold = plain.deriveFont(Font.BOLD);
@@ -83,11 +84,11 @@ public class SkiaSyntheticStyleTest {
                 double plainWidth = plain.getStringBounds(LINE, frc).getWidth() * scale;
                 double boldWidth = bold.getStringBounds(LINE, frc).getWidth() * scale;
                 double grown = boldWidth - plainWidth, expected = inked * 13 * scale * BOLD_EM_FRACTION;
-                System.out.printf("synthetic bold at %sx %s: line %.2f px bold against %.2f px plain, grown by %.2f; FreeType grows it by %.2f (%d inked glyphs)%n",
+                System.out.printf("synthetic bold at %sx %s: line %.2f px bold against %.2f px plain, grown by %.2f; DirectWrite grows it by %.2f (%d glyphs)%n",
                                   scale, fractional ? "fractional" : "whole-pixel", boldWidth, plainWidth, grown, expected, inked);
                 boolean ok = fractional ? Math.abs(grown - expected) <= 1.0 : grown >= -0.5 && grown <= inked + 0.5;
                 if (!ok) {
-                    failures.append(String.format("synthetic bold at %sx %s widens the line by %.2f px, the JDK's FreeType scaler by %.2f; ",
+                    failures.append(String.format("synthetic bold at %sx %s widens the line by %.2f px, DirectWrite's simulation by %.2f; ",
                                                   scale, fractional ? "fractional" : "whole-pixel", grown, expected));
                 }
             }
