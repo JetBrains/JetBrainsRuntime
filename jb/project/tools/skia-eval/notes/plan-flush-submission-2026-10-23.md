@@ -119,3 +119,13 @@ unchanged (0.02 ms, LatencyProbe). The estimate in §3 did not hold: Swing's bac
 already ends each paint cycle with a flush, so presenting per cycle adds flushes instead of
 removing them. Step 3 (submit only when presenting, syncing, reading back or over the cap) is now
 the lever; under `cycle` it would drop the extra flushes' submits. Details in raw-x64hw-2026-10-23.md.
+
+## 7. Outcome of step 3 (2026-10-26)
+
+Implemented as `sun.java2d.skia.submit=present` (opt-in). n = 5 in the IDE scenes, alone and with
+`present=cycle`: paint and flush time unchanged within the spread (−0.9 % at best). 80 % of the
+flushes present, so 17 % of the submits can be deferred, and about half of a submit's cost moves
+into the next one. Steps 2 and 3 together do not close the gap; the cost per flush does not come
+from how often Skia hands over but from what one hand-over costs (submit 0.54 ms, present 0.37 ms).
+Next: a native profile of a scene run, then step 4 (render into the swap chain image) if the
+present copy shows up, or a look into what submit does on Dawn/D3D11.
