@@ -112,8 +112,11 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // macOS, DirectWrite on Windows). luminance 0..255: with the platform's font
 // smoothing on, as it draws text of that luminance (the native look, exact
 // by construction where the platform's weight depends on the text colour
-// alone); luminance -1: the platform rasterizer's plain linear coverage, for
-// the pipes that apply the gamma themselves. The mask is width x height
+// alone); luminance 0x1RRGGBB (0x1000000 and above): an ink colour, for an
+// lcd mask whose channels the platform corrects for the actual colour (each
+// channel rasterized as the platform draws that colour, against a paper
+// opposite to it per channel); luminance -1: the platform rasterizer's plain
+// linear coverage, for the pipes that apply the gamma themselves. The mask is width x height
 // bytes of coverage, or width x height x 3 bytes of per-channel (R, G, B)
 // coverage when lcd is set; the glyph origin is at (originX, originY) in the
 // mask, glyphToDevice the transform of the glyph's design space in pixels

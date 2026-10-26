@@ -797,11 +797,23 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
     if (!(displayScale > 0)) {
         displayScale = 1;
     }
-    const bool lightText = luminance >= 128;
-    const int paperByte = lightText ? 0 : 255, inkByte = luminance;
-    const int range = std::abs(paperByte - inkByte);
-    if (range == 0) {
-        return false;
+    // the ink per channel: a gray of the luminance, or the colour class's colour (0x1RRGGBB) for
+    // an lcd mask; the paper is the opposite extreme per channel, so every channel's coverage
+    // is recovered from what that channel of the paper lost
+    int ink[3], paper[3], range[3];
+    const bool colour = luminance >= 0x1000000;
+    for (int c = 0; c < 3; c++) {
+        ink[c] = colour ? (luminance >> (16 - 8 * c)) & 255 : luminance;
+    }
+    if (colour && !lcd) {
+        ink[0] = ink[1] = ink[2] = (ink[0] * 299 + ink[1] * 587 + ink[2] * 114) / 1000;   // a grayscale mask takes the luminance
+    }
+    for (int c = 0; c < 3; c++) {
+        paper[c] = ink[c] >= 128 ? 0 : 255;
+        range[c] = std::abs(paper[c] - ink[c]);
+        if (range[c] == 0) {
+            return false;
+        }
     }
     BITMAPINFO info = {};
     info.bmiHeader.biSize = sizeof(info.bmiHeader);
@@ -823,13 +835,11 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
     text.target->SetDpi(96 * displayScale, 96 * displayScale);
     if (SUCCEEDED(text.target->BindDC(dc, &rect))) {
         ComPtr<ID2D1SolidColorBrush> brush;
-        const float ink = inkByte / 255.0f;
-        if (SUCCEEDED(text.target->CreateSolidColorBrush(D2D1::ColorF(ink, ink, ink), &brush))) {
+        if (SUCCEEDED(text.target->CreateSolidColorBrush(D2D1::ColorF(ink[0] / 255.0f, ink[1] / 255.0f, ink[2] / 255.0f), &brush))) {
             text.target->SetTextAntialiasMode(lcd ? D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE : D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
             text.target->BeginDraw();
-            const float paper = paperByte / 255.0f;
             text.target->SetTransform(D2D1::Matrix3x2F::Identity());
-            text.target->Clear(D2D1::ColorF(paper, paper, paper));
+            text.target->Clear(D2D1::ColorF(paper[0] / 255.0f, paper[1] / 255.0f, paper[2] / 255.0f));
             const int passes = strokeWidth > 0 ? 2 : 1;
             for (int pass = 0; pass < passes; pass++) {
                 GlyphRunSetup setup(face, glyph, glyphToDevice, originX + (pass == 1 ? strokeWidth : 0), originY, displayScale);
@@ -850,10 +860,10 @@ bool smoothedMask(DWriteText &text, IDWriteFontFace *face, uint16_t glyph, const
                 if (lcd) {
                     for (int c = 0; c < 3; c++) {
                         const int value = row[x * 4 + (2 - c)];   // R, G, B order in the mask
-                        dst[x * 3 + c] = (uint8_t) std::min(255, std::abs(value - paperByte) * 255 / range);
+                        dst[x * 3 + c] = (uint8_t) std::min(255, std::abs(value - paper[c]) * 255 / range[c]);
                     }
                 } else {
-                    dst[x] = (uint8_t) std::min(255, std::abs((int) row[x * 4 + 1] - paperByte) * 255 / range);
+                    dst[x] = (uint8_t) std::min(255, std::abs((int) row[x * 4 + 1] - paper[1]) * 255 / range[1]);
                 }
             }
         }

@@ -90,6 +90,15 @@ public final class FontUtilities {
     /** Whether the luminance-dependent route also supplies LCD masks (see initStatic). */
     public static boolean platformLcdMasks;
 
+    /**
+     * Bits per channel of the colour class LCD glyph images are keyed by on the
+     * platform route (sun.java2d.skia.text.lcdColorBits; 0 = by luminance like
+     * grayscale, 2 = 64 classes, 3 = Skia's 512). The platform renders each
+     * channel of an LCD mask for the class's colour, as it corrects each
+     * channel for the actual text colour natively.
+     */
+    public static int lcdColorBits;
+
     public static boolean isWindows;
 
     static Dimension subpixelResolution;
@@ -145,7 +154,13 @@ public final class FontUtilities {
             textLuminanceDependent = useSkiaScaler
                     && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray))
                     && textLuminanceClasses > 1;
-
+            if (textLuminanceDependent) {
+                try {
+                    lcdColorBits = Math.max(0, Math.min(8, Integer.parseInt(System.getProperty("sun.java2d.skia.text.lcdColorBits", "0"))));
+                } catch (NumberFormatException e) {
+                    lcdColorBits = 0;
+                }
+            }
         } else {
             useJDKScaler = false;
             useSkiaScaler = false;

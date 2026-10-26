@@ -824,13 +824,25 @@ public final class SunGraphics2D
      * The luminance class (FontStrikeDesc.luminance) of the current colour when
      * glyph images depend on it ({@link FontUtilities#luminanceClass}: 16 classes
      * of 16 levels by default, the class centre); -1 otherwise, and for paints
-     * that are not a colour.
+     * that are not a colour. For LCD text with colour classes
+     * (FontUtilities.lcdColorBits) the class is the quantized colour instead, as
+     * 0x1RRGGBB: each channel rounded to the nearest of 2^bits levels that include
+     * 0 and 255, so black and white, the common text colours, keep their exact
+     * masks (a bin-centre scheme put black's mask 15 levels off at 2 bits).
      */
     private int textLuminance() {
         if (!FontUtilities.textLuminanceDependent || paintState > PAINT_ALPHACOLOR) {
             return -1;
         }
         int c = eargb;
+        int bits = FontUtilities.lcdColorBits;
+        if (bits > 0 && textAntialiasHint >= SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HRGB) {
+            int levels = (1 << bits) - 1;
+            int r = (((c >> 16) & 0xff) * levels + 127) / 255 * 255 / levels;
+            int g = (((c >> 8) & 0xff) * levels + 127) / 255 * 255 / levels;
+            int b = ((c & 0xff) * levels + 127) / 255 * 255 / levels;
+            return 0x1000000 | (r << 16) | (g << 8) | b;
+        }
         // SKBackend.cpp's luminanceClass() computes the same class for Skia's text path; keep the two in step
         int luminance = (((c >> 16) & 0xff) * 299 + ((c >> 8) & 0xff) * 587 + (c & 0xff) * 114) / 1000;
         return FontUtilities.luminanceClass(luminance);
