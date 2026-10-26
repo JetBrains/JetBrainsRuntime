@@ -129,3 +129,12 @@ into the next one. Steps 2 and 3 together do not close the gap; the cost per flu
 from how often Skia hands over but from what one hand-over costs (submit 0.54 ms, present 0.37 ms).
 Next: a native profile of a scene run, then step 4 (render into the swap chain image) if the
 present copy shows up, or a look into what submit does on Dawn/D3D11.
+
+## 8. Present off the flusher, rendering into the swap chain (2026-10-26)
+
+Both measured or analysed, neither pays: Dawn holds its device lock across DXGI's `Present()`,
+so a present thread only moves the compositor's wait into the flusher's next Dawn call (PresentProbe:
+insert 4 → 935 ms per second); and Dawn's FLIP_DISCARD swap chain does not keep a window's
+content, which Swing's partial repaints need, so the retained texture and its copy stay. The lever
+that did pay was the render-pass count (`lcd=twopass`, −25 % flush time). Remaining: the submit's
+cost per call, to be profiled.
