@@ -398,42 +398,30 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
         }
     }
 
-    MTLCacheCellInfo *cell;
-    int rx = ginfo->subpixelResolutionX;
-    int ry = ginfo->subpixelResolutionY;
-    if (subimage == 0 && ((rx == 1 && ry == 1) || rx <= 0 || ry <= 0)) {
-        // Subpixel rendering disabled, there must be only one cell info
-        cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
-    } else {
-        // Subpixel rendering enabled, find subimage in cell list
-        cell = NULL;
-        MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo);
-        while (c != NULL) {
-            if (c->glyphSubimage == subimage) {
-                cell = c;
-                break;
-            }
-            c = c->nextGCI;
+    // The glyph's cells may belong to several caches (the buckets, the LCD cache, another
+    // context): only a cell of the active cache has coordinates in the texture bound here.
+    MTLGlyphCacheInfo *active = mtlc.glyphCacheAA.cacheInfo;
+    MTLCacheCellInfo *cell = NULL;
+    for (MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo); c != NULL; c = c->nextGCI) {
+        if (c->cacheInfo == active && c->glyphSubimage == subimage) {
+            cell = c;
+            break;
         }
     }
 
-
-    if (cell == NULL || cell->cacheInfo->mtlc != mtlc) {
-        if (cell != NULL) {
-            MTLGlyphCache_RemoveCellInfo(cell->glyphInfo, cell);
-        }
+    if (cell == NULL) {
         // attempt to add glyph to accelerated glyph cache
         MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_FALSE, subimage);
-
-        if (ginfo->cellInfo == NULL) {
-            // we'll just no-op in the rare case that the cell is NULL
+        for (MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo); c != NULL; c = c->nextGCI) {
+            if (c->cacheInfo == active && c->glyphSubimage == subimage) {
+                cell = c;
+                break;
+            }
+        }
+        if (cell == NULL) {
+            // we'll just no-op in the rare case that no cell could be added
             return JNI_TRUE;
         }
-        // Our image, added to cache will be the first, so we take it.
-        // If for whatever reason we failed to add it to our cache,
-        // take first cell anyway, it's still better to render glyph
-        // image with wrong subpixel offset than render nothing.
-        cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     }
     cell->timesRendered++;
 
@@ -491,17 +479,24 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
         }
     }
 
-    if (ginfo->cellInfo == NULL) {
+    // a cell of the active LCD cache (the glyph may also sit in a grayscale or another bucket's cache)
+    MTLGlyphCacheInfo *activeLcd = mtlc.glyphCacheLCD.cacheInfo;
+    cell = NULL;
+    for (MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo); c != NULL; c = c->nextGCI) {
+        if (c->cacheInfo == activeLcd) { cell = c; break; }
+    }
+    if (cell == NULL) {
         // attempt to add glyph to accelerated glyph cache
         // TODO : Handle RGB order
         MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_TRUE, 0);
-
-        if (ginfo->cellInfo == NULL) {
-            // we'll just no-op in the rare case that the cell is NULL
+        for (MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo); c != NULL; c = c->nextGCI) {
+            if (c->cacheInfo == activeLcd) { cell = c; break; }
+        }
+        if (cell == NULL) {
+            // we'll just no-op in the rare case that no cell could be added
             return JNI_TRUE;
         }
     }
-    cell = (MTLCacheCellInfo *) (ginfo->cellInfo);
     cell->timesRendered++;
 
     MTLTR_SetLCDContrast(mtlc, contrast, mtlc.glyphCacheLCD.cacheInfo->encoder);
