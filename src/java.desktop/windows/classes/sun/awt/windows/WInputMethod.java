@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -168,6 +168,10 @@ final class WInputMethod extends InputMethodAdapter
 
     @Override
     public boolean setLocale(Locale lang) {
+        return setLocale(lang, false);
+    }
+
+    private boolean setLocale(Locale lang, boolean onActivate) {
         Locale[] available = WInputMethodDescriptor.getAvailableLocalesInternal();
         for (int i = 0; i < available.length; i++) {
             Locale locale = available[i];
@@ -176,7 +180,7 @@ final class WInputMethod extends InputMethodAdapter
                     locale.equals(Locale.JAPAN) && lang.equals(Locale.JAPANESE) ||
                     locale.equals(Locale.KOREA) && lang.equals(Locale.KOREAN)) {
                 if (isActive) {
-                    setNativeLocale(locale.toLanguageTag());
+                    setNativeLocale(locale.toLanguageTag(), onActivate);
                 }
                 currentLocale = locale;
                 return true;
@@ -316,6 +320,13 @@ final class WInputMethod extends InputMethodAdapter
         }
         isActive = true;
 
+        // Sync currentLocale with the Windows keyboard layout which could be changed
+        // while the component was inactive.
+        getLocale();
+        if (currentLocale != null) {
+            setLocale(currentLocale, true);
+        }
+
         // Compare IM's composition string with Java's composition string
         if (hasCompositionString && !isCompositionStringAvailable(context)) {
             endCompositionNative(context, DISCARD_INPUT);
@@ -341,6 +352,10 @@ final class WInputMethod extends InputMethodAdapter
     @Override
     public void deactivate(boolean isTemporary)
     {
+        // Sync currentLocale with the Windows keyboard layout which might be changed
+        // by hot key
+        getLocale();
+
         // Delay calling disableNativeIME until activate is called and the newly
         // focused component has a different peer as the last focused component.
         if (awtFocussedComponentPeer != null) {
@@ -665,7 +680,7 @@ final class WInputMethod extends InputMethodAdapter
     private native void setStatusWindowVisible(WComponentPeer peer, boolean visible);
     private native String getNativeIMMDescription();
     static native Locale getNativeLocale();
-    static native boolean setNativeLocale(String localeName);
+    static native boolean setNativeLocale(String localeName, boolean onActivate);
     private native void openCandidateWindow(WComponentPeer peer, int caretLeftX, int caretTopY, int caretRightX, int caretBottomY);
     private native boolean isCompositionStringAvailable(int context);
 }

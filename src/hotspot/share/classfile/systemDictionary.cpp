@@ -413,16 +413,6 @@ InstanceKlass* SystemDictionary::resolve_super_or_fail(Symbol* class_name,
 
   assert(super_name != nullptr, "null superclass for resolving");
   assert(!Signature::is_array(super_name), "invalid superclass name");
-#if INCLUDE_CDS
-  if (DumpSharedSpaces) {
-    // Special processing for handling UNREGISTERED shared classes.
-    InstanceKlass* k = SystemDictionaryShared::lookup_super_for_unregistered_class(class_name,
-                           super_name, is_superclass);
-    if (k) {
-      return k;
-    }
-  }
-#endif // INCLUDE_CDS
 
   // If klass is already loaded, just return the superclass or superinterface.
   // Make sure there's a placeholder for the class_name before resolving.
