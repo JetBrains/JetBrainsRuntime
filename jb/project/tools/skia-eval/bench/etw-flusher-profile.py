@@ -69,6 +69,9 @@ def main():
     last = {}               # tid -> (event timestamp, index in stacks) of the last matched stack: a sample
                             # taken in kernel mode brings its user-mode frames in a second event
     tid_col = re.compile(r'^\s*Thread,\s*SetName,')
+    # threads that exist when the trace starts are named by the rundown (DCStart), the name as hex
+    # UTF-16LE in the last field; threads started during the trace by Start or SetName
+    tid_start = re.compile(r'^\s*Thread,\s*(DCStart|Start),')
     with open(a.dump, encoding="utf-8", errors="replace") as f:
         next(f)
         for line in f:
@@ -92,6 +95,15 @@ def main():
                 if p[1] in ("DCStart", "Load", "DCEnd"):
                     name = p[-1].strip('"').rsplit("\\", 1)[-1].lower()
                     images[int(p[21])].append((int(p[19], 16), int(p[19], 16) + int(p[20], 16), name))
+            elif tid_start.match(line):
+                p = [x.strip() for x in line.split(",")]
+                if p[-1].startswith("0x") and len(p[-1]) > 2:
+                    try:
+                        name = bytes.fromhex(p[-1][2:]).decode("utf-16-le", errors="replace").rstrip(chr(0))
+                    except ValueError:
+                        name = ""
+                    if name == a.thread:
+                        threads[int(p[20], 16)] = int(p[19], 16)
             elif tid_col.match(line):
                 m = re.search(r'0x([0-9A-Fa-f]+),\s*0x([0-9A-Fa-f]+),\s*"(.*)"', line)
                 if m and m.group(3) == a.thread:
