@@ -26,6 +26,7 @@
 #import "MTLOptions.h"
 #import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
+#import "jni_util.h"
 #include "Trace.h"
 
 static NSString *propertyValue(NSString *key, JNIEnv *env) {
@@ -68,9 +69,32 @@ BOOL MTLOptions_CoalesceCommits(void) {
     return boolOption(@"sun.java2d.metal.coalesceCommits", NO, &cache);
 }
 
+// 512 texels (256 cells of 32x32) as the pipeline always had; 2048 (4096 cells) when
+// glyphs are rasterized per text luminance class (FontUtilities.textLuminanceDependent,
+// the cg route of the Skia scaler): one strike per class multiplies the glyph set, and
+// 16 classes of one font thrash 256 cells (a frame of 3000 strings in 16 colours took
+// 176 ms against 10 ms with 2048, ledger §19b.1).
+static jint glyphCacheDefault(JNIEnv *env) {
+    jboolean exception = JNI_FALSE;
+    const jvalue luminance = JNU_GetStaticFieldByName(env, &exception, "sun/font/FontUtilities", "textLuminanceDependent", "Z");
+    if (exception) {
+        (*env)->ExceptionClear(env);
+        return 512;
+    }
+    return luminance.z ? 2048 : 512;
+}
+
 jint MTLOptions_GlyphCacheSize(void) {
     static jint cache = -1;
-    return textureSizeOption(@"sun.java2d.metal.glyphCacheSize", 0, &cache);
+    if (cache == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) {
+            return 512;
+        }
+        jint scratch = -1;
+        cache = textureSizeOption(@"sun.java2d.metal.glyphCacheSize", glyphCacheDefault(env), &scratch);
+    }
+    return cache;
 }
 
 BOOL MTLOptions_GlyphCacheSync(void) {

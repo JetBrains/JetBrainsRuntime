@@ -25,6 +25,7 @@
 
 #import "sun_java2d_metal_MTLGraphicsConfig.h"
 
+#import "MTLOptions.h"
 #import "MTLGraphicsConfig.h"
 #import "ThreadUtilities.h"
 #import "awt.h"
@@ -110,6 +111,13 @@ Java_sun_java2d_metal_MTLGraphicsConfig_nativeGetMaxTextureSize
     J2dTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_nativeGetMaxTextureSize");
 
     return (jint)MTL_GPU_FAMILY_MAC_TXT_SIZE;
+}
+
+JNIEXPORT jint JNICALL
+Java_sun_java2d_metal_MTLGraphicsConfig_glyphCacheSize
+    (JNIEnv *env, jclass mtlgc)
+{
+    return MTLOptions_GlyphCacheSize();
 }
 
 JNIEXPORT void JNICALL

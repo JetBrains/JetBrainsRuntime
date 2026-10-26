@@ -40,8 +40,8 @@ BOOL MTLOptions_CoalesceCommits(void);
 
 // sun.java2d.metal.glyphCacheSize: side of the glyph cache textures in texels,
 // a multiple of 32 between 32 and 16384 (512 gives 256 cells of 32x32 per
-// cache, 1024 gives 1024 cells); 0 when unset or invalid, meaning the
-// pipeline's default.
+// cache, 1024 gives 1024 cells). Unset or invalid: 512, or 2048 when glyphs
+// are rasterized per text luminance class (FontUtilities.textLuminanceDependent).
 jint MTLOptions_GlyphCacheSize(void);
 
 // sun.java2d.metal.glyphCacheSync: wait for the GPU when a full glyph cache is

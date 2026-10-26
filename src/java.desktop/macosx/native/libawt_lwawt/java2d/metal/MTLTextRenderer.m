@@ -128,8 +128,8 @@ MTLTR_ValidateGlyphCache(MTLContext *mtlc, BMTLSDOps *dstOps, jboolean lcdCache)
     // init glyph cache data structure
     MTLGlyphCache* glyphCache = (lcdCache)?mtlc.glyphCacheLCD:mtlc.glyphCacheAA;
     jint cacheSize = MTLOptions_GlyphCacheSize();
-    if (cacheSize == 0) {
-        cacheSize = MTLTR_CACHE_WIDTH;   // == MTLTR_CACHE_HEIGHT
+    if (cacheSize <= 0) {
+        cacheSize = MTLTR_CACHE_WIDTH;   // == MTLTR_CACHE_HEIGHT; the option resolves its own default
     }
     if (glyphCache.cacheInfo == NULL && ![glyphCache glyphCacheInitWidth:cacheSize
                                   height:cacheSize

@@ -94,6 +94,9 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
+    /** The side of the glyph cache textures in texels, as MTLTextRenderer creates them (diagnostics, tests). */
+    public static native int glyphCacheSize();
+
     private MTLGraphicsConfig(CGraphicsDevice device,
                               long configInfo, int maxTextureSize,
                               ContextCapabilities mtlCaps) {
