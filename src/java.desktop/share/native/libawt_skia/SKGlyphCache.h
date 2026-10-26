@@ -68,4 +68,12 @@ void SKGlyphCache_Flush(SKGlyphCache *gc);
 // afterDraw).
 class SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc);
 
+// The caches' work so far, for diagnostics and tests (SKEnvironment.glyphCacheStats):
+// glyphs drawn from a cell, cells staged (first draw of a glyph image), cells evicted
+// (a staged glyph replaced a cached one), atlas row uploads, glyphs drawn uncached by
+// the backend (did not fit a cell, or no cell free). Written by the flusher, read anywhere.
+enum SKGlyphCacheStat { SK_GLYPHS_CACHED = 0, SK_CELLS_STAGED, SK_CELLS_EVICTED, SK_ATLAS_UPLOADS, SK_GLYPHS_UNCACHED, SK_GLYPH_STAT_COUNT };
+void SKGlyphCache_CountStat(SKGlyphCacheStat stat, jlong n = 1);
+jlong SKGlyphCache_Stat(SKGlyphCacheStat stat);
+
 #endif /* SKGlyphCache_h_Included */

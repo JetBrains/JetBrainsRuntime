@@ -38,6 +38,7 @@
 #include "include/gpu/graphite/Surface.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <vector>
 
@@ -88,6 +89,16 @@ struct SKGlyphCache {
 };
 
 static void uploadDirtyRows(SKGlyphCache *gc);
+
+static std::atomic<jlong> gStats[SK_GLYPH_STAT_COUNT];
+
+void SKGlyphCache_CountStat(SKGlyphCacheStat stat, jlong n) {
+    gStats[stat].fetch_add(n, std::memory_order_relaxed);
+}
+
+jlong SKGlyphCache_Stat(SKGlyphCacheStat stat) {
+    return gStats[stat].load(std::memory_order_relaxed);
+}
 
 static inline size_t cellIndex(const CacheCellInfo *cell) {
     return (size_t) (cell->y / CELL_SIZE) * cellsPerRow() + (size_t) (cell->x / CELL_SIZE);
@@ -204,6 +215,7 @@ static void uploadDirtyRows(SKGlyphCache *gc) {
             SkPixmap sub;
             if (all.extractSubset(&sub, dirty)) {
                 gc->atlas->writePixels(sub, dirty.fLeft, dirty.fTop);
+                SKGlyphCache_CountStat(SK_ATLAS_UPLOADS);
             }
             dirty.setEmpty();
         }
@@ -266,6 +278,7 @@ static CacheCellInfo *reusableCell(SKGlyphCache *gc, GlyphInfo *glyph) {
             if (reusable) {
                 if (cell->glyphInfo != NULL) {
                     AccelGlyphCache_RemoveCellInfo(cell->glyphInfo, cell);
+                    SKGlyphCache_CountStat(SK_CELLS_EVICTED);
                 }
                 cell->glyphInfo = glyph;
                 cell->tx2 = cell->tx1 + ((jfloat) glyph->width / info->width);
@@ -301,7 +314,9 @@ bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboole
         }
         cell->glyphSubimage = subimage;
         stageGlyph(gc, glyph, cell, subimage, rgbOrder);
+        SKGlyphCache_CountStat(SK_CELLS_STAGED);
     }
+    SKGlyphCache_CountStat(SK_GLYPHS_CACHED);
     cell->timesRendered++;
     gc->lastUsed[cellIndex(cell)] = gc->cc->recordingGeneration;
     if (!gc->batch.active()) {

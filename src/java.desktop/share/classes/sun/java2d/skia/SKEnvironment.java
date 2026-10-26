@@ -436,4 +436,15 @@ public final class SKEnvironment {
     }
 
     private static native int luminanceClassesNative();
+
+    /**
+     * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a
+     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached
+     * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
+     */
+    public static long[] glyphCacheStats() {
+        return isSkiaEnabled() ? glyphCacheStatsNative() : new long[0];
+    }
+
+    private static native long[] glyphCacheStatsNative();
 }

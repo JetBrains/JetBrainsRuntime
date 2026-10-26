@@ -1589,6 +1589,7 @@ static SKGlyphCache *glyphCache(bool lcd) {
 // Glyphs too large for a cache cell, or LCD glyphs shifted by a third of a
 // pixel, are uploaded and drawn individually (MTLTextRenderer's NoCache paths).
 static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
+    SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
     SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, ginfo->rowBytes);
     if (sk_sp<SkImage> cov = uploadPixmap(pm)) {
@@ -1598,6 +1599,7 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
 
 static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
+    SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const int w = ginfo->width, h = ginfo->height;
     std::vector<unsigned char> rgba((size_t) w * h * 4);
     const unsigned char *image = ginfo->image + (size_t) ginfo->rowBytes * h * subimage;

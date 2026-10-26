@@ -30,6 +30,7 @@
 #include "jni.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "SKBackend.h"
+#include "SKGlyphCache.h"
 #include "Trace.h"
 #include "include/core/SkGraphics.h"
 
@@ -88,6 +89,20 @@ JNIEXPORT jint JNICALL
 Java_sun_java2d_skia_SKEnvironment_luminanceClassesNative(JNIEnv *env, jclass clazz)
 {
     return SKBackend_LuminanceClasses();
+}
+
+JNIEXPORT jlongArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_glyphCacheStatsNative(JNIEnv *env, jclass clazz)
+{
+    jlong values[SK_GLYPH_STAT_COUNT];
+    for (int i = 0; i < SK_GLYPH_STAT_COUNT; i++) {
+        values[i] = SKGlyphCache_Stat((SKGlyphCacheStat) i);
+    }
+    jlongArray out = env->NewLongArray(SK_GLYPH_STAT_COUNT);
+    if (out != nullptr) {
+        env->SetLongArrayRegion(out, 0, SK_GLYPH_STAT_COUNT, values);
+    }
+    return out;
 }
 
 JNIEXPORT void JNICALL
