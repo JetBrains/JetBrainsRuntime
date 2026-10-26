@@ -15,10 +15,13 @@ X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/
 XR="$X --add-opens java.desktop/sun.font=ALL-UNNAMED -Dtest.jdk=$JDKW -Dsun.java2d.skia.pipelineCache=$OUTW/pipeline-cache ${JTREG_EXTRA_OPTS:-}"   # the cache stays out of the home directory; JTREG_EXTRA_OPTS: more -D options for every run
 pass=0; fail=0
 for f in "$G"/*.java "$G"/TextRender/*.java; do
-  grep -q "sun.java2d.skia=true" "$f" || continue
+  [ "${ALL_RUN_LINES:-0}" = 1 ] || grep -q "sun.java2d.skia=true" "$f" || continue   # ALL_RUN_LINES=1: every othervm run line, Skia or not
+  # @requires naming only other systems (this kit runs on Windows): skipped, as jtreg would
+  if req=$(grep -h "@requires" "$f"); [ -n "$req" ] && echo "$req" | grep -q "os.family" && ! echo "$req" | grep -q "\"windows\""; then continue; fi
   name=$(basename "$f" .java)
   "$JDK/bin/javac.exe" $X -sourcepath "$RW/test/jdk/jb/java/awt/Graphics2D;$RW/test/lib" -d "$OUT" "$f" 2> "$OUT/$name.javac.txt" || { echo "COMPILE FAIL $name"; sed -n 1,5p "$OUT/$name.javac.txt"; fail=$((fail+1)); continue; }
-  grep -E "^\s*\*\s*@run main/othervm(/timeout=[0-9]+)? .*skia=true" "$f" | sed -E 's/^\s*\*\s*@run main\/othervm(\/timeout=[0-9]+)? //' | while read -r line; do
+  pat="skia=true"; [ "${ALL_RUN_LINES:-0}" = 1 ] && pat=""
+  grep -E "^\s*\*\s*@run main/othervm(/timeout=[0-9]+)? .*$pat" "$f" | sed -E 's/^\s*\*\s*@run main\/othervm(\/timeout=[0-9]+)? //' | while read -r line; do
     log="$OUT/$name.$(echo "$line" | tr -c 'A-Za-z0-9=._-' '_' | cut -c1-120).log"
     if timeout 600 "$JDK/bin/java.exe" $XR -cp "$OUT" $line > "$log" 2>&1; then echo "PASS  $line"; else echo "FAIL  $line"; grep -m3 -E "Exception|beyond|ratio|times a frame" "$log" | cut -c1-200; fi
     grep -E "times a frame|ratio" "$log" | head -2 | sed 's/^/      /'

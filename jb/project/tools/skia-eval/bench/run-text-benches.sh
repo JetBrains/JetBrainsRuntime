@@ -5,11 +5,15 @@
 #   GlyphChurnBench <distinct> [lcd] [software]  for 200 / 600 / 1500 / 3000 glyphs, gray and LCD
 #   StartupCost  (first off-screen frame and first window paint)
 # Results: <out dir>/results.tsv (rep, bench, configuration, arm, metric, ms); logs in <out dir>/logs.
+# JDK_B=<second image>: the Skia and software arms also run on it, as b-<arm>, in the same shuffled
+# repetitions (an A/B of two builds). The pipeline cache is off in every arm (no files in the home
+# directory, and StartupCost measures the compiles).
 set -u
 R="${R:-$(cd "$(dirname "$0")/../../../../.." && pwd)}"
 JDK=$(cd "$1" && pwd); OUT=$(mkdir -p "$2" && cd "$2" && pwd); REPS=$3
 K="$R/jb/project/tools/skia-eval"
-X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED"
+X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED -Dsun.java2d.skia.pipelineCache=off"
+JDK_B=${JDK_B:+$(cd "$JDK_B" && pwd)}
 
 declare -A ARM=(
   [skia]="-Dsun.java2d.skia=true"
@@ -35,6 +39,17 @@ for d in 200 600 1500 3000; do
   done
 done
 for arm in skia software d3d; do jobs+=("StartupCost|-|$arm|StartupCost"); done
+if [ -n "$JDK_B" ]; then
+  for arm in skia skia-lcd-twopass skia-lcd-blend software; do
+    for n in 100 500 1000; do jobs+=("LcdTextBench|$n lcd|b-$arm|LcdTextBench $n 60 lcd cheap"); done
+    jobs+=("LcdTextBench|90 lcd grid|b-$arm|LcdTextBench 90 60 lcd cheap grid")
+  done
+  for d in 200 600 1500 3000; do
+    jobs+=("GlyphChurnBench|$d gray|b-skia|GlyphChurnBench $d")
+    jobs+=("GlyphChurnBench|$d lcd|b-skia|GlyphChurnBench $d lcd")
+  done
+  jobs+=("StartupCost|-|b-skia|StartupCost")
+fi
 
 [ -f "$OUT/results.tsv" ] || printf 'rep\tbench\tconfiguration\tarm\tmetric\tms\n' > "$OUT/results.tsv"
 FIRST=${REP_START:-1}
@@ -42,7 +57,8 @@ for rep in $(seq "$FIRST" $((FIRST + REPS - 1))); do
   printf '%s\n' "${jobs[@]}" | shuf | while IFS='|' read -r bench conf arm cmd; do
     log="$OUT/logs/$rep-$bench-${conf// /_}-$arm.log"
     # shellcheck disable=SC2086
-    timeout 600 "$JDK/bin/java.exe" $X ${ARM[$arm]} -Dsun.java2d.uiScale=1 -cp "$OUT/classes" $cmd > "$log" 2>&1
+    jdk=$JDK; a=$arm; [ "${arm#b-}" != "$arm" ] && { jdk=$JDK_B; a=${arm#b-}; }
+    timeout 600 "$jdk/bin/java.exe" $X ${ARM[$a]} -Dsun.java2d.uiScale=1 -cp "$OUT/classes" $cmd > "$log" 2>&1
     case "$bench" in
       LcdTextBench)    v=$(grep -oE 'median=[0-9.]+' "$log" | cut -d= -f2); metric=median ;;
       GlyphChurnBench) v=$(grep -oE 'median [0-9.]+' "$log" | cut -d' ' -f2); metric=median ;;
