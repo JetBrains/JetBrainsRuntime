@@ -67,9 +67,20 @@ public final class Win32SKScreenUpdateManager extends ScreenUpdateManager {
 
     /** Lost configurations whose recreation has been requested (weak: a lost configuration must be collectable). */
     private final Set<Win32SKGraphicsConfig> recovering = Collections.newSetFromMap(new WeakHashMap<>());
-    /** Lost configurations in a row; after a few the process stays on GDI. */
+    /**
+     * Recoveries, each within {@link #RECOVERY_HELD_NANOS} of the one before; past
+     * {@link #MAX_RECOVERY_ATTEMPTS} the process stays on GDI. A recovery counts as
+     * held only after that time without another loss, not when a surface could be
+     * created on the new device: a driver that keeps failing gives each new device a
+     * window surface before it is lost again, and counting that as success recreated
+     * the configuration every few frames for ever.
+     */
     private int recoveryAttempts;
+    private long lastRecoveryNanos;
+    /** A recovery (displayChanged) is queued and has not run yet. */
+    private boolean recoveryScheduled;
     private static final int MAX_RECOVERY_ATTEMPTS = 3;
+    private static final long RECOVERY_HELD_NANOS = 30_000_000_000L;
 
     @Override
     public synchronized SurfaceData createScreenSurface(Win32GraphicsConfig gc, WComponentPeer peer,
@@ -85,9 +96,6 @@ public final class Win32SKScreenUpdateManager extends ScreenUpdateManager {
                 recover(skgc);
             } else {
                 sd = Win32SKSurfaceData.createData(peer, skgc, previous);
-                if (sd != null) {
-                    recoveryAttempts = 0;
-                }
             }
         }
         if (sd == null) {
@@ -150,7 +158,8 @@ public final class Win32SKScreenUpdateManager extends ScreenUpdateManager {
 
     /**
      * Has the configurations of a lost device recreated, once per lost
-     * configuration and a few times in a row at most. The environment's
+     * configuration and a few times in a row at most (a recovery that holds for
+     * {@link #RECOVERY_HELD_NANOS} resets the count). The environment's
      * {@code displayChanged} runs later on the event thread, as it does for a
      * real display change: it recreates the device objects, notifies the
      * top-level windows (new surfaces on the new device) and the volatile
@@ -158,15 +167,26 @@ public final class Win32SKScreenUpdateManager extends ScreenUpdateManager {
      * the peers' locks.
      */
     private void recover(Win32SKGraphicsConfig gc) {
-        if (gc == null || !recovering.add(gc)) {
-            return;
+        if (gc == null || !recovering.add(gc) || recoveryScheduled) {
+            return;   // one recovery per loss, however many configurations the loss takes with it
         }
+        long now = System.nanoTime();
+        if (recoveryAttempts > 0 && recoveryAttempts <= MAX_RECOVERY_ATTEMPTS && now - lastRecoveryNanos > RECOVERY_HELD_NANOS) {
+            recoveryAttempts = 0;   // the last recovery held
+        }
+        lastRecoveryNanos = now;
         if (++recoveryAttempts > MAX_RECOVERY_ATTEMPTS) {
             return;   // the device keeps getting lost: GDI from here on
         }
         GraphicsEnvironment environment = GraphicsEnvironment.getLocalGraphicsEnvironment();
         if (environment instanceof Win32GraphicsEnvironment win32) {
-            EventQueue.invokeLater(win32::displayChanged);
+            recoveryScheduled = true;
+            EventQueue.invokeLater(() -> {
+                synchronized (this) {
+                    recoveryScheduled = false;
+                }
+                win32.displayChanged();
+            });
         }
     }
 }
