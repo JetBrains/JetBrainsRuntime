@@ -93,6 +93,9 @@ void DawnSK_PreferBackend(bool d3d12);
 DawnSKConfigInfo *DawnSK_CreateConfig();
 void DawnSK_DisposeConfig(DawnSKConfigInfo *config);
 bool DawnSK_IsLost(const DawnSKConfigInfo *config);
+// Tests: mark the devices lost as a driver reset would; persistent also loses every new device
+// once it has a window surface (Win32SKGraphicsConfig.simulateDeviceLoss).
+void DawnSK_SimulateDeviceLoss(bool persistent);
 
 // Texture (plus the configured swap chain of the window's client area if hwnd
 // is non-null); null on failure, including a lost device, a texture beyond the

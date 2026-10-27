@@ -115,6 +115,18 @@ public final class Win32SKGraphicsConfig extends Win32GraphicsConfig
         return isDeviceLost(pConfigInfo);
     }
 
+    /**
+     * For tests: every GPU device counts as lost, as after a driver reset (TDR); with
+     * {@code persistent} also every device created afterwards, once its first window
+     * surface exists, as on a driver that keeps failing. A real TDR needs an elevated
+     * shell ({@code dxcap -forcetdr}).
+     */
+    public static void simulateDeviceLoss(boolean persistent) {
+        simulateDeviceLossNative(persistent);
+    }
+
+    private static native void simulateDeviceLossNative(boolean persistent);
+
     // ---- SKGraphicsConfig --------------------------------------------------
 
     @Override

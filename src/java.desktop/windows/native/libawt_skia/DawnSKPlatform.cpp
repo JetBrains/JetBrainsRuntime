@@ -280,6 +280,21 @@ static wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Ad
     return device;
 }
 
+// Tests (Win32SKGraphicsConfig.simulateDeviceLoss): every device counts as lost, as after a
+// driver reset; with persistent also every device created afterwards once its first window
+// surface exists, as on a driver that keeps failing.
+static std::atomic<bool> gLoseNewDevices{false};
+
+void DawnSK_SimulateDeviceLoss(bool persistent) {
+    gLoseNewDevices.store(persistent);
+    std::lock_guard<std::mutex> lock(gDevicesLock);
+    for (auto &gpu : gDevices) {
+        if (gpu != nullptr) {
+            gpu->lost->store(true);
+        }
+    }
+}
+
 DawnSKConfigInfo *DawnSK_CreateConfig() {
     wgpu::Instance instance = DawnSK_Instance();
     if (instance == nullptr) {
@@ -480,6 +495,9 @@ DawnSKSurface *DawnSK_CreateSurface(DawnSKConfigInfo *config, HWND hwnd, uint32_
             delete surface;
             return nullptr;
         }
+    }
+    if (hwnd != nullptr && gLoseNewDevices.load()) {
+        surface->gpu->lost->store(true);   // DawnSK_SimulateDeviceLoss(persistent): as a driver that does not come back
     }
     J2dTraceLn(J2D_TRACE_INFO, "DawnSK_CreateSurface: %p %ux%u hwnd=%p client=%ux%u at (%u,%u)", surface, width,
                height, hwnd, surface->clientWidth, surface->clientHeight, surface->insetX, surface->insetY);

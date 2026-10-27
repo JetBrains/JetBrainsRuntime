@@ -57,6 +57,12 @@ Java_sun_java2d_skia_Win32SKGraphicsConfig_isDeviceLost(JNIEnv *env, jclass claz
 }
 
 JNIEXPORT void JNICALL
+Java_sun_java2d_skia_Win32SKGraphicsConfig_simulateDeviceLossNative(JNIEnv *env, jclass clazz, jboolean persistent)
+{
+    DawnSK_SimulateDeviceLoss(persistent == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL
 Java_sun_java2d_skia_Win32SKGraphicsConfig_disposeConfigInfo(JNIEnv *env, jclass clazz, jlong pConfigInfo)
 {
     DawnSK_DisposeConfig((DawnSKConfigInfo *) jlong_to_ptr(pConfigInfo));
