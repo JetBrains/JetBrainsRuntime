@@ -38,8 +38,14 @@ import sun.java2d.skia.SKEnvironment;
  *          descent and leading equal, every ASCII advance equal. Whole-pixel
  *          advances follow the platform strike's rounding rule (CoreText
  *          rounds in user space, FreeType in device space), which the test
- *          selects by the strike's type. Nothing to test where the Skia
- *          backend or its font host is unavailable.
+ *          selects by the strike's type. On Windows the reference is the
+ *          platform's exact strike (an integer scale, fractional metrics):
+ *          the Skia scaler measures at the exact pixel size where FreeType
+ *          rounds the ppem of fonts with the integer-ppem head flag at
+ *          125 % and 150 %, and it rounds the linear advance where FreeType
+ *          rounds the hinted one (decisions of 2026-10-23 and 2026-10-27).
+ *          Nothing to test where the Skia backend or its font host is
+ *          unavailable.
  * @key headful
  * @modules java.desktop/sun.font:+open java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SkiaFontScalerMetricsTest
@@ -71,6 +77,7 @@ public class SkiaFontScalerMetricsTest {
                           accessible(sm.getDeclaredField("leadingY"))};
         String[] names = {"ascent", "descent", "leading"};
 
+        boolean windows = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows");
         int compared = 0;
         for (String family : new String[] {Font.DIALOG, Font.SANS_SERIF, Font.MONOSPACED}) {
             Font base = new Font(family, Font.PLAIN, 12);
@@ -100,7 +107,18 @@ public class SkiaFontScalerMetricsTest {
                         RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
                         fm ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
                 Object strike = getStrike.invoke(font2D, font, frc);
-                Object reference = strikeMetrics.invoke(strike);
+                // Windows: the FreeType strike's metrics and advances at 125 % / 150 % belong to a
+                // neighbouring size (every font here carries the head flag that makes FreeType
+                // round the ppem: 10 pt at 1.25 is measured as 13 px, not 12.5), and its whole-pixel
+                // advances are the *hinted* ones (a bytecode-hinted font like Arial moves widths by
+                // a pixel). The Skia scaler follows the platform's natural layout instead: exact
+                // size, linear advance rounded in device pixels (decisions of 2026-10-23 and
+                // 2026-10-27). The reference is therefore the platform's exact strike — scale 1,
+                // an integer ppem for these sizes, fractional metrics — in user space.
+                Object exact = windows ? getStrike.invoke(font2D, font, new FontRenderContext(
+                        new AffineTransform(), RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
+                        RenderingHints.VALUE_FRACTIONALMETRICS_ON)) : null;
+                Object reference = strikeMetrics.invoke(windows ? exact : strike);
                 double[] matrix = {size * scale, 0, 0, size * scale};
                 int fmHint = fm ? 2 : 1;   // SunHints.INTVAL_FRACTIONALMETRICS_ON / _OFF
                 long context = userSpaceRounding
@@ -114,21 +132,12 @@ public class SkiaFontScalerMetricsTest {
                         throw new RuntimeException(where + ": " + names[i] + " " + b + " (Skia) vs " + a + " (platform)");
                     }
                 }
-                // Windows, whole pixels: the FreeType strike rounds the *hinted* advance (a
-                // bytecode-hinted font like Arial moves stems and widths by a pixel), the Skia
-                // scaler rounds the linear one, as DirectWrite's natural layout does. Decision of
-                // 2026-10-23 (linear rounding, to be reviewed for the final verification): the
-                // reference for whole-pixel advances on Windows is the platform's fractional
-                // advance rounded in device pixels.
-                boolean windows = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("windows");
-                Object linearStrike = windows && !fm ? getStrike.invoke(font2D, font, new FontRenderContext(
-                        AffineTransform.getScaleInstance(scale, scale), RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
-                        RenderingHints.VALUE_FRACTIONALMETRICS_ON)) : null;
                 for (int c = 32; c <= 126; c++) {
                     int glyph = (int) charToGlyph.invoke(mapper, (char) c);
                     float a = (float) strikeAdvance.invoke(strike, glyph);
-                    if (linearStrike != null) {
-                        a = (float) (Math.round((float) strikeAdvance.invoke(linearStrike, glyph) * scale) / scale);
+                    if (windows) {
+                        float linear = (float) strikeAdvance.invoke(exact, glyph);
+                        a = fm ? linear : (float) (Math.round(linear * scale) / scale);
                     }
                     float b = (float) scalerAdvance.invoke(scaler, context, glyph) / (float) scale;
                     if (Math.abs(a - b) > 1e-3f) {
