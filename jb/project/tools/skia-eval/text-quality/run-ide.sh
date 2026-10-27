@@ -6,7 +6,8 @@
 #
 #   run-ide.sh <arm> [--scale N] [--seed <dir>] [--wait S --shot <png>] [-- <idea args, e.g. a project path>]
 #     arms: A0 (software loops), A1 blend, A2 twopass, A3 accumulate, A4 accumulate + present=cycle,
-#           A5 accumulate + submit=present, A6 accumulate + present=cycle + submit=present, R1 Direct3D 9
+#           A5 accumulate + submit=present, A6 accumulate + present=cycle + submit=present,
+#           A7 twopass on Dawn's D3D12 backend, R1 Direct3D 9
 #     --scale    sun.java2d.uiScale for the IDE (1, 1.5, 2); default: the display's
 #     --seed     a config directory copied over the arm's config before the start (theme, fonts, options)
 #     --wait/--shot  wait S seconds, capture the screen to <png> (device pixels) and stop the IDE
@@ -38,6 +39,7 @@ case "$ARM" in
   A4) NAME=A4-cycle;      PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false -Dsun.java2d.skia.present=cycle" ;;
   A5) NAME=A5-submit;     PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false -Dsun.java2d.skia.submit=present" ;;
   A6) NAME=A6-cycle-submit; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false -Dsun.java2d.skia.present=cycle -Dsun.java2d.skia.submit=present" ;;
+  A7) NAME=A7-twopass-d3d12; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.dawnBackend=d3d12" ;;
   R1) NAME=R1-d3d9;       PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=true" ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
