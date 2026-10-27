@@ -29,6 +29,7 @@ $etl = "$out\$Name-$Arm.etl"
 $prop = if ($Arm -eq 'd3d') { '-Dsun.java2d.d3d=true' } else { '-Dsun.java2d.skia=true' }
 
 $uiScale = "-Dsun.java2d.uiScale=$Scale"
+$cacheOff = '-Dsun.java2d.skia.pipelineCache=off'   # the probes never write the cache (not under user.home either)
 if ($Class -eq 'ide') {
     # the IDE on the image through the kit's run-ide.sh (arm A3 = Skia accumulate, R1 = Direct3D 9), start-up and indexing
     $ideArm = if ($Arm -eq 'd3d') { 'R1' } else { 'A3' }   # not $arm: PowerShell names ignore case, it would replace -Arm
@@ -86,12 +87,12 @@ if ($Class -eq 'ide') {
     Get-Content "$dest\scenes.log" -Tail 1
 } else {
     # a cold round first, so the recording holds steady-state frames only
-    & $java $prop $uiScale -cp $classes $Class $Probe.Split(' ') 2>&1 | Out-Null
+    & $java $prop $uiScale $cacheOff -cp $classes $Class $Probe.Split(' ') 2>&1 | Out-Null
     & wpr.exe -start CPU -filemode
     try {
         $started = Get-Date
         for ($i = 0; $i -lt $Rounds; $i++) {
-            $line = & $java $prop $uiScale -cp $classes $Class $Probe.Split(' ') 2>&1 | Select-String 'median|cycles'
+            $line = & $java $prop $uiScale $cacheOff -cp $classes $Class $Probe.Split(' ') 2>&1 | Select-String 'median|cycles'
             "round $i $line"
         }
         $seconds = ((Get-Date) - $started).TotalSeconds

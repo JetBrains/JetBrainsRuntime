@@ -80,6 +80,7 @@ CP=$(cat "$STATE/classpath.txt")
   echo "-Dide.native.launcher=true"
   echo "-Didea.jre.check=false"
   echo "-Didea.is.internal=false"
+  echo "-Dsun.java2d.skia.pipelineCache=$STATE_WIN\pipeline-cache"   # never the default under user.home; IDE_EXTRA_VMOPTIONS may override
   for p in $PROPS; do echo "$p"; done
   # IDE_EXTRA_VMOPTIONS: further options, one per line (a JFR recording, for instance)
   [ -n "${IDE_EXTRA_VMOPTIONS:-}" ] && printf '%s\n' "$IDE_EXTRA_VMOPTIONS"

@@ -14,6 +14,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$Arms = @($Arms | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passes "a,b" as one string
 $identity = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not $identity.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'run-tdr.ps1 needs an elevated shell' }
 $dxcap = Join-Path $env:SystemRoot 'System32\dxcap.exe'
@@ -30,6 +31,7 @@ if ($LASTEXITCODE -ne 0) { throw 'javac failed' }
 $summary = Join-Path $Out 'summary.txt'
 "run-tdr.ps1 $(Get-Date -Format s) jdk=$Jdk seconds=$Seconds tdrAfter=$TdrAfter" | Set-Content -Encoding utf8 $summary
 $env:J2D_TRACE_LEVEL = '3'
+$cacheProp = "-Dsun.java2d.skia.pipelineCache=$(Join-Path $Out 'pipeline-cache')"   # not the default under user.home
 
 $armProperties = [ordered]@{
     'skia' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true')
@@ -40,7 +42,7 @@ $armProperties = [ordered]@{
 foreach ($arm in @($armProperties.Keys | Where-Object { $Arms -contains $_ })) {
     $armOut = Join-Path $Out $arm
     New-Item -ItemType Directory -Force $armOut | Out-Null
-    $javaArgs = @($exports) + $armProperties[$arm] + @('-Dsun.java2d.uiScale=1', '-cp', $classes, 'TdrProbe', $Seconds, $armOut)
+    $javaArgs = @($exports) + $armProperties[$arm] + @($cacheProp, '-Dsun.java2d.uiScale=1', '-cp', $classes, 'TdrProbe', $Seconds, $armOut)
     $started = Get-Date
     $p = Start-Process -FilePath "$Jdk\bin\java.exe" -ArgumentList $javaArgs -PassThru -NoNewWindow `
         -RedirectStandardOutput "$armOut\stdout.txt" -RedirectStandardError "$armOut\stderr.txt"
@@ -65,7 +67,8 @@ foreach ($arm in @($armProperties.Keys | Where-Object { $Arms -contains $_ })) {
 
 $dc = Join-Path $Out 'displaychange'
 New-Item -ItemType Directory -Force $dc | Out-Null
-& "$Jdk\bin\java.exe" @exports '-Dsun.java2d.skia=true' '-Dsun.java2d.skia.verbose=true' -cp $classes DisplayChangeProbe *>&1 | Out-File -Encoding utf8 "$dc\output.txt"
+$ErrorActionPreference = 'Continue'   # its stderr would otherwise end the script (PowerShell 5.1 NativeCommandError)
+& "$Jdk\bin\java.exe" @exports '-Dsun.java2d.skia=true' '-Dsun.java2d.skia.verbose=true' $cacheProp -cp $classes DisplayChangeProbe *>&1 | Out-File -Encoding utf8 "$dc\output.txt"
 Add-Content -Encoding utf8 $summary "`n== DisplayChangeProbe (skia): exit=$LASTEXITCODE"
 Add-Content -Encoding utf8 $summary (Get-Content "$dc\output.txt")
 "done; summary in $summary"
