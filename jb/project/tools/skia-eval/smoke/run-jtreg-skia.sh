@@ -11,7 +11,7 @@ JDKW=$(cd "$JDK" && (pwd -W 2>/dev/null || pwd)); RW=$(cd "$R" && (pwd -W 2>/dev
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd) || exit 2; cd "$OUT"   # absolute: the logs are written after the cd
 OUTW=$(pwd -W 2>/dev/null || pwd)   # Windows path for the property (a POSIX one would land in C:/c/...)
 G="$R/test/jdk/jb/java/awt/Graphics2D"
-X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.java2d.pipe=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.font=ALL-UNNAMED --add-exports java.desktop/sun.java2d.loops=ALL-UNNAMED --add-exports java.desktop/sun.awt.image=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED"
+X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.java2d.pipe=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.awt.windows=ALL-UNNAMED --add-exports java.desktop/sun.font=ALL-UNNAMED --add-exports java.desktop/sun.java2d.loops=ALL-UNNAMED --add-exports java.desktop/sun.awt.image=ALL-UNNAMED --add-exports java.desktop/sun.java2d.skia=ALL-UNNAMED"
 XR="$X --add-opens java.desktop/sun.font=ALL-UNNAMED -Dtest.jdk=$JDKW -Dsun.java2d.skia.pipelineCache=$OUTW/pipeline-cache ${JTREG_EXTRA_OPTS:-}"   # the cache stays out of the home directory; JTREG_EXTRA_OPTS: more -D options for every run
 pass=0; fail=0
 for f in "$G"/*.java "$G"/TextRender/*.java; do
@@ -19,6 +19,7 @@ for f in "$G"/*.java "$G"/TextRender/*.java; do
   # @requires naming only other systems (this kit runs on Windows): skipped, as jtreg would
   if req=$(grep -h "@requires" "$f"); [ -n "$req" ] && echo "$req" | grep -q "os.family" && ! echo "$req" | grep -q "\"windows\""; then continue; fi
   name=$(basename "$f" .java)
+  [ -n "${ONLY:-}" ] && [ "$name" != "$ONLY" ] && continue   # ONLY=<test class>: that test alone
   "$JDK/bin/javac.exe" $X -sourcepath "$RW/test/jdk/jb/java/awt/Graphics2D;$RW/test/lib" -d "$OUT" "$f" 2> "$OUT/$name.javac.txt" || { echo "COMPILE FAIL $name"; sed -n 1,5p "$OUT/$name.javac.txt"; fail=$((fail+1)); continue; }
   pat="skia=true"; [ "${ALL_RUN_LINES:-0}" = 1 ] && pat=""
   grep -E "^\s*\*\s*@run main/othervm(/timeout=[0-9]+)? .*$pat" "$f" | sed -E 's/^\s*\*\s*@run main\/othervm(\/timeout=[0-9]+)? //' | while read -r line; do
