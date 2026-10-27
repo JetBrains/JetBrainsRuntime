@@ -84,6 +84,9 @@ wgpu::Instance DawnSK_Instance();
 // Name of the adapter Dawn would use ("<adapter> (D3D11)"), empty if none; no device is created.
 std::string DawnSK_DescribeAdapter();
 
+// sun.java2d.skia.dawnBackend: D3D12 before D3D11 (default: D3D11 first); call before the first request.
+void DawnSK_PreferBackend(bool d3d12);
+
 // A configuration on the shared device of the first of Dawn's Direct3D
 // backends that yields one (D3D11 first, D3D12 as fallback); a lost device is
 // replaced. Null if none.

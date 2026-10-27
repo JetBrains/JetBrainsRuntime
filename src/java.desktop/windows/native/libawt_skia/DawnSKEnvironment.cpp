@@ -31,6 +31,7 @@
 #include "DawnSKPlatform.h"
 
 #include <string>
+#include <string.h>
 #include "jni.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "include/core/SkMilestone.h"
@@ -40,6 +41,24 @@ extern "C" {
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_SKEnvironment_initNative(JNIEnv *env, jclass clazz)
 {
+    // sun.java2d.skia.dawnBackend=d3d12: D3D12 before D3D11 (read here, before the first adapter request)
+    if (jclass system = env->FindClass("java/lang/System")) {
+        jmethodID getProperty = env->GetStaticMethodID(system, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+        jstring key = env->NewStringUTF("sun.java2d.skia.dawnBackend");
+        jstring value = getProperty != nullptr && key != nullptr
+                ? (jstring) env->CallStaticObjectMethod(system, getProperty, key) : nullptr;
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            value = nullptr;
+        }
+        if (value != nullptr) {
+            const char *chars = env->GetStringUTFChars(value, nullptr);
+            DawnSK_PreferBackend(chars != nullptr && _stricmp(chars, "d3d12") == 0);
+            if (chars != nullptr) {
+                env->ReleaseStringUTFChars(value, chars);
+            }
+        }
+    }
     std::string adapter = DawnSK_DescribeAdapter();
     if (adapter.empty()) {
         return nullptr;

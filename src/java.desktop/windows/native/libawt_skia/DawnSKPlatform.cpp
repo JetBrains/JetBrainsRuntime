@@ -89,6 +89,14 @@ static constexpr SkColorType kSurfaceColorType = kBGRA_8888_SkColorType;
 // D3D11 first: the lowest common denominator of Windows GPUs and VMs.
 static const wgpu::BackendType kBackends[] = { wgpu::BackendType::D3D11, wgpu::BackendType::D3D12 };
 static constexpr size_t kBackendCount = sizeof(kBackends) / sizeof(kBackends[0]);
+// sun.java2d.skia.dawnBackend=d3d12 tries D3D12 first (an evaluation of the backend Chrome ships
+// WebGPU on; Graphite is tested on D3D11 first). Set once, before the first adapter request.
+static size_t gBackendOrder[kBackendCount] = { 0, 1 };
+
+void DawnSK_PreferBackend(bool d3d12) {
+    gBackendOrder[0] = d3d12 ? 1 : 0;
+    gBackendOrder[1] = d3d12 ? 0 : 1;
+}
 
 // One device per backend, shared by the configurations (as the D3D pipeline
 // keeps its device across configurations): a display change (resolution, DPI,
@@ -184,7 +192,8 @@ static wgpu::Adapter requestAdapter(const wgpu::Instance &instance, wgpu::Backen
 
 // The first Direct3D backend with an adapter, or Undefined.
 static wgpu::Adapter firstAdapter(const wgpu::Instance &instance, wgpu::BackendType *backendType) {
-    for (wgpu::BackendType type : kBackends) {
+    for (size_t order : gBackendOrder) {
+        const wgpu::BackendType type = kBackends[order];
         wgpu::Adapter adapter = requestAdapter(instance, type);
         if (adapter != nullptr) {
             *backendType = type;
@@ -277,7 +286,7 @@ DawnSKConfigInfo *DawnSK_CreateConfig() {
         return nullptr;
     }
     std::lock_guard<std::mutex> lock(gDevicesLock);
-    for (size_t i = 0; i < kBackendCount; i++) {
+    for (size_t i : gBackendOrder) {
         const wgpu::BackendType backendType = kBackends[i];
         std::shared_ptr<DawnSKDevice> gpu = gDevices[i];
         if (gpu != nullptr && gpu->lost->load()) {
