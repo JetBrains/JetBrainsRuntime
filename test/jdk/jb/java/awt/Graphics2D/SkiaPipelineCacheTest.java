@@ -60,6 +60,11 @@ public class SkiaPipelineCacheTest {
             System.out.println("Skia backend unavailable: nothing to test");
             return;
         }
+        if (System.getProperty("os.name", "").startsWith("Mac")) {
+            // Graphite on Metal fills neither layer: macOS keeps its own cache of compiled Metal shaders
+            System.out.println("Metal keeps the system's shader cache: nothing to test");
+            return;
+        }
         Path dir = Files.createTempDirectory("skia-pipeline-cache");
         long[] first, second, off;
         int fileCount;
