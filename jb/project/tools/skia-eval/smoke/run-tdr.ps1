@@ -1,4 +1,5 @@
-# Forces a real GPU device loss (TDR) under TdrProbe per arm (skia, d3d = Direct3D 9, gdi = no acceleration;
+# Forces a real GPU device loss (TDR) under TdrProbe per arm (skia, skia-d3d12 = Skia on Dawn's D3D12 backend,
+# d3d = Direct3D 9, gdi = no acceleration;
 # -Arms selects), then runs DisplayChangeProbe on Skia. Needs an elevated shell and the "Graphics Tools"
 # optional feature (dxcap.exe). Every process on the GPU sees the reset: close unrelated work first.
 #
@@ -32,6 +33,7 @@ $env:J2D_TRACE_LEVEL = '3'
 
 $armProperties = [ordered]@{
     'skia' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true')
+    'skia-d3d12' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true', '-Dsun.java2d.skia.dawnBackend=d3d12')
     'd3d'  = @('-Dsun.java2d.d3d=true', '-Dsun.java2d.d3d.verbose=true')
     'gdi'  = @('-Dsun.java2d.d3d=false')
 }
