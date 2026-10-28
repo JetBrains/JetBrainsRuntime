@@ -53,10 +53,10 @@
 
 using namespace skgpu::graphite;
 
-// SKPlatformConfig and SKPlatformSurface alias Win32SKConfig and Win32SKSurface (Win32SKPlatform.h),
+// SKPlatformConfig and SKPlatformSurface alias Win32SKConfigInfo and Win32SKSurface (Win32SKPlatform.h),
 // which Win32SKPlatform.cpp has checked to be Dawn's before calling here.
 static inline DawnSKConfigInfo *configOf(SKPlatformConfig *config) {
-    return static_cast<DawnSKConfigInfo *>(reinterpret_cast<Win32SKConfig *>(config));
+    return static_cast<DawnSKConfigInfo *>(reinterpret_cast<Win32SKConfigInfo *>(config));
 }
 
 static inline DawnSKSurface *surfaceOf(SKPlatformSurface *surface) {
@@ -517,7 +517,7 @@ std::unique_ptr<Context> DawnSK_MakeContext(SKPlatformConfig *config, const Cont
 
 SKPlatformConfig *DawnSK_ConfigOf(SKPlatformSurface *surface) {
     DawnSKSurface *s = surfaceOf(surface);
-    return s != nullptr ? reinterpret_cast<SKPlatformConfig *>(static_cast<Win32SKConfig *>(s->config)) : nullptr;
+    return s != nullptr ? reinterpret_cast<SKPlatformConfig *>(static_cast<Win32SKConfigInfo *>(s->config)) : nullptr;
 }
 
 bool DawnSK_SameDevice(SKPlatformConfig *a, SKPlatformConfig *b) {

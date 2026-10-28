@@ -42,7 +42,7 @@ Java_sun_java2d_skia_Win32SKSurfaceData_createPlatformSurface(JNIEnv *env, jclas
                                                               jlong hwnd, jint width, jint height,
                                                               jlong previousOps, jboolean isOpaque)
 {
-    auto *config = (Win32SKConfig *) jlong_to_ptr(pConfigInfo);
+    auto *config = (Win32SKConfigInfo *) jlong_to_ptr(pConfigInfo);
     if (config == nullptr || width <= 0 || height <= 0) {
         return 0;
     }

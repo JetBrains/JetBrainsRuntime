@@ -33,7 +33,7 @@
 // it, and the GPU side of SKPlatform.h dispatches on that (Win32SKPlatform.cpp).
 // Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11 or 12); text is the
 // same for every API (Win32SKText.cpp). SKPlatformConfig and SKPlatformSurface
-// alias Win32SKConfig and Win32SKSurface.
+// alias Win32SKConfigInfo and Win32SKSurface.
 
 #include <windows.h>
 
@@ -45,7 +45,7 @@ enum class Win32SKApi { Dawn };
 
 // The first member of every API's configuration (one per Win32SKGraphicsConfig)
 // and surface (one per Win32SKSurfaceData).
-struct Win32SKConfig {
+struct Win32SKConfigInfo {
     Win32SKApi api;
 };
 
@@ -57,11 +57,11 @@ struct Win32SKSurface {
 std::string Win32SK_DescribeAdapter();
 
 // A configuration on the API's shared device; null if none can be made.
-Win32SKConfig *Win32SK_CreateConfig();
-void Win32SK_DisposeConfig(Win32SKConfig *config);
-bool Win32SK_IsLost(const Win32SKConfig *config);
+Win32SKConfigInfo *Win32SK_CreateConfig();
+void Win32SK_DisposeConfig(Win32SKConfigInfo *config);
+bool Win32SK_IsLost(const Win32SKConfigInfo *config);
 // "<adapter> (<backend>)", for SKGraphicsConfig.ContextCaps.
-std::string Win32SK_ConfigDescription(const Win32SKConfig *config);
+std::string Win32SK_ConfigDescription(const Win32SKConfigInfo *config);
 // Tests: mark the devices lost as a driver reset would; persistent also loses every new device
 // once it has a window surface (Win32SKGraphicsConfig.simulateDeviceLoss).
 void Win32SK_SimulateDeviceLoss(bool persistent);
@@ -70,7 +70,7 @@ void Win32SK_SimulateDeviceLoss(bool persistent);
 // hwnd is non-null; null on failure. A window surface takes the swap chain over from
 // `previous`, the surface it replaces (DXGI allows one flip-model swap chain per HWND
 // and AWT replaces a window's surface on every bounds change).
-Win32SKSurface *Win32SK_CreateSurface(Win32SKConfig *config, HWND hwnd, uint32_t width, uint32_t height,
+Win32SKSurface *Win32SK_CreateSurface(Win32SKConfigInfo *config, HWND hwnd, uint32_t width, uint32_t height,
                                       Win32SKSurface *previous, bool opaque);
 
 #endif /* Win32SKPlatform_h_Included */

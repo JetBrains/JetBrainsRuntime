@@ -55,8 +55,8 @@ struct DawnSKDevice {
 };
 
 // One per Win32SKGraphicsConfig.
-struct DawnSKConfigInfo : Win32SKConfig {
-    DawnSKConfigInfo() : Win32SKConfig{Win32SKApi::Dawn} {}
+struct DawnSKConfigInfo : Win32SKConfigInfo {
+    DawnSKConfigInfo() : Win32SKConfigInfo{Win32SKApi::Dawn} {}
     std::shared_ptr<DawnSKDevice> gpu;
     std::string description;   // "<adapter> (D3D11)"
 };
