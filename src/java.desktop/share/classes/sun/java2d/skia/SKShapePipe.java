@@ -74,7 +74,7 @@ final class SKShapePipe implements ShapeDrawPipe {
      * an AA stroke as thin only up to this width, and Marlin then strokes it
      * exactly this wide (DMarlinRenderingEngine.MIN_PEN_SIZE).
      */
-    private static final double THIN_PEN_SIZE = RenderingEngine.getInstance().getMinimumAAPenSize();
+    static final double THIN_PEN_SIZE = RenderingEngine.getInstance().getMinimumAAPenSize();
 
     private static final int AXIS_ALIGNED_MASK =
             AffineTransform.TYPE_GENERAL_ROTATION | AffineTransform.TYPE_QUADRANT_ROTATION | AffineTransform.TYPE_GENERAL_TRANSFORM;
@@ -144,8 +144,8 @@ final class SKShapePipe implements ShapeDrawPipe {
         return bs.getDashArray() == null && lineWidth(sg2d, bs) * Math.sqrt(Math.abs(at.getDeterminant())) > 1.0;
     }
 
-    /** The stroke's width in user space; thin strokes are one device pixel wide. */
-    private static double lineWidth(SunGraphics2D sg2d, BasicStroke bs) {
+    /** The stroke's width in user space; thin strokes are one device pixel wide. Shared with the raster pipe. */
+    static double lineWidth(SunGraphics2D sg2d, BasicStroke bs) {
         return sg2d.strokeState <= SunGraphics2D.STROKE_THINDASHED
                 ? userSpaceLineWidth(sg2d.transform, THIN_PEN_SIZE) : bs.getLineWidth();
     }
@@ -294,7 +294,7 @@ final class SKShapePipe implements ShapeDrawPipe {
     }
 
     /** Marlin's thin-stroke rule: a device-space width expressed in user space. */
-    private static double userSpaceLineWidth(AffineTransform at, double deviceWidth) {
+    static double userSpaceLineWidth(AffineTransform at, double deviceWidth) {
         double scale = Math.sqrt(Math.abs(at.getDeterminant()));
         return scale > 0 ? deviceWidth / scale : deviceWidth;
     }
@@ -335,7 +335,7 @@ final class SKShapePipe implements ShapeDrawPipe {
      * (NearestPixelCenter): end points move to the nearest pixel centre, control
      * points by the same amounts as the end points they belong to.
      */
-    private static final class NormalizingIterator implements PathIterator {
+    static final class NormalizingIterator implements PathIterator {
         private final PathIterator src;
         private double curXAdjust, curYAdjust, moveXAdjust, moveYAdjust;
         private final double[] tmp = new double[6];

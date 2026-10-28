@@ -21,8 +21,11 @@ import java.awt.BasicStroke;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.geom.Path2D;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.PathIterator;
 
+import sun.awt.SunHints;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.Region;
@@ -40,16 +43,78 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
 
     private static final int WIND_EVEN_ODD = PathIterator.WIND_EVEN_ODD;
 
+    /** Strokes Skia's stroker built, for the test of the mode. */
+    static final java.util.concurrent.atomic.AtomicLong strokesBySkia = new java.util.concurrent.atomic.AtomicLong();
+
+    /**
+     * Strokes as the GPU pipe does them: the device-space path normalized the way
+     * Marlin normalizes strokes (unless STROKE_PURE), then Skia's stroker on the
+     * user-space path under the transform — or, for dashes (Skia's dasher measures
+     * curves differently) and in the comparison mode {@code sun.java2d.skia.strokes=java},
+     * Java's stroker's outline filled.
+     */
     @Override
     public void draw(SunGraphics2D sg2d, Shape s) {
-        Shape stroked;
-        if (sg2d.strokeState == SunGraphics2D.STROKE_THIN) {
-            // one device pixel wide, like the loops' thin strokes: stroke after the transform
-            stroked = new BasicStroke(1f).createStrokedShape(sg2d.transform.createTransformedShape(s));
-            fillDevicePath(sg2d, new Path2D.Float(stroked));
-        } else {
-            stroked = sg2d.stroke.createStrokedShape(s);
-            fillDevicePath(sg2d, new Path2D.Float(stroked, sg2d.transform));
+        if (!(sg2d.stroke instanceof BasicStroke bs)) {
+            fillDevicePath(sg2d, new Path2D.Float(sg2d.stroke.createStrokedShape(s), sg2d.transform));
+            return;
+        }
+        AffineTransform at = sg2d.transform;
+        float width = (float) SKShapePipe.lineWidth(sg2d, bs);
+        Shape userShape = s;
+        if (sg2d.strokeHint != SunHints.INTVAL_STROKE_PURE) {
+            Path2D.Float p = new Path2D.Float();
+            p.append(new SKShapePipe.NormalizingIterator(s.getPathIterator(at)), false);
+            try {
+                p.transform(at.createInverse());
+            } catch (NoninvertibleTransformException e) {
+                return;   // nothing visible under a singular transform
+            }
+            userShape = p;
+        }
+        if (bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
+            BasicStroke outline = new BasicStroke(width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), bs.getDashArray(), bs.getDashPhase());
+            fillDevicePath(sg2d, new Path2D.Float(outline.createStrokedShape(userShape), at));
+            return;
+        }
+        strokeUserPath(sg2d, new Path2D.Float(userShape), at, width, bs);
+    }
+
+    private static void strokeUserPath(SunGraphics2D sg2d, Path2D.Float path, AffineTransform at, float width, BasicStroke bs) {
+        SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
+        Region clip = sg2d.getCompClip();
+        // the lock box: the path's device bounds grown by the stroke's reach (half width, miter or square-cap factor, device scale)
+        Rectangle bounds = at.createTransformedShape(path).getBounds();
+        double scale = Math.max(Math.abs(at.getScaleX()) + Math.abs(at.getShearX()), Math.abs(at.getShearY()) + Math.abs(at.getScaleY()));
+        double reach = bs.getLineJoin() == BasicStroke.JOIN_MITER ? Math.max(bs.getMiterLimit(), 1.5) : 1.5;
+        int pad = (int) Math.ceil(width / 2 * scale * reach) + 2;
+        int cx1 = Math.max(clip.getLoX(), bounds.x - pad), cy1 = Math.max(clip.getLoY(), bounds.y - pad);
+        int cx2 = Math.min(clip.getHiX(), bounds.x + bounds.width + pad), cy2 = Math.min(clip.getHiY(), bounds.y + bounds.height + pad);
+        if (cx1 >= cx2 || cy1 >= cy2) {
+            return;
+        }
+        PathData d = PathData.of(path);
+        float[] xform = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY()};
+        strokesBySkia.incrementAndGet();
+        strokePath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(),
+                   xform, width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+    }
+
+    /** A path's segments as the native side reads them: types and coordinates. */
+    private record PathData(byte[] types, int typeCount, float[] coords, int coordCount) {
+        static PathData of(Path2D.Float path) {
+            PathIterator pi = path.getPathIterator(null);
+            byte[] types = new byte[32]; float[] coords = new float[128]; int nt = 0, nc = 0; float[] seg = new float[6];
+            while (!pi.isDone()) {
+                int t = pi.currentSegment(seg);
+                if (nt == types.length) types = java.util.Arrays.copyOf(types, nt * 2);
+                types[nt++] = (byte) t;
+                int k = t == PathIterator.SEG_MOVETO || t == PathIterator.SEG_LINETO ? 2 : t == PathIterator.SEG_QUADTO ? 4 : t == PathIterator.SEG_CUBICTO ? 6 : 0;
+                if (nc + k > coords.length) coords = java.util.Arrays.copyOf(coords, Math.max(nc + k, nc * 2));
+                System.arraycopy(seg, 0, coords, nc, k); nc += k;
+                pi.next();
+            }
+            return new PathData(types, nt, coords, nc);
         }
     }
 
@@ -128,20 +193,14 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             return;
         }
         int[] spans = spansOf(clip, cx1, cy1, cx2, cy2);
-        // the path's segments as the native side reads them: types and coordinates in device space
-        PathIterator pi = path.getPathIterator(null);
-        byte[] types = new byte[32]; float[] coords = new float[128]; int nt = 0, nc = 0; float[] seg = new float[6];
-        while (!pi.isDone()) {
-            int t = pi.currentSegment(seg);
-            if (nt == types.length) types = java.util.Arrays.copyOf(types, nt * 2);
-            types[nt++] = (byte) t;
-            int k = t == PathIterator.SEG_MOVETO || t == PathIterator.SEG_LINETO ? 2 : t == PathIterator.SEG_QUADTO ? 4 : t == PathIterator.SEG_CUBICTO ? 6 : 0;
-            if (nc + k > coords.length) coords = java.util.Arrays.copyOf(coords, Math.max(nc + k, nc * 2));
-            System.arraycopy(seg, 0, coords, nc, k); nc += k;
-            pi.next();
-        }
-        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), types, nt, coords, nc, path.getWindingRule(), sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
+        PathData d = PathData.of(path);
+        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(), sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
     }
+
+    /** Strokes the user-space path under the transform with Skia's stroker (width, cap, join, miter limit as BasicStroke's). */
+    private static native void strokePath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
+                                          float[] coords, int coordCount, int windingRule, float[] xform, float lineWidth, int cap, int join, float miterLimit,
+                                          int argb, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 
     /** Fills the device-space rectangle (edges antialiased where fractional) into the surface's pixels. */
     private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, int width, int height, float x1, float y1, float x2, float y2,

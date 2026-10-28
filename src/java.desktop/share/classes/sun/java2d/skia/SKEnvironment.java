@@ -280,6 +280,11 @@ public final class SKEnvironment {
         return RASTER && loadLibrary();
     }
 
+    /** Strokes on raster surfaces that Skia's stroker built (not Java's outline), for tests. */
+    public static long rasterStrokesBySkia() {
+        return SKRasterShapePipe.strokesBySkia.get();
+    }
+
     public static boolean isSkiaRequested() {
         return REQUESTED;
     }

@@ -186,6 +186,21 @@ SkPaint solidPaint(jint argb, jint compositeRule) {
     return paint;
 }
 
+SkPath pathOf(const jbyte *types, jint typeCount, const jfloat *c, jint windingRule) {
+    SkPathBuilder builder;
+    builder.setFillType(windingRule == 0 /* WIND_EVEN_ODD */ ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
+    for (jint i = 0; i < typeCount; i++) {
+        switch (types[i]) {
+            case SEG_MOVETO:  builder.moveTo(c[0], c[1]); c += 2; break;
+            case SEG_LINETO:  builder.lineTo(c[0], c[1]); c += 2; break;
+            case SEG_QUADTO:  builder.quadTo(c[0], c[1], c[2], c[3]); c += 4; break;
+            case SEG_CUBICTO: builder.cubicTo(c[0], c[1], c[2], c[3], c[4], c[5]); c += 6; break;
+            case SEG_CLOSE:   builder.close(); break;
+        }
+    }
+    return builder.detach();
+}
+
 // Java arrays into stack buffers (the heap for the rare long path); read before the lock pins the image
 template <size_t N, typename T> struct Buffer {
     std::array<T, N> small; std::vector<T> large; T *data; size_t size;
@@ -211,6 +226,36 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobje
 }
 
 JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
+                                                   jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint windingRule,
+                                                   jfloatArray xformArray, jfloat lineWidth, jint cap, jint join, jfloat miterLimit,
+                                                   jint argb, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+{
+    Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    env->GetByteArrayRegion(typesArray, 0, typeCount, types.data);
+    env->GetFloatArrayRegion(coordsArray, 0, coordCount, coords.data);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    jfloat xf[6]; env->GetFloatArrayRegion(xformArray, 0, 6, xf);
+    SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
+    // BasicStroke's cap and join constants: CAP_BUTT 0, CAP_ROUND 1, CAP_SQUARE 2; JOIN_MITER 0, JOIN_ROUND 1, JOIN_BEVEL 2
+    static const SkPaint::Cap caps[] = { SkPaint::kButt_Cap, SkPaint::kRound_Cap, SkPaint::kSquare_Cap };
+    static const SkPaint::Join joins[] = { SkPaint::kMiter_Join, SkPaint::kRound_Join, SkPaint::kBevel_Join };
+    SkPaint paint = solidPaint(argb, compositeRule);
+    paint.setStyle(SkPaint::kStroke_Style);
+    paint.setStrokeWidth(lineWidth);
+    paint.setStrokeCap(caps[std::clamp((int) cap, 0, 2)]);
+    paint.setStrokeJoin(joins[std::clamp((int) join, 0, 2)]);
+    paint.setStrokeMiter(miterLimit);
+    Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
+    if (!op.ok) return;
+    if (spans.size) op.clipSpans(spans.data, spans.size);
+    // the geometry is stroked in user space and drawn under the transform (Java's stroke semantics)
+    op.canvas()->concat(SkMatrix::MakeAll(xf[0], xf[2], xf[4], xf[1], xf[3], xf[5], 0, 0, 1));
+    op.canvas()->drawPath(path, paint);
+}
+
+JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
                                                  jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount,
                                                  jint windingRule, jint argb, jint compositeRule,
@@ -221,19 +266,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     env->GetByteArrayRegion(typesArray, 0, typeCount, types.data);
     env->GetFloatArrayRegion(coordsArray, 0, coordCount, coords.data);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
-    SkPathBuilder builder;
-    builder.setFillType(windingRule == 0 /* WIND_EVEN_ODD */ ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
-    const jfloat *c = coords.data;
-    for (jint i = 0; i < typeCount; i++) {
-        switch (types.data[i]) {
-            case SEG_MOVETO:  builder.moveTo(c[0], c[1]); c += 2; break;
-            case SEG_LINETO:  builder.lineTo(c[0], c[1]); c += 2; break;
-            case SEG_QUADTO:  builder.quadTo(c[0], c[1], c[2], c[3]); c += 4; break;
-            case SEG_CUBICTO: builder.cubicTo(c[0], c[1], c[2], c[3], c[4], c[5]); c += 6; break;
-            case SEG_CLOSE:   builder.close(); break;
-        }
-    }
-    SkPath path = builder.detach();
+    SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
     Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
