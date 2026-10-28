@@ -43,6 +43,8 @@
 #include "include/core/SkPath.h"
 #include "include/core/SkShader.h"
 #include "include/core/SkSurface.h"
+#include "include/core/SkTileMode.h"
+#include "include/core/SkColorSpace.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/Recorder.h"
 #include "include/gpu/graphite/PrecompileContext.h"
@@ -138,6 +140,12 @@ void SKBackend_AddShapeClipSpans(jint count, const jint *spans);
 void SKBackend_EndShapeClip();
 void SKBackend_ResetClip();
 
+/** MultipleGradientPaint.CycleMethod ordinal (NO_CYCLE 0, REFLECT 1, REPEAT 2) as a Skia tile mode. */
+SkTileMode SKBackend_TileModeFor(jint cycleMethod);
+/** The colour space gradient stops are given in: linear sRGB for ColorSpaceType.LINEAR_RGB, else none. */
+sk_sp<SkColorSpace> SKBackend_StopColorSpace(bool linear);
+/** The bias in t that makes a REPEAT cycle's boundary pixel wrap as Java's does. */
+float SKBackend_RepeatSeamBias();
 /** The Porter-Duff blend mode of a java.awt.AlphaComposite rule (SRC_OVER for an unknown rule). */
 SkBlendMode SKBackend_BlendModeForRule(jint rule);
 void SKBackend_SetAlphaComposite(jint rule, jfloat extraAlpha, jint flags);

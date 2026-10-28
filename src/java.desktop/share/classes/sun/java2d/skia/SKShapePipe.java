@@ -202,6 +202,7 @@ final class SKShapePipe implements ShapeDrawPipe {
                 }
                 userShape = p;
             }
+            userShape = splitBentCubics(userShape, at);
             if (bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
                 // Dashes are measured by Java's own stroker: Skia's dasher measures
                 // curves differently and the dash ends drift along the path. Skia
@@ -335,6 +336,64 @@ final class SKShapePipe implements ShapeDrawPipe {
      * (NearestPixelCenter): end points move to the nearest pixel centre, control
      * points by the same amounts as the end points they belong to.
      */
+    /**
+     * Skia's stroker approximates a cubic's offset curve with quads under a tolerance
+     * tuned for speed: at a tight bend its edge runs ≈ 0.3 px outside the exact offset
+     * (93 levels against Marlin on a 3-px stroke). Short pieces are approximated
+     * well, so a cubic whose control points stray from its chord by more than
+     * {@code sun.java2d.skia.strokeBend} device pixels (default 6; 0 = never) is split
+     * in halves until they do not — a round rectangle's corner arcs never split, the
+     * sweeping curve of an icon does. Shared by the GPU and the raster stroke paths.
+     */
+    static final double STROKE_BEND = Double.parseDouble(System.getProperty("sun.java2d.skia.strokeBend", "6"));
+
+    static Shape splitBentCubics(Shape s, AffineTransform at) {
+        if (STROKE_BEND <= 0) {
+            return s;
+        }
+        double scale = Math.sqrt(Math.abs(at.getDeterminant()));
+        if (!(scale > 0)) {
+            return s;
+        }
+        double bend = STROKE_BEND / scale;   // the threshold in user space
+        Path2D.Float out = null;   // created on the first cubic that needs a split
+        double[] c = new double[6]; double cx = 0, cy = 0;
+        PathIterator pi = s.getPathIterator(null);
+        Path2D.Float copy = new Path2D.Float(pi.getWindingRule());
+        boolean split = false;
+        for (; !pi.isDone(); pi.next()) {
+            switch (pi.currentSegment(c)) {
+                case PathIterator.SEG_MOVETO -> { copy.moveTo(c[0], c[1]); cx = c[0]; cy = c[1]; }
+                case PathIterator.SEG_LINETO -> { copy.lineTo(c[0], c[1]); cx = c[0]; cy = c[1]; }
+                case PathIterator.SEG_QUADTO -> { copy.quadTo(c[0], c[1], c[2], c[3]); cx = c[2]; cy = c[3]; }
+                case PathIterator.SEG_CUBICTO -> { split |= splitCubic(copy, cx, cy, c[0], c[1], c[2], c[3], c[4], c[5], bend, 0); cx = c[4]; cy = c[5]; }
+                default -> copy.closePath();
+            }
+        }
+        return split ? copy : s;
+    }
+
+    /** Appends the cubic, split in halves while a control point is farther than {@code bend} from the chord (depth ≤ 5). */
+    private static boolean splitCubic(Path2D.Float out, double x0, double y0, double x1, double y1, double x2, double y2, double x3, double y3, double bend, int depth) {
+        double dx = x3 - x0, dy = y3 - y0, len = Math.hypot(dx, dy);
+        double d1, d2;
+        if (len < 1e-9) {
+            d1 = Math.hypot(x1 - x0, y1 - y0); d2 = Math.hypot(x2 - x0, y2 - y0);
+        } else {
+            d1 = Math.abs((x1 - x0) * dy - (y1 - y0) * dx) / len; d2 = Math.abs((x2 - x0) * dy - (y2 - y0) * dx) / len;
+        }
+        if (depth >= 5 || Math.max(d1, d2) <= bend) {
+            out.curveTo(x1, y1, x2, y2, x3, y3);
+            return depth > 0;
+        }
+        double x01 = (x0 + x1) / 2, y01 = (y0 + y1) / 2, x12 = (x1 + x2) / 2, y12 = (y1 + y2) / 2, x23 = (x2 + x3) / 2, y23 = (y2 + y3) / 2;
+        double x012 = (x01 + x12) / 2, y012 = (y01 + y12) / 2, x123 = (x12 + x23) / 2, y123 = (y12 + y23) / 2;
+        double xm = (x012 + x123) / 2, ym = (y012 + y123) / 2;
+        splitCubic(out, x0, y0, x01, y01, x012, y012, xm, ym, bend, depth + 1);
+        splitCubic(out, xm, ym, x123, y123, x23, y23, x3, y3, bend, depth + 1);
+        return true;
+    }
+
     static final class NormalizingIterator implements PathIterator {
         private final PathIterator src;
         private double curXAdjust, curYAdjust, moveXAdjust, moveYAdjust;

@@ -38,6 +38,8 @@
 #include "include/core/SkPath.h"
 #include "include/core/SkPathBuilder.h"
 #include "include/core/SkRegion.h"
+#include "include/effects/SkGradient.h"
+#include "include/core/SkShader.h"
 
 #include <algorithm>
 #include <array>
@@ -178,11 +180,59 @@ struct Operation {
     }
 };
 
-SkPaint solidPaint(jint argb, jint compositeRule) {
+// The paint descriptor the Java side builds (SKRasterShapePipe.paintOf): d[0] kind, d[1] extra alpha,
+// d[2] cycle method, d[3] linear colour space, d[4] stop count, d[5..10] the graphics transform,
+// d[11..16] the paint's own transform, then the geometry and the stop fractions; colours ARGB.
+enum { PAINT_COLOR = 0, PAINT_GRADIENT = 1, PAINT_LINEAR = 2, PAINT_RADIAL = 3 };
+
+SkColor4f swizzledColor4f(jint argb) { return SkColor4f::FromColor(swizzled(argb)); }
+
+SkMatrix matrixOf(const jfloat *m) { return SkMatrix::MakeAll(m[0], m[2], m[4], m[1], m[3], m[5], 0, 0, 1); }
+
+SkPaint paintFor(const jfloat *d, jint dCount, const jint *colors, jint compositeRule) {
     SkPaint paint;
     paint.setAntiAlias(true);
-    paint.setColor(swizzled(argb));
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
+    const int kind = (int) d[0];
+    if (kind == PAINT_COLOR || dCount < 17) {
+        paint.setColor(swizzled(colors[0]));
+        return paint;
+    }
+    const float extraAlpha = d[1]; const int cycle = (int) d[2]; const bool linear = d[3] != 0; const int stops = (int) d[4];
+    // the gradient lives in user space: local matrix = graphics transform × the paint's own transform;
+    // Java's paint contexts evaluate a paint at the pixel's integer coordinates, Skia at pixel centres, so
+    // the device-space result is shifted by half a pixel (the GPU pipe's atPixelOrigin)
+    SkMatrix local = matrixOf(d + 5); local.preConcat(matrixOf(d + 11)); local.postTranslate(0.5f, 0.5f);
+    const jfloat *geo = d + 17;
+    std::vector<SkColor4f> c4(stops);
+    for (int i = 0; i < stops; i++) c4[i] = swizzledColor4f(colors[i]);
+    // Java's software gradients interpolate the unpremultiplied stop components (the GPU pipe follows
+    // its shaders' premultiplied interpolation instead: a recorded difference)
+    SkGradient::Interpolation interp;
+    if (linear) interp.fColorSpace = SkGradient::Interpolation::ColorSpace::kSRGBLinear;
+    sk_sp<SkShader> shader;
+    if (kind == PAINT_GRADIENT) {
+        SkPoint pts[2] = { SkPoint::Make(geo[0], geo[1]), SkPoint::Make(geo[2], geo[3]) };
+        SkGradient grad(SkGradient::Colors(SkSpan(c4.data(), 2), cycle != 0 ? SkTileMode::kMirror : SkTileMode::kClamp), interp);
+        shader = SkShaders::LinearGradient(pts, grad, &local);
+    } else if (kind == PAINT_LINEAR) {
+        SkPoint pts[2] = { SkPoint::Make(geo[0], geo[1]), SkPoint::Make(geo[2], geo[3]) };
+        const jfloat *fractions = geo + 4;
+        if (cycle == 2) { const SkVector v = pts[1] - pts[0]; pts[0] -= v * SKBackend_RepeatSeamBias(); pts[1] -= v * SKBackend_RepeatSeamBias(); }
+        SkGradient grad(SkGradient::Colors(SkSpan(c4.data(), stops), SkSpan(fractions, stops), SKBackend_TileModeFor(cycle), SKBackend_StopColorSpace(linear)), interp);
+        shader = SkShaders::LinearGradient(pts, grad, &local);
+    } else {
+        // centre, radius, focus; Java keeps the focus inside 97 % of the radius
+        SkPoint centre = SkPoint::Make(geo[0], geo[1]); float radius = geo[2]; SkPoint focus = SkPoint::Make(geo[3], geo[4]);
+        SkVector f = focus - centre; float fl = f.length();
+        if (fl > radius * 0.97f) { f.scale(radius * 0.97f / fl); focus = centre + f; }
+        const jfloat *fractions = geo + 5;
+        if (cycle == 2) radius /= 1.0f + SKBackend_RepeatSeamBias();
+        SkGradient grad(SkGradient::Colors(SkSpan(c4.data(), stops), SkSpan(fractions, stops), SKBackend_TileModeFor(cycle), SKBackend_StopColorSpace(linear)), interp);
+        shader = SkShaders::TwoPointConicalGradient(focus, 0.0f, centre, radius, grad, &local);
+    }
+    paint.setShader(std::move(shader));
+    paint.setAlphaf(std::clamp(extraAlpha, 0.0f, 1.0f));
     return paint;
 }
 
@@ -207,29 +257,39 @@ template <size_t N, typename T> struct Buffer {
     Buffer(size_t n) : size(n) { if (n <= N) data = small.data(); else { large.resize(n); data = large.data(); } }
 };
 
+struct PaintData {
+    Buffer<48, jfloat> d; Buffer<16, jint> colors;
+    PaintData(JNIEnv *env, jfloatArray da, jintArray ca) : d(env->GetArrayLength(da)), colors(env->GetArrayLength(ca)) {
+        env->GetFloatArrayRegion(da, 0, (jsize) d.size, d.data); env->GetIntArrayRegion(ca, 0, (jsize) colors.size, colors.data);
+    }
+    SkPaint paint(jint compositeRule) { return paintFor(d.data, (jint) d.size, colors.data, compositeRule); }
+};
+
+
 } // namespace
 
 extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
-                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jint argb, jint compositeRule,
+                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
                                                  jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    PaintData pd(env, paintArray, colorsArray);
     Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     if (probe < 3) return;
-    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), solidPaint(argb, compositeRule));
+    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), pd.paint(compositeRule));
 }
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
                                                    jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint windingRule,
                                                    jfloatArray xformArray, jfloat lineWidth, jint cap, jint join, jfloat miterLimit,
-                                                   jint argb, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+                                                   jfloatArray paintArray, jintArray colorsArray, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
@@ -241,7 +301,8 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     // BasicStroke's cap and join constants: CAP_BUTT 0, CAP_ROUND 1, CAP_SQUARE 2; JOIN_MITER 0, JOIN_ROUND 1, JOIN_BEVEL 2
     static const SkPaint::Cap caps[] = { SkPaint::kButt_Cap, SkPaint::kRound_Cap, SkPaint::kSquare_Cap };
     static const SkPaint::Join joins[] = { SkPaint::kMiter_Join, SkPaint::kRound_Join, SkPaint::kBevel_Join };
-    SkPaint paint = solidPaint(argb, compositeRule);
+    PaintData pd(env, paintArray, colorsArray);
+    SkPaint paint = pd.paint(compositeRule);
     paint.setStyle(SkPaint::kStroke_Style);
     paint.setStrokeWidth(lineWidth);
     paint.setStrokeCap(caps[std::clamp((int) cap, 0, 2)]);
@@ -258,7 +319,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
                                                  jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount,
-                                                 jint windingRule, jint argb, jint compositeRule,
+                                                 jint windingRule, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
                                                  jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
@@ -267,10 +328,11 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     env->GetFloatArrayRegion(coordsArray, 0, coordCount, coords.data);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
+    PaintData pd(env, paintArray, colorsArray);
     Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
-    op.canvas()->drawPath(path, solidPaint(argb, compositeRule));
+    op.canvas()->drawPath(path, pd.paint(compositeRule));
 }
 
 } // extern "C"

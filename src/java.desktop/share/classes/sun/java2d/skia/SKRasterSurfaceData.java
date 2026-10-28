@@ -81,7 +81,7 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
 
     /**
      * The loops' pipes for everything, then Skia for the antialiased shapes a
-     * solid colour and a Porter-Duff composite can express: fills and strokes
+     * solid colour or a gradient and a Porter-Duff composite can express: fills and strokes
      * of any shape, and the antialiased rectangles and lines the converter
      * turns into parallelograms.
      */
@@ -89,7 +89,7 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
     public void validatePipe(SunGraphics2D sg2d) {
         super.validatePipe(sg2d);
         if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON
-                && sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR
+                && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
                 && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
             PixelToParallelogramConverter converter =
                     new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0 / 8.0, 0.499, false);

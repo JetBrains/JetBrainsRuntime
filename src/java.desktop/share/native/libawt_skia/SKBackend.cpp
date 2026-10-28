@@ -798,6 +798,10 @@ static SkTileMode tileModeFor(jint cycleMethod) {
     }
 }
 
+SkTileMode SKBackend_TileModeFor(jint cycleMethod) { return tileModeFor(cycleMethod); }
+sk_sp<SkColorSpace> SKBackend_StopColorSpace(bool linear) { return stopColorSpace(linear); }
+float SKBackend_RepeatSeamBias() { return REPEAT_SEAM_BIAS; }
+
 void SKBackend_SetColor(jint pixel) {
     g.color = unpremul(pixel);
     g.shader.reset();

@@ -59,6 +59,12 @@ public class SkiaRasterStrokeTest {
         compare("dashed line, width 2", g -> { g.setStroke(new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[] {6, 4}, 0)); g.setColor(Color.BLACK);
             g.draw(new java.awt.geom.Line2D.Double(10, 60, 150, 70)); }, 64, 3.0);   // dashes: Java's stroker in both modes
         compare("thin stroke under a scale", g -> { g.scale(2, 2); g.setColor(Color.BLACK); g.draw(new Ellipse2D.Double(10, 8, 60, 45)); }, joinLimit, 3.0);
+        // Normalization is Marlin's for antialiased strokes: coordinates snap to quarter pixels (floor(v + 0.25) + 0.25),
+        // not to pixel centres, so a thin line at an integer coordinate covers two rows at 75 / 25 % like the loops' —
+        // straight axis-aligned lines leave no room for stroker or coverage differences
+        compare("thin axis-aligned lines at integer coordinates", g -> { g.setColor(Color.BLACK);
+            g.draw(new java.awt.geom.Line2D.Double(10, 30, 150, 30)); g.draw(new java.awt.geom.Line2D.Double(80, 10, 80, 110));
+            g.setStroke(new BasicStroke(3f)); g.draw(new java.awt.geom.Line2D.Double(10, 70.5, 150, 70.5)); }, 8, 0.5);
 
         long bySkia = strokesBySkia();
         if (skia && bySkia == 0) {

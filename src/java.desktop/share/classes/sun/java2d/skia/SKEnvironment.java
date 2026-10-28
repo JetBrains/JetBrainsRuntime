@@ -280,6 +280,11 @@ public final class SKEnvironment {
         return RASTER && loadLibrary();
     }
 
+    /** Fills on raster surfaces with a gradient paint Skia built (not the loops' paint pipes), for tests. */
+    public static long rasterPaintsBySkia() {
+        return SKRasterShapePipe.paintsBySkia.get();
+    }
+
     /** Strokes on raster surfaces that Skia's stroker built (not Java's outline), for tests. */
     public static long rasterStrokesBySkia() {
         return SKRasterShapePipe.strokesBySkia.get();

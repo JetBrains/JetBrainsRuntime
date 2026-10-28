@@ -77,7 +77,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             fillDevicePath(sg2d, new Path2D.Float(outline.createStrokedShape(userShape), at));
             return;
         }
-        strokeUserPath(sg2d, new Path2D.Float(userShape), at, width, bs);
+        strokeUserPath(sg2d, new Path2D.Float(SKShapePipe.splitBentCubics(userShape, at)), at, width, bs);
     }
 
     private static void strokeUserPath(SunGraphics2D sg2d, Path2D.Float path, AffineTransform at, float width, BasicStroke bs) {
@@ -94,10 +94,11 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             return;
         }
         PathData d = PathData.of(path);
+        int[] colors = colorsFor(sg2d);
         float[] xform = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY()};
         strokesBySkia.incrementAndGet();
         strokePath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(),
-                   xform, width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+                   xform, width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
     /** A path's segments as the native side reads them: types and coordinates. */
@@ -160,12 +161,83 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         if (cx1 >= cx2 || cy1 >= cy2) {
             return;
         }
-        fillRect(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), x1, y1, x2, y2, sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+        int[] colors = colorsFor(sg2d);
+        fillRect(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), x1, y1, x2, y2, paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
     private static int compositeRule(SunGraphics2D sg2d) {
         return sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
     }
+
+    /** Fills with a gradient paint Skia built, for the test of the route. */
+    static final java.util.concurrent.atomic.AtomicLong paintsBySkia = new java.util.concurrent.atomic.AtomicLong();
+
+    /** Whether the state's paint is a gradient the raster pipe renders as a Skia shader. */
+    static boolean isGradient(SunGraphics2D sg2d) {
+        return sg2d.paintState == SunGraphics2D.PAINT_GRADIENT || sg2d.paintState == SunGraphics2D.PAINT_LIN_GRADIENT
+                || sg2d.paintState == SunGraphics2D.PAINT_RAD_GRADIENT;
+    }
+
+    // Paint descriptor kinds (the native side's switch)
+    static final int PAINT_COLOR = 0, PAINT_GRADIENT = 1, PAINT_LINEAR = 2, PAINT_RADIAL = 3;
+
+    /**
+     * The paint for the native side: a solid colour (the colour with the
+     * composite's extra alpha, {@code sg2d.eargb}), or a gradient in user space —
+     * its geometry, stops and colours plus the graphics transform and the paint's
+     * own, which the shader applies as its local matrix. Colours are ARGB; the
+     * native side swizzles them for the N32 destination.
+     */
+    private static float[] paintOf(SunGraphics2D sg2d, int[] colorsOut) {
+        AffineTransform at = sg2d.transform;
+        float extraAlpha = sg2d.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f;
+        float[] m = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY()};
+        switch (sg2d.paintState) {
+            case SunGraphics2D.PAINT_GRADIENT -> {
+                java.awt.GradientPaint gp = (java.awt.GradientPaint) sg2d.paint;
+                java.awt.geom.Point2D p1 = gp.getPoint1(), p2 = gp.getPoint2();
+                colorsOut[0] = gp.getColor1().getRGB(); colorsOut[1] = gp.getColor2().getRGB();
+                paintsBySkia.incrementAndGet();
+                return new float[] {PAINT_GRADIENT, extraAlpha, gp.isCyclic() ? 1 : 0, 0, 2, m[0], m[1], m[2], m[3], m[4], m[5], 1, 0, 0, 1, 0, 0,
+                                    (float) p1.getX(), (float) p1.getY(), (float) p2.getX(), (float) p2.getY(), 0, 1};
+            }
+            case SunGraphics2D.PAINT_LIN_GRADIENT, SunGraphics2D.PAINT_RAD_GRADIENT -> {
+                java.awt.MultipleGradientPaint mg = (java.awt.MultipleGradientPaint) sg2d.paint;
+                java.awt.Color[] colors = mg.getColors(); float[] fractions = mg.getFractions();
+                for (int i = 0; i < colors.length; i++) colorsOut[i] = colors[i].getRGB();
+                AffineTransform gt = mg.getTransform();
+                float[] g = {(float) gt.getScaleX(), (float) gt.getShearY(), (float) gt.getShearX(), (float) gt.getScaleY(), (float) gt.getTranslateX(), (float) gt.getTranslateY()};
+                int cycle = mg.getCycleMethod().ordinal();   // NO_CYCLE 0, REFLECT 1, REPEAT 2, as the GPU pipe reads them
+                int linear = mg.getColorSpace() == java.awt.MultipleGradientPaint.ColorSpaceType.LINEAR_RGB ? 1 : 0;
+                float[] geo;
+                int kind;
+                if (sg2d.paintState == SunGraphics2D.PAINT_LIN_GRADIENT) {
+                    java.awt.LinearGradientPaint lg = (java.awt.LinearGradientPaint) mg;
+                    geo = new float[] {(float) lg.getStartPoint().getX(), (float) lg.getStartPoint().getY(), (float) lg.getEndPoint().getX(), (float) lg.getEndPoint().getY()};
+                    kind = PAINT_LINEAR;
+                } else {
+                    java.awt.RadialGradientPaint rg = (java.awt.RadialGradientPaint) mg;
+                    geo = new float[] {(float) rg.getCenterPoint().getX(), (float) rg.getCenterPoint().getY(), rg.getRadius(), (float) rg.getFocusPoint().getX(), (float) rg.getFocusPoint().getY()};
+                    kind = PAINT_RADIAL;
+                }
+                float[] d = new float[17 + geo.length + fractions.length];
+                d[0] = kind; d[1] = extraAlpha; d[2] = cycle; d[3] = linear; d[4] = colors.length;
+                System.arraycopy(m, 0, d, 5, 6); System.arraycopy(g, 0, d, 11, 6);
+                System.arraycopy(geo, 0, d, 17, geo.length); System.arraycopy(fractions, 0, d, 17 + geo.length, fractions.length);
+                paintsBySkia.incrementAndGet();
+                return d;
+            }
+            default -> {
+                colorsOut[0] = sg2d.eargb;
+                return new float[] {PAINT_COLOR, 1f, 0, 0, 1};
+            }
+        }
+    }
+
+    private static int[] colorsFor(SunGraphics2D sg2d) {
+        return new int[sg2d.paint instanceof java.awt.MultipleGradientPaint mg ? mg.getColors().length : 2];
+    }
+
 
     /** The clip region's spans within the box as (x1, y1, x2, y2) tuples, or null for a rectangular clip. */
     private static int[] spansOf(Region clip, int cx1, int cy1, int cx2, int cy2) {
@@ -194,20 +266,21 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         }
         int[] spans = spansOf(clip, cx1, cy1, cx2, cy2);
         PathData d = PathData.of(path);
-        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(), sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
+        int[] colors = colorsFor(sg2d);
+        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(), paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
     }
 
     /** Strokes the user-space path under the transform with Skia's stroker (width, cap, join, miter limit as BasicStroke's). */
     private static native void strokePath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
                                           float[] coords, int coordCount, int windingRule, float[] xform, float lineWidth, int cap, int join, float miterLimit,
-                                          int argb, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+                                          float[] paint, int[] colors, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 
     /** Fills the device-space rectangle (edges antialiased where fractional) into the surface's pixels. */
     private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, int width, int height, float x1, float y1, float x2, float y2,
-                                        int argb, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+                                        float[] paint, int[] colors, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 
     /** Fills the device-space path into the surface's pixels: colour with its alpha, Porter-Duff rule, clip box and optional clip spans. */
     private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
-                                        float[] coords, int coordCount, int windingRule, int argb, int compositeRule,
+                                        float[] coords, int coordCount, int windingRule, float[] paint, int[] colors, int compositeRule,
                                         int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 }
