@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,29 +19,13 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-import java.net.http.HttpClient.Version;
-import java.time.Duration;
-import org.testng.annotations.Test;
-
-/*
- * @test
- * @summary Tests for connection related timeouts
- * @bug 8208391
- * @run testng/othervm ConnectTimeoutWithProxyAsync
+/* @test
+ * @summary Run Shenandoah gtests
+ * @library /test/lib
+ * @requires vm.gc.Shenandoah
+ * @requires vm.debug
+ * @run main/native GTestWrapper --gtest_filter=Shenandoah*
  */
-
-public class ConnectTimeoutWithProxyAsync extends AbstractConnectTimeout {
-
-    @Test(dataProvider = "variants")
-    @Override
-    public void timeoutWithProxyAsync(Version requestVersion,
-                                      String scheme,
-                                      String method,
-                                      Duration connectTimeout,
-                                      Duration requestTimeout)
-    {
-        super.timeoutWithProxyAsync(requestVersion, scheme, method, connectTimeout, requestTimeout);
-    }
-}

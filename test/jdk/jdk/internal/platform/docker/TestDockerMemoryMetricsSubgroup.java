@@ -41,6 +41,7 @@ import jtreg.SkippedException;
  * @summary Cgroup v1 subsystem fails to set subsystem path
  * @requires container.support
  * @requires !vm.asan
+ * @requires !vm.ubsan
  * @library /test/lib
  * @modules java.base/jdk.internal.platform
  * @build MetricsMemoryTester
@@ -58,10 +59,7 @@ public class TestDockerMemoryMetricsSubgroup {
             System.out.println("Cgroup not configured.");
             return;
         }
-        if (!DockerTestUtils.canTestDocker()) {
-            System.out.println("Unable to run docker tests.");
-            return;
-        }
+        DockerTestUtils.checkCanTestDocker();
 
         ContainerRuntimeVersionTestUtils.checkContainerVersionSupported();
 

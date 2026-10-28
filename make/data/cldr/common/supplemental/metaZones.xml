@@ -57,6 +57,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone to="1984-03-16 00:00" mzone="Europe_Western"/>
 				<usesMetazone to="1985-12-31 23:00" from="1984-03-16 00:00" mzone="Europe_Central"/>
 				<usesMetazone to="2018-10-28 02:00" from="1985-12-31 23:00" mzone="Europe_Western"/>
+				<usesMetazone from="2026-09-20 01:00" mzone="Europe_Western"/>
 			</timezone>
 			<timezone type="Africa/Ceuta">
 				<usesMetazone to="1984-03-16 00:00" mzone="Europe_Western"/>
@@ -80,6 +81,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 			<timezone type="Africa/El_Aaiun">
 				<usesMetazone to="1976-04-14 01:00" mzone="Africa_FarWestern"/>
 				<usesMetazone to="2018-10-28 02:00" from="1976-04-14 01:00" mzone="Europe_Western"/>
+				<usesMetazone from="2026-09-20 01:00" mzone="Europe_Western"/>
 			</timezone>
 			<timezone type="Africa/Freetown">
 				<usesMetazone mzone="GMT"/>
@@ -187,7 +189,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 			<timezone type="Africa/Windhoek">
 				<usesMetazone to="1990-03-20 22:00" mzone="Africa_Southern"/>
 				<usesMetazone to="1994-03-20 22:00" from="1990-03-20 22:00" mzone="Africa_Central"/>
-				<usesMetazone to="2017-10-23 22:00" from="1994-03-20 22:00" mzone="Africa_Western"/>
+				<usesMetazone to="2017-10-23 22:00" from="1994-03-20 22:00" mzone="Africa_Western" stdOffset="+01" dstOffset="+02"/>
 				<usesMetazone from="2017-10-23 22:00" mzone="Africa_Central"/>
 			</timezone>
 			<timezone type="America/Adak">
@@ -382,7 +384,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone mzone="Atlantic"/>
 			</timezone>
 			<timezone type="America/Edmonton">
-				<usesMetazone mzone="America_Mountain"/>
+				<usesMetazone mzone="America_Mountain" stdOffset="-07" dstOffset="-06"/>
 			</timezone>
 			<timezone type="America/Eirunepe">
 				<usesMetazone to="2008-06-24 05:00" mzone="Acre"/>
@@ -478,7 +480,7 @@ For terms of use, see http://www.unicode.org/copyright.html
 			</timezone>
 			<timezone type="America/Inuvik">
 				<usesMetazone to="1979-04-29 10:00" mzone="America_Pacific"/>
-				<usesMetazone from="1979-04-29 10:00" mzone="America_Mountain"/>
+				<usesMetazone from="1979-04-29 10:00" mzone="America_Mountain" stdOffset="-07" dstOffset="-06" />
 			</timezone>
 			<timezone type="America/Iqaluit">
 				<usesMetazone to="1999-10-31 06:00" mzone="America_Eastern"/>
@@ -731,14 +733,14 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone mzone="Atlantic"/>
 			</timezone>
 			<timezone type="America/Vancouver">
-				<usesMetazone mzone="America_Pacific"/>
+				<usesMetazone mzone="America_Pacific" stdOffset="-08" dstOffset="-07"/>
 			</timezone>
 			<timezone type="America/Whitehorse">
 				<usesMetazone to="2020-11-01 07:00" mzone="America_Pacific"/>
 				<usesMetazone from="2020-11-01 07:00" mzone="Yukon"/>
 			</timezone>
 			<timezone type="America/Winnipeg">
-				<usesMetazone mzone="America_Central"/>
+				<usesMetazone mzone="America_Central" stdOffset="-06" dstOffset="-05"/>
 			</timezone>
 			<timezone type="America/Yakutat">
 				<usesMetazone from="1983-11-30 09:00" mzone="Alaska"/>
@@ -1213,8 +1215,8 @@ For terms of use, see http://www.unicode.org/copyright.html
 				<usesMetazone mzone="Europe_Central"/>
 			</timezone>
 			<timezone type="Europe/Dublin">
-				<usesMetazone mzone="Irish" to="1971-10-31 02:00"/>
-				<usesMetazone mzone="GMT" from="1971-10-31 02:00"/>
+				<usesMetazone mzone="Irish" to="1971-10-31 02:00" stdOffset="+00" dstOffset="+01"/>
+				<usesMetazone mzone="GMT" from="1971-10-31 02:00" stdOffset="+00" dstOffset="+01"/>
 			</timezone>
 			<timezone type="Europe/Gibraltar">
 				<usesMetazone mzone="Europe_Central"/>

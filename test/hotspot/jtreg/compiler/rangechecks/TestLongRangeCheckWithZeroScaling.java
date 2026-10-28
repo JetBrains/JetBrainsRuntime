@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,22 +21,33 @@
  * questions.
  */
 
-/*
+package compiler.rangechecks;
+
+import java.util.Objects;
+
+/**
  * @test
- * @bug 4303068
- * @summary be allowed to specify the security properties file
- *      as a -D system property
- *
- * @run main/othervm -Djava.security.properties=${test.src}/SecurityPropFile.file -Djava.security.debug=properties SecurityPropFile
+ * @bug 8382378
+ * @summary Test that C2 can handle long range check indices scaled by zero.
+ * @run main ${test.main.class}
+ * @run main/othervm -Xcomp -XX:-TieredCompilation
+ *                   -XX:CompileCommand=compileonly,${test.main.class}::test*
+ *                   ${test.main.class}
  */
 
-public class SecurityPropFile {
+public class TestLongRangeCheckWithZeroScaling {
+
+    static void testCheckCancellingSubtractionOfScaledIndices() {
+        for (int i = 0; i < 100; i++) {
+            long index = ((long)(i << 10)) - (((long)i) << 10);
+            Objects.checkIndex(index, 100);
+        }
+    }
+
     public static void main(String[] args) {
-        System.out.println(java.security.Security.getProperty
-                                ("policy.provider"));
-        System.out.println(java.security.Security.getProperty
-                                ("policy.url.1"));
-        System.out.println(java.security.Security.getProperty
-                                ("policy.url.2"));
+        Objects.checkIndex(0, 1); // Ensure java.util.Objects is loaded.
+        for (int i = 0; i < 10_000; i++) {
+            testCheckCancellingSubtractionOfScaledIndices();
+        }
     }
 }
