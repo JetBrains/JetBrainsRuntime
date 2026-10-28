@@ -66,8 +66,12 @@ public class SkiaRasterTextTest {
         if (!cg) {
             // macOS: CoreGraphics renders no sub-pixel masks since Mojave, so Skia's CoreText host draws
             // LCD-hinted text as grayscale (the loops blend the JDK's neutral "LCD" masks with their
-            // gamma, darker); elsewhere Skia's LCD masks must come out in the loops' sub-pixel order
-            check("drawString, LCD HRGB", g -> g.drawString(TEXT, 8, 30), font, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, MAC ? 0.55 : 0.6, MAC ? 1.05 : 1.2);
+            // gamma, darker); elsewhere Skia's LCD masks must come out in the loops' sub-pixel order.
+            // On an opaque image: the JDK renders LCD text onto opaque destinations only
+            // (SurfaceData.canRenderLCDText), every pipe draws an LCD hint on INT_ARGB_PRE as grayscale
+            // — and Swing's back buffer, the surface this is about, is opaque (measured on Windows
+            // 2026-10-28: 0 fringe pixels on INT_ARGB_PRE under the loops and under Skia alike).
+            check("drawString, LCD HRGB", BufferedImage.TYPE_INT_RGB, g -> g.drawString(TEXT, 8, 30), font, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, MAC ? 0.55 : 0.6, MAC ? 1.05 : 1.2);
         }
         long bySkia = glyphsBySkia();
         if (bySkia == 0) {
@@ -87,8 +91,13 @@ public class SkiaRasterTextTest {
 
     /** Draws with Skia (INT_ARGB_PRE) and the loops (3BYTE_BGR): same ink bounds, ink ratio within [low, high]; LCD: fringes in the loops' order. */
     static void check(String what, Consumer<Graphics2D> drawing, Font font, Object aa, double low, double high) {
+        check(what, BufferedImage.TYPE_INT_ARGB_PRE, drawing, font, aa, low, high);
+    }
+
+    /** The same with the Skia side on the given raster-surface image type. */
+    static void check(String what, int skiaType, Consumer<Graphics2D> drawing, Font font, Object aa, double low, double high) {
         long before = glyphsBySkia();
-        BufferedImage skia = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE), loops = new BufferedImage(W, H, BufferedImage.TYPE_3BYTE_BGR);
+        BufferedImage skia = new BufferedImage(W, H, skiaType), loops = new BufferedImage(W, H, BufferedImage.TYPE_3BYTE_BGR);
         for (BufferedImage img : new BufferedImage[] {skia, loops}) {
             Graphics2D g = img.createGraphics();
             g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
