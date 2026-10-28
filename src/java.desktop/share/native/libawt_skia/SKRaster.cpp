@@ -58,12 +58,16 @@ namespace {
 // Java's PathIterator segment types
 enum { SEG_MOVETO = 0, SEG_LINETO = 1, SEG_QUADTO = 2, SEG_CUBICTO = 3, SEG_CLOSE = 4 };
 
-// The Java ints are B, G, R, A bytes in memory on little-endian machines. This Skia build's native
-// 32-bit order (kN32, SK_R32_SHIFT 0) is R, G, B, A: a destination declared BGRA takes Skia's generic
-// raster-pipeline blitters, a destination declared N32 its hand-written ones — measured 1.8 µs against
-// 0.2 µs for a small antialiased rectangle. So the pixels are declared N32 and every colour that
-// enters is swizzled (red and blue exchanged): blending is per channel, so the result is exact.
-static_assert(kN32_SkColorType == kRGBA_8888_SkColorType, "the swizzle below assumes an RGBA Skia build");
+// The Java ints are B, G, R, A bytes in memory on little-endian machines. A destination declared in
+// Skia's native 32-bit order (kN32) takes Skia's hand-written blitters, any other order its generic
+// raster-pipeline ones — measured 1.8 µs against 0.2 µs for a small antialiased rectangle. So the
+// pixels are always declared N32. Skia's N32 is R, G, B, A on the macOS and Linux builds (SK_R32_SHIFT 0)
+// and B, G, R, A on the Windows build (SkTypes.h: SK_R32_SHIFT 16 under SK_BUILD_FOR_WIN): where it
+// is RGBA every colour that enters is swizzled (red and blue exchanged; blending is per channel, so
+// the result is exact), where it is BGRA Java's ints are Skia's pixels as they are.
+static_assert(kN32_SkColorType == kRGBA_8888_SkColorType || kN32_SkColorType == kBGRA_8888_SkColorType,
+              "Java's ARGB ints are handled for an RGBA or a BGRA Skia build");
+constexpr bool kSwizzle = kN32_SkColorType == kRGBA_8888_SkColorType;
 SkImageInfo infoFor(jint pixelFormat, jint w, jint h) {
     switch (pixelFormat) {
         case sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE: return SkImageInfo::MakeN32(w, h, kPremul_SkAlphaType);
@@ -82,16 +86,17 @@ inline uint32_t premultiplied(uint32_t p) {   // Java's unpremultiplied ARGB int
 inline jint px(jint p) { return (jint) ((uint32_t) p >> 16); }
 inline jint py(jint p) { return p & 0xffff; }
 
-inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA memory declared RGBA
+inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA memory declared N32
+    if (!kSwizzle) return (SkColor) (uint32_t) argb;   // BGRA build: SkColor is A, R, G, B in an int, as Java's
     return SkColorSetARGB((argb >> 24) & 0xff, argb & 0xff, (argb >> 8) & 0xff, (argb >> 16) & 0xff);
 }
 
 // One surface's canvas, kept by the drawing thread between operations.
 // The pixel geometry Skia's LCD text needs to render sub-pixel masks at all (unknown geometry
-// downgrades sub-pixel edging to grayscale): horizontal stripes, declared BGR because the pixels
-// are declared RGBA over Java's BGRA memory — Skia's blue channel is Java's red, so a BGR mask
-// lands in memory as Java's HRGB order.
-static const SkSurfaceProps props(0, kBGR_H_SkPixelGeometry);
+// downgrades sub-pixel edging to grayscale): horizontal stripes in Java's HRGB order. On an RGBA
+// build the pixels are declared RGBA over Java's BGRA memory — Skia's blue channel is Java's red,
+// so a BGR mask lands in memory as HRGB; on a BGRA build the channels are Java's and the mask is RGB.
+static const SkSurfaceProps props(0, kSwizzle ? kBGR_H_SkPixelGeometry : kRGB_H_SkPixelGeometry);
 
 // Write locks on buffered images, counted: SKRasterSurfaceData.trackWrites wraps the surface's
 // Lock so every SD_LOCK_WRITE by any pipe on any thread bumps the serial; a thread's mirror remembers

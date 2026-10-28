@@ -644,6 +644,11 @@ ifeq ($(SKIA_ENABLED), true)
   LIBAWT_SKIA_LDFLAGS :=
   LIBAWT_SKIA_LINK_DEPS :=
 
+  ifeq ($(call isTargetOs, windows), true)
+    # colordata.h, which BufImgSurfaceData.h includes, is a libawt Windows
+    # header (common/awt holds the unix one).
+    LIBAWT_SKIA_EXTRA_HEADER_DIRS += libawt/windows
+  endif
   ifeq ($(call isTargetOs, macosx), true)
     LIBAWT_SKIA_EXTRA_HEADER_DIRS += libawt_lwawt/java2d/metal
     # The prebuilt Skia is compiled with default visibility; export JNI only.
