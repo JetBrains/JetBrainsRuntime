@@ -40,7 +40,7 @@ import java.awt.image.ColorModel;
 /**
  * Skia surface on Windows: owns its GPU texture, and for windows the swap
  * chain of the peer's HWND that the texture is presented through (native side:
- * {@code DawnSKPlatform.cpp}). Window and off-screen variants follow
+ * {@code Win32SKPlatform.h}). Window and off-screen variants follow
  * {@code WGLSurfaceData}.
  */
 public abstract class Win32SKSurfaceData extends SKSurfaceData {

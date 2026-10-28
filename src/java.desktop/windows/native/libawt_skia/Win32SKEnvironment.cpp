@@ -23,12 +23,13 @@
  * questions.
  */
 
-// Windows side of sun.java2d.skia.SKEnvironment: whether Dawn finds a
-// Direct3D adapter and what it is. The Dawn device is shared by the
-// configurations (DawnSKPlatform.cpp); the Graphite contexts are created per
+// Windows side of sun.java2d.skia.SKEnvironment: whether the graphics API Graphite
+// renders through finds an adapter, and what it is (Win32SKPlatform.h). The device
+// is shared by the configurations; the Graphite contexts are created per
 // configuration (SKBackend.cpp).
 
-#include "DawnSKPlatform.h"
+#include "DawnSKPlatform.h"   // DawnSK_PreferBackend (sun.java2d.skia.dawn.backend)
+#include "Win32SKPlatform.h"
 
 #include <string>
 #include <string.h>
@@ -59,7 +60,7 @@ Java_sun_java2d_skia_SKEnvironment_initNative(JNIEnv *env, jclass clazz)
             }
         }
     }
-    std::string adapter = DawnSK_DescribeAdapter();
+    std::string adapter = Win32SK_DescribeAdapter();
     if (adapter.empty()) {
         return nullptr;
     }

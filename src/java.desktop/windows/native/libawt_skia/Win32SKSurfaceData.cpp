@@ -23,12 +23,12 @@
  * questions.
  */
 
-// Native side of sun.java2d.skia.Win32SKSurfaceData: the Dawn texture (and
-// swap chain) of a surface (DawnSKSurface, the SKPlatformSurface of this
-// platform). It is released by SKPlatform_DisposeSurface when the Skia wrapper
+// Native side of sun.java2d.skia.Win32SKSurfaceData: the texture (and swap
+// chain) of a surface (Win32SKSurface, the SKPlatformSurface of this platform),
+// whichever graphics API Graphite renders through (Win32SKPlatform.h). It is released by SKPlatform_DisposeSurface when the Skia wrapper
 // is disposed.
 
-#include "DawnSKPlatform.h"
+#include "Win32SKPlatform.h"
 #include "SKBackend.h"   // SKSurfaceData_PlatformOf
 
 #include "jlong.h"
@@ -42,14 +42,14 @@ Java_sun_java2d_skia_Win32SKSurfaceData_createPlatformSurface(JNIEnv *env, jclas
                                                               jlong hwnd, jint width, jint height,
                                                               jlong previousOps, jboolean isOpaque)
 {
-    auto *config = (DawnSKConfigInfo *) jlong_to_ptr(pConfigInfo);
+    auto *config = (Win32SKConfig *) jlong_to_ptr(pConfigInfo);
     if (config == nullptr || width <= 0 || height <= 0) {
         return 0;
     }
     // the window surface being replaced, unless its Skia side is disposed already
-    auto *previousSurface = (DawnSKSurface *) SKSurfaceData_PlatformOf((SurfaceDataOps *) jlong_to_ptr(previousOps));
-    return ptr_to_jlong(DawnSK_CreateSurface(config, (HWND) jlong_to_ptr(hwnd), (uint32_t) width,
-                                             (uint32_t) height, previousSurface, isOpaque == JNI_TRUE));
+    auto *previousSurface = (Win32SKSurface *) SKSurfaceData_PlatformOf((SurfaceDataOps *) jlong_to_ptr(previousOps));
+    return ptr_to_jlong(Win32SK_CreateSurface(config, (HWND) jlong_to_ptr(hwnd), (uint32_t) width,
+                                              (uint32_t) height, previousSurface, isOpaque == JNI_TRUE));
 }
 
 } // extern "C"

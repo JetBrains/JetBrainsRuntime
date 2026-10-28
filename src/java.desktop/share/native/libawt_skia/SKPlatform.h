@@ -27,8 +27,9 @@
 
 // What the shared Skia backend needs from the GPU API and the window system.
 // One implementation per platform (macOS: MTLSKPlatform.mm on the Metal
-// pipeline's contexts, textures and layers; Windows: DawnSKPlatform.cpp on a
-// Dawn device and swap chains); everything else in libawt_skia is
+// pipeline's contexts, textures and layers; Windows: Win32SKPlatform.cpp, over
+// the graphics API Graphite renders through, Dawn by default, with devices and
+// swap chains of its own); everything else in libawt_skia is
 // platform-independent C++ against Graphite.
 
 #include "include/core/SkFontTypes.h"
@@ -47,7 +48,7 @@ class SkMatrix;
 // The platform's graphics configuration a Graphite context is created for
 // (macOS: MTLGraphicsConfigInfo; Windows: Win32SKGraphicsConfig's native
 // configuration), and the native ops of the platform surface a Skia surface
-// wraps (macOS: BMTLSDOps; Windows: DawnSKSurface). Both are owned by the
+// wraps (macOS: BMTLSDOps; Windows: Win32SKSurface). Both are owned by the
 // platform pipeline and only passed through here.
 struct SKPlatformConfig;
 struct SKPlatformSurface;

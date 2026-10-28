@@ -25,7 +25,7 @@
 
 // Platform-independent part of sun.java2d.skia.SKEnvironment's native side;
 // initNative, gpuApiNative and framebufferFetchNative live with the platform
-// (MTLSKEnvironment.mm on macOS, DawnSKEnvironment.cpp on Windows).
+// (MTLSKEnvironment.mm on macOS, Win32SKEnvironment.cpp on Windows).
 
 #include "jni.h"
 #include "jlong.h"
