@@ -488,6 +488,7 @@ void SKBackend_ReleaseSurface(SKSDOps *ops, bool dispose) {
         ops->state->cc->surfaces.erase(ops->state);
     }
     ops->state->surface.reset();
+    ops->state->presentTargets.clear();
     ops->state->wrappedTexture = nullptr;
     ops->state->cc = nullptr;
     forgetSurface(ops);
@@ -2992,6 +2993,69 @@ static void countFrame(JNIEnv *env, SKSDOps *dst, bool presented) {
     }
 }
 
+// Where Graphite presents (SKPlatform_AcquirePresentTarget, Windows over Vulkan): draws
+// the window surface's client area into the next swap chain image in a recording of
+// its own, which waits for the image and leaves it ready to present, submits it and
+// presents. False where the platform presents itself (SKPlatform_RequestRedraw).
+static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
+    SKSurfaceState *st = dst->state;
+    SKConfigContext *cc = st != nullptr ? st->cc : nullptr;
+    if (cc == nullptr || !st->surface || !cc->context) {
+        return false;   // never drawn into: nothing Graphite could present
+    }
+    SKPlatformPresentTarget target;
+    if (!SKPlatform_AcquirePresentTarget(dst->platform, &target)) {
+        return false;
+    }
+    *presented = false;
+    if (!target.texture.isValid()) {
+        return true;
+    }
+    const uint32_t generation = (uint32_t) (target.imageKey >> 32);
+    if (generation != st->presentGeneration) {
+        st->presentTargets.clear();   // the images of an earlier swap chain
+        st->presentGeneration = generation;
+    }
+    sk_sp<SkSurface> &image = st->presentTargets[target.imageKey];
+    if (!image) {
+        image = SkSurfaces::WrapBackendTexture(cc->recorder.get(), target.texture, target.colorType, nullptr, nullptr);
+    }
+    if (image) {
+        const SkIRect &source = target.source;
+        SkPaint paint;
+        paint.setBlendMode(SkBlendMode::kSrc);
+        image->getCanvas()->drawImageRect(SkSurfaces::AsImage(st->surface), SkRect::Make(source),
+                                          SkRect::MakeIWH(source.width(), source.height()),
+                                          SkSamplingOptions(SkFilterMode::kNearest), &paint,
+                                          SkCanvas::kFast_SrcRectConstraint);
+    } else {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "presentThroughGraphite: cannot wrap the swap chain image (%dx%d)",
+                      target.texture.dimensions().width(), target.texture.dimensions().height());
+    }
+    // inserted even without a draw: the image's acquire semaphore must be waited for
+    std::unique_ptr<Recording> recording = cc->recorder->snap();
+    InsertRecordingInfo info;
+    info.fRecording = recording.get();
+    info.fTargetSurface = image.get();
+    info.fTargetTextureState = image ? &target.presentState : nullptr;
+    info.fNumWaitSemaphores = 1;
+    info.fWaitSemaphores = &target.waitSemaphore;
+    info.fNumSignalSemaphores = 1;
+    info.fSignalSemaphores = &target.signalSemaphore;
+    info.fFinishedProc = target.finishedProc;
+    info.fFinishedContext = target.finishedContext;
+    if (!recording || !cc->context->insertRecording(info)) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "presentThroughGraphite: insertRecording failed");
+        if (!recording && target.finishedProc != nullptr) {
+            target.finishedProc(target.finishedContext, skgpu::CallbackResult::kFailed);
+        }
+        return true;
+    }
+    cc->context->submit(SyncToCpu::kNo);
+    *presented = image != nullptr && SKPlatform_PresentTarget(dst->platform);
+    return true;
+}
+
 void SKBackend_RequestPresent(SKSDOps *ops) {
     if (ops != nullptr && ops->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
         g.requestedWindows.insert(ops);
@@ -3046,7 +3110,9 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             bool presented;
             {
                 SKStatsScope presentStats(SK_SPAN_PRESENT);
-                presented = SKPlatform_RequestRedraw(dst->platform);
+                if (!presentThroughGraphite(dst, &presented)) {
+                    presented = SKPlatform_RequestRedraw(dst->platform);
+                }
             }
             if (!presented) {
                 SKStats_Count(SK_COUNT_PRESENTS_FAILED);

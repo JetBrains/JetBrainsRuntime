@@ -31,9 +31,10 @@
 // (Win32SKGraphicsConfig.cpp, Win32SKSurfaceData.cpp, Win32SKEnvironment.cpp)
 // calls only this layer; each configuration and surface records the API that made
 // it, and the GPU side of SKPlatform.h dispatches on that (Win32SKPlatform.cpp).
-// Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11 or 12); text is the
-// same for every API (Win32SKText.cpp). SKPlatformConfig and SKPlatformSurface
-// alias Win32SKConfigInfo and Win32SKSurface.
+// Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11 or 12) or Vulkan
+// (VKSKPlatform.cpp), chosen with sun.java2d.skia.graphiteApi; text is the same for
+// every API (Win32SKText.cpp). SKPlatformConfig and SKPlatformSurface alias
+// Win32SKConfigInfo and Win32SKSurface.
 
 #include <windows.h>
 
@@ -41,7 +42,14 @@
 #include <string>
 
 // The graphics API Graphite renders through, one per process.
-enum class Win32SKApi { Dawn };
+enum class Win32SKApi { Dawn, Vulkan };
+
+// Before anything else (Win32SKEnvironment.initNative): the API of every later
+// configuration. Dawn unless chosen otherwise.
+void Win32SK_SelectApi(Win32SKApi api);
+Win32SKApi Win32SK_SelectedApi();
+// "Dawn", "Vulkan": the API's name in the environment's description.
+const char *Win32SK_ApiName(Win32SKApi api);
 
 // The first member of every API's configuration (one per Win32SKGraphicsConfig)
 // and surface (one per Win32SKSurfaceData).
@@ -53,7 +61,8 @@ struct Win32SKSurface {
     Win32SKApi api;
 };
 
-// Name of the adapter the API would use ("<adapter> (D3D11)"), empty if none; no device is created.
+// Name of the adapter the API would use ("<adapter> (D3D11)", "<adapter> (Vulkan)"), empty if none;
+// no device is created.
 std::string Win32SK_DescribeAdapter();
 
 // A configuration on the API's shared device; null if none can be made.

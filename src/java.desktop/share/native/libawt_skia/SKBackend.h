@@ -82,6 +82,10 @@ struct SKSurfaceState {
     sk_sp<SkSurface> surface;
     void *wrappedTexture = nullptr;   // identity of the platform texture `surface` wraps (SKPlatform_TextureHandle)
     SKConfigContext *cc = nullptr;
+    // window surfaces Graphite presents (SKPlatform_AcquirePresentTarget): the wrappers of
+    // the swap chain images, by imageKey, of the swap chain generation presentGeneration
+    std::unordered_map<uint64_t, sk_sp<SkSurface>> presentTargets;
+    uint32_t presentGeneration = 0;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C

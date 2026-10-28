@@ -138,6 +138,14 @@ bool SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
     return true;
 }
 
+bool SKPlatform_AcquirePresentTarget(SKPlatformSurface *, SKPlatformPresentTarget *) {
+    return false;   // the layer presents the Metal texture itself (SKPlatform_RequestRedraw)
+}
+
+bool SKPlatform_PresentTarget(SKPlatformSurface *) {
+    return false;
+}
+
 void SKPlatform_DisposeSurface(SKPlatformSurface *surface) {
     // the Metal surface owns the texture and has its own disposer
 }

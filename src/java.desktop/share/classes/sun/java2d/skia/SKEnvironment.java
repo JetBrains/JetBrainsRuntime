@@ -215,6 +215,28 @@ public final class SKEnvironment {
      */
     private static final boolean SUBMIT_PER_PRESENT =
             "present".equalsIgnoreCase(System.getProperty("sun.java2d.skia.submit", "flush"));
+    /**
+     * The graphics API Graphite renders through ({@code sun.java2d.skia.graphiteApi}),
+     * read by the native side before the first adapter request: {@code dawn} (the
+     * default on Windows, over Direct3D 11 or 12, see {@code sun.java2d.skia.dawn.backend})
+     * or {@code vulkan} (native Vulkan, an evaluation option) on Windows; {@code metal}
+     * (the only one) on macOS. A value the platform does not offer leaves its default.
+     */
+    private static final String GRAPHITE_API = System.getProperty("sun.java2d.skia.graphiteApi");
+
+    private static void checkGraphiteApi() {
+        if (GRAPHITE_API == null || !VERBOSE) {
+            return;
+        }
+        boolean windows = System.getProperty("os.name", "").startsWith("Windows");
+        String value = GRAPHITE_API.toLowerCase(Locale.ROOT);
+        boolean offered = windows ? value.equals("dawn") || value.equals("vulkan") : value.equals("metal");
+        if (!offered) {
+            System.err.println("sun.java2d.skia.graphiteApi=" + GRAPHITE_API + " is not "
+                    + (windows ? "dawn or vulkan" : "metal") + " on this platform; using "
+                    + (windows ? "dawn" : "metal"));
+        }
+    }
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -564,6 +586,7 @@ public final class SKEnvironment {
             if (!loadLibrary()) {
                 return;
             }
+            checkGraphiteApi();
             description = initNative();
             if (description != null) {
                 configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();

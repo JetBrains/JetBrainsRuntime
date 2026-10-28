@@ -37,40 +37,60 @@
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "include/core/SkMilestone.h"
 
+// The value of a system property, empty if unset.
+static std::string systemProperty(JNIEnv *env, const char *name) {
+    std::string result;
+    jclass system = env->FindClass("java/lang/System");
+    if (system == nullptr) {
+        env->ExceptionClear();
+        return result;
+    }
+    jmethodID getProperty = env->GetStaticMethodID(system, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+    jstring key = env->NewStringUTF(name);
+    jstring value = getProperty != nullptr && key != nullptr
+            ? (jstring) env->CallStaticObjectMethod(system, getProperty, key) : nullptr;
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        value = nullptr;
+    }
+    if (value != nullptr) {
+        const char *chars = env->GetStringUTFChars(value, nullptr);
+        if (chars != nullptr) {
+            result = chars;
+            env->ReleaseStringUTFChars(value, chars);
+        }
+    }
+    return result;
+}
+
 extern "C" {
 
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_SKEnvironment_initNative(JNIEnv *env, jclass clazz)
 {
-    // sun.java2d.skia.dawn.backend=d3d12: D3D12 before D3D11 (read here, before the first adapter request)
-    if (jclass system = env->FindClass("java/lang/System")) {
-        jmethodID getProperty = env->GetStaticMethodID(system, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
-        jstring key = env->NewStringUTF("sun.java2d.skia.dawn.backend");
-        jstring value = getProperty != nullptr && key != nullptr
-                ? (jstring) env->CallStaticObjectMethod(system, getProperty, key) : nullptr;
-        if (env->ExceptionCheck()) {
-            env->ExceptionClear();
-            value = nullptr;
-        }
-        if (value != nullptr) {
-            const char *chars = env->GetStringUTFChars(value, nullptr);
-            DawnSK_PreferBackend(chars != nullptr && _stricmp(chars, "d3d12") == 0);
-            if (chars != nullptr) {
-                env->ReleaseStringUTFChars(value, chars);
-            }
-        }
+    // read here, before the first adapter request: sun.java2d.skia.graphiteApi=vulkan
+    // for native Vulkan (other values leave Dawn, SKEnvironment.checkGraphiteApi), and
+    // sun.java2d.skia.dawn.backend=d3d12 for D3D12 before D3D11
+    if (_stricmp(systemProperty(env, "sun.java2d.skia.graphiteApi").c_str(), "vulkan") == 0) {
+        Win32SK_SelectApi(Win32SKApi::Vulkan);
+    }
+    const std::string dawnBackend = systemProperty(env, "sun.java2d.skia.dawn.backend");
+    if (!dawnBackend.empty()) {
+        DawnSK_PreferBackend(_stricmp(dawnBackend.c_str(), "d3d12") == 0);
     }
     std::string adapter = Win32SK_DescribeAdapter();
     if (adapter.empty()) {
         return nullptr;
     }
-    // adapter names are UTF-8 (Dawn's StringView), not the ANSI code page
-    std::string description = std::string("Skia m") + std::to_string(SK_MILESTONE) + " Graphite/Dawn on " + adapter;
+    // adapter names are UTF-8 (Dawn's StringView, Vulkan's deviceName), not the ANSI code page
+    std::string description = std::string("Skia m") + std::to_string(SK_MILESTONE) + " Graphite/"
+                              + Win32SK_ApiName(Win32SK_SelectedApi()) + " on " + adapter;
     return env->NewStringUTF(description.c_str());
 }
 
 // Dawn reads the destination from a copy on every backend used here (Graphite's
-// DstReadStrategy::kTextureCopy).
+// DstReadStrategy::kTextureCopy). Graphite's Vulkan backend may read it as an input
+// attachment instead; until that is measured, Vulkan keeps Dawn's defaults.
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_skia_SKEnvironment_framebufferFetchNative(JNIEnv *env, jclass clazz)
 {

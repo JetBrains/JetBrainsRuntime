@@ -31,8 +31,13 @@
 
 #include "DawnSKPlatform.h"
 #include "SKPlatform.h"
+#include "VKSKPlatform.h"
+
+#include <atomic>
 
 using namespace skgpu::graphite;
+
+static std::atomic<Win32SKApi> gApi{Win32SKApi::Dawn};
 
 static inline Win32SKConfigInfo *configOf(SKPlatformConfig *config) {
     return reinterpret_cast<Win32SKConfigInfo *>(config);
@@ -44,17 +49,45 @@ static inline Win32SKSurface *surfaceOf(SKPlatformSurface *surface) {
 
 // ---- the JNI code's entry points -------------------------------------------
 
+void Win32SK_SelectApi(Win32SKApi api) {
+    gApi.store(api);
+}
+
+Win32SKApi Win32SK_SelectedApi() {
+    return gApi.load();
+}
+
+const char *Win32SK_ApiName(Win32SKApi api) {
+    switch (api) {
+        case Win32SKApi::Dawn: return "Dawn";
+        case Win32SKApi::Vulkan: return "Vulkan";
+    }
+    return "?";
+}
+
 std::string Win32SK_DescribeAdapter() {
-    return DawnSK_DescribeAdapter();
+    switch (gApi.load()) {
+        case Win32SKApi::Dawn: return DawnSK_DescribeAdapter();
+        case Win32SKApi::Vulkan: return VKSK_DescribeAdapter();
+    }
+    return std::string();
 }
 
 Win32SKConfigInfo *Win32SK_CreateConfig() {
-    return DawnSK_CreateConfig();
+    switch (gApi.load()) {
+        case Win32SKApi::Dawn: return DawnSK_CreateConfig();
+        case Win32SKApi::Vulkan: return VKSK_CreateConfig();
+    }
+    return nullptr;
 }
 
 void Win32SK_DisposeConfig(Win32SKConfigInfo *config) {
-    if (config != nullptr && config->api == Win32SKApi::Dawn) {
-        DawnSK_DisposeConfig(static_cast<DawnSKConfigInfo *>(config));
+    if (config == nullptr) {
+        return;
+    }
+    switch (config->api) {
+        case Win32SKApi::Dawn: DawnSK_DisposeConfig(static_cast<DawnSKConfigInfo *>(config)); return;
+        case Win32SKApi::Vulkan: VKSK_DisposeConfig(static_cast<VKSKConfigInfo *>(config)); return;
     }
 }
 
@@ -64,6 +97,7 @@ bool Win32SK_IsLost(const Win32SKConfigInfo *config) {
     }
     switch (config->api) {
         case Win32SKApi::Dawn: return DawnSK_IsLost(static_cast<const DawnSKConfigInfo *>(config));
+        case Win32SKApi::Vulkan: return VKSK_IsLost(static_cast<const VKSKConfigInfo *>(config));
     }
     return true;
 }
@@ -74,12 +108,16 @@ std::string Win32SK_ConfigDescription(const Win32SKConfigInfo *config) {
     }
     switch (config->api) {
         case Win32SKApi::Dawn: return static_cast<const DawnSKConfigInfo *>(config)->description;
+        case Win32SKApi::Vulkan: return static_cast<const VKSKConfigInfo *>(config)->description;
     }
     return std::string();
 }
 
 void Win32SK_SimulateDeviceLoss(bool persistent) {
-    DawnSK_SimulateDeviceLoss(persistent);
+    switch (gApi.load()) {
+        case Win32SKApi::Dawn: DawnSK_SimulateDeviceLoss(persistent); return;
+        case Win32SKApi::Vulkan: VKSK_SimulateDeviceLoss(persistent); return;
+    }
 }
 
 Win32SKSurface *Win32SK_CreateSurface(Win32SKConfigInfo *config, HWND hwnd, uint32_t width, uint32_t height,
@@ -91,6 +129,9 @@ Win32SKSurface *Win32SK_CreateSurface(Win32SKConfigInfo *config, HWND hwnd, uint
         case Win32SKApi::Dawn:
             return DawnSK_CreateSurface(static_cast<DawnSKConfigInfo *>(config), hwnd, width, height,
                                         static_cast<DawnSKSurface *>(previous), opaque);
+        case Win32SKApi::Vulkan:
+            return VKSK_CreateSurface(static_cast<VKSKConfigInfo *>(config), hwnd, width, height,
+                                      static_cast<VKSKSurface *>(previous), opaque);
     }
     return nullptr;
 }
@@ -104,6 +145,7 @@ std::unique_ptr<Context> SKPlatform_MakeContext(SKPlatformConfig *config, const 
     }
     switch (c->api) {
         case Win32SKApi::Dawn: return DawnSK_MakeContext(config, options);
+        case Win32SKApi::Vulkan: return VKSK_MakeContext(config, options);
     }
     return nullptr;
 }
@@ -115,6 +157,7 @@ SKPlatformConfig *SKPlatform_ConfigOf(SKPlatformSurface *surface) {
     }
     switch (s->api) {
         case Win32SKApi::Dawn: return DawnSK_ConfigOf(surface);
+        case Win32SKApi::Vulkan: return VKSK_ConfigOf(surface);
     }
     return nullptr;
 }
@@ -127,6 +170,7 @@ bool SKPlatform_SameDevice(SKPlatformConfig *a, SKPlatformConfig *b) {
     }
     switch (ca->api) {
         case Win32SKApi::Dawn: return DawnSK_SameDevice(a, b);
+        case Win32SKApi::Vulkan: return VKSK_SameDevice(a, b);
     }
     return false;
 }
@@ -138,6 +182,7 @@ void *SKPlatform_TextureHandle(SKPlatformSurface *surface) {
     }
     switch (s->api) {
         case Win32SKApi::Dawn: return DawnSK_TextureHandle(surface);
+        case Win32SKApi::Vulkan: return VKSK_TextureHandle(surface);
     }
     return nullptr;
 }
@@ -149,6 +194,7 @@ bool SKPlatform_BackendTexture(SKPlatformSurface *surface, BackendTexture *textu
     }
     switch (s->api) {
         case Win32SKApi::Dawn: return DawnSK_BackendTexture(surface, texture, colorType);
+        case Win32SKApi::Vulkan: return VKSK_BackendTexture(surface, texture, colorType);
     }
     return false;
 }
@@ -160,6 +206,7 @@ bool SKPlatform_IsWindow(SKPlatformSurface *surface) {
     }
     switch (s->api) {
         case Win32SKApi::Dawn: return DawnSK_IsWindow(surface);
+        case Win32SKApi::Vulkan: return VKSK_IsWindow(surface);
     }
     return false;
 }
@@ -171,6 +218,31 @@ bool SKPlatform_RequestRedraw(SKPlatformSurface *surface) {
     }
     switch (s->api) {
         case Win32SKApi::Dawn: return DawnSK_RequestRedraw(surface);
+        case Win32SKApi::Vulkan: return false;   // Graphite presents (SKPlatform_AcquirePresentTarget)
+    }
+    return false;
+}
+
+bool SKPlatform_AcquirePresentTarget(SKPlatformSurface *surface, SKPlatformPresentTarget *target) {
+    Win32SKSurface *s = surfaceOf(surface);
+    if (s == nullptr) {
+        return false;
+    }
+    switch (s->api) {
+        case Win32SKApi::Dawn: return false;   // Dawn presents itself (SKPlatform_RequestRedraw)
+        case Win32SKApi::Vulkan: return VKSK_AcquirePresentTarget(surface, target);
+    }
+    return false;
+}
+
+bool SKPlatform_PresentTarget(SKPlatformSurface *surface) {
+    Win32SKSurface *s = surfaceOf(surface);
+    if (s == nullptr) {
+        return false;
+    }
+    switch (s->api) {
+        case Win32SKApi::Dawn: return false;
+        case Win32SKApi::Vulkan: return VKSK_PresentTarget(surface);
     }
     return false;
 }
@@ -182,6 +254,7 @@ void SKPlatform_DisposeSurface(SKPlatformSurface *surface) {
     }
     switch (s->api) {
         case Win32SKApi::Dawn: DawnSK_DisposeSurface(surface); return;
+        case Win32SKApi::Vulkan: VKSK_DisposeSurface(surface); return;
     }
 }
 

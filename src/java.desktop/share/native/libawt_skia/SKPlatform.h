@@ -35,8 +35,11 @@
 #include "include/core/SkFontTypes.h"
 #include "include/core/SkColorType.h"
 #include "include/gpu/graphite/BackendTexture.h"
+#include "include/gpu/graphite/BackendSemaphore.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/ContextOptions.h"
+#include "include/gpu/MutableTextureState.h"
+#include "include/core/SkRect.h"
 
 #include <memory>
 #include "jni.h"
@@ -82,6 +85,31 @@ bool SKPlatform_IsWindow(SKPlatformSurface *surface);
 // The window surface's texture has new content: present it. Returns whether a
 // present was issued (false: no swap chain image, a lost device, a replaced surface).
 bool SKPlatform_RequestRedraw(SKPlatformSurface *surface);
+
+// Window surfaces whose swap chain images Graphite draws into itself (Windows over
+// Vulkan), instead of the platform copying the surface texture (SKPlatform_RequestRedraw):
+// the next swap chain image, the part of the surface texture that goes into it, the
+// semaphore the draw waits for (the image is acquired) and the one it signals (the
+// present waits for it), and the layout the image must be in for presenting. The
+// backend draws the surface into the image in a recording of its own, inserts it with
+// these, submits, and presents with SKPlatform_PresentTarget. imageKey identifies the
+// image until the swap chain is recreated, so the backend can keep the image's wrapper.
+struct SKPlatformPresentTarget {
+    skgpu::graphite::BackendTexture texture;
+    SkColorType colorType = kUnknown_SkColorType;
+    uint64_t imageKey = 0;   // swap chain generation << 32 | image index
+    SkIRect source = SkIRect::MakeEmpty();
+    skgpu::graphite::BackendSemaphore waitSemaphore;
+    skgpu::graphite::BackendSemaphore signalSemaphore;
+    skgpu::MutableTextureState presentState;
+    skgpu::graphite::GpuFinishedProc finishedProc = nullptr;   // releases what the platform acquired for this present
+    skgpu::graphite::GpuFinishedContext finishedContext = nullptr;
+};
+// False where the platform presents itself (SKPlatform_RequestRedraw); true with an
+// invalid texture where it does not, but has no image now (minimized, a lost device).
+bool SKPlatform_AcquirePresentTarget(SKPlatformSurface *surface, SKPlatformPresentTarget *target);
+// Presents the image acquired last, once the recording that draws into it is submitted.
+bool SKPlatform_PresentTarget(SKPlatformSurface *surface);
 
 // The Skia wrapper of the surface is gone (DISPOSE_SURFACE): release what the
 // platform half allocated for it. Nothing on macOS, where the Metal surface
