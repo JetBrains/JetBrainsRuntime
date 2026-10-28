@@ -191,8 +191,23 @@ final class SKRasterTextPipe extends GlyphListPipe {
         if (rule == AlphaComposite.SRC && (sg2d.eargb >>> 24) == 0xff) {
             rule = AlphaComposite.SRC_OVER;
         }
+        // The lock box: the glyph images' bounds grown by two pixels (Skia renders the same glyphs,
+        // and may differ from the strike's image by a pixel), within the clip — not the clip itself:
+        // an INT_ARGB image's mirror is written back for the box after every operation, and a line
+        // of text under a 1200 x 900 clip wrote the whole image back per string, 86 times the
+        // INT_ARGB_PRE time (SkiaRasterTextCostTest).
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
+        gl.startGlyphIteration();   // the list is fresh: the bounds of all its glyph images, as the loops take them
+        int[] bounds = gl.getBounds(n);   // x0, y0, x1, y1 in device pixels; all zero for a list without images
         glyphsBySkia.addAndGet(n);
+        if (bounds[2] <= bounds[0] && bounds[3] <= bounds[1]) {
+            return;   // nothing visible (every glyph without an image)
+        }
+        cx1 = Math.max(cx1, bounds[0] - 2); cy1 = Math.max(cy1, bounds[1] - 2);
+        cx2 = Math.min(cx2, bounds[2] + 2); cy2 = Math.min(cy2, bounds[3] + 2);
+        if (cx1 >= cx2 || cy1 >= cy2) {
+            return;   // no glyph pixel inside the clip
+        }
         int flags = n | (usePositions ? 1 << 24 : 0) | (SKEnvironment.textSmoothing() ? 1 << 25 : 0) | rule << 26 | (dst.untouchedByJava() ? 1 << 30 : 0);
         drawGlyphs(dst, dst.pixelFormat(), runs.contexts(), flags, gl.getX(), gl.getY(), runs.codes(), gl.getImages(), usePositions ? gl.getPositions() : null,
                    sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
