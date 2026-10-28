@@ -138,6 +138,7 @@ import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.skia.SKEnvironment;
 import sun.java2d.skia.SKRenderQueue;
 import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKRenderQueue;
 import sun.java2d.windows.WindowsFlags;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
@@ -641,6 +642,10 @@ public final class WToolkit extends SunToolkit implements Runnable {
         D3DRenderQueue.sync();
         if (SKEnvironment.isSkiaEnabled()) {
             SKRenderQueue.sync();
+        }
+        // and the Vulkan pipeline, as WLToolkit.sync does
+        if (VKEnv.isPresentationEnabled()) {
+            VKRenderQueue.sync();
         }
     }
 
