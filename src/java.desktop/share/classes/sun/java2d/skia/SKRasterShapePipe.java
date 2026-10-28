@@ -155,10 +155,11 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         }
         PathData d = PathData.of(path);
         int[] colors = colorsFor(sg2d);
-        float[] xform = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY()};
+        // the transform, then the pen: line width and miter limit
+        float[] xform = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY(), width, bs.getMiterLimit()};
         strokesBySkia.incrementAndGet();
-        strokePath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(),
-                   xform, width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), aa, paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+        strokePath(sd, sd.pixelFormat(), d.types, d.typeCount, d.coords, d.coordCount, flags(sg2d, aa) | path.getWindingRule() << 9 | bs.getEndCap() << 10 | bs.getLineJoin() << 12,
+                   xform, paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
     /** A path's segments as the native side reads them: types and coordinates. */
@@ -217,14 +218,51 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
     private static void fillDeviceRect(SunGraphics2D sg2d, float x1, float y1, float x2, float y2) {
         SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
         Region clip = sg2d.getCompClip();
-        int cx1 = Math.max(clip.getLoX(), (int) Math.floor(x1)), cy1 = Math.max(clip.getLoY(), (int) Math.floor(y1));
-        int cx2 = Math.min(clip.getHiX(), (int) Math.ceil(x2)), cy2 = Math.min(clip.getHiY(), (int) Math.ceil(y2));
+        boolean aa = antialiased(sg2d);
+        // the pixels the rectangle reaches: every pixel an antialiased edge touches, Skia's rounding (half up) otherwise
+        int rx1 = (int) Math.floor(aa ? x1 : x1 + 0.5f), ry1 = (int) Math.floor(aa ? y1 : y1 + 0.5f);
+        int rx2 = aa ? (int) Math.ceil(x2) : (int) Math.floor(x2 + 0.5f), ry2 = aa ? (int) Math.ceil(y2) : (int) Math.floor(y2 + 0.5f);
+        int cx1 = Math.max(clip.getLoX(), rx1), cy1 = Math.max(clip.getLoY(), ry1), cx2 = Math.min(clip.getHiX(), rx2), cy2 = Math.min(clip.getHiY(), ry2);
         if (cx1 >= cx2 || cy1 >= cy2) {
             return;
         }
+        if (clip.isRectangular() && sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) {
+            // the common case without arrays or a clip: the box is the rectangle's pixels inside the clip
+            fillRectColor(sd, sd.pixelFormat(), x1, y1, x2, y2, flags(sg2d, aa), sg2d.eargb, packed(cx1, cy1), packed(cx2, cy2));
+            return;
+        }
         int[] colors = colorsFor(sg2d);
-        fillRect(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), x1, y1, x2, y2, antialiased(sg2d), paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+        fillRect(sd, sd.pixelFormat(), x1, y1, x2, y2, flags(sg2d, aa), paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
     }
+
+    /**
+     * A non-antialiased integer rectangle in device space with a colour under a rectangular clip, the
+     * loops' FillRect: true when drawn (or empty), false when the paint or the clip needs the general path.
+     */
+    static boolean fillIntegerRect(SunGraphics2D sg2d, int x, int y, int width, int height) {
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            return false;
+        }
+        Region clip = sg2d.getCompClip();
+        if (!clip.isRectangular()) {
+            return false;
+        }
+        int cx1 = Math.max(clip.getLoX(), x), cy1 = Math.max(clip.getLoY(), y), cx2 = Math.min(clip.getHiX(), x + width), cy2 = Math.min(clip.getHiY(), y + height);
+        nonAntialiasedBySkia.incrementAndGet();
+        if (cx1 < cx2 && cy1 < cy2) {
+            SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
+            fillRectColor(sd, sd.pixelFormat(), cx1, cy1, cx2, cy2, flags(sg2d, false), sg2d.eargb, packed(cx1, cy1), packed(cx2, cy2));
+        }
+        return true;
+    }
+
+    /**
+     * Fills the rectangle with a colour (extra alpha included) under a rectangular clip: the box is the
+     * rectangle's pixels inside the clip, so the canvas is not clipped; a non-antialiased opaque SrcOver
+     * or any Src fill is a store into the pixels, as the loops' FillRect, without the canvas or the mirror.
+     */
+    private static native void fillRectColor(SKRasterSurfaceData sd, int pixelFormat, float x1, float y1, float x2, float y2,
+                                             int flags, int argb, int boxLeftTop, int boxRightBottom);
 
     /** Non-antialiased shapes Skia scan-converted (the loops' ProcessPath and span iterator otherwise), for the test of the route. */
     static final java.util.concurrent.atomic.AtomicLong nonAntialiasedBySkia = new java.util.concurrent.atomic.AtomicLong();
@@ -236,6 +274,22 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             nonAntialiasedBySkia.incrementAndGet();
         }
         return aa;
+    }
+
+    /**
+     * The natives take at most 14 parameter slots: HotSpot generates a fast signature handler up to
+     * that size and runs the interpreter's slow one above it, which cost every raster operation
+     * ≈ 0.1 µs (found with the sampler on fillRect). So small values travel packed: the composite rule
+     * in bits 0–7 and the antialiasing flag in bit 8 (callers add the winding rule at bit 9, caps and
+     * joins at 10 and 12), and a device point as x in the high half and y in the low half of an int
+     * (the surface is at most 65535 pixels a side, SKRasterSurfaceData.createData sees to it).
+     */
+    static int flags(SunGraphics2D sg2d, boolean aa) {
+        return compositeRule(sg2d) | (aa ? 1 << 8 : 0);
+    }
+
+    static int packed(int x, int y) {
+        return x << 16 | (y & 0xffff);
     }
 
     private static int compositeRule(SunGraphics2D sg2d) {
@@ -340,20 +394,18 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         int[] spans = spansOf(clip, cx1, cy1, cx2, cy2);
         PathData d = PathData.of(path);
         int[] colors = colorsFor(sg2d);
-        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(), aa, paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
+        fillPath(sd, sd.pixelFormat(), d.types, d.typeCount, d.coords, d.coordCount, flags(sg2d, aa) | path.getWindingRule() << 9, paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spans);
     }
 
     /** Strokes the user-space path under the transform with Skia's stroker (width, cap, join, miter limit as BasicStroke's). */
-    private static native void strokePath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
-                                          float[] coords, int coordCount, int windingRule, float[] xform, float lineWidth, int cap, int join, float miterLimit, boolean antialias,
-                                          float[] paint, int[] colors, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+    private static native void strokePath(SKRasterSurfaceData sd, int pixelFormat, byte[] types, int typeCount, float[] coords, int coordCount,
+                                          int flags, float[] xformAndPen, float[] paint, int[] colors, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
     /** Fills the device-space rectangle into the surface's pixels: edges antialiased where fractional, or the pixels whose centre is inside. */
-    private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, int width, int height, float x1, float y1, float x2, float y2, boolean antialias,
-                                        float[] paint, int[] colors, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+    private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, float x1, float y1, float x2, float y2, int flags,
+                                        float[] paint, int[] colors, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
     /** Fills the device-space path into the surface's pixels: colour with its alpha, Porter-Duff rule, clip box and optional clip spans. */
-    private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
-                                        float[] coords, int coordCount, int windingRule, boolean antialias, float[] paint, int[] colors, int compositeRule,
-                                        int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+    private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, byte[] types, int typeCount, float[] coords, int coordCount,
+                                        int flags, float[] paint, int[] colors, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 }

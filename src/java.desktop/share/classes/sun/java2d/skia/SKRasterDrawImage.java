@@ -87,20 +87,20 @@ final class SKRasterDrawImage extends DrawImage {
         }
         float extraAlpha = sg.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f;
         int rule = sg.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
-        float[] m = {(float) tx.getScaleX(), (float) tx.getShearY(), (float) tx.getShearX(), (float) tx.getScaleY(), (float) tx.getTranslateX(), (float) tx.getTranslateY()};
+        float[] m = {(float) tx.getScaleX(), (float) tx.getShearY(), (float) tx.getShearX(), (float) tx.getScaleY(), (float) tx.getTranslateX(), (float) tx.getTranslateY(), extraAlpha};
         imagesBySkia.incrementAndGet();
-        drawImage(dst, dst.pixelFormat(), dst.imageWidth(), dst.imageHeight(), srcData, srcPf, icr.getWidth(), icr.getHeight(),
-                  sx1, sy1, sx2, sy2, m, interpType, extraAlpha, rule, dx1, dy1, dx2, dy2, SKRasterShapePipe.spansOf(clip, dx1, dy1, dx2, dy2));
+        drawImage(dst, dst.pixelFormat(), srcData, srcPf, SKRasterShapePipe.packed(sx1, sy1), SKRasterShapePipe.packed(sx2, sy2), m, rule | interpType << 8,
+                  SKRasterShapePipe.packed(dx1, dy1), SKRasterShapePipe.packed(dx2, dy2), SKRasterShapePipe.spansOf(clip, dx1, dy1, dx2, dy2));
         return true;
     }
 
     /**
      * Draws the source rectangle under the transform (which maps the rectangle's origin to the
-     * destination), sampling with the interpolation type of AffineTransformOp (1 nearest, 2 bilinear,
-     * 3 bicubic), outside samples transparent; the source is locked for reading while it is drawn.
+     * destination; the extra alpha rides in the array's seventh slot), sampling with the
+     * interpolation type of AffineTransformOp (1 nearest, 2 bilinear, 3 bicubic, in bits 8–15 over
+     * the composite rule); the source is locked for reading while it is drawn. Points are packed
+     * as SKRasterShapePipe.packed.
      */
-    private static native void drawImage(SKRasterSurfaceData dst, int dstPixelFormat, int dstWidth, int dstHeight,
-                                         SurfaceData src, int srcPixelFormat, int srcWidth, int srcHeight, int sx1, int sy1, int sx2, int sy2,
-                                         float[] xform, int interpType, float extraAlpha, int compositeRule,
-                                         int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+    private static native void drawImage(SKRasterSurfaceData dst, int dstPixelFormat, SurfaceData src, int srcPixelFormat, int srcLeftTop, int srcRightBottom,
+                                         float[] xformAndAlpha, int ruleAndInterpolation, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 }

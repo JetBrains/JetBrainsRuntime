@@ -43,9 +43,16 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
 
     private static final SKRasterShapePipe shapePipe = new SKRasterShapePipe();
     private static final SKRasterDrawImage imagePipe = new SKRasterDrawImage();
+    /** The converters (stateless) with Marlin's antialiased parameters and the loops' non-antialiased ones. */
+    private static final PixelToParallelogramConverter aaConverter = new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0 / 8.0, 0.499, false);
+    private static final PixelToParallelogramConverter converter = new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0, 0.25, true);
+    private static final SKRasterFillPipe fillPipe = new SKRasterFillPipe(converter);
 
     /** The raster surface for the image, or null when the image's type stays on the loops. */
     public static SurfaceData createData(BufferedImage img, double scaleX, double scaleY) {
+        if (img.getRaster().getWidth() > 0xffff || img.getRaster().getHeight() > 0xffff) {
+            return null;   // the natives pack device points into 16 bits a coordinate; the loops take the rest
+        }
         SurfaceType type; int pf;
         switch (img.getType()) {
             case BufferedImage.TYPE_INT_ARGB:     type = SurfaceType.IntArgb;    pf = SKSurfaceData.PF_INT_ARGB; break;
@@ -97,20 +104,16 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
         if ((sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
                 && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
             if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON) {
-                PixelToParallelogramConverter converter =
-                        new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0 / 8.0, 0.499, false);
-                sg2d.drawpipe = converter;
-                sg2d.fillpipe = converter;
-                sg2d.shapepipe = converter;
+                sg2d.drawpipe = aaConverter;
+                sg2d.fillpipe = aaConverter;
+                sg2d.shapepipe = aaConverter;
             } else {
                 // the loops' non-antialiased converter rules (a 1-px pen, quarter-pixel normalization,
                 // adjusted fills); thin strokes stay the loops' Bresenham lines
-                PixelToParallelogramConverter converter =
-                        new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0, 0.25, true);
                 if (sg2d.strokeState != SunGraphics2D.STROKE_THIN) {
                     sg2d.drawpipe = converter;
                 }
-                sg2d.fillpipe = converter;
+                sg2d.fillpipe = fillPipe;
                 sg2d.shapepipe = converter;
             }
         }

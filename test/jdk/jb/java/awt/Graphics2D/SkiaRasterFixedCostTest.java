@@ -26,16 +26,16 @@ import sun.java2d.SurfaceData;
 
 /**
  * @test
- * @summary The fixed cost of one antialiased operation on a Skia raster
- *          surface: thousands of small antialiased rectangles, the converter's
- *          parallelogram fills, must not take more than 1.5 times the software
- *          loops' time for the same drawing on INT_ARGB_PRE (they took 3.9
- *          times when every operation created its canvas, copied its arrays
- *          and, declared BGRA, ran Skia's generic blitter instead of its N32
- *          one), and not more than 2.5 times on INT_ARGB, whose pixels are
- *          converted into and out of a premultiplied mirror per operation, a
- *          cost in the touched area rather than per call. Median of
- *          interleaved frames.
+ * @summary The fixed cost of one operation on a Skia raster surface, measured on
+ *          thousands of small rectangles against the software loops, median of
+ *          interleaved frames. Antialiased fractional rectangles (the converter's
+ *          parallelogram fills) may take 1.5 times the loops' time on INT_ARGB_PRE
+ *          (3.9 when every operation created its canvas, copied its arrays and ran
+ *          Skia's generic blitter) and 2.5 on INT_ARGB, whose pixels are converted
+ *          into and out of a premultiplied mirror per operation. Non-antialiased
+ *          integer rectangles are the loops' cheapest call, a store under the same
+ *          lock, so only the fixed cost shows: 1.25 and 1.5 times (3.5 before the
+ *          colour-only rectangle entry that locks, stores and leaves).
  * @modules java.desktop/sun.java2d
  * @run main/othervm -Dsun.java2d.skia.raster=true -Djava.awt.headless=true SkiaRasterFixedCostTest
  */
@@ -47,31 +47,39 @@ public class SkiaRasterFixedCostTest {
         if (!SurfaceData.getPrimarySurfaceData(new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB)).getClass().getSimpleName().equals("SKRasterSurfaceData")) {
             throw new RuntimeException("no Skia raster surface: is the backend's library available?");
         }
-        for (int type : new int[] {BufferedImage.TYPE_INT_ARGB_PRE, BufferedImage.TYPE_INT_ARGB}) {
-            BufferedImage skia = new BufferedImage(W, H, type);
-            double[] a = new double[FRAMES], b = new double[FRAMES];
-            for (int f = 0; f < FRAMES; f++) {   // interleaved: the same frame on both surfaces
-                a[f] = frame(skia, f); b[f] = frame(loops, f);
-            }
-            double ms = median(a), ml = median(b), ratio = ms / ml;
-            double limit = type == BufferedImage.TYPE_INT_ARGB ? 2.5 : 1.5;
-            System.out.printf("type %d: %d AA rects per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.1f)%n", type, N, ms, ml, ratio, limit);
-            if (ratio > limit) {
-                throw new RuntimeException("type " + type + ": the raster surface takes " + ratio + " times the loops' time for small AA rectangles (limit " + limit + ")");
+        for (boolean aa : new boolean[] {true, false}) {
+            for (int type : new int[] {BufferedImage.TYPE_INT_ARGB_PRE, BufferedImage.TYPE_INT_ARGB}) {
+                BufferedImage skia = new BufferedImage(W, H, type);
+                double[] a = new double[FRAMES], b = new double[FRAMES];
+                for (int f = 0; f < FRAMES; f++) {   // interleaved: the same frame on both surfaces
+                    a[f] = frame(skia, f, aa); b[f] = frame(loops, f, aa);
+                }
+                double ms = median(a), ml = median(b), ratio = ms / ml;
+                // AA: the rasterizer's work dominates; non-AA integer rectangles are the loops' cheapest
+                // operation (a memset-like loop under the same lock), so only the fixed cost shows
+                double limit = aa ? (type == BufferedImage.TYPE_INT_ARGB ? 2.5 : 1.5) : (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.25);
+                System.out.printf("type %d: %d %s rects per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.2f)%n", type, N, aa ? "AA" : "non-AA integer", ms, ml, ratio, limit);
+                if (ratio > limit) {
+                    throw new RuntimeException("type " + type + ": the raster surface takes " + ratio + " times the loops' time for small " + (aa ? "AA" : "non-AA integer") + " rectangles (limit " + limit + ")");
+                }
             }
         }
         System.out.println("PASSED");
     }
 
-    static double frame(BufferedImage img, int seed) {
+    static double frame(BufferedImage img, int seed, boolean aa) {
         Graphics2D g = img.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, aa ? RenderingHints.VALUE_ANTIALIAS_ON : RenderingHints.VALUE_ANTIALIAS_OFF);
         g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
         Random rnd = new Random(seed);
         long t0 = System.nanoTime();
         for (int i = 0; i < N; i++) {
             g.setColor(new Color(rnd.nextInt(0xffffff)));
-            g.fill(new Rectangle2D.Double(rnd.nextInt(W - 40) + rnd.nextDouble(), rnd.nextInt(H - 40) + rnd.nextDouble(), 30, 20));
+            if (aa) {
+                g.fill(new Rectangle2D.Double(rnd.nextInt(W - 40) + rnd.nextDouble(), rnd.nextInt(H - 40) + rnd.nextDouble(), 30, 20));
+            } else {
+                g.fillRect(rnd.nextInt(W - 40), rnd.nextInt(H - 40), 30, 20);
+            }
         }
         double ms = (System.nanoTime() - t0) / 1e6;
         g.dispose();

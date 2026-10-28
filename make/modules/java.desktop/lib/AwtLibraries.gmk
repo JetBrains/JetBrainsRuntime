@@ -636,6 +636,9 @@ ifeq ($(SKIA_ENABLED), true)
       common/awt/debug \
       common/font \
       libawt/java2d \
+      libawt/awt/image \
+      libawt/awt/image/cvutils \
+      common/awt \
       java.base:libjava \
       #
   LIBAWT_SKIA_LDFLAGS :=

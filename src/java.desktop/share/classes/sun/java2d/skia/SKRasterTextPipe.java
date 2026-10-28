@@ -133,18 +133,19 @@ final class SKRasterTextPipe extends GlyphListPipe {
         }
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
         glyphsBySkia.addAndGet(n);
-        drawGlyphs(dst, dst.pixelFormat(), dst.imageWidth(), dst.imageHeight(), strike.skiaScalerContext(), n, usePositions,
-                   SKEnvironment.textSmoothing(), gl.getX(), gl.getY(), gl.getGlyphCodes(), gl.getImages(), usePositions ? gl.getPositions() : null,
-                   sg2d.eargb, rule, cx1, cy1, cx2, cy2, SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
+        int flags = n | (usePositions ? 1 << 24 : 0) | (SKEnvironment.textSmoothing() ? 1 << 25 : 0) | rule << 26;
+        drawGlyphs(dst, dst.pixelFormat(), strike.skiaScalerContext(), flags, gl.getX(), gl.getY(), gl.getGlyphCodes(), gl.getImages(), usePositions ? gl.getPositions() : null,
+                   sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
     }
 
     /**
      * Draws the glyph codes at Java's positions (or along the images' advances) from the
      * baseline origin through the strike's SkFont, with the colour (extra alpha included,
-     * sg2d.eargb) and composite rule; the arrays are the GlyphList's own, read before it is reused.
+     * sg2d.eargb); the arrays are the GlyphList's own, read before it is reused. countAndFlags:
+     * the glyph count in bits 0–23, usePositions at 24, smoothing at 25, the composite rule from 26
+     * (the natives take at most 14 parameter slots, see SKRasterShapePipe.flags).
      */
-    private static native void drawGlyphs(SKRasterSurfaceData dst, int dstPixelFormat, int dstWidth, int dstHeight,
-                                          long scalerContext, int numGlyphs, boolean usePositions, boolean smoothing,
+    private static native void drawGlyphs(SKRasterSurfaceData dst, int dstPixelFormat, long scalerContext, int countAndFlags,
                                           float originX, float originY, int[] codes, long[] images, float[] positions,
-                                          int argb, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+                                          int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 }

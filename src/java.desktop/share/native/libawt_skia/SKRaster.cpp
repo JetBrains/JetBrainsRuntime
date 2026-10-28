@@ -42,6 +42,8 @@
 #include "include/core/SkShader.h"
 #include "include/core/SkImage.h"
 #include "include/core/SkSurfaceProps.h"
+#include "java_awt_AlphaComposite.h"
+#include "BufImgSurfaceData.h"
 #include "include/core/SkFont.h"
 #include "include/core/SkSamplingOptions.h"
 
@@ -75,6 +77,10 @@ inline uint32_t premultiplied(uint32_t p) {   // Java's unpremultiplied ARGB int
     uint32_t c0 = ((p & 0xff) * a + 127) / 255, c1 = (((p >> 8) & 0xff) * a + 127) / 255, c2 = (((p >> 16) & 0xff) * a + 127) / 255;
     return (a << 24) | (c2 << 16) | (c1 << 8) | c0;
 }
+// A device point packed by SKRasterShapePipe.packed: x in the high half, y in the low half.
+inline jint px(jint p) { return (jint) ((uint32_t) p >> 16); }
+inline jint py(jint p) { return p & 0xffff; }
+
 inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA memory declared RGBA
     return SkColorSetARGB((argb >> 24) & 0xff, argb & 0xff, (argb >> 8) & 0xff, (argb >> 16) & 0xff);
 }
@@ -159,26 +165,38 @@ RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &in
 
 // The locked destination for one operation: lock, draw through the thread's canvas, unlock.
 struct Operation {
-    JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; RasterTarget *target = nullptr; SkIRect box; bool ok = false;
+    // kClipped: the canvas clipped to the box (a shape may reach outside it); kBox: the canvas unclipped,
+    // the caller draws the box and nothing else (save, clip and restore are a third of a small
+    // operation's cost); kDirect: the lock alone — the caller stores into the pixels, no canvas, no mirror
+    enum Mode { kClipped, kBox, kDirect };
+    JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; RasterTarget *target = nullptr; SkIRect box; Mode mode; bool ok = false;
 
-    Operation(JNIEnv *e, jobject sData, jint pixelFormat, jint width, jint height, jint x1, jint y1, jint x2, jint y2) : env(e) {
+    Operation(JNIEnv *e, jobject sData, jint pixelFormat, jint x1, jint y1, jint x2, jint y2, Mode m = kClipped) : env(e), mode(m) {
         ops = SurfaceData_GetOps(env, sData);
         if (ops == nullptr) return;
+        // the image's size, from the buffered image's own ops (SKRasterSurfaceData is one)
+        const SurfaceDataBounds &image = ((BufImgSDOps *) ops)->rasbounds;
+        const jint width = image.x2 - image.x1, height = image.y2 - image.y1;
         ras.bounds.x1 = x1; ras.bounds.y1 = y1; ras.bounds.x2 = x2; ras.bounds.y2 = y2;
         if (ops->Lock(env, ops, &ras, SD_LOCK_WRITE) != SD_SUCCESS) { ops = nullptr; return; }
         ops->GetRasInfo(env, ops, &ras);
         if (ras.rasBase == nullptr || ras.bounds.x1 >= ras.bounds.x2 || ras.bounds.y1 >= ras.bounds.y2) return;
+        box = SkIRect::MakeLTRB(ras.bounds.x1, ras.bounds.y1, ras.bounds.x2, ras.bounds.y2);
+        if (mode == kDirect) { ok = true; return; }
         if (probe < 2) return;
         // rasBase points at pixel (0, 0); the info describes the whole image, so the canvas (and the
         // mirror) outlive the operation — a box-sized info rebuilt them for every call
         target = targetFor(ops, ras.rasBase, infoFor(pixelFormat, width, height), (size_t) ras.scanStride);
         if (target == nullptr) return;
-        box = SkIRect::MakeLTRB(ras.bounds.x1, ras.bounds.y1, ras.bounds.x2, ras.bounds.y2);
         if (target->viaMirror()) target->mirrorIn(box);
-        target->canvas->save();
-        target->canvas->clipIRect(box);
+        if (mode == kClipped) {
+            target->canvas->save();
+            target->canvas->clipIRect(box);
+        }
         ok = true;
     }
+    /** The row of the operation's pixels at y, from the box's left edge (Java's own pixel layout). */
+    uint32_t *row(int y) { return (uint32_t *) ((char *) ras.rasBase + (size_t) y * ras.scanStride) + box.fLeft; }
     SkCanvas *canvas() { return target->canvas.get(); }
     void clipSpans(const jint *spans, size_t count) {   // device coordinates: the mirror's origin is the image's
         SkRegion region;
@@ -186,7 +204,10 @@ struct Operation {
         target->canvas->clipRegion(region);
     }
     ~Operation() {
-        if (ok) { target->canvas->restore(); if (target->viaMirror()) target->mirrorOut(box); }
+        if (ok && target != nullptr) {
+            if (mode == kClipped) target->canvas->restore();
+            if (target->viaMirror()) target->mirrorOut(box);
+        }
         if (ops != nullptr) { SurfaceData_InvokeRelease(env, ops, &ras); SurfaceData_InvokeUnlock(env, ops, &ras); }
     }
 };
@@ -282,14 +303,16 @@ struct PaintData {
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
-                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jboolean antialias, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
-                                                 jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
+                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jint flags, jfloatArray paintArray, jintArray colorsArray,
+                                                 jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1;
+    const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     PaintData pd(env, paintArray, colorsArray);
-    Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     if (probe < 3) return;
@@ -297,17 +320,48 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobje
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
-                                                   jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint windingRule,
-                                                   jfloatArray xformArray, jfloat lineWidth, jint cap, jint join, jfloat miterLimit, jboolean antialias,
-                                                   jfloatArray paintArray, jintArray colorsArray, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+Java_sun_java2d_skia_SKRasterShapePipe_fillRectColor(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
+                                                      jfloat x1, jfloat y1, jfloat x2, jfloat y2, jint flags, jint argb, jint boxLeftTop, jint boxRightBottom)
 {
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1;
+    const jint boxX1 = px(boxLeftTop), boxY1 = py(boxLeftTop), boxX2 = px(boxRightBottom), boxY2 = py(boxRightBottom);
+    if (probe < 1) return;   // J2D_SKIA_RASTER_PROBE=0: the Java side and the call alone
+    const bool opaque = ((argb >> 24) & 0xff) == 0xff;
+    // the loops' FillRect for these is a store of the colour's pixel: so is ours, into Java's own layout
+    const bool store = !antialias && (compositeRule == java_awt_AlphaComposite_SRC || (opaque && compositeRule == java_awt_AlphaComposite_SRC_OVER));
+    Operation op(env, sData, pixelFormat, boxX1, boxY1, boxX2, boxY2, store ? Operation::kDirect : Operation::kBox);
+    if (!op.ok || probe < 2) return;   // 1: the lock alone
+    if (store) {
+        const uint32_t pixel = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE ? premultiplied((uint32_t) argb) : (uint32_t) argb;
+        const int count = op.box.width();
+        for (int y = op.box.fTop; y < op.box.fBottom; y++) std::fill_n(op.row(y), count, pixel);
+        return;
+    }
+    if (probe < 3) return;
+    SkPaint paint;
+    paint.setAntiAlias(antialias);
+    paint.setColor(swizzled(argb));
+    paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
+    // the box is the rectangle's pixels inside the clip: an antialiased edge keeps its fraction inside it
+    SkRect rect = antialias ? SkRect::MakeLTRB(std::max(x1, (jfloat) op.box.fLeft), std::max(y1, (jfloat) op.box.fTop), std::min(x2, (jfloat) op.box.fRight), std::min(y2, (jfloat) op.box.fBottom))
+                            : SkRect::Make(op.box);
+    op.canvas()->drawRect(rect, paint);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
+                                                   jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint flags,
+                                                   jfloatArray xformArray, jfloatArray paintArray, jintArray colorsArray, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
+{
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1; const jint windingRule = (flags >> 9) & 1, cap = (flags >> 10) & 3, join = (flags >> 12) & 3;
+    const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
+    jfloat xf[8]; env->GetFloatArrayRegion(xformArray, 0, 8, xf);   // the transform, then the pen: line width and miter limit
+    const jfloat lineWidth = xf[6], miterLimit = xf[7];
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     env->GetByteArrayRegion(typesArray, 0, typeCount, types.data);
     env->GetFloatArrayRegion(coordsArray, 0, coordCount, coords.data);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
-    jfloat xf[6]; env->GetFloatArrayRegion(xformArray, 0, 6, xf);
     SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
     // BasicStroke's cap and join constants: CAP_BUTT 0, CAP_ROUND 1, CAP_SQUARE 2; JOIN_MITER 0, JOIN_ROUND 1, JOIN_BEVEL 2
     static const SkPaint::Cap caps[] = { SkPaint::kButt_Cap, SkPaint::kRound_Cap, SkPaint::kSquare_Cap };
@@ -319,7 +373,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     paint.setStrokeCap(caps[std::clamp((int) cap, 0, 2)]);
     paint.setStrokeJoin(joins[std::clamp((int) join, 0, 2)]);
     paint.setStrokeMiter(miterLimit);
-    Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     // the geometry is stroked in user space and drawn under the transform (Java's stroke semantics)
@@ -328,11 +382,12 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
-                                                 jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount,
-                                                 jint windingRule, jboolean antialias, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
-                                                 jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
+                                                 jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint flags,
+                                                 jfloatArray paintArray, jintArray colorsArray, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1; const jint windingRule = (flags >> 9) & 1;
+    const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     env->GetByteArrayRegion(typesArray, 0, typeCount, types.data);
@@ -340,27 +395,30 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
     PaintData pd(env, paintArray, colorsArray);
-    Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     op.canvas()->drawPath(path, pd.paint(compositeRule, antialias));
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint dstWidth, jint dstHeight,
-                                                 jobject srcData, jint srcPixelFormat, jint srcWidth, jint srcHeight, jint sx1, jint sy1, jint sx2, jint sy2,
-                                                 jfloatArray xformArray, jint interpType, jfloat extraAlpha, jint compositeRule,
-                                                 jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat,
+                                                 jobject srcData, jint srcPixelFormat, jint srcLeftTop, jint srcRightBottom,
+                                                 jfloatArray xformArray, jint ruleAndInterpolation, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
+    const jint compositeRule = ruleAndInterpolation & 0xff, interpType = (ruleAndInterpolation >> 8) & 0xff;
+    const jint sx1 = px(srcLeftTop), sy1 = py(srcLeftTop), sx2 = px(srcRightBottom), sy2 = py(srcRightBottom);
+    const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
-    jfloat xf[6]; env->GetFloatArrayRegion(xformArray, 0, 6, xf);
+    jfloat xf[7]; env->GetFloatArrayRegion(xformArray, 0, 7, xf);   // the transform, then the extra alpha
+    const jfloat extraAlpha = xf[6];
     SurfaceDataOps *srcOps = SurfaceData_GetOps(env, srcData);   // every JNI call before the pins
     if (srcOps == nullptr) return;
     // AffineTransformOp: 1 nearest neighbour, 2 bilinear, 3 bicubic (Java's kernel is Catmull-Rom's, a = -0.5)
     SkSamplingOptions sampling = interpType == 3 ? SkSamplingOptions(SkCubicResampler::CatmullRom())
                                : interpType == 2 ? SkSamplingOptions(SkFilterMode::kLinear) : SkSamplingOptions(SkFilterMode::kNearest);
-    Operation op(env, dstData, dstPixelFormat, dstWidth, dstHeight, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     // the source, locked for reading (a nested pin: no JNI call until it is released)
@@ -405,11 +463,13 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint dstWidth, jint dstHeight,
-                                                 jlong scalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlong scalerContext, jint countAndFlags,
                                                  jfloat originX, jfloat originY, jintArray codesArray, jlongArray imagesArray, jfloatArray positionsArray,
-                                                 jint argb, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+                                                 jint argb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
+    const jint numGlyphs = countAndFlags & 0xffffff; const jboolean usePositions = (countAndFlags >> 24) & 1, smoothing = (countAndFlags >> 25) & 1;
+    const jint compositeRule = (countAndFlags >> 26) & 0xf;
+    const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     if (numGlyphs <= 0) return;
     // every Java array read before the pin
     Buffer<256, jint> codes((size_t) numGlyphs); env->GetIntArrayRegion(codesArray, 0, numGlyphs, codes.data);
@@ -419,7 +479,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     if (positions.size) env->GetFloatArrayRegion(positionsArray, 0, (jsize) positions.size, positions.data);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
-    Operation op(env, dstData, dstPixelFormat, dstWidth, dstHeight, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     SkPaint paint;
