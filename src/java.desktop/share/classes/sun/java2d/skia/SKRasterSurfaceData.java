@@ -39,6 +39,7 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
 
     /** Pixel formats the native side understands, in {@link SKSurfaceData}'s numbering. */
     private final int pixelFormat;
+    private final int width, height;
 
     private static final SKRasterShapePipe shapePipe = new SKRasterShapePipe();
 
@@ -66,11 +67,17 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
     private SKRasterSurfaceData(BufferedImage img, SurfaceType type, int pixelFormat, double scaleX, double scaleY) {
         super(img.getRaster().getDataBuffer(), img, type, scaleX, scaleY);
         this.pixelFormat = pixelFormat;
+        this.width = img.getRaster().getWidth();
+        this.height = img.getRaster().getHeight();
     }
 
     int pixelFormat() {
         return pixelFormat;
     }
+
+    /** The image's size: the native side keeps a canvas over the whole image, not over one operation's box. */
+    int imageWidth() { return width; }
+    int imageHeight() { return height; }
 
     /**
      * The loops' pipes for everything, then Skia for the antialiased shapes a

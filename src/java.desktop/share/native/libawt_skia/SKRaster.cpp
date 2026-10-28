@@ -14,9 +14,17 @@
  * limitations under the License.
  */
 
-// Skia's raster backend on a BufferedImage (sun.java2d.skia.SKRasterSurfaceData): the
-// image's pixels are locked like the software loops lock them and wrapped in a raster
-// SkCanvas for the duration of one drawing operation, on the calling thread.
+// Skia's raster backend on a BufferedImage (sun.java2d.skia.SKRasterSurfaceData): the image's
+// pixels are locked like the software loops lock them and drawn through a raster SkCanvas, on
+// the calling thread, one operation at a time.
+//
+// The fixed cost per operation is what matters for the IDE's thousands of small fills, so
+// nothing is allocated on the way: each thread keeps the canvases of the last few surfaces it
+// drew into (a canvas is bound to the pixel pointer the lock returned; it is rebuilt only when
+// the pointer, size or stride change), the path and clip data come through stack buffers, and
+// an unpremultiplied INT_ARGB image is drawn through a persistent premultiplied mirror of the
+// whole image — Skia's raster treats unpremultiplied as premultiplied — with only the touched
+// box converted in and out per operation.
 
 #include "SKBackend.h"
 
@@ -31,6 +39,9 @@
 #include "include/core/SkPathBuilder.h"
 #include "include/core/SkRegion.h"
 
+#include <algorithm>
+#include <array>
+#include <cstdlib>
 #include <vector>
 
 namespace {
@@ -38,122 +49,195 @@ namespace {
 // Java's PathIterator segment types
 enum { SEG_MOVETO = 0, SEG_LINETO = 1, SEG_QUADTO = 2, SEG_CUBICTO = 3, SEG_CLOSE = 4 };
 
-SkPath pathFrom(const std::vector<jbyte> &types, const std::vector<jfloat> &coords, jint windingRule) {
-    SkPathBuilder path;
-    path.setFillType(windingRule == 0 /* WIND_EVEN_ODD */ ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
-    size_t c = 0;
-    for (jbyte t : types) {
-        switch (t) {
-            case SEG_MOVETO:  path.moveTo(coords[c], coords[c + 1]); c += 2; break;
-            case SEG_LINETO:  path.lineTo(coords[c], coords[c + 1]); c += 2; break;
-            case SEG_QUADTO:  path.quadTo(coords[c], coords[c + 1], coords[c + 2], coords[c + 3]); c += 4; break;
-            case SEG_CUBICTO: path.cubicTo(coords[c], coords[c + 1], coords[c + 2], coords[c + 3], coords[c + 4], coords[c + 5]); c += 6; break;
-            case SEG_CLOSE:   path.close(); break;
-        }
+// The Java ints are B, G, R, A bytes in memory on little-endian machines. This Skia build's native
+// 32-bit order (kN32, SK_R32_SHIFT 0) is R, G, B, A: a destination declared BGRA takes Skia's generic
+// raster-pipeline blitters, a destination declared N32 its hand-written ones — measured 1.8 µs against
+// 0.2 µs for a small antialiased rectangle. So the pixels are declared N32 and every colour that
+// enters is swizzled (red and blue exchanged): blending is per channel, so the result is exact.
+static_assert(kN32_SkColorType == kRGBA_8888_SkColorType, "the swizzle below assumes an RGBA Skia build");
+SkImageInfo infoFor(jint pixelFormat, jint w, jint h) {
+    switch (pixelFormat) {
+        case sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE: return SkImageInfo::MakeN32(w, h, kPremul_SkAlphaType);
+        case sun_java2d_skia_SKSurfaceData_PF_INT_RGB:      return SkImageInfo::MakeN32(w, h, kOpaque_SkAlphaType);
+        default:                                            return SkImageInfo::MakeN32(w, h, kUnpremul_SkAlphaType);
     }
-    return path.detach();
+}
+inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA memory declared RGBA
+    return SkColorSetARGB((argb >> 24) & 0xff, argb & 0xff, (argb >> 8) & 0xff, (argb >> 16) & 0xff);
 }
 
-// Skia's raster surfaces treat kUnpremul as kPremul (SkBitmap), so an INT_ARGB image is
-// drawn through a premultiplied copy of the touched pixels and converted back.
-struct Destination {
-    SkImageInfo info;        // the image's own pixel format
-    void *base;              // pixel (0, 0)
-    size_t rowBytes;
-    SkIRect box;             // the pixels this operation may touch
-    SkBitmap premul;         // the copy for unpremultiplied images, box-sized
-    bool viaCopy = false;
+// One surface's canvas, kept by the drawing thread between operations.
+struct RasterTarget {
+    SurfaceDataOps *ops = nullptr;
+    void *pixels = nullptr;          // what the lock returned last time; the canvas draws there
+    SkImageInfo info;
+    size_t rowBytes = 0;
+    std::unique_ptr<SkCanvas> canvas;
+    SkBitmap mirror;                 // INT_ARGB: the premultiplied copy of the whole image the canvas draws into
+    uint32_t stamp = 0;              // for the least-recently-used replacement
 
-    std::unique_ptr<SkCanvas> canvas() {
-        if (info.alphaType() != kUnpremul_SkAlphaType) {
-            return SkCanvas::MakeRasterDirect(info, base, rowBytes);
-        }
-        viaCopy = true;
-        premul.allocPixels(SkImageInfo::Make(box.width(), box.height(), info.colorType(), kPremul_SkAlphaType));
-        SkPixmap src(info, base, rowBytes);
-        src.readPixels(premul.pixmap(), box.fLeft, box.fTop);   // unpremultiplied → premultiplied
-        std::unique_ptr<SkCanvas> c = SkCanvas::MakeRasterDirect(premul.info(), premul.getPixels(), premul.rowBytes());
-        if (c) c->translate(-box.fLeft, -box.fTop);
-        return c;
+    bool matches(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) const {
+        return ops == o && pixels == p && rowBytes == rb && info.width() == i.width() && info.height() == i.height()
+               && info.alphaType() == i.alphaType();
     }
-    void finish() {
-        if (!viaCopy) return;
-        SkPixmap dst(SkImageInfo::Make(box.width(), box.height(), info.colorType(), kUnpremul_SkAlphaType),
-                     (char *) base + box.fTop * rowBytes + box.fLeft * info.bytesPerPixel(), rowBytes);
-        premul.pixmap().readPixels(dst, 0, 0);                  // premultiplied → unpremultiplied
+    bool bind(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) {
+        ops = o; pixels = p; info = i; rowBytes = rb; canvas.reset();
+        if (i.alphaType() == kUnpremul_SkAlphaType) {
+            if (mirror.width() != i.width() || mirror.height() != i.height()) {
+                mirror.reset();
+                if (!mirror.tryAllocPixels(SkImageInfo::Make(i.width(), i.height(), i.colorType(), kPremul_SkAlphaType))) return false;
+            }
+            canvas = SkCanvas::MakeRasterDirect(mirror.info(), mirror.getPixels(), mirror.rowBytes());
+        } else {
+            mirror.reset();
+            canvas = SkCanvas::MakeRasterDirect(i, p, rb);
+        }
+        return canvas != nullptr;
+    }
+    bool viaMirror() const { return info.alphaType() == kUnpremul_SkAlphaType; }
+    // The touched box into the mirror (unpremultiplied → premultiplied) and back out. Plain
+    // loops: Skia's conversion goes through its raster pipeline at ≈ 10 ns per pixel, which
+    // made a 30 × 20 fill cost 14 µs; opaque pixels, the common case, are a copy.
+    void mirrorIn(const SkIRect &box) {
+        for (int y = box.fTop; y < box.fBottom; y++) {
+            const uint32_t *src = (const uint32_t *) ((const char *) pixels + y * rowBytes) + box.fLeft;
+            uint32_t *dst = mirror.getAddr32(box.fLeft, y);
+            for (int x = box.fLeft; x < box.fRight; x++, src++, dst++) {
+                uint32_t p = *src, a = p >> 24;
+                if (a == 0xff) { *dst = p; continue; }
+                if (a == 0) { *dst = 0; continue; }
+                uint32_t c0 = ((p & 0xff) * a + 127) / 255, c1 = (((p >> 8) & 0xff) * a + 127) / 255, c2 = (((p >> 16) & 0xff) * a + 127) / 255;
+                *dst = (a << 24) | (c2 << 16) | (c1 << 8) | c0;
+            }
+        }
+    }
+    void mirrorOut(const SkIRect &box) {
+        for (int y = box.fTop; y < box.fBottom; y++) {
+            const uint32_t *src = mirror.getAddr32(box.fLeft, y);
+            uint32_t *dst = (uint32_t *) ((char *) pixels + y * rowBytes) + box.fLeft;
+            for (int x = box.fLeft; x < box.fRight; x++, src++, dst++) {
+                uint32_t p = *src, a = p >> 24;
+                if (a == 0xff) { *dst = p; continue; }
+                if (a == 0) { *dst = 0; continue; }
+                uint32_t c0 = std::min<uint32_t>(255, ((p & 0xff) * 255 + a / 2) / a), c1 = std::min<uint32_t>(255, (((p >> 8) & 0xff) * 255 + a / 2) / a),
+                         c2 = std::min<uint32_t>(255, (((p >> 16) & 0xff) * 255 + a / 2) / a);
+                *dst = (a << 24) | (c2 << 16) | (c1 << 8) | c0;
+            }
+        }
     }
 };
 
-SkImageInfo infoFor(jint pixelFormat, jint w, jint h) {
-    // the Java ints are B, G, R, A bytes in memory on little-endian machines
-    switch (pixelFormat) {
-        case sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE: return SkImageInfo::Make(w, h, kBGRA_8888_SkColorType, kPremul_SkAlphaType);
-        case sun_java2d_skia_SKSurfaceData_PF_INT_RGB:      return SkImageInfo::Make(w, h, kBGRA_8888_SkColorType, kOpaque_SkAlphaType);
-        default:                                            return SkImageInfo::Make(w, h, kBGRA_8888_SkColorType, kUnpremul_SkAlphaType);
+// J2D_SKIA_RASTER_PROBE (measurement only): 1 = lock and unlock, nothing else; 2 = + the canvas clip; 3 = everything
+static const int probe = getenv("J2D_SKIA_RASTER_PROBE") ? atoi(getenv("J2D_SKIA_RASTER_PROBE")) : 3;
+
+constexpr int kTargets = 4;
+thread_local std::array<RasterTarget, kTargets> targets;
+thread_local uint32_t targetStamp = 0;
+
+RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &info, size_t rowBytes) {
+    RasterTarget *victim = &targets[0];
+    for (RasterTarget &t : targets) {
+        if (t.matches(ops, pixels, info, rowBytes)) { t.stamp = ++targetStamp; return &t; }
+        if (t.stamp < victim->stamp) victim = &t;
     }
+    victim->stamp = ++targetStamp;
+    return victim->bind(ops, pixels, info, rowBytes) ? victim : nullptr;
 }
+
+// The locked destination for one operation: lock, draw through the thread's canvas, unlock.
+struct Operation {
+    JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; RasterTarget *target = nullptr; SkIRect box; bool ok = false;
+
+    Operation(JNIEnv *e, jobject sData, jint pixelFormat, jint width, jint height, jint x1, jint y1, jint x2, jint y2) : env(e) {
+        ops = SurfaceData_GetOps(env, sData);
+        if (ops == nullptr) return;
+        ras.bounds.x1 = x1; ras.bounds.y1 = y1; ras.bounds.x2 = x2; ras.bounds.y2 = y2;
+        if (ops->Lock(env, ops, &ras, SD_LOCK_WRITE) != SD_SUCCESS) { ops = nullptr; return; }
+        ops->GetRasInfo(env, ops, &ras);
+        if (ras.rasBase == nullptr || ras.bounds.x1 >= ras.bounds.x2 || ras.bounds.y1 >= ras.bounds.y2) return;
+        if (probe < 2) return;
+        // rasBase points at pixel (0, 0); the info describes the whole image, so the canvas (and the
+        // mirror) outlive the operation — a box-sized info rebuilt them for every call
+        target = targetFor(ops, ras.rasBase, infoFor(pixelFormat, width, height), (size_t) ras.scanStride);
+        if (target == nullptr) return;
+        box = SkIRect::MakeLTRB(ras.bounds.x1, ras.bounds.y1, ras.bounds.x2, ras.bounds.y2);
+        if (target->viaMirror()) target->mirrorIn(box);
+        target->canvas->save();
+        target->canvas->clipIRect(box);
+        ok = true;
+    }
+    SkCanvas *canvas() { return target->canvas.get(); }
+    void clipSpans(const jint *spans, size_t count) {   // device coordinates: the mirror's origin is the image's
+        SkRegion region;
+        for (size_t i = 0; i + 3 < count; i += 4) region.op(SkIRect::MakeLTRB(spans[i], spans[i + 1], spans[i + 2], spans[i + 3]), SkRegion::kUnion_Op);
+        target->canvas->clipRegion(region);
+    }
+    ~Operation() {
+        if (ok) { target->canvas->restore(); if (target->viaMirror()) target->mirrorOut(box); }
+        if (ops != nullptr) { SurfaceData_InvokeRelease(env, ops, &ras); SurfaceData_InvokeUnlock(env, ops, &ras); }
+    }
+};
+
+SkPaint solidPaint(jint argb, jint compositeRule) {
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(swizzled(argb));
+    paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
+    return paint;
+}
+
+// Java arrays into stack buffers (the heap for the rare long path); read before the lock pins the image
+template <size_t N, typename T> struct Buffer {
+    std::array<T, N> small; std::vector<T> large; T *data; size_t size;
+    Buffer(size_t n) : size(n) { if (n <= N) data = small.data(); else { large.resize(n); data = large.data(); } }
+};
 
 } // namespace
 
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
+Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
+                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jint argb, jint compositeRule,
+                                                 jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+{
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
+    if (!op.ok) return;
+    if (spans.size) op.clipSpans(spans.data, spans.size);
+    if (probe < 3) return;
+    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), solidPaint(argb, compositeRule));
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
                                                  jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount,
                                                  jint windingRule, jint argb, jint compositeRule,
                                                  jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
-    // every Java array is copied before the pixels are locked: the lock pins the image's array,
-    // and no JNI call may happen while it is pinned
-    std::vector<jbyte> types(typeCount); std::vector<jfloat> coords(coordCount); std::vector<jint> spans;
-    env->GetByteArrayRegion(typesArray, 0, typeCount, types.data());
-    env->GetFloatArrayRegion(coordsArray, 0, coordCount, coords.data());
-    if (spansArray != nullptr) {
-        spans.resize(env->GetArrayLength(spansArray));
-        env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size(), spans.data());
-    }
-    SkPath path = pathFrom(types, coords, windingRule);
-
-    SurfaceDataOps *ops = SurfaceData_GetOps(env, sData);
-    if (ops == nullptr) return;
-    SurfaceDataRasInfo ras;
-    ras.bounds.x1 = clipX1; ras.bounds.y1 = clipY1; ras.bounds.x2 = clipX2; ras.bounds.y2 = clipY2;
-    if (ops->Lock(env, ops, &ras, SD_LOCK_WRITE) != SD_SUCCESS) return;
-    ops->GetRasInfo(env, ops, &ras);
-    if (ras.rasBase == nullptr || ras.bounds.x1 >= ras.bounds.x2 || ras.bounds.y1 >= ras.bounds.y2) {
-        SurfaceData_InvokeRelease(env, ops, &ras);
-        SurfaceData_InvokeUnlock(env, ops, &ras);
-        return;
-    }
-    {
-        // rasBase points at pixel (0, 0); the image's size is not in the RasInfo, so the canvas
-        // covers the locked box only, placed at its device position
-        Destination dst{infoFor(pixelFormat, ras.bounds.x2, ras.bounds.y2), ras.rasBase, (size_t) ras.scanStride,
-                        SkIRect::MakeLTRB(ras.bounds.x1, ras.bounds.y1, ras.bounds.x2, ras.bounds.y2)};
-        std::unique_ptr<SkCanvas> canvas = dst.canvas();
-        if (canvas) {
-            canvas->clipIRect(dst.box);
-            if (!spans.empty()) {
-                // clipRegion takes device coordinates and ignores the canvas matrix: on the copy the
-                // device origin is the box's corner, so the spans move with it
-                int ox = dst.viaCopy ? dst.box.fLeft : 0, oy = dst.viaCopy ? dst.box.fTop : 0;
-                SkRegion region;
-                for (size_t i = 0; i + 3 < spans.size(); i += 4) {
-                    region.op(SkIRect::MakeLTRB(spans[i] - ox, spans[i + 1] - oy, spans[i + 2] - ox, spans[i + 3] - oy), SkRegion::kUnion_Op);
-                }
-                canvas->clipRegion(region);
-            }
-            SkPaint paint;
-            paint.setAntiAlias(true);
-            paint.setColor(SkColorSetARGB((argb >> 24) & 0xff, (argb >> 16) & 0xff, (argb >> 8) & 0xff, argb & 0xff));
-            paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
-            canvas->drawPath(path, paint);
-            canvas.reset();
-            dst.finish();
+    Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    env->GetByteArrayRegion(typesArray, 0, typeCount, types.data);
+    env->GetFloatArrayRegion(coordsArray, 0, coordCount, coords.data);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    SkPathBuilder builder;
+    builder.setFillType(windingRule == 0 /* WIND_EVEN_ODD */ ? SkPathFillType::kEvenOdd : SkPathFillType::kWinding);
+    const jfloat *c = coords.data;
+    for (jint i = 0; i < typeCount; i++) {
+        switch (types.data[i]) {
+            case SEG_MOVETO:  builder.moveTo(c[0], c[1]); c += 2; break;
+            case SEG_LINETO:  builder.lineTo(c[0], c[1]); c += 2; break;
+            case SEG_QUADTO:  builder.quadTo(c[0], c[1], c[2], c[3]); c += 4; break;
+            case SEG_CUBICTO: builder.cubicTo(c[0], c[1], c[2], c[3], c[4], c[5]); c += 6; break;
+            case SEG_CLOSE:   builder.close(); break;
         }
     }
-    SurfaceData_InvokeRelease(env, ops, &ras);
-    SurfaceData_InvokeUnlock(env, ops, &ras);
+    SkPath path = builder.detach();
+    Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
+    if (!op.ok) return;
+    if (spans.size) op.clipSpans(spans.data, spans.size);
+    op.canvas()->drawPath(path, solidPaint(argb, compositeRule));
 }
 
 } // extern "C"

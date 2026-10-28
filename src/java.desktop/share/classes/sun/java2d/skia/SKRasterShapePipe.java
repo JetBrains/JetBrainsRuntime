@@ -61,6 +61,10 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
     @Override
     public void fillParallelogram(SunGraphics2D sg2d, double ux1, double uy1, double ux2, double uy2,
                                   double x, double y, double dx1, double dy1, double dx2, double dy2) {
+        if (dy1 == 0 && dx2 == 0) {   // axis-aligned: the converter's antialiased rectangles, by far the most frequent call
+            fillDeviceRect(sg2d, (float) Math.min(x, x + dx1), (float) Math.min(y, y + dy2), (float) Math.max(x, x + dx1), (float) Math.max(y, y + dy2));
+            return;
+        }
         Path2D.Float p = new Path2D.Float();
         p.moveTo(x, y); p.lineTo(x + dx1, y + dy1); p.lineTo(x + dx1 + dx2, y + dy1 + dy2); p.lineTo(x + dx2, y + dy2); p.closePath();
         fillDevicePath(sg2d, p);
@@ -83,6 +87,37 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         fillDevicePath(sg2d, p);
     }
 
+    private static void fillDeviceRect(SunGraphics2D sg2d, float x1, float y1, float x2, float y2) {
+        SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
+        Region clip = sg2d.getCompClip();
+        int cx1 = Math.max(clip.getLoX(), (int) Math.floor(x1)), cy1 = Math.max(clip.getLoY(), (int) Math.floor(y1));
+        int cx2 = Math.min(clip.getHiX(), (int) Math.ceil(x2)), cy2 = Math.min(clip.getHiY(), (int) Math.ceil(y2));
+        if (cx1 >= cx2 || cy1 >= cy2) {
+            return;
+        }
+        fillRect(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), x1, y1, x2, y2, sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+    }
+
+    private static int compositeRule(SunGraphics2D sg2d) {
+        return sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
+    }
+
+    /** The clip region's spans within the box as (x1, y1, x2, y2) tuples, or null for a rectangular clip. */
+    private static int[] spansOf(Region clip, int cx1, int cy1, int cx2, int cy2) {
+        if (clip.isRectangular()) {
+            return null;
+        }
+        int[] box = {cx1, cy1, cx2, cy2};
+        SpanIterator it = clip.getSpanIterator(box);
+        int[] list = new int[64]; int n = 0;
+        while (it.nextSpan(box)) {
+            if (n + 4 > list.length) list = java.util.Arrays.copyOf(list, list.length * 2);
+            list[n++] = box[0]; list[n++] = box[1]; list[n++] = box[2]; list[n++] = box[3];
+            box[0] = cx1; box[1] = cy1; box[2] = cx2; box[3] = cy2;
+        }
+        return java.util.Arrays.copyOf(list, n);
+    }
+
     private static void fillDevicePath(SunGraphics2D sg2d, Path2D.Float path) {
         SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
         Region clip = sg2d.getCompClip();
@@ -92,18 +127,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         if (cx1 >= cx2 || cy1 >= cy2) {
             return;
         }
-        int[] spans = null;
-        if (!clip.isRectangular()) {
-            int[] box = {cx1, cy1, cx2, cy2};
-            SpanIterator it = clip.getSpanIterator(box);
-            int[] list = new int[64]; int n = 0;
-            while (it.nextSpan(box)) {
-                if (n + 4 > list.length) list = java.util.Arrays.copyOf(list, list.length * 2);
-                list[n++] = box[0]; list[n++] = box[1]; list[n++] = box[2]; list[n++] = box[3];
-                box[0] = cx1; box[1] = cy1; box[2] = cx2; box[3] = cy2;
-            }
-            spans = java.util.Arrays.copyOf(list, n);
-        }
+        int[] spans = spansOf(clip, cx1, cy1, cx2, cy2);
         // the path's segments as the native side reads them: types and coordinates in device space
         PathIterator pi = path.getPathIterator(null);
         byte[] types = new byte[32]; float[] coords = new float[128]; int nt = 0, nc = 0; float[] seg = new float[6];
@@ -116,12 +140,15 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             System.arraycopy(seg, 0, coords, nc, k); nc += k;
             pi.next();
         }
-        int rule = sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
-        fillPath(sd, sd.pixelFormat(), types, nt, coords, nc, path.getWindingRule(), sg2d.eargb, rule, cx1, cy1, cx2, cy2, spans);
+        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), types, nt, coords, nc, path.getWindingRule(), sg2d.eargb, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
     }
 
+    /** Fills the device-space rectangle (edges antialiased where fractional) into the surface's pixels. */
+    private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, int width, int height, float x1, float y1, float x2, float y2,
+                                        int argb, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
+
     /** Fills the device-space path into the surface's pixels: colour with its alpha, Porter-Duff rule, clip box and optional clip spans. */
-    private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, byte[] types, int typeCount,
+    private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
                                         float[] coords, int coordCount, int windingRule, int argb, int compositeRule,
                                         int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 }
