@@ -77,6 +77,13 @@ public class BufImgSurfaceData extends SurfaceData {
         if (bufImg == null) {
             throw new NullPointerException("BufferedImage cannot be null");
         }
+        if (sun.java2d.skia.SKEnvironment.rasterSurfaces()) {
+            // Skia's raster backend draws the IDE's image types (sun.java2d.skia.raster=true)
+            SurfaceData skia = sun.java2d.skia.SKRasterSurfaceData.createData(bufImg, scaleX, scaleY);
+            if (skia != null) {
+                return skia;
+            }
+        }
         SurfaceData sData;
         ColorModel cm = bufImg.getColorModel();
         int type = bufImg.getType();

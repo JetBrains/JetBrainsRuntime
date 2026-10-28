@@ -266,6 +266,20 @@ public final class SKEnvironment {
      * this before any library is loaded. Whether the backend is actually
      * available is {@link #isSkiaEnabled()}.
      */
+    /**
+     * {@code sun.java2d.skia.raster=true}: BufferedImages of the IDE's pixel
+     * formats get a Skia <em>raster</em> surface ({@link SKRasterSurfaceData}):
+     * Skia draws into the image's own pixels on the calling thread, no GPU, no
+     * render queue; the software loops stay for what the raster pipes do not
+     * take. Needs only the library, like the font scaler.
+     */
+    private static final boolean RASTER = Boolean.getBoolean("sun.java2d.skia.raster");
+
+    /** Whether BufferedImages are drawn by Skia's raster backend. */
+    public static boolean rasterSurfaces() {
+        return RASTER && loadLibrary();
+    }
+
     public static boolean isSkiaRequested() {
         return REQUESTED;
     }

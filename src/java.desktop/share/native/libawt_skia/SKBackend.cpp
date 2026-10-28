@@ -692,6 +692,8 @@ static SkBlendMode blendModeForRule(jint rule) {
     }
 }
 
+SkBlendMode SKBackend_BlendModeForRule(jint rule) { return blendModeForRule(rule); }
+
 void SKBackend_SetAlphaComposite(jint rule, jfloat extraAlpha, jint flags) {
     g.blend = blendModeForRule(rule);
     g.extraAlpha = extraAlpha;

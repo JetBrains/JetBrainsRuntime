@@ -138,6 +138,8 @@ void SKBackend_AddShapeClipSpans(jint count, const jint *spans);
 void SKBackend_EndShapeClip();
 void SKBackend_ResetClip();
 
+/** The Porter-Duff blend mode of a java.awt.AlphaComposite rule (SRC_OVER for an unknown rule). */
+SkBlendMode SKBackend_BlendModeForRule(jint rule);
 void SKBackend_SetAlphaComposite(jint rule, jfloat extraAlpha, jint flags);
 void SKBackend_SetXorComposite(jint xorPixel);
 void SKBackend_ResetComposite();
