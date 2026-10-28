@@ -41,10 +41,10 @@ extern "C" {
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_SKEnvironment_initNative(JNIEnv *env, jclass clazz)
 {
-    // sun.java2d.skia.dawnBackend=d3d12: D3D12 before D3D11 (read here, before the first adapter request)
+    // sun.java2d.skia.dawn.backend=d3d12: D3D12 before D3D11 (read here, before the first adapter request)
     if (jclass system = env->FindClass("java/lang/System")) {
         jmethodID getProperty = env->GetStaticMethodID(system, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
-        jstring key = env->NewStringUTF("sun.java2d.skia.dawnBackend");
+        jstring key = env->NewStringUTF("sun.java2d.skia.dawn.backend");
         jstring value = getProperty != nullptr && key != nullptr
                 ? (jstring) env->CallStaticObjectMethod(system, getProperty, key) : nullptr;
         if (env->ExceptionCheck()) {

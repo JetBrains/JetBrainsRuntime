@@ -35,7 +35,7 @@ $cacheProp = "-Dsun.java2d.skia.pipelineCache=$(Join-Path $Out 'pipeline-cache')
 
 $armProperties = [ordered]@{
     'skia' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true')
-    'skia-d3d12' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true', '-Dsun.java2d.skia.dawnBackend=d3d12')
+    'skia-d3d12' = @('-Dsun.java2d.skia=true', '-Dsun.java2d.skia.verbose=true', '-Dsun.java2d.skia.dawn.backend=d3d12')
     'd3d'  = @('-Dsun.java2d.d3d=true', '-Dsun.java2d.d3d.verbose=true')
     'gdi'  = @('-Dsun.java2d.d3d=false')
 }

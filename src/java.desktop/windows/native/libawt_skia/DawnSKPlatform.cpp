@@ -89,7 +89,7 @@ static constexpr SkColorType kSurfaceColorType = kBGRA_8888_SkColorType;
 // D3D11 first: the lowest common denominator of Windows GPUs and VMs.
 static const wgpu::BackendType kBackends[] = { wgpu::BackendType::D3D11, wgpu::BackendType::D3D12 };
 static constexpr size_t kBackendCount = sizeof(kBackends) / sizeof(kBackends[0]);
-// sun.java2d.skia.dawnBackend=d3d12 tries D3D12 first (an evaluation of the backend Chrome ships
+// sun.java2d.skia.dawn.backend=d3d12 tries D3D12 first (an evaluation of the backend Chrome ships
 // WebGPU on; Graphite is tested on D3D11 first). Set once, before the first adapter request.
 static size_t gBackendOrder[kBackendCount] = { 0, 1 };
 
