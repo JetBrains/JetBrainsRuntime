@@ -8,6 +8,7 @@
 # JDK_B=<second image>: the Skia and software arms also run on it, as b-<arm>, in the same shuffled
 # repetitions (an A/B of two builds). The pipeline cache is off in every arm (no files in the home
 # directory, and StartupCost measures the compiles).
+# EXTRA_ARMS="vulkan": arms beyond the default five, in LcdTextBench, GlyphChurnBench and StartupCost.
 set -u
 R="${R:-$(cd "$(dirname "$0")/../../../../.." && pwd)}"
 JDK=$(cd "$1" && pwd); OUT=$(mkdir -p "$2" && cd "$2" && pwd); REPS=$3
@@ -22,13 +23,14 @@ declare -A ARM=(
   [skia-lcd-blend]="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=blend"
   [software]="-Dsun.java2d.d3d=false"
   [d3d]="-Dsun.java2d.d3d=true"
+  [vulkan]="-Dsun.java2d.vulkan=Force"   # JBR's Vulkan pipeline (experimental on Windows)
 )
 
 mkdir -p "$OUT/classes" "$OUT/logs"
 "$JDK/bin/javac.exe" $X -d "$OUT/classes" "$K/smoke/LcdTextBench.java" "$K/smoke/StartupCost.java" "$K/smoke/SkiaRender.java" "$K/bench/GlyphChurnBench.java" || exit 2
 
 jobs=()
-for arm in skia skia-lcd-twopass skia-lcd-blend software d3d; do
+for arm in skia skia-lcd-twopass skia-lcd-blend software d3d ${EXTRA_ARMS:-}; do
   for n in 100 500 1000; do jobs+=("LcdTextBench|$n lcd|$arm|LcdTextBench $n 60 lcd cheap"); done
   jobs+=("LcdTextBench|90 lcd grid|$arm|LcdTextBench 90 60 lcd cheap grid")
 done
@@ -37,9 +39,10 @@ for d in 200 600 1500 3000; do
     a=""; [ "$aa" = lcd ] && a=lcd
     jobs+=("GlyphChurnBench|$d $aa|skia|GlyphChurnBench $d $a")
     jobs+=("GlyphChurnBench|$d $aa|software|GlyphChurnBench $d $a software")
+    for arm in ${EXTRA_ARMS:-}; do jobs+=("GlyphChurnBench|$d $aa|$arm|GlyphChurnBench $d $a"); done
   done
 done
-for arm in skia software d3d; do jobs+=("StartupCost|-|$arm|StartupCost"); done
+for arm in skia software d3d ${EXTRA_ARMS:-}; do jobs+=("StartupCost|-|$arm|StartupCost"); done
 if [ -n "$JDK_B" ]; then
   for arm in skia skia-lcd-twopass skia-lcd-blend software; do
     for n in 100 500 1000; do jobs+=("LcdTextBench|$n lcd|b-$arm|LcdTextBench $n 60 lcd cheap"); done
