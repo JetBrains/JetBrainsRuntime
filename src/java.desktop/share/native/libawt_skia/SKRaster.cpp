@@ -463,7 +463,7 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlong scalerContext, jint countAndFlags,
+Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlongArray contextsArray, jint countAndFlags,
                                                  jfloat originX, jfloat originY, jintArray codesArray, jlongArray imagesArray, jfloatArray positionsArray,
                                                  jint argb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
@@ -472,6 +472,9 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     if (numGlyphs <= 0) return;
     // every Java array read before the pin
+    Buffer<8, jlong> contexts(contextsArray != nullptr ? (size_t) env->GetArrayLength(contextsArray) : 0);
+    if (!contexts.size) return;
+    env->GetLongArrayRegion(contextsArray, 0, (jsize) contexts.size, contexts.data);
     Buffer<256, jint> codes((size_t) numGlyphs); env->GetIntArrayRegion(codesArray, 0, numGlyphs, codes.data);
     Buffer<256, jlong> images(imagesArray != nullptr ? (size_t) numGlyphs : 0);
     if (images.size) env->GetLongArrayRegion(imagesArray, 0, numGlyphs, images.data);
@@ -486,7 +489,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     paint.setAntiAlias(true);
     paint.setColor(swizzled(argb));   // extra alpha already in the colour (SunGraphics2D.validateColor)
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
-    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, scalerContext, numGlyphs, usePositions, smoothing,
+    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
                                  originX, originY, codes.data, images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
 }
 

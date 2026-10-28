@@ -198,7 +198,9 @@ void SKBackend_MaskBlit(jint dstx, jint dsty, jint width, jint height, const voi
 // Skia's strike cache, glyph atlas and blending (sun.java2d.skia.text=skia).
 // smoothing: the masks come from the platform's font smoothing (Skia's hinting "normal" on the
 // CoreText host), as Chrome's do; otherwise Skia's plain coverage.
-void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+// contexts: the strikes' scaler contexts by the slot in a code's bits 24–31 (a physical strike: one
+// context, slot 0); a negative code (a platform fallback) and the invisible glyph 0xffff need none.
+void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions);
 jlong SKBackend_GlyphsDrawnBySkia();
@@ -206,7 +208,7 @@ jlong SKBackend_GlyphsDrawnBySkia();
 // it, textColour the text's colour as Java sees it (the cg route's luminance class); returns
 // the glyphs drawn.
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
-                                   jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+                                   const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                    const jfloat *positions);
 // Skia's shaper (sun.java2d.skia.text=shaper): the characters of a drawString shaped by

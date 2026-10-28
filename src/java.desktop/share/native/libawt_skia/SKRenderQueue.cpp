@@ -180,14 +180,15 @@ static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool pre
             jint numGlyphs = NEXT_INT(b);
             jint packedParams = NEXT_INT(b);
             jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
-            jlong pScalerContext = NEXT_LONG(b);
+            jint contextCount = NEXT_INT(b);
             jboolean usePositions = EXTRACT_BOOLEAN(packedParams, OFFSET_USE_POSITIONS);
             jboolean smoothing = EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING);
-            const jlong *images = (const jlong *) b;
+            const jlong *contexts = (const jlong *) b;   // by slot
+            const jlong *images = contexts + contextCount;
             const jint *codes = (const jint *) (images + numGlyphs);
             const jfloat *positions = usePositions ? (const jfloat *) (codes + numGlyphs) : nullptr;
-            SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, smoothing, origX, origY, codes, images, positions);
-            SKIP_BYTES(b, numGlyphs * (jint) (sizeof(jlong) + sizeof(jint) + (usePositions ? 2 * sizeof(jfloat) : 0)));
+            SKBackend_DrawGlyphsBySkia(contexts, contextCount, numGlyphs, usePositions, smoothing, origX, origY, codes, images, positions);
+            SKIP_BYTES(b, contextCount * (jint) sizeof(jlong) + numGlyphs * (jint) (sizeof(jlong) + sizeof(jint) + (usePositions ? 2 * sizeof(jfloat) : 0)));
             break;
         }
         TEXT_OP(DRAW_SHAPED_BY_SKIA): {
@@ -568,14 +569,17 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, jlong pScalerContext,
+Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, jlongArray contextArray,
                                                        jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                                        jfloat originX, jfloat originY,
                                                        jintArray codeArray, jlongArray imgArray, jfloatArray posArray)
 {
     { SKPlatformScope scope;
     // copies, not critical regions: the backend rasterizes glyphs (CoreGraphics on the cg route) in here
-    if (numGlyphs <= 0 || env->GetArrayLength(codeArray) < numGlyphs
+    const jint contextCount = contextArray != nullptr ? env->GetArrayLength(contextArray) : 0;
+    std::vector<jlong> contexts((size_t) std::max(contextCount, 0));
+    if (contextCount > 0) env->GetLongArrayRegion(contextArray, 0, contextCount, contexts.data());
+    if (contextCount <= 0 || numGlyphs <= 0 || env->GetArrayLength(codeArray) < numGlyphs
         || (imgArray != nullptr && env->GetArrayLength(imgArray) < numGlyphs)
         || (usePositions && (posArray == nullptr || env->GetArrayLength(posArray) < 2 * numGlyphs))) {
         return;
@@ -592,7 +596,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, 
         positions.resize(2 * (size_t) numGlyphs);
         env->GetFloatArrayRegion(posArray, 0, 2 * numGlyphs, positions.data());
     }
-    SKBackend_DrawGlyphsBySkia(pScalerContext, numGlyphs, usePositions, smoothing, originX, originY, codes.data(),
+    SKBackend_DrawGlyphsBySkia(contexts.data(), contextCount, numGlyphs, usePositions, smoothing, originX, originY, codes.data(),
                                imgArray != nullptr ? images.data() : nullptr, usePositions ? positions.data() : nullptr);
     SKBackend_EndOfFlush(env);
     } // SKPlatformScope

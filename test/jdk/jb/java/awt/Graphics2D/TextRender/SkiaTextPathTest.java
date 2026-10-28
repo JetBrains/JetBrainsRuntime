@@ -38,7 +38,8 @@ import java.lang.reflect.Method;
  *          way, and the text lands where the glyph-image path puts it, with a
  *          comparable amount of ink (Skia applies its own gamma model, so the ink
  *          is not identical). Both strike kinds take the path: the system font's
- *          and the file font's. With sun.java2d.skia.text.smoothing=true the path
+ *          and the file font's, as strings and as glyph vectors (a glyph vector's
+ *          strike is the composite one, drawn slot by slot). With sun.java2d.skia.text.smoothing=true the path
  *          asks the platform for smoothed glyphs (as Chrome does): black text on
  *          white then carries at least as much ink as the glyph-image path's
  *          plain coverage, instead of a fifth less.
@@ -60,10 +61,14 @@ public class SkiaTextPathTest {
         if (!gc.getClass().getName().contains("MTL")) {
             throw new RuntimeException("not an accelerated configuration: " + gc.getClass().getName());
         }
-        check(gc, new Font("Helvetica Neue", Font.PLAIN, 13), "system font");
+        Font system = new Font("Helvetica Neue", Font.PLAIN, 13);
+        check(gc, system, "system font", false);
+        check(gc, system, "system font, glyph vector", true);
         // a font loaded from a file has a different strike class behind the same scaler
         File file = new File(System.getProperty("java.home"), "lib/fonts/Inter-Regular.otf");
-        check(gc, Font.createFont(Font.TRUETYPE_FONT, file).deriveFont(13f), "file font");
+        Font fileFont = Font.createFont(Font.TRUETYPE_FONT, file).deriveFont(13f);
+        check(gc, fileFont, "file font", false);
+        check(gc, fileFont, "file font, glyph vector", true);
     }
 
     static long glyphsDrawnBySkia() throws Exception {
@@ -75,15 +80,16 @@ public class SkiaTextPathTest {
         }
     }
 
-    static void check(GraphicsConfiguration gc, Font font, String what) throws Exception {
+    /** glyphVector: the text as a GlyphVector, whose strike is the font's composite one on macOS (drawn slot by slot). */
+    static void check(GraphicsConfiguration gc, Font font, String what, boolean glyphVector) throws Exception {
         long before = glyphsDrawnBySkia();
         BufferedImage reference = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
-        paint(reference.createGraphics(), font);
+        paint(reference.createGraphics(), font, glyphVector);
         BufferedImage skia;
         VolatileImage vi = gc.createCompatibleVolatileImage(W, H, Transparency.OPAQUE);
         do {
             vi.validate(gc);
-            paint(vi.createGraphics(), font);
+            paint(vi.createGraphics(), font, glyphVector);
             skia = vi.getSnapshot();
         } while (vi.contentsLost());
 
@@ -107,14 +113,18 @@ public class SkiaTextPathTest {
         }
     }
 
-    static void paint(Graphics2D g, Font font) {
+    static void paint(Graphics2D g, Font font, boolean glyphVector) {
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, W, H);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setColor(Color.BLACK);
         g.setFont(font);
-        g.drawString(TEXT, 4, 26);
+        if (glyphVector) {
+            g.drawGlyphVector(font.createGlyphVector(g.getFontRenderContext(), TEXT), 4, 26);
+        } else {
+            g.drawString(TEXT, 4, 26);
+        }
         g.dispose();
     }
 

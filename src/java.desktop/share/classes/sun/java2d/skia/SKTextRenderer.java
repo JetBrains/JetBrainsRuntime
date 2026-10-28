@@ -304,38 +304,40 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {
-        SKDrawableStrike strike = SKEnvironment.textBySkia() ? skiaStrike(gl.getFontStrike()) : null;   // glyph vectors' strikes unwrapped; per-glyph transforms (an array) stay with the glyph images
-        if (strike != null) {
+        // a physical strike's context and codes, or a composite strike's contexts by slot with the codes re-encoded
+        SKGlyphContexts.Runs runs = SKEnvironment.textBySkia() ? SKGlyphContexts.of(gl) : null;
+        if (runs != null) {
             final int n = gl.getNumGlyphs();
             final boolean usePositions = gl.usePositions();
             final float x = gl.getX(), y = gl.getY();
             // the GlyphList singleton's own arrays: copied onto the queue, or drawn, under the lock before the GlyphList is reused
-            final int[] codes = gl.getGlyphCodes();
+            final int[] codes = runs.codes();
             final long[] images = gl.getImages();
             final float[] positions = usePositions ? gl.getPositions() : null;
-            final long context = strike.skiaScalerContext();
+            final long[] contexts = runs.contexts();
             rq.lock();
             try {
                 validateContext(sg2d, textComposite(sg2d));
-                rq.addReference(strike);
+                rq.addReference(gl.getFontStrike());   // a composite strike holds its slots' strikes
                 final boolean smoothing = SKEnvironment.textSmoothing();
-                final int total = 28 + n * (8 + 4 + (usePositions ? 8 : 0));
+                final int total = 24 + 8 * contexts.length + n * (8 + 4 + (usePositions ? 8 : 0));
                 RenderBuffer buf = rq.getBuffer();
                 if (total <= buf.capacity()) {
-                    rq.ensureCapacityAndAlignment(total, 20);
+                    rq.ensureCapacityAndAlignment(total, 24);
                     buf.putInt(DRAW_GLYPHS_BY_SKIA);
                     buf.putInt(n);
                     buf.putInt((usePositions ? 1 << OFFSET_USE_POSITIONS : 0) | (smoothing ? 1 << OFFSET_SMOOTHING : 0));
                     buf.putFloat(x);
                     buf.putFloat(y);
-                    buf.putLong(context);
+                    buf.putInt(contexts.length);
+                    buf.put(contexts, 0, contexts.length);
                     buf.put(images, 0, n);
                     buf.put(codes, 0, n);
                     if (usePositions) {
                         buf.put(positions, 0, 2 * n);
                     }
                 } else {
-                    rq.flushAndInvokeNow(() -> drawGlyphsBySkia(context, n, usePositions, smoothing, x, y, codes, images, positions));
+                    rq.flushAndInvokeNow(() -> drawGlyphsBySkia(contexts, n, usePositions, smoothing, x, y, codes, images, positions));
                 }
             } finally {
                 rq.unlock();
@@ -345,8 +347,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         super.drawGlyphList(sg2d, gl);
     }
 
-    /** Skia's text path: glyph codes with Java's positions (or the images' advances) through the strike's SkFont (oversized operations). */
-    private static native void drawGlyphsBySkia(long pScalerContext, int numGlyphs, boolean usePositions, boolean smoothing,
+    /** Skia's text path: glyph codes (the slot in bits 24–31 selecting the context) with Java's positions (or the images' advances) through the strikes' SkFonts (oversized operations). */
+    private static native void drawGlyphsBySkia(long[] contexts, int numGlyphs, boolean usePositions, boolean smoothing,
                                                 float originX, float originY, int[] codes, long[] images, float[] positions);
 
     @Override

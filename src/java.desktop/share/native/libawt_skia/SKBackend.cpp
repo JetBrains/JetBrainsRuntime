@@ -1919,10 +1919,11 @@ static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext
 }
 
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
-                                   jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+                                   const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                    const jfloat *positions) {
     jlong drawn = 0;
+    if (contextCount <= 0) return 0;
     // runs of glyphs sharing a font (the strike's own, or a platform fallback font)
     std::vector<SkGlyphID> ids;
     std::vector<SkPoint> points;
@@ -1951,9 +1952,19 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
                 penY += ginfo->advanceY;
             }
         }
+        // the code's slot (bits 24–31) selects the strike's context; the invisible glyph keeps its advance only
+        jint code = codes[i];
+        if (code == 0xffff) continue;
+        jlong pScalerContext = contexts[0];
+        if (code >= 0) {
+            const jint slot = (jint) ((uint32_t) code >> 24);
+            pScalerContext = contexts[slot < contextCount ? slot : 0];
+            code &= 0xffffff;
+        }
+        if (pScalerContext == 0) continue;
         SkFont font;
         SkGlyphID glyph;
-        if (!SKFontScaler_ResolveGlyph(pScalerContext, codes[i], &font, &glyph)) {
+        if (!SKFontScaler_ResolveGlyph(pScalerContext, code, &font, &glyph)) {
             continue;
         }
         applyGrayRoute(font, pScalerContext, textColour);
@@ -1972,13 +1983,13 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
     return drawn;
 }
 
-void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
     flushGlyphBatches();   // glyph-image draws queued before this list stay in order
     SkPaint paint = SKBackend_MakePaint(true);
-    jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), pScalerContext, numGlyphs, usePositions, smoothing,
+    jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
                                                originX, originY, codes, images, positions);
     gGlyphsDrawnBySkia.fetch_add(drawn, std::memory_order_relaxed);
 }

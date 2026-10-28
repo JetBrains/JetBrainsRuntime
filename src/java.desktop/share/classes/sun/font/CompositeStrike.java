@@ -63,6 +63,23 @@ public final class CompositeStrike extends FontStrike {
         strikes = new FontStrike[compFont.numSlots];
     }
 
+    /** The strikes behind a composite glyph list, for a pipe that draws it slot by slot (the Skia text path). */
+    public int numSlots() {
+        return strikes.length;
+    }
+
+    public FontStrike strikeForSlot(int slot) {
+        return getStrikeForSlot(slot);
+    }
+
+    public int slotOf(int glyphCode) {
+        return compFont.decodeSlot(glyphCode);
+    }
+
+    public int glyphOf(int glyphCode) {
+        return compFont.decodeGlyphCode(glyphCode);
+    }
+
     /* do I need this (see Strike::compositeStrikeForGlyph) */
     FontStrike getStrikeForGlyph(int glyphCode) {
         return getStrikeForSlot(compFont.decodeSlot(glyphCode));

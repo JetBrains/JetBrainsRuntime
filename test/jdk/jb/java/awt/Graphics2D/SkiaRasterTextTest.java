@@ -37,8 +37,9 @@ import java.util.function.Consumer;
  *          comparable amount of ink (Skia's gamma model lightens plain coverage by
  *          up to a quarter), LCD text carries colour fringes in the loops' sub-pixel
  *          order where the platform renders sub-pixel masks (not macOS), and the
- *          pipe counts the glyphs it drew. Glyph vectors of a system font on macOS
- *          carry the composite strike and stay with the loops. The cg grayscale route
+ *          pipe counts the glyphs it drew. A composite strike — a glyph vector's on
+ *          macOS, a logical or Swing UI font's elsewhere — is drawn slot by slot
+ *          through each physical strike's SkFont, so every case counts its glyphs. The cg grayscale route
  *          (macOS: CoreGraphics' smoothed masks by text luminance) is taken on the
  *          raster surface too, matching the loops' ink within 15 %.
  * @modules java.desktop/sun.java2d.skia
@@ -105,7 +106,11 @@ public class SkiaRasterTextTest {
             if (ds != 0) fringes++;
             fringeAgreement += (long) ds * dl;
         }
-        System.out.printf("%s: %d glyphs by Skia; ink bounds Skia %s, loops %s; ink ratio %.3f; fringe pixels %d, order agreement %d%n", what, glyphsBySkia() - before, sb, lb, ratio, fringes, fringeAgreement);
+        long drawn = glyphsBySkia() - before;
+        System.out.printf("%s: %d glyphs by Skia; ink bounds Skia %s, loops %s; ink ratio %.3f; fringe pixels %d, order agreement %d%n", what, drawn, sb, lb, ratio, fringes, fringeAgreement);
+        if (drawn < TEXT.replace(" ", "").length()) {
+            throw new RuntimeException(what + ": only " + drawn + " glyphs went through Skia's raster text path (a composite strike — a glyph vector's, or a logical font's — must be drawn slot by slot)");
+        }
         if (Math.abs(sb.x - lb.x) > 1 || Math.abs(sb.y - lb.y) > 1 || Math.abs(sb.width - lb.width) > 2 || Math.abs(sb.height - lb.height) > 2) {
             throw new RuntimeException(what + ": the text is not where the loops put it: " + sb + " vs " + lb);
         }

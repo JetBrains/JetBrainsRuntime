@@ -274,6 +274,7 @@ public final class GlyphList {
         strikelist = sgv.setupGlyphImages(images,
                                           usePositions ? positions : null,
                                           info.devTx, info.luminance);
+        sgv.getGlyphCodes(0, len, glyphData);   // the codes too, for a pipe drawing from codes (the Skia text path)
         glyphindex = -1;
     }
 
