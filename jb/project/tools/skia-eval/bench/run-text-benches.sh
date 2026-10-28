@@ -8,7 +8,7 @@
 # JDK_B=<second image>: the Skia and software arms also run on it, as b-<arm>, in the same shuffled
 # repetitions (an A/B of two builds). The pipeline cache is off in every arm (no files in the home
 # directory, and StartupCost measures the compiles).
-# EXTRA_ARMS="vulkan": arms beyond the default five, in LcdTextBench, GlyphChurnBench and StartupCost.
+# EXTRA_ARMS="vulkan skia-vulkan": arms beyond the default five, in LcdTextBench, GlyphChurnBench and StartupCost.
 set -u
 R="${R:-$(cd "$(dirname "$0")/../../../../.." && pwd)}"
 JDK=$(cd "$1" && pwd); OUT=$(mkdir -p "$2" && cd "$2" && pwd); REPS=$3
@@ -21,6 +21,7 @@ declare -A ARM=(
   [skia]="-Dsun.java2d.skia=true"
   [skia-lcd-twopass]="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass"
   [skia-lcd-blend]="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=blend"
+  [skia-vulkan]="-Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan"   # Graphite on native Vulkan
   [software]="-Dsun.java2d.d3d=false"
   [d3d]="-Dsun.java2d.d3d=true"
   [vulkan]="-Dsun.java2d.vulkan=Force"   # JBR's Vulkan pipeline (experimental on Windows)
