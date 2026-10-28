@@ -280,6 +280,11 @@ public final class SKEnvironment {
         return RASTER && loadLibrary();
     }
 
+    /** Transformed images on raster surfaces that Skia drew (not the loops' transform helper), for tests. */
+    public static long rasterImagesBySkia() {
+        return SKRasterDrawImage.imagesBySkia.get();
+    }
+
     /** Fills on raster surfaces with a gradient paint Skia built (not the loops' paint pipes), for tests. */
     public static long rasterPaintsBySkia() {
         return SKRasterShapePipe.paintsBySkia.get();

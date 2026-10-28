@@ -240,7 +240,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
 
 
     /** The clip region's spans within the box as (x1, y1, x2, y2) tuples, or null for a rectangular clip. */
-    private static int[] spansOf(Region clip, int cx1, int cy1, int cx2, int cy2) {
+    static int[] spansOf(Region clip, int cx1, int cy1, int cx2, int cy2) {
         if (clip.isRectangular()) {
             return null;
         }

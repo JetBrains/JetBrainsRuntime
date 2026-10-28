@@ -40,6 +40,8 @@
 #include "include/core/SkRegion.h"
 #include "include/effects/SkGradient.h"
 #include "include/core/SkShader.h"
+#include "include/core/SkImage.h"
+#include "include/core/SkSamplingOptions.h"
 
 #include <algorithm>
 #include <array>
@@ -63,6 +65,13 @@ SkImageInfo infoFor(jint pixelFormat, jint w, jint h) {
         case sun_java2d_skia_SKSurfaceData_PF_INT_RGB:      return SkImageInfo::MakeN32(w, h, kOpaque_SkAlphaType);
         default:                                            return SkImageInfo::MakeN32(w, h, kUnpremul_SkAlphaType);
     }
+}
+inline uint32_t premultiplied(uint32_t p) {   // Java's unpremultiplied ARGB int to its premultiplied form, the loops' rounding
+    uint32_t a = p >> 24;
+    if (a == 0xff) return p;
+    if (a == 0) return 0;
+    uint32_t c0 = ((p & 0xff) * a + 127) / 255, c1 = (((p >> 8) & 0xff) * a + 127) / 255, c2 = (((p >> 16) & 0xff) * a + 127) / 255;
+    return (a << 24) | (c2 << 16) | (c1 << 8) | c0;
 }
 inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA memory declared RGBA
     return SkColorSetARGB((argb >> 24) & 0xff, argb & 0xff, (argb >> 8) & 0xff, (argb >> 16) & 0xff);
@@ -104,13 +113,7 @@ struct RasterTarget {
         for (int y = box.fTop; y < box.fBottom; y++) {
             const uint32_t *src = (const uint32_t *) ((const char *) pixels + y * rowBytes) + box.fLeft;
             uint32_t *dst = mirror.getAddr32(box.fLeft, y);
-            for (int x = box.fLeft; x < box.fRight; x++, src++, dst++) {
-                uint32_t p = *src, a = p >> 24;
-                if (a == 0xff) { *dst = p; continue; }
-                if (a == 0) { *dst = 0; continue; }
-                uint32_t c0 = ((p & 0xff) * a + 127) / 255, c1 = (((p >> 8) & 0xff) * a + 127) / 255, c2 = (((p >> 16) & 0xff) * a + 127) / 255;
-                *dst = (a << 24) | (c2 << 16) | (c1 << 8) | c0;
-            }
+            for (int x = box.fLeft; x < box.fRight; x++, src++, dst++) *dst = premultiplied(*src);
         }
     }
     void mirrorOut(const SkIRect &box) {
@@ -333,6 +336,64 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     op.canvas()->drawPath(path, pd.paint(compositeRule));
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint dstWidth, jint dstHeight,
+                                                 jobject srcData, jint srcPixelFormat, jint srcWidth, jint srcHeight, jint sx1, jint sy1, jint sx2, jint sy2,
+                                                 jfloatArray xformArray, jint interpType, jfloat extraAlpha, jint compositeRule,
+                                                 jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+{
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    jfloat xf[6]; env->GetFloatArrayRegion(xformArray, 0, 6, xf);
+    SurfaceDataOps *srcOps = SurfaceData_GetOps(env, srcData);   // every JNI call before the pins
+    if (srcOps == nullptr) return;
+    // AffineTransformOp: 1 nearest neighbour, 2 bilinear, 3 bicubic (Java's kernel is Catmull-Rom's, a = -0.5)
+    SkSamplingOptions sampling = interpType == 3 ? SkSamplingOptions(SkCubicResampler::CatmullRom())
+                               : interpType == 2 ? SkSamplingOptions(SkFilterMode::kLinear) : SkSamplingOptions(SkFilterMode::kNearest);
+    Operation op(env, dstData, dstPixelFormat, dstWidth, dstHeight, clipX1, clipY1, clipX2, clipY2);
+    if (!op.ok) return;
+    if (spans.size) op.clipSpans(spans.data, spans.size);
+    // the source, locked for reading (a nested pin: no JNI call until it is released)
+    SurfaceDataRasInfo sr{};
+    sr.bounds.x1 = sx1; sr.bounds.y1 = sy1; sr.bounds.x2 = sx2; sr.bounds.y2 = sy2;
+    if (srcOps->Lock(env, srcOps, &sr, SD_LOCK_READ) != SD_SUCCESS) return;
+    srcOps->GetRasInfo(env, srcOps, &sr);
+    const int sw = sx2 - sx1, sh = sy2 - sy1;
+    Buffer<4096, uint32_t> premul(srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB ? (size_t) sw * sh : 0);
+    if (sr.rasBase != nullptr && sw > 0 && sh > 0) {
+        // the source rectangle only (a filter's neighbours clamp to its edge, as in Java's transform helper).
+        // An unpremultiplied source is premultiplied first, as the helper does: Skia would filter the stored
+        // values and premultiply the result, which differs wherever alpha varies between neighbours
+        const void *pixels = (const char *) sr.rasBase + (size_t) sy1 * sr.scanStride + (size_t) sx1 * 4;
+        size_t rowBytes = (size_t) sr.scanStride;
+        SkImageInfo info = infoFor(srcPixelFormat, sw, sh);
+        if (premul.size) {
+            for (int y = 0; y < sh; y++) {
+                const uint32_t *in = (const uint32_t *) ((const char *) pixels + y * rowBytes);
+                uint32_t *out = premul.data + (size_t) y * sw;
+                for (int x = 0; x < sw; x++) out[x] = premultiplied(in[x]);
+            }
+            pixels = premul.data; rowBytes = (size_t) sw * 4; info = info.makeAlphaType(kPremul_SkAlphaType);
+        }
+        sk_sp<SkImage> image = SkImages::RasterFromPixmap(SkPixmap(info, pixels, rowBytes), nullptr, nullptr);   // no copy: the pixels live until the unlock
+        if (image) {
+            SkPaint paint;
+            paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
+            paint.setAlphaf(std::clamp(extraAlpha, 0.0f, 1.0f));
+            // the transform maps the source rectangle's origin to the destination. Java's transform helper
+            // draws the destination pixels whose centre maps inside the source and clamps the neighbours a
+            // filter reads to the source's edge: a non-antialiased rectangle (a pixel is in when its centre
+            // is) over a clamped image shader does both
+            paint.setShader(image->makeShader(SkTileMode::kClamp, SkTileMode::kClamp, sampling));
+            op.canvas()->concat(matrixOf(xf));
+            op.canvas()->drawRect(SkRect::MakeWH(sw, sh), paint);
+            image.reset();
+        }
+    }
+    SurfaceData_InvokeRelease(env, srcOps, &sr);
+    SurfaceData_InvokeUnlock(env, srcOps, &sr);
 }
 
 } // extern "C"

@@ -42,6 +42,7 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
     private final int width, height;
 
     private static final SKRasterShapePipe shapePipe = new SKRasterShapePipe();
+    private static final SKRasterDrawImage imagePipe = new SKRasterDrawImage();
 
     /** The raster surface for the image, or null when the image's type stays on the loops. */
     public static SurfaceData createData(BufferedImage img, double scaleX, double scaleY) {
@@ -88,6 +89,7 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
     @Override
     public void validatePipe(SunGraphics2D sg2d) {
         super.validatePipe(sg2d);
+        sg2d.imagepipe = imagePipe;   // the loops' blits for copies, Skia for transformed images
         if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON
                 && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
                 && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
