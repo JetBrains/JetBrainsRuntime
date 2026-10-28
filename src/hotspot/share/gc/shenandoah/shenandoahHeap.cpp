@@ -1190,11 +1190,9 @@ public:
     if (_concurrent) {
       ShenandoahConcurrentWorkerSession worker_session(worker_id);
       ShenandoahSuspendibleThreadSetJoiner stsj;
-      ShenandoahEvacOOMScope oom_evac_scope;
       do_work();
     } else {
       ShenandoahParallelWorkerSession worker_session(worker_id);
-      ShenandoahEvacOOMScope oom_evac_scope;
       do_work();
     }
   }
@@ -1205,7 +1203,10 @@ private:
     ShenandoahHeapRegion* r;
     while ((r =_cs->claim_next()) != nullptr) {
       assert(r->has_live(), "Region %zu should have been reclaimed early", r->index());
-      _sh->marked_object_iterate(r, &cl);
+      {
+         ShenandoahEvacOOMScope oom_evac_scope;
+        _sh->marked_object_iterate(r, &cl);
+      }
 
       if (ShenandoahPacing) {
         _sh->pacer()->report_evac(r->used() >> LogHeapWordSize);
@@ -2223,8 +2224,18 @@ size_t ShenandoahHeap::tlab_used(Thread* thread) const {
 }
 
 bool ShenandoahHeap::try_cancel_gc(GCCause::Cause cause) {
-  const GCCause::Cause prev = _cancelled_gc.xchg(cause);
-  return prev == GCCause::_no_gc || prev == GCCause::_shenandoah_concurrent_gc;
+  while (true) {
+    const GCCause::Cause prev = _cancelled_gc.get();
+    if (prev != GCCause::_no_gc && prev != GCCause::_shenandoah_concurrent_gc && cause != GCCause::_shenandoah_stop_vm) {
+      // Only when the gc has not been cancelled, or it has been cancelled to interrupt an old marking cycle
+      // do we allow the new cancellation request to happen. We make an exception for stopping the VM.
+      return false;
+    }
+
+    if (_cancelled_gc.cmpxchg(cause, prev) == prev) {
+      return true;
+    }
+  }
 }
 
 void ShenandoahHeap::cancel_concurrent_mark() {

@@ -32,7 +32,6 @@
 class os::Linux {
   friend class os;
 
-  static int (*_pthread_getcpuclockid)(pthread_t, clockid_t *);
   static int (*_pthread_setname_np)(pthread_t, const char*);
 
   static address   _initial_thread_stack_bottom;
@@ -40,8 +39,6 @@ class os::Linux {
 
   static const char *_libc_version;
   static const char *_libpthread_version;
-
-  static bool _supports_fast_thread_cpu_time;
 
   static GrowableArray<int>* _cpu_to_node;
   static GrowableArray<int>* _nindex_to_node;
@@ -80,6 +77,7 @@ class os::Linux {
   static void print_proc_sys_info(outputStream* st);
   static bool print_ld_preload_file(outputStream* st);
   static void print_uptime_info(outputStream* st);
+  static bool print_numa_info(outputStream* st);
 
  public:
   struct CPUPerfTicks {
@@ -145,18 +143,7 @@ class os::Linux {
   static bool manually_expand_stack(JavaThread * t, address addr);
   static void expand_stack_to(address bottom);
 
-  // fast POSIX clocks support
-  static void fast_thread_clock_init(void);
-
-  static int pthread_getcpuclockid(pthread_t tid, clockid_t *clock_id) {
-    return _pthread_getcpuclockid ? _pthread_getcpuclockid(tid, clock_id) : -1;
-  }
-
-  static bool supports_fast_thread_cpu_time() {
-    return _supports_fast_thread_cpu_time;
-  }
-
-  static jlong fast_thread_cpu_time(clockid_t clockid);
+  static jlong thread_cpu_time(clockid_t clockid);
 
   static jlong sendfile(int out_fd, int in_fd, jlong* offset, jlong count);
 

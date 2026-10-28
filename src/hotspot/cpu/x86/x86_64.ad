@@ -4447,8 +4447,19 @@ instruct loadD(regD dst, memory mem)
 %}
 
 // max = java.lang.Math.max(float a, float b)
+instruct maxF_avx10_reg(regF dst, regF a, regF b) %{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (MaxF a b));
+  format %{ "maxF $dst, $a, $b" %}
+  ins_encode %{
+    __ eminmaxss($dst$$XMMRegister, $a$$XMMRegister, $b$$XMMRegister, AVX10_MINMAX_MAX_COMPARE_SIGN);
+  %}
+  ins_pipe( pipe_slow );
+%}
+
+// max = java.lang.Math.max(float a, float b)
 instruct maxF_reg(legRegF dst, legRegF a, legRegF b, legRegF tmp, legRegF atmp, legRegF btmp) %{
-  predicate(UseAVX > 0 && !VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && !VLoopReductions::is_reduction(n));
   match(Set dst (MaxF a b));
   effect(USE a, USE b, TEMP tmp, TEMP atmp, TEMP btmp);
   format %{ "maxF $dst, $a, $b \t! using $tmp, $atmp and $btmp as TEMP" %}
@@ -4459,7 +4470,7 @@ instruct maxF_reg(legRegF dst, legRegF a, legRegF b, legRegF tmp, legRegF atmp, 
 %}
 
 instruct maxF_reduction_reg(legRegF dst, legRegF a, legRegF b, legRegF xtmp, rRegI rtmp, rFlagsReg cr) %{
-  predicate(UseAVX > 0 && VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && VLoopReductions::is_reduction(n));
   match(Set dst (MaxF a b));
   effect(USE a, USE b, TEMP xtmp, TEMP rtmp, KILL cr);
 
@@ -4472,8 +4483,19 @@ instruct maxF_reduction_reg(legRegF dst, legRegF a, legRegF b, legRegF xtmp, rRe
 %}
 
 // max = java.lang.Math.max(double a, double b)
+instruct maxD_avx10_reg(regD dst, regD a, regD b) %{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (MaxD a b));
+  format %{ "maxD $dst, $a, $b" %}
+  ins_encode %{
+    __ eminmaxsd($dst$$XMMRegister, $a$$XMMRegister, $b$$XMMRegister, AVX10_MINMAX_MAX_COMPARE_SIGN);
+  %}
+  ins_pipe( pipe_slow );
+%}
+
+// max = java.lang.Math.max(double a, double b)
 instruct maxD_reg(legRegD dst, legRegD a, legRegD b, legRegD tmp, legRegD atmp, legRegD btmp) %{
-  predicate(UseAVX > 0 && !VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && !VLoopReductions::is_reduction(n));
   match(Set dst (MaxD a b));
   effect(USE a, USE b, TEMP atmp, TEMP btmp, TEMP tmp);
   format %{ "maxD $dst, $a, $b \t! using $tmp, $atmp and $btmp as TEMP" %}
@@ -4484,7 +4506,7 @@ instruct maxD_reg(legRegD dst, legRegD a, legRegD b, legRegD tmp, legRegD atmp, 
 %}
 
 instruct maxD_reduction_reg(legRegD dst, legRegD a, legRegD b, legRegD xtmp, rRegL rtmp, rFlagsReg cr) %{
-  predicate(UseAVX > 0 && VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && VLoopReductions::is_reduction(n));
   match(Set dst (MaxD a b));
   effect(USE a, USE b, TEMP xtmp, TEMP rtmp, KILL cr);
 
@@ -4496,9 +4518,20 @@ instruct maxD_reduction_reg(legRegD dst, legRegD a, legRegD b, legRegD xtmp, rRe
   ins_pipe( pipe_slow );
 %}
 
+// max = java.lang.Math.min(float a, float b)
+instruct minF_avx10_reg(regF dst, regF a, regF b) %{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (MinF a b));
+  format %{ "minF $dst, $a, $b" %}
+  ins_encode %{
+    __ eminmaxss($dst$$XMMRegister, $a$$XMMRegister, $b$$XMMRegister, AVX10_MINMAX_MIN_COMPARE_SIGN);
+  %}
+  ins_pipe( pipe_slow );
+%}
+
 // min = java.lang.Math.min(float a, float b)
 instruct minF_reg(legRegF dst, legRegF a, legRegF b, legRegF tmp, legRegF atmp, legRegF btmp) %{
-  predicate(UseAVX > 0 && !VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && !VLoopReductions::is_reduction(n));
   match(Set dst (MinF a b));
   effect(USE a, USE b, TEMP tmp, TEMP atmp, TEMP btmp);
   format %{ "minF $dst, $a, $b \t! using $tmp, $atmp and $btmp as TEMP" %}
@@ -4509,7 +4542,7 @@ instruct minF_reg(legRegF dst, legRegF a, legRegF b, legRegF tmp, legRegF atmp, 
 %}
 
 instruct minF_reduction_reg(legRegF dst, legRegF a, legRegF b, legRegF xtmp, rRegI rtmp, rFlagsReg cr) %{
-  predicate(UseAVX > 0 && VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && VLoopReductions::is_reduction(n));
   match(Set dst (MinF a b));
   effect(USE a, USE b, TEMP xtmp, TEMP rtmp, KILL cr);
 
@@ -4521,9 +4554,20 @@ instruct minF_reduction_reg(legRegF dst, legRegF a, legRegF b, legRegF xtmp, rRe
   ins_pipe( pipe_slow );
 %}
 
+// max = java.lang.Math.min(double a, double b)
+instruct minD_avx10_reg(regD dst, regD a, regD b) %{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (MinD a b));
+  format %{ "minD $dst, $a, $b" %}
+  ins_encode %{
+    __ eminmaxsd($dst$$XMMRegister, $a$$XMMRegister, $b$$XMMRegister, AVX10_MINMAX_MIN_COMPARE_SIGN);
+  %}
+  ins_pipe( pipe_slow );
+%}
+
 // min = java.lang.Math.min(double a, double b)
 instruct minD_reg(legRegD dst, legRegD a, legRegD b, legRegD tmp, legRegD atmp, legRegD btmp) %{
-  predicate(UseAVX > 0 && !VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && !VLoopReductions::is_reduction(n));
   match(Set dst (MinD a b));
   effect(USE a, USE b, TEMP tmp, TEMP atmp, TEMP btmp);
     format %{ "minD $dst, $a, $b \t! using $tmp, $atmp and $btmp as TEMP" %}
@@ -4534,7 +4578,7 @@ instruct minD_reg(legRegD dst, legRegD a, legRegD b, legRegD tmp, legRegD atmp, 
 %}
 
 instruct minD_reduction_reg(legRegD dst, legRegD a, legRegD b, legRegD xtmp, rRegL rtmp, rFlagsReg cr) %{
-  predicate(UseAVX > 0 && VLoopReductions::is_reduction(n));
+  predicate(!VM_Version::supports_avx10_2() && UseAVX > 0 && VLoopReductions::is_reduction(n));
   match(Set dst (MinD a b));
   effect(USE a, USE b, TEMP xtmp, TEMP rtmp, KILL cr);
 
@@ -7817,10 +7861,12 @@ instruct compareAndExchangeB(
   effect(KILL cr);
 
   format %{ "cmpxchgb $mem_ptr,$newval\t# "
-            "If rax == $mem_ptr then store $newval into $mem_ptr\n\t"  %}
+            "If rax == $mem_ptr then store $newval into $mem_ptr, "
+            "else store $mem_ptr into rax; rax -> byte\n\t" %}
   ins_encode %{
     __ lock();
     __ cmpxchgb($newval$$Register, $mem_ptr$$Address);
+    __ narrow_subword_type($oldval$$Register, T_BYTE);
   %}
   ins_pipe( pipe_cmpxchg );
 %}
@@ -7834,10 +7880,12 @@ instruct compareAndExchangeS(
   effect(KILL cr);
 
   format %{ "cmpxchgw $mem_ptr,$newval\t# "
-            "If rax == $mem_ptr then store $newval into $mem_ptr\n\t"  %}
+            "If rax == $mem_ptr then store $newval into $mem_ptr, "
+            "else store $mem_ptr into rax; rax -> short\n\t" %}
   ins_encode %{
     __ lock();
     __ cmpxchgw($newval$$Register, $mem_ptr$$Address);
+    __ narrow_subword_type($oldval$$Register, T_SHORT);
   %}
   ins_pipe( pipe_cmpxchg );
 %}
@@ -7851,7 +7899,8 @@ instruct compareAndExchangeI(
   effect(KILL cr);
 
   format %{ "cmpxchgl $mem_ptr,$newval\t# "
-            "If rax == $mem_ptr then store $newval into $mem_ptr\n\t"  %}
+            "If rax == $mem_ptr then store $newval into $mem_ptr, "
+            "else store $mem_ptr into rax\n\t" %}
   ins_encode %{
     __ lock();
     __ cmpxchgl($newval$$Register, $mem_ptr$$Address);
@@ -7868,7 +7917,8 @@ instruct compareAndExchangeL(
   effect(KILL cr);
 
   format %{ "cmpxchgq $mem_ptr,$newval\t# "
-            "If rax == $mem_ptr then store $newval into $mem_ptr\n\t"  %}
+            "If rax == $mem_ptr then store $newval into $mem_ptr, "
+            "else store $mem_ptr into rax\n\t" %}
   ins_encode %{
     __ lock();
     __ cmpxchgq($newval$$Register, $mem_ptr$$Address);
@@ -7885,7 +7935,8 @@ instruct compareAndExchangeN(
   effect(KILL cr);
 
   format %{ "cmpxchgl $mem_ptr,$newval\t# "
-            "If rax == $mem_ptr then store $newval into $mem_ptr\n\t" %}
+            "If rax == $mem_ptr then store $newval into $mem_ptr, "
+            "else store $mem_ptr into rax\n\t" %}
   ins_encode %{
     __ lock();
     __ cmpxchgl($newval$$Register, $mem_ptr$$Address);
@@ -7903,7 +7954,8 @@ instruct compareAndExchangeP(
   effect(KILL cr);
 
   format %{ "cmpxchgq $mem_ptr,$newval\t# "
-            "If rax == $mem_ptr then store $newval into $mem_ptr\n\t" %}
+            "If rax == $mem_ptr then store $newval into $mem_ptr, "
+            "else store $mem_ptr into rax\n\t" %}
   ins_encode %{
     __ lock();
     __ cmpxchgq($newval$$Register, $mem_ptr$$Address);
@@ -11671,6 +11723,7 @@ instruct convD2F_reg_mem(regF dst, memory src)
 // XXX do mem variants
 instruct convF2I_reg_reg(rRegI dst, regF src, rFlagsReg cr)
 %{
+  predicate(!VM_Version::supports_avx10_2());
   match(Set dst (ConvF2I src));
   effect(KILL cr);
   format %{ "convert_f2i $dst, $src" %}
@@ -11680,8 +11733,31 @@ instruct convF2I_reg_reg(rRegI dst, regF src, rFlagsReg cr)
   ins_pipe(pipe_slow);
 %}
 
+instruct convF2I_reg_reg_avx10(rRegI dst, regF src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvF2I src));
+  format %{ "evcvttss2sisl $dst, $src" %}
+  ins_encode %{
+    __ evcvttss2sisl($dst$$Register, $src$$XMMRegister);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+instruct convF2I_reg_mem_avx10(rRegI dst, memory src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvF2I (LoadF src)));
+  format %{ "evcvttss2sisl $dst, $src" %}
+  ins_encode %{
+    __ evcvttss2sisl($dst$$Register, $src$$Address);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
 instruct convF2L_reg_reg(rRegL dst, regF src, rFlagsReg cr)
 %{
+  predicate(!VM_Version::supports_avx10_2());
   match(Set dst (ConvF2L src));
   effect(KILL cr);
   format %{ "convert_f2l $dst, $src"%}
@@ -11691,8 +11767,31 @@ instruct convF2L_reg_reg(rRegL dst, regF src, rFlagsReg cr)
   ins_pipe(pipe_slow);
 %}
 
+instruct convF2L_reg_reg_avx10(rRegL dst, regF src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvF2L src));
+  format %{ "evcvttss2sisq $dst, $src" %}
+  ins_encode %{
+    __ evcvttss2sisq($dst$$Register, $src$$XMMRegister);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+instruct convF2L_reg_mem_avx10(rRegL dst, memory src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvF2L (LoadF src)));
+  format %{ "evcvttss2sisq $dst, $src" %}
+  ins_encode %{
+    __ evcvttss2sisq($dst$$Register, $src$$Address);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
 instruct convD2I_reg_reg(rRegI dst, regD src, rFlagsReg cr)
 %{
+  predicate(!VM_Version::supports_avx10_2());
   match(Set dst (ConvD2I src));
   effect(KILL cr);
   format %{ "convert_d2i $dst, $src"%}
@@ -11702,13 +11801,58 @@ instruct convD2I_reg_reg(rRegI dst, regD src, rFlagsReg cr)
   ins_pipe(pipe_slow);
 %}
 
+instruct convD2I_reg_reg_avx10(rRegI dst, regD src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvD2I src));
+  format %{ "evcvttsd2sisl $dst, $src" %}
+  ins_encode %{
+    __ evcvttsd2sisl($dst$$Register, $src$$XMMRegister);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+instruct convD2I_reg_mem_avx10(rRegI dst, memory src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvD2I (LoadD src)));
+  format %{ "evcvttsd2sisl $dst, $src" %}
+  ins_encode %{
+    __ evcvttsd2sisl($dst$$Register, $src$$Address);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
 instruct convD2L_reg_reg(rRegL dst, regD src, rFlagsReg cr)
 %{
+  predicate(!VM_Version::supports_avx10_2());
   match(Set dst (ConvD2L src));
   effect(KILL cr);
   format %{ "convert_d2l $dst, $src"%}
   ins_encode %{
     __ convertF2I(T_LONG, T_DOUBLE, $dst$$Register, $src$$XMMRegister);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+instruct convD2L_reg_reg_avx10(rRegL dst, regD src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvD2L src));
+  format %{ "evcvttsd2sisq $dst, $src" %}
+  ins_encode %{
+    __ evcvttsd2sisq($dst$$Register, $src$$XMMRegister);
+  %}
+  ins_pipe(pipe_slow);
+%}
+
+instruct convD2L_reg_mem_avx10(rRegL dst, memory src)
+%{
+  predicate(VM_Version::supports_avx10_2());
+  match(Set dst (ConvD2L (LoadD src)));
+  format %{ "evcvttsd2sisq $dst, $src" %}
+  ins_encode %{
+    __ evcvttsd2sisq($dst$$Register, $src$$Address);
   %}
   ins_pipe(pipe_slow);
 %}

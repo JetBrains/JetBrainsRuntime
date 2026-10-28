@@ -162,10 +162,8 @@ physical_memory_size_type os::Linux::_physical_memory = 0;
 address   os::Linux::_initial_thread_stack_bottom = nullptr;
 uintptr_t os::Linux::_initial_thread_stack_size   = 0;
 
-int (*os::Linux::_pthread_getcpuclockid)(pthread_t, clockid_t *) = nullptr;
 int (*os::Linux::_pthread_setname_np)(pthread_t, const char*) = nullptr;
 pthread_t os::Linux::_main_thread;
-bool os::Linux::_supports_fast_thread_cpu_time = false;
 const char * os::Linux::_libc_version = nullptr;
 const char * os::Linux::_libpthread_version = nullptr;
 
@@ -1529,29 +1527,6 @@ double os::elapsedVTime() {
   }
 }
 
-void os::Linux::fast_thread_clock_init() {
-  clockid_t clockid;
-  struct timespec tp;
-  int (*pthread_getcpuclockid_func)(pthread_t, clockid_t *) =
-      (int(*)(pthread_t, clockid_t *)) dlsym(RTLD_DEFAULT, "pthread_getcpuclockid");
-
-  // Switch to using fast clocks for thread cpu time if
-  // the clock_getres() returns 0 error code.
-  // Note, that some kernels may support the current thread
-  // clock (CLOCK_THREAD_CPUTIME_ID) but not the clocks
-  // returned by the pthread_getcpuclockid().
-  // If the fast POSIX clocks are supported then the clock_getres()
-  // must return at least tp.tv_sec == 0 which means a resolution
-  // better than 1 sec. This is extra check for reliability.
-
-  if (pthread_getcpuclockid_func &&
-      pthread_getcpuclockid_func(_main_thread, &clockid) == 0 &&
-      clock_getres(clockid, &tp) == 0 && tp.tv_sec == 0) {
-    _supports_fast_thread_cpu_time = true;
-    _pthread_getcpuclockid = pthread_getcpuclockid_func;
-  }
-}
-
 // thread_id is kernel thread id (similar to Solaris LWP id)
 intx os::current_thread_id() { return os::Linux::gettid(); }
 int os::current_process_id() {
@@ -2193,6 +2168,10 @@ void os::print_os_info(outputStream* st) {
     st->cr();
   }
 
+  if (os::Linux::print_numa_info(st)) {
+    st->cr();
+  }
+
   VM_Version::print_platform_virtualization_info(st);
 
   os::Linux::print_steal_info(st);
@@ -2593,6 +2572,97 @@ bool os::Linux::print_container_info(outputStream* st) {
     }
   }
 
+  return true;
+}
+
+#define SYS_DEVICES_NODE "/sys/devices/system/node"
+
+static size_t read_sysfs_file(const char* path, char* buf, size_t sz) {
+  FILE* f = os::fopen(path, "r");
+  if (f == nullptr) return 0;
+  size_t n = fread(buf, 1, sz - 1, f);
+  fclose(f);
+  buf[n] = '\0';
+  while (n > 0 && (buf[n-1] == '\n' || buf[n-1] == '\r')) buf[--n] = '\0';
+  return n;
+}
+
+static void print_numa_memory_info(outputStream* st, int node) {
+  char path[256];
+  char line[256];
+  long long mem_total = -1;
+  long long mem_free = -1;
+  os::snprintf_checked(path, sizeof(path), SYS_DEVICES_NODE "/node%d/meminfo", node);
+  FILE* f = os::fopen(path, "r");
+  if (f == nullptr) {
+    return;
+  }
+
+  while (fgets(line, sizeof(line), f) != nullptr) {
+    long long mval;
+    if (sscanf(line, "Node %*d MemTotal: %lld kB", &mval) == 1) mem_total = mval;
+    if (sscanf(line, "Node %*d MemFree: %lld kB",  &mval) == 1) mem_free  = mval;
+  }
+  fclose(f);
+
+  if (mem_total >= 0) { st->print_cr("mem size: %lld kB", mem_total); }
+  if (mem_free >= 0) { st->print_cr("mem free: %lld kB", mem_free); }
+}
+
+static void print_numa_cpu_list(outputStream* st, int node) {
+  char path[256];
+  char buf[1024];
+  os::snprintf_checked(path, sizeof(path), SYS_DEVICES_NODE "/node%d/cpulist", node);
+  if (read_sysfs_file(path, buf, sizeof(buf)) > 0) {
+    st->print_cr("cpus: %s", buf);
+  } else {
+    st->print_cr("cpus: (unavailable)");
+  }
+}
+
+bool os::Linux::print_numa_info(outputStream* st) {
+  if (!UseNUMA) {
+    // If NUMA optimizations are not enabled we don't print anything
+    return false;
+  }
+
+  char buf[1024];
+  if (read_sysfs_file("/sys/devices/system/node/online", buf, sizeof(buf)) > 0) {
+    st->print_cr("NUMA nodes online: %s", buf);
+  } else {
+    return false;
+  }
+
+  bool first = true;
+  int node_count = 0;
+
+  if (nindex_to_node() == nullptr) {
+    return false;
+  }
+
+  for (int node: *nindex_to_node()) {
+    char nodepath[256];
+    os::snprintf_checked(nodepath, sizeof(nodepath), SYS_DEVICES_NODE "/node%d", node);
+    DIR* currd = os::opendir(nodepath);
+    if (currd == nullptr) continue;
+    if (first) {
+      st->cr();
+      first = false;
+    }
+    os::closedir(currd);
+
+    st->print_cr("NUMA node %d", node);
+    StreamIndentor si(st);
+    print_numa_cpu_list(st, node);
+    print_numa_memory_info(st, node);
+    node_count++;
+  }
+
+  if (node_count == 0) {
+    return false;
+  }
+
+  st->print_cr("Total NUMA node count: %d", node_count);
   return true;
 }
 
@@ -4374,14 +4444,7 @@ OSReturn os::get_native_priority(const Thread* const thread,
   return (*priority_ptr != -1 || errno == 0 ? OS_OK : OS_ERR);
 }
 
-// This is the fastest way to get thread cpu time on Linux.
-// Returns cpu time (user+sys) for any thread, not only for current.
-// POSIX compliant clocks are implemented in the kernels 2.6.16+.
-// It might work on 2.6.10+ with a special kernel/glibc patch.
-// For reference, please, see IEEE Std 1003.1-2004:
-//   http://www.unix.org/single_unix_specification
-
-jlong os::Linux::fast_thread_cpu_time(clockid_t clockid) {
+jlong os::Linux::thread_cpu_time(clockid_t clockid) {
   struct timespec tp;
   int status = clock_gettime(clockid, &tp);
   assert(status == 0, "clock_gettime error: %s", os::strerror(errno));
@@ -4693,8 +4756,6 @@ jint os::init_2(void) {
   DEBUG_ONLY(os::set_mutex_init_done();)
 
   os::Posix::init_2();
-
-  Linux::fast_thread_clock_init();
 
   if (PosixSignals::init() == JNI_ERR) {
     return JNI_ERR;
@@ -5122,20 +5183,42 @@ int os::open(const char *path, int oflag, int mode) {
   return fd;
 }
 
-static jlong slow_thread_cpu_time(Thread *thread, bool user_sys_cpu_time);
+// Since kernel v2.6.12 the Linux ABI has had support for encoding the clock
+// types in the last three bits. Bit 2 indicates whether a cpu clock refers to a
+// thread or a process. Bits 1 and 0 give the type: PROF=0, VIRT=1, SCHED=2, or
+// FD=3. The clock CPUCLOCK_VIRT (0b001) reports the thread's consumed user
+// time. POSIX compliant implementations of pthread_getcpuclockid return the
+// clock CPUCLOCK_SCHED (0b010) which reports the thread's consumed system+user
+// time (as mandated by the POSIX standard POSIX.1-2024/IEEE Std 1003.1-2024
+// §3.90).
+static bool get_thread_clockid(Thread* thread, clockid_t* clockid, bool total) {
+  constexpr clockid_t CLOCK_TYPE_MASK = 3;
+  constexpr clockid_t CPUCLOCK_VIRT = 1;
 
-static jlong fast_cpu_time(Thread *thread) {
-    clockid_t clockid;
-    int rc = os::Linux::pthread_getcpuclockid(thread->osthread()->pthread_id(),
-                                              &clockid);
-    if (rc == 0) {
-      return os::Linux::fast_thread_cpu_time(clockid);
-    } else {
-      // It's possible to encounter a terminated native thread that failed
-      // to detach itself from the VM - which should result in ESRCH.
-      assert_status(rc == ESRCH, rc, "pthread_getcpuclockid failed");
-      return -1;
-    }
+  int rc = pthread_getcpuclockid(thread->osthread()->pthread_id(), clockid);
+  if (rc != 0) {
+    // It's possible to encounter a terminated native thread that failed
+    // to detach itself from the VM - which should result in ESRCH.
+    assert_status(rc == ESRCH, rc, "pthread_getcpuclockid failed");
+    return false;
+  }
+
+  if (!total) {
+    clockid_t clockid_tmp = *clockid;
+    clockid_tmp = (clockid_tmp & ~CLOCK_TYPE_MASK) | CPUCLOCK_VIRT;
+    *clockid = clockid_tmp;
+  }
+
+  return true;
+}
+
+static jlong user_thread_cpu_time(Thread *thread);
+
+static jlong total_thread_cpu_time(Thread *thread) {
+  clockid_t clockid;
+  bool success = get_thread_clockid(thread, &clockid, true);
+
+  return success ? os::Linux::thread_cpu_time(clockid) : -1;
 }
 
 // current_thread_cpu_time(bool) and thread_cpu_time(Thread*, bool)
@@ -5146,82 +5229,34 @@ static jlong fast_cpu_time(Thread *thread) {
 // the fast estimate available on the platform.
 
 jlong os::current_thread_cpu_time() {
-  if (os::Linux::supports_fast_thread_cpu_time()) {
-    return os::Linux::fast_thread_cpu_time(CLOCK_THREAD_CPUTIME_ID);
-  } else {
-    // return user + sys since the cost is the same
-    return slow_thread_cpu_time(Thread::current(), true /* user + sys */);
-  }
+  return os::Linux::thread_cpu_time(CLOCK_THREAD_CPUTIME_ID);
 }
 
 jlong os::thread_cpu_time(Thread* thread) {
-  // consistent with what current_thread_cpu_time() returns
-  if (os::Linux::supports_fast_thread_cpu_time()) {
-    return fast_cpu_time(thread);
-  } else {
-    return slow_thread_cpu_time(thread, true /* user + sys */);
-  }
+  return total_thread_cpu_time(thread);
 }
 
 jlong os::current_thread_cpu_time(bool user_sys_cpu_time) {
-  if (user_sys_cpu_time && os::Linux::supports_fast_thread_cpu_time()) {
-    return os::Linux::fast_thread_cpu_time(CLOCK_THREAD_CPUTIME_ID);
+  if (user_sys_cpu_time) {
+    return os::Linux::thread_cpu_time(CLOCK_THREAD_CPUTIME_ID);
   } else {
-    return slow_thread_cpu_time(Thread::current(), user_sys_cpu_time);
+    return user_thread_cpu_time(Thread::current());
   }
 }
 
 jlong os::thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
-  if (user_sys_cpu_time && os::Linux::supports_fast_thread_cpu_time()) {
-    return fast_cpu_time(thread);
+  if (user_sys_cpu_time) {
+    return total_thread_cpu_time(thread);
   } else {
-    return slow_thread_cpu_time(thread, user_sys_cpu_time);
+    return user_thread_cpu_time(thread);
   }
 }
 
-//  -1 on error.
-static jlong slow_thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
-  pid_t  tid = thread->osthread()->thread_id();
-  char *s;
-  char stat[2048];
-  size_t statlen;
-  char proc_name[64];
-  int count;
-  long sys_time, user_time;
-  char cdummy;
-  int idummy;
-  long ldummy;
-  FILE *fp;
+static jlong user_thread_cpu_time(Thread *thread) {
+  clockid_t clockid;
+  bool success = get_thread_clockid(thread, &clockid, false);
 
-  snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
-  fp = os::fopen(proc_name, "r");
-  if (fp == nullptr) return -1;
-  statlen = fread(stat, 1, 2047, fp);
-  stat[statlen] = '\0';
-  fclose(fp);
-
-  // Skip pid and the command string. Note that we could be dealing with
-  // weird command names, e.g. user could decide to rename java launcher
-  // to "java 1.4.2 :)", then the stat file would look like
-  //                1234 (java 1.4.2 :)) R ... ...
-  // We don't really need to know the command string, just find the last
-  // occurrence of ")" and then start parsing from there. See bug 4726580.
-  s = strrchr(stat, ')');
-  if (s == nullptr) return -1;
-
-  // Skip blank chars
-  do { s++; } while (s && isspace((unsigned char) *s));
-
-  count = sscanf(s,"%c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu",
-                 &cdummy, &idummy, &idummy, &idummy, &idummy, &idummy,
-                 &ldummy, &ldummy, &ldummy, &ldummy, &ldummy,
-                 &user_time, &sys_time);
-  if (count != 13) return -1;
-  if (user_sys_cpu_time) {
-    return ((jlong)sys_time + (jlong)user_time) * (1000000000 / os::Posix::clock_tics_per_second());
-  } else {
-    return (jlong)user_time * (1000000000 / os::Posix::clock_tics_per_second());
-  }
+  return success ? os::Linux::thread_cpu_time(clockid) : -1;
 }
 
 void os::current_thread_cpu_time_info(jvmtiTimerInfo *info_ptr) {

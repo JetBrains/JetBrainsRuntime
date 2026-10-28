@@ -991,18 +991,22 @@ bool Node::has_out_with(int opcode1, int opcode2, int opcode3, int opcode4) {
 //---------------------------uncast_helper-------------------------------------
 Node* Node::uncast_helper(const Node* p, bool keep_deps) {
 #ifdef ASSERT
+  // If we end up traversing more nodes than we actually have,
+  // it is definitely an infinite loop.
+  uint max_depth = Compile::current()->unique();
   uint depth_count = 0;
   const Node* orig_p = p;
 #endif
 
   while (true) {
 #ifdef ASSERT
-    if (depth_count >= K) {
+    if (depth_count++ >= max_depth) {
       orig_p->dump(4);
-      if (p != orig_p)
+      if (p != orig_p) {
         p->dump(1);
+      }
+      fatal("infinite loop in Node::uncast_helper");
     }
-    assert(depth_count++ < K, "infinite loop in Node::uncast_helper");
 #endif
     if (p == nullptr || p->req() != 2) {
       break;
@@ -1215,6 +1219,9 @@ bool Node::has_special_unique_user() const {
     return true;
   } else if ((is_IfFalse() || is_IfTrue()) && n->is_If()) {
     // See IfNode::fold_compares
+    return true;
+  } else if (n->Opcode() == Op_XorV || n->Opcode() == Op_XorVMask) {
+    // Condition for XorVMask(VectorMaskCmp(x,y,cond), MaskAll(true)) ==> VectorMaskCmp(x,y,ncond)
     return true;
   } else {
     return false;
@@ -2946,23 +2953,13 @@ bool Node::is_dead_loop_safe() const {
 bool Node::is_div_or_mod(BasicType bt) const { return Opcode() == Op_Div(bt) || Opcode() == Op_Mod(bt) ||
                                                       Opcode() == Op_UDiv(bt) || Opcode() == Op_UMod(bt); }
 
-bool Node::is_pure_function() const {
-  switch (Opcode()) {
-  case Op_ModD:
-  case Op_ModF:
-    return true;
-  default:
-    return false;
-  }
-}
-
 // `maybe_pure_function` is assumed to be the input of `this`. This is a bit redundant,
 // but we already have and need maybe_pure_function in all the call sites, so
 // it makes it obvious that the `maybe_pure_function` is the same node as in the caller,
 // while it takes more thinking to realize that a locally computed in(0) must be equal to
 // the local in the caller.
 bool Node::is_data_proj_of_pure_function(const Node* maybe_pure_function) const {
-  return Opcode() == Op_Proj && as_Proj()->_con == TypeFunc::Parms && maybe_pure_function->is_pure_function();
+  return Opcode() == Op_Proj && as_Proj()->_con == TypeFunc::Parms && maybe_pure_function->is_CallLeafPure();
 }
 
 //=============================================================================

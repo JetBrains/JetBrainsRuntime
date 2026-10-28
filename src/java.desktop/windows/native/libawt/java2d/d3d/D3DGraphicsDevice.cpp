@@ -360,7 +360,9 @@ Java_sun_java2d_d3d_D3DGraphicsDevice_configDisplayModeNative
     J2dTraceLn(J2D_TRACE_VERBOSE, "  selected backbuffer format: %d",
                newParams.BackBufferFormat);
 
-    res = pCtx->ConfigureContext(&newParams);
+    ConfigureContextData data = {pCtx, &newParams, S_OK};
+    AwtToolkit::GetInstance().InvokeFunction(D3DContext_ConfigureContext, &data);
+    res = data.res;
     if (SUCCEEDED(res)) {
         // the full screen window doesn't receive WM_SIZE event when
         // the display mode changes (it does get resized though) so we need to
