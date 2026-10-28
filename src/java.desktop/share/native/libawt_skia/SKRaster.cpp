@@ -200,9 +200,9 @@ SkColor4f swizzledColor4f(jint argb) { return SkColor4f::FromColor(swizzled(argb
 
 SkMatrix matrixOf(const jfloat *m) { return SkMatrix::MakeAll(m[0], m[2], m[4], m[1], m[3], m[5], 0, 0, 1); }
 
-SkPaint paintFor(const jfloat *d, jint dCount, const jint *colors, jint compositeRule) {
+SkPaint paintFor(const jfloat *d, jint dCount, const jint *colors, jint compositeRule, bool antialias = true) {
     SkPaint paint;
-    paint.setAntiAlias(true);
+    paint.setAntiAlias(antialias);
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
     const int kind = (int) d[0];
     if (kind == PAINT_COLOR || dCount < 17) {
@@ -273,7 +273,7 @@ struct PaintData {
     PaintData(JNIEnv *env, jfloatArray da, jintArray ca) : d(env->GetArrayLength(da)), colors(env->GetArrayLength(ca)) {
         env->GetFloatArrayRegion(da, 0, (jsize) d.size, d.data); env->GetIntArrayRegion(ca, 0, (jsize) colors.size, colors.data);
     }
-    SkPaint paint(jint compositeRule) { return paintFor(d.data, (jint) d.size, colors.data, compositeRule); }
+    SkPaint paint(jint compositeRule, bool antialias) { return paintFor(d.data, (jint) d.size, colors.data, compositeRule, antialias); }
 };
 
 
@@ -283,7 +283,7 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
-                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
+                                                 jfloat x1, jfloat y1, jfloat x2, jfloat y2, jboolean antialias, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
                                                  jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
@@ -293,13 +293,13 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobje
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     if (probe < 3) return;
-    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), pd.paint(compositeRule));
+    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), pd.paint(compositeRule, antialias));
 }
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
                                                    jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint windingRule,
-                                                   jfloatArray xformArray, jfloat lineWidth, jint cap, jint join, jfloat miterLimit,
+                                                   jfloatArray xformArray, jfloat lineWidth, jint cap, jint join, jfloat miterLimit, jboolean antialias,
                                                    jfloatArray paintArray, jintArray colorsArray, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
@@ -313,7 +313,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     static const SkPaint::Cap caps[] = { SkPaint::kButt_Cap, SkPaint::kRound_Cap, SkPaint::kSquare_Cap };
     static const SkPaint::Join joins[] = { SkPaint::kMiter_Join, SkPaint::kRound_Join, SkPaint::kBevel_Join };
     PaintData pd(env, paintArray, colorsArray);
-    SkPaint paint = pd.paint(compositeRule);
+    SkPaint paint = pd.paint(compositeRule, antialias);
     paint.setStyle(SkPaint::kStroke_Style);
     paint.setStrokeWidth(lineWidth);
     paint.setStrokeCap(caps[std::clamp((int) cap, 0, 2)]);
@@ -330,7 +330,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jint width, jint height,
                                                  jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount,
-                                                 jint windingRule, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
+                                                 jint windingRule, jboolean antialias, jfloatArray paintArray, jintArray colorsArray, jint compositeRule,
                                                  jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
 {
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
@@ -343,7 +343,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     Operation op(env, sData, pixelFormat, width, height, clipX1, clipY1, clipX2, clipY2);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
-    op.canvas()->drawPath(path, pd.paint(compositeRule));
+    op.canvas()->drawPath(path, pd.paint(compositeRule, antialias));
 }
 
 JNIEXPORT void JNICALL

@@ -280,6 +280,11 @@ public final class SKEnvironment {
         return RASTER && loadLibrary();
     }
 
+    /** Non-antialiased shapes on raster surfaces Skia scan-converted (not the loops' ProcessPath and spans), for tests. */
+    public static long rasterNonAAShapesBySkia() {
+        return SKRasterShapePipe.nonAntialiasedBySkia.get();
+    }
+
     /** Glyphs on raster surfaces drawn through Skia's text path (not the loops' glyph images), for tests. */
     public static long rasterGlyphsBySkia() {
         return SKRasterTextPipe.glyphsBySkia.get();

@@ -94,14 +94,25 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
                 && sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
             sg2d.textpipe = SKRasterTextPipe.of(sg2d.textpipe);   // Skia's text path for strikes on the Skia scaler, the loops' glyph images otherwise
         }
-        if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON
-                && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
+        if ((sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
                 && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
-            PixelToParallelogramConverter converter =
-                    new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0 / 8.0, 0.499, false);
-            sg2d.drawpipe = converter;
-            sg2d.fillpipe = converter;
-            sg2d.shapepipe = converter;
+            if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON) {
+                PixelToParallelogramConverter converter =
+                        new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0 / 8.0, 0.499, false);
+                sg2d.drawpipe = converter;
+                sg2d.fillpipe = converter;
+                sg2d.shapepipe = converter;
+            } else {
+                // the loops' non-antialiased converter rules (a 1-px pen, quarter-pixel normalization,
+                // adjusted fills); thin strokes stay the loops' Bresenham lines
+                PixelToParallelogramConverter converter =
+                        new PixelToParallelogramConverter(shapePipe, shapePipe, 1.0, 0.25, true);
+                if (sg2d.strokeState != SunGraphics2D.STROKE_THIN) {
+                    sg2d.drawpipe = converter;
+                }
+                sg2d.fillpipe = converter;
+                sg2d.shapepipe = converter;
+            }
         }
     }
 }

@@ -399,12 +399,22 @@ final class SKShapePipe implements ShapeDrawPipe {
         private double curXAdjust, curYAdjust, moveXAdjust, moveYAdjust;
         private final double[] tmp = new double[6];
 
+        /** The sub-pixel position end points snap to: pixel centres (Marlin's antialiased rule). */
         NormalizingIterator(PathIterator src) {
-            this.src = src;
+            this(src, 0.5);
         }
 
-        private static double normCoord(double v) {
-            return Math.floor(v) + 0.5;
+        /** As above with the position given: 0.25 is the non-antialiased rule (ShapeSpanIterator's). */
+        NormalizingIterator(PathIterator src, double position) {
+            this.src = src;
+            this.position = position;
+        }
+
+        private final double position;
+
+        private double normCoord(double v) {
+            // Marlin: pixel centres by floor, the nearest quarter position by rounding (NearestPixelQuarter)
+            return position == 0.5 ? Math.floor(v) + 0.5 : Math.floor(v + position) + position;
         }
 
         @Override

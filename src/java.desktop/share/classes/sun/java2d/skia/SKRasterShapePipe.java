@@ -22,6 +22,7 @@ import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.geom.Path2D;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.FlatteningPathIterator;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.PathIterator;
 
@@ -56,15 +57,17 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
     @Override
     public void draw(SunGraphics2D sg2d, Shape s) {
         if (!(sg2d.stroke instanceof BasicStroke bs)) {
-            fillDevicePath(sg2d, new Path2D.Float(sg2d.stroke.createStrokedShape(s), sg2d.transform));
+            boolean aa = antialiased(sg2d);
+            fillDevicePath(sg2d, spanRulePath(sg2d, sg2d.stroke.createStrokedShape(s), aa), aa);
             return;
         }
         AffineTransform at = sg2d.transform;
         float width = (float) SKShapePipe.lineWidth(sg2d, bs);
+        boolean aa = antialiased(sg2d);
         Shape userShape = s;
         if (sg2d.strokeHint != SunHints.INTVAL_STROKE_PURE) {
             Path2D.Float p = new Path2D.Float();
-            p.append(new SKShapePipe.NormalizingIterator(s.getPathIterator(at)), false);
+            p.append(new SKShapePipe.NormalizingIterator(s.getPathIterator(at), aa ? 0.5 : 0.25), false);
             try {
                 p.transform(at.createInverse());
             } catch (NoninvertibleTransformException e) {
@@ -72,15 +75,72 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             }
             userShape = p;
         }
-        if (bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
+        // non-antialiased strokes are Marlin's outline, as the loops' (Skia's stroker differs by whole pixels there)
+        if (!aa || bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
             BasicStroke outline = new BasicStroke(width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), bs.getDashArray(), bs.getDashPhase());
-            fillDevicePath(sg2d, new Path2D.Float(outline.createStrokedShape(userShape), at));
+            Shape outlineShape = outline.createStrokedShape(userShape);
+            // normalized above; the loops scan-convert the outline with the span iterator
+            fillDevicePath(sg2d, aa ? new Path2D.Float(outlineShape, at) : forSpans(outlineShape.getPathIterator(at)), aa);
             return;
         }
-        strokeUserPath(sg2d, new Path2D.Float(SKShapePipe.splitBentCubics(userShape, at)), at, width, bs);
+        strokeUserPath(sg2d, new Path2D.Float(SKShapePipe.splitBentCubics(userShape, at)), at, width, bs, aa);
     }
 
-    private static void strokeUserPath(SunGraphics2D sg2d, Path2D.Float path, AffineTransform at, float width, BasicStroke bs) {
+    /**
+     * Skia's non-antialiased scan conversion fills a pixel whose centre lies exactly on an
+     * edge only on the edge's right or bottom side; the loops' span iterator and ProcessPath
+     * fill it on the left or top side (left- and top-inclusive, half-open). A nudge of a 64th
+     * of a pixel (Skia's edge precision) up and left lands the ties on the loops' side.
+     */
+    private static final double TIE_NUDGE = 1.0 / 64;
+
+    /**
+     * The device path of a non-antialiased fill under the loops' rule for it. An opaque fill under
+     * a thin stroke state goes through ProcessPath, which samples the pixel's top-left corner (the
+     * shape shifted half a pixel down and right under centre sampling; unshifted with STROKE_PURE);
+     * any other fill, and every outline the loops fill for a stroke, goes through the span iterator,
+     * which snaps the coordinates to quarter positions (unless STROKE_PURE) and samples centres.
+     * Ties on edges shallower than 1:64 still resolve Skia's way (the nudge moves their crossings).
+     */
+    private static Path2D.Float nonAAFillPath(SunGraphics2D sg2d, Shape s) {
+        boolean pure = sg2d.strokeHint == SunHints.INTVAL_STROKE_PURE;
+        // ProcessPath: the loops' own fill of an opaque colour under a rectangular clip with a thin stroke;
+        // a translucent composite, a paint or a shape clip take the span iterator (SurfaceData.validatePipe)
+        boolean processPath = sg2d.strokeState == SunGraphics2D.STROKE_THIN && sg2d.compositeState <= SunGraphics2D.COMP_ISCOPY
+                && sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR && sg2d.clipState != SunGraphics2D.CLIP_SHAPE;
+        if (processPath) {
+            Path2D.Float p = new Path2D.Float(s, sg2d.transform);
+            double shift = (pure ? 0 : 0.5) - TIE_NUDGE;
+            p.transform(AffineTransform.getTranslateInstance(shift, shift));
+            return p;
+        }
+        return spanRulePath(sg2d, s, false);
+    }
+
+    /** The device path of a shape the loops' span iterator would fill: quarter-pixel normalization unless STROKE_PURE, then its curves flattened and ties nudged. */
+    private static Path2D.Float spanRulePath(SunGraphics2D sg2d, Shape s, boolean aa) {
+        if (aa) {
+            return new Path2D.Float(s, sg2d.transform);
+        }
+        PathIterator pi = s.getPathIterator(sg2d.transform);
+        return forSpans(sg2d.strokeHint == SunHints.INTVAL_STROKE_PURE ? pi : new SKShapePipe.NormalizingIterator(pi, 0.25));
+    }
+
+    /**
+     * ShapeSpanIterator's chord tolerance: a curve whose control points lie within a pixel of its
+     * chord is a line (MAX_FLAT_SQ); its ovals are visibly inside the curve Skia would follow.
+     */
+    private static final double SPAN_FLATNESS = 1.0;
+
+    /** A device path as the loops' span iterator scan-converts it: curves flattened at its tolerance, ties nudged. */
+    private static Path2D.Float forSpans(PathIterator devicePath) {
+        Path2D.Float p = new Path2D.Float();
+        p.append(new FlatteningPathIterator(devicePath, SPAN_FLATNESS, 10), false);
+        p.transform(AffineTransform.getTranslateInstance(-TIE_NUDGE, -TIE_NUDGE));
+        return p;
+    }
+
+    private static void strokeUserPath(SunGraphics2D sg2d, Path2D.Float path, AffineTransform at, float width, BasicStroke bs, boolean aa) {
         SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
         Region clip = sg2d.getCompClip();
         // the lock box: the path's device bounds grown by the stroke's reach (half width, miter or square-cap factor, device scale)
@@ -98,7 +158,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         float[] xform = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY()};
         strokesBySkia.incrementAndGet();
         strokePath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(),
-                   xform, width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+                   xform, width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), aa, paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
     /** A path's segments as the native side reads them: types and coordinates. */
@@ -121,7 +181,8 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
 
     @Override
     public void fill(SunGraphics2D sg2d, Shape s) {
-        fillDevicePath(sg2d, new Path2D.Float(s, sg2d.transform));
+        boolean aa = antialiased(sg2d);
+        fillDevicePath(sg2d, aa ? new Path2D.Float(s, sg2d.transform) : nonAAFillPath(sg2d, s), aa);
     }
 
     @Override
@@ -133,7 +194,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         }
         Path2D.Float p = new Path2D.Float();
         p.moveTo(x, y); p.lineTo(x + dx1, y + dy1); p.lineTo(x + dx1 + dx2, y + dy1 + dy2); p.lineTo(x + dx2, y + dy2); p.closePath();
-        fillDevicePath(sg2d, p);
+        fillDevicePath(sg2d, p, antialiased(sg2d));
     }
 
     @Override
@@ -150,7 +211,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         if (idx1 * idy2 - idy1 * idx2 > 0 == dx1 * dy2 - dy1 * dx2 > 0) {   // the inner one still has the same orientation: a hole
             p.moveTo(ix, iy); p.lineTo(ix + idx1, iy + idy1); p.lineTo(ix + idx1 + idx2, iy + idy1 + idy2); p.lineTo(ix + idx2, iy + idy2); p.closePath();
         }
-        fillDevicePath(sg2d, p);
+        fillDevicePath(sg2d, p, antialiased(sg2d));
     }
 
     private static void fillDeviceRect(SunGraphics2D sg2d, float x1, float y1, float x2, float y2) {
@@ -162,7 +223,19 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             return;
         }
         int[] colors = colorsFor(sg2d);
-        fillRect(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), x1, y1, x2, y2, paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+        fillRect(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), x1, y1, x2, y2, antialiased(sg2d), paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spansOf(clip, cx1, cy1, cx2, cy2));
+    }
+
+    /** Non-antialiased shapes Skia scan-converted (the loops' ProcessPath and span iterator otherwise), for the test of the route. */
+    static final java.util.concurrent.atomic.AtomicLong nonAntialiasedBySkia = new java.util.concurrent.atomic.AtomicLong();
+
+    /** The graphics' antialiasing hint; a non-antialiased operation is counted here. */
+    private static boolean antialiased(SunGraphics2D sg2d) {
+        boolean aa = sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON;
+        if (!aa) {
+            nonAntialiasedBySkia.incrementAndGet();
+        }
+        return aa;
     }
 
     private static int compositeRule(SunGraphics2D sg2d) {
@@ -255,7 +328,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         return java.util.Arrays.copyOf(list, n);
     }
 
-    private static void fillDevicePath(SunGraphics2D sg2d, Path2D.Float path) {
+    private static void fillDevicePath(SunGraphics2D sg2d, Path2D.Float path, boolean aa) {
         SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
         Region clip = sg2d.getCompClip();
         Rectangle bounds = path.getBounds();
@@ -267,20 +340,20 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         int[] spans = spansOf(clip, cx1, cy1, cx2, cy2);
         PathData d = PathData.of(path);
         int[] colors = colorsFor(sg2d);
-        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(), paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
+        fillPath(sd, sd.pixelFormat(), sd.imageWidth(), sd.imageHeight(), d.types, d.typeCount, d.coords, d.coordCount, path.getWindingRule(), aa, paintOf(sg2d, colors), colors, compositeRule(sg2d), cx1, cy1, cx2, cy2, spans);
     }
 
     /** Strokes the user-space path under the transform with Skia's stroker (width, cap, join, miter limit as BasicStroke's). */
     private static native void strokePath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
-                                          float[] coords, int coordCount, int windingRule, float[] xform, float lineWidth, int cap, int join, float miterLimit,
+                                          float[] coords, int coordCount, int windingRule, float[] xform, float lineWidth, int cap, int join, float miterLimit, boolean antialias,
                                           float[] paint, int[] colors, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 
-    /** Fills the device-space rectangle (edges antialiased where fractional) into the surface's pixels. */
-    private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, int width, int height, float x1, float y1, float x2, float y2,
+    /** Fills the device-space rectangle into the surface's pixels: edges antialiased where fractional, or the pixels whose centre is inside. */
+    private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, int width, int height, float x1, float y1, float x2, float y2, boolean antialias,
                                         float[] paint, int[] colors, int compositeRule, int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 
     /** Fills the device-space path into the surface's pixels: colour with its alpha, Porter-Duff rule, clip box and optional clip spans. */
     private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, int width, int height, byte[] types, int typeCount,
-                                        float[] coords, int coordCount, int windingRule, float[] paint, int[] colors, int compositeRule,
+                                        float[] coords, int coordCount, int windingRule, boolean antialias, float[] paint, int[] colors, int compositeRule,
                                         int clipX1, int clipY1, int clipX2, int clipY2, int[] clipSpans);
 }
