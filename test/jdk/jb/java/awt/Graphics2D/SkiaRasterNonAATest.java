@@ -38,6 +38,8 @@ import java.util.function.Consumer;
  *          mitered strokes) land pixel for pixel where the software loops put
  *          them, up to the ties of shallow edges; curved shapes may differ where
  *          the two flatteners disagree, on edge pixels only and on few of them.
+ *          Thin draws (lines, ovals, round rectangles, arcs, a zero-width round
+ *          rectangle that must still show as a line) are the loops' and identical.
  *          The loops' three fill rules are followed: ProcessPath's half-pixel
  *          offset for opaque fills under a thin stroke, the span iterator's
  *          quarter-pixel normalization otherwise and for strokes (Marlin's
@@ -60,6 +62,8 @@ public class SkiaRasterNonAATest {
         compare("concave polygon", g -> g.fill(new Polygon(new int[] {10, 150, 150, 80, 10}, new int[] {10, 20, 110, 60, 100}, 5)), TIES);
         compare("mitered 3-px rectangle stroke", g -> { g.setStroke(new BasicStroke(3f)); g.draw(new Rectangle2D.Double(20.5, 15.5, 70, 40)); }, TIES);
         compare("thin line (the loops')", g -> g.drawLine(5, 5, 150, 97), 0);
+        compare("thin oval and round rectangle draws (the loops' DrawPath)", g -> { g.drawOval(20, 15, 90, 60); g.drawRoundRect(120, 20, 30, 40, 8, 8); g.drawArc(30, 70, 50, 40, 20, 250); }, 0);
+        compare("zero-width round rectangle draws as a line (the loops' DrawPath)", g -> { g.drawRoundRect(60, 20, 0, 40, 4, 4); g.drawRoundRect(20, 70, 40, 0, 4, 4); }, 0);
         compare("oval", g -> g.fill(new Ellipse2D.Double(20.5, 10.3, 60, 40)), 0.05);
         compare("round rectangle", g -> g.fill(new RoundRectangle2D.Double(30, 20, 60, 40, 12, 12)), 0.05);
         compare("cubic blob", g -> { Path2D.Double p = new Path2D.Double(); p.moveTo(20, 80); p.curveTo(40, 0, 120, 140, 140, 30); p.lineTo(120, 110); p.closePath(); g.fill(p); }, CURVES);

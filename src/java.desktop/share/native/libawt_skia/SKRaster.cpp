@@ -51,6 +51,7 @@
 #include <array>
 #include <cstdlib>
 #include <vector>
+#include <atomic>
 
 namespace {
 
@@ -92,6 +93,22 @@ inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA me
 // lands in memory as Java's HRGB order.
 static const SkSurfaceProps props(0, kBGR_H_SkPixelGeometry);
 
+// Write locks on buffered images, counted: SKRasterSurfaceData.trackWrites wraps the surface's
+// Lock so every SD_LOCK_WRITE by any pipe on any thread bumps the serial; a thread's mirror remembers
+// the serial of its own last lock and stays valid while nobody else locked for writing since (and
+// Java wrote nothing, which the Java side tracks). Read locks leave it alone: the mirror is written
+// out after every operation, so readers always see current pixels.
+static LockFunc *gOriginalLock = nullptr;
+static std::atomic<uint64_t> gWriteLocks{0};
+static thread_local uint64_t tLastWriteLock = 0;   // the serial this thread's last write lock produced
+
+static jint TrackedLock(JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *rasInfo, jint lockflags) {
+    if (lockflags & SD_LOCK_WRITE) tLastWriteLock = gWriteLocks.fetch_add(1, std::memory_order_relaxed) + 1;
+    return gOriginalLock(env, ops, rasInfo, lockflags);
+}
+
+constexpr int kTile = 16;   // the mirror's import granularity: a small operation after an invalidation imports little more than its box
+
 struct RasterTarget {
     SurfaceDataOps *ops = nullptr;
     void *pixels = nullptr;          // what the lock returned last time; the canvas draws there
@@ -100,6 +117,26 @@ struct RasterTarget {
     std::unique_ptr<SkCanvas> canvas;
     SkBitmap mirror;                 // INT_ARGB: the premultiplied copy of the whole image the canvas draws into
     uint32_t stamp = 0;              // for the least-recently-used replacement
+    std::vector<uint8_t> tiles;      // INT_ARGB: which kTile × kTile tiles of the mirror hold the image's pixels
+    int tilesAcross = 0, tilesDown = 0;
+    uint64_t epoch = 0;              // the write-lock serial the tiles are valid for (this thread's own last lock)
+
+    void invalidateMirror() { std::fill(tiles.begin(), tiles.end(), 0); }
+    bool mirrorCurrent(bool mirrorKept) const {
+        return mirrorKept && ops != nullptr && ops->Lock == TrackedLock && epoch != 0 && gWriteLocks.load(std::memory_order_relaxed) == epoch;
+    }
+    // the box's tiles not yet current are imported; afterwards the box is current in the mirror
+    void prepare(const SkIRect &box) {
+        for (int ty = box.fTop / kTile; ty <= (box.fBottom - 1) / kTile; ty++) {
+            for (int tx = box.fLeft / kTile; tx <= (box.fRight - 1) / kTile; tx++) {
+                uint8_t &t = tiles[(size_t) ty * tilesAcross + tx];
+                if (t) continue;
+                SkIRect tile = SkIRect::MakeXYWH(tx * kTile, ty * kTile, kTile, kTile);
+                if (tile.intersect(SkIRect::MakeWH(info.width(), info.height()))) mirrorIn(tile);
+                t = 1;
+            }
+        }
+    }
 
     bool matches(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) const {
         return ops == o && pixels == p && rowBytes == rb && info.width() == i.width() && info.height() == i.height()
@@ -112,6 +149,9 @@ struct RasterTarget {
                 mirror.reset();
                 if (!mirror.tryAllocPixels(SkImageInfo::Make(i.width(), i.height(), i.colorType(), kPremul_SkAlphaType))) return false;
             }
+            tilesAcross = (i.width() + kTile - 1) / kTile; tilesDown = (i.height() + kTile - 1) / kTile;
+            tiles.assign((size_t) tilesAcross * tilesDown, 0);
+            epoch = 0;
             canvas = SkCanvas::MakeRasterDirect(mirror.info(), mirror.getPixels(), mirror.rowBytes(), &props);
         } else {
             mirror.reset();
@@ -153,6 +193,11 @@ constexpr int kTargets = 4;
 thread_local std::array<RasterTarget, kTargets> targets;
 thread_local uint32_t targetStamp = 0;
 
+RasterTarget *peekTarget(SurfaceDataOps *ops) {
+    for (RasterTarget &t : targets) if (t.ops == ops && t.canvas) return &t;
+    return nullptr;
+}
+
 RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &info, size_t rowBytes) {
     RasterTarget *victim = &targets[0];
     for (RasterTarget &t : targets) {
@@ -171,13 +216,16 @@ struct Operation {
     enum Mode { kClipped, kBox, kDirect };
     JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; RasterTarget *target = nullptr; SkIRect box; Mode mode; bool ok = false;
 
-    Operation(JNIEnv *e, jobject sData, jint pixelFormat, jint x1, jint y1, jint x2, jint y2, Mode m = kClipped) : env(e), mode(m) {
+    Operation(JNIEnv *e, jobject sData, jint pixelFormat, jint x1, jint y1, jint x2, jint y2, Mode m = kClipped, bool mirrorKept = false) : env(e), mode(m) {
         ops = SurfaceData_GetOps(env, sData);
         if (ops == nullptr) return;
         // the image's size, from the buffered image's own ops (SKRasterSurfaceData is one)
         const SurfaceDataBounds &image = ((BufImgSDOps *) ops)->rasbounds;
         const jint width = image.x2 - image.x1, height = image.y2 - image.y1;
         ras.bounds.x1 = x1; ras.bounds.y1 = y1; ras.bounds.x2 = x2; ras.bounds.y2 = y2;
+        // before this thread's own lock bumps the serial: is the thread's mirror of this surface still current?
+        RasterTarget *known = mode == kDirect ? nullptr : peekTarget(ops);
+        const bool keep = known != nullptr && known->mirrorCurrent(mirrorKept);
         if (ops->Lock(env, ops, &ras, SD_LOCK_WRITE) != SD_SUCCESS) { ops = nullptr; return; }
         ops->GetRasInfo(env, ops, &ras);
         if (ras.rasBase == nullptr || ras.bounds.x1 >= ras.bounds.x2 || ras.bounds.y1 >= ras.bounds.y2) return;
@@ -188,7 +236,10 @@ struct Operation {
         // mirror) outlive the operation — a box-sized info rebuilt them for every call
         target = targetFor(ops, ras.rasBase, infoFor(pixelFormat, width, height), (size_t) ras.scanStride);
         if (target == nullptr) return;
-        if (target->viaMirror()) target->mirrorIn(box);
+        if (target->viaMirror()) {
+            if (!(keep && target == known)) target->invalidateMirror();
+            target->prepare(box);
+        }
         if (mode == kClipped) {
             target->canvas->save();
             target->canvas->clipIRect(box);
@@ -206,7 +257,7 @@ struct Operation {
     ~Operation() {
         if (ok && target != nullptr) {
             if (mode == kClipped) target->canvas->restore();
-            if (target->viaMirror()) target->mirrorOut(box);
+            if (target->viaMirror()) { target->mirrorOut(box); target->epoch = tLastWriteLock; }
         }
         if (ops != nullptr) { SurfaceData_InvokeRelease(env, ops, &ras); SurfaceData_InvokeUnlock(env, ops, &ras); }
     }
@@ -307,12 +358,12 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobje
                                                  jfloat x1, jfloat y1, jfloat x2, jfloat y2, jint flags, jfloatArray paintArray, jintArray colorsArray,
                                                  jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
-    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1;
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1, mirrorKept = (flags >> 15) & 1;
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     PaintData pd(env, paintArray, colorsArray);
-    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     if (probe < 3) return;
@@ -323,18 +374,24 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_fillRectColor(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
                                                       jfloat x1, jfloat y1, jfloat x2, jfloat y2, jint flags, jint argb, jint boxLeftTop, jint boxRightBottom)
 {
-    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1;
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1, mirrorKept = (flags >> 15) & 1;
     const jint boxX1 = px(boxLeftTop), boxY1 = py(boxLeftTop), boxX2 = px(boxRightBottom), boxY2 = py(boxRightBottom);
     if (probe < 1) return;   // J2D_SKIA_RASTER_PROBE=0: the Java side and the call alone
     const bool opaque = ((argb >> 24) & 0xff) == 0xff;
     // the loops' FillRect for these is a store of the colour's pixel: so is ours, into Java's own layout
     const bool store = !antialias && (compositeRule == java_awt_AlphaComposite_SRC || (opaque && compositeRule == java_awt_AlphaComposite_SRC_OVER));
-    Operation op(env, sData, pixelFormat, boxX1, boxY1, boxX2, boxY2, store ? Operation::kDirect : Operation::kBox);
+    Operation op(env, sData, pixelFormat, boxX1, boxY1, boxX2, boxY2, store ? Operation::kDirect : Operation::kBox, mirrorKept);
     if (!op.ok || probe < 2) return;   // 1: the lock alone
     if (store) {
         const uint32_t pixel = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE ? premultiplied((uint32_t) argb) : (uint32_t) argb;
         const int count = op.box.width();
         for (int y = op.box.fTop; y < op.box.fBottom; y++) std::fill_n(op.row(y), count, pixel);
+        // this thread's mirror of the surface, if it has one, gets the same pixels and stays current
+        if (RasterTarget *t = peekTarget(op.ops); t != nullptr && t->viaMirror()) {
+            if (!t->mirrorCurrent(mirrorKept)) t->invalidateMirror();
+            else { const uint32_t mp = premultiplied((uint32_t) argb); for (int y = op.box.fTop; y < op.box.fBottom; y++) std::fill_n(t->mirror.getAddr32(op.box.fLeft, y), count, mp); }
+            t->epoch = tLastWriteLock;
+        }
         return;
     }
     if (probe < 3) return;
@@ -353,7 +410,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
                                                    jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint flags,
                                                    jfloatArray xformArray, jfloatArray paintArray, jintArray colorsArray, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
-    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1; const jint windingRule = (flags >> 9) & 1, cap = (flags >> 10) & 3, join = (flags >> 12) & 3;
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1, mirrorKept = (flags >> 15) & 1; const jint windingRule = (flags >> 9) & 1, cap = (flags >> 10) & 3, join = (flags >> 12) & 3;
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     jfloat xf[8]; env->GetFloatArrayRegion(xformArray, 0, 8, xf);   // the transform, then the pen: line width and miter limit
     const jfloat lineWidth = xf[6], miterLimit = xf[7];
@@ -373,7 +430,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     paint.setStrokeCap(caps[std::clamp((int) cap, 0, 2)]);
     paint.setStrokeJoin(joins[std::clamp((int) join, 0, 2)]);
     paint.setStrokeMiter(miterLimit);
-    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     // the geometry is stroked in user space and drawn under the transform (Java's stroke semantics)
@@ -386,7 +443,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
                                                  jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint flags,
                                                  jfloatArray paintArray, jintArray colorsArray, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
-    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1; const jint windingRule = (flags >> 9) & 1;
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1, mirrorKept = (flags >> 15) & 1; const jint windingRule = (flags >> 9) & 1;
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jbyte> types(typeCount); Buffer<256, jfloat> coords(coordCount);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
@@ -395,7 +452,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
     PaintData pd(env, paintArray, colorsArray);
-    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     op.canvas()->drawPath(path, pd.paint(compositeRule, antialias));
@@ -406,7 +463,7 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
                                                  jobject srcData, jint srcPixelFormat, jint srcLeftTop, jint srcRightBottom,
                                                  jfloatArray xformArray, jint ruleAndInterpolation, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
-    const jint compositeRule = ruleAndInterpolation & 0xff, interpType = (ruleAndInterpolation >> 8) & 0xff;
+    const jint compositeRule = ruleAndInterpolation & 0xff, interpType = (ruleAndInterpolation >> 8) & 0xff; const bool mirrorKept = (ruleAndInterpolation >> 16) & 1;
     const jint sx1 = px(srcLeftTop), sy1 = py(srcLeftTop), sx2 = px(srcRightBottom), sy2 = py(srcRightBottom);
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
@@ -418,7 +475,7 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
     // AffineTransformOp: 1 nearest neighbour, 2 bilinear, 3 bicubic (Java's kernel is Catmull-Rom's, a = -0.5)
     SkSamplingOptions sampling = interpType == 3 ? SkSamplingOptions(SkCubicResampler::CatmullRom())
                                : interpType == 2 ? SkSamplingOptions(SkFilterMode::kLinear) : SkSamplingOptions(SkFilterMode::kNearest);
-    Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     // the source, locked for reading (a nested pin: no JNI call until it is released)
@@ -468,7 +525,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
                                                  jint argb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
     const jint numGlyphs = countAndFlags & 0xffffff; const jboolean usePositions = (countAndFlags >> 24) & 1, smoothing = (countAndFlags >> 25) & 1;
-    const jint compositeRule = (countAndFlags >> 26) & 0xf;
+    const jint compositeRule = (countAndFlags >> 26) & 0xf; const bool mirrorKept = (countAndFlags >> 30) & 1;
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     if (numGlyphs <= 0) return;
     // every Java array read before the pin
@@ -482,7 +539,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     if (positions.size) env->GetFloatArrayRegion(positionsArray, 0, (jsize) positions.size, positions.data);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
-    Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2);
+    Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     SkPaint paint;
@@ -491,6 +548,19 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
     SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
                                  originX, originY, codes.data, images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRasterSurfaceData_trackWrites(JNIEnv *env, jobject self)
+{
+    SurfaceDataOps *ops = SurfaceData_GetOps(env, self);
+    if (ops == nullptr || ops->Lock == TrackedLock) return;
+    // every buffered image shares BufImgSurfaceData's Lock; a surface with another one stays untracked (its mirror is never kept)
+    LockFunc *expected = nullptr;
+    static std::atomic<LockFunc *> original{nullptr};
+    original.compare_exchange_strong(expected, ops->Lock);
+    gOriginalLock = original.load();
+    if (gOriginalLock == ops->Lock) ops->Lock = TrackedLock;
 }
 
 } // extern "C"

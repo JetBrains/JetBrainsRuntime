@@ -21,6 +21,7 @@ import sun.awt.image.IntegerComponentRaster;
 
 import sun.awt.SunHints;
 import sun.awt.image.BufImgSurfaceData;
+import sun.java2d.StateTracker;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
@@ -69,8 +70,43 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
         sd.initRaster(raster.getDataStorage(), offsets[0] * 4, 0, raster.getWidth(), raster.getHeight(),
                       raster.getPixelStride() * 4, raster.getScanlineStride() * 4, null);
         sd.initSolidLoops();
+        sd.trackWrites();
         return sd;
     }
+
+    /** The pixels' state tracker as of the last mark: still current means no Java-side write since. */
+    private StateTracker javaWrites;
+    /** A Java-side write was seen since the last raster operation. */
+    private boolean javaWrote = true;
+
+    /**
+     * SunGraphics2D marks the surface dirty before every operation, through the same tracker a
+     * Java-side write (setRGB, the raster's setters) invalidates. So the tracker is read here, before
+     * the mark: stale means Java wrote the pixels since the last operation; then it is renewed. A
+     * stolen array (an untrackable buffer) reads as written every time, which keeps the mirror off.
+     */
+    @Override
+    public void markDirty() {
+        if (javaWrites == null || !javaWrites.isCurrent()) {
+            javaWrote = true;
+        }
+        super.markDirty();
+        javaWrites = getStateTracker();
+    }
+
+    /**
+     * Whether nothing wrote the pixels from Java since the last raster operation; with that and no
+     * other write lock since (counted natively) the natives keep an INT_ARGB surface's
+     * premultiplied mirror instead of converting the touched pixels in again. Once per operation.
+     */
+    boolean untouchedByJava() {
+        boolean untouched = !javaWrote && javaWrites != null && javaWrites.isCurrent();
+        javaWrote = false;
+        return untouched;
+    }
+
+    /** Wraps the surface's native lock so every write lock, by any pipe on any thread, is counted. */
+    private native void trackWrites();
 
     private SKRasterSurfaceData(BufferedImage img, SurfaceType type, int pixelFormat, double scaleX, double scaleY) {
         super(img.getRaster().getDataBuffer(), img, type, scaleX, scaleY);

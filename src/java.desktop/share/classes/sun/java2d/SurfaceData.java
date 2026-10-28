@@ -289,9 +289,11 @@ public abstract class SurfaceData
     }
 
     /**
-     * Marks this surface as dirty.
+     * Marks this surface as dirty. Not final: a surface keeping a converted copy of its pixels
+     * (sun.java2d.skia.SKRasterSurfaceData) reads the state tracker here, before the mark, to tell
+     * a write from Java apart from the mark every graphics operation makes.
      */
-    public final void markDirty() {
+    public void markDirty() {
         stateDelegate.markDirty();
     }
 

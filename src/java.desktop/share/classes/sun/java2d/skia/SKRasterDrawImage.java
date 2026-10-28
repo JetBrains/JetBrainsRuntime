@@ -89,7 +89,7 @@ final class SKRasterDrawImage extends DrawImage {
         int rule = sg.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
         float[] m = {(float) tx.getScaleX(), (float) tx.getShearY(), (float) tx.getShearX(), (float) tx.getScaleY(), (float) tx.getTranslateX(), (float) tx.getTranslateY(), extraAlpha};
         imagesBySkia.incrementAndGet();
-        drawImage(dst, dst.pixelFormat(), srcData, srcPf, SKRasterShapePipe.packed(sx1, sy1), SKRasterShapePipe.packed(sx2, sy2), m, rule | interpType << 8,
+        drawImage(dst, dst.pixelFormat(), srcData, srcPf, SKRasterShapePipe.packed(sx1, sy1), SKRasterShapePipe.packed(sx2, sy2), m, rule | interpType << 8 | (dst.untouchedByJava() ? 1 << 16 : 0),
                   SKRasterShapePipe.packed(dx1, dy1), SKRasterShapePipe.packed(dx2, dy2), SKRasterShapePipe.spansOf(clip, dx1, dy1, dx2, dy2));
         return true;
     }
@@ -98,7 +98,7 @@ final class SKRasterDrawImage extends DrawImage {
      * Draws the source rectangle under the transform (which maps the rectangle's origin to the
      * destination; the extra alpha rides in the array's seventh slot), sampling with the
      * interpolation type of AffineTransformOp (1 nearest, 2 bilinear, 3 bicubic, in bits 8–15 over
-     * the composite rule); the source is locked for reading while it is drawn. Points are packed
+     * the composite rule; bit 16: the mirror may be kept); the source is locked for reading while it is drawn. Points are packed
      * as SKRasterShapePipe.packed.
      */
     private static native void drawImage(SKRasterSurfaceData dst, int dstPixelFormat, SurfaceData src, int srcPixelFormat, int srcLeftTop, int srcRightBottom,

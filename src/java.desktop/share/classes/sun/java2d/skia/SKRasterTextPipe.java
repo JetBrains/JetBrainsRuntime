@@ -193,7 +193,7 @@ final class SKRasterTextPipe extends GlyphListPipe {
         }
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
         glyphsBySkia.addAndGet(n);
-        int flags = n | (usePositions ? 1 << 24 : 0) | (SKEnvironment.textSmoothing() ? 1 << 25 : 0) | rule << 26;
+        int flags = n | (usePositions ? 1 << 24 : 0) | (SKEnvironment.textSmoothing() ? 1 << 25 : 0) | rule << 26 | (dst.untouchedByJava() ? 1 << 30 : 0);
         drawGlyphs(dst, dst.pixelFormat(), runs.contexts(), flags, gl.getX(), gl.getY(), runs.codes(), gl.getImages(), usePositions ? gl.getPositions() : null,
                    sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
     }
@@ -203,7 +203,7 @@ final class SKRasterTextPipe extends GlyphListPipe {
      * baseline origin through the strikes' SkFonts (contexts by the slot in the codes' bits 24–31),
      * with the colour (extra alpha included, sg2d.eargb); the arrays are the GlyphList's own, read
      * before it is reused. countAndFlags: the glyph count in bits 0–23, usePositions at 24, smoothing
-     * at 25, the composite rule from 26 (the natives take at most 14 parameter slots, see
+     * at 25, the composite rule from 26, the mirror flag at 30 (the natives take at most 14 parameter slots, see
      * SKRasterShapePipe.flags).
      */
     private static native void drawGlyphs(SKRasterSurfaceData dst, int dstPixelFormat, long[] contexts, int countAndFlags,

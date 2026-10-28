@@ -31,8 +31,9 @@ import sun.java2d.SurfaceData;
  *          interleaved frames. Antialiased fractional rectangles (the converter's
  *          parallelogram fills) may take 1.5 times the loops' time on INT_ARGB_PRE
  *          (3.9 when every operation created its canvas, copied its arrays and ran
- *          Skia's generic blitter) and 2.5 on INT_ARGB, whose pixels are converted
- *          into and out of a premultiplied mirror per operation. Non-antialiased
+ *          Skia's generic blitter) and 1.5 on INT_ARGB too, whose pixels go through a
+ *          premultiplied mirror the thread keeps while nothing else writes them (2.5
+ *          when every operation converted its box in and out). Non-antialiased
  *          integer rectangles are the loops' cheapest call, a store under the same
  *          lock, so only the fixed cost shows: 1.25 and 1.5 times (3.5 before the
  *          colour-only rectangle entry that locks, stores and leaves).
@@ -57,7 +58,7 @@ public class SkiaRasterFixedCostTest {
                 double ms = median(a), ml = median(b), ratio = ms / ml;
                 // AA: the rasterizer's work dominates; non-AA integer rectangles are the loops' cheapest
                 // operation (a memset-like loop under the same lock), so only the fixed cost shows
-                double limit = aa ? (type == BufferedImage.TYPE_INT_ARGB ? 2.5 : 1.5) : (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.25);
+                double limit = aa ? (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.5) : (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.25);
                 System.out.printf("type %d: %d %s rects per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.2f)%n", type, N, aa ? "AA" : "non-AA integer", ms, ml, ratio, limit);
                 if (ratio > limit) {
                     throw new RuntimeException("type " + type + ": the raster surface takes " + ratio + " times the loops' time for small " + (aa ? "AA" : "non-AA integer") + " rectangles (limit " + limit + ")");

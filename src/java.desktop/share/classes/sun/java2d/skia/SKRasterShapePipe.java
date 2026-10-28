@@ -29,7 +29,9 @@ import java.awt.geom.PathIterator;
 import sun.awt.SunHints;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.ParallelogramPipe;
+import sun.awt.geom.PathConsumer2D;
 import sun.java2d.pipe.Region;
+import sun.java2d.pipe.RenderingEngine;
 import sun.java2d.pipe.ShapeDrawPipe;
 import sun.java2d.pipe.SpanIterator;
 
@@ -56,6 +58,24 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
      */
     @Override
     public void draw(SunGraphics2D sg2d, Shape s) {
+        if (sg2d.antialiasHint != SunHints.INTVAL_ANTIALIAS_ON && sg2d.strokeState == SunGraphics2D.STROKE_THIN) {
+            // the loops' thin non-antialiased draw (LoopPipe.draw): a one-pixel Bresenham walk along the
+            // path by ProcessPath, which also draws a zero-width round rectangle as a line; the loops'
+            // drawOval, drawRoundRect and drawArc reach the shape pipe for it
+            Path2D.Float p2df;
+            int transX, transY;
+            if (sg2d.transformState <= SunGraphics2D.TRANSFORM_INT_TRANSLATE) {
+                p2df = s instanceof Path2D.Float pf ? pf : new Path2D.Float(s);
+                transX = sg2d.transX;
+                transY = sg2d.transY;
+            } else {
+                p2df = new Path2D.Float(s, sg2d.transform);
+                transX = 0;
+                transY = 0;
+            }
+            sg2d.loops.drawPathLoop.DrawPath(sg2d, sg2d.getSurfaceData(), transX, transY, p2df);
+            return;
+        }
         if (!(sg2d.stroke instanceof BasicStroke bs)) {
             boolean aa = antialiased(sg2d);
             fillDevicePath(sg2d, spanRulePath(sg2d, sg2d.stroke.createStrokedShape(s), aa), aa);
@@ -78,12 +98,57 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         // non-antialiased strokes are Marlin's outline, as the loops' (Skia's stroker differs by whole pixels there)
         if (!aa || bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
             BasicStroke outline = new BasicStroke(width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), bs.getDashArray(), bs.getDashPhase());
-            Shape outlineShape = outline.createStrokedShape(userShape);
+            // the engine's clipped stroker, as LoopPipe.getStrokeSpans: a dashed line billions of pixels long
+            // yields the dashes inside the clip, not all of them; the output is in device space
+            Path2D.Float outlinePath = new Path2D.Float();
+            RenderingEngine.getInstance().strokeTo(userShape, at, sg2d.getCompClip(), outline, false, false, aa, new PathCollector(outlinePath));
             // normalized above; the loops scan-convert the outline with the span iterator
-            fillDevicePath(sg2d, aa ? new Path2D.Float(outlineShape, at) : forSpans(outlineShape.getPathIterator(at)), aa);
+            fillDevicePath(sg2d, aa ? outlinePath : forSpans(outlinePath.getPathIterator(null)), aa);
             return;
         }
-        strokeUserPath(sg2d, new Path2D.Float(SKShapePipe.splitBentCubics(userShape, at)), at, width, bs, aa);
+        strokeUserPath(sg2d, withoutZeroLengthSegments(new Path2D.Float(SKShapePipe.splitBentCubics(userShape, at))), at, width, bs, aa);
+    }
+
+    /**
+     * Marlin's stroker ignores a line segment to the current point; Skia's lets it shape the join
+     * (a redundant lineTo after a moveTo moved a miter by a few levels). The path without them,
+     * keeping the one segment of a dot (a zero-length subpath, drawn as its cap by both).
+     */
+    private static Path2D.Float withoutZeroLengthSegments(Path2D.Float path) {
+        Path2D.Float out = new Path2D.Float(path.getWindingRule());
+        float[] seg = new float[6];
+        float cx = 0, cy = 0;
+        int segmentsInSubpath = 0;
+        for (PathIterator pi = path.getPathIterator(null); !pi.isDone(); pi.next()) {
+            switch (pi.currentSegment(seg)) {
+                case PathIterator.SEG_MOVETO -> { out.moveTo(seg[0], seg[1]); cx = seg[0]; cy = seg[1]; segmentsInSubpath = 0; }
+                case PathIterator.SEG_LINETO -> {
+                    if (seg[0] != cx || seg[1] != cy || segmentsInSubpath == 0) { out.lineTo(seg[0], seg[1]); segmentsInSubpath++; }
+                    cx = seg[0]; cy = seg[1];
+                }
+                case PathIterator.SEG_QUADTO -> { out.quadTo(seg[0], seg[1], seg[2], seg[3]); cx = seg[2]; cy = seg[3]; segmentsInSubpath++; }
+                case PathIterator.SEG_CUBICTO -> { out.curveTo(seg[0], seg[1], seg[2], seg[3], seg[4], seg[5]); cx = seg[4]; cy = seg[5]; segmentsInSubpath++; }
+                default -> out.closePath();
+            }
+        }
+        return out;
+    }
+
+    /** A PathConsumer2D collecting the engine's output into a path. */
+    private static final class PathCollector implements PathConsumer2D {
+        private final Path2D.Float path;
+
+        PathCollector(Path2D.Float path) {
+            this.path = path;
+        }
+
+        @Override public void moveTo(float x, float y) { path.moveTo(x, y); }
+        @Override public void lineTo(float x, float y) { path.lineTo(x, y); }
+        @Override public void quadTo(float x1, float y1, float x2, float y2) { path.quadTo(x1, y1, x2, y2); }
+        @Override public void curveTo(float x1, float y1, float x2, float y2, float x3, float y3) { path.curveTo(x1, y1, x2, y2, x3, y3); }
+        @Override public void closePath() { path.closePath(); }
+        @Override public void pathDone() { }
+        @Override public long getNativeConsumer() { return 0; }
     }
 
     /**
@@ -162,18 +227,57 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
                    xform, paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
-    /** A path's segments as the native side reads them: types and coordinates. */
+    /**
+     * A path's segments as the native side reads them: types and coordinates, under Marlin's rule
+     * for coordinates that are NaN, infinite or beyond ±Float.MAX_VALUE / 2 (Skia draws nothing of a
+     * path with a non-finite point): a move to such a point ends the subpath, a line to one is
+     * dropped, a curve with such a control point becomes a line to its end point, and the first
+     * usable point after a dropped move starts the subpath.
+     */
     private record PathData(byte[] types, int typeCount, float[] coords, int coordCount) {
+        private static final float BOUND = Float.MAX_VALUE / 2;
+
+        private static boolean usable(float[] seg, int from, int to) {
+            for (int i = from; i < to; i++) {
+                if (!(seg[i] < BOUND && seg[i] > -BOUND)) {   // false for NaN too
+                    return false;
+                }
+            }
+            return true;
+        }
+
         static PathData of(Path2D.Float path) {
             PathIterator pi = path.getPathIterator(null);
             byte[] types = new byte[32]; float[] coords = new float[128]; int nt = 0, nc = 0; float[] seg = new float[6];
+            boolean subpath = false;
             while (!pi.isDone()) {
                 int t = pi.currentSegment(seg);
-                if (nt == types.length) types = java.util.Arrays.copyOf(types, nt * 2);
-                types[nt++] = (byte) t;
-                int k = t == PathIterator.SEG_MOVETO || t == PathIterator.SEG_LINETO ? 2 : t == PathIterator.SEG_QUADTO ? 4 : t == PathIterator.SEG_CUBICTO ? 6 : 0;
-                if (nc + k > coords.length) coords = java.util.Arrays.copyOf(coords, Math.max(nc + k, nc * 2));
-                System.arraycopy(seg, 0, coords, nc, k); nc += k;
+                int from = 0, k;
+                switch (t) {
+                    case PathIterator.SEG_MOVETO -> {
+                        subpath = usable(seg, 0, 2);
+                        k = subpath ? 2 : -1;
+                    }
+                    case PathIterator.SEG_LINETO -> {
+                        if (!usable(seg, 0, 2)) { k = -1; }
+                        else if (subpath) { k = 2; }
+                        else { t = PathIterator.SEG_MOVETO; k = 2; subpath = true; }
+                    }
+                    case PathIterator.SEG_QUADTO, PathIterator.SEG_CUBICTO -> {
+                        int n = t == PathIterator.SEG_QUADTO ? 4 : 6;
+                        if (!usable(seg, n - 2, n)) { k = -1; }
+                        else if (!subpath) { t = PathIterator.SEG_MOVETO; from = n - 2; k = 2; subpath = true; }
+                        else if (usable(seg, 0, n - 2)) { k = n; }
+                        else { t = PathIterator.SEG_LINETO; from = n - 2; k = 2; }
+                    }
+                    default -> k = subpath ? 0 : -1;   // close: only a started subpath closes (and stays started)
+                }
+                if (k >= 0) {
+                    if (nt == types.length) types = java.util.Arrays.copyOf(types, nt * 2);
+                    types[nt++] = (byte) t;
+                    if (nc + k > coords.length) coords = java.util.Arrays.copyOf(coords, Math.max(nc + k, nc * 2));
+                    System.arraycopy(seg, from, coords, nc, k); nc += k;
+                }
                 pi.next();
             }
             return new PathData(types, nt, coords, nc);
@@ -280,13 +384,16 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
      * The natives take at most 14 parameter slots: HotSpot generates a fast signature handler up to
      * that size and runs the interpreter's slow one above it, which cost every raster operation
      * ≈ 0.1 µs (found with the sampler on fillRect). So small values travel packed: the composite rule
-     * in bits 0–7 and the antialiasing flag in bit 8 (callers add the winding rule at bit 9, caps and
-     * joins at 10 and 12), and a device point as x in the high half and y in the low half of an int
+     * in bits 0–7, the antialiasing flag in bit 8 (callers add the winding rule at bit 9, caps and
+     * joins at 10 and 12), the mirror flag in bit 15, and a device point as x in the high half and y in the low half of an int
      * (the surface is at most 65535 pixels a side, SKRasterSurfaceData.createData sees to it).
      */
     static int flags(SunGraphics2D sg2d, boolean aa) {
-        return compositeRule(sg2d) | (aa ? 1 << 8 : 0);
+        return compositeRule(sg2d) | (aa ? 1 << 8 : 0) | (((SKRasterSurfaceData) sg2d.surfaceData).untouchedByJava() ? MIRROR_KEPT : 0);
     }
+
+    /** Bit 15 of the flags: no Java-side write since the last operation, the natives may keep the mirror. */
+    static final int MIRROR_KEPT = 1 << 15;
 
     static int packed(int x, int y) {
         return x << 16 | (y & 0xffff);
