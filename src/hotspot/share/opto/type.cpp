@@ -48,6 +48,7 @@
 #include "runtime/stubRoutines.hpp"
 #include "c2compiler.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
+#include "runtime/atomic.hpp"
 
 // Portions of code courtesy of Clifford Click
 
@@ -451,8 +452,10 @@ void Type::Initialize_shared(Compile* current) {
     return Type::equals((Type*) t1, (Type*) t2) ? 0 : 1;
   };
 
-  _shared_type_dict = new (shared_type_arena) Dict(type_cmp, (Hash) Type::uhash, shared_type_arena, 128);
-  current->set_type_dict(_shared_type_dict);
+  // Use local shared_type_dict for building the dict privately, publish it only at the end of the method.
+  // so concurrent readers in Type::Initialize() never see a partially built dict.
+  Dict* shared_type_dict = new (shared_type_arena) Dict(type_cmp, (Hash) Type::uhash, shared_type_arena, 128);
+  current->set_type_dict(shared_type_dict);
 
   // Make shared pre-built types.
   CONTROL = make(Control);      // Control only
@@ -736,13 +739,15 @@ void Type::Initialize_shared(Compile* current) {
   // Restore working type arena.
   current->set_type_arena(save);
   current->set_type_dict(nullptr);
+
+  Atomic::release_store(&_shared_type_dict, shared_type_dict);
 }
 
 //------------------------------Initialize-------------------------------------
 void Type::Initialize(Compile* current) {
   assert(current->type_arena() != nullptr, "must have created type arena");
 
-  if (_shared_type_dict == nullptr) {
+  if (Atomic::load_acquire(&_shared_type_dict) == nullptr) {
     Initialize_shared(current);
   } else {
     if (C2Compiler::is_reinitialize_vm_klasses()) {
@@ -750,7 +755,6 @@ void Type::Initialize(Compile* current) {
       MutexLocker only_one(DcevmCompilationInit_lock, Mutex::_no_safepoint_check_flag);
 
       if (C2Compiler::is_reinitialize_vm_klasses()) {
-        _shared_type_dict = nullptr;
         Initialize_shared(current);
         C2Compiler::clear_reinitialize_vm_klasses();
       }
@@ -760,7 +764,7 @@ void Type::Initialize(Compile* current) {
   Arena* type_arena = current->type_arena();
 
   // Create the hash-cons'ing dictionary with top-level storage allocation
-  Dict *tdic = new (type_arena) Dict(*_shared_type_dict, type_arena);
+  Dict *tdic = new (type_arena) Dict(*Atomic::load_acquire(&_shared_type_dict), type_arena);
   current->set_type_dict(tdic);
 }
 
