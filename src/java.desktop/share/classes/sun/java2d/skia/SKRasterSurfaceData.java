@@ -90,6 +90,10 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
     public void validatePipe(SunGraphics2D sg2d) {
         super.validatePipe(sg2d);
         sg2d.imagepipe = imagePipe;   // the loops' blits for copies, Skia for transformed images
+        if (SKEnvironment.textBySkia() && sg2d.textpipe != outlineTextRenderer
+                && sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
+            sg2d.textpipe = SKRasterTextPipe.of(sg2d.textpipe);   // Skia's text path for strikes on the Skia scaler, the loops' glyph images otherwise
+        }
         if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON
                 && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
                 && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {

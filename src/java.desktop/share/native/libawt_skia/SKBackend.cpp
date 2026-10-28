@@ -1891,11 +1891,10 @@ jlong SKBackend_GlyphsDrawnBySkia() {
 // for that colour. With one class the luminance dependence is off and every colour gets the
 // strike's fixed luminance (SKFontScaler.GRAY_LUMINANCE). FontUtilities.luminanceClass()
 // computes the same class on the Java side; keep the two in step.
-static int luminanceClass(const SkPaint &paint, jlong pScalerContext) {
+static int luminanceClass(SkColor c, jlong pScalerContext) {   // c: the text colour as Java sees it (not a swizzled raster colour)
     if (gConfig.luminanceClasses <= 1) {
         return SKFontScaler_GrayLuminance(pScalerContext);
     }
-    const SkColor c = paint.getColor();
     const int luminance = (SkColorGetR(c) * 299 + SkColorGetG(c) * 587 + SkColorGetB(c) * 114) / 1000;
     const int width = 256 / gConfig.luminanceClasses;
     return (luminance & ~(width - 1)) | (width >> 1);
@@ -1906,25 +1905,24 @@ static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
            && font.getEdging() == SkFont::Edging::kAntiAlias && font.getTypeface() != nullptr;
 }
 
-static void applyGrayRoute(SkFont &font, jlong pScalerContext, const SkPaint &paint) {
+static void applyGrayRoute(SkFont &font, jlong pScalerContext, SkColor textColour) {
     if (takesGrayRoute(font, pScalerContext)) {
-        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(paint, pScalerContext)));
+        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(textColour, pScalerContext)));
     }
 }
 
 // The font manager for the fallback runs: the platform's, or its luminance proxy when the
 // strike takes the cg route, so the characters the strike's font lacks get the route too.
-static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, const SkPaint &paint) {
+static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, SkColor textColour) {
     sk_sp<SkFontMgr> platform = SKPlatform_FontManager();
-    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(paint, pScalerContext)) : platform;
+    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(textColour, pScalerContext)) : platform;
 }
 
-void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
-                                jfloat originX, jfloat originY, const jint *codes, const jlong *images,
-                                const jfloat *positions) {
-    REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();   // glyph-image draws queued before this list stay in order
-    SkPaint paint = SKBackend_MakePaint(true);
+jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
+                                   jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+                                   jfloat originX, jfloat originY, const jint *codes, const jlong *images,
+                                   const jfloat *positions) {
+    jlong drawn = 0;
     // runs of glyphs sharing a font (the strike's own, or a platform fallback font)
     std::vector<SkGlyphID> ids;
     std::vector<SkPoint> points;
@@ -1932,8 +1930,8 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
     const SkTypeface *runTypeface = nullptr;
     auto flushRun = [&] {
         if (!ids.empty()) {
-            g.canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
-            gGlyphsDrawnBySkia.fetch_add((jlong) ids.size(), std::memory_order_relaxed);
+            canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+            drawn += (jlong) ids.size();
             ids.clear();
             points.clear();
         }
@@ -1958,7 +1956,7 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
         if (!SKFontScaler_ResolveGlyph(pScalerContext, codes[i], &font, &glyph)) {
             continue;
         }
-        applyGrayRoute(font, pScalerContext, paint);
+        applyGrayRoute(font, pScalerContext, textColour);
         if (font.getTypeface() != runTypeface) {
             flushRun();
             runFont = font;
@@ -1971,6 +1969,18 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
         points.push_back({gx, gy});
     }
     flushRun();
+    return drawn;
+}
+
+void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+                                jfloat originX, jfloat originY, const jint *codes, const jlong *images,
+                                const jfloat *positions) {
+    REQUIRE_CANVAS_TEXT();
+    flushGlyphBatches();   // glyph-image draws queued before this list stay in order
+    SkPaint paint = SKBackend_MakePaint(true);
+    jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), pScalerContext, numGlyphs, usePositions, smoothing,
+                                               originX, originY, codes, images, positions);
+    gGlyphsDrawnBySkia.fetch_add(drawn, std::memory_order_relaxed);
 }
 
 static std::atomic<jlong> gGlyphsShapedBySkia{0};   // written by the flusher, read by any Java thread
@@ -2048,8 +2058,8 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
         font.setHinting(SkFontHinting::kNormal);   // as DrawGlyphsBySkia: the CoreText host's smoothed masks
     }
     const SkPaint paint = SKBackend_MakePaint(true);
-    sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, paint);
-    applyGrayRoute(font, pScalerContext, paint);
+    sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, paint.getColor());
+    applyGrayRoute(font, pScalerContext, paint.getColor());
     const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
     // Paragraph direction left to right (the shaper reorders right-to-left runs within it);
     // Java's drawString takes it from the first strong character.
@@ -2150,7 +2160,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
             firstPaint.setColor((SkColor) colours[0]);
         }
         if (SKFontScaler_Font(contexts[0], &first)) {
-            fallback = fallbackManager(first, contexts[0], firstPaint);
+            fallback = fallbackManager(first, contexts[0], firstPaint.getColor());
         }
     }
     std::unique_ptr<tl::ParagraphBuilder> builder = tl::ParagraphBuilder::make(style, p.collection(fallback), s.unicode);
@@ -2177,7 +2187,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         if (flags[r] & SK_PARAGRAPH_COLOUR) {
             runPaint.setColor((SkColor) colours[r]);
         }
-        applyGrayRoute(font, contexts[r], runPaint);
+        applyGrayRoute(font, contexts[r], runPaint.getColor());
         sk_sp<SkTypeface> typeface = font.refTypeface();
         if (p.registered.insert(typeface->uniqueID()).second) {
             p.provider->registerTypeface(typeface, typefaceAlias(typeface.get()));

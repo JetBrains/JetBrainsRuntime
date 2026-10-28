@@ -202,6 +202,13 @@ void SKBackend_DrawGlyphsBySkia(jlong pScalerContext, jint numGlyphs, jboolean u
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions);
 jlong SKBackend_GlyphsDrawnBySkia();
+// The same glyph loop on any canvas (the raster surface's): the paint as the canvas wants
+// it, textColour the text's colour as Java sees it (the cg route's luminance class); returns
+// the glyphs drawn.
+jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
+                                   jlong pScalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+                                   jfloat originX, jfloat originY, const jint *codes, const jlong *images,
+                                   const jfloat *positions);
 // Skia's shaper (sun.java2d.skia.text=shaper): the characters of a drawString shaped by
 // HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs)
 // and the platform font manager's fallback, drawn as one text blob at the baseline

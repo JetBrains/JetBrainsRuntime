@@ -41,6 +41,8 @@
 #include "include/effects/SkGradient.h"
 #include "include/core/SkShader.h"
 #include "include/core/SkImage.h"
+#include "include/core/SkSurfaceProps.h"
+#include "include/core/SkFont.h"
 #include "include/core/SkSamplingOptions.h"
 
 #include <algorithm>
@@ -78,6 +80,12 @@ inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA me
 }
 
 // One surface's canvas, kept by the drawing thread between operations.
+// The pixel geometry Skia's LCD text needs to render sub-pixel masks at all (unknown geometry
+// downgrades sub-pixel edging to grayscale): horizontal stripes, declared BGR because the pixels
+// are declared RGBA over Java's BGRA memory — Skia's blue channel is Java's red, so a BGR mask
+// lands in memory as Java's HRGB order.
+static const SkSurfaceProps props(0, kBGR_H_SkPixelGeometry);
+
 struct RasterTarget {
     SurfaceDataOps *ops = nullptr;
     void *pixels = nullptr;          // what the lock returned last time; the canvas draws there
@@ -98,10 +106,10 @@ struct RasterTarget {
                 mirror.reset();
                 if (!mirror.tryAllocPixels(SkImageInfo::Make(i.width(), i.height(), i.colorType(), kPremul_SkAlphaType))) return false;
             }
-            canvas = SkCanvas::MakeRasterDirect(mirror.info(), mirror.getPixels(), mirror.rowBytes());
+            canvas = SkCanvas::MakeRasterDirect(mirror.info(), mirror.getPixels(), mirror.rowBytes(), &props);
         } else {
             mirror.reset();
-            canvas = SkCanvas::MakeRasterDirect(i, p, rb);
+            canvas = SkCanvas::MakeRasterDirect(i, p, rb, &props);
         }
         return canvas != nullptr;
     }
@@ -394,6 +402,32 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
     }
     SurfaceData_InvokeRelease(env, srcOps, &sr);
     SurfaceData_InvokeUnlock(env, srcOps, &sr);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint dstWidth, jint dstHeight,
+                                                 jlong scalerContext, jint numGlyphs, jboolean usePositions, jboolean smoothing,
+                                                 jfloat originX, jfloat originY, jintArray codesArray, jlongArray imagesArray, jfloatArray positionsArray,
+                                                 jint argb, jint compositeRule, jint clipX1, jint clipY1, jint clipX2, jint clipY2, jintArray spansArray)
+{
+    if (numGlyphs <= 0) return;
+    // every Java array read before the pin
+    Buffer<256, jint> codes((size_t) numGlyphs); env->GetIntArrayRegion(codesArray, 0, numGlyphs, codes.data);
+    Buffer<256, jlong> images(imagesArray != nullptr ? (size_t) numGlyphs : 0);
+    if (images.size) env->GetLongArrayRegion(imagesArray, 0, numGlyphs, images.data);
+    Buffer<512, jfloat> positions(usePositions && positionsArray != nullptr ? (size_t) 2 * numGlyphs : 0);
+    if (positions.size) env->GetFloatArrayRegion(positionsArray, 0, (jsize) positions.size, positions.data);
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    Operation op(env, dstData, dstPixelFormat, dstWidth, dstHeight, clipX1, clipY1, clipX2, clipY2);
+    if (!op.ok) return;
+    if (spans.size) op.clipSpans(spans.data, spans.size);
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(swizzled(argb));   // extra alpha already in the colour (SunGraphics2D.validateColor)
+    paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
+    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, scalerContext, numGlyphs, usePositions, smoothing,
+                                 originX, originY, codes.data, images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
 }
 
 } // extern "C"

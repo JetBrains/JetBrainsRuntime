@@ -280,6 +280,11 @@ public final class SKEnvironment {
         return RASTER && loadLibrary();
     }
 
+    /** Glyphs on raster surfaces drawn through Skia's text path (not the loops' glyph images), for tests. */
+    public static long rasterGlyphsBySkia() {
+        return SKRasterTextPipe.glyphsBySkia.get();
+    }
+
     /** Transformed images on raster surfaces that Skia drew (not the loops' transform helper), for tests. */
     public static long rasterImagesBySkia() {
         return SKRasterDrawImage.imagesBySkia.get();

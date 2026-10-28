@@ -392,6 +392,15 @@ public final class GlyphList {
         return strikelist;
     }
 
+    /**
+     * The font strike behind the list: the strike itself for strings and chars, a glyph
+     * vector's strike unwrapped from its per-transform holder; a glyph vector with
+     * per-glyph transforms answers with its array of holders (one strike per transform).
+     */
+    public Object getFontStrike() {
+        return strikelist instanceof StandardGlyphVector.GlyphStrike gs ? gs.strike : strikelist;
+    }
+
     public boolean isSubPixPos() {
         return lcdSubPixPos;
     }

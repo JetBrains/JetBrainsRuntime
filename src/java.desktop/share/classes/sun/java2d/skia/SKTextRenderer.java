@@ -304,7 +304,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {
-        SKDrawableStrike strike = SKEnvironment.textBySkia() ? skiaStrike(gl.getStrike()) : null;
+        SKDrawableStrike strike = SKEnvironment.textBySkia() ? skiaStrike(gl.getFontStrike()) : null;   // glyph vectors' strikes unwrapped; per-glyph transforms (an array) stay with the glyph images
         if (strike != null) {
             final int n = gl.getNumGlyphs();
             final boolean usePositions = gl.usePositions();
