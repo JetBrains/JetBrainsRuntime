@@ -98,10 +98,17 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         // non-antialiased strokes are Marlin's outline, as the loops' (Skia's stroker differs by whole pixels there)
         if (!aa || bs.getDashArray() != null || SKEnvironment.strokesByJava()) {
             BasicStroke outline = new BasicStroke(width, bs.getEndCap(), bs.getLineJoin(), bs.getMiterLimit(), bs.getDashArray(), bs.getDashPhase());
-            // the engine's clipped stroker, as LoopPipe.getStrokeSpans: a dashed line billions of pixels long
-            // yields the dashes inside the clip, not all of them; the output is in device space
+            // the engine's stroker; its clipping (LoopPipe.getStrokeSpans has it on) only for a shape whose
+            // device bounds dwarf the clip — a dashed line billions of pixels long yields the dashes inside
+            // the clip, not all of them. Marlin's clipped and unclipped dashers place dash ends an
+            // antialiased pixel apart, which its own rasterizer hides and Skia's exact coverage shows
+            // (ClipShapeTest), so an ordinary shape takes the plain outline. The output is in device space
             Path2D.Float outlinePath = new Path2D.Float();
-            RenderingEngine.getInstance().strokeTo(userShape, at, sg2d.getCompClip(), outline, false, false, aa, new PathCollector(outlinePath));
+            Region clip = sg2d.getCompClip();
+            Rectangle deviceBounds = at.createTransformedShape(userShape).getBounds();
+            boolean vast = deviceBounds.x < clip.getLoX() - VAST_REACH || deviceBounds.y < clip.getLoY() - VAST_REACH
+                    || deviceBounds.x + deviceBounds.width > clip.getHiX() + VAST_REACH || deviceBounds.y + deviceBounds.height > clip.getHiY() + VAST_REACH;
+            RenderingEngine.getInstance().strokeTo(userShape, at, vast ? clip : null, outline, false, false, aa, new PathCollector(outlinePath));
             // normalized above; the loops scan-convert the outline with the span iterator
             fillDevicePath(sg2d, aa ? outlinePath : forSpans(outlinePath.getPathIterator(null)), aa);
             return;
@@ -150,6 +157,9 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         @Override public void pathDone() { }
         @Override public long getNativeConsumer() { return 0; }
     }
+
+    /** How far past the clip a shape may reach before its outline is clipped while being stroked (device pixels). */
+    private static final int VAST_REACH = 1 << 14;
 
     /**
      * Skia's non-antialiased scan conversion fills a pixel whose centre lies exactly on an
