@@ -41,9 +41,10 @@ import sun.java2d.skia.SKEnvironment;
  *          selects by the strike's type. On Windows the reference is the
  *          platform's exact strike (an integer scale, fractional metrics):
  *          the Skia scaler measures at the exact pixel size where FreeType
- *          rounds the ppem of fonts with the integer-ppem head flag at
- *          125 % and 150 %, and it rounds the linear advance where FreeType
- *          rounds the hinted one (decisions of 2026-10-23 and 2026-10-27).
+ *          snaps a fractional size to an embedded bitmap strike's whole ppem
+ *          (Courier New, the Monospaced slot, at 125 % and 150 %), and it
+ *          rounds the linear advance where FreeType rounds the hinted one
+ *          (decisions of 2026-10-23 and 2026-10-27).
  *          Nothing to test where the Skia backend or its font host is
  *          unavailable.
  * @key headful
@@ -107,11 +108,12 @@ public class SkiaFontScalerMetricsTest {
                         RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
                         fm ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
                 Object strike = getStrike.invoke(font2D, font, frc);
-                // Windows: the FreeType strike's metrics and advances at 125 % / 150 % belong to a
-                // neighbouring size (every font here carries the head flag that makes FreeType
-                // round the ppem: 10 pt at 1.25 is measured as 13 px, not 12.5), and its whole-pixel
-                // advances are the *hinted* ones (a bytecode-hinted font like Arial moves widths by
-                // a pixel). The Skia scaler follows the platform's natural layout instead: exact
+                // Windows: for a font with embedded bitmap strikes (Courier New, the Monospaced slot:
+                // strikes at 4-21 px) FreeType matches a fractional size to the strike at the rounded
+                // whole ppem (FT_Match_Size), so its metrics and advances at 125 % / 150 % belong to a
+                // neighbouring size (10 pt at 1.25 is measured as 13 px, not 12.5; outline fonts are
+                // exact), and its whole-pixel advances are the *hinted* ones (a bytecode-hinted font
+                // like Arial moves widths by a pixel). The Skia scaler follows the platform's natural layout instead: exact
                 // size, linear advance rounded in device pixels (decisions of 2026-10-23 and
                 // 2026-10-27). The reference is therefore the platform's exact strike — scale 1,
                 // an integer ppem for these sizes, fractional metrics — in user space.
