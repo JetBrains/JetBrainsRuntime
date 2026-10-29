@@ -149,13 +149,12 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     } ShaderStages;
     DECL_ARRAY(ShaderStages, stages, count);
     typedef struct {
-        uint32_t inAlphaType, outAlphaType, shaderVariant, shaderModifier;
+        uint32_t shaderVariant;
+        uint32_t shaderModifier;
     } SpecializationData;
     const VkSpecializationMapEntry SPECIALIZATION_ENTRIES[] = {
-        { 0,  0, 4 },
-        { 1,  4, 4 },
-        { 2,  8, 4 },
-        { 3, 12, 4 }
+        { .constantID = 0,  .offset = 0, .size = 4 },
+        { .constantID = 1,  .offset = 4, .size = 4 },
     };
     typedef struct {
         VkSpecializationInfo info;
@@ -342,13 +341,13 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
                 .pData = &specializations[i].data
             },
             .data = {
-                .inAlphaType = descriptors[i].inAlphaType,
-                .outAlphaType = pipelineInfos[i].outAlphaType,
                 .shaderVariant = (uint32_t)descriptors[i].shaderVariant,
                 .shaderModifier =
-                    (descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) |
-                    (coverageSource << 1) |
-                    ((baseShader == SHADER_COLOR ? 1 : 0) << 3)
+                    (descriptors[i].inAlphaType << 0) |
+                    (pipelineInfos[i].outAlphaType << 1) |
+                    ((baseShader == SHADER_COLOR ? 1 : 0) << 2) |
+                    ((descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) << 3) |
+                    ((uint32_t) coverageSource << 30)
             }
         };
 
