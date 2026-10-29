@@ -986,6 +986,25 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
     *boldEmFraction = 0.02f;
 }
 
+#ifndef SPI_GETFONTSMOOTHINGORIENTATION
+#define SPI_GETFONTSMOOTHINGORIENTATION 0x2012
+#endif
+#ifndef FE_FONTSMOOTHINGORIENTATIONBGR
+#define FE_FONTSMOOTHINGORIENTATIONBGR 0x0000
+#define FE_FONTSMOOTHINGORIENTATIONRGB 0x0001
+#endif
+
+// The ClearType sub-pixel orientation of the display, as the JDK's lcdglyph.c and
+// the desktop hints read it (the ClearType tuner writes it); RGB when the query fails.
+bool SKPlatform_LcdOrderIsBGR()
+{
+    UINT orientation = FE_FONTSMOOTHINGORIENTATIONRGB;
+    if (!SystemParametersInfo(SPI_GETFONTSMOOTHINGORIENTATION, 0, &orientation, 0)) {
+        return false;
+    }
+    return orientation == FE_FONTSMOOTHINGORIENTATIONBGR;
+}
+
 // The display scale from which DirectWrite's symmetric mode halves its placement
 // and coverage sampling (measured between 1.792 and 1.8125; 173 dpi).
 const float HIGH_DPI_SCALE = 1.8f;

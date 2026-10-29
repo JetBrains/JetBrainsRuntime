@@ -93,10 +93,14 @@ inline SkColor swizzled(jint argb) {   // Java's ARGB as Skia sees it in BGRA me
 
 // One surface's canvas, kept by the drawing thread between operations.
 // The pixel geometry Skia's LCD text needs to render sub-pixel masks at all (unknown geometry
-// downgrades sub-pixel edging to grayscale): horizontal stripes in Java's HRGB order. On an RGBA
+// downgrades sub-pixel edging to grayscale): horizontal stripes in the display's order
+// (SKBackend_LcdPixelGeometry: the desktop hint's, or sun.java2d.skia.lcdOrder). On an RGBA
 // build the pixels are declared RGBA over Java's BGRA memory — Skia's blue channel is Java's red,
-// so a BGR mask lands in memory as HRGB; on a BGRA build the channels are Java's and the mask is RGB.
-static const SkSurfaceProps props(0, kSwizzle ? kBGR_H_SkPixelGeometry : kRGB_H_SkPixelGeometry);
+// so the declared order is the mirror of the display's; on a BGRA build the channels are Java's.
+static SkSurfaceProps surfaceProps() {
+    const bool bgr = SKBackend_LcdPixelGeometry() == kBGR_H_SkPixelGeometry;
+    return SkSurfaceProps(0, (bgr != kSwizzle) ? kBGR_H_SkPixelGeometry : kRGB_H_SkPixelGeometry);
+}
 
 // Write locks on buffered images, counted: SKRasterSurfaceData.trackWrites wraps the surface's
 // Lock so every SD_LOCK_WRITE by any pipe on any thread bumps the serial; a thread's mirror remembers
@@ -157,9 +161,11 @@ struct RasterTarget {
             tilesAcross = (i.width() + kTile - 1) / kTile; tilesDown = (i.height() + kTile - 1) / kTile;
             tiles.assign((size_t) tilesAcross * tilesDown, 0);
             epoch = 0;
+            const SkSurfaceProps props = surfaceProps();
             canvas = SkCanvas::MakeRasterDirect(mirror.info(), mirror.getPixels(), mirror.rowBytes(), &props);
         } else {
             mirror.reset();
+            const SkSurfaceProps props = surfaceProps();
             canvas = SkCanvas::MakeRasterDirect(i, p, rb, &props);
         }
         return canvas != nullptr;

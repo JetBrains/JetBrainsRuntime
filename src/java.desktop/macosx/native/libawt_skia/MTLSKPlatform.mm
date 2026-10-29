@@ -247,6 +247,12 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
     *boldEmFraction = 0.0f;
 }
 
+// No sub-pixel masks on macOS since Mojave: the order is moot, RGB keeps Skia's default.
+bool SKPlatform_LcdOrderIsBGR()
+{
+    return false;
+}
+
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float displayScale, bool lcd)
 {
     if (lcd) {

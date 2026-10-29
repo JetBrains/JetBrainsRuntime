@@ -34,19 +34,29 @@ import java.lang.reflect.Method;
  *          a window surface wrapped without surface properties (unknown geometry) had
  *          every LCD request downgraded to grayscale — the IDE's UI text under the full
  *          Skia text stack lost its ClearType on Windows the day composite strikes joined
- *          the path. Nothing to test where the Skia backend is unavailable.
+ *          the path. The geometry's order is the display's (the desktop hint's LCD_HRGB or
+ *          LCD_HBGR) or sun.java2d.skia.lcdOrder's: with "bgr" and an LCD_HBGR hint the
+ *          fringes come out in the loops' BGR order. Nothing to test where the Skia backend
+ *          is unavailable.
  * @key headful
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia SkiaTextPathLcdTest
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=paragraph SkiaTextPathLcdTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.lcdOrder=rgb SkiaTextPathLcdTest rgb
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.lcdOrder=bgr SkiaTextPathLcdTest bgr
  */
 public class SkiaTextPathLcdTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
     static final int W = 400, H = 40;
     static final boolean MAC = System.getProperty("os.name", "").startsWith("Mac");
+    /** The LCD hint of the draw: HRGB, or HBGR when the surfaces are declared BGR (the argument names the order). */
+    static Object hint = RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB;
 
     public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("bgr")) {
+            hint = RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR;
+        }
         if (MAC) {
             System.out.println("macOS renders no sub-pixel masks: nothing to test");
             return;
@@ -107,7 +117,7 @@ public class SkiaTextPathLcdTest {
     static void paint(Graphics2D g, Font font) {
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, W, H);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, hint);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setColor(Color.BLACK);
         g.setFont(font);

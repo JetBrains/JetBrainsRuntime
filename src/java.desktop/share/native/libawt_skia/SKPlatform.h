@@ -165,5 +165,12 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction);
 // the variants and a half-step shift of the glyph origin, so the pipes need no rule
 // of their own.
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale, bool lcd);
+// The display's horizontal sub-pixel order as the platform knows it: true for
+// B, G, R (Java's LCD_HBGR desktop hint), false for R, G, B. The GPU and raster
+// surfaces declare their pixel geometry from it (sun.java2d.skia.lcdOrder=system),
+// so Skia's text path renders sub-pixel masks in the order the loops' glyph
+// images follow. Windows: SPI_GETFONTSMOOTHINGORIENTATION, as the JDK's
+// lcdglyph.c reads it for the desktop hints; macOS: false (no sub-pixel masks).
+bool SKPlatform_LcdOrderIsBGR();
 
 #endif /* SKPlatform_h_Included */

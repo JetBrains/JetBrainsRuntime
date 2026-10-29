@@ -38,6 +38,7 @@
 #include "Trace.h"
 
 #include "include/core/SkCanvas.h"
+#include "include/core/SkSurfaceProps.h"
 #include "include/core/SkImage.h"
 #include "include/core/SkPaint.h"
 #include "include/core/SkPath.h"
@@ -104,13 +105,19 @@ SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops);
 // first context is created).
 // How LCD text is composited (SKEnvironment.LcdMode, same order).
 enum class SKLcdMode { Blend = 0, TwoPass = 1, Accumulate = 2 };
+// The sub-pixel order the surfaces declare (SKEnvironment.LcdOrder, same order): the
+// display's as the platform reports it, or forced R, G, B / B, G, R.
+enum class SKLcdOrder { System = 0, RGB = 1, BGR = 2 };
+// The pixel geometry for a surface's SkSurfaceProps: horizontal stripes in the
+// configured order (the raster surface maps it onto its own channel order).
+SkPixelGeometry SKBackend_LcdPixelGeometry();
 
 // glyphAtlasBytes: Graphite's glyph-atlas budget (ContextOptions::fGlyphCacheTextureMaximumBytes), 0 = Skia's default
 // glyphCacheTexels: the side of SKGlyphCache's textures (Java's glyph images), validated by the Java side
 // luminanceClasses: FontUtilities.textLuminanceClasses (1, 2, 4, ... 256), the classes the cg route's masks are rasterized for
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent);
+                         bool submitPerPresent, SKLcdOrder lcdOrder);
 jint SKBackend_LuminanceClasses();     // the count the text path quantizes with
 size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
 jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with

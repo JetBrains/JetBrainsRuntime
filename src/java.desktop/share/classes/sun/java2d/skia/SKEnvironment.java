@@ -216,7 +216,10 @@ public final class SKEnvironment {
      * {@code sun.java2d.skia.shapes} (see {@link #rasterizesShapes()}) is the
      * fourth knob; it is decided on the Java side.
      */
-    private record Configuration(int msaaSamples, boolean edgeAAQuads, LcdMode lcdMode, boolean framebufferFetch) {
+    /** The sub-pixel order the surfaces declare for Skia's LCD text: the display's, or forced (same order natively). */
+    enum LcdOrder { SYSTEM, RGB, BGR }
+
+    private record Configuration(int msaaSamples, boolean edgeAAQuads, LcdMode lcdMode, boolean framebufferFetch, LcdOrder lcdOrder) {
         static Configuration defaultsFor(boolean framebufferFetch) {
             // Measured on Metal (Apple M1 Max) and Dawn/D3D11: the path atlas beats
             // 4x MSAA on fidelity and MSAA only wins on general paths; meshes and
@@ -233,7 +236,7 @@ public final class SKEnvironment {
             // there (2026-10-21). Intel and AMD Macs keep accumulate until measured.
             LcdMode lcd = framebufferFetch ? LcdMode.BLEND
                     : System.getProperty("os.name", "").startsWith("Windows") ? LcdMode.TWOPASS : LcdMode.ACCUMULATE;
-            return new Configuration(1, false, lcd, framebufferFetch);
+            return new Configuration(1, false, lcd, framebufferFetch, LcdOrder.SYSTEM);
         }
 
         Configuration withProperties() {
@@ -252,7 +255,22 @@ public final class SKEnvironment {
                     }
                 }
             }
-            return new Configuration(samples, edgeAA, mode, framebufferFetch);
+            // sun.java2d.skia.lcdOrder=system|rgb|bgr: the sub-pixel order Skia's text path renders LCD masks in
+            // (the surfaces' pixel geometry); system is the display's, as the desktop hint LCD_HRGB / LCD_HBGR
+            // reports it. A draw's own LCD hint cannot change a surface's geometry.
+            String order = System.getProperty("sun.java2d.skia.lcdOrder");
+            LcdOrder lcdOrderValue = lcdOrder;
+            if (order != null) {
+                try {
+                    lcdOrderValue = LcdOrder.valueOf(order.toUpperCase(Locale.ROOT));
+                } catch (IllegalArgumentException e) {
+                    if (VERBOSE) {
+                        System.err.println("sun.java2d.skia.lcdOrder=" + order + " is not system, rgb or bgr; using "
+                                + lcdOrder.name().toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+            return new Configuration(samples, edgeAA, mode, framebufferFetch, lcdOrderValue);
         }
     }
 
@@ -449,7 +467,7 @@ public final class SKEnvironment {
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
                                 FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE,
-                                SUBMIT_PER_PRESENT);
+                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal());
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
@@ -489,7 +507,7 @@ public final class SKEnvironment {
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
                                                long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses,
-                                               boolean presentPerCycle, boolean submitPerPresent);
+                                               boolean presentPerCycle, boolean submitPerPresent, int lcdOrder);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();

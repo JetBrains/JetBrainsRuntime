@@ -125,7 +125,14 @@ static struct {
     jint luminanceClasses = 16;    // FontUtilities.textLuminanceClasses: the cg route's luminance classes
     bool presentPerCycle = false;   // sun.java2d.skia.present=cycle: present on FLUSH_BUFFER, SYNC and the timeout flush only
     bool submitPerPresent = false;  // sun.java2d.skia.submit=present: submit only for a present, a wait or the cap
+    SKLcdOrder lcdOrder = SKLcdOrder::System;   // sun.java2d.skia.lcdOrder: the sub-pixel order the surfaces declare
 } gConfig;
+
+SkPixelGeometry SKBackend_LcdPixelGeometry() {
+    const bool bgr = gConfig.lcdOrder == SKLcdOrder::BGR
+                     || (gConfig.lcdOrder == SKLcdOrder::System && SKPlatform_LcdOrderIsBGR());
+    return bgr ? kBGR_H_SkPixelGeometry : kRGB_H_SkPixelGeometry;
+}
 
 static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as one mesh (see SKQuadBatch.h)
 
@@ -244,8 +251,9 @@ static void precompileStoredPipelines(SKConfigContext *cc) {
 
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent) {
+                         bool submitPerPresent, SKLcdOrder lcdOrder) {
     gConfig.submitPerPresent = submitPerPresent;
+    gConfig.lcdOrder = lcdOrder;
     gConfig.presentPerCycle = presentPerCycle;
     if (luminanceClasses >= 1 && luminanceClasses <= 256 && (luminanceClasses & (luminanceClasses - 1)) == 0) {
         gConfig.luminanceClasses = luminanceClasses;
@@ -424,9 +432,11 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
         return nullptr;
     }
     // The surface's pixel geometry: without one Skia's glyph painter downgrades every LCD request
-    // to grayscale before Graphite's LCD text step (A565 masks) is reached; Java's LCD hint is HRGB
-    // by default, horizontal stripes R, G, B — the loops' sub-pixel order (SkiaTextPathLcdTest).
-    static const SkSurfaceProps props(0, kRGB_H_SkPixelGeometry);
+    // to grayscale before Graphite's LCD text step (A565 masks) is reached. Horizontal stripes in
+    // the display's sub-pixel order (the desktop hint's LCD_HRGB or LCD_HBGR, or the property's);
+    // a draw whose own LCD hint names the other order gets the surface's — a geometry is a
+    // surface's, not a draw's (SkiaTextPathLcdTest).
+    const SkSurfaceProps props(0, SKBackend_LcdPixelGeometry());
     st->surface = SkSurfaces::WrapBackendTexture(cc->recorder.get(), bt, colorType, nullptr, &props);
     if (!st->surface) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_GetSurface: cannot wrap texture %p (%dx%d)",
