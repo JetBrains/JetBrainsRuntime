@@ -79,6 +79,7 @@
 #include "include/gpu/graphite/GraphiteTypes.h"
 #include "include/gpu/graphite/Image.h"
 #include "include/gpu/graphite/Recording.h"
+#include "include/core/SkSurfaceProps.h"
 #include "include/gpu/graphite/Surface.h"
 
 #include <algorithm>
@@ -422,7 +423,11 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
     if (!SKPlatform_BackendTexture(ops->platform, &bt, &colorType)) {
         return nullptr;
     }
-    st->surface = SkSurfaces::WrapBackendTexture(cc->recorder.get(), bt, colorType, nullptr, nullptr);
+    // The surface's pixel geometry: without one Skia's glyph painter downgrades every LCD request
+    // to grayscale before Graphite's LCD text step (A565 masks) is reached; Java's LCD hint is HRGB
+    // by default, horizontal stripes R, G, B — the loops' sub-pixel order (SkiaTextPathLcdTest).
+    static const SkSurfaceProps props(0, kRGB_H_SkPixelGeometry);
+    st->surface = SkSurfaces::WrapBackendTexture(cc->recorder.get(), bt, colorType, nullptr, &props);
     if (!st->surface) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_GetSurface: cannot wrap texture %p (%dx%d)",
                       texture, bt.dimensions().width(), bt.dimensions().height());
