@@ -12,10 +12,14 @@ props() {
   case "$1" in
     d3d)               echo "-Dsun.java2d.d3d=true" ;;
     software)          echo "-Dsun.java2d.d3d=false" ;;
+    raster)            echo "-Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true" ;;   # BufferedImages drawn by Skia's raster backend, GPU off
+    raster-skiatext)   echo "-Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia" ;;
+    vulkan)            echo "-Dsun.java2d.vulkan=Force" ;;   # JBR's Vulkan pipeline (experimental on Windows)
     skia-analytic)     echo "-Dsun.java2d.skia=true" ;;
     skia-marlin)       echo "-Dsun.java2d.skia=true -Dsun.java2d.skia.shapes=marlin" ;;
     skia-skia-msaa4)   echo "-Dsun.java2d.skia=true -Dsun.java2d.skia.shapes=skia -Dsun.java2d.skia.msaa=4" ;;
     skia-strokes-java) echo "-Dsun.java2d.skia=true -Dsun.java2d.skia.strokes=java" ;;
+    skia-vulkan)       echo "-Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan" ;;   # Graphite on native Vulkan
     *) echo "unknown arm $1" >&2; exit 2 ;;
   esac
 }
@@ -45,7 +49,7 @@ for rep in $(seq "$FIRST" $((FIRST + REPS - 1))); do
     case " $XOR_SKIP_ARMS " in *" $arm "*) tests=$NO_XOR_TESTS ;; esac
     start=$(date +%s)
     # shellcheck disable=SC2046,SC2086
-    timeout 900 "$JDK/bin/java.exe" $(props "$arm") -Dsun.java2d.uiScale=1 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 \
+    timeout 900 "$JDK/bin/java.exe" $(props "$arm") -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.pipelineCache=off -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 \
         -cp "$CLASSES" renderperf.RenderPerfTest -e="$MODE" $tests > "$log" 2>&1
     rc=$?
     echo "rep $rep $arm: exit=$rc $(( $(date +%s) - start )) s, $(grep -c ' FPS$' "$log") results"
