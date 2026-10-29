@@ -166,8 +166,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     static {
         // This field must be initialized BEFORE initIDs is called because it'll be read there
         ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
-        // Same for this one
+        // Same for these ones
         ENABLE_PINCH_AS_CTRL_WHEEL = Boolean.getBoolean("sun.awt.wl.PinchAsCtrlWheel");
+        ENABLE_KINETIC_SCROLLING = Boolean.getBoolean("sun.awt.wl.KineticScrolling");
 
         if (!GraphicsEnvironment.isHeadless()) {
             initLibwaylandLogging();
@@ -329,6 +330,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     // If true, touchpad pinch gestures are translated into Ctrl + mouse wheel events, like on Windows.
     // Read by the native code.
     private final static boolean ENABLE_PINCH_AS_CTRL_WHEEL;
+    private final static boolean ENABLE_KINETIC_SCROLLING;
 
     private final Semaphore eventsQueued = new Semaphore(0);
 
@@ -420,6 +422,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
+        if (kineticScroller != null) {
+            kineticScroller.stop();
+        }
         pinchSurfacePtr = (fingers == PINCH_FINGERS) ? surfacePtr : 0;
         pinchPrevTotal = 0;
         pinchDispatchedRound = 0;
@@ -465,6 +470,17 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         pinchSurfacePtr = 0;
     }
 
+    private static final WLKineticScroller kineticScroller = ENABLE_KINETIC_SCROLLING ? new WLKineticScroller() : null;
+
+    private static void dispatchHoldBeginEvent() {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        if (kineticScroller != null) {
+            kineticScroller.stop();
+        }
+    }
+
     private static void dispatchPointerEvent(WLPointerEvent e) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
@@ -508,6 +524,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         } else {
             peer.dispatchPointerEventInContext(e, newInputState);
         }
+
+        if (kineticScroller != null) {
+            kineticScroller.processPointerEvent(e, newInputState, peer);
+        }
     }
 
     private static void dispatchKeyboardKeyEvent(long serial,
@@ -522,6 +542,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         final long timestamp = System.currentTimeMillis();
+
+        if (kineticScroller != null && id == KeyEvent.KEY_PRESSED) {
+            kineticScroller.stop();
+        }
 
         setInputState(inputState.updatedFromKeyEvent(serial));
 
