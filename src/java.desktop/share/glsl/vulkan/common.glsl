@@ -1,20 +1,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 //// SHADER_SPECIALIZATION /////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-layout (constant_id = 0) const uint const_InAlphaType    = 0;
-layout (constant_id = 1) const uint const_OutAlphaType   = 0;
-layout (constant_id = 2) const uint const_ShaderVariant  = 0;
-layout (constant_id = 3) const uint const_ShaderModifier = 0;
+layout (constant_id = 0) const uint const_ShaderVariant  = 0;
+layout (constant_id = 1) const uint const_ShaderModifier = 0;
 
-#define SHADER_MOD_XOR (1U << 0) // bit 0 - Xor composite mode
+#define SHADER_MOD_IN_ALPHA_TYPE (const_ShaderModifier & 1) // bit 0 - inAlphaType
+#define SHADER_MOD_OUT_ALPHA_TYPE ((const_ShaderModifier >> 1) & 1) // bit 1 - outAlphaType
+#define ALPHA_TYPE_PRE_MULTIPLIED 0U
+#define ALPHA_TYPE_STRAIGHT       1U
 
-// bits 1-2 - coverage source
-#define SHADER_MOD_GET_COVERAGE_SOURCE() ((const_ShaderModifier >> 1) & 3)
+#define SHADER_MOD_IS_COLOR_PAINT (((const_ShaderModifier >> 2) & 1) != 0) // bit 2 - pass vertex data as out_Color instead of out_Data, used for simple color paints
+#define SHADER_MOD_IS_XOR (((const_ShaderModifier >> 3) & 1) != 0) // bit 3 - Xor composite mode
+
+#define SHADER_MOD_COVERAGE_SOURCE ((const_ShaderModifier >> 30) & 3) // bits 30-31 - coverage source
 #define SHADER_COVERAGE_NONE 0
 #define SHADER_COVERAGE_MASK 1
 #define SHADER_COVERAGE_AA_RRECT 2
-
-#define SHADER_MOD_PASS_DATA_AS_COLOR (1U << 3) // bit 3 - pass vertex data as out_Color instead of out_Data, used for simple color paints
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Vertex shader common outputs and transform push constants /////////////////
@@ -68,9 +69,6 @@ struct VKCompositeConstants {
 ////////////////////////////////////////////////////////////////////////////////
 //// Color conversion support //////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-#define ALPHA_TYPE_PRE_MULTIPLIED 0U
-#define ALPHA_TYPE_STRAIGHT       1U
-
 vec4 convertAlpha(vec4 color, uint inType, uint outType) {
     if (inType == ALPHA_TYPE_STRAIGHT && outType == ALPHA_TYPE_PRE_MULTIPLIED) {
         return vec4(color.rgb * color.a, color.a);
@@ -80,7 +78,7 @@ vec4 convertAlpha(vec4 color, uint inType, uint outType) {
 }
 
 vec4 convertAlpha(vec4 color) {
-    return convertAlpha(color, const_InAlphaType, const_OutAlphaType);
+    return convertAlpha(color, SHADER_MOD_IN_ALPHA_TYPE, SHADER_MOD_OUT_ALPHA_TYPE);
 }
 
 // When applying alpha to a color, straight alpha only multiplies alpha,
@@ -110,19 +108,19 @@ vec3 fromLinear3(vec3 c) {
 // - For alpha composite, apply extra alpha.
 // - For XOR composite, apply xor.
 vec4 applyComposite(vec4 color, VKCompositeConstants composite) {
-    if ((const_ShaderModifier & SHADER_MOD_XOR) != 0) {
+    if (SHADER_MOD_IS_XOR) {
         uvec4 xor = uvec4(composite.xorColor) >> uvec4(16, 8, 0, 24);
         xor = (uvec4(color * 255.0) ^ xor) & 0xFFU;
         return vec4(xor) / 255.0;
-    } else return color * alphaMask(composite.extraAlpha, const_OutAlphaType);
+    } else return color * alphaMask(composite.extraAlpha, SHADER_MOD_OUT_ALPHA_TYPE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Coverage support //////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 vec4 applyMaskOp(vec4 color, float mask) {
-    if ((const_ShaderModifier & SHADER_MOD_XOR) != 0) return color * float(mask > 0.0);
-    else return color * alphaMask(mask, const_OutAlphaType);
+    if (SHADER_MOD_IS_XOR) return color * float(mask > 0.0);
+    else return color * alphaMask(mask, SHADER_MOD_OUT_ALPHA_TYPE);
 }
 
 // used for coverage source MASK
@@ -138,11 +136,11 @@ float getRRectCoverage(vec2 fragCoord, vec4 corners, float radius) {
 }
 
 float getCoverage(vec2 fragCoord) {
-    if (SHADER_MOD_GET_COVERAGE_SOURCE() == SHADER_COVERAGE_AA_RRECT) {
+    if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_AA_RRECT) {
         return getRRectCoverage(fragCoord, in_GenericFlatVec4_1, in_GenericFlatVec4_2.x);
     }
 #ifndef SHADER_NO_MASK_BUFFER
-    else if(SHADER_MOD_GET_COVERAGE_SOURCE() == SHADER_COVERAGE_MASK) {
+    else if(SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_MASK) {
         return imageLoad(u_Mask, calculateMaskIndex(fragCoord, in_GenericFlatIvec4_1)).r;
     }
 #endif // SHADER_NO_MASK_BUFFER
@@ -158,7 +156,7 @@ float getCoverage(vec2 fragCoord) {
 ////////////////////////////////////////////////////////////////////////////////
 #ifdef STAGE_VERT
 void passVertexData(uint data) {
-    if ((const_ShaderModifier & SHADER_MOD_PASS_DATA_AS_COLOR) != 0) {
+    if (SHADER_MOD_IS_COLOR_PAINT) {
         out_Color = convertAlpha(decodeColor(data));
     } else {
         out_Data = data;
@@ -170,7 +168,7 @@ void passVertexData(uint data) {
 // Generic color output - handles composite and coverage automatically.
 void outputColorWithCompositePreApplied(vec4 color) {
     out_Color = color;
-    if (SHADER_MOD_GET_COVERAGE_SOURCE() != SHADER_COVERAGE_NONE) {
+    if (SHADER_MOD_COVERAGE_SOURCE != SHADER_COVERAGE_NONE) {
         float coverage = getCoverage(gl_FragCoord.xy);
         out_Color = applyMaskOp(out_Color, coverage);
     }
