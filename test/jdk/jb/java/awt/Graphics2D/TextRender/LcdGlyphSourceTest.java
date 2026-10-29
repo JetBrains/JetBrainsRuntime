@@ -35,7 +35,7 @@
  *          with GDI alike) follow it too; without a statement they keep the
  *          JDK's own scaler as they always did.
  * @requires (os.family == "windows")
- * @modules java.desktop/sun.font
+ * @modules java.desktop/sun.font:+open
  * @run main/othervm -Dsun.java2d.uiScale=1 LcdGlyphSourceTest gdi
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia LcdGlyphSourceTest scaler
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=gdi LcdGlyphSourceTest gdi
