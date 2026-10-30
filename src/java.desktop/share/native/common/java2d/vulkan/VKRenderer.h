@@ -142,6 +142,12 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
                                     jfloat dx21, jfloat dy21,
                                     jfloat dx12, jfloat dy12);
 
+void VKRenderer_RenderAAParallelogram(VkBool32 fill,
+                                      jfloat x11, jfloat y11,
+                                      jfloat dx21, jfloat dy21,
+                                      jfloat dx12, jfloat dy12,
+                                      jfloat lwr21, jfloat lwr12);
+
 void VKRenderer_DrawLine(jint x1, jint y1, jint x2, jint y2);
 
 void VKRenderer_DrawPoly(jint nPoints, jint isClosed,
