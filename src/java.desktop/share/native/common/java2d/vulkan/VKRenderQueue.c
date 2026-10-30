@@ -196,6 +196,10 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: DRAW_AAPARALLELOGRAM(%f, %f, %f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12, lwr21, lwr12);
+                VKRenderer_RenderAAParallelogram(VK_FALSE,
+                                                 x11, y11, dx21, dy21,
+                                                 dx12, dy12, lwr21, lwr12);
+
             }
             break;
 
@@ -246,9 +250,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: FILL_AAPARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
-                // TODO this is not AA!
-                VKRenderer_RenderParallelogram(VK_TRUE, x11, y11, dx21, dy21,
-                                               dx12, dy12);
+                VKRenderer_RenderAAParallelogram(VK_TRUE,
+                                                 x11, y11, dx21, dy21,
+                                                 dx12, dy12, /* unused */ 0.0f, /* unused */ 0.0f);
             }
             break;
 

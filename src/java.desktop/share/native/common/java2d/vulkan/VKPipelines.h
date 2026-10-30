@@ -40,10 +40,13 @@
 typedef enum {
     SHADER_COVERAGE_NONE     = 0, // no coverage (non-AA drawing)
     SHADER_COVERAGE_MASK     = 1, // MASK_FILL / MASK_BLIT opcodes
+    SHADER_COVERAGE_AA_PARALLELOGRAM = 2, // FILL_AAPARALLELOGRAM and DRAW_AAPARALLELOGRAM
 
+    SHADER_COVERAGE_ENUM_COUNT,
     // Number of bits required to store this value
     SHADER_COVERAGE_ENUM_BITS     = 2,
 } VKShaderCoverageSource;
+static_assert(SHADER_COVERAGE_ENUM_COUNT <= (1U << SHADER_COVERAGE_ENUM_BITS), "SHADER_COVERAGE_ENUM_BITS should be enough to store a VKShaderCoverageSource");
 
 /**
  * Shader programs.
@@ -214,6 +217,13 @@ typedef struct {
     int x, y, maskOffset, maskScanline;
     unsigned int data;
 } VKMaskFillVertex;
+
+typedef struct {
+    float outerX11, outerY11, innerX11, innerY11;
+    float outerDx21, outerDy21, outerDx12, outerDy12;
+    float innerDx21, innerDy21, innerDx12, innerDy12;
+    unsigned int data;
+} VKAAParallelogramInstance;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);

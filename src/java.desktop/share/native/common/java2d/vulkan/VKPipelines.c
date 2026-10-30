@@ -250,16 +250,7 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     MAKE_INPUT_STATE(MASK_FILL, VK_VERTEX_INPUT_RATE_VERTEX, VKMaskFillVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32_UINT);
     MAKE_INPUT_STATE(BLIT, VK_VERTEX_INPUT_RATE_VERTEX, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
     MAKE_INPUT_STATE(CLIP, VK_VERTEX_INPUT_RATE_VERTEX, VKIntVertex, VK_FORMAT_R32G32_SINT);
-
-    typedef struct {
-        const VkPipelineVertexInputStateCreateInfo* vertexInputState;
-        VkPipelineShaderStageCreateInfo vertexShader;
-    } VKPipelineVertexSetupInfo;
-
-    const VKPipelineVertexSetupInfo VERTEX_SETUP_INFOS[] = {
-        [SHADER_COVERAGE_NONE] = { .vertexInputState = &INPUT_STATE_PRIMITIVE, .vertexShader = shaders->primitive_vert },
-        [SHADER_COVERAGE_MASK] = { .vertexInputState = &INPUT_STATE_MASK_FILL, .vertexShader = shaders->mask_fill_vert },
-    };
+    MAKE_INPUT_STATE(AA_PARALLELOGRAM, VK_VERTEX_INPUT_RATE_INSTANCE, VKAAParallelogramInstance, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32_UINT);
 
     for (uint32_t i = 0; i < count; i++) {
         // Setup shader-specific pipeline parameters.
@@ -300,6 +291,23 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             break;
 
         default: {
+            VkPipelineShaderStageCreateInfo vertexShader;
+            switch (coverageSource) {
+            case SHADER_COVERAGE_NONE:
+                createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
+                vertexShader = shaders->primitive_vert;
+                break;
+            case SHADER_COVERAGE_MASK:
+                createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
+                vertexShader = shaders->mask_fill_vert;
+                break;
+            case SHADER_COVERAGE_AA_PARALLELOGRAM:
+                createInfos[i].pVertexInputState = &INPUT_STATE_AA_PARALLELOGRAM;
+                vertexShader = shaders->aa_parallelogram_vert;
+                break;
+            default:
+                VK_FATAL_ERROR("Cannot create pipeline, unknown coverage source requested!");
+            }
             VkPipelineShaderStageCreateInfo fragmentShader;
             switch ((int) baseShader) {
             case SHADER_COLOR:
@@ -317,10 +325,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             default:
                 VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
             }
-            const VKPipelineVertexSetupInfo* vertexSetupInfo = &VERTEX_SETUP_INFOS[coverageSource];
-            createInfos[i].pVertexInputState = vertexSetupInfo->vertexInputState;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ vertexSetupInfo->vertexShader, fragmentShader }};
+            stages[i] = (ShaderStages) {{ vertexShader, fragmentShader }};
         }
         }
         const VKCompositeState* compositeState =
