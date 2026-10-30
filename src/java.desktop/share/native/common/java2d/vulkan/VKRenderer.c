@@ -1607,6 +1607,68 @@ void VKRenderer_RenderParallelogram(VkBool32 fill,
     vs[i++] = p3;
 }
 
+void VKRenderer_RenderAAParallelogram(VkBool32 fill,
+                                      jfloat x11, jfloat y11,
+                                      jfloat dx21, jfloat dy21,
+                                      jfloat dx12, jfloat dy12,
+                                      jfloat lwr21, jfloat lwr12) {
+    assert(lwr21 >= 0.0f && lwr12 >= 0.0f);
+
+    if (dx21 * dy12 - dx12 * dy21 == 0.0f) return; // Ignore degenerate parallelograms
+
+    if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_AA_PARALLELOGRAM, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return;
+
+    VKAAParallelogramInstance* inst;
+    VK_DRAW_INSTANCES(inst, 1, 10);
+    if (fill) {
+        *inst = (VKAAParallelogramInstance) {
+            .outerX11 = x11,
+            .outerY11 = y11,
+            .innerX11 = x11,
+            .innerY11 = y11,
+            .outerDx21 = dx21,
+            .outerDy21 = dy21,
+            .outerDx12 = dx12,
+            .outerDy12 = dy12,
+            .innerDx21 = 0.0f,
+            .innerDy21 = 0.0f,
+            .innerDx12 = 0.0f,
+            .innerDy12 = 0.0f,
+            .data = context.vertexData
+        };
+    } else {
+        float lineDx21 = dx21 * lwr21;
+        float lineDy21 = dy21 * lwr21;
+        float lineDx12 = dx12 * lwr12;
+        float lineDy12 = dy12 * lwr12;
+        float centerToLineEdgeDx = 0.5f * (lineDx21 + lineDx12);
+        float centerToLineEdgeDy = 0.5f * (lineDy21 + lineDy12);
+        *inst = (VKAAParallelogramInstance) {
+            .outerX11 = x11 - centerToLineEdgeDx,
+            .outerY11 = y11 - centerToLineEdgeDy,
+            .innerX11 = x11 + centerToLineEdgeDx,
+            .innerY11 = y11 + centerToLineEdgeDy,
+            .outerDx21 = dx21 + lineDx21,
+            .outerDy21 = dy21 + lineDy21,
+            .outerDx12 = dx12 + lineDx12,
+            .outerDy12 = dy12 + lineDy12,
+            .innerDx21 = 0.0f,
+            .innerDy21 = 0.0f,
+            .innerDx12 = 0.0f,
+            .innerDy12 = 0.0f,
+            .data = context.vertexData
+        };
+        // Only fill these when there is a non-zero-area inner parallelogram to cut out.
+        // Otherwise, leave empty.
+        if (lwr21 < 1.0f && lwr12 < 1.0f) {
+            inst->innerDx21 = dx21 - lineDx21;
+            inst->innerDy21 = dy21 - lineDy21;
+            inst->innerDx12 = dx12 - lineDx12;
+            inst->innerDy12 = dy12 - lineDy12;
+        }
+    }
+}
+
 static void VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
     jint x1, jint y1, jint x2, jint y2,
     VKVertex* p1, VKVertex* p2, VKVertex* p3, VKVertex* p4) {
