@@ -35,11 +35,11 @@ import java.awt.GraphicsDevice;
 import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.Window;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Corresponds to a Wayland output and is identified by its wlID.
@@ -126,9 +126,10 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     /**
      * Top-level window peers that consider this device as their primary one
-     * and get their graphics configuration from it
+     * and get their graphics configuration from it.
+     * Stores weak references to WLComponentPeers
      */
-    private final Set<WeakReference<WLComponentPeer>> toplevels = new HashSet<>(); // guarded by 'this'
+    private final Set<WLComponentPeer> toplevels = Collections.newSetFromMap(new WeakHashMap<>()); // guarded by 'this'
 
     private WLGraphicsDevice(int id,
                              String name,
@@ -213,14 +214,9 @@ public class WLGraphicsDevice extends GraphicsDevice {
         // to refer to the new ones with, perhaps, a different scale or resolution.
         // This affects various BufferStrategy that use volatile images as their buffers.
 
-        List<WLComponentPeer> toplevelsCopy = new ArrayList<>(toplevels.size());
+        List<WLComponentPeer> toplevelsCopy;
         synchronized (this) {
-            for (var toplevel: toplevels) {
-                WLComponentPeer peer = toplevel.get();
-                if (peer != null) {
-                    toplevelsCopy.add(peer);
-                }
-            }
+            toplevelsCopy = new ArrayList<>(toplevels);
         }
 
         toplevelsCopy.forEach(
@@ -389,16 +385,13 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     public void addWindow(WLComponentPeer peer) {
         synchronized (this) {
-            toplevels.add(new WeakReference<>(peer));
+            toplevels.add(peer);
         }
     }
 
     public void removeWindow(WLComponentPeer peer) {
         synchronized (this) {
-            toplevels.removeIf(ref -> {
-                WLComponentPeer p = ref.get();
-                return p == null || p == peer;
-            });
+            toplevels.remove(peer);
         }
     }
 
