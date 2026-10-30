@@ -1895,8 +1895,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
                 if (oldDevice != device) {
                     oldDevice.removeWindow(this);
-                    device.addWindow(this);
                 }
+                device.addWindow(this);
                 break;
 
             case LEFT:
