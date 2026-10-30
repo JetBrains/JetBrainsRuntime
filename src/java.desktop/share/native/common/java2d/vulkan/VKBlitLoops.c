@@ -263,6 +263,25 @@ void VKBlitLoops_Blit(JNIEnv *env, SurfaceDataOps* src, jshort srctype, jint fil
     SurfaceData_InvokeUnlock(env, src, &srcInfo);
 }
 
+void VKBlitLoops_DrawColorGlyph(jint dstx, jint dsty, jint width, jint height,
+                                jint scanStride, const void *pixels) {
+    // FreeType color glyphs contain premultiplied BGRA bytes, regardless of
+    // native byte order. Upload them as an image, not a single-channel mask.
+    static const jshort BGRA_PRE_SRCTYPE =
+            sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_4BYTE |
+            (2 << SRCTYPE_BITS) |
+            (1 << (SRCTYPE_BITS + 2)) |
+            (0 << (SRCTYPE_BITS + 4)) |
+            (3 << (SRCTYPE_BITS + 6)) |
+            sun_java2d_vulkan_VKSwToSurfaceBlit_SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT;
+
+    if (!pixels || width <= 0 || height <= 0) return;
+    VKBlitLoops_TransferAndDrawTile(
+        BGRA_PRE_SRCTYPE, java_awt_image_AffineTransformOp_TYPE_NEAREST_NEIGHBOR,
+        pixels, width, height, 4, scanStride,
+        dstx, dsty, dstx + width, dsty + height);
+}
+
 void VKBlitLoops_MaskBlit(jint dstx, jint dsty, jint width, jint height, void *pPixels) {
     // srctype for MASK_BLIT is always native-order ARGB ((a << 24) | (r << 16) | (g << 8) | b) with pre-multiplied alpha.
 #ifdef J2D_VK_LITTLE_ENDIAN
