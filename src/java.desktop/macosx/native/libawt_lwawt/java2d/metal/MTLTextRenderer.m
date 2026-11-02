@@ -412,6 +412,10 @@ MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc, GlyphInfo *ginfo,
     if (cell == NULL) {
         // attempt to add glyph to accelerated glyph cache
         MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_FALSE, subimage);
+        // a full cache was freed and made anew inside the add: the glyph's cell belongs to the
+        // new cache info, not to the one looked up above (compared against the stale pointer,
+        // the glyph that caused the eviction was skipped — GlyphAtlasEvictionTest, 2026-11-02)
+        active = mtlc.glyphCacheAA.cacheInfo;
         for (MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo); c != NULL; c = c->nextGCI) {
             if (c->cacheInfo == active && c->glyphSubimage == subimage) {
                 cell = c;
@@ -489,6 +493,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, BMTLSDOps *dstOps,
         // attempt to add glyph to accelerated glyph cache
         // TODO : Handle RGB order
         MTLTR_AddToGlyphCache(ginfo, mtlc, dstOps, JNI_TRUE, 0);
+        activeLcd = mtlc.glyphCacheLCD.cacheInfo;   // the add may have replaced the cache (see the grayscale path)
         for (MTLCacheCellInfo *c = (MTLCacheCellInfo *) (ginfo->cellInfo); c != NULL; c = c->nextGCI) {
             if (c->cacheInfo == activeLcd) { cell = c; break; }
         }
