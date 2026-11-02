@@ -188,7 +188,7 @@ public class IdeScenes {
     /** One command to the scene-driver plugin in the isolated IDE; its answer, "ok" or the error (which aborts the run). */
     static String ide(String query) {
         try {
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + "/api/scene?" + query))
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + "/api/scene?" + query.replace(" ", "%20")))   // a terminal line with spaces (the Windows one) must be a valid URI
                     .timeout(java.time.Duration.ofSeconds(20)).GET().build();
             long t = System.nanoTime();
             java.net.http.HttpResponse<String> response = http.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());

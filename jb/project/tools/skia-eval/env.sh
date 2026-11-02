@@ -11,6 +11,6 @@ OUT_ROOT="${SKIA_EVAL_OUT:-$REPO/build/skia-eval-out}"
 [ -n "${JDK:-}" ] && [ ! -x "$JDK/bin/java" ] && JDK=""
 case "$(uname -s)" in
   Darwin) JDK="${JDK:-$REPO/build/macosx-aarch64-skia/images/jdk}" ;;
-  *)      JDK="${JDK:-$(ls -d "$REPO"/build/windows-*-skia/images/jdk 2>/dev/null | head -1)}" ;;
+  *)      JDK="${JDK:-$(ls -d "$REPO"/build/windows-*-skia-main/images/jdk "$REPO"/build/windows-*-skia/images/jdk 2>/dev/null | head -1)}" ;;   # the VM keeps the main-line image as windows-aarch64-skia-main beside the frozen jbr25 one
 esac
 export KIT REPO OUT_ROOT JDK
