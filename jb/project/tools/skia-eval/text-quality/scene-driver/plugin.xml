@@ -1,0 +1,12 @@
+<idea-plugin>
+  <id>jbr.skia.scene-driver</id>
+  <name>Scene Driver (JBR Skia evaluation)</name>
+  <version>1</version>
+  <vendor>JetBrains Runtime</vendor>
+  <description>Drives the IDE scenes of the text rendering catalog over the built-in server: GET /api/scene?cmd=... (see SceneService).</description>
+  <depends>com.intellij.modules.platform</depends>
+  <depends>org.jetbrains.plugins.terminal</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <httpRequestHandler implementation="scenes.SceneService"/>
+  </extensions>
+</idea-plugin>

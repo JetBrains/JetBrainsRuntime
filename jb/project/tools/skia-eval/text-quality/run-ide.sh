@@ -75,7 +75,8 @@ CP=$(cat "$STATE/classpath.txt")
   echo "-Xmx2048m"
   echo "-Dsun.java2d.skia.verbose=true"
   echo "-Dsun.java2d.uiScale.enabled=true"
-  [ -n "$SCALE" ] && echo "-Dsun.java2d.uiScale=$SCALE"
+  # --scale no longer sets sun.java2d.uiScale (2026-11-02): the display runs at the scale itself, the
+  # wrapper checks it (ScreenBounds --require), so decorations and the OS's text settings are native
   echo "-Didea.initially.ask.config=never"
   echo "-Didea.trust.all.projects=true"
   echo "-Didea.fatal.error.notification=disabled"

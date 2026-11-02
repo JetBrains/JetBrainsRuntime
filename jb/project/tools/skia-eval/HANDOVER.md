@@ -223,11 +223,26 @@ Arms, all on the one image (name them exactly like this in records):
    (`threadDumps-freeze-*` directories), anything visibly wrong. Repeat with
    `-Dsun.java2d.font.scaler=skia`.
 2. **Scenes and clusters (pixel conformance on real scales).** `text-quality/run-scenes.sh
-   <arm> <light|dark> <scale>` starts the isolated IDE with the seeded configuration on the
-   scene project, waits for indexing and the inspection pass, drives ten scenes with Robot and
-   captures them; `SceneDiff` and `DeviationClusters --out ... --theme ... --scale ... --scene ...
-   --arm ...` rank the differences against the software arm with crops. Before the first run:
-   set the OS display scale (the IDE must run at the real scale, not `uiScale`), replace the
+   <arm> <light|dark> <scale>` first waits until some attached display runs at `<scale>` with
+   room for the frame (`ScreenBounds --require`; it tells you what to set in the OS display
+   settings — the IDE runs at the display's real scale, `uiScale` is no longer set), starts the
+   isolated IDE with the seeded configuration on the scene project, waits for indexing, places
+   the frame at a fixed 1728x980 logical pixels (the common ground of a 16-inch MacBook panel
+   and a 1080p screen; `WINDOW=WxH` overrides) and waits until the frame has been unchanged for
+   4 s (the inspection pass, the widgets; the 120 s sleep is gone), then drives five scenes
+   with Robot — `workspace` (project tree, editor with a four-line selection and the
+   documentation popup, terminal with a line of output), `menu`, `settings`, `search`,
+   `markdown` (2026-11-02: the former ten showed mostly the same frame, presentation mode and
+   the tooltip were unstable) — and captures each as the frame's own bounds with its native
+   decorations, no taskbar. Waits are screen-driven: a popup is typed into once the frame has
+   changed and stopped changing, the old fixed sleeps are the upper bounds; one PowerShell
+   (`fg.ps1 -Serve`) answers every foreground, bounds and placement query for the whole run.
+   `SceneDiff` and `DeviationClusters --out ... --theme ... --scale ... --scene ... --arm ...`
+   rank the differences against the software arm with crops. The driver's steps are commands to a
+   small plugin in the isolated IDE (`text-quality/scene-driver/`: open a file, set a selection,
+   invoke an action by id, a settings page, Search Everywhere with a query, a terminal command,
+   a key to the focus owner — over the IDE's built-in server, no typing); build it once against your
+   IDE with `IDE_HOME=<install dir> scene-driver/build-plugin.sh`. Before the first run: replace the
    jrt roots in `text-quality/seed/common/options/jdk.table.xml` with your image's path, extend
    the arm table in `run-ide.sh` (add `R1` = Direct3D 9, nothing but `-Dsun.java2d.skia=false`,
    and `A4` = `-Dsun.java2d.font.scaler=skia`), and read section 9 below. Matrix: arms `A0

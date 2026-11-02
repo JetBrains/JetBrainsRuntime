@@ -1,4 +1,2 @@
-out/
-ide/
-out-classes/
-*.class
+seed/common/plugins/
+scene-driver/out/
