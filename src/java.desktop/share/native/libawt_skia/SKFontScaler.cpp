@@ -243,9 +243,11 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     context->grayMode = grayMode;
     context->grayDarkening = grayDarkening;
     context->grayLuminance = grayLuminance;
-    // Like the CoreText scaler behind CStrike: design metrics scaled linearly,
-    // no hinting; sub-pixel positions only with fractional metrics.
-    context->font.setHinting(SkFontHinting::kNone);
+    // Design metrics scaled linearly (like the CoreText scaler behind CStrike); the
+    // hinting request is the platform's (SKPlatform_FontHinting: DirectWrite's own
+    // per-font grid fitting on Windows, none on macOS); sub-pixel positions only
+    // with fractional metrics.
+    context->font.setHinting(SKPlatform_FontHinting());
     context->font.setLinearMetrics(true);
     context->font.setSubpixel(context->fractionalMetrics);
     // aa: SunHints.INTVAL_TEXT_ANTIALIAS_*; the LCD values become sub-pixel edging

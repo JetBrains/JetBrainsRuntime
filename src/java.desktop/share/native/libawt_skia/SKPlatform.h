@@ -31,6 +31,7 @@
 // Dawn device and swap chains); everything else in libawt_skia is
 // platform-independent C++ against Graphite.
 
+#include "include/core/SkFontTypes.h"
 #include "include/core/SkColorType.h"
 #include "include/gpu/graphite/BackendTexture.h"
 #include "include/gpu/graphite/Context.h"
@@ -178,5 +179,17 @@ bool SKPlatform_LcdOrderIsBGR();
 // smoothing settings are the desktop hints' business). The platform's smoothed masks
 // (SKPlatform_SmoothedGlyphMask) and Skia's text path's smoothing request follow it.
 bool SKPlatform_FontSmoothingEnabled();
+||||||| parent of 210bc044d7de (JBR-10654 Skia: the scaler asks the platform's Skia font host for the platform's hinting — DirectWrite's own grid fitting on Windows)
+// The hinting level the scaler asks the platform's Skia font host for. It is a
+// request, not a result: Skia's hosts map it onto their platform's own
+// decision. Windows: kNormal — Skia's DirectWrite host then takes the font's
+// recommended rendering mode (IDWriteFontFace::GetRecommendedRenderingMode, the
+// gasp table at the size) with the default grid-fit mode, i.e. DirectWrite's own
+// per-font choice, as the JDK's DirectWrite path and the platform mask route make
+// it (kNone would force grid fitting off: a 13 px lowercase one row shorter than
+// the platform's, SkiaTextPathHintingTest). macOS: kNone — CoreText hints nothing,
+// and Skia's CoreText host reads any other level as "font smoothing on", which
+// is the text path's own smoothing switch (SKBackend_DrawGlyphsOnCanvas).
+SkFontHinting SKPlatform_FontHinting();
 
 #endif /* SKPlatform_h_Included */

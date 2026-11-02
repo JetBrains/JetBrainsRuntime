@@ -248,6 +248,13 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
     *boldEmFraction = 0.0f;
 }
 
+// CoreText hints nothing; Skia's CoreText host reads a level above kNone as "font
+// smoothing on", which the text path switches on its own (sun.java2d.skia.text.smoothing).
+SkFontHinting SKPlatform_FontHinting()
+{
+    return SkFontHinting::kNone;
+}
+
 // No sub-pixel masks on macOS since Mojave: the order is moot, RGB keeps Skia's default.
 bool SKPlatform_LcdOrderIsBGR()
 {

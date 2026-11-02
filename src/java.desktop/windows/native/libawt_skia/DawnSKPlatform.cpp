@@ -994,6 +994,14 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
 #define FE_FONTSMOOTHINGORIENTATIONRGB 0x0001
 #endif
 
+// DirectWrite decides per font and size whether and how to grid-fit (the gasp table,
+// GetRecommendedRenderingMode); Skia's DirectWrite host asks it under kNormal and
+// forces grid fitting off under kNone or kSlight.
+SkFontHinting SKPlatform_FontHinting()
+{
+    return SkFontHinting::kNormal;
+}
+
 // The ClearType sub-pixel orientation of the display, as the JDK's lcdglyph.c and
 // the desktop hints read it (the ClearType tuner writes it); RGB when the query fails.
 bool SKPlatform_LcdOrderIsBGR()
