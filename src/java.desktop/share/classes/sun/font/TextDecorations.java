@@ -83,13 +83,14 @@ public final class TextDecorations {
     /**
      * The device rows of an underline whose metrics (device pixels) put the top of the stroke {@code position}
      * below the baseline with {@code thickness}: CoreText's placement, measured over 34 fonts and sizes at 1x
-     * (2026-11-02): whole rows, the thickness rounded up, the band at least rows + 1 pixels below the baseline
-     * row (its first row stays clear), and a thicker band growing upwards. Returns {offset of the top row from
-     * the baseline row, rows}.
+     * (2026-11-02): whole rows, the thickness rounded up, the row holding the stroke's top for one row and
+     * the band growing upwards from there for more, never nearer the baseline than its own height (the row
+     * under the glyph bottoms stays clear). Returns {offset of the top row from the baseline y, rows}: the
+     * baseline y is the glyphs' bottom edge, the row above it holds their bottoms.
      */
     public static int[] underlineBand(double position, double thickness) {
         int rows = Math.max(1, (int) Math.ceil(thickness - 1e-3));
-        int top = Math.max(rows + 1, (int) Math.floor(position + 1.5 - rows / 2.0));
+        int top = Math.max(rows, (int) Math.floor(position + 0.5 - rows / 2.0));
         return new int[] {top, rows};
     }
 

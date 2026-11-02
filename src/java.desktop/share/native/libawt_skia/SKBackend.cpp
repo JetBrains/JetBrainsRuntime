@@ -2186,9 +2186,12 @@ std::vector<std::pair<float, float>> inkCrossings(const SkFont &font, const SkGl
     for (int i = 0; i < count; i++) {
         const std::optional<SkPath> path = font.getPath(glyphs[i]);
         if (!path || path->isEmpty()) continue;
-        const SkRect bounds = path->getBounds().makeOffset(runOrigin.fX + positions[i].fX, runOrigin.fY + positions[i].fY);
+        // where the glyph is drawn: SkParagraph's line baseline is fractional (its line metrics are not
+        // rounded) but horizontal glyphs render at the rounded y, as the decoration's rows are counted
+        const float x = runOrigin.fX + positions[i].fX, y = (float) std::lround(runOrigin.fY + positions[i].fY);
+        const SkRect bounds = path->getBounds().makeOffset(x, y);
         if (bounds.fBottom < yTop || bounds.fTop > yBottom) continue;
-        const SkPath placed = path->makeOffset(runOrigin.fX + positions[i].fX, runOrigin.fY + positions[i].fY);
+        const SkPath placed = path->makeOffset(x, y);
         SkPath::Iter it(placed, true);
         SkPoint pts[4];
         for (SkPath::Verb v = it.next(pts); v != SkPath::kDone_Verb; v = it.next(pts)) {
@@ -2219,7 +2222,7 @@ std::vector<std::pair<float, float>> inkCrossings(const SkFont &font, const SkGl
 struct DecorationBand { int top; int rows; };
 DecorationBand underlineBand(float position, float thickness) {
     const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
-    const int top = std::max(rows + 1, (int) std::floor(position + 1.5f - rows / 2.0f));
+    const int top = std::max(rows, (int) std::floor(position + 0.5f - rows / 2.0f));
     return {top, rows};
 }
 

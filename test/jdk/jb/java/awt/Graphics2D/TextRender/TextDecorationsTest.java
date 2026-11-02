@@ -38,7 +38,8 @@ import java.util.List;
  * @key headful
  * @summary Text decorations under the system convention (sun.java2d.skia.text.decorations=system,
  *          the default): an underline uses the font's own metrics on whole device pixel rows, placed
- *          as CoreText places it (Helvetica Neue 13 at 1x: the second row below the baseline), at
+ *          as CoreText places it (Helvetica Neue 13 at 1x: one clear row under the glyph bottoms,
+ *          then the underline), at
  *          least one pixel thick, and on macOS leaves gaps where glyph ink crosses it (CoreText skips
  *          the descenders). The same rule holds on Java's TextLayout decorations (the java2d strike:
  *          Decoration/Underline stroked Java's nominal size/18 offset at a fractional y through the
@@ -91,8 +92,8 @@ public class TextDecorationsTest {
         if (abovePlain > plain * 0.15 || belowPlain > plain * 0.15) {
             errors.add("the underline spills over a neighbouring row: above " + abovePlain + ", below " + belowPlain + " of " + plain);
         }
-        if (mac && ulRow - BASELINE != 2) {
-            errors.add("the underline sits " + (ulRow - BASELINE) + " rows below the baseline; CoreText draws Helvetica Neue 13 at 2 (measured 2026-11-02)");
+        if (mac && ulRow - BASELINE != 1) {
+            errors.add("the underline sits " + (ulRow - BASELINE) + " rows below the baseline y; CoreText draws Helvetica Neue 13 one row below it, with the row under the glyph bottoms clear (measured 2026-11-02)");
         }
         if (mac && neighbourhood > 0 && addedNear > neighbourhood * 0.25) {
             errors.add("the underline runs through the descenders: " + addedNear + " added over the " + neighbourhood + " columns around them");
