@@ -34,12 +34,12 @@ import java.lang.reflect.Method;
  * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.font java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system LuminanceClassCountTest 16 true 8 104 248
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=4 LuminanceClassCountTest 4 true 32 96 224
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system LuminanceClassCountTest 16 true 0 102 255
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=4 LuminanceClassCountTest 4 true 0 85 255
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=256 LuminanceClassCountTest 256 true 0 100 255
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=1 -Dsun.java2d.skia.text.cgLuminance=40 LuminanceClassCountTest 1 false 40 40 40
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=5 LuminanceClassCountTest 16 true 8 104 248
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.luminanceClasses=4 LuminanceClassCountTest 4 false 32 96 224
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=5 LuminanceClassCountTest 16 true 0 102 255
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.luminanceClasses=4 LuminanceClassCountTest 4 false 0 85 255
  */
 public class LuminanceClassCountTest {
     public static void main(String[] args) throws Exception {

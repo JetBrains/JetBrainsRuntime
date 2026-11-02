@@ -1911,8 +1911,10 @@ static int luminanceClass(SkColor c, jlong pScalerContext) {   // c: the text co
         return SKFontScaler_GrayLuminance(pScalerContext);
     }
     const int luminance = (SkColorGetR(c) * 299 + SkColorGetG(c) * 587 + SkColorGetB(c) * 114) / 1000;
-    const int width = 256 / gConfig.luminanceClasses;
-    return (luminance & ~(width - 1)) | (width >> 1);
+    // as FontUtilities.luminanceClass: representatives 0, 255/(N-1), ..., 255 — black and white exact
+    const int steps = gConfig.luminanceClasses - 1;
+    const int cls = (luminance * steps + 127) / 255;
+    return (cls * 255 + steps / 2) / steps;
 }
 
 static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {

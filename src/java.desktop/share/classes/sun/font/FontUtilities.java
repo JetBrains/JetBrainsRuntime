@@ -69,15 +69,19 @@ public final class FontUtilities {
         if (textLuminanceClasses <= 1) {
             return SKFontScaler.grayLuminance();
         }
-        int width = 256 / textLuminanceClasses;
-        return (luminance & ~(width - 1)) | (width >> 1);
+        // N classes with representatives 0, 255/(N-1), ..., 255: black and white text get their exact
+        // luminance (the most frequent cases), a mid-grey is at most half an interval off (2026-11-02;
+        // before, the representative sat at the centre of a 256/N-wide interval, so 0 rendered as 8)
+        int steps = textLuminanceClasses - 1;
+        int cls = (luminance * steps + 127) / 255;
+        return (cls * 255 + steps / 2) / steps;
     }
 
     /**
      * {@code sun.java2d.skia.text.luminanceClasses}: how many classes of text luminance
      * the platform-rasterized routes ({@code sun.java2d.skia.text.gray=cg} or
      * {@code =platform}) produce glyph masks for: 1, 2, 4, ... 256, default 16 (each
-     * class 16 levels wide, its representative at the centre). 256 is the exact
+     * class about 17 levels wide, the representatives 0, 17, …, 255). 256 is the exact
      * luminance; 1 turns the dependence off, every colour getting the masks of
      * {@code sun.java2d.skia.text.cgLuminance} as before the classes existed. More
      * classes mean more strikes and glyph-cache cells per font, fewer a larger
