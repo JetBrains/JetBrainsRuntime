@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 
 /**
  * @test
- * @summary With -Dsun.java2d.skia.text=paragraph the Skia backend lays out attributed
+ * @summary With -Dsun.java2d.skia.text.paragraphs=skia the Skia backend lays out attributed
  *          strings (drawString(AttributedCharacterIterator)) with Skia's paragraph
  *          engine (SkParagraph: runs of fonts and colours, underline, strikethrough)
  *          instead of Java's TextLayout: the backend counts the paragraphs it laid
@@ -45,7 +45,7 @@ import java.util.function.Consumer;
  * @requires os.family == "mac"
  * @key headful
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.smoothing=true SkiaParagraphTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia -Dsun.java2d.skia.text.smoothing=true SkiaParagraphTest
  */
 public class SkiaParagraphTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";

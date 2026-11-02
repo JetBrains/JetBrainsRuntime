@@ -234,7 +234,7 @@ public final class SunGraphics2D
      * 100, whatever the hint says. CoreGraphics supplies grayscale only, so macOS keeps the
      * pipes' gamma for LCD text.
      */
-    private static int lcdTextContrastDefaultValue = sun.font.FontUtilities.platformLcdMasks ? 100 : 140;
+    private static int lcdTextContrastDefaultValue = sun.font.FontUtilities.platformLcdMasks || sun.font.FontUtilities.plainTextBlend ? 100 : 140;
 
     private int interpolationHint;      // raw value of rendering Hint
     public int strokeHint;

@@ -30,7 +30,7 @@ import java.lang.reflect.Method;
 
 /**
  * @test
- * @summary With -Dsun.java2d.skia.text.gray=cg on Skia's own text path (text=skia, shaper
+ * @summary With -Dsun.java2d.skia.text.blend=system on Skia's own text path (text=skia, shaper
  *          or paragraph), the glyph masks inside Skia's strike come from CoreGraphics with
  *          font smoothing for the text colour's luminance, blended plainly, as the cg route
  *          does for the glyph-image pipes: the ink of black text on white and of light
@@ -41,7 +41,7 @@ import java.lang.reflect.Method;
  * @requires os.family == "mac"
  * @key headful
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=shaper -Dsun.java2d.skia.text.gray=cg SkiaTextPathCoreGraphicsTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=system SkiaTextPathCoreGraphicsTest
  */
 public class SkiaTextPathCoreGraphicsTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";

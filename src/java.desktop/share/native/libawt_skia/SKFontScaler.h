@@ -37,7 +37,8 @@ bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkG
 // shaping the strike's text with Skia's shaper.
 bool SKFontScaler_Font(jlong pContext, SkFont *font);
 // The strike's grayscale route (sun.font.SKFontScaler.GRAY_*), for the text path to apply it.
-jint SKFontScaler_GrayMode(jlong pContext);
+jint SKFontScaler_BlendMode(jlong pContext);   // SKFontScaler.BLEND_*
+bool SKFontScaler_TextDarkening();             // the darkening dimension, resolved (one value per process)
 jint SKFontScaler_GrayLuminance(jlong pContext);   // the luminance the context's cg masks are rasterized for (SKFontScaler.GRAY_LUMINANCE when the strike has no class)
 
 #endif /* SKFontScaler_h_Included */

@@ -137,7 +137,7 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
 // freetypeScaler.c); the same amount is added to every inked glyph's advance.
 constexpr float SK_SYNTHETIC_BOLD_EM = 1.0f / 32;
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
-                                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
+                                  int luminance, bool lcd, bool darkening, float strokeWidth, float originX, float originY, int width, int height,
                                   uint8_t *mask);
 // The platform's synthetic styles, for a face a font lacks: the oblique shear
 // (x per y) and the bold emboldening as a fraction of the em, which widens the
@@ -166,30 +166,26 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction);
 // the variants and a half-step shift of the glyph origin, so the pipes need no rule
 // of their own.
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, float displayScale, bool lcd);
-// The display's horizontal sub-pixel order as the platform knows it: true for
-// B, G, R (Java's LCD_HBGR desktop hint), false for R, G, B. The GPU and raster
-// surfaces declare their pixel geometry from it (sun.java2d.skia.lcdOrder=system),
-// so Skia's text path renders sub-pixel masks in the order the loops' glyph
-// images follow. Windows: SPI_GETFONTSMOOTHINGORIENTATION, as the JDK's
-// lcdglyph.c reads it for the desktop hints; macOS: false (no sub-pixel masks).
-bool SKPlatform_LcdOrderIsBGR();
-// Whether the user has font smoothing on, as the platform's own text stack decides it:
-// macOS reads AppleFontSmoothing the way AppKit does (0 = off, anything else on; the
-// historic strength levels render alike on current macOS), Windows always true (its
-// smoothing settings are the desktop hints' business). The platform's smoothed masks
-// (SKPlatform_SmoothedGlyphMask) and Skia's text path's smoothing request follow it.
-bool SKPlatform_FontSmoothingEnabled();
-||||||| parent of 210bc044d7de (JBR-10654 Skia: the scaler asks the platform's Skia font host for the platform's hinting — DirectWrite's own grid fitting on Windows)
-// The hinting level the scaler asks the platform's Skia font host for. It is a
-// request, not a result: Skia's hosts map it onto their platform's own
-// decision. Windows: kNormal — Skia's DirectWrite host then takes the font's
-// recommended rendering mode (IDWriteFontFace::GetRecommendedRenderingMode, the
-// gasp table at the size) with the default grid-fit mode, i.e. DirectWrite's own
-// per-font choice, as the JDK's DirectWrite path and the platform mask route make
-// it (kNone would force grid fitting off: a 13 px lowercase one row shorter than
-// the platform's, SkiaTextPathHintingTest). macOS: kNone — CoreText hints nothing,
-// and Skia's CoreText host reads any other level as "font smoothing on", which
-// is the text path's own smoothing switch (SKBackend_DrawGlyphsOnCanvas).
-SkFontHinting SKPlatform_FontHinting();
+// The user's text preferences as the operating system's own applications follow them, read
+// once per process (the text settings' `system` values, SKEnvironment): the hinting the
+// platform's Skia font host should be asked for (Linux fontconfig's style per font, Windows
+// kNormal so DirectWrite decides per font, macOS kNone — CoreText hints nothing), whether
+// stems are darkened (macOS AppleFontSmoothing as AppKit reads it: 0 off, else on; Windows
+// true, ClearType's enhanced contrast being DirectWrite's business; Linux FreeType's stem
+// darkening, off unless set), and the display's LCD sub-pixel order (Windows
+// SPI_GETFONTSMOOTHINGORIENTATION; macOS false, no sub-pixel masks).
+struct SKTextDefaults {
+    SkFontHinting hinting;
+    bool darkening;
+    bool lcdOrderBGR;
+};
+const SKTextDefaults &SKPlatform_TextDefaults();
+// The hinting an SkFont is given: the request (-1 = the platform's own, else an
+// SkFontHinting value) as this platform's Skia host understands it. On the CoreText host
+// the hinting flag is the only switch for CoreGraphics' font smoothing, so there
+// `darkening` decides (kNormal on, kNone off) and the request is not applicable; the
+// scaler passes false for its own glyph images (coverage, or the platform engine's mask
+// through SKPlatform_SmoothedGlyphMask) and the dimension's value for Skia's text path.
+SkFontHinting SKPlatform_FontHinting(int requested, bool darkening);
 
 #endif /* SKPlatform_h_Included */

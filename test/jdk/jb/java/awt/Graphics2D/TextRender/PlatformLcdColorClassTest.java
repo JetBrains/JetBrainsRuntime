@@ -34,8 +34,8 @@
  *          must get the same mask and inks of neighbouring classes different
  *          ones (the quantization); grayscale text is unaffected.
  * @requires (os.family == "windows")
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform -Dsun.java2d.skia.text.lcdColorBits=3 PlatformLcdColorClassTest 3
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform -Dsun.java2d.skia.text.lcdColorBits=2 PlatformLcdColorClassTest 2
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.lcdColorBits=3 PlatformLcdColorClassTest 3
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.lcdColorBits=2 PlatformLcdColorClassTest 2
  */
 
 import java.awt.Color;

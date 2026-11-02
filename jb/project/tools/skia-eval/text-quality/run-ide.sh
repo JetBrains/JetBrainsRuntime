@@ -36,7 +36,7 @@ done
 case "$ARM" in
   A0) NAME=A0-software;   PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false" ;;
   R0) NAME=R0-software-raster; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true" ;;
-  R5) NAME=R5-software-raster-skia-text; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia" ;;
+  R5) NAME=R5-software-raster-skia-text; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia" ;;
   A1) NAME=A1-blend;      PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=blend -Dsun.java2d.d3d=false" ;;
   A2) NAME=A2-twopass;    PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false" ;;
   A3) NAME=A3-accumulate; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false" ;;

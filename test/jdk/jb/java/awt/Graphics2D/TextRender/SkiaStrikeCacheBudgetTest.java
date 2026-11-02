@@ -35,7 +35,7 @@ import java.lang.reflect.Method;
  * @key headful
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true SkiaStrikeCacheBudgetTest 64 8 1024
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg SkiaStrikeCacheBudgetTest 64 8 2048
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system SkiaStrikeCacheBudgetTest 64 8 2048
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.strikeCache=16 -Dsun.java2d.skia.glyphAtlas=32 -Dsun.java2d.skia.glyphCache=4096 SkiaStrikeCacheBudgetTest 16 32 4096
  */
 public class SkiaStrikeCacheBudgetTest {

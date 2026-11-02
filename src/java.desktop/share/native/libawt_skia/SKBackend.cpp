@@ -130,7 +130,7 @@ static struct {
 
 SkPixelGeometry SKBackend_LcdPixelGeometry() {
     const bool bgr = gConfig.lcdOrder == SKLcdOrder::BGR
-                     || (gConfig.lcdOrder == SKLcdOrder::System && SKPlatform_LcdOrderIsBGR());
+                     || (gConfig.lcdOrder == SKLcdOrder::System && SKPlatform_TextDefaults().lcdOrderBGR);
     return bgr ? kBGR_H_SkPixelGeometry : kRGB_H_SkPixelGeometry;
 }
 
@@ -1916,7 +1916,7 @@ static int luminanceClass(SkColor c, jlong pScalerContext) {   // c: the text co
 }
 
 static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
-    return SKFontScaler_GrayMode(pScalerContext) == sun_font_SKFontScaler_GRAY_CG
+    return SKFontScaler_BlendMode(pScalerContext) == sun_font_SKFontScaler_BLEND_SYSTEM
            && font.getEdging() == SkFont::Edging::kAntiAlias && font.getTypeface() != nullptr;
 }
 
@@ -1986,9 +1986,6 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
         if (font.getTypeface() != runTypeface) {
             flushRun();
             runFont = font;
-            if (smoothing) {
-                runFont.setHinting(SkFontHinting::kNormal);   // the CoreText host: masks from CoreGraphics with font smoothing on
-            }
             runTypeface = font.getTypeface();
         }
         ids.push_back(glyph);
@@ -2079,9 +2076,6 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     const Shaping &s = shaping();
     if (!s.shaper) {
         return;
-    }
-    if (smoothing) {
-        font.setHinting(SkFontHinting::kNormal);   // as DrawGlyphsBySkia: the CoreText host's smoothed masks
     }
     const SkPaint paint = SKBackend_MakePaint(true);
     sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, paint.getColor());
@@ -2204,9 +2198,6 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
             J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_DrawParagraphBySkia: run %d has no font, skipped", r);
             start = end;   // SKTextRenderer checked every strike; a missing font here is a disposed one
             continue;
-        }
-        if (smoothing) {
-            font.setHinting(SkFontHinting::kNormal);
         }
         SkPaint runPaint = paint;
         runPaint.setAntiAlias(font.getEdging() != SkFont::Edging::kAlias);   // the decorations follow the text's edging

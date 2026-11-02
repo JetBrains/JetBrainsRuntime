@@ -208,7 +208,7 @@ final class SKRasterTextPipe extends GlyphListPipe {
         if (cx1 >= cx2 || cy1 >= cy2) {
             return;   // no glyph pixel inside the clip
         }
-        int flags = n | (usePositions ? 1 << 24 : 0) | (SKEnvironment.textSmoothing() ? 1 << 25 : 0) | rule << 26 | (dst.untouchedByJava() ? 1 << 30 : 0);
+        int flags = n | (usePositions ? 1 << 24 : 0) | 0 /* bit 25, once the smoothing request: the strike's hinting carries the darkening */ | rule << 26 | (dst.untouchedByJava() ? 1 << 30 : 0);
         drawGlyphs(dst, dst.pixelFormat(), runs.contexts(), flags, gl.getX(), gl.getY(), runs.codes(), gl.getImages(), usePositions ? gl.getPositions() : null,
                    sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
     }

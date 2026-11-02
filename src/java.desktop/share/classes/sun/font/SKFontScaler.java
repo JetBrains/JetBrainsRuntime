@@ -51,21 +51,22 @@ import sun.java2d.skia.SKEnvironment;
 public final class SKFontScaler extends FontScaler {
 
     /**
-     * How grayscale (non-LCD) antialiased glyphs are rasterized, since the
-     * JDK's CoreGraphics renderer applies font smoothing without sub-pixels,
-     * which Skia's font host does not expose ({@code sun.java2d.skia.text.gray}):
-     * {@code coverage} (the default: the host's plain antialiased coverage,
-     * about 15 % less ink than the platform's text on macOS), {@code smoothed}
-     * (the host's sub-pixel render with the channels averaged, as the JDK does
-     * with CoreGraphics; about 13 % more ink) or {@code darkened} (coverage of
-     * the outline widened by {@code sun.java2d.skia.text.grayDarkening} of the
-     * em, default 0.013, rasterized by Skia; CoreGraphics' smoothing measured
-     * as a widening proportional to the size, 0.17 px at 13 px, 0.35 px at 26).
+     * The blend dimension of the text settings ({@code sun.java2d.skia.text.blend}, see
+     * SKEnvironment): {@code BLEND_CORRECTED} — the host's antialiased coverage, the pipes
+     * applying their contrast curve; {@code BLEND_PLAIN} — the platform engine's mask as
+     * colour-independent coverage (DirectWrite's alpha texture; CoreGraphics renders none,
+     * the host's coverage stands in); {@code BLEND_SYSTEM} — the platform engine's mask
+     * rendered for the text's luminance class (CoreGraphics' smoothing, DirectWrite's
+     * ClearType), the platform's own look for that colour.
      */
-    static final int GRAY_COVERAGE = 0, GRAY_SMOOTHED = 1, GRAY_DARKENED = 2, GRAY_CG = 3, GRAY_PLATFORM_COVERAGE = 4;
-    private static final int GRAY_MODE = grayModeProperty();
+    static final int BLEND_CORRECTED = 0, BLEND_PLAIN = 1, BLEND_SYSTEM = 2;
+    private static final int BLEND = switch (sun.java2d.skia.SKEnvironment.textBlend()) {
+        case PLAIN -> BLEND_PLAIN;
+        case CORRECTED -> BLEND_CORRECTED;
+        default -> BLEND_SYSTEM;
+    };
     /**
-     * {@code sun.java2d.skia.text.gray=cg}: the glyph rasterized by CoreGraphics
+     * Blend system on macOS: the glyph rasterized by CoreGraphics
      * itself with font smoothing on, for the text luminance
      * {@code sun.java2d.skia.text.cgLuminance} (0..255; the platform darkens light
      * text more than dark text), the coverage recovered from the render. The
@@ -82,17 +83,10 @@ public final class SKFontScaler extends FontScaler {
     static int grayLuminance() {
         return GRAY_LUMINANCE;
     }
-    private static final float GRAY_DARKENING = Float.parseFloat(System.getProperty("sun.java2d.skia.text.grayDarkening", "0.013"));
-
-    private static int grayModeProperty() {
-        return switch (System.getProperty("sun.java2d.skia.text.gray", "coverage").toLowerCase(java.util.Locale.ROOT)) {
-            case "smoothed" -> GRAY_SMOOTHED;
-            case "darkened" -> GRAY_DARKENED;
-            case "cg", "platform" -> GRAY_CG;   // the platform's smoothed rendering: CoreGraphics on macOS, DirectWrite on Windows
-            case "platformcoverage" -> GRAY_PLATFORM_COVERAGE;   // the platform's rasterizer as linear coverage (Windows: DirectWrite's alpha texture)
-            default -> GRAY_COVERAGE;
-        };
-    }
+    /** Whether stems are darkened (the darkening dimension, resolved against the user's preference). */
+    private static final boolean DARKENING = sun.java2d.skia.SKEnvironment.textDarkeningOn();
+    /** The hinting request for the native context (the hinting dimension; −1 is the platform's own decision). */
+    private static final int HINTING = sun.java2d.skia.SKEnvironment.textHintingRequest();
 
     private final Font2D font;
     private final long unitsPerEm;
@@ -220,7 +214,7 @@ public final class SKFontScaler extends FontScaler {
      */
     @Override
     long createScalerContext(double[] matrix, int aa, int fm, float boldness, float italic, int luminance, double displayScale) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, displayScale, GRAY_MODE, GRAY_DARKENING,
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, 1.0, displayScale, BLEND, DARKENING, HINTING,
                                    luminance >= 0 ? luminance : GRAY_LUMINANCE);
     }
 
@@ -236,7 +230,7 @@ public final class SKFontScaler extends FontScaler {
 
     /** With the text luminance class (FontStrikeDesc.luminance) for the CoreGraphics route; -1 falls back to the property. */
     long createScalerContext(double[] matrix, double deviceScale, int aa, int fm, float boldness, float italic, int luminance) {
-        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, deviceScale, GRAY_MODE, GRAY_DARKENING,
+        return createContextNative(nativeScaler, matrix, aa, fm, boldness, italic, deviceScale, deviceScale, BLEND, DARKENING, HINTING,
                                    luminance >= 0 ? luminance : GRAY_LUMINANCE);
     }
 
@@ -271,7 +265,7 @@ public final class SKFontScaler extends FontScaler {
     private static native boolean contextIsAxisAlignedNative(long pContext);
 
     private static native long createContextNative(long pScaler, double[] matrix, int aa, int fm, float boldness, float italic,
-                                                   double deviceScale, double displayScale, int grayMode, float grayDarkening,
+                                                   double deviceScale, double displayScale, int blend, boolean darkening, int hinting,
                                                    int grayLuminance);
     private static native void disposeContextNative(long pContext);
     private static native StrikeMetrics getFontMetricsNative(long pContext);

@@ -35,7 +35,7 @@
  *          1 and of 2: the number of distinct gray levels must drop to the
  *          platform's.
  * @requires (os.family == "windows")
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform PlatformSmoothingSampleGridTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system PlatformSmoothingSampleGridTest
  */
 
 import java.awt.Color;

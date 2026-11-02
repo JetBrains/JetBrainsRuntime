@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
 
 /**
  * @test
- * @summary With -Dsun.java2d.skia.text=shaper the Skia backend shapes drawString's
+ * @summary With -Dsun.java2d.skia.text.shaping=skia the Skia backend shapes drawString's
  *          text with Skia's shaper (HarfBuzz through Skia, Skia's own font
  *          fallback) and draws it through Skia's text path, instead of Java's
  *          layout and glyph images: the backend counts the glyphs it shaped,
@@ -41,7 +41,7 @@ import java.lang.reflect.Method;
  * @requires os.family == "mac"
  * @key headful
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=shaper -Dsun.java2d.skia.text.smoothing=true SkiaShaperTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.smoothing=true SkiaShaperTest
  */
 public class SkiaShaperTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";

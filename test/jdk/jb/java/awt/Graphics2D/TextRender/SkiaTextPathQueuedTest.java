@@ -32,7 +32,7 @@ import java.text.AttributedString;
 
 /**
  * @test
- * @summary The three Skia text-path entries (sun.java2d.skia.text=skia, =shaper,
+ * @summary The three Skia text-path entries (sun.java2d.skia.text.strike=skia, shaping=skia,
  *          =paragraph) are render-queue operations, not a flush and GPU submit
  *          per string: a paint of many strings reaches the backend in a handful
  *          of flushes, and the strings still all go through the Skia path (its
@@ -41,9 +41,9 @@ import java.text.AttributedString;
  * @requires (os.family == "mac" | os.family == "windows")
  * @key headful
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia SkiaTextPathQueuedTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=shaper SkiaTextPathQueuedTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=paragraph SkiaTextPathQueuedTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPathQueuedTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.shaping=skia SkiaTextPathQueuedTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia SkiaTextPathQueuedTest
  */
 public class SkiaTextPathQueuedTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
@@ -56,11 +56,12 @@ public class SkiaTextPathQueuedTest {
         if (!gc.getClass().getName().contains("MTL") && !gc.getClass().getName().contains("Win32SK")) {   // Metal on macOS, the Skia (Dawn) configuration on Windows
             throw new RuntimeException("not an accelerated configuration: " + gc.getClass().getName());
         }
-        final String mode = System.getProperty("sun.java2d.skia.text");
+        final String mode = "skia".equals(System.getProperty("sun.java2d.skia.text.paragraphs")) ? "paragraphs"
+                            : "skia".equals(System.getProperty("sun.java2d.skia.text.shaping")) ? "shaping" : "strike";
         final String counterName = switch (mode) {
-            case "skia" -> "glyphsDrawnBySkia";
-            case "shaper" -> "glyphsShapedBySkia";
-            case "paragraph" -> "paragraphsBySkia";
+            case "strike" -> "glyphsDrawnBySkia";
+            case "shaping" -> "glyphsShapedBySkia";
+            case "paragraphs" -> "paragraphsBySkia";
             default -> throw new RuntimeException("unexpected text route " + mode);
         };
         final long pathBefore = counter(counterName), flushesBefore = counter("flushes");
@@ -78,7 +79,7 @@ public class SkiaTextPathQueuedTest {
             g.setFont(font);
             for (int i = 0; i < STRINGS; i++) {
                 float x = 4 + (i % 3) * 2, y = 12 + (i % 24) * 12;
-                if (mode.equals("paragraph")) {
+                if (mode.equals("paragraphs")) {
                     AttributedString as = new AttributedString(TEXT);
                     as.addAttribute(TextAttribute.FONT, font);
                     g.drawString(as.getIterator(), x, y);
@@ -90,7 +91,7 @@ public class SkiaTextPathQueuedTest {
             out = vi.getSnapshot();
         } while (vi.contentsLost());
         final long path = counter(counterName) - pathBefore, flushes = counter("flushes") - flushesBefore;
-        final long expectedPath = mode.equals("paragraph") ? STRINGS : (long) STRINGS * TEXT.replace(" ", "").length();
+        final long expectedPath = mode.equals("paragraphs") ? STRINGS : (long) STRINGS * TEXT.replace(" ", "").length();
         System.out.println(mode + ": " + STRINGS + " strings, " + counterName + " +" + path + ", flushes +" + flushes);
         if (path < expectedPath) {
             throw new RuntimeException("the Skia path drew " + path + ", expected at least " + expectedPath + " (route not taken)");

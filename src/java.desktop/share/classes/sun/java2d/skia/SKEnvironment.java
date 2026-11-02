@@ -69,37 +69,84 @@ public final class SKEnvironment {
      */
     private static final boolean STROKES_BY_JAVA = strokesProperty();
     /**
-     * {@code sun.java2d.skia.text=skia}: text drawn through Skia's own text
-     * path (Skia's strike, glyph atlas and blending) from the glyph codes and
-     * positions Java laid out, instead of Java2D's glyph images; needs the Skia
-     * font scaler. Default {@code glyphs}: the glyph images through the
-     * backend's atlas.
+     * The text settings: six independent dimensions under {@code sun.java2d.skia.text.*},
+     * each a question with one answer. The route choices — {@code strike} (whose strike
+     * makes, caches and composites the glyph masks: {@code java2d}, Java's glyph images
+     * through the pipes' caches, or {@code skia}, Skia's strike, atlas and canvas),
+     * {@code shaping} (who maps characters to positioned glyphs and picks fallback fonts:
+     * Java's layout or Skia's shaper) and {@code paragraphs} (who lays out attributed
+     * text: Java's TextLayout or Skia's paragraph engine); a skia shaping or paragraphs
+     * value implies the skia strike. The rendering dimensions, each defaulting to
+     * {@code system} = what the operating system's own applications render for this user:
+     * {@code hinting} (system | none | slight | normal | full: whether outlines snap to the
+     * pixel grid — fontconfig's per-font style on Linux, DirectWrite's recommended mode on
+     * Windows, not applicable on macOS), {@code darkening} (system | none: whether stems
+     * are thickened beyond the outline's coverage — AppleFontSmoothing on macOS, ClearType's
+     * enhanced contrast on Windows, FreeType's stem darkening on Linux) and {@code blend}
+     * (system | plain | corrected: how a mask meets the text colour and the background —
+     * masks rendered for the colour where the engine does that, CoreGraphics per luminance
+     * and DirectWrite per colour; coverage interpolating the sRGB-encoded colours as stored;
+     * or the pipe's contrast curve, Java2D's LCD contrast and the pipes' text gamma).
+     * Retired spellings still resolve: {@code sun.java2d.skia.text=skia|shaper|paragraph}
+     * sets the route choices; {@code text.gray=cg|platform} is blend system, {@code coverage}
+     * blend corrected with darkening none, {@code platformcoverage} blend plain with
+     * darkening none ({@code smoothed} and {@code darkened}, two emulations of macOS'
+     * look, are gone and read as coverage); {@code text.smoothing=true} is darkening system.
+     * A new spelling wins over a retired one.
      */
-    private static final String TEXT = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);
-    private static final boolean TEXT_BY_SKIA = TEXT.equals("skia") || TEXT.equals("shaper") || TEXT.equals("paragraph");
-    /**
-     * {@code sun.java2d.skia.text=shaper}: in addition, {@code drawString} and
-     * {@code drawChars} hand the characters to Skia's shaper (HarfBuzz with
-     * Skia's Unicode module, Skia's font fallback) and draw the resulting text
-     * blob, instead of Java's layout ({@code GlyphList}, {@code TextLayout}).
-     * Glyph vectors still carry Java's layout.
-     */
-    private static final boolean TEXT_SHAPED_BY_SKIA = TEXT.equals("shaper") || TEXT.equals("paragraph");
-    /**
-     * {@code sun.java2d.skia.text=paragraph}: in addition, attributed strings
-     * ({@code drawString(AttributedCharacterIterator)}) are laid out by Skia's
-     * paragraph engine (SkParagraph: runs of fonts and colours, underline and
-     * strikethrough) instead of Java's {@code TextLayout}; attributes the route
-     * does not model fall back to it.
-     */
-    private static final boolean TEXT_PARAGRAPH_BY_SKIA = TEXT.equals("paragraph");
-    /**
-     * {@code sun.java2d.skia.text.smoothing=true}: Skia's text path asks the
-     * platform for smoothed glyph masks (Skia's hinting "normal", which on the
-     * CoreText host takes CoreGraphics' font smoothing) as Chrome does; default
-     * off: Skia's plain coverage.
-     */
-    private static final boolean TEXT_SMOOTHING = Boolean.getBoolean("sun.java2d.skia.text.smoothing");
+    public enum TextHinting { SYSTEM, NONE, SLIGHT, NORMAL, FULL }
+    public enum TextDarkening { SYSTEM, NONE }
+    public enum TextBlend { SYSTEM, PLAIN, CORRECTED }
+
+    private static final String TEXT_ROUTE = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);   // retired
+    private static final boolean TEXT_PARAGRAPH_BY_SKIA = skiaChoice("sun.java2d.skia.text.paragraphs", TEXT_ROUTE.equals("paragraph"));
+    private static final boolean TEXT_SHAPED_BY_SKIA = skiaChoice("sun.java2d.skia.text.shaping", TEXT_ROUTE.equals("shaper") || TEXT_ROUTE.equals("paragraph"));
+    private static final boolean TEXT_BY_SKIA = skiaChoice("sun.java2d.skia.text.strike", TEXT_ROUTE.equals("skia") || TEXT_ROUTE.equals("shaper") || TEXT_ROUTE.equals("paragraph"))
+            || TEXT_SHAPED_BY_SKIA || TEXT_PARAGRAPH_BY_SKIA;
+    private static final TextHinting TEXT_HINTING = enumProperty("sun.java2d.skia.text.hinting", TextHinting.class, TextHinting.SYSTEM);
+    private static final TextDarkening TEXT_DARKENING;
+    private static final TextBlend TEXT_BLEND;
+    static {
+        String gray = System.getProperty("sun.java2d.skia.text.gray");   // retired
+        TextBlend blend = TextBlend.SYSTEM;
+        TextDarkening darkening = TextDarkening.SYSTEM;
+        if (gray != null) {
+            switch (gray.toLowerCase(Locale.ROOT)) {
+                case "cg", "platform" -> { blend = TextBlend.SYSTEM; darkening = TextDarkening.SYSTEM; }
+                case "platformcoverage" -> { blend = TextBlend.PLAIN; darkening = TextDarkening.NONE; }
+                default -> { blend = TextBlend.CORRECTED; darkening = TextDarkening.NONE; }   // coverage; smoothed and darkened are gone
+            }
+        }
+        if (Boolean.getBoolean("sun.java2d.skia.text.smoothing")) {   // retired
+            darkening = TextDarkening.SYSTEM;
+        }
+        TEXT_BLEND = enumProperty("sun.java2d.skia.text.blend", TextBlend.class, blend);
+        TEXT_DARKENING = enumProperty("sun.java2d.skia.text.darkening", TextDarkening.class, darkening);
+    }
+
+    /** A java2d | skia property: null keeps the default (a retired spelling's), anything else is read as java2d. */
+    private static boolean skiaChoice(String key, boolean dflt) {
+        String v = System.getProperty(key);
+        if (v == null) {
+            return dflt;
+        }
+        return v.equalsIgnoreCase("skia");
+    }
+
+    private static <E extends Enum<E>> E enumProperty(String key, Class<E> type, E dflt) {
+        String v = System.getProperty(key);
+        if (v == null) {
+            return dflt;
+        }
+        try {
+            return Enum.valueOf(type, v.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            if (VERBOSE) {
+                System.err.println(key + "=" + v + " is not one of " + java.util.Arrays.toString(type.getEnumConstants()) + "; using " + dflt.name().toLowerCase(Locale.ROOT));
+            }
+            return dflt;
+        }
+    }
     /**
      * {@code sun.java2d.skia.strikeCache=<MB>}: the budget of Skia's strike cache
      * (the CPU-side glyph masks of Skia's text path, {@code SkGraphics::SetFontCacheLimit}).
@@ -258,7 +305,7 @@ public final class SKEnvironment {
             // sun.java2d.skia.lcdOrder=system|rgb|bgr: the sub-pixel order Skia's text path renders LCD masks in
             // (the surfaces' pixel geometry); system is the display's, as the desktop hint LCD_HRGB / LCD_HBGR
             // reports it. A draw's own LCD hint cannot change a surface's geometry.
-            String order = System.getProperty("sun.java2d.skia.lcdOrder");
+            String order = System.getProperty("sun.java2d.skia.text.lcdOrder", System.getProperty("sun.java2d.skia.lcdOrder"));
             LcdOrder lcdOrderValue = lcdOrder;
             if (order != null) {
                 try {
@@ -378,9 +425,29 @@ public final class SKEnvironment {
         return TEXT_PARAGRAPH_BY_SKIA;
     }
 
-    /** Whether Skia's text path requests the platform's font smoothing for its glyph masks — only where the user has smoothing on. */
-    public static boolean textSmoothing() {
-        return TEXT_SMOOTHING && platformFontSmoothing();
+    /** The hinting dimension as configured ({@code sun.java2d.skia.text.hinting}). */
+    public static TextHinting textHinting() {
+        return TEXT_HINTING;
+    }
+
+    /** The hinting request for the natives: −1 for the platform's own decision, else the SkFontHinting value. */
+    public static int textHintingRequest() {
+        return TEXT_HINTING == TextHinting.SYSTEM ? -1 : TEXT_HINTING.ordinal() - 1;
+    }
+
+    /** The darkening dimension as configured ({@code sun.java2d.skia.text.darkening}). */
+    public static TextDarkening textDarkening() {
+        return TEXT_DARKENING;
+    }
+
+    /** Whether stems are darkened: the user's preference under {@code system}, never under {@code none}. */
+    public static boolean textDarkeningOn() {
+        return TEXT_DARKENING == TextDarkening.SYSTEM && platformFontSmoothing();
+    }
+
+    /** The blend dimension as configured ({@code sun.java2d.skia.text.blend}). */
+    public static TextBlend textBlend() {
+        return TEXT_BLEND;
     }
 
     /**

@@ -32,7 +32,7 @@ import java.awt.image.BufferedImage;
  *          and the channel shift by thirds, not grayscale variants. The same text
  *          drawn LCD with fractional metrics must show colour fringes.
  * @requires os.family == "mac"
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg LcdWithoutPlatformGridTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system LcdWithoutPlatformGridTest
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia LcdWithoutPlatformGridTest
  */
 public class LcdWithoutPlatformGridTest {

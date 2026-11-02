@@ -30,7 +30,7 @@ import java.io.IOException;
 
 /**
  * @test
- * @summary The Skia font scaler's CoreGraphics grayscale route (sun.java2d.skia.text.gray=cg)
+ * @summary The Skia font scaler's CoreGraphics grayscale route (blend system, the default)
  *          rasterizes glyphs through CoreGraphics with font smoothing on, for the
  *          luminance of the text: the platform darkens light text more than dark
  *          text (measured: +40 % ink for white, +15 % for black, against plain
@@ -46,10 +46,10 @@ import java.io.IOException;
  *          ink relative to its black text than plain coverage would (the
  *          platform's smoothing gains +40 % for white and +15 % for black).
  * @requires os.family == "mac"
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text.cgLuminance=255 CoreGraphicsGrayRouteTest light
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text.cgLuminance=0 CoreGraphicsGrayRouteTest dark
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg CoreGraphicsGrayRouteTest colours
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg CoreGraphicsGrayRouteTest bold
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.cgLuminance=255 CoreGraphicsGrayRouteTest light
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.cgLuminance=0 CoreGraphicsGrayRouteTest dark
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system CoreGraphicsGrayRouteTest colours
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system CoreGraphicsGrayRouteTest bold
  */
 public class CoreGraphicsGrayRouteTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";

@@ -41,10 +41,10 @@ import java.lang.reflect.Method;
  * @key headful
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia SkiaTextPathLcdTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=paragraph SkiaTextPathLcdTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.lcdOrder=rgb SkiaTextPathLcdTest rgb
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.lcdOrder=bgr SkiaTextPathLcdTest bgr
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia SkiaTextPathLcdTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.paragraphs=skia SkiaTextPathLcdTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.lcdOrder=rgb SkiaTextPathLcdTest rgb
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.lcdOrder=bgr SkiaTextPathLcdTest bgr
  */
 public class SkiaTextPathLcdTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";

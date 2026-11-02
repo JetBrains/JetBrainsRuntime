@@ -59,8 +59,8 @@ public class FontSmoothingPreferenceTest {
         }
         Route[] routes = {
             new Route("jdk-cstrike"),
-            new Route("skia-cg", "-Dsun.java2d.font.scaler=skia", "-Dsun.java2d.skia.text.gray=cg"),
-            new Route("skiapath-smoothing", "-Dsun.java2d.skia.raster=true", "-Dsun.java2d.font.scaler=skia", "-Dsun.java2d.skia.text=skia", "-Dsun.java2d.skia.text.smoothing=true"),
+            new Route("skia-cg", "-Dsun.java2d.font.scaler=skia"),   // blend system, the default
+            new Route("skiapath-darkening", "-Dsun.java2d.skia.raster=true", "-Dsun.java2d.font.scaler=skia", "-Dsun.java2d.skia.text.strike=skia", "-Dsun.java2d.skia.text.blend=corrected"),
         };
         List<String> errors = new ArrayList<>();
         for (Route route : routes) {

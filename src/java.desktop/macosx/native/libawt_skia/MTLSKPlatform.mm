@@ -248,30 +248,27 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
     *boldEmFraction = 0.0f;
 }
 
-// CoreText hints nothing; Skia's CoreText host reads a level above kNone as "font
-// smoothing on", which the text path switches on its own (sun.java2d.skia.text.smoothing).
-SkFontHinting SKPlatform_FontHinting()
-{
-    return SkFontHinting::kNone;
-}
 
-// No sub-pixel masks on macOS since Mojave: the order is moot, RGB keeps Skia's default.
-bool SKPlatform_LcdOrderIsBGR()
+// The user's text preferences (SKPlatform_TextDefaults): CoreText hints nothing; the sub-pixel
+// order is moot (no sub-pixel masks since Mojave); darkening is AppleFontSmoothing as AppKit reads
+// it (NSUserDefaults, so a process's -AppleFontSmoothing argument counts too): unset or non-zero on,
+// 0 off. Measured 2026-11-02: AppKit renders unsmoothed at 0 and identically for unset, 1, 2 and 3,
+// while a CoreGraphics bitmap context smooths by default whatever the preference says.
+const SKTextDefaults &SKPlatform_TextDefaults()
 {
-    return false;
-}
-
-// AppleFontSmoothing as AppKit reads it (NSUserDefaults, so a process's -AppleFontSmoothing
-// argument counts too): unset or non-zero is on, 0 is off. Measured 2026-11-02: AppKit renders
-// unsmoothed at 0 and identically for unset, 1, 2 and 3, while a CoreGraphics bitmap context
-// smooths by default whatever the preference says — so the switch must be set explicitly.
-bool SKPlatform_FontSmoothingEnabled()
-{
-    static const bool enabled = [] {
+    static const SKTextDefaults defaults = [] {
         id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleFontSmoothing"];
-        return value == nil || ![value respondsToSelector:@selector(integerValue)] || [value integerValue] != 0;
+        const bool on = value == nil || ![value respondsToSelector:@selector(integerValue)] || [value integerValue] != 0;
+        return SKTextDefaults{SkFontHinting::kNone, on, false};
     }();
-    return enabled;
+    return defaults;
+}
+
+// Skia's CoreText host reads a level above kNone as "font smoothing on": the hinting flag is
+// the darkening switch here, and a hinting request is not applicable.
+SkFontHinting SKPlatform_FontHinting(int requested, bool darkening)
+{
+    return darkening ? SkFontHinting::kNormal : SkFontHinting::kNone;
 }
 
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float displayScale, bool lcd)
@@ -283,7 +280,7 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float displayScale,
 }
 
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
-                                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
+                                  int luminance, bool lcd, bool darkening, float strokeWidth, float originX, float originY, int width, int height,
                                   uint8_t *mask)
 {
     // CoreGraphics emits no colour sub-pixels and its unsmoothed coverage is
@@ -315,7 +312,7 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
     CGContextFillRect(cg, CGRectMake(0, 0, width, height));
     CGContextSetShouldAntialias(cg, true);
     CGContextSetAllowsFontSmoothing(cg, true);
-    CGContextSetShouldSmoothFonts(cg, SKPlatform_FontSmoothingEnabled());   // the user's preference, as AppKit honours it
+    CGContextSetShouldSmoothFonts(cg, darkening);   // the darkening dimension: the user's preference, as AppKit honours it, or none
     CGContextSetAllowsFontSubpixelPositioning(cg, true);
     CGContextSetShouldSubpixelPositionFonts(cg, true);
     // quantization on, as AppKit draws: the glyph origin arrives on the platform's grid

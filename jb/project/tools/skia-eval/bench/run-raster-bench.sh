@@ -13,7 +13,7 @@ X="--add-exports java.desktop/sun.java2d=ALL-UNNAMED"
 declare -A ARM=(
   [loops]=""
   [raster]="-Dsun.java2d.skia.raster=true"
-  [raster-skiatext]="-Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia"
+  [raster-skiatext]="-Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia"
 )
 declare -A TYPE=([1]=INT_RGB [2]=INT_ARGB [3]=INT_ARGB_PRE)
 

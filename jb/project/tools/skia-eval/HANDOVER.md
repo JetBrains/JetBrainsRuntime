@@ -52,7 +52,11 @@ bring), text rendering on Skia beyond measuring the switches that exist, macOS.
   | `sun.java2d.skia.msaa` | 1 / 2 / 4 / 8 | 1 | Graphite's internal sample count |
   | `sun.java2d.skia.blitQuads` | `mesh` / `edgeAA` | `mesh` | image blit route (measured equal; an A/B knob) |
   | `sun.java2d.font.scaler` | `skia` | off | glyph images and metrics from the Skia font scaler (DirectWrite host on Windows; new on 2026-10-22) |
-  | `sun.java2d.skia.text.gray` | `coverage` / `smoothed` / `darkened` | `coverage` | grayscale look of the Skia scaler's glyphs |
+  | `sun.java2d.skia.text.strike` / `.shaping` / `.paragraphs` | `java2d` / `skia` | `java2d` | whose strike makes the glyph masks, who shapes, who lays out attributed text (a skia shaping or paragraphs value implies the skia strike; replaces `sun.java2d.skia.text.strike=skia|shaper|paragraph`, still accepted) |
+  | `sun.java2d.skia.text.hinting` | `system` / `none` / `slight` / `normal` / `full` | `system` | grid fitting: DirectWrite's recommended mode on Windows, fontconfig's on Linux, not applicable on macOS |
+  | `sun.java2d.skia.text.darkening` | `system` / `none` | `system` | stems thickened beyond the outline's coverage: AppleFontSmoothing on macOS, ClearType's enhanced contrast on Windows |
+  | `sun.java2d.skia.text.blend` | `system` / `plain` / `corrected` | `system` | how a mask meets the text colour: the engine's per-colour masks (CoreGraphics per luminance, DirectWrite per colour), plain coverage, or the pipes' contrast curve (replaces `sun.java2d.skia.text.gray=cg|platform|coverage|platformcoverage`, still accepted; `smoothed` and `darkened` are gone) |
+  | `sun.java2d.skia.text.lcdOrder` | `system` / `rgb` / `bgr` | `system` | the LCD sub-pixel order (alias of `sun.java2d.skia.lcdOrder`) |
   | `sun.java2d.skia.verbose` | `true` | off | prints `Skia rendering enabled: YES (Skia m156 Graphite/Dawn on <adapter> (D3D11), shapes: ..., msaa: ..., blitQuads: ..., lcd: ...)` |
   | `sun.java2d.uiScale` | number | OS scale | **set to 1 for every pixel tool** unless the scene is about the real scale |
 
@@ -309,7 +313,7 @@ INT_ARGB / INT_ARGB_PRE / INT_RGB BufferedImage an `SKRasterSurfaceData`, drawn 
 into the image's own pixels. Swing's back buffer on Windows without Direct3D is such a BufferedImage
 (`VolatileSurfaceManager.getBackupSurface` → `BufImgSurfaceData.createData`), so with the flag the IDE paints through it.
 Covered: AA shapes, Skia's stroker (AA, undashed), gradient paints, transformed images (nearest / bilinear / bicubic),
-text through Skia's text path when `-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia` (composite strikes slot by
+text through Skia's text path when `-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia` (composite strikes slot by
 slot), non-AA fills and wide strokes under the loops' three scan-conversion rules, the colour-only rectangle entry, the
 INT_ARGB mirror kept between operations. Still the loops': thin non-AA lines (Bresenham, identical), XOR, custom
 `Composite` and `Paint`, texture paints, other image formats, background-colour image draws, rotated text.
@@ -353,7 +357,7 @@ Run, in this order, with `-javaoption:-Dsun.java2d.skia.raster=true -javaoption:
 `build/skia-smoke/RasterShapesBench.java` (16 workloads; compile and run with `--add-exports java.desktop/sun.java2d=ALL-UNNAMED`;
 `-Dsun.java2d.skia.raster=true|false`, image type 3 and 2) and `NonAARectLoop.java` (µs per `fillRect`), five interleaved runs
 each, median and spread. Windows' loops are the same C code; the interesting rows are text (`-Dsun.java2d.font.scaler=skia
--Dsun.java2d.skia.text=skia` on the raster arm) and non-AA, where the Mac shows the rasterizers alone. RenderPerfTest
+-Dsun.java2d.skia.text.strike=skia` on the raster arm) and non-AA, where the Mac shows the rasterizers alone. RenderPerfTest
 software vs raster: `-Dsun.java2d.d3d=false` on both, `-Dsun.java2d.skia.raster=true` on one.
 
 ## 4. The IDE (one day)
@@ -362,7 +366,7 @@ The IDE with `-Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true` (the Skia GP
 scene driver, pixel comparison against the software baseline with the usual tooling (HANDOVER.md §7), frame times from
 the paint-time instrument. Expectations from the Mac numbers: AA shapes 2×, text 2× (with the Skia scaler), rectangles
 parity, no visible differences beyond the triage classes (coverage model on AA edges, Q24/Q25 ties on non-AA curves).
-A second run with the Skia text route (`-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia`) is the first time
+A second run with the Skia text route (`-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia`) is the first time
 Skia draws the IDE's text on Windows through FreeType / DirectWrite; capture the editor and the settings dialog for the
 catalog.
 

@@ -157,7 +157,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         try {
             validateContext(sg2d, textComposite(sg2d));
             rq.addReference(strike);
-            final boolean smoothing = SKEnvironment.textSmoothing();
+            final boolean smoothing = false   /* the strike's hinting carries the darkening (SKFontScaler) */;
             final int length = s.length(), total = 28 + paddedChars(length);
             RenderBuffer buf = rq.getBuffer();
             if (total <= buf.capacity()) {
@@ -272,7 +272,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             for (SKDrawableStrike strike : strikes) {
                 rq.addReference(strike);
             }
-            final boolean smoothing = SKEnvironment.textSmoothing();
+            final boolean smoothing = false   /* the strike's hinting carries the darkening (SKFontScaler) */;
             final int length = string.length(), runs = endArray.length;
             final int total = 24 + runs * (8 + 3 * 4) + paddedChars(length);
             RenderBuffer buf = rq.getBuffer();
@@ -319,7 +319,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             try {
                 validateContext(sg2d, textComposite(sg2d));
                 rq.addReference(gl.getFontStrike());   // a composite strike holds its slots' strikes
-                final boolean smoothing = SKEnvironment.textSmoothing();
+                final boolean smoothing = false   /* the strike's hinting carries the darkening (SKFontScaler) */;
                 final int total = 24 + 8 * contexts.length + n * (8 + 4 + (usePositions ? 8 : 0));
                 RenderBuffer buf = rq.getBuffer();
                 if (total <= buf.capacity()) {

@@ -25,6 +25,7 @@
 
 #include "SKLuminanceTypeface.h"
 #include "SKPlatform.h"
+#include "SKFontScaler.h"
 
 #include <algorithm>
 #include <cmath>
@@ -111,7 +112,7 @@ private:
         // displayScale 1: the rec carries no display scale; CoreGraphics takes the device transform
         // (a Windows platform route through Skia's own text path would need the strike's scale here)
         if (!SKPlatform_SmoothedGlyphMask(fInner->getTypeface(), glyph.getGlyphID(), glyphToDevice, 1.0f, fLuminance, false,
-                                          stroke, originX, originY, width, height, mask.data())) {
+                                          SKFontScaler_TextDarkening(), stroke, originX, originY, width, height, mask.data())) {
             return false;
         }
         const size_t rowBytes = glyph.rowBytes();

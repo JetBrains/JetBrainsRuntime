@@ -36,11 +36,13 @@
  *          grayscale (4 steps at 1x) and LCD (6 steps at 1x and 1.25x).
  *          On macOS only the grayscale case applies (CoreGraphics draws no colour
  *          sub-pixels, so LCD glyphs there have no variants): the platform scaler on
- *          Metal and the software loops, and the Skia scaler on the Skia pipe.
+ *          Metal and the software loops, and the Skia scaler's coverage (blend corrected) on the
+ *          Skia pipe; under blend system the variants follow CoreGraphics' own placement grid
+ *          (PlatformSmoothingSampleGridTest), not this rule.
  * @requires (os.family == "windows") | (os.family == "mac")
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform SubpixelVariantTieTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system SubpixelVariantTieTest
  * @run main/othervm -Dsun.java2d.uiScale=1 SubpixelVariantTieTest gray
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia SubpixelVariantTieTest gray
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected SubpixelVariantTieTest gray
  */
 
 import java.awt.Color;

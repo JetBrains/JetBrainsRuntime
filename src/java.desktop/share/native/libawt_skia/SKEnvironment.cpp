@@ -91,7 +91,7 @@ Java_sun_java2d_skia_SKEnvironment_glyphCacheSizeNative(JNIEnv *env, jclass claz
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_skia_SKEnvironment_platformFontSmoothingNative(JNIEnv *env, jclass clazz)
 {
-    return SKPlatform_FontSmoothingEnabled() ? JNI_TRUE : JNI_FALSE;
+    return SKPlatform_TextDefaults().darkening ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL

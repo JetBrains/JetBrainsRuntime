@@ -32,22 +32,22 @@ import java.lang.reflect.Method;
 
 /**
  * @test
- * @summary With -Dsun.java2d.skia.text=skia the Skia backend draws text through
+ * @summary With -Dsun.java2d.skia.text.strike=skia the Skia backend draws text through
  *          Skia's own text path (Skia's strike, glyph atlas and blending) instead
  *          of Java2D's glyph images: the backend counts the glyphs it drew that
  *          way, and the text lands where the glyph-image path puts it, with a
  *          comparable amount of ink (Skia applies its own gamma model, so the ink
  *          is not identical). Both strike kinds take the path: the system font's
  *          and the file font's, as strings and as glyph vectors (a glyph vector's
- *          strike is the composite one, drawn slot by slot). With sun.java2d.skia.text.smoothing=true the path
+ *          strike is the composite one, drawn slot by slot). Under darkening system (the default: the user's font smoothing preference) the path
  *          asks the platform for smoothed glyphs (as Chrome does): black text on
  *          white then carries at least as much ink as the glyph-image path's
  *          plain coverage, instead of a fifth less.
  * @requires os.family == "mac"
  * @key headful
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia SkiaTextPathTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.smoothing=true SkiaTextPathTest smoothing
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none SkiaTextPathTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=corrected SkiaTextPathTest smoothing
  */
 public class SkiaTextPathTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
@@ -104,12 +104,12 @@ public class SkiaTextPathTest {
         if (Math.abs(rb.x - sb.x) > 2 || Math.abs(rb.y - sb.y) > 2 || Math.abs(rb.width - sb.width) > 4 || Math.abs(rb.height - sb.height) > 4) {
             throw new RuntimeException("the text is not where the glyph-image path puts it: " + rb + " vs " + sb);
         }
-        // measured: plain coverage ≈ 0.79 of the glyph-image path's ink, platform smoothing ≈ 1.0–1.05
+        // measured 2026-11-02: plain coverage ≈ 0.79 of the glyph-image path's coverage ink, with darkening 1.13 (system font) and 1.14 (file font)
         if (!smoothing && (ratio < 0.72 || ratio > 0.9)) {
             throw new RuntimeException(what + ": Skia's plain coverage should be 10–28 % lighter than the glyph images: ratio " + ratio);
         }
-        if (smoothing && (ratio < 0.95 || ratio > 1.15)) {
-            throw new RuntimeException(what + ": with platform smoothing requested the ink should match the glyph images within 15 %: ratio " + ratio);
+        if (smoothing && (ratio < 0.95 || ratio > 1.25)) {
+            throw new RuntimeException(what + ": with platform smoothing requested the ink should match the glyph images within 25 %: ratio " + ratio);
         }
     }
 

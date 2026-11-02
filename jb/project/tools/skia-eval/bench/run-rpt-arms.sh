@@ -13,7 +13,7 @@ props() {
     d3d)               echo "-Dsun.java2d.d3d=true" ;;
     software)          echo "-Dsun.java2d.d3d=false" ;;
     raster)            echo "-Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true" ;;   # BufferedImages drawn by Skia's raster backend, GPU off
-    raster-skiatext)   echo "-Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia" ;;
+    raster-skiatext)   echo "-Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia" ;;
     vulkan)            echo "-Dsun.java2d.vulkan=Force" ;;   # JBR's Vulkan pipeline (experimental on Windows)
     skia-analytic)     echo "-Dsun.java2d.skia=true" ;;
     skia-marlin)       echo "-Dsun.java2d.skia=true -Dsun.java2d.skia.shapes=marlin" ;;

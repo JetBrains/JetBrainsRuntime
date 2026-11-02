@@ -89,6 +89,8 @@ public final class FontUtilities {
     public static int textLuminanceClasses = 16;
     /** Whether the luminance-dependent route also supplies LCD masks (see initStatic). */
     public static boolean platformLcdMasks;
+    /** Blend plain: coverage interpolates the sRGB-encoded colours as stored, no contrast curve in the pipes (see initStatic). */
+    public static boolean plainTextBlend;
 
     /**
      * Bits per channel of the colour class LCD glyph images are keyed by on the
@@ -147,18 +149,17 @@ public final class FontUtilities {
         if (scalerStr != null) {
             useJDKScaler = "jdk".equals(scalerStr);
             useSkiaScaler = "skia".equals(scalerStr);
-            // the platform's smoothed rendering is rasterized per text luminance class
-            // (CoreGraphics on macOS as "cg", DirectWrite on Windows as "platform")
-            String gray = System.getProperty("sun.java2d.skia.text.gray", "");
+            // blend system: the platform engine's mask rendered per text luminance class
+            // (CoreGraphics on macOS, DirectWrite on Windows)
             textLuminanceClasses = luminanceClassesProperty();
-            boolean platformRoute = useSkiaScaler && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray));
-            if (platformRoute && OSInfo.getOSType() == OSInfo.OSType.MACOSX
-                    && !sun.java2d.skia.SKEnvironment.platformFontSmoothing()) {
-                // smoothing off (AppleFontSmoothing 0): CoreGraphics' output no longer depends on the text's
-                // luminance, so one class is every class
+            boolean platformRoute = useSkiaScaler && sun.java2d.skia.SKEnvironment.textBlend() == sun.java2d.skia.SKEnvironment.TextBlend.SYSTEM;
+            if (platformRoute && OSInfo.getOSType() == OSInfo.OSType.MACOSX && !sun.java2d.skia.SKEnvironment.textDarkeningOn()) {
+                // no darkening (AppleFontSmoothing 0, or darkening none): CoreGraphics' output no longer depends
+                // on the text's luminance, so one class is every class
                 textLuminanceClasses = 1;
             }
             textLuminanceDependent = platformRoute && textLuminanceClasses > 1;
+            plainTextBlend = useSkiaScaler && sun.java2d.skia.SKEnvironment.textBlend() == sun.java2d.skia.SKEnvironment.TextBlend.PLAIN;
             if (textLuminanceDependent) {
                 try {
                     lcdColorBits = Math.max(0, Math.min(8, Integer.parseInt(System.getProperty("sun.java2d.skia.text.lcdColorBits", "0"))));

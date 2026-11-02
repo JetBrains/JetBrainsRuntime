@@ -22,7 +22,7 @@
  * @key headful
  * @summary The Skia scaler's glyph masks from the platform's own rasterizer on
  *          Windows (DirectWrite). Two routes share one contract: the coverage
- *          route (sun.java2d.skia.text.gray=platformCoverage) hands the pipes
+ *          route (sun.java2d.skia.text.blend=plain) hands the pipes
  *          linear coverage, so the ink of antialiased text equals the area the
  *          outline covers (the outline filled by Java2D's own antialiasing is
  *          the reference) within a few percent, and is the same for light and
@@ -39,8 +39,8 @@
  *          and with LCD antialiasing.
  * @requires (os.family == "windows")
  * @modules java.desktop/sun.font
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platformCoverage PlatformGlyphMaskTest coverage
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform PlatformGlyphMaskTest smoothed
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=plain -Dsun.java2d.skia.text.darkening=none PlatformGlyphMaskTest coverage
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system PlatformGlyphMaskTest smoothed
  */
 
 import java.awt.Color;

@@ -36,7 +36,7 @@
  *          and the width of a line in the bold style against the plain one.
  * @requires (os.family == "windows")
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia SkiaSyntheticStyleTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform SkiaSyntheticStyleTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system SkiaSyntheticStyleTest
  */
 
 import java.awt.Color;

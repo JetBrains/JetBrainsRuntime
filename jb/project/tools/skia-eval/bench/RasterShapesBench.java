@@ -41,7 +41,7 @@ import java.util.function.Consumer;
  * The raster surface's workloads (HANDOVER.md §11.3), on a 1200 x 900 BufferedImage of the given
  * type: RasterShapesBench <image type> [frames]. Per workload, warm-up frames, then the median ms
  * per frame over the timed ones, one line "workload<TAB>ms". The arms differ by properties only
- * (-Dsun.java2d.skia.raster=true, and -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia
+ * (-Dsun.java2d.skia.raster=true, and -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia
  * for Skia's text route); the frame's background fill is outside the timing.
  *
  * The kit's version of the Mac's build/skia-smoke/RasterShapesBench.java (not in the repository),

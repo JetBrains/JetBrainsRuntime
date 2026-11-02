@@ -994,30 +994,28 @@ void SKPlatform_SyntheticStyle(float *obliqueShear, float *boldEmFraction)
 #define FE_FONTSMOOTHINGORIENTATIONRGB 0x0001
 #endif
 
-// DirectWrite decides per font and size whether and how to grid-fit (the gasp table,
-// GetRecommendedRenderingMode); Skia's DirectWrite host asks it under kNormal and
-// forces grid fitting off under kNone or kSlight.
-SkFontHinting SKPlatform_FontHinting()
+// The user's text preferences (SKPlatform_TextDefaults): kNormal lets DirectWrite decide per
+// font and size whether and how to grid-fit (the gasp table, GetRecommendedRenderingMode);
+// darkening is ClearType's enhanced contrast, DirectWrite's own business under its rendering
+// parameters (always on here; the desktop hints carry SPI_GETFONTSMOOTHING); the sub-pixel
+// order is the ClearType tuner's orientation (SPI_GETFONTSMOOTHINGORIENTATION), as the JDK's
+// lcdglyph.c and the desktop hints read it, RGB when the query fails.
+const SKTextDefaults &SKPlatform_TextDefaults()
 {
-    return SkFontHinting::kNormal;
+    static const SKTextDefaults defaults = [] {
+        UINT orientation = FE_FONTSMOOTHINGORIENTATIONRGB;
+        const bool bgr = SystemParametersInfo(SPI_GETFONTSMOOTHINGORIENTATION, 0, &orientation, 0)
+                         && orientation == FE_FONTSMOOTHINGORIENTATIONBGR;
+        return SKTextDefaults{SkFontHinting::kNormal, true, bgr};
+    }();
+    return defaults;
 }
 
-// The ClearType sub-pixel orientation of the display, as the JDK's lcdglyph.c and
-// the desktop hints read it (the ClearType tuner writes it); RGB when the query fails.
-bool SKPlatform_LcdOrderIsBGR()
+// Skia's DirectWrite host asks DirectWrite under kNormal and forces grid fitting off under
+// kNone or kSlight; the request is taken as given, -1 being the platform's kNormal.
+SkFontHinting SKPlatform_FontHinting(int requested, bool darkening)
 {
-    UINT orientation = FE_FONTSMOOTHINGORIENTATIONRGB;
-    if (!SystemParametersInfo(SPI_GETFONTSMOOTHINGORIENTATION, 0, &orientation, 0)) {
-        return false;
-    }
-    return orientation == FE_FONTSMOOTHINGORIENTATIONBGR;
-}
-
-// Windows' smoothing settings are the desktop hints' business (SPI_GETFONTSMOOTHING); the
-// platform's masks follow the hint the pipe asks for, so nothing is switched off here.
-bool SKPlatform_FontSmoothingEnabled()
-{
-    return true;
+    return requested < 0 ? SkFontHinting::kNormal : (SkFontHinting) requested;
 }
 
 // The display scale from which DirectWrite's symmetric mode halves its placement
@@ -1059,7 +1057,7 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, f
 }
 
 bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, const SkMatrix &glyphToDevice, float displayScale,
-                                  int luminance, bool lcd, float strokeWidth, float originX, float originY, int width, int height,
+                                  int luminance, bool lcd, bool darkening, float strokeWidth, float originX, float originY, int width, int height,
                                   uint8_t *mask)
 {
     if (typeface == nullptr || mask == nullptr || width <= 0 || height <= 0) {

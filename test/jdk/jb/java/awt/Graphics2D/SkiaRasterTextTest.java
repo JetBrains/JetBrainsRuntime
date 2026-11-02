@@ -29,7 +29,7 @@ import java.util.function.Consumer;
 
 /**
  * @test
- * @summary With sun.java2d.skia.raster=true and sun.java2d.skia.text=skia on the
+ * @summary With sun.java2d.skia.raster=true and sun.java2d.skia.text.strike=skia on the
  *          Skia font scaler, text on a BufferedImage goes through Skia's own text
  *          path (the strike's SkFont, Skia's glyph masks and blitters) instead of
  *          the software loops' glyph images: strings, chars and glyph vectors in
@@ -43,8 +43,8 @@ import java.util.function.Consumer;
  *          (macOS: CoreGraphics' smoothed masks by text luminance) is taken on the
  *          raster surface too, matching the loops' ink within 15 %.
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia SkiaRasterTextTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.gray=cg SkiaRasterTextTest cg
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaRasterTextTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=system SkiaRasterTextTest cg
  */
 public class SkiaRasterTextTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";

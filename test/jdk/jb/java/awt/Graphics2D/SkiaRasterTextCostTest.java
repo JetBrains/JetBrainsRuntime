@@ -31,7 +31,7 @@ import java.util.Arrays;
  *          to test where the Skia backend is unavailable (the raster surface is checked).
  * @key headful
  * @modules java.desktop/sun.java2d
- * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text=skia SkiaRasterTextCostTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaRasterTextCostTest
  */
 public class SkiaRasterTextCostTest {
     static final int W = 1200, H = 900, STRINGS = 400, FRAMES = 9;

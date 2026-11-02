@@ -33,8 +33,8 @@ import java.lang.reflect.Method;
  * @key headful
  * @modules java.desktop/sun.java2d.metal
  * @run main/othervm -Dsun.java2d.metal=true MetalGlyphCacheSizeTest 512
- * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg MetalGlyphCacheSizeTest 2048
- * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.metal.glyphCacheSize=1024 MetalGlyphCacheSizeTest 1024
+ * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system MetalGlyphCacheSizeTest 2048
+ * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.metal.glyphCacheSize=1024 MetalGlyphCacheSizeTest 1024
  */
 public class MetalGlyphCacheSizeTest {
     public static void main(String[] args) throws Exception {

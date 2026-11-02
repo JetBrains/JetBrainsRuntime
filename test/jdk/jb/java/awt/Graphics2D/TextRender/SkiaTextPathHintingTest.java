@@ -45,7 +45,7 @@ import java.lang.reflect.Method;
  * @key headful
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform -Dsun.java2d.skia.text=skia SkiaTextPathHintingTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.strike=skia SkiaTextPathHintingTest
  */
 public class SkiaTextPathHintingTest {
     static final String TEXT = "xoxzvwmnsceru xoxzvwmnsceru";   // no ascenders, no descenders: the x-height band alone
