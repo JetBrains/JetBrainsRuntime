@@ -1,0 +1,28 @@
+JBR-7462 Metal: glyph caches survive a destination change; flush instead of free, texture from the pool
+
+The Metal glyph caches were freed and reallocated far more often than
+their capacity required: every SET_SURFACES, SET_SCRATCH_SURFACE and
+DISPOSE_SURFACE freed both caches of the context, and the flush that
+precedes a free committed the command buffer and waited for the GPU.
+With Swing drawing into several surfaces per repaint, each switch cost a
+GPU round trip and every glyph was uploaded again afterwards.
+
+- MTLGlyphCache gains flush, which only encodes the pending glyph quads
+  that reference the cache; free calls it and then releases the texture.
+  Destination changes flush; FLUSH_SURFACE and DISPOSE_CONFIG still free.
+- The flush callback encodes the pending quads and no longer commits or
+  waits. The caches belong to the MTLContext, not to a destination, so
+  the cells stay valid across the switch.
+- The cache texture comes from the context's MTLTexturePool and is
+  registered with the current command buffer when the cache is freed, so
+  the pool hands it out again only after that buffer has completed, and
+  the next cache takes it back instead of allocating.
+
+GlyphCacheSurfaceSwitchTest draws text into eight volatile images in
+turn, 300 rounds, and requires the pixels to be unchanged afterwards and
+a switch to cost less than 4 ms.
+
+Extracted from commit 23458449171c on lbourges/JBR-7462-main-V2 without
+its instrumentation and the unrelated thread-handling changes; the pooled
+texture is handed to the command buffer before release (the prototype
+released it to the pool immediately).

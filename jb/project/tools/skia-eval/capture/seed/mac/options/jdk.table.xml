@@ -1,0 +1,75 @@
+<application>
+  <component name="ProjectJdkTable">
+    <jdk version="2">
+      <name value="jbr-25" />
+      <type value="JavaSDK" />
+      <version value="java version &quot;25.0.4.1&quot;" />
+      <homePath value="/Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home" />
+      <roots>
+        <annotationsPath><root type="composite" /></annotationsPath>
+        <classPath><root type="composite">
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.base" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.compiler" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.datatransfer" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.desktop" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.instrument" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.logging" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.management" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.management.rmi" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.naming" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.net.http" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.prefs" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.rmi" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.scripting" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.se" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.security.jgss" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.security.sasl" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.smartcardio" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.sql" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.sql.rowset" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.transaction.xa" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.xml" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/java.xml.crypto" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.accessibility" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.attach" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.charsets" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.compiler" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.crypto.cryptoki" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.crypto.ec" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.crypto.mscapi" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.dynalink" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.hotspot.agent" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.httpserver" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.internal.ed" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.internal.jvmstat" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.internal.le" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.internal.md" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.internal.opt" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.internal.vm.ci" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.javadoc" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.jcmd" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.jdi" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.jdwp.agent" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.jfr" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.localedata" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.management" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.management.agent" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.management.jfr" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.naming.dns" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.naming.rmi" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.net" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.sctp" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.security.auth" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.security.jgss" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.unsupported" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.unsupported.desktop" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.xml.dom" type="simple" />
+          <root url="jrt:///Users/manuel.unterhofer/Applications/IntelliJ IDEA 2026.3 EAP.app/Contents/jbr/Contents/Home!/jdk.zipfs" type="simple" />
+        </root></classPath>
+        <javadocPath><root type="composite" /></javadocPath>
+        <sourcePath><root type="composite" /></sourcePath>
+      </roots>
+      <additional />
+    </jdk>
+  </component>
+</application>

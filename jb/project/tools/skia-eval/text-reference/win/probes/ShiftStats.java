@@ -1,0 +1,4 @@
+import javax.imageio.ImageIO; import java.awt.image.BufferedImage; import java.io.File;
+public class ShiftStats { public static void main(String[] a) throws Exception { BufferedImage p = ImageIO.read(new File(a[0])), q = ImageIO.read(new File(a[1])); int W=p.getWidth(), H=p.getHeight(); String best=""; long bestScore=Long.MAX_VALUE;
+  for (int dy=-2; dy<=2; dy++) for (int dx=-3; dx<=3; dx++) { int n=0,b8=0,b32=0,max=0; long sum=0; for (int y=2;y<H-2;y++) for (int x=3;x<W-3;x++){ int c=p.getRGB(x,y), d=q.getRGB(x+dx,y+dy); int m=0; for(int s=0;s<24;s+=8) m=Math.max(m,Math.abs(((c>>s)&255)-((d>>s)&255))); if(m>0){n++;sum+=m;} if(m>8)b8++; if(m>32)b32++; max=Math.max(max,m);} if (sum < bestScore) { bestScore = sum; best = String.format("shift dx=%d dy=%d: differing %d  >8: %d  >32: %d  max %d  mean %.1f", dx, dy, n, b8, b32, max, n==0?0:(double)sum/n); } }
+  System.out.println(a[2] + "  best " + best); } }

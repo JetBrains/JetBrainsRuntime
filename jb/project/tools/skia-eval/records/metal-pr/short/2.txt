@@ -1,0 +1,5 @@
+JBR-10667 Metal: evict glyph cache cells instead of replacing a full cache
+
+- Reuse cells as AccelGlyphCache does. The cache is written from the CPU with replaceRegion, so a cell is reused only once the command buffer that last drew it has completed; command buffers are numbered in commit order for that.
+- Fall back to replacing the cache when every cell is still in use.
+- 1024x1024 caches, and a plain texture layout for the pooled A8 textures (mask cache, grayscale glyph cache), which are filled by replaceRegion.

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Text rendering comparison</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #202124; color: #e8eaed; font: 12px/1.4 -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  fieldset { border: 1px solid #44474d; border-radius: 4px; margin: 0; padding: 2px 10px 6px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: flex-start; align-content: flex-start; box-sizing: border-box; min-width: 0; min-inline-size: 0; align-self: stretch; }
+  legend { color: #9aa0a6; padding: 0 4px; font-size: 11px; }
+  legend select { margin-left: 6px; }
+  label { white-space: nowrap; }
+  kbd { color: #9aa0a6; font: 10px ui-monospace, Menlo, Consolas, monospace; border: 1px solid #5f6368; border-radius: 3px; padding: 0 3px; margin-left: 2px; }
+  select, button, input[type=number] { font: inherit; background: #3c4043; color: #e8eaed; border: 1px solid #5f6368; border-radius: 3px; padding: 2px 6px; }
+  input[type=range] { width: 130px; vertical-align: middle; }
+  input[type=number] { width: 48px; }
+  button.on { background: #8ab4f8; color: #202124; border-color: #8ab4f8; }
+  button:hover { border-color: #9aa0a6; }
+  button:disabled { opacity: .45; }
+  body, button, summary, label, legend, kbd, .hint, #side { cursor: default; }   /* the arrow everywhere but editable text (inputs keep theirs) and the canvas */
+  input[type=number] { cursor: text; }
+  .slot { display: flex; align-items: flex-start; gap: 10px; padding: 3px 0; }
+  .slot .name { flex: 0 0 auto; width: 30px; text-align: center; color: #9aa0a6; font-weight: 700; font-size: 13px; line-height: 18px; padding: 1px 0; box-sizing: border-box; }
+  .slot button.name { color: #e8eaed; }
+  .slot button.name.on { color: #202124; }
+  .slot.header { padding-bottom: 0; }
+  #slotA { border-bottom: 1px solid #35383d; }
+  .dims { display: flex; gap: 14px; align-items: flex-start; flex: 1 1 auto; min-width: 0; }
+  .col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }   /* flex-basis = the content's width (set by the script); narrower windows shrink every column in proportion */
+  .col label { display: flex; align-items: center; gap: 4px; min-height: 22px; min-width: 0; }
+  .col label input[type=radio] { flex: 0 0 auto; margin: 3px; }
+  .col label .t { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col label select { flex: 0 1 auto; min-width: 0; max-width: 34ch; }   /* a dropdown's longest option does not dictate the column's width; its text truncates */
+  .col .colname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col.reserved { visibility: hidden; }   /* keeps the bar's height when no rendering column is needed */
+  .col label:has(input:disabled) { opacity: .45; }
+  .col select { font-size: 11px; padding: 0 2px; }
+  .col select:disabled { opacity: .45; }
+  .colname { color: #9aa0a6; font-size: 11px; margin-bottom: 1px; cursor: help; }
+  .views { display: grid; grid-template-columns: auto auto; gap: 1px 18px; }
+  .sub { margin-left: 6px; }
+  .sub.off { opacity: .45; pointer-events: none; }
+  .hint { color: #9aa0a6; font-size: 11px; }
+  /* The control panel is a fixed grid of tiles: results and preset at the top left, the sample conditions
+     beside them over both rows, the compared renderings (A over B, full width) below, then the view tools
+     in one row of equal height. Tiles fill their cells; nothing moves when a selection changes (2026-10-26/27). */
+  #panel { background: #2b2d31; border-bottom: 1px solid #000; overflow-x: auto; }   /* scrolls the grid sideways once the grid is at its minimum width */
+  #grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); grid-template-rows: auto auto auto auto; gap: 3px 8px; padding: 8px 10px 6px; min-width: 0; }   /* min-width = the tools row's minimum, set by layout(): columns shrink down to it, then every row scrolls together */
+  #collection { grid-column: 1; grid-row: 1; }
+  #collection.hidden { visibility: hidden; }
+  #presetBox { grid-column: 1; grid-row: 2; }
+  #presetBox select { max-width: 380px; min-width: 0; }
+  #setBox { grid-column: 2; grid-row: 1 / 3; flex-wrap: nowrap; }
+  #defaults { flex: 0 0 auto; margin-left: auto; }
+  #armsBox { grid-column: 1 / -1; grid-row: 3; display: block; }
+  #tools { grid-column: 1 / -1; grid-row: 4; display: grid; grid-template-columns: max-content minmax(240px, 1fr) auto; gap: 3px 8px; min-width: 0; }   /* Zoom absorbs the shrinking down to three rows of buttons, Help wraps; below that the whole panel scrolls */
+  #zooms { row-gap: 4px; }
+  #helpBox > * { white-space: nowrap; }   /* Help wraps between its controls, never inside a button */
+  #zooms legend kbd, #setBox legend kbd { margin-left: 3px; }
+  button.warn { background: #3a3222; border-color: #e0a030; color: #f5c76a; }
+  button.warn:hover { border-color: #f5c76a; }
+  #snap[hidden] { display: none; }
+  #zoomwrap { display: inline-block; width: 300px; }
+  #zoomstops { display: flex; justify-content: space-between; }   /* the datalist shown and its options the labels (MDN's pattern); the doublings are evenly spaced on the log2 track */
+  #zoomstops option { width: 20px; text-align: center; color: #9aa0a6; }
+  #zoomstops option.on { color: #8ab4f8; font-weight: 600; }
+  #zoomslider { width: 100%; margin: 0; }
+  #zoomv { width: 7ch; text-align: left; }   /* a fixed-width field: the row does not shift while pinch-zooming */
+  #slots { position: relative; display: flex; flex-direction: column; gap: 0; min-width: 0; }
+  #swap { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 1; }
+  #dimsA .colname, #dimsB .colname { display: none; }   /* the column names live in the header row over both */
+  #dimsH .colname { margin-bottom: 0; }
+  #stage { position: absolute; top: 0; left: 0; right: 0; bottom: 22px; cursor: crosshair; }
+  /* the right column: notes above, the explanation panel below, each scrolling on its own */
+  #side { position: absolute; right: 0; bottom: 22px; width: 440px; overflow: auto; box-sizing: border-box; padding: 6px 14px 14px; background: #26282c; border-left: 1px solid #000; display: none; }
+  body.docs #side { display: block; }
+  #quirks:empty { display: none; }
+  .quirk { padding: 4px 0; border-bottom: 1px solid #3a3d42; }
+  .quirk b { color: #f1d58a; }
+  .quirk.invalid { background: #3a2224; border-left: 4px solid #d9534f; padding-left: 8px; }
+  .quirk.invalid b { color: #f3a6a3; }
+  .quirk.shortfall { background: #3a3222; border-left: 4px solid #e0a030; padding-left: 8px; }
+  .quirk.shortfall b { color: #f5c76a; }
+  .quirk.diff { background: #22303a; border-left: 4px solid #4a90d9; padding-left: 8px; }
+  .quirk.diff b { color: #9cc7f5; }
+  .quirk.diff .d { margin-top: 3px; }
+  .quirk.diff .d .k { color: #9aa0a6; }
+  .quirk.diff .d i { font-style: normal; color: #9aa0a6; }
+  .quirk.diff .effects { display: flex; flex-direction: column; gap: 1px; margin: 1px 0 3px 10px; color: #c8ccd2; }
+  .quirk.diff .effects b { color: #9cc7f5; font-weight: 600; }
+  details.quirk > summary { list-style: none; }
+  details.quirk > summary::before { content: '\25B8'; color: #9aa0a6; margin-right: 4px; font-size: 10px; }
+  details.quirk[open] > summary::before { content: '\25BE'; }
+  details.quirk > div { margin: 3px 0 2px 14px; color: #c8ccd2; }
+  body.docs #stage { right: 440px; }
+  canvas { display: block; }
+  #docs h2 { margin: 6px 0 2px; font-size: 13px; }
+  #docs h3 { margin: 10px 0 2px; font-size: 12px; color: #8ab4f8; }
+  #docs h3 span { color: #9aa0a6; font-weight: normal; }
+  #docs p { margin: 0 0 6px; white-space: pre-wrap; }
+  #docs .dim { margin: 2px 0 2px 0; }
+  #docs .dim b { font-weight: 600; color: #e8eaed; }
+  #docs .dim span { color: #9aa0a6; }
+  #docs details.more { margin: 6px 0 0; border-top: 1px solid #44474d; padding-top: 4px; }
+  #docs details.more > summary { color: #8ab4f8; list-style: none; }
+  #docs details.more > summary::before { content: '\25B8'; color: #9aa0a6; margin-right: 4px; font-size: 10px; }
+  #docs details.more[open] > summary::before { content: '\25BE'; }
+  #docs details.more .dim { margin: 4px 0; }
+  #docs code { background: #3c4043; border-radius: 3px; padding: 0 3px; font: 11px ui-monospace, Menlo, Consolas, monospace; }
+  #status { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; line-height: 22px; padding: 0 10px; background: #2b2d31; border-top: 1px solid #000; font-family: ui-monospace, Menlo, Consolas, monospace; white-space: nowrap; overflow: hidden; }
+  #status b { color: #8ab4f8; font-weight: normal; }
+  #overlay { position: absolute; left: 10px; bottom: 32px; padding: 4px 8px; background: rgba(32,33,36,.85); border-radius: 4px; font-family: ui-monospace, Menlo, Consolas, monospace; pointer-events: none; }
+  #warn { color: #f28b82; align-self: center; }
+  .mark { color: #ffd54f; font-weight: 700; margin-left: 4px; cursor: default; }
+  .dlg { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 760px; padding: 10px 14px; background: rgba(43,45,49,.98); border: 1px solid #5f6368; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.5); display: none; z-index: 20; }
+  .dlg.on { display: block; }
+  .dlg .pair { display: flex; gap: 16px; margin: 8px 0; background: #fff; padding: 8px; border-radius: 4px; }
+  .dlg figure { margin: 0; padding: 6px; border: 1px solid transparent; border-radius: 4px; }
+  .dlg figure:hover { border-color: #8ab4f8; background: #f3f6fb; }
+  .dlg figure img { display: block; }   /* sized by the script to one device pixel per image pixel */
+  .dlg figcaption { color: #5f6368; font-size: 11px; text-align: center; margin-top: 2px; }
+  .dlg .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 4px; }
+  #help { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 520px; padding: 10px 14px; background: rgba(43,45,49,.98); border: 1px solid #5f6368; border-radius: 6px; box-shadow: 0 6px 24px rgba(0,0,0,.5); display: none; z-index: 2; }
+  #help.on { display: block; }
+  #help td { padding: 1px 8px 1px 0; vertical-align: top; }
+</style>
+</head>
+<body class="docs">
+<div id="panel"><div id="grid">
+    <fieldset id="collection" title="Which set of results to look at: the platform they were produced on, and whether they are controlled text samples or IDE screenshots.">
+    <legend>Results</legend>
+    <label>platform <select id="platform"></select></label>
+    <label>content <select id="kind"></select></label>
+  </fieldset>
+    <fieldset id="presetBox" title="A suggested comparison: sets both renderings and the view mode."><legend>Preset</legend><select id="preset"></select></fieldset>
+  <fieldset id="setBox" title="The conditions the samples were produced under. Both compared renderings always share these; only the renderers differ.">
+      <legend><span id="setLegend">Sample conditions</span> <kbd>[</kbd><kbd>]</kbd></legend>
+      <span class="dims" id="dimsS"></span><select id="set"></select>
+      <button id="defaults" title="">IntelliJ defaults</button>
+      <button id="lcdcheck" hidden></button>
+    </fieldset>
+  <fieldset id="armsBox" title="The two renderings being compared. Pick a suggested comparison, or choose each rendering by its properties: a dropdown next to a value refines that value.">
+      <legend>Compared renderings</legend>
+      <div id="slots">
+        <div class="slot header"><span class="name"></span><span class="dims" id="dimsH" title="The properties a rendering is chosen by; the rows below pick A's and B's values"></span></div>
+        <div class="slot" id="slotA"><button class="name" id="sideA" title="Show A alone (A); with both lit, hide A. Hold Space to peek at the other side.">A</button><span class="dims" id="dimsA"></span></div>
+        <button id="swap" title="Exchange A and B">swap <kbd>S</kbd></button>
+        <div class="slot" id="slotB"><button class="name" id="sideB" title="Show B alone (B); with both lit, hide B. Hold Space to peek at the other side.">B</button><span class="dims" id="dimsB"></span></div>
+      </div>
+    </fieldset>
+  <div id="tools">
+    <fieldset id="modes" title="How A and B are shown on the canvas.">
+      <legend>Show</legend>
+      <div class="views">
+        <label title="One rendering alone: the one whose button is lit at the left of the compared renderings. Holding Space shows the other one."><input type="radio" name="mode" value="single"> single <span class="hint"><kbd>A</kbd> <kbd>B</kbd> · hold <kbd>Space</kbd> to peek</span></label>
+        <label title="A and B alternate automatically, the most sensitive way to see small differences"><input type="radio" name="mode" value="flicker"> alternate A / B <kbd>F</kbd>
+          <span class="sub" data-for="flicker">every <select id="rate"><option value="1000">1 s</option><option value="500" selected>0.5 s</option><option value="250">0.25 s</option></select></span></label>
+        <label title="The absolute per-channel difference between A and B, multiplied by the gain; black means identical"><input type="radio" name="mode" value="diff"> difference |A − B| <kbd>D</kbd>
+          <span class="sub" data-for="diff">× <select id="gain"><option>1</option><option selected>4</option><option>8</option><option>16</option></select> <kbd>G</kbd></span></label>
+        <label title="Each image pixel of the lit rendering as three vertical bars for its red, green and blue channel, to inspect sub-pixel (LCD) text"><input type="radio" name="mode" value="stripes"> color channels <kbd>C</kbd> <span class="sub" data-for="stripes"><span class="hint">needs zoom ≥ 3</span></span></label>
+      </div>
+    </fieldset>
+      <fieldset id="zooms" title="Screen pixels per image pixel. Images are never interpolated: at whole numbers every image pixel is the same size, which is the setting for judging sharpness.">
+      <legend>Zoom <kbd>1</kbd>…<kbd>8</kbd> <kbd>+</kbd><kbd>−</kbd> · pinch</legend>
+      <span id="zoomwrap"><input id="zoomslider" type="range" min="0" max="5" step="any" list="zoomstops" title="Zoom, 1 to 32 screen pixels per image pixel on a doubling scale; the tick marks (the doublings) snap"><datalist id="zoomstops"><option value="0" label="1">1</option><option value="1" label="2">2</option><option value="2" label="4">4</option><option value="3" label="8">8</option><option value="4" label="16">16</option><option value="5" label="32">32</option></datalist></span>
+      <input id="zoomv" type="number" step="any" min="1" max="32" title="Screen pixels per image pixel; type a value and press Enter">
+      <button id="snap" class="warn" title="The zoom is not a whole number, so image pixels come out in uneven sizes (some one screen pixel wider than others), which fakes differences in sharpness and weight. Round it to a whole number before judging." hidden>&#9888; round <kbd>N</kbd></button>
+    </fieldset>
+      <fieldset id="helpBox" title="Notes and shortcuts">
+      <legend>Help</legend>
+      <label title="The column at the right: what to know about this comparison, where the differences come from, and the explanations of the values on display"><input type="checkbox" id="docstoggle" checked> notes <kbd>I</kbd></label>
+      <button id="helpbtn" title="The keyboard and mouse controls">keyboard &amp; mouse <kbd>H</kbd></button>
+      <span id="warn"></span>
+    </fieldset>
+  </div>
+</div></div>
+<aside id="side"><div id="quirks"></div><div id="docs"></div></aside>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="overlay"></div>
+<div id="status"></div>
+<div id="lcddlg" class="dlg">
+  <b>Your screen's sub-pixel order</b>
+  <p>The LCD samples were rendered for horizontal <b>RGB</b> stripes, the usual order of desktop LCDs. On a screen with another order the colour fringes land on the wrong sub-pixels: the text looks rough and coloured instead of sharper. Below is the same text rendered for RGB (left) and BGR (right), shown at exactly one device pixel per sample pixel — small on a high-density screen, so look closely. <b>Click the one that reads as clean black text.</b></p>
+  <div class="pair"><figure data-order="rgb" title="This one is clean: my screen is RGB"><img id="lcdimgrgb" alt="LCD text, RGB order"><figcaption>RGB order</figcaption></figure><figure data-order="bgr" title="This one is clean: my screen is BGR"><img id="lcdimgbgr" alt="LCD text, BGR order"><figcaption>BGR order</figcaption></figure></div>
+  <p id="lcdhint" class="hint"></p>
+  <div class="row"><button data-order="other">neither / can't tell</button><button id="lcdcancel">later</button></div>
+  <p class="hint">The answer is kept in this browser for this screen (<span id="lcdkey"></span>).</p>
+</div>
+<div id="help">
+  <b>Keyboard and mouse</b>
+  <table>
+    <tr><td><kbd>A</kbd> <kbd>B</kbd></td><td>show that rendering alone (the lit button at the left of the compared renderings)</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>show the other rendering while held (peek)</td></tr>
+    <tr><td><kbd>S</kbd></td><td>swap A and B</td></tr>
+    <tr><td><kbd>F</kbd> <kbd>D</kbd> <kbd>C</kbd></td><td>alternate (flicker), difference, color channels of the lit rendering</td></tr>
+    <tr><td><kbd>G</kbd></td><td>cycle the difference gain 1 / 4 / 8 / 16</td></tr>
+    <tr><td><kbd>1</kbd>…<kbd>8</kbd></td><td>zoom to that many screen pixels per image pixel (1, 2, 3, 4, 6, 8)</td></tr>
+    <tr><td><kbd>+</kbd> <kbd>−</kbd>, pinch, Shift + wheel</td><td>zoom in / out around the cursor; the wheel and pinch are continuous</td></tr>
+    <tr><td><kbd>N</kbd></td><td>round the zoom to a whole number</td></tr>
+    <tr><td>two-finger scroll, drag, arrows</td><td>pan (Shift + arrows: 10 px steps)</td></tr>
+    <tr><td><kbd>Home</kbd></td><td>back to the top-left corner</td></tr>
+    <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>previous / next sample conditions</td></tr>
+    <tr><td><kbd>I</kbd></td><td>notes column on / off</td></tr>
+    <tr><td>LCD samples</td><td>rendered for RGB sub-pixel stripes; the button in the sample conditions checks your screen's order and warns on a mismatch</td></tr>
+    <tr><td><kbd>H</kbd> <kbd>?</kbd> <kbd>Esc</kbd></td><td>this list</td></tr>
+  </table>
+  <p>Images are never interpolated: every screen pixel shows exactly one image pixel. The address bar holds the whole view and can be shared as a link.</p>
+</div>
+<script src="manifest.js?v=@VERSION@"></script>
+<script src="viewer.js?v=@VERSION@"></script>
+</body>
+</html>

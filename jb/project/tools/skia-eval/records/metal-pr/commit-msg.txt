@@ -1,0 +1,74 @@
+JBR-10667 Metal: per-cell glyph cache eviction, 1024x1024 atlas, plain texture layout
+
+The Metal glyph caches (one A8 for grayscale, one BGRA for LCD text) are
+512x512 textures of 32x32 cells, 256 glyphs each. When a cache was full
+it was replaced wholesale: the pending glyph quads flushed, the texture
+released and reallocated, and every glyph uploaded again on its next
+use. An editor with a few fonts and sizes cycles through more than 256
+glyphs per repaint, so this happened on nearly every repaint while
+typing; JDK flight recorder method timing on MTLRenderQueue.flushNow in
+IntelliJ typing scenes attributed about half of the queue flusher's
+active time to it (together with the GPU wait that the flush carried
+until JBR-7462).
+
+Cells are now reused one at a time, as AccelGlyphCache does for the
+other pipelines: when the texture has no room for a new cell, addGlyph
+walks the cell list from the head, moving each cell to the tail, until
+it finds an empty cell or one rendered fewer than five times (counters
+of the cells passed over are reset, so the walk ends within two passes);
+that cell's glyph is invalidated and the cell is reassigned.
+
+The Metal pipeline needs one condition the others do not. Their uploads
+are ordered with their draws on the GPU; the Metal cache is written from
+the CPU with replaceRegion, so a reused cell must not be referenced by
+any command buffer that is still recording or running. Command buffers
+are therefore numbered in commit order (MTLCommandBufferWrapper.sequence;
+MTLContext.commandBufferSequence is the buffer being recorded, and
+MTLCompletedCommandBuffers, shared by the context and its wrappers so
+that no completion handler has to hold the context, records the highest
+completed number), each cell remembers the sequence of the buffer that
+last drew it, and only cells with lastUsed <= completed are candidates.
+Quads still waiting in the glyph vertex cache carry the sequence of the
+buffer being recorded, so their cells are never chosen. If every cell is
+in use (a single frame with more distinct glyphs than cells) the renderer
+falls back to the previous wholesale replacement, whose texture goes
+back to the pool once its command buffer completes.
+
+Two independent changes come with it:
+
+- 1024x1024 caches: 1024 cells per cache instead of 256 (1 MB A8, 4 MB
+  BGRA), so a typing scene rarely needs to evict at all.
+- allowGPUOptimizedContents = NO on the pooled A8 textures, which are
+  the mask cache and the grayscale glyph cache. Both are filled by
+  replaceRegion from the CPU one glyph or tile at a time; with the
+  driver's optimized layout each upload re-tiles the region, with the
+  plain layout it is a copy. The GPU samples them unchanged.
+
+Rendering is pixel-identical: a 1152-cell comparison of software, Metal
+and Skia output (paints x shapes x AA, composites, transforms and clips)
+shows no difference against the previous Metal result beyond the
+gradient drawOval cells that vary between any two Metal runs, and a
+scene that drives about 3,000 distinct glyphs through the caches over
+40 frames, including one frame with more distinct glyphs than cells,
+renders byte-identically in grayscale and LCD mode.
+
+Frame time of a text scene that draws N distinct glyphs per frame into
+a volatile image (median of 200 frames, M1 Max, before -> after, with
+the JBR-7462 change in both):
+
+  N =  200 (no eviction)   gray 5.60 -> 5.00 ms   LCD 5.19 -> 5.11 ms
+  N =  600                 gray 6.27 -> 5.06 ms   LCD 6.89 -> 5.57 ms
+  N = 1500                 gray 7.75 -> 5.53 ms   LCD 9.69 -> 6.62 ms
+
+In the IntelliJ integration performance tests on JBR 25 (IDEA 2026.2,
+M1 Max), seconds per run spent in RepaintManager.paintDirtyRegions and
+MTLRenderQueue.flushNow, medians; the baseline is the shipped pipeline
+measured in the same scenes the night before (4-5 runs), the result a
+JBR 25 image with these two commits (typing: 2 runs, geometry: 1 run):
+
+                       paint                flush
+  typing (Kotlin)      15.7 s ->  9.4 s     8.7 s -> 3.6 s
+  geometry scenes      15.2 s -> 12.7 s     7.3 s -> 4.7 s
+
+Typing latency percentiles and scene wall-clock times are unchanged (the
+EDT is 11-19 % busy in these scenes); the gain is EDT headroom.

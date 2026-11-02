@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Chrome text reference</title>
+<style>html,body{margin:0;background:#fff} canvas{display:block}</style>
+</head><body><canvas id="c"></canvas>
+<script>
+// The text samples of build/text-reference drawn by Chrome's canvas (Blink → Skia): same rows, cell
+// geometry, colors, no kerning. ?scale=1|2&paper=black-on-white|white-on-black. Fonts: the JDK image's Inter and
+// JetBrains Mono files, Helvetica Neue and Menlo from the system.
+const q = new URLSearchParams(location.search);
+const scale = +(q.get('scale') || 1), dark = q.get('paper') === 'white-on-black';
+const W = 460, H = 28, BASE = 19, X = 4;
+const TEXT = 'Quick fox jumps 1234567890 {}[]();:,. ∑∂Δ → ≠ ≤ ≥ äöü';
+const FONTS = '../../macosx-aarch64-skia/images/jdk/lib/fonts/';
+const faces = [
+  ['InterRef', 'Inter-Regular.otf', 'normal', '400'], ['InterRef', 'Inter-Italic.otf', 'italic', '400'],
+  ['InterRef', 'Inter-SemiBold.otf', 'normal', '700'], ['InterRef', 'Inter-SemiBoldItalic.otf', 'italic', '700'],
+  ['MonoRef', 'JetBrainsMono-Regular.ttf', 'normal', '400'], ['MonoRef', 'JetBrainsMono-Italic.ttf', 'italic', '400'],
+  ['MonoRef', 'JetBrainsMono-Bold.ttf', 'normal', '700'], ['MonoRef', 'JetBrainsMono-BoldItalic.ttf', 'italic', '700']];
+const families = [['InterRef', 13], ['MonoRef', 13], ['"Helvetica Neue"', 13], ['Menlo', 12]];
+const styles = [['normal', '400', false], ['italic', '400', false], ['normal', '700', false], ['italic', '700', false], ['normal', '400', true]];
+(async () => {
+  for (const [name, file, style, weight] of faces) {
+    const f = new FontFace(name, 'url(' + FONTS + file + ')', { style, weight });
+    await f.load(); document.fonts.add(f);
+  }
+  const rows = families.length * styles.length;
+  const c = document.getElementById('c');
+  c.width = W * scale; c.height = H * rows * scale;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = dark ? '#000' : '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = dark ? '#fff' : '#000';
+  ctx.textBaseline = 'alphabetic'; ctx.fontKerning = 'none';
+  let i = 0;
+  for (const [family, size] of families) for (const [style, weight, underline] of styles) {
+    ctx.font = style + ' ' + weight + ' ' + size + 'px ' + family;
+    const y = i * H + BASE;
+    ctx.fillText(TEXT, X, y);
+    if (underline) { const w = ctx.measureText(TEXT).width; ctx.fillRect(X, y + 2, w, 1); }
+    i++;
+  }
+  document.title = 'ready';
+})();
+</script></body></html>

@@ -1,0 +1,5 @@
+JBR-7462 Metal: flush the glyph caches on a destination change instead of freeing them
+
+SET_SURFACES, SET_SCRATCH_SURFACE and DISPOSE_SURFACE freed both glyph caches of the context, and the flush before a free committed the command buffer and waited for the GPU. They now only encode the pending glyph quads; the cells stay valid. The cache texture comes from the texture pool and is handed to the current command buffer before it is released, so the pool reuses it only after that buffer has completed.
+
+Extracted from 23458449171c (lbourges/JBR-7462-main-V2).

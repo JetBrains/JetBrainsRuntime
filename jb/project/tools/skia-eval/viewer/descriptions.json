@@ -1,0 +1,1925 @@
+{
+ "dimensions": [
+  {
+   "key": "renderer",
+   "name": "Graphics pipeline",
+   "values": {
+    "native": "The operating system's own text stack (CoreText and CoreGraphics on macOS): the reference for what native applications draw.",
+    "software": "Java2D's software loops into a BufferedImage: the CPU path every GPU pipeline is compared against.",
+    "metal": "The Metal pipeline, the default on macOS in today's JetBrains Runtime.",
+    "skia": "The experimental Skia backend (Skia Graphite on Metal), which replaces the Metal pipeline's drawing code but presents through the same layers.",
+    "d3d": "The Direct3D 9 pipeline on Windows.",
+    "gdi": "GDI on Windows (software-rendered window surfaces).",
+    "vulkan": "The Vulkan pipeline.",
+    "dawn": "The Skia backend on Windows (Skia Graphite on Dawn, D3D11/D3D12).",
+    "chrome": "Google Chrome (version in the arm's description): the same samples drawn on an HTML canvas, i.e. Blink's text through Skia on the CoreText host. A second reference: what a Skia-based application draws on this machine.",
+    "opengl": "The OpenGL (WGL) pipeline on Windows, the GPU pipe the VM has besides Skia; renders into a VolatileImage.",
+    "raster": "Skia's CPU rasterizer drawing straight into the Swing back buffer (a BufferedImage), no GPU involved: Java2D's software pipeline with Skia doing the pixels (sun.java2d.skia.raster=true)."
+   },
+   "description": "Which Java2D rendering pipeline composes the pixels, or the operating system itself.",
+   "labels": {
+    "*": {
+     "native": "operating system",
+     "software": "Java2D software loops",
+     "metal": "Java2D Metal pipeline",
+     "skia": "Java2D Skia backend (Graphite)",
+     "chrome": "Google Chrome (Blink + Skia)",
+     "d3d": "Java2D Direct3D 9 pipeline",
+     "gdi": "Java2D on GDI surfaces",
+     "vulkan": "Java2D Vulkan pipeline",
+     "dawn": "Java2D Skia backend (Graphite + Dawn, D3D11)",
+     "opengl": "Java2D OpenGL pipeline",
+     "raster": "Skia raster surface (CPU)"
+    },
+    "macOS": {
+     "native": "AppKit (CoreText + CoreGraphics)",
+     "raster": "Skia raster surface (CPU)"
+    },
+    "Windows": {
+     "native": "Direct2D + DirectWrite / GDI",
+     "chrome": "Microsoft Edge (Blink + Skia)",
+     "raster": "Skia raster surface (CPU)"
+    }
+   },
+   "effects": {
+    "native": "draws with the OS text stack end to end: its layout, its rasterizer, its compositing.",
+    "software": "Java2D loops composite 8-bit coverage in sRGB on the CPU; the baseline every GPU pipe is checked against.",
+    "metal": "Metal shaders composite the same coverage; blending as the blend dimension says.",
+    "skia": "Graphite records the same glyph images and composites them plainly; analytic shapes and paths are Skia's own.",
+    "chrome": "Blink lays out with HarfBuzz, Skia rasterizes and composites with its gamma model.",
+    "opengl": "the OpenGL pipeline composites the same glyph images with its own shaders.",
+    "raster": "Skia's raster backend scan-converts shapes, strokes, gradients and images on the CPU into the same BufferedImage the loops would draw into; text as the layout and blend dimensions say."
+   }
+  },
+  {
+   "key": "layout",
+   "name": "Text layout & shaping",
+   "column": true,
+   "values": {
+    "java2d": "Java2D's layout, as in today's runtime: glyph codes from the font's character map and advances from the scaler for plain strings; TextLayout (Java's HarfBuzz) for attributed strings and complex scripts; fallback fonts from Java's font configuration. No kerning or ligatures unless requested through text attributes.",
+    "skia shaper": "Skia's shaper for drawString and drawChars: the characters go to HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs) and the platform font manager's fallback, and are drawn as one text blob (`-Dsun.java2d.skia.text=shaper`). Kerning and ligatures are off, as in Java's drawString. Attributed strings still take Java's TextLayout.",
+    "skia paragraph": "Skia's paragraph engine in addition to its shaper: attributed strings (fonts, colors, underline, strikethrough) are laid out and decorated by SkParagraph instead of Java's TextLayout (`-Dsun.java2d.skia.text=paragraph`). Attributes the route does not model fall back to Java's layout. Measured: the glyphs land where the shaper's do; only the underline differs (see the note).",
+    "native": "CoreText lays out the line itself.",
+    "chrome": "Blink's text layout with HarfBuzz, kerning off for these samples."
+   },
+   "description": "Which code turns the characters into glyphs and positions, and lays out decorated text.",
+   "labels": {
+    "*": {
+     "java2d": "Java2D (GlyphList / TextLayout)",
+     "skia shaper": "Skia SkShaper (HarfBuzz + ICU)",
+     "skia paragraph": "Skia SkParagraph + SkShaper",
+     "native": "operating system",
+     "chrome": "Blink (HarfBuzz)"
+    },
+    "macOS": {
+     "native": "CoreText"
+    },
+    "Windows": {
+     "native": "DirectWrite"
+    }
+   },
+   "effects": {
+    "*": {
+     "java2d": "glyph codes from the cmap, advances from the scaler, Java's rounding (whole-pixel or fractional); no kerning or ligatures.",
+     "skia shaper": "HarfBuzz through SkShaper with Skia's fallback; features off to match Java; fractional advances in device pixels.",
+     "skia paragraph": "SkParagraph lays out attributed runs and its own underline/strikethrough geometry (unsnapped) on top of SkShaper.",
+     "native": "the OS shaper and its advances (CoreText: unrounded, DirectWrite: by measuring mode).",
+     "chrome": "Blink's HarfBuzz layout with kerning off."
+    },
+    "Windows": {
+     "native": "DirectWrite's shaper and advances (by measuring mode)."
+    }
+   }
+  },
+  {
+   "key": "blend",
+   "name": "Text blending",
+   "column": true,
+   "values": {
+    "plain": "Coverage × color, alpha-blended in the sRGB color space: the software loops, the Skia backend, and Metal with its gamma correction switched off.",
+    "gamma": "Metal's default: the JetBrains Runtime raises the coverage to an exponent that depends on the text brightness (1.4 for dark text, 0.45 for light), an imitation of macOS's luminance-dependent font smoothing done in the shader. With the same glyph bitmaps this draws about 12 % less ink than the plain blend on light backgrounds and 18 % more on dark ones.",
+    "native": "CoreGraphics' own compositing, linear in the destination.",
+    "skia text path": "Skia's own text path: Skia's strike cache, glyph atlas and blending, with Skia's gamma model (sRGB device gamma, contrast 0.5, and on the CoreText host a halved luminance). Java only supplies the glyph codes and positions."
+   },
+   "description": "How the pipeline blends a glyph's coverage with the text color into the background.",
+   "labels": {
+    "*": {
+     "plain": "plain: coverage × color in sRGB",
+     "gamma": "JBR Metal gamma blend (JBR-3820)",
+     "native": "operating system",
+     "skia text path": "Skia's text path (Skia's gamma model)"
+    },
+    "macOS": {
+     "native": "CoreGraphics compositing"
+    },
+    "Windows": {
+     "native": "Direct2D / GDI compositing",
+     "gamma": "JBR OpenGL gamma blend"
+    }
+   },
+   "effects": {
+    "*": {
+     "plain": "result = color × coverage + background × (1 − coverage), each channel in sRGB, rounded once.",
+     "gamma": "coverage raised to an exponent that depends on the text brightness before the plain blend (≈ 12 % less ink than plain for dark text).",
+     "native": "the OS composites its own bitmaps (CoreGraphics: color-dependent smoothing baked into the bitmap; Direct2D: per-channel ClearType correction).",
+     "skia text path": "Skia pre-blends coverage per quantized text color (3 bits per channel) and composites in sRGB."
+    },
+    "Windows": {
+     "native": "the OS composites its own masks: Direct2D with per-channel ClearType correction, GDI its own."
+    }
+   }
+  },
+  {
+   "key": "scaler",
+   "name": "Font scaler & rasterizer",
+   "column": true,
+   "values": {
+    "native": "CoreText lays out and rasterizes the line itself (fractional advances by default).",
+    "platform": "Today's JetBrains Runtime scaler. On macOS every font the JDK knows is a CFont rasterized by CoreText (CStrike), the bundled Inter and JetBrains Mono included (probe 2026-10-26; the JDK registers lib/fonts with CoreText). On Windows and Linux: FreeType for file fonts, GDI or DirectWrite for LCD glyphs of installed fonts. Metrics and bitmaps from these engines.",
+    "skia": "The experimental scaler built on Skia's font host (CoreText typefaces on macOS, FreeType elsewhere): no hinting, linear metrics, sub-pixel positioning with fractional metrics. Its metrics and advances equal the platform scaler's; it offers several ways to produce grayscale bitmaps."
+   },
+   "description": "Which engine turns outlines into glyph bitmaps and supplies the metrics.",
+   "labels": {
+    "*": {
+     "native": "operating system",
+     "platform": "JDK scaler (CoreText on macOS; FreeType / GDI / DirectWrite on Windows)",
+     "skia": "Skia scaler (Skia font host)"
+    },
+    "macOS": {
+     "native": "CoreText",
+     "platform": "JDK via CoreText (CStrike)",
+     "skia": "Skia via CoreText (SkFontHost_mac)"
+    },
+    "Windows": {
+     "native": "DirectWrite / GDI",
+     "platform": "JDK via FreeType (GDI/DirectWrite for LCD)",
+     "skia": "Skia via DirectWrite"
+    }
+   },
+   "effects": {
+    "*": {
+     "native": "the OS rasterizer with its hinting and smoothing.",
+     "platform": "CoreText bitmaps for system fonts (smoothed), FreeType for file fonts (light autohint, linear coverage).",
+     "skia": "Skia's font host over CoreText / DirectWrite / FreeType: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
+    },
+    "Windows": {
+     "platform": "FreeType bitmaps for every font (light autohint, linear coverage); GDI or DirectWrite only where the JDK's opt-in LCD path applies.",
+     "skia": "Skia's font host over DirectWrite: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
+    }
+   }
+  },
+  {
+   "key": "gray",
+   "name": "Grayscale antialiasing",
+   "values": {
+    "platform": "Whatever today's scaler produces: CoreGraphics' smoothed gray for system fonts, FreeType's plain coverage for file fonts.",
+    "coverage": "Plain coverage: the fraction of each pixel the outline covers. This is what CoreGraphics draws with font smoothing off, and what Skia and Chrome draw for unhinted text. About 15 % less ink than macOS's smoothed text on light backgrounds and 25 % less on dark ones.",
+    "darkened": "Coverage of the outline widened by 1.3 % of the em: an emulation of the platform's extra weight with a color-independent bitmap.",
+    "smoothed": "CoreGraphics' font smoothing requested through Skia, with the color channels averaged: another color-independent emulation; 13–27 % heavier than the platform on light backgrounds.",
+    "cg": "The glyph is rasterized by CoreGraphics itself with font smoothing on, in the brightness of the text color (the pipeline keeps one bitmap set per text-brightness class): the platform's own rendering by construction. On macOS this equals native text within 0.3 % ink on light and dark backgrounds. On Skia's own text path the same masks are produced inside Skia's strike by a proxy typeface per luminance class, and the result is pixel-identical to the glyph-image pipes' route. Since 2026-10-23 the masks are drawn with CoreGraphics' quantization on, on its placement grid (thirds at 1x, halves at 2x, rounded down), emulated for the pipes' nearest-variant rule with twice the variants.",
+    "cg-256": "The cg route with the exact text luminance per strike (-Dsun.java2d.skia.text.luminanceClasses=256): one bitmap set per distinct luminance, the upper bound of the luminance-class experiment. Bit-identical to AppKit for black and white text.",
+    "cg-1": "The cg route with the luminance dependence off (-Dsun.java2d.skia.text.luminanceClasses=1): every color gets the masks CoreGraphics draws for black text (cgLuminance), the lower bound of the experiment.",
+    "native": "CoreGraphics with font smoothing on and its sub-pixel quantization on: the default rendering of macOS applications (glyph positions on thirds of a pixel at 1x, halves at 2x, rounded down).",
+    "native unsmoothed": "CoreGraphics with font smoothing off: plain coverage, the reference for the coverage option (equal within 0.5 %).",
+    "skia": "Skia's own rasterization inside its text path: plain coverage pre-blended by Skia's gamma model per text-color luminance.",
+    "skia smoothed": "Skia's text path with the platform's font smoothing requested (Skia's hinting 'normal' on macOS, which makes its CoreText host take the smoothed glyphs from CoreGraphics), then Skia's gamma model.",
+    "native continuous": "CoreGraphics with font smoothing on and quantization off: glyphs rasterized at their exact fractional positions; the viewer's native reference before 2026-10-23.",
+    "directwrite": "The glyph is rendered by Direct2D with the system's rendering parameters for the text color's luminance class and the coverage recovered from the render: DirectWrite's own look by construction (sun.java2d.skia.text.gray=platform on Windows, the analogue of the macOS cg route). Placed on DirectWrite's own grid (8 or 4 positions per pixel by rendering mode, 2 above display scale 1.8; 6 for ClearType).",
+    "directwrite-color2": "The DirectWrite route with its LCD strikes keyed by the text color quantized to 2 bits per channel (64 classes): each channel of the ClearType mask rendered by Direct2D for that color, as native ClearType corrects per channel (sun.java2d.skia.text.lcdColorBits=2). Grayscale text keeps the 16 luminance classes.",
+    "directwrite-color3": "The DirectWrite route with its LCD strikes keyed by the text color quantized to 3 bits per channel (512 classes), the finer bound of the color-keying experiment (sun.java2d.skia.text.lcdColorBits=3). Grayscale text keeps the 16 luminance classes.",
+    "directwrite coverage": "DirectWrite's own rasterizer as linear coverage (the glyph run analysis' alpha texture, grayscale or ClearType), vertical hinting as DirectWrite recommends; the pipes apply their gamma (sun.java2d.skia.text.gray=platformCoverage).",
+    "native natural": "DirectWrite through Direct2D in natural (not GDI-classic) measuring mode for the whole-pixel sheets: the like-for-like hinting for the routes' whole-pixel rows.",
+    "native gdi": "GDI ExtTextOut: the renderer the JDK's own Windows LCD glyphs come from.",
+    "coverage hinted": "Skia's plain coverage with Skia's hinting switched on (slight or normal), a VM experiment."
+   },
+   "description": "How grayscale (non-sub-pixel) glyph bitmaps are produced.",
+   "labels": {
+    "*": {
+     "platform": "the JDK scaler's own bitmaps",
+     "coverage": "plain coverage (unhinted, unsmoothed)",
+     "darkened": "coverage, outline widened 1.3 % em (emulation)",
+     "smoothed": "CoreGraphics smoothing via Skia, channels averaged (emulation)",
+     "cg": "CoreGraphics smoothing per text brightness (cg)",
+     "native": "operating system default",
+     "native unsmoothed": "CoreGraphics, font smoothing off",
+     "skia": "Skia's own coverage + gamma pre-blend",
+     "skia smoothed": "Skia's text path with platform smoothing",
+     "native continuous": "CoreGraphics, quantization off (not what AppKit draws)",
+     "directwrite": "DirectWrite via Direct2D per text brightness",
+     "directwrite coverage": "DirectWrite's linear coverage",
+     "native natural": "DirectWrite, natural measuring mode",
+     "native gdi": "GDI ExtTextOut",
+     "coverage hinted": "plain coverage with Skia hinting (experiment)",
+     "cg-256": "CoreGraphics smoothing per exact text brightness (cg, 256 classes)",
+     "cg-1": "CoreGraphics smoothing for black text only (cg, 1 class)",
+     "directwrite-color2": "DirectWrite via Direct2D per text brightness, LCD strikes per text color (2 bits/channel)",
+     "directwrite-color3": "DirectWrite via Direct2D per text brightness, LCD strikes per text color (3 bits/channel)"
+    },
+    "macOS": {
+     "native": "CoreGraphics font smoothing (AppKit default)"
+    },
+    "Windows": {
+     "native": "DirectWrite via Direct2D (system parameters)"
+    }
+   },
+   "effects": {
+    "*": {
+     "platform": "whatever the JDK scaler produces: smoothed CoreGraphics gray or FreeType coverage.",
+     "coverage": "exact outline coverage: ≈ 15 % less ink than CoreGraphics smoothing.",
+     "darkened": "coverage of an outline widened by 1.3 % em: a color-independent stand-in for smoothing.",
+     "smoothed": "CoreGraphics' smoothed rendering requested through Skia, channels averaged: ≈ 13–27 % heavier than the platform on light paper.",
+     "cg": "CoreGraphics rasterizes the glyph for the text's brightness class; equals AppKit within 1 level (bit-identical for black and white with exact classes).",
+     "native": "the OS default: CoreGraphics smoothing with quantized positions (thirds at 1×, halves at 2×, rounded down).",
+     "native unsmoothed": "CoreGraphics without font smoothing: plain coverage, the reference for the coverage option.",
+     "skia": "Skia's own coverage with its gamma pre-blend per color; positions on quarter pixels, nearest.",
+     "skia smoothed": "Skia asks CoreGraphics for smoothed bitmaps (hinting \"normal\"), then applies its gamma pre-blend.",
+     "native continuous": "CoreGraphics with quantization off: glyphs at their exact fractional positions, which AppKit never draws.",
+     "directwrite": "Direct2D renders for the text's brightness class with the system's parameters; DirectWrite's placement grid.",
+     "directwrite coverage": "DirectWrite's analysis texture as linear coverage, blended by the pipe.",
+     "native natural": "DirectWrite in natural (not GDI-classic) measuring mode.",
+     "native gdi": "GDI's own rasterization and ClearType.",
+     "coverage hinted": "plain coverage with Skia's slight or normal hinting.",
+     "cg-256": "CoreGraphics rasterizes the glyph for the text's exact luminance (256 classes): bit-identical to AppKit for black and white.",
+     "cg-1": "CoreGraphics rasterizes the glyph for black text regardless of the text color (1 class): light text comes out lighter than AppKit's.",
+     "directwrite-color2": "ClearType masks rendered by Direct2D for the actual text color (64 color classes): per-channel correction as native ClearType does it.",
+     "directwrite-color3": "ClearType masks rendered by Direct2D for the actual text color (512 color classes): per-channel correction as native ClearType does it, at the finer quantization."
+    },
+    "Windows": {
+     "platform": "whatever the JDK scaler produces: FreeType coverage, DirectWrite where the JDK's opt-in path applies.",
+     "coverage": "exact outline coverage, unhinted: lighter and softer than DirectWrite's rendering.",
+     "native": "the OS default: DirectWrite via Direct2D with the system's rendering parameters, on its placement grid.",
+     "skia smoothed": "Skia asks its DirectWrite host for hinted bitmaps (hinting \"normal\"), then applies its gamma pre-blend."
+    }
+   }
+  },
+  {
+   "key": "lcdSource",
+   "name": "LCD glyph source (Windows)",
+   "values": {
+    "gdi": "LCD glyph images from GDI, the JDK's Windows default for installed fonts (sun.java2d.font.lcdGlyphs=gdi).",
+    "scaler": "LCD glyph images from the strike's own scaler, FreeType or Skia (sun.java2d.font.lcdGlyphs=scaler).",
+    "directwrite": "JBR's opt-in DirectWrite glyph path for LCD strikes (-Ddirectwrite.font.rendering=true); the gdi-classic variant adds DirectWrite's GDI-classic measuring mode."
+   },
+   "description": "Where the LCD (sub-pixel) glyph images come from on Windows; grayscale and aliased sheets are unaffected.",
+   "platform": "Windows"
+  },
+  {
+   "key": "aa",
+   "name": "Antialiasing mode",
+   "values": {
+    "gray": "TEXT_ANTIALIAS_ON: grayscale coverage. The native reference shows macOS's default rendering (font smoothing on).",
+    "lcd": "TEXT_ANTIALIAS_LCD_HRGB: sub-pixel (color) coverage. The native reference is the same as the gray sample: this macOS draws no color sub-pixels.",
+    "aliased": "TEXT_ANTIALIAS_OFF: no antialiasing."
+   },
+   "description": "The Java2D text antialiasing hint the sample was drawn with.",
+   "effects": {
+    "gray": "grayscale antialiasing.",
+    "lcd": "sub-pixel (color) coverage per channel; on macOS no color sub-pixels exist natively.",
+    "aliased": "no antialiasing: pixels fully on or off."
+   },
+   "labels": {
+    "*": {
+     "gray": "Grayscale",
+     "lcd": "LCD (Subpixel)",
+     "aliased": "None"
+    }
+   }
+  },
+  {
+   "key": "positioning",
+   "name": "Glyph positioning",
+   "values": {
+    "whole-pixel": "FRACTIONALMETRICS_OFF: every advance rounded to a whole pixel (file fonts in device pixels, system fonts in points — the two rules in today's runtime), one bitmap per glyph. The native reference places glyphs at the same rounded positions so the samples stay comparable; macOS itself has no integer-advance mode.",
+    "fractional": "FRACTIONALMETRICS_ON: fractional advances and sub-pixel glyph positions. IntelliJ on macOS runs with this for UI and editor text; the native reference is CoreText's own layout."
+   },
+   "description": "Whether advances are rounded to whole pixels or kept fractional.",
+   "effects": {
+    "whole-pixel": "advances rounded to whole pixels (file fonts in device pixels, system fonts in points).",
+    "fractional": "fractional advances and sub-pixel glyph positions (variants per pipe)."
+   }
+  },
+  {
+   "key": "scale",
+   "name": "Display scale",
+   "values": {
+    "1x": "A 1× display: one device pixel per point.",
+    "2x": "A 2× (Retina) display: four device pixels per point."
+   },
+   "description": "The device scale factor the sample was rendered for."
+  },
+  {
+   "key": "paper",
+   "name": "Colors",
+   "values": {
+    "black-on-white": "Black text (0, 0, 0) on white.",
+    "white-on-black": "White text (255, 255, 255) on black: the extreme at which the cg route is bit-identical to AppKit with exact luminance classes.",
+    "color-on-black": "Colored text on black; the color is chosen in the dropdown (IntelliJ's dark-theme keyword colors).",
+    "color-on-white": "Colored text on white; the color is chosen in the dropdown (IntelliJ's dark-theme keyword colors)."
+   },
+   "description": "Text and background colors of the sample. Colored text exists only where it answers a question: on macOS under grayscale antialiasing (the cg route rasterizes per text-luminance class), on Windows under LCD (ClearType's per-channel correction); elsewhere the option is disabled.",
+   "labels": {
+    "*": {
+     "black-on-white": "black on white",
+     "white-on-black": "white on black",
+     "color-on-black": "color on black",
+     "color-on-white": "color on white"
+    }
+   }
+  },
+  {
+   "key": "color",
+   "name": "Color",
+   "under": "paper",
+   "description": "The text color of a colored sample: IntelliJ's dark-theme keyword colors.",
+   "values": {
+    "red": "Red (247, 84, 100).",
+    "blue": "Blue (86, 168, 245).",
+    "orange": "Orange (207, 142, 109).",
+    "green": "Green (106, 171, 115).",
+    "purple": "Purple (199, 125, 186)."
+   }
+  },
+  {
+   "key": "theme",
+   "name": "Theme",
+   "values": {
+    "dark": "IntelliJ's dark theme.",
+    "light": "IntelliJ's light theme."
+   },
+   "description": "The IDE color theme."
+  },
+  {
+   "key": "scene",
+   "name": "Scene",
+   "values": {
+    "editor": "Hello.java in the editor with the project tree.",
+    "selection": "The editor with a text selection.",
+    "tree": "The project tree focused.",
+    "markdown": "The README.md preview.",
+    "menu": "The main menu open as a popup.",
+    "search": "Search Everywhere, the Classes tab, searching for Point.",
+    "settings": "The Settings dialog at Editor › Font, with its font sample text.",
+    "terminal": "The terminal tool window.",
+    "tooltip": "A quick-documentation popup.",
+    "presentation": "Presentation mode (the project badge moves into the compared area: a few thousand strongly differing pixels here are the badge).",
+    "workspace": "The workspace: the project tree, Hello.java with a four-line selection and the quick-documentation popup of Comparable, and the terminal with a directory listing."
+   },
+   "description": "Which part of the IDE the screenshot shows."
+  }
+ ],
+ "arms": {
+  "M0-metal": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "scaler": "platform",
+    "gray": "platform",
+    "blend": "gamma"
+   },
+   "description": "The IDE as installed on this machine.",
+   "title": "Today's IDE (Metal)"
+  },
+  "M1-default": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "scaler": "platform",
+    "gray": "platform",
+    "blend": "gamma"
+   },
+   "description": "No pipeline property at all: the default pipeline, Metal on macOS. Renders like the installed IDE.",
+   "title": "Today's IDE (default pipeline)"
+  },
+  "T0-skia-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "scaler": "platform",
+    "gray": "platform",
+    "blend": "plain"
+   },
+   "description": "Only the pipeline changes: same glyph bitmaps, same layout.",
+   "title": "Skia backend, today's glyphs"
+  },
+  "T0m-skia-metalprop": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "scaler": "platform",
+    "gray": "platform",
+    "blend": "plain"
+   },
+   "description": "The Skia backend with the Metal property also set (a diagnostic run).",
+   "title": "Skia backend (diagnostic)"
+  },
+  "T1-skia-scaler": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "coverage",
+    "blend": "plain"
+   },
+   "description": "Skia pipe and Skia scaler with plain coverage grayscale.",
+   "title": "Skia backend, plain coverage"
+  },
+  "T2-skia-darkened": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "darkened",
+    "blend": "plain"
+   },
+   "description": "Skia pipe and Skia scaler with the darkened grayscale route.",
+   "title": "Skia backend, darkened coverage"
+  },
+  "T3-skia-smoothed": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "smoothed",
+    "blend": "plain"
+   },
+   "description": "Skia pipe and Skia scaler with the smoothed grayscale route.",
+   "title": "Skia backend, smoothed emulation"
+  },
+  "coretext": {
+   "dims": {
+    "renderer": "native",
+    "layout": "native",
+    "scaler": "native",
+    "gray": "native",
+    "blend": "native"
+   },
+   "description": "CoreText and CoreGraphics drawing the samples with font smoothing on, as macOS applications do by default. Kerning off, because Java applies none. Drawn with CoreGraphics' sub-pixel quantization on, as AppKit does by default: glyph positions rounded down to thirds of a device pixel at 1x and halves at 2x (measured 2026-10-23). The 'continuous' arm is the same rendering without quantization. Kerning and the default OpenType features (contextual alternates, ligatures) are switched off, as Java's drawString applies none: Inter's contextual alternates otherwise swap the brackets after digits and the arrow and comparison signs for other glyphs.",
+   "title": "Native (macOS default)"
+  },
+  "software": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "gdi"
+   },
+   "title": "Software loops, today's Windows scaler",
+   "description": "Java software loops into a BufferedImage with the platform scaler."
+  },
+  "metal-platform": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "scaler": "platform",
+    "gray": "platform",
+    "blend": "gamma"
+   },
+   "description": "The Metal pipeline with today's font engines and its gamma-corrected text blend: what the IDE draws today.",
+   "title": "Metal (today's runtime)"
+  },
+  "skia-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "gdi"
+   },
+   "title": "Skia backend, today's scaler",
+   "description": "Only the pipe changes against M0: same glyph images, same layout. Differences to M0 are the Skia pipe alone."
+  },
+  "skia-scaler-coverage": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "coverage",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, plain coverage",
+   "description": "Skia pipe and Skia scaler, plain coverage grayscale (Skia's FreeType host on Windows, DirectWrite host where the platform route is on)."
+  },
+  "skia-scaler-darkened": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "darkened",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, darkened coverage",
+   "description": "Skia pipe and scaler, the darkened emulation route."
+  },
+  "skia-scaler-smoothed": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "smoothed",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, smoothed emulation",
+   "description": "Skia pipe and scaler, the smoothed emulation route."
+  },
+  "directwrite": {
+   "dims": {
+    "renderer": "native",
+    "layout": "native",
+    "blend": "native",
+    "scaler": "native",
+    "gray": "native"
+   },
+   "title": "DirectWrite via Direct2D, system parameters",
+   "description": "DirectWrite drawing the rows (Windows reference). Drawn at the display's DPI in device-independent pixels; the whole-pixel sheets in GDI-classic measuring mode (the hand-over's spec)."
+  },
+  "gdi": {
+   "dims": {
+    "renderer": "native",
+    "layout": "native",
+    "blend": "native",
+    "scaler": "native",
+    "gray": "native gdi"
+   },
+   "title": "GDI ExtTextOut",
+   "description": "GDI `ExtTextOut` drawing the rows (Windows reference; the JDK's Windows LCD glyphs come from GDI)."
+  },
+  "software-skia-scaler": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "coverage",
+    "lcdSource": "scaler"
+   },
+   "title": "Software loops, Skia scaler (coverage)",
+   "description": "Java2D's software loops with the Skia scaler's plain coverage glyphs; the mask, not the pipe."
+  },
+  "metal-skia-scaler": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "coverage",
+    "blend": "gamma"
+   },
+   "description": "The shipped pipeline with the new rasterizer's plain coverage.",
+   "title": "Metal, Skia scaler"
+  },
+  "coretext-unsmoothed": {
+   "dims": {
+    "renderer": "native",
+    "layout": "native",
+    "scaler": "native",
+    "gray": "native unsmoothed",
+    "blend": "native"
+   },
+   "description": "The same with font smoothing off: plain coverage. Kerning and the default OpenType features (contextual alternates, ligatures) are switched off, as Java's drawString applies none: Inter's contextual alternates otherwise swap the brackets after digits and the arrow and comparison signs for other glyphs.",
+   "title": "Native, font smoothing off"
+  },
+  "skia-scaler-cg": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "cg",
+    "blend": "plain"
+   },
+   "title": "Skia backend, CoreGraphics glyphs",
+   "description": "Skia backend drawing bitmaps that CoreGraphics rasterized for each text color's brightness."
+  },
+  "software-skia-scaler-cg": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "cg",
+    "blend": "plain"
+   },
+   "title": "Software loops, CoreGraphics glyphs",
+   "description": "The software loops drawing CoreGraphics-rasterized glyphs; equal to the Skia backend's result."
+  },
+  "metal-skia-scaler-cg": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "cg",
+    "blend": "gamma"
+   },
+   "description": "The brightness model applied twice: CoreGraphics already put it into the bitmap and the Metal shader applies its exponent on top (−10 % / +13 % against native).",
+   "title": "Metal (gamma), CoreGraphics glyphs"
+  },
+  "metal-platform-plain": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform"
+   },
+   "description": "The Metal pipeline with its gamma correction off. Pixel-identical to the software loops with the same glyph bitmaps.",
+   "title": "Metal, plain blend"
+  },
+  "metal-skia-scaler-cg-plain": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "description": "A hybrid candidate: today's Metal pipeline, CoreGraphics-rasterized glyphs per text brightness, plain blend. Equals native text within 0.3 %.",
+   "title": "Metal (plain), CoreGraphics glyphs"
+  },
+  "T5-skia-cg": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "description": "Skia backend with glyphs rasterized by CoreGraphics for each text color's brightness.",
+   "title": "Skia backend, CoreGraphics glyphs"
+  },
+  "M5-metal-cg-plain": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "description": "A hybrid candidate: today's Metal pipeline, CoreGraphics-rasterized glyphs per text brightness, plain blend.",
+   "title": "Metal (plain), CoreGraphics glyphs"
+  },
+  "skia-text": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia"
+   },
+   "title": "Skia backend, Skia's own text path",
+   "description": "The glyphs are drawn by Skia's own text path from Java's glyph codes and positions: Skia's strike, atlas and blending with its gamma model. The 'full Skia' rasterization and compositing, with Java's layout."
+  },
+  "chrome": {
+   "dims": {
+    "renderer": "chrome",
+    "layout": "chrome",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed"
+   },
+   "title": "Google Chrome (canvas text)",
+   "description": "Google Chrome 156 drawing the samples on a canvas: Blink's text goes through Skia's CoreText host with font smoothing on and Skia's gamma model. Rows follow Chrome's own shaping; no kerning."
+  },
+  "skia-text-smoothed": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed"
+   },
+   "title": "Skia backend, Skia's text path with platform smoothing",
+   "description": "Skia's own text path with `-Dsun.java2d.skia.text.smoothing=true`: the glyph masks come from CoreGraphics with font smoothing on (as Chrome's do), then Skia's gamma model."
+  },
+  "skia-shaper": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia shaper",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia"
+   },
+   "title": "Skia backend, Skia's shaper and text path",
+   "description": "Everything from the characters on is Skia's: HarfBuzz shaping through SkShaper, Skia's font fallback, Skia's strike, atlas and blending with its gamma model (`-Dsun.java2d.skia.text=shaper`). Java supplies the font, size and baseline origin; kerning and ligatures are off, as in Java's drawString. Measured pixel-identical to the Java-layout arm on these sheets at 1× (fractional and whole-pixel), one glyph apart at 2×."
+  },
+  "skia-shaper-smoothed": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia shaper",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed"
+   },
+   "title": "Skia backend, Skia's shaper and text path with platform smoothing",
+   "description": "As the Skia shaper arm, with `-Dsun.java2d.skia.text.smoothing=true`: the glyph masks come from CoreGraphics with font smoothing on (Chrome's look), then Skia's gamma model."
+  },
+  "skia-paragraph": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia paragraph",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed"
+   },
+   "title": "Skia backend, Skia's paragraph engine, shaper and text path",
+   "description": "Everything from the characters on is Skia's, for attributed strings too: SkParagraph lays out the runs and draws the underline, SkShaper shapes, Skia's text path rasterizes and blends (`-Dsun.java2d.skia.text=paragraph`). The plain rows equal the shaper arm pixel for pixel; in the underlined row the glyphs sit where the plain row's do and take the sheet's antialiasing, positioning and smoothing. The underline comes from the font's underline metrics without snapping to the pixel grid: it lands up to one pixel above Java's and CoreText's, spread over two scanlines, starts one pixel earlier, and is anti-aliased even on the aliased sheet."
+  },
+  "skia-text-cg": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "title": "Skia backend, Skia's text path with CoreGraphics masks",
+   "description": "Skia's own text path (strike, atlas, blending) from Java's glyph codes and positions, with the glyph masks inside Skia's strike coming from CoreGraphics with font smoothing for the text color's luminance class, blended plainly (`-Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.gray=cg`): the native look through Skia's atlas. Compare with the Skia pipe's glyph images on the same route."
+  },
+  "skia-paragraph-cg": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia paragraph",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "title": "Skia backend, Skia's layout, shaping and text path with CoreGraphics masks",
+   "description": "The whole route Skia's (paragraph engine, shaper, strike, atlas, blending) with CoreGraphics' smoothed masks per text-luminance class inside Skia's strike (`-Dsun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.gray=cg`). The candidate for 'all text by Skia with the native look'."
+  },
+  "coretext-continuous": {
+   "dims": {
+    "renderer": "native",
+    "layout": "native",
+    "blend": "native",
+    "scaler": "native",
+    "gray": "native continuous"
+   },
+   "title": "CoreText, smoothing on, continuous glyph positions",
+   "description": "CoreText with font smoothing on but CoreGraphics' sub-pixel quantization switched off, so every glyph is rasterized at its exact fractional position. Not AppKit's default (which quantizes); it was this viewer's native reference until 2026-10-23 and stays as the comparison for continuous placement. Kerning and the default OpenType features (contextual alternates, ligatures) are switched off, as Java's drawString applies none: Inter's contextual alternates otherwise swap the brackets after digits and the arrow and comparison signs for other glyphs."
+  },
+  "directwrite-natural": {
+   "dims": {
+    "renderer": "native",
+    "layout": "native",
+    "blend": "native",
+    "scaler": "native",
+    "gray": "native natural"
+   },
+   "title": "DirectWrite via Direct2D, natural measuring mode",
+   "description": "DirectWrite through Direct2D with natural measuring mode for the whole-pixel rows too: the like-for-like comparison for the routes' whole-pixel placement."
+  },
+  "software-scaler": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "scaler"
+   },
+   "title": "Software loops, FreeType for LCD too",
+   "description": "Software loops with the JDK's FreeType scaler for every strike, LCD included (sun.java2d.font.lcdGlyphs=scaler): no GDI glyphs for installed fonts."
+  },
+  "opengl-platform": {
+   "dims": {
+    "renderer": "opengl",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "gdi"
+   },
+   "title": "OpenGL pipeline, today's scaler",
+   "description": "OpenGL (WGL) pipe, platform scaler, rendering into a VolatileImage; the GPU pipe the Windows VM has besides Skia (no Direct3D 9, no Vulkan there)."
+  },
+  "skia-platform-scaler": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend, FreeType for LCD too",
+   "description": "Skia pipe with the JDK's FreeType scaler for every strike, LCD included (sun.java2d.font.lcdGlyphs=scaler)."
+  },
+  "software-dwlcd": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "directwrite"
+   },
+   "title": "Software loops, JBR's DirectWrite LCD path",
+   "description": "Software loops with JBR's opt-in DirectWrite glyph path for LCD strikes (-Ddirectwrite.font.rendering=true, default options); gray and aliased sheets stay FreeType. On the VM's JDK 28 image this path renders installed fonts smeared."
+  },
+  "software-dwlcd-gdiclassic": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "directwrite"
+   },
+   "title": "Software loops, JBR's DirectWrite LCD path, GDI-classic",
+   "description": "As software-dwlcd with DirectWrite's GDI-classic measuring mode (directwrite.font.rendering.options=1:-1:-1:-1:-1:-1)."
+  },
+  "skia-platform-dwlcd": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform",
+    "lcdSource": "directwrite"
+   },
+   "title": "Skia backend, JBR's DirectWrite LCD path",
+   "description": "Skia pipe with JBR's opt-in DirectWrite glyph path for LCD strikes."
+  },
+  "skia-scaler-hint-slight": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "coverage hinted",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, slight hinting (experiment)",
+   "description": "Skia pipe and scaler, coverage route, SkFontHinting::kSlight instead of kNone (VM experiment knob SKIA_TEXT_HINTING)."
+  },
+  "skia-scaler-hint-normal": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "coverage hinted",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, normal hinting (experiment)",
+   "description": "Skia pipe and scaler, coverage route, SkFontHinting::kNormal (VM experiment knob SKIA_TEXT_HINTING)."
+  },
+  "skia-scaler-platformcoverage": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite coverage",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, DirectWrite's linear coverage",
+   "description": "Skia pipe and scaler, glyph masks from DirectWrite's own rasterizer as linear coverage (the glyph run analysis' alpha texture, grayscale or ClearType 3x1), vertical hinting as DirectWrite recommends; the pipes apply their gamma (sun.java2d.skia.text.gray=platformCoverage)."
+  },
+  "skia-scaler-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, DirectWrite's own look",
+   "description": "Skia pipe and scaler, glyph masks rendered by Direct2D with the system's rendering parameters for the text's luminance class, coverage recovered from the render, composited plainly: DirectWrite's own look by construction (sun.java2d.skia.text.gray=platform, the Windows analogue of the macOS cg route). Within max 4–6 levels per row of native DirectWrite at 1×, 1.25×, 1.5× and 2×, grayscale and ClearType (the VM's measurements of 2026-10-23)."
+  },
+  "software-skia-scaler-platformcoverage": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite coverage",
+    "lcdSource": "scaler"
+   },
+   "title": "Software loops, Skia scaler with DirectWrite's linear coverage",
+   "description": "Software loops with the Skia scaler's DirectWrite linear-coverage masks."
+  },
+  "software-skia-scaler-platform": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite",
+    "lcdSource": "scaler"
+   },
+   "title": "Software loops, Skia scaler with DirectWrite's own look",
+   "description": "Software loops with the Skia scaler's DirectWrite native-look masks (per luminance class)."
+  },
+  "A0-software": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform"
+   },
+   "title": "A0: software loops, FreeType for every font",
+   "description": "Today's Windows IDE text with FreeType for every strike (the IDE's createFont copies of Inter and JetBrains Mono never reach GDI or DirectWrite LCD): the baseline of the Windows scenes."
+  },
+  "D0-software-directwrite": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform"
+   },
+   "title": "D0: software loops, JBR's DirectWrite path for all",
+   "description": "JBR's opt-in DirectWrite glyph path applied to every font; not a reference for IDE text, since the IDE's bundled fonts never take that path by default."
+  },
+  "T3-skia-scaler-platformcoverage": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite coverage"
+   },
+   "title": "T3: Skia scaler, DirectWrite's linear coverage",
+   "description": "The Skia scaler's DirectWrite linear-coverage masks under today's pipe: a quarter of the Skia host's deviation from A0 in the editor (17.7k px > 32 vs 77k)."
+  },
+  "T4-skia-scaler-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite"
+   },
+   "title": "T4: Skia backend and scaler, DirectWrite's own look",
+   "description": "Skia backend with the Skia scaler's DirectWrite masks per luminance class (the native look): the Windows analogue of the Mac's T5 arm."
+  },
+  "skia-shaper-cg": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia shaper",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "title": "Skia backend, Skia's shaper and text path with CoreGraphics masks",
+   "description": "drawString shaped by Skia's shaper (HarfBuzz, features off) and drawn through Skia's text path, the masks CoreGraphics' per text brightness inside Skia's strike (-Dsun.java2d.skia.text=shaper -Dsun.java2d.skia.text.gray=cg): the full-Skia route for plain strings at native fidelity; the FS arm of the performance comparison."
+  },
+  "F5-skia-full-cg": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia paragraph",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "cg"
+   },
+   "title": "F5: the full Skia text route with CoreGraphics masks",
+   "description": "Skia backend; drawString shaped by Skia's shaper, attributed strings by SkParagraph, drawn through Skia's text path with CoreGraphics' per-brightness masks inside Skia's strike (-Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.skia.text=paragraph): the F arm of the performance comparison, in the IDE."
+  },
+  "skia-scaler-cg-classes256": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "cg-256"
+   },
+   "title": "Skia backend, CoreGraphics glyphs, 256 luminance classes",
+   "description": "The cg route with the exact text luminance per strike (-Dsun.java2d.skia.text.luminanceClasses=256): the upper bound of the luminance-class experiment, one strike per distinct luminance."
+  },
+  "skia-scaler-cg-classes1": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "cg-1"
+   },
+   "title": "Skia backend, CoreGraphics glyphs, one luminance class",
+   "description": "The cg route with the luminance dependence off (-Dsun.java2d.skia.text.luminanceClasses=1): every color gets the masks CoreGraphics draws for cgLuminance (black text), the lower bound of the experiment."
+  },
+  "chromium": {
+   "dims": {
+    "renderer": "chrome",
+    "layout": "chrome",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed",
+    "lcdSource": "scaler"
+   },
+   "title": "Microsoft Edge (canvas text)",
+   "description": "Headless Microsoft Edge (Chromium: Blink and Skia on the DirectWrite host) drawing the samples on a canvas, the Windows counterpart of the Chrome arm; Chrome is not installed on the VM. Rows follow Blink's own shaping; no kerning."
+  },
+  "opengl-skia-scaler": {
+   "dims": {
+    "renderer": "opengl",
+    "layout": "java2d",
+    "blend": "gamma",
+    "scaler": "skia",
+    "gray": "coverage",
+    "lcdSource": "scaler"
+   },
+   "title": "OpenGL pipeline, Skia scaler coverage",
+   "description": "The OpenGL pipeline (Windows' GPU pipe today) over the Skia scaler's linear coverage with the pipe's own gamma blend: the analogue of the Mac's Metal + Skia scaler arm (-Dsun.java2d.opengl=true -Dsun.java2d.font.scaler=skia)."
+  },
+  "skia-text-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "directwrite",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend, Skia's text path with DirectWrite masks",
+   "description": "Skia's own text path (strike, atlas, blending) from Java's glyph codes and positions, the masks inside Skia's strike rendered by DirectWrite for the text's luminance class (sun.java2d.skia.text=skia -Dsun.java2d.skia.text.gray=platform): the Windows counterpart of the Mac's skia-text-cg arm."
+  },
+  "skia-shaper-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia shaper",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "directwrite",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend, Skia's shaper with DirectWrite masks",
+   "description": "Skia's shaper and text path with DirectWrite's masks inside Skia's strike (sun.java2d.skia.text=shaper -Dsun.java2d.skia.text.gray=platform)."
+  },
+  "skia-paragraph-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia paragraph",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "directwrite",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend, SkParagraph with DirectWrite masks",
+   "description": "Attributed strings laid out by Skia's paragraph engine, drawn through Skia's text path with DirectWrite's masks inside Skia's strike (sun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.gray=platform)."
+  },
+  "skia-paragraph-smoothed": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia paragraph",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend, SkParagraph with platform smoothing",
+   "description": "Attributed strings laid out by Skia's paragraph engine, drawn through Skia's text path with the platform's smoothing requested from Skia's strike (sun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.smoothing=true)."
+  },
+  "skia-scaler-platform-colour2": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite-color2",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, DirectWrite's look, LCD strikes per text color (2 bits per channel)",
+   "description": "The platform route with LCD strikes keyed by the text color quantized to 2 bits per channel (64 classes, levels including 0 and 255): each channel of the ClearType mask is rendered by Direct2D for that color against a paper opposite to it, as native ClearType corrects each channel for the actual color; grayscale text keeps its 16 luminance classes (sun.java2d.skia.text.lcdColorBits=2)."
+  },
+  "skia-scaler-platform-colour3": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite-color3",
+    "lcdSource": "scaler"
+   },
+   "title": "Skia backend and scaler, DirectWrite's look, LCD strikes per text color (3 bits per channel)",
+   "description": "The platform route with LCD strikes keyed by the text color quantized to 3 bits per channel (512 classes, levels including 0 and 255): each channel of the ClearType mask is rendered by Direct2D for that color against a paper opposite to it, as native ClearType corrects each channel for the actual color; grayscale text keeps its 16 luminance classes (sun.java2d.skia.text.lcdColorBits=3)."
+  },
+  "O0-opengl": {
+   "dims": {
+    "renderer": "opengl",
+    "layout": "java2d",
+    "blend": "gamma",
+    "scaler": "platform",
+    "gray": "platform"
+   },
+   "title": "O0: OpenGL pipeline, today's glyphs",
+   "description": "Today's GPU alternative on Windows (-Dsun.java2d.opengl=true): the same glyph bitmaps and layout as A0, composited by the OpenGL pipe with its gamma blend."
+  },
+  "S5-software-skia-scaler-platform": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite"
+   },
+   "title": "S5: software loops, Skia scaler with DirectWrite's look (the hybrid)",
+   "description": "The hybrid on today's pipe: software loops, the Skia scaler's DirectWrite masks per luminance class (-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform); the Windows analogue of the Mac's M5 arm."
+  },
+  "T1-skia-scaler-coverage": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "coverage"
+   },
+   "title": "T1: Skia backend, plain coverage",
+   "description": "Skia backend and Skia scaler with plain coverage grayscale (-Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia)."
+  },
+  "T5-skia-scaler-platform-colour2": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite-color2"
+   },
+   "title": "T5: Skia backend and scaler, DirectWrite's look, LCD strikes per text color (2 bits per channel)",
+   "description": "T4 with the LCD strikes keyed by the text color at 2 bits per channel (sun.java2d.skia.text.lcdColorBits=2)."
+  },
+  "T6-skia-scaler-platform-colour3": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "directwrite-color3"
+   },
+   "title": "T6: Skia backend and scaler, DirectWrite's look, LCD strikes per text color (3 bits per channel)",
+   "description": "T4 with the LCD strikes keyed by the text color at 3 bits per channel (sun.java2d.skia.text.lcdColorBits=3)."
+  },
+  "F5-skia-full-platform": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia paragraph",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "directwrite"
+   },
+   "title": "F5: the full Skia text route with DirectWrite masks",
+   "description": "Skia backend; drawString shaped by Skia's shaper, attributed strings by SkParagraph, drawn through Skia's text path with DirectWrite's per-luminance masks inside Skia's strike (-Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=platform -Dsun.java2d.skia.text=paragraph): the F arm of the performance comparison, in the Windows IDE."
+  },
+  "R0-software-raster": {
+   "dims": {
+    "renderer": "raster",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "platform",
+    "gray": "platform"
+   },
+   "title": "R0: Skia raster surface, FreeType glyph images",
+   "description": "Everything the software loops draw on Windows, drawn by Skia's CPU rasterizer into the same back buffer (sun.java2d.skia.raster=true); text still the loops' FreeType glyph images. Captured 2026-10-28 on the same VM and IDE build as the 2026-10-27 arms; compared against that round's software baseline (A0), which differs from the 2026-10-28 software run only by the clock and an animated icon."
+  },
+  "R5-software-raster-skia-text": {
+   "dims": {
+    "renderer": "raster",
+    "layout": "java2d",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "directwrite"
+   },
+   "title": "R5: Skia raster surface, Skia's text path with DirectWrite masks",
+   "description": "The raster surface with the Skia scaler and Skia's own text path (sun.java2d.font.scaler=skia, sun.java2d.skia.text=skia): every glyph rasterized by Skia's DirectWrite host and blended by Skia, on the CPU. Captured 2026-10-28, compared against the 2026-10-27 software baseline (A0)."
+  }
+ },
+ "sets": {
+  "text-sheets": "Each sample row is one font and style: regular, italic, bold, bold italic, and regular underlined, for Inter 13 and JetBrains Mono 13 (the IDE's bundled fonts, loaded from files; Inter's bold is the bundled SemiBold) and Helvetica Neue 13, Menlo 12 (system fonts). Rows are 28 px tall at 1× and 56 px at 2×; the text starts at (4, 19) points. Move the mouse over a row to see its name in the status bar."
+ },
+ "quirks": [
+  {
+   "id": "skia-lcd-not-cg",
+   "when": {
+    "arm": {
+     "scaler": "skia"
+    },
+    "set": {
+     "aa": "lcd"
+    },
+    "platform": "macOS"
+   },
+   "text": "The Skia scaler's sub-pixel output comes from Skia's rasterizer, not from the platform. Without fractional metrics it degrades to grayscale.",
+   "summary": "Skia's own LCD fringes: macOS draws no color sub-pixels."
+  },
+  {
+   "id": "native-no-lcd",
+   "when": {
+    "arm": {
+     "renderer": "native"
+    },
+    "set": {
+     "aa": "lcd"
+    },
+    "platform": "macOS"
+   },
+   "text": "CoreGraphics with font smoothing on, identical to the Grayscale sheet.",
+   "summary": "macOS has no LCD text: this is the grayscale sample again."
+  },
+  {
+   "id": "native-whole-pixel",
+   "when": {
+    "arm": {
+     "renderer": "native"
+    },
+    "set": {
+     "positioning": "whole-pixel"
+    },
+    "platform": "macOS"
+   },
+   "text": "The native sample places the glyphs where Java's whole-pixel layout puts them, so the rendering stays comparable. CoreText's own layout is the fractional sheet.",
+   "kind": "note",
+   "summary": "Glyphs at Java's rounded positions: macOS has no whole-pixel mode."
+  },
+  {
+   "id": "metal-gamma",
+   "when": {
+    "arm": {
+     "renderer": "metal",
+     "blend": "gamma"
+    },
+    "platform": "macOS"
+   },
+   "text": "The JetBrains Runtime raises the coverage to a brightness-dependent exponent in the shader; the glyph bitmaps are the same as with the plain blend.",
+   "summary": "Metal's gamma blend: ≈ 12 % less ink on light paper, 18 % more on dark."
+  },
+  {
+   "id": "metal-gamma-cg",
+   "when": {
+    "arm": {
+     "renderer": "metal",
+     "blend": "gamma",
+     "gray": "cg"
+    },
+    "platform": "macOS"
+   },
+   "text": "CoreGraphics put it into the bitmap and the Metal shader applies its exponent on top (−10 % / +13 % against native).",
+   "kind": "invalid",
+   "summary": "The brightness model is applied twice."
+  },
+  {
+   "id": "coverage-is-unsmoothed",
+   "when": {
+    "arm": {
+     "gray": "coverage"
+    },
+    "platform": "macOS"
+   },
+   "text": "Equal within 0.5 %; it is what Skia and Chrome draw for unhinted text.",
+   "kind": "note",
+   "summary": "Plain coverage is CoreGraphics with smoothing off, not macOS's default look."
+  },
+  {
+   "id": "smoothed-emulation",
+   "when": {
+    "arm": {
+     "gray": [
+      "smoothed",
+      "darkened"
+     ]
+    },
+    "platform": "macOS"
+   },
+   "text": "The platform's extra weight approximated with a color-independent bitmap.",
+   "kind": "shortfall",
+   "summary": "An emulation; the CoreGraphics option supersedes it."
+  },
+  {
+   "id": "lcd-fm-nondeterministic",
+   "when": {
+    "set": {
+     "aa": "lcd",
+     "positioning": "fractional"
+    },
+    "arm": {
+     "renderer": [
+      "software",
+      "metal",
+      "skia"
+     ]
+    },
+    "platform": "macOS"
+   },
+   "text": "1–4 isolated colored pixels per sample differ from run to run, with today's scaler and the Skia scaler alike.",
+   "summary": "LCD with fractional metrics is not reproducible between runs."
+  },
+  {
+   "id": "scene-settings",
+   "when": {
+    "set": {
+     "scene": "settings"
+    }
+   },
+   "text": "",
+   "summary": "The Settings dialog opens at a different size per run: large differences here are layout, not rendering."
+  },
+  {
+   "id": "scene-presentation",
+   "when": {
+    "set": {
+     "scene": "presentation"
+    }
+   },
+   "text": "Presentation mode moves it there: a few thousand strongly differing pixels are the badge.",
+   "summary": "The project badge, whose color is random per run, is in the compared area."
+  },
+  {
+   "id": "scene-fallback",
+   "when": {
+    "set": {
+     "scene": [
+      "editor",
+      "selection",
+      "tree"
+     ]
+    },
+    "arm": {
+     "scaler": "skia"
+    },
+    "platform": "macOS"
+   },
+   "text": "∑∂Δ → ⇒ ≠ ≤ ≥: expect a visible difference there, from font fallback rather than rasterization.",
+   "summary": "The symbol run in the editor uses a different fallback font with the Skia scaler."
+  },
+  {
+   "id": "paragraph-rastr",
+   "when": {
+    "arm": {
+     "layout": "skia paragraph"
+    }
+   },
+   "text": "It follows the font's underline metrics, spreads over two scanlines and stays anti-aliased on the aliased sheet. The glyphs take the sheet's settings.",
+   "summary": "SkParagraph's underline sits up to one pixel higher and is not pixel-snapped."
+  },
+  {
+   "id": "skia-layout-whole-pixel-2x",
+   "when": {
+    "arm": {
+     "layout": [
+      "skia shaper",
+      "skia paragraph"
+     ]
+    },
+    "set": {
+     "positioning": "whole-pixel",
+     "scale": "2x"
+    }
+   },
+   "text": "File fonts (Inter, JetBrains Mono) and Menlo, whose rounded advances coincide, are identical.",
+   "summary": "Helvetica Neue rows differ at 2× whole-pixel: Skia rounds advances in device pixels, Java in points."
+  },
+  {
+   "id": "win-whole-pixel-gdiclassic",
+   "when": {
+    "arm": {
+     "gray": "native"
+    },
+    "set": {
+     "positioning": "whole-pixel"
+    },
+    "platform": "Windows"
+   },
+   "text": "A different hinting from the routes' natural mode.",
+   "summary": "DirectWrite's whole-pixel rows use GDI-classic measuring; the 'natural' arm is the like-for-like comparison."
+  },
+  {
+   "id": "skia-own-gamma-vs-native",
+   "kind": "shortfall",
+   "when": {
+    "arm": {
+     "gray": [
+      "skia",
+      "skia smoothed"
+     ]
+    },
+    "platform": "macOS"
+   },
+   "text": "It pre-blends coverage per text color with Skia's gamma model and positions glyphs on quarter pixels (nearest); AppKit rounds down to thirds at 1× and halves at 2×. The cg option inside Skia's strike is the one that matches.",
+   "summary": "Against AppKit, Skia's own text path is the less faithful Skia route."
+  },
+  {
+   "id": "native-continuous-not-appkit",
+   "kind": "invalid",
+   "when": {
+    "arm": {
+     "gray": "native continuous"
+    },
+    "platform": "macOS"
+   },
+   "text": "Glyphs rasterized at their exact fractional positions. Kept to explain why Skia's quarter-pixel text path looks closer to it than to the real AppKit output.",
+   "summary": "Not what AppKit draws: CoreGraphics' quantization is off."
+  },
+  {
+   "id": "software-redundant",
+   "kind": "note",
+   "when": {
+    "arm": {
+     "renderer": "software",
+     "scaler": "skia"
+    },
+    "platform": "macOS"
+   },
+   "text": "Checked 2026-10-22/23; not a candidate of its own.",
+   "summary": "Pixel-identical to the Metal pipe with the plain blend; kept as the CPU baseline."
+  },
+  {
+   "id": "skia-no-fake-italic",
+   "kind": "note",
+   "when": {
+    "arm": {
+     "scaler": "skia"
+    },
+    "platform": "macOS",
+    "kind": "scenes"
+   },
+   "text": "A font without the face renders its regular glyphs; today's JDK shears such strikes by 0.2. Visible for Fira Code or Monaco italic in the IDE.",
+   "summary": "No synthetic italic or bold on the Skia route, as in AppKit."
+  },
+  {
+   "id": "cg-white-class-centre",
+   "kind": "shortfall",
+   "when": {
+    "arm": {
+     "gray": "cg"
+    },
+    "set": {
+     "paper": "white-on-black"
+    },
+    "platform": "macOS"
+   },
+   "text": "The class centre is 248, not 255, and CoreGraphics darkens light text by luminance (mean 11 over the sheet). With 256 classes white on black is bit-identical to AppKit; that arm is in the sheets. Dark text does not show the effect.",
+   "summary": "White text at 16 luminance classes: up to 10 levels from AppKit in the fringes."
+  }
+ ],
+ "presets": {
+  "text": [
+   {
+    "id": "ide-vs-native",
+    "name": "Today's IDE text vs native",
+    "mode": "flicker",
+    "arms": {
+     "macOS": [
+      "metal-platform",
+      "coretext"
+     ],
+     "Windows": [
+      "software",
+      "directwrite"
+     ]
+    }
+   },
+   {
+    "id": "native-vs-platform-route",
+    "name": "Native vs the Skia scaler's platform-rasterized route",
+    "mode": "flicker",
+    "arms": {
+     "macOS": [
+      "coretext",
+      "skia-scaler-cg"
+     ],
+     "Windows": [
+      "directwrite",
+      "skia-scaler-platform"
+     ]
+    }
+   },
+   {
+    "name": "Native vs the whole Skia route with CoreGraphics masks",
+    "mode": "flicker",
+    "id": "native-vs-the-whole-skia-route-with-coregraphics",
+    "arms": {
+     "macOS": [
+      "coretext",
+      "skia-paragraph-cg"
+     ],
+     "Windows": [
+      "directwrite",
+      "skia-paragraph-platform"
+     ]
+    },
+    "names": {
+     "macOS": "Native vs the whole Skia route with CoreGraphics masks",
+     "Windows": "Native vs the whole Skia route with DirectWrite masks"
+    }
+   },
+   {
+    "name": "CoreGraphics masks: Java's glyph images vs Skia's atlas, same layout",
+    "mode": "diff",
+    "id": "coregraphics-masks:-javas-glyph-images-vs-skias-",
+    "arms": {
+     "macOS": [
+      "skia-scaler-cg",
+      "skia-text-cg"
+     ],
+     "Windows": [
+      "skia-scaler-platform",
+      "skia-text-platform"
+     ]
+    },
+    "names": {
+     "macOS": "CoreGraphics masks: Java's glyph images vs Skia's atlas, same layout",
+     "Windows": "DirectWrite masks: Java's glyph images vs Skia's atlas, same layout"
+    }
+   },
+   {
+    "name": "Native vs Skia's own text path (Skia's gamma model)",
+    "mode": "flicker",
+    "id": "native-vs-skias-own-text-path-(skias-gamma-model",
+    "arms": {
+     "macOS": [
+      "coretext",
+      "skia-text"
+     ],
+     "Windows": [
+      "directwrite",
+      "skia-text"
+     ]
+    }
+   },
+   {
+    "name": "Chrome vs native",
+    "mode": "flicker",
+    "id": "chrome-vs-native",
+    "arms": {
+     "macOS": [
+      "chrome",
+      "coretext"
+     ],
+     "Windows": [
+      "chromium",
+      "directwrite"
+     ]
+    },
+    "names": {
+     "macOS": "Chrome vs native",
+     "Windows": "Edge vs native"
+    }
+   },
+   {
+    "name": "Chrome vs Skia's text path with platform smoothing",
+    "mode": "flicker",
+    "id": "chrome-vs-skias-text-path-with-platform-smoothin",
+    "arms": {
+     "macOS": [
+      "chrome",
+      "skia-text-smoothed"
+     ],
+     "Windows": [
+      "chromium",
+      "skia-text-smoothed"
+     ]
+    },
+    "names": {
+     "macOS": "Chrome vs Skia's text path with platform smoothing",
+     "Windows": "Edge vs Skia's text path with platform smoothing"
+    }
+   },
+   {
+    "name": "Skia's paragraph engine vs Java's TextLayout, same glyphs",
+    "mode": "flicker",
+    "id": "skias-paragraph-engine-vs-javas-textlayout,-same",
+    "arms": {
+     "macOS": [
+      "skia-text-smoothed",
+      "skia-paragraph"
+     ],
+     "Windows": [
+      "skia-text-smoothed",
+      "skia-paragraph-smoothed"
+     ]
+    }
+   },
+   {
+    "name": "Native vs Skia's layout, shaping and text path",
+    "mode": "flicker",
+    "id": "native-vs-skias-layout,-shaping-and-text-path",
+    "arms": {
+     "macOS": [
+      "coretext",
+      "skia-paragraph"
+     ],
+     "Windows": [
+      "directwrite",
+      "skia-paragraph-smoothed"
+     ]
+    }
+   },
+   {
+    "name": "Native vs plain coverage (the Skia/Chrome look)",
+    "mode": "flicker",
+    "id": "native-vs-plain-coverage-(the-skia/chrome-look)",
+    "arms": {
+     "macOS": [
+      "coretext",
+      "skia-scaler-coverage"
+     ],
+     "Windows": [
+      "directwrite",
+      "skia-scaler-coverage"
+     ]
+    }
+   },
+   {
+    "name": "Metal hybrid (plain blend, CoreGraphics glyphs) vs native",
+    "mode": "flicker",
+    "id": "metal-hybrid-(plain-blend,-coregraphics-glyphs)-",
+    "arms": {
+     "macOS": [
+      "metal-skia-scaler-cg-plain",
+      "coretext"
+     ],
+     "Windows": [
+      "software-skia-scaler-platform",
+      "directwrite"
+     ]
+    },
+    "names": {
+     "macOS": "Metal hybrid (plain blend, CoreGraphics glyphs) vs native",
+     "Windows": "Hybrid (software loops, DirectWrite glyphs) vs native"
+    }
+   },
+   {
+    "name": "Metal: gamma-corrected vs plain blend, same glyphs",
+    "a": "metal-platform",
+    "b": "metal-platform-plain",
+    "mode": "flicker",
+    "id": "metal:-gamma-corrected-vs-plain-blend,-same-glyp"
+   },
+   {
+    "name": "Software loops vs Skia backend, same glyphs",
+    "a": "software",
+    "b": "skia-platform",
+    "mode": "diff",
+    "id": "software-loops-vs-skia-backend,-same-glyphs"
+   },
+   {
+    "name": "Plain coverage vs native with smoothing off",
+    "mode": "diff",
+    "id": "plain-coverage-vs-native-with-smoothing-off",
+    "arms": {
+     "macOS": [
+      "skia-scaler-coverage",
+      "coretext-unsmoothed"
+     ],
+     "Windows": [
+      "skia-scaler-coverage",
+      "skia-scaler-platformcoverage"
+     ]
+    },
+    "names": {
+     "macOS": "Plain coverage vs native with smoothing off",
+     "Windows": "Plain coverage vs DirectWrite's linear coverage"
+    }
+   },
+   {
+    "name": "Skia's own text path vs plain coverage, same pipeline",
+    "a": "skia-text",
+    "b": "skia-scaler-coverage",
+    "mode": "flicker",
+    "id": "skias-own-text-path-vs-plain-coverage,-same-pipe"
+   },
+   {
+    "name": "GDI vs DirectWrite",
+    "a": "gdi",
+    "b": "directwrite",
+    "mode": "flicker",
+    "id": "windows:-gdi-vs-directwrite"
+   },
+   {
+    "id": "win-opengl-vs-software",
+    "name": "OpenGL pipeline vs software loops, same glyphs",
+    "mode": "diff",
+    "arms": {
+     "Windows": [
+      "software",
+      "opengl-platform"
+     ]
+    }
+   },
+   {
+    "id": "win-opengl-gamma-over-coverage",
+    "name": "OpenGL's gamma blend vs plain blend over Skia coverage",
+    "mode": "flicker",
+    "arms": {
+     "Windows": [
+      "opengl-skia-scaler",
+      "skia-scaler-coverage"
+     ]
+    }
+   },
+   {
+    "id": "win-lcd-color-keyed",
+    "name": "Platform route: LCD strikes per luminance vs per text color (3 bits)",
+    "mode": "diff",
+    "arms": {
+     "Windows": [
+      "skia-scaler-platform",
+      "skia-scaler-platform-colour3"
+     ]
+    }
+   }
+  ],
+  "scenes": [
+   {
+    "id": "ide-vs-platform-route",
+    "name": "Today's IDE vs the Skia backend with the platform's glyphs",
+    "mode": "flicker",
+    "arms": {
+     "macOS": [
+      "M0-metal",
+      "T5-skia-cg"
+     ],
+     "Windows": [
+      "A0-software",
+      "T4-skia-scaler-platform"
+     ]
+    }
+   },
+   {
+    "name": "Today's IDE vs Skia backend, same glyphs",
+    "mode": "flicker",
+    "id": "todays-ide-vs-skia-backend,-same-glyphs",
+    "arms": {
+     "macOS": [
+      "M0-metal",
+      "T0-skia-platform"
+     ],
+     "Windows": [
+      "A0-software",
+      "T0-skia-platform"
+     ]
+    }
+   },
+   {
+    "name": "Today's IDE vs the Metal hybrid",
+    "mode": "flicker",
+    "id": "todays-ide-vs-the-metal-hybrid",
+    "arms": {
+     "macOS": [
+      "M0-metal",
+      "M5-metal-cg-plain"
+     ],
+     "Windows": [
+      "A0-software",
+      "S5-software-skia-scaler-platform"
+     ]
+    },
+    "names": {
+     "macOS": "Today's IDE vs the Metal hybrid",
+     "Windows": "Today's IDE vs the hybrid (DirectWrite glyphs on today's pipe)"
+    }
+   },
+   {
+    "name": "Skia backend vs Metal hybrid, same glyphs",
+    "mode": "diff",
+    "id": "skia-backend-vs-metal-hybrid,-same-glyphs",
+    "arms": {
+     "macOS": [
+      "T5-skia-cg",
+      "M5-metal-cg-plain"
+     ],
+     "Windows": [
+      "T4-skia-scaler-platform",
+      "S5-software-skia-scaler-platform"
+     ]
+    },
+    "names": {
+     "macOS": "Skia backend vs Metal hybrid, same glyphs",
+     "Windows": "Skia backend vs the hybrid, same glyphs"
+    }
+   },
+   {
+    "name": "Plain coverage vs CoreGraphics glyphs on the Skia backend",
+    "mode": "flicker",
+    "id": "plain-coverage-vs-coregraphics-glyphs-on-the-ski",
+    "arms": {
+     "macOS": [
+      "T1-skia-scaler",
+      "T5-skia-cg"
+     ],
+     "Windows": [
+      "T1-skia-scaler-coverage",
+      "T4-skia-scaler-platform"
+     ]
+    },
+    "names": {
+     "macOS": "Plain coverage vs CoreGraphics glyphs on the Skia backend",
+     "Windows": "Plain coverage vs DirectWrite glyphs on the Skia backend"
+    }
+   },
+   {
+    "id": "ide-vs-full-skia-route",
+    "name": "Today's IDE vs the full Skia text route",
+    "mode": "flicker",
+    "arms": {
+     "macOS": [
+      "M0-metal",
+      "F5-skia-full-cg"
+     ],
+     "Windows": [
+      "A0-software",
+      "F5-skia-full-platform"
+     ]
+    }
+   },
+   {
+    "id": "platform-route-glyph-images-vs-full-skia",
+    "name": "Platform-rasterized route: Java's glyph images vs the full Skia route",
+    "mode": "diff",
+    "arms": {
+     "macOS": [
+      "T5-skia-cg",
+      "F5-skia-full-cg"
+     ],
+     "Windows": [
+      "T4-skia-scaler-platform",
+      "F5-skia-full-platform"
+     ]
+    }
+   },
+   {
+    "id": "win-ide-vs-opengl",
+    "name": "Today's IDE vs the OpenGL pipeline, same glyphs",
+    "mode": "diff",
+    "arms": {
+     "Windows": [
+      "A0-software",
+      "O0-opengl"
+     ]
+    }
+   },
+   {
+    "id": "win-scenes-lcd-color-keyed",
+    "name": "Platform route: LCD strikes per luminance vs per text color (3 bits)",
+    "mode": "diff",
+    "arms": {
+     "Windows": [
+      "T4-skia-scaler-platform",
+      "T6-skia-scaler-platform-colour3"
+     ]
+    }
+   },
+   {
+    "id": "ide-vs-platform-route",
+    "mode": "flicker",
+    "name": "Software pipeline today vs Skia's CPU rasterizer",
+    "arms": {
+     "Windows": [
+      "A0-software",
+      "R0-software-raster"
+     ]
+    }
+   },
+   {
+    "id": "ide-vs-platform-route",
+    "mode": "flicker",
+    "name": "Skia's CPU rasterizer with Skia's own text",
+    "arms": {
+     "Windows": [
+      "R0-software-raster",
+      "R5-software-raster-skia-text"
+     ]
+    }
+   }
+  ]
+ },
+ "sceneAntialiasing": {
+  "Windows": "lcd",
+  "macOS": "gray"
+ },
+ "retiredArms": [
+  "skia-shaper",
+  "skia-shaper-smoothed",
+  "skia-shaper-cg",
+  "skia-shaper-platform",
+  "T2-skia-darkened",
+  "T3-skia-smoothed",
+  "skia-scaler-darkened",
+  "skia-scaler-smoothed"
+ ],
+ "pages": {
+  "macOS": {
+   "text": {
+    "title": "Text samples on macOS: AppKit's text stack vs Java2D configurations",
+    "description": "Captured 2026-10-26 on an Apple-silicon Mac. Each row is one font and style — regular, italic, bold, bold italic, regular underlined — for Inter 13 and JetBrains Mono 13 (IntelliJ's bundled fonts, loaded from files; Inter's bold is the bundled SemiBold) and the system fonts Helvetica Neue 13 and Menlo 12. Rows are 28 px tall at 1× and 56 px at 2×, the text starts at (4, 19) points. Move the mouse over a row to see its name in the status bar. The AppKit reference is CoreText and CoreGraphics drawing the same rows with font smoothing on, as macOS applications do by default; Chrome's canvas is a second reference."
+   },
+   "scenes": {
+    "title": "IntelliJ screenshots on macOS: the Metal pipeline today vs the Skia backend with different text rasterizers",
+    "description": "Five IntelliJ scenes — the workspace (project tree, editor with a selection and a documentation popup, terminal), the main menu, Settings at Editor › Font, Search Everywhere and a Markdown preview — captured on a 2× display in the light and dark themes on 2026-11-02. The IDE frame is 1728×980 points on every platform, captured with its native window decorations; the IDE build and the project are the same for every rendering, and the scenes are driven from inside the IDE rather than by typed shortcuts, so only the Java2D properties differ. The earlier ten-scene capture of 2026-10-26 was replaced."
+   }
+  },
+  "Windows": {
+   "text": {
+    "title": "Text samples on Windows: DirectWrite, GDI and Edge vs Java2D configurations",
+    "description": "Captured 2026-10-27 on a Windows 11 virtual machine at 100, 125, 150 and 200 % display scale. Each row is one font and style — regular, italic, bold, bold italic, regular underlined — for Inter 13 and JetBrains Mono 13 (IntelliJ's bundled fonts, loaded from files; Inter's bold is the bundled SemiBold) and the system fonts Segoe UI 13 and Consolas 12. Rows are 28 px tall at 1× and 56 px at 2×, the text starts at (4, 19) points. Move the mouse over a row to see its name in the status bar. The native references are Direct2D with DirectWrite (the system's ClearType parameters) and GDI; Edge's canvas is a third reference. Colored text exists under LCD only, where ClearType's per-channel correction is the question."
+   },
+   "scenes": {
+    "title": "IntelliJ screenshots on Windows: the software pipeline today vs OpenGL, the Skia backend with different text rasterizers, and Skia's CPU rasterizer",
+    "description": "Ten IntelliJ scenes (editor, project tree, menus, search, settings, terminal, tooltip, Markdown, presentation mode) captured by a Robot driver on a Windows 11 virtual machine at 100, 125, 150 and 200 % display scale in the light and dark themes. The IDE build and the project are the same for every rendering; only the Java2D properties differ. IntelliJ draws its text with sub-pixel (LCD) antialiasing on Windows, so these screenshots are LCD-rendered. The GPU and software arms were captured 2026-10-27; the full Skia text route (F5) was re-captured 2026-11-02 after its LCD rendering was fixed (its surface had declared no pixel geometry, so Skia had drawn its text grayscale); the two Skia-raster-surface arms (R0, R5) were captured 2026-10-28 at 100 and 200 % and are compared against the 2026-10-27 software baseline."
+   }
+  }
+ }
+}
