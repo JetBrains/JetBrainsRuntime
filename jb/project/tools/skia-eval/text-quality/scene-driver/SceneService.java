@@ -17,7 +17,6 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.util.io.BufferExposingByteArrayOutputStream;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.IdeFocusManager;
@@ -29,7 +28,13 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.QueryStringDecoder;
-import org.jetbrains.ide.RestService;
+import io.netty.buffer.Unpooled;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpUtil;
+import io.netty.handler.codec.http.HttpVersion;
+import org.jetbrains.ide.HttpRequestHandler;
 import org.jetbrains.plugins.terminal.TerminalToolWindowManager;
 
 import javax.swing.JFrame;
@@ -44,7 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * The scene driver's way into the IDE (JBR-10654 text rendering catalog): GET
  * {@code http://127.0.0.1:<built-in server port>/api/scene?cmd=<command>&...} runs one step on the
- * EDT and answers "ok" or "error: ...". No keystrokes, no Search Everywhere typing, no guessing
+ * EDT and answers "ok" or "error: ..." (status 200 either way; anything else is the server's). No keystrokes, no Search Everywhere typing, no guessing
  * where the focus is (2026-11-02; the Robot-driven driver before lost a scene to the terminal
  * keeping Escape and spent most of its time typing action names).
  * <ul>
@@ -58,20 +63,31 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <li>{@code menu} — the main menu group as a popup under the frame's header, as the hamburger button shows it</li>
  *   <li>{@code search&tab=ClassSearchEverywhereContributor&text=Point} — Search Everywhere on a tab with a query</li>
  *   <li>{@code terminal} — opens a shell in the Terminal tool window; {@code terminalExec&line=ls} runs a command in it</li>
- *   <li>{@code toolwindow&id=Terminal&show=true|false} — shows or hides a tool window, the focus returns to the editor</li>
+ *   <li>{@code toolwindow&id=Terminal&show=true|false[&close=true]} — shows or hides a tool window (close: its tabs removed first), the focus returns to the editor</li>
  *   <li>{@code key&code=ESCAPE} — posts a key press and release to the focus owner (closes popups and dialogs)</li>
+ *   <li>{@code theme&laf=ExperimentalDark&scheme=Dark} — switches the UI theme (by id) and the editor colour scheme (by name)</li>
+ *   <li>{@code exit} — a clean shutdown of the IDE (indexes flushed), for the system-directory snapshot</li>
  *   <li>{@code front} — brings the project frame to the front and focuses the editor; {@code title} — the frame title</li>
  * </ul>
  */
-public final class SceneService extends RestService {
+public final class SceneService extends HttpRequestHandler {
     private static TerminalWidget terminal;
 
-    @Override protected String getServiceName() { return "scene"; }
-    @Override protected boolean isMethodSupported(HttpMethod method) { return method == HttpMethod.GET; }
-    @Override protected boolean isHostTrusted(FullHttpRequest request, QueryStringDecoder urlDecoder) { return true; }   // the server listens on loopback only
+    // a plain handler, not a RestService: that one counts requests per client and answers
+    // "429 Too Many Requests" after a few dozen in a short time (2026-11-02: the exit request of
+    // every run was refused that way); the built-in server listens on loopback only
+    @Override
+    public boolean isSupported(FullHttpRequest request) {
+        return request.method() == HttpMethod.GET && request.uri().startsWith("/api/scene");
+    }
+
+    private static String getStringParameter(String name, QueryStringDecoder d) {
+        java.util.List<String> v = d.parameters().get(name);
+        return v == null || v.isEmpty() ? null : v.get(0);
+    }
 
     @Override
-    public String execute(QueryStringDecoder d, FullHttpRequest request, ChannelHandlerContext context) throws IOException {
+    public boolean process(QueryStringDecoder d, FullHttpRequest request, ChannelHandlerContext context) throws IOException {
         String cmd = String.valueOf(getStringParameter("cmd", d));
         AtomicReference<String> result = new AtomicReference<>("ok");
         try {
@@ -86,10 +102,13 @@ public final class SceneService extends RestService {
         } catch (Throwable t) {
             result.set("error: " + t);
         }
-        BufferExposingByteArrayOutputStream out = new BufferExposingByteArrayOutputStream();
-        out.write(result.get().getBytes(StandardCharsets.UTF_8));
-        send(out, request, context);
-        return null;
+        byte[] bytes = result.get().getBytes(StandardCharsets.UTF_8);
+        DefaultFullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(bytes));
+        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=utf-8");
+        HttpUtil.setContentLength(response, bytes.length);
+        HttpUtil.setKeepAlive(response, true);   // the driver's client reuses the connection (a reconnect per command cost 30 ms)
+        context.channel().writeAndFlush(response);
+        return true;
     }
 
     private static Project project() {
@@ -98,10 +117,28 @@ public final class SceneService extends RestService {
         return open[0];
     }
 
+    /**
+     * The editor of the selected file. {@code getSelectedTextEditor} answers null while a tool window
+     * (the terminal, just opened) holds the focus; the selected editors do not depend on the focus.
+     */
     private static Editor editor(Project project) {
-        Editor e = FileEditorManager.getInstance(project).getSelectedTextEditor();
+        FileEditorManager fem = FileEditorManager.getInstance(project);
+        Editor e = fem.getSelectedTextEditor();
+        if (e == null) {
+            for (com.intellij.openapi.fileEditor.FileEditor fe : fem.getSelectedEditors()) {
+                if (fe instanceof com.intellij.openapi.fileEditor.TextEditor te) { e = te.getEditor(); break; }
+            }
+        }
         if (e == null) throw new IllegalStateException("no text editor selected");
         return e;
+    }
+
+    private static Editor editorOrNull(Project project) {
+        try {
+            return editor(project);
+        } catch (IllegalStateException ex) {
+            return null;
+        }
     }
 
     private static JFrame frame(Project project) {
@@ -120,7 +157,7 @@ public final class SceneService extends RestService {
             case "front" -> {
                 JFrame f = frame(project);
                 f.toFront();
-                Editor e = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                Editor e = editorOrNull(project);
                 IdeFocusManager.getInstance(project).requestFocus(e != null ? e.getContentComponent() : f.getRootPane(), true);
             }
             case "title" -> { return frame(project).getTitle(); }
@@ -129,7 +166,7 @@ public final class SceneService extends RestService {
                 VirtualFile vf = LocalFileSystem.getInstance().refreshAndFindFileByPath(project.getBasePath() + "/" + file);
                 if (vf == null) throw new IllegalArgumentException("no file " + file + " under " + project.getBasePath());
                 new OpenFileDescriptor(project, vf, 0, 0).navigate(true);
-                Editor e = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                Editor e = editorOrNull(project);
                 if (e != null) IdeFocusManager.getInstance(project).requestFocus(e.getContentComponent(), true);
             }
             case "select" -> {
@@ -147,7 +184,7 @@ public final class SceneService extends RestService {
                 String id = param(d, "id");
                 AnAction action = ActionManager.getInstance().getAction(id);
                 if (action == null) throw new IllegalArgumentException("no action " + id);
-                Editor e = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                Editor e = editorOrNull(project);
                 Component c = e != null ? e.getContentComponent() : frame(project).getRootPane();
                 ActionManager.getInstance().tryToExecute(action, null, c, ActionPlaces.KEYBOARD_SHORTCUT, true);
             }
@@ -181,7 +218,7 @@ public final class SceneService extends RestService {
             }
             case "search" -> {
                 String tab = param(d, "tab"), text = param(d, "text");
-                Editor e = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                Editor e = editorOrNull(project);
                 Component c = e != null ? e.getContentComponent() : frame(project).getRootPane();
                 DataContext dc = DataManager.getInstance().getDataContext(c);
                 SearchEverywhereManager.getInstance(project).show(tab, text, AnActionEvent.createFromDataContext(ActionPlaces.KEYBOARD_SHORTCUT, null, dc));
@@ -196,9 +233,47 @@ public final class SceneService extends RestService {
             case "toolwindow" -> {
                 ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(param(d, "id"));
                 if (tw == null) throw new IllegalArgumentException("no tool window " + getStringParameter("id", d));
+                if ("true".equals(getStringParameter("close", d))) {
+                    tw.getContentManager().removeAllContents(true);   // the terminal's shell goes with its tab
+                    if ("Terminal".equals(getStringParameter("id", d))) terminal = null;
+                }
                 if ("false".equals(getStringParameter("show", d))) tw.hide(null); else tw.show(null);
-                Editor e = FileEditorManager.getInstance(project).getSelectedTextEditor();
+                Editor e = editorOrNull(project);
                 if (e != null) IdeFocusManager.getInstance(project).requestFocus(e.getContentComponent(), true);
+            }
+            case "theme" -> {
+                // the UI theme and the editor colour scheme, as the seed's laf.xml and colors.scheme.xml set them
+                String themeId = param(d, "laf"), scheme = param(d, "scheme");
+                com.intellij.ide.ui.LafManager laf = com.intellij.ide.ui.LafManager.getInstance();
+                com.intellij.ide.ui.laf.UIThemeLookAndFeelInfo info = null;
+                for (java.util.Iterator<com.intellij.ide.ui.laf.UIThemeLookAndFeelInfo> it = laf.getInstalledThemes().iterator(); it.hasNext(); ) {
+                    com.intellij.ide.ui.laf.UIThemeLookAndFeelInfo t = it.next();
+                    if (themeId.equals(t.getId())) { info = t; break; }
+                }
+                if (info == null) throw new IllegalArgumentException("no theme " + themeId);
+                laf.setCurrentLookAndFeel(info, false);
+                laf.updateUI();
+                com.intellij.openapi.editor.colors.EditorColorsManager colors = com.intellij.openapi.editor.colors.EditorColorsManager.getInstance();
+                com.intellij.openapi.editor.colors.EditorColorsScheme cs = colors.getScheme(scheme);
+                if (cs == null) throw new IllegalArgumentException("no colour scheme " + scheme);
+                colors.setGlobalScheme(cs);
+            }
+            case "exit" -> {
+                // a clean shutdown (indexes flushed): the wrapper snapshots the system directory after it. The
+                // IDE's own Exit action with its confirmations off (a direct ApplicationEx.exit(true, true)
+                // did nothing visible on 2026-11-02)
+                com.intellij.ide.GeneralSettings general = com.intellij.ide.GeneralSettings.getInstance();
+                general.setConfirmExit(false);   // the terminal's shell is closed with its tab by then: no process confirmation either
+                com.intellij.openapi.diagnostic.Logger.getInstance(SceneService.class).info("scene driver: exit requested");
+                AnAction quit = ActionManager.getInstance().getAction("Exit");
+                JFrame f = frame(project);
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    if (quit != null) {
+                        ActionManager.getInstance().tryToExecute(quit, null, f.getRootPane(), ActionPlaces.MAIN_MENU, true);
+                    } else {
+                        ((com.intellij.openapi.application.ex.ApplicationEx) ApplicationManager.getApplication()).exit(true, true);
+                    }
+                }, ModalityState.nonModal());
             }
             case "key" -> {
                 int code;

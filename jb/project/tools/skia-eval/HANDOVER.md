@@ -223,10 +223,16 @@ Arms, all on the one image (name them exactly like this in records):
    (`threadDumps-freeze-*` directories), anything visibly wrong. Repeat with
    `-Dsun.java2d.font.scaler=skia`.
 2. **Scenes and clusters (pixel conformance on real scales).** `text-quality/run-scenes.sh
-   <arm> <light|dark> <scale>` first waits until some attached display runs at `<scale>` with
+   <arm> <light|dark|both> <scale>` (`both`: light and dark in one IDE session, the driver
+   switches the theme between them) first waits until some attached display runs at `<scale>` with
    room for the frame (`ScreenBounds --require`; it tells you what to set in the OS display
    settings — the IDE runs at the display's real scale, `uiScale` is no longer set), starts the
-   isolated IDE with the seeded configuration on the scene project, waits for indexing, places
+   isolated IDE with the seeded configuration on the scene project (heavy unrelated bundled
+   plugins — Kotlin, databases, JavaScript, Gradle, Maven, Docker, Kubernetes, Grazie, full-line
+   completion and the like — are disabled in `seed/common/disabled_plugins.txt`; Air stays), takes
+   the project's indexes from a snapshot of a finished run (`<state>/snapshot/<IDE build>/system`;
+   the first run without one indexes, exits the IDE cleanly and saves it, `REFRESH_SNAPSHOT=1`
+   redoes it), waits for indexing to be over, places
    the frame at a fixed 1728x980 logical pixels (the common ground of a 16-inch MacBook panel
    and a 1080p screen; `WINDOW=WxH` overrides) and waits until the frame has been unchanged for
    4 s (the inspection pass, the widgets; the 120 s sleep is gone), then drives five scenes
@@ -242,7 +248,9 @@ Arms, all on the one image (name them exactly like this in records):
    small plugin in the isolated IDE (`text-quality/scene-driver/`: open a file, set a selection,
    invoke an action by id, a settings page, Search Everywhere with a query, a terminal command,
    a key to the focus owner — over the IDE's built-in server, no typing); build it once against your
-   IDE with `IDE_HOME=<install dir> scene-driver/build-plugin.sh`. Before the first run: replace the
+   IDE with `IDE_HOME=<install dir> scene-driver/build-plugin.sh`. Measured on the Mac: 28 s per arm for
+   light and dark together (the driver prints a `profile` line per run; the scenes take 18 s, the rest
+   is the IDE's launch). Before the first run: replace the
    jrt roots in `text-quality/seed/common/options/jdk.table.xml` with your image's path, extend
    the arm table in `run-ide.sh` (add `R1` = Direct3D 9, nothing but `-Dsun.java2d.skia=false`,
    and `A4` = `-Dsun.java2d.font.scaler=skia`), and read section 9 below. Matrix: arms `A0

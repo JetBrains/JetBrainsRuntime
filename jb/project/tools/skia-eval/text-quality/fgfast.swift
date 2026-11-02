@@ -7,6 +7,8 @@ import ApplicationServices
 //   fgfast --serve              one process for a whole run: a line on stdin, one line on stdout:
 //       query                   → "<pid>|<name>|<title>"
 //       activate <pid>          → the same, after activating
+//       title <pid>             → the pid's front window title (also: fgfast --title <pid>)
+//       sample x y w h cols rows → cols*rows pixel values of that screen area (points), for change detection
 //       bounds <pid>            → "x y w h" of the pid's largest on-screen window in points (top-left origin, as Java), or "none"
 //       place <pid> x y w h     → the same window moved and sized through the accessibility API (needs the
 //                                 Accessibility permission, as System Events did), then its bounds
@@ -37,6 +39,47 @@ func largestWindow(_ pid: Int32) -> CGRect? {
         }
     }
     return best
+}
+func titleReport(_ pidText: String) -> String {
+    guard let pid = Int32(pidText), let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return "" }
+    for w in list where (w[kCGWindowOwnerPID as String] as? Int32) == pid && (w[kCGWindowLayer as String] as? Int) == 0 {
+        if let name = w[kCGWindowName as String] as? String, !name.isEmpty { return name }
+    }
+    return ""
+}
+// "sample x y w h cols rows" (points): the screen area captured at nominal resolution, cols x rows pixels
+// of it on an even grid as decimal ARGB values — the driver's change detection (a Java Robot capture of
+// the frame cost 82 ms per sample, 15 s of a 34 s run; 2026-11-02)
+// CGWindowListCreateImage through a runtime lookup: the macOS 26 SDK declares it (and CGDisplayCreateImage)
+// unavailable in favour of ScreenCaptureKit, but the symbol is still there for the apps built against older
+// SDKs; 29 ms for the 1728x980 frame at nominal resolution (2026-11-02)
+typealias WindowListCreateImage = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
+let windowListCreateImage: WindowListCreateImage? = {
+    guard let h = dlopen("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics", RTLD_NOW), let sym = dlsym(h, "CGWindowListCreateImage") else { return nil }
+    return unsafeBitCast(sym, to: WindowListCreateImage.self)
+}()
+func captureNominal(_ rect: CGRect) -> CGImage? {
+    guard let fn = windowListCreateImage else { return nil }
+    return fn(rect, 1 /* kCGWindowListOptionOnScreenOnly */, 0 /* kCGNullWindowID */, 1 << 4 /* kCGWindowImageNominalResolution */)?.takeRetainedValue()
+}
+func sampleReport(_ parts: [String]) -> String {
+    guard parts.count >= 7, let x = Double(parts[1]), let y = Double(parts[2]), let w = Double(parts[3]), let h = Double(parts[4]), let cols = Int(parts[5]), let rows = Int(parts[6]), cols > 1, rows > 1 else { return "none" }
+    let rect = CGRect(x: x, y: y, width: w, height: h)
+    guard let img = captureNominal(rect), let data = img.dataProvider?.data, let ptr = CFDataGetBytePtr(data) else { return "none" }
+    let width = img.width, height = img.height, bpr = img.bytesPerRow, bpp = img.bitsPerPixel / 8
+    if width < 2 || height < 2 || bpp < 4 { return "none" }
+    var out = ""
+    out.reserveCapacity(cols * rows * 10)
+    for r in 0..<rows {
+        let py = r * (height - 1) / (rows - 1)
+        for c in 0..<cols {
+            let px = c * (width - 1) / (cols - 1)
+            let p = ptr + py * bpr + px * bpp
+            let v = UInt32(p[0]) | UInt32(p[1]) << 8 | UInt32(p[2]) << 16   // the three colour bytes, whatever their order: equality is all that is compared
+            out += String(v); out += " "
+        }
+    }
+    return out
 }
 func boundsReport(_ pidText: String) -> String {
     guard let pid = Int32(pidText), let r = largestWindow(pid) else { return "none" }
@@ -74,11 +117,14 @@ if args.count >= 2 && args[1] == "--serve" {
         switch parts.first {
         case "activate": if parts.count > 1 { activate(parts[1]) }; print(frontReport())
         case "bounds": print(parts.count > 1 ? boundsReport(parts[1]) : "none")
+        case "title": print(parts.count > 1 ? titleReport(parts[1]) : "")
+        case "sample": print(sampleReport(parts))
         case "place": print(place(parts))
         default: print(frontReport())
         }
     }
     exit(0)
 }
+if args.count >= 3 && args[1] == "--title" { print(titleReport(args[2])); exit(0) }   // the named window's title, for the wrapper's frame detection
 if args.count >= 3 && args[1] == "--activate" { activate(args[2]) }
 print(frontReport())

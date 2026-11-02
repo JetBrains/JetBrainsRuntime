@@ -24,7 +24,8 @@ import javax.imageio.ImageIO;
  * {@code settings}, {@code search} and {@code markdown}; presentation mode is gone.
  * <pre>
  *   java IdeScenes --out <dir> --pid <ide pid> --fg <helper> --port <built-in server port>
- *                  [--scenes workspace,menu,settings,search,markdown] [--window 1728x980] [--scale 2] [--quiesce <ms>] [--settle <ms>]
+ *                  [--scenes workspace,menu,settings,search,markdown] [--themes light,dark] [--window 1728x980] [--scale 2]
+ *                  [--quiesce <ms>] [--settle <ms>] [--exit]
  * </pre>
  * The frame is placed at the usable area's origin at a fixed logical size (default 1728x980: the
  * common ground of a 16-inch MacBook panel's default 2x mode — 1728 wide, 980 left under the menu
@@ -52,6 +53,15 @@ public class IdeScenes {
     static int idePid = 0;   // the isolated IDE's java process: keys go nowhere else
     static File fgScript;
     static int port = 0;         // --port: the isolated IDE's built-in server (idea.log: "built-in server started, port N")
+    static List<String> themes = List.of();   // --themes light,dark: captured in one session, the UI theme switched between them
+    static String scaleTag = "2";             // --scale, for the per-theme directory names (<out>/<theme>-<scale>x)
+    static boolean exitAtEnd = false;         // --exit: a clean shutdown of the IDE after the scenes (for the system snapshot)
+    static final java.util.Map<String, long[]> profileTotals = new java.util.TreeMap<>();   // primitive → {nanos, calls}, printed at the end
+    static void profile(String what, long startNanos) {
+        long[] t = profileTotals.computeIfAbsent(what, k -> new long[2]);
+        t[0] += System.nanoTime() - startNanos; t[1]++;
+    }
+    static final java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor();   // PNG encoding off the scene thread
     static final boolean MAC = System.getProperty("os.name").toLowerCase().contains("mac");
 
     public static void main(String[] args) throws Exception {
@@ -62,11 +72,13 @@ public class IdeScenes {
                 case "--scenes" -> scenes = List.of(args[++i].split(","));
                 case "--settle" -> settleMs = Integer.parseInt(args[++i]);
                 case "--quiesce" -> quiesceMs = Integer.parseInt(args[++i]);
-                case "--scale" -> requiredScale = Double.parseDouble(args[++i]);
+                case "--scale" -> { scaleTag = args[++i]; requiredScale = Double.parseDouble(scaleTag); }
                 case "--window" -> { String[] wh = args[++i].toLowerCase().split("x"); windowW = Integer.parseInt(wh[0]); windowH = Integer.parseInt(wh[1]); }
                 case "--pid" -> idePid = Integer.parseInt(args[++i].replaceAll("[^0-9]", ""));   // shells leave CR or BOM bytes
                 case "--fg" -> fgScript = new File(args[++i]);
                 case "--port" -> port = Integer.parseInt(args[++i]);
+                case "--themes" -> themes = List.of(args[++i].split(","));
+                case "--exit" -> exitAtEnd = true;
                 default -> throw new IllegalArgumentException(args[i]);
             }
         }
@@ -87,7 +99,22 @@ public class IdeScenes {
         // differ between arms otherwise), the file shown
         ide("cmd=action&id=ClearAllNotifications");
         expect(() -> ide("cmd=open&file=src/Hello.java"), 1500);
-        for (String scene : scenes) {
+        final File armDir = out;
+        List<String> themeList = themes.isEmpty() ? java.util.Collections.singletonList(null) : themes;
+        for (int t = 0; t < themeList.size(); t++) {
+          String theme = themeList.get(t);
+          if (theme != null) {
+            out = new File(armDir, theme + "-" + scaleTag + "x");
+            out.mkdirs();
+            if (t > 0) {
+                // the UI theme and colour scheme as the seed of that theme sets them; the frame repaints in steps
+                String laf = theme.equals("dark") ? "ExperimentalDark" : "ExperimentalLight", scheme = theme.equals("dark") ? "Dark" : "Light";
+                expect(() -> ide("cmd=theme&laf=" + laf + "&scheme=" + scheme), 3000);
+                awaitQuiet(300, 3000);
+                expect(() -> ide("cmd=open&file=src/Hello.java"), 1500);
+            }
+          }
+          for (String scene : scenes) {
             final long ts = System.nanoTime();
             requireIdeInFront();
             switch (scene) {
@@ -95,7 +122,7 @@ public class IdeScenes {
                     // the terminal at the bottom with a line of fixed output: the shell first, the command once
                     // the prompt is up; then the editor is focused again through the open command
                     expect(() -> ide("cmd=terminal"), 2500);
-                    awaitQuiet(500, 2500);
+                    awaitQuiet(150, 1500);
                     expect(() -> ide("cmd=terminalExec&line=" + (MAC ? "ls" : "echo text rendering scene 0123456789 ffi fl AVfi")), 1200);
                     ide("cmd=open&file=src/Hello.java");
                     // a four-line selection, lines 15-18, ending at the caret on Comparable (line 18), whose
@@ -105,42 +132,53 @@ public class IdeScenes {
                     expect(() -> ide("cmd=action&id=QuickJavaDoc"), 1500);
                     capture("workspace");
                     ide("cmd=key&code=ESCAPE");   // the popup
-                    awaitQuiet(150, 400);
+                    awaitQuiet(100, 400);
                     ide("cmd=select&clear=true");
-                    expect(() -> ide("cmd=toolwindow&id=Terminal&show=false"), 800);
+                    expect(() -> ide("cmd=toolwindow&id=Terminal&show=false&close=true"), 800);   // the shell too: the next theme opens a fresh one
                 }
                 case "menu" -> {
                     expect(() -> ide("cmd=menu"), 800);   // the main menu as the hamburger button's popup
                     capture("menu");
                     ide("cmd=key&code=ESCAPE");
-                    awaitQuiet(150, 400);
+                    awaitQuiet(100, 400);
                 }
                 case "settings" -> {
                     expect(() -> ide("cmd=settings&class=com.intellij.application.options.editor.fonts.AppEditorFontConfigurable"), 1500);   // Editor > Font (its id is not registered)
-                    awaitQuiet(300, 1000);
+                    awaitQuiet(150, 1000);
                     capture("settings");
                     ide("cmd=key&code=ESCAPE");   // closes the dialog
-                    awaitQuiet(200, 800);
+                    awaitQuiet(100, 800);
                 }
                 case "search" -> {
                     // the class tab of Search Everywhere: its list is deterministic, the
                     // all tab ranks by history and model and differs between runs
                     expect(() -> ide("cmd=search&tab=ClassSearchEverywhereContributor&text=Point"), 1500);
-                    awaitQuiet(300, 1000);
+                    awaitQuiet(150, 1000);
                     capture("search");
                     ide("cmd=key&code=ESCAPE");
-                    awaitQuiet(150, 400);
+                    awaitQuiet(100, 400);
                 }
                 case "markdown" -> {
                     expect(() -> ide("cmd=open&file=README.md"), 1500);
-                    awaitQuiet(500, 1500);   // the preview renders after the editor
+                    awaitQuiet(250, 1500);   // the preview renders after the editor
                     capture("markdown");
                 }
                 default -> System.err.println("unknown scene " + scene);
             }
-            System.out.printf("  %s took %.1f s%n", scene, (System.nanoTime() - ts) / 1e9);
+            System.out.printf("  %s%s took %.1f s%n", theme != null ? theme + " " : "", scene, (System.nanoTime() - ts) / 1e9);
+          }
         }
-        System.out.printf("scenes done in %.1f s: %s%n", (System.nanoTime() - t0) / 1e9, out);
+        long tw = System.nanoTime();
+        writer.shutdown();
+        writer.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS);
+        profile("png-flush", tw);
+        System.out.printf("scenes done in %.1f s: %s%n", (System.nanoTime() - t0) / 1e9, armDir);
+        StringBuilder sb = new StringBuilder("profile (s / calls):");
+        for (var e : profileTotals.entrySet()) sb.append(String.format(" %s %.1f/%d", e.getKey(), e.getValue()[0] / 1e9, e.getValue()[1]));
+        System.out.println(sb);
+        if (exitAtEnd) {
+            System.out.println("exit requested: " + ide("cmd=exit"));
+        }
     }
 
     static final java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
@@ -150,7 +188,11 @@ public class IdeScenes {
         try {
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + "/api/scene?" + query))
                     .timeout(java.time.Duration.ofSeconds(20)).GET().build();
-            String body = http.send(request, java.net.http.HttpResponse.BodyHandlers.ofString()).body().trim();
+            long t = System.nanoTime();
+            java.net.http.HttpResponse<String> response = http.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            profile("ide", t);
+            String body = response.body().trim();
+            if (response.statusCode() != 200) throw new IllegalStateException(query + " -> HTTP " + response.statusCode() + " " + body.replaceAll("<[^>]*>", " ").trim());
             if (body.startsWith("error")) throw new IllegalStateException(query + " -> " + body);
             return body;
         } catch (java.io.IOException | InterruptedException e) {
@@ -164,7 +206,9 @@ public class IdeScenes {
      * seen on 2026-10-22 came from the Shift+Cmd+A Service, see action()).
      */
     static void requireIdeInFront() throws Exception {
-        String fg = foreground(true);
+        String fg = foreground(false);
+        if (fg.startsWith(idePid + "|")) return;   // already in front: the activation's 300 ms wait is saved
+        fg = foreground(true);
         if (!fg.startsWith(idePid + "|")) {
             throw new IllegalStateException("the foreground window is not the isolated IDE (pid " + idePid + "): " + fg);
         }
@@ -334,6 +378,15 @@ public class IdeScenes {
      * nothing changes within it, the wait ends there as before.
      */
     static void expect(Runnable keys, int maxMs) {
+        long t = System.nanoTime();
+        try {
+            expect0(keys, maxMs);
+        } finally {
+            profile("expect", t);
+        }
+    }
+
+    static void expect0(Runnable keys, int maxMs) {
         Rectangle screen = sceneArea();
         int[] before = sample(screen);
         keys.run();
@@ -344,7 +397,7 @@ public class IdeScenes {
             long elapsed = (System.nanoTime() - start) / 1_000_000;
             if (differing(now, before) > QUIET_CELLS || elapsed >= maxMs) break;
         }
-        awaitQuiet(100, Math.max(400, maxMs / 2));
+        awaitQuiet(0, Math.max(400, maxMs / 2));   // two equal samples 60 ms apart are the check; no floor
     }
 
     /**
@@ -360,15 +413,24 @@ public class IdeScenes {
     }
 
     /**
-     * Waits until two samples 100 ms apart are equal, at least {@code minMs} and at most
+     * Waits until two samples 60 ms apart are equal, at least {@code minMs} and at most
      * {@code maxMs} (the former fixed sleep) after the call.
      */
     static void awaitQuiet(int minMs, int maxMs) {
+        long t = System.nanoTime();
+        try {
+            awaitQuiet0(minMs, maxMs);
+        } finally {
+            profile("awaitQuiet", t);
+        }
+    }
+
+    static void awaitQuiet0(int minMs, int maxMs) {
         Rectangle screen = sceneArea();
         final long start = System.nanoTime();
         int[] last = sample(screen);
         while (true) {
-            sleep(100);
+            sleep(60);
             int[] now = sample(screen);
             long elapsed = (System.nanoTime() - start) / 1_000_000;
             if ((differing(now, last) <= QUIET_CELLS && elapsed >= minMs) || elapsed >= maxMs) return;
@@ -417,27 +479,56 @@ public class IdeScenes {
     }
 
     /**
-     * Waits until the screen stops changing: two samples 300 ms apart equal on a coarse grid of
-     * the usable area, at least 600 ms and at most 2 x settleMs after the call (2026-10-26:
-     * replaces a fixed 2.5 s settle; the IDE's own animations finish in well under a second).
+     * Waits until the frame stops changing before a capture: two samples 150 ms apart equal on the
+     * coarse grid, at least 300 ms and at most 2 x settleMs after the call (2026-10-26: replaced a
+     * fixed 2.5 s; 2026-11-02: 300/600 ms → 150/300, the waits before it have already seen the frame
+     * quiet, this is the last check — 8.6 s of a 34 s run went into it).
      */
     static void settle() throws Exception {
         Rectangle screen = sceneArea();
         final long start = System.nanoTime();
-        sleep(300);
+        sleep(150);
         int[] last = sample(screen);
         while (true) {
-            sleep(300);
+            sleep(150);
             int[] now = sample(screen);
             long elapsed = (System.nanoTime() - start) / 1_000_000;
-            if ((differing(now, last) <= QUIET_CELLS && elapsed >= 600) || elapsed >= 2L * settleMs) return;
+            if ((differing(now, last) <= QUIET_CELLS && elapsed >= 300) || elapsed >= 2L * settleMs) return;
             last = now;
         }
     }
 
     static int[] sample(Rectangle screen) {
+        long t = System.nanoTime();
+        try {
+            return sample0(screen);
+        } finally {
+            profile("sample", t);
+        }
+    }
+
+    static boolean helperSampling = true;   // macOS: the helper captures and samples in one call (≈ 15 ms against the Robot's 82)
+
+    static int[] sample0(Rectangle screen) {
+        int cols = 48, rows = 30;
+        if (MAC && helperSampling) {
+            try {
+                String line = helper(String.format("sample %d %d %d %d %d %d", screen.x, screen.y, screen.width, screen.height, cols, rows));
+                if (line != null && !line.equals("none")) {
+                    String[] f = line.trim().split(" ");
+                    if (f.length == cols * rows) {
+                        int[] out = new int[f.length];
+                        for (int i = 0; i < f.length; i++) out[i] = Integer.parseInt(f[i]);
+                        return out;
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("helper sampling failed, the Robot from here on: " + e);
+            }
+            helperSampling = false;
+        }
         BufferedImage shot = robot.createScreenCapture(screen);   // the 1x variant suffices for change detection
-        int cols = 48, rows = 30; int[] out = new int[cols * rows];
+        int[] out = new int[cols * rows];
         for (int r = 0; r < rows; r++) for (int c = 0; c < cols; c++) {
             out[r * cols + c] = shot.getRGB(c * (shot.getWidth() - 1) / (cols - 1), r * (shot.getHeight() - 1) / (rows - 1));
         }
@@ -445,7 +536,13 @@ public class IdeScenes {
     }
 
     static void capture(String scene) throws Exception {
+        // sticky balloons arrive at their own pace ("Automatic error reporting is now on" sat in every
+        // capture of 2026-11-02 after a single clear at the start): dropped right before each capture
+        ide("cmd=action&id=ClearAllNotifications");
+        long t = System.nanoTime();
         settle();
+        profile("settle", t);
+        t = System.nanoTime();
         String fg = foreground(false);
         if (!fg.startsWith(idePid + "|")) {
             throw new IllegalStateException("lost the isolated IDE before capturing " + scene + ": " + fg);
@@ -458,7 +555,16 @@ public class IdeScenes {
             BufferedImage b = toBuffered(v);
             if (best == null || b.getWidth() > best.getWidth()) best = b;
         }
-        ImageIO.write(best, "png", new File(out, scene + ".png"));
+        final BufferedImage image = best;
+        final File target = new File(out, scene + ".png");
+        writer.submit(() -> {
+            try {
+                ImageIO.write(image, "png", target);
+            } catch (java.io.IOException e) {
+                System.err.println("could not write " + target + ": " + e);
+            }
+        });
+        profile("capture", t);
         System.out.println(scene + ": " + best.getWidth() + "x" + best.getHeight());
     }
 
