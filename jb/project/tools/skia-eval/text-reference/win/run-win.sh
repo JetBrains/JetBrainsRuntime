@@ -6,7 +6,10 @@
 # Every Java arm states its LCD glyph source (sun.java2d.font.lcdGlyphs = gdi | scaler | directwrite).
 # Arms: directwrite, gdi (native), software (Java software loops, GDI LCD glyphs), software-scaler (FreeType LCD glyphs), opengl-platform (WGL pipe, platform
 # scaler; the VM has no Direct3D 9 and no Vulkan), skia-platform (Skia/Dawn pipe, platform scaler),
-# software-skia-scaler, skia-scaler-{coverage,darkened,smoothed} (Skia pipe and scaler, the grayscale routes).
+# software-skia-scaler, skia-scaler-coverage (Skia pipe and scaler, Skia's own coverage), skia-scaler-platform /
+# -platformcoverage (the platform's masks: the default blend, and plain coverage), the text-path arms (skia-text,
+# skia-shaper, skia-paragraph: Skia's strike / shaping / paragraphs, with Skia's coverage or the platform's blend).
+# Six-dimension spellings since 2026-11-02 (d3363ef442c9); the smoothed and darkened emulations are gone.
 set -eu
 HERE="$(cd "$(dirname "$0")" && pwd)"
 source "$HERE/../../env.sh"
@@ -32,29 +35,24 @@ sheet software-scaler software -Dsun.java2d.d3d=false -Dsun.java2d.font.lcdGlyph
 sheet opengl-platform volatile -Dsun.java2d.opengl=true -Dsun.java2d.font.lcdGlyphs=gdi
 sheet skia-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.lcdGlyphs=gdi
 sheet skia-platform-scaler volatile -Dsun.java2d.skia=true -Dsun.java2d.font.lcdGlyphs=scaler
-sheet software-skia-scaler software -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
-sheet skia-scaler-coverage volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
-sheet skia-scaler-darkened volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=darkened
-sheet skia-scaler-smoothed volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=smoothed
-sheet skia-scaler-platformcoverage volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platformCoverage
-sheet skia-scaler-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform
-sheet software-skia-scaler-platformcoverage software -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platformCoverage
-sheet software-skia-scaler-platform software -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform
+sheet software-skia-scaler software -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
+sheet skia-scaler-coverage volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
+sheet skia-scaler-platformcoverage volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=plain -Dsun.java2d.skia.text.darkening=none
+sheet skia-scaler-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
+sheet software-skia-scaler-platformcoverage software -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=plain -Dsun.java2d.skia.text.darkening=none
+sheet software-skia-scaler-platform software -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
 # the OpenGL pipe's gamma blend over the Skia scaler's coverage (the Mac's metal-skia-scaler analogue)
-sheet opengl-skia-scaler volatile -Dsun.java2d.opengl=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
+sheet opengl-skia-scaler volatile -Dsun.java2d.opengl=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
 # Skia's own text paths (hand-over 2026-10-26b): glyphs drawn by Skia from its strike (text=skia), shaped by
 # Skia (text=shaper), laid out by Skia's paragraph engine (text=paragraph); with Skia's coverage, with
 # text.smoothing, and with DirectWrite masks inside Skia's strike (gray=platform)
-sheet skia-text volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia
-sheet skia-text-smoothed volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.smoothing=true
-sheet skia-text-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.gray=platform
-sheet skia-shaper volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=shaper
-sheet skia-shaper-smoothed volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=shaper -Dsun.java2d.skia.text.smoothing=true
-sheet skia-shaper-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=shaper -Dsun.java2d.skia.text.gray=platform
-sheet skia-paragraph-smoothed volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.smoothing=true
-sheet skia-paragraph-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.gray=platform
+sheet skia-text volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
+sheet skia-text-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia
+sheet skia-shaper volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
+sheet skia-shaper-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.shaping=skia
+sheet skia-paragraph-platform volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.paragraphs=skia
 # the colour-keyed LCD strikes
-sheet skia-scaler-platform-colour3 volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform -Dsun.java2d.skia.text.lcdColorBits=3
+sheet skia-scaler-platform-colour3 volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.lcdColorBits=3
 # the browser reference (Blink + Skia on the DirectWrite host): Edge, the Chromium on this VM
 bash "$HERE/render-edge.sh" "$OUT" || echo "no browser reference" >&2
 # the ClearType rows in the IDE's keyword colours, filed under lcd/fractional/<scale>/color-on-<paper>/<colour>.png
@@ -65,9 +63,9 @@ colours() {   # name, JVM options
   "$JDK/bin/java" -Dsun.java2d.uiScale=1 "$@" -cp "$HERE/classes" TextReference "$OUT/$name" "$OUT/rows-$name.txt" "$FONTS" --volatile --colours 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline\|^wrote" || true
   rm -f "$OUT/rows-$name.txt"
 }
-colours skia-scaler-platform -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform
-colours skia-scaler-platformcoverage -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platformCoverage
-colours skia-scaler-platform-colour3 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform -Dsun.java2d.skia.text.lcdColorBits=3
-colours skia-text-platform -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.gray=platform
-colours software-skia-scaler-platform -Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.gray=platform
-"$PY" "$KIT/viewer/make-viewer.py" "$OUT" --arms directwrite,gdi,chromium,software,software-scaler,software-dwlcd,software-dwlcd-gdiclassic,opengl-platform,opengl-skia-scaler,skia-platform,skia-platform-scaler,skia-platform-dwlcd,software-skia-scaler,skia-scaler-coverage,skia-scaler-hint-slight,skia-scaler-hint-normal,skia-scaler-darkened,skia-scaler-smoothed,skia-scaler-platformcoverage,skia-scaler-platform,skia-scaler-platform-colour3,software-skia-scaler-platformcoverage,software-skia-scaler-platform,skia-text,skia-text-smoothed,skia-text-platform,skia-shaper,skia-shaper-smoothed,skia-shaper-platform,skia-paragraph-smoothed,skia-paragraph-platform --set-dims aa,positioning,scale,paper,color --title "Text sheets $(basename "$OUT") (Windows): DirectWrite and GDI vs Java configurations"
+colours skia-scaler-platform -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
+colours skia-scaler-platformcoverage -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=plain -Dsun.java2d.skia.text.darkening=none
+colours skia-scaler-platform-colour3 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.lcdColorBits=3
+colours skia-text-platform -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia
+colours software-skia-scaler-platform -Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler
+# no viewer here (2026-11-02): machines deliver the tree, the Mac builds the viewers and the catalog

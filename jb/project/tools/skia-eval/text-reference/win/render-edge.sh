@@ -16,4 +16,5 @@ for scale in 1 1.25 1.5 2; do for paper in black-on-white white-on-black; do
        --window-size="$w,$h" --virtual-time-budget=4000 --screenshot="$(cygpath -w "$d/$paper.png")" \
        "$PAGE?scale=$scale&paper=$paper" >/dev/null 2>&1 || true
 done; done
-echo "chromium arm (Edge): $("$E" --version 2>/dev/null | head -1)"
+# the version from the executable's metadata: "msedge.exe --version" opens a browser window on Windows and never returns
+echo "chromium arm (Edge): $(powershell -NoProfile -Command "(Get-Item '$(cygpath -w "$E")').VersionInfo.ProductVersion" 2>/dev/null | tr -d '\r')"

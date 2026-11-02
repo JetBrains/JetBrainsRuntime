@@ -1,0 +1,5 @@
+# built on the machine, never committed (the native reference tool, its objects, the compiled Java twin, the image's fonts)
+dwref.exe
+dwref.obj
+classes/
+fonts/

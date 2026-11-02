@@ -9,7 +9,9 @@
 #           A5 accumulate + submit=present, A6 accumulate + present=cycle + submit=present,
 #           A7 twopass on Dawn's D3D12 backend, A8 twopass on native Vulkan,
 #           R1 Direct3D 9, R2 JBR's Vulkan pipeline, R0 BufferedImages (Swing's back buffer) drawn
-#           by Skia's raster backend (sun.java2d.skia.raster), R5 R0 with Skia's scaler and text route
+#           by Skia's raster backend (sun.java2d.skia.raster), R5 R0 with Skia's scaler and text route,
+#           the text arms T0 (Skia pipe, JDK scaler), T1 (Skia scaler coverage), T4 (platform masks, the
+#           default), T5 / T6 (colour-keyed LCD strikes), S5 (the hybrid on the loops), F5 (the full Skia text stack)
 #     --scale    sun.java2d.uiScale for the IDE (1, 1.5, 2); default: the display's
 #     --seed     a config directory copied over the arm's config before the start (theme, fonts, options)
 #     --wait/--shot  wait S seconds, capture the screen to <png> (device pixels) and stop the IDE
@@ -45,6 +47,17 @@ case "$ARM" in
   A6) NAME=A6-cycle-submit; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false -Dsun.java2d.skia.present=cycle -Dsun.java2d.skia.submit=present" ;;
   A7) NAME=A7-twopass-d3d12; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.dawn.backend=d3d12" ;;
   A8) NAME=A8-twopass-vulkan; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan" ;;
+  # the text arms of the VM's rounds (2026-10-23 … 11-02), in the six-dimension spellings: the Skia pipe with the
+  # JDK's scaler (T0), the Skia scaler's own coverage under the pipes' contrast curve (T1), the platform's masks and
+  # blend — the default — (T4), with the LCD strikes keyed by colour at 2 or 3 bits (T5, T6), the hybrid on today's
+  # pipe (S5), the full Skia text stack: Skia's strike, shaping and paragraphs on the Skia pipe (F5)
+  T0) NAME=T0-skia-platform;            PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.lcdGlyphs=scaler" ;;
+  T1) NAME=T1-skia-scaler-coverage;     PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none" ;;
+  T4) NAME=T4-skia-scaler-platform;     PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler" ;;
+  T5) NAME=T5-skia-scaler-platform-colour2; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.lcdColorBits=2" ;;
+  T6) NAME=T6-skia-scaler-platform-colour3; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.lcdColorBits=3" ;;
+  S5) NAME=S5-software-skia-scaler-platform; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler" ;;
+  F5) NAME=F5-skia-full-platform;       PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.paragraphs=skia" ;;
   R1) NAME=R1-d3d9;       PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=true" ;;
   R2) NAME=R2-vulkan;     PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.vulkan=Force" ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
