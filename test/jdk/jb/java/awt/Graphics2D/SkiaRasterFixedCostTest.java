@@ -53,7 +53,7 @@ public class SkiaRasterFixedCostTest {
                 BufferedImage skia = new BufferedImage(W, H, type);
                 double[] a = new double[FRAMES], b = new double[FRAMES];
                 for (int f = 0; f < FRAMES; f++) {   // interleaved: the same frame on both surfaces
-                    a[f] = frame(skia, f, aa); b[f] = frame(loops, f, aa);
+                    a[f] = frame(skia, f, aa, Shape.RECT); b[f] = frame(loops, f, aa, Shape.RECT);
                 }
                 double ms = median(a), ml = median(b), ratio = ms / ml;
                 // AA: the rasterizer's work dominates; non-AA integer rectangles are the loops' cheapest
@@ -65,10 +65,28 @@ public class SkiaRasterFixedCostTest {
                 }
             }
         }
+        // fixed cost round 3 (2026-11-02): the two RenderPerfTest rows the raster surface lost on the Mac —
+        // rotated boxes without antialiasing (0.48x: a Path2D, its arrays and Skia's path fill per box where the
+        // loops run FillParallelogram) and antialiased lines (0.75x: the converter's pen parallelogram as a path)
+        for (Shape shape : new Shape[] {Shape.ROTATED_BOX, Shape.LINE}) {
+            boolean aa = shape == Shape.LINE;
+            BufferedImage skia = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE);
+            double[] a = new double[FRAMES], b = new double[FRAMES];
+            for (int f = 0; f < FRAMES; f++) {
+                a[f] = frame(skia, f, aa, shape); b[f] = frame(loops, f, aa, shape);
+            }
+            double ms = median(a), ml = median(b), ratio = ms / ml, limit = shape == Shape.LINE ? 1.2 : 1.25;
+            System.out.printf("%d %s per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.2f)%n", N, shape, ms, ml, ratio, limit);
+            if (ratio > limit) {
+                throw new RuntimeException("the raster surface takes " + ratio + " times the loops' time for " + shape + " (limit " + limit + ")");
+            }
+        }
         System.out.println("PASSED");
     }
 
-    static double frame(BufferedImage img, int seed, boolean aa) {
+    enum Shape { RECT, ROTATED_BOX, LINE }
+
+    static double frame(BufferedImage img, int seed, boolean aa, Shape shape) {
         Graphics2D g = img.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, aa ? RenderingHints.VALUE_ANTIALIAS_ON : RenderingHints.VALUE_ANTIALIAS_OFF);
         g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
@@ -76,10 +94,25 @@ public class SkiaRasterFixedCostTest {
         long t0 = System.nanoTime();
         for (int i = 0; i < N; i++) {
             g.setColor(new Color(rnd.nextInt(0xffffff)));
-            if (aa) {
-                g.fill(new Rectangle2D.Double(rnd.nextInt(W - 40) + rnd.nextDouble(), rnd.nextInt(H - 40) + rnd.nextDouble(), 30, 20));
-            } else {
-                g.fillRect(rnd.nextInt(W - 40), rnd.nextInt(H - 40), 30, 20);
+            switch (shape) {
+                case RECT -> {
+                    if (aa) {
+                        g.fill(new Rectangle2D.Double(rnd.nextInt(W - 40) + rnd.nextDouble(), rnd.nextInt(H - 40) + rnd.nextDouble(), 30, 20));
+                    } else {
+                        g.fillRect(rnd.nextInt(W - 40), rnd.nextInt(H - 40), 30, 20);
+                    }
+                }
+                case ROTATED_BOX -> {   // RenderPerfTest's RotatedBox: translate, rotate, fillRect
+                    java.awt.geom.AffineTransform t = g.getTransform();
+                    g.translate(rnd.nextInt(W - 40) + 20, rnd.nextInt(H - 40) + 20);
+                    g.rotate(rnd.nextDouble() * Math.PI);
+                    g.fillRect(-10, -10, 20, 20);
+                    g.setTransform(t);
+                }
+                case LINE -> {   // RenderPerfTest's LinesAA: an integer line of about 30 px
+                    int x = rnd.nextInt(W - 60) + 30, y = rnd.nextInt(H - 60) + 30; double ang = rnd.nextDouble() * Math.PI * 2;
+                    g.drawLine(x, y, x + (int) (30 * Math.cos(ang)), y + (int) (30 * Math.sin(ang)));
+                }
             }
         }
         double ms = (System.nanoTime() - t0) / 1e6;

@@ -307,6 +307,9 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             fillDeviceRect(sg2d, (float) Math.min(x, x + dx1), (float) Math.min(y, y + dy2), (float) Math.max(x, x + dx1), (float) Math.max(y, y + dy2));
             return;
         }
+        if (fillColorParallelogram(sg2d, x, y, dx1, dy1, dx2, dy2)) {
+            return;
+        }
         Path2D.Float p = new Path2D.Float();
         p.moveTo(x, y); p.lineTo(x + dx1, y + dy1); p.lineTo(x + dx1 + dx2, y + dy1 + dy2); p.lineTo(x + dx2, y + dy2); p.closePath();
         fillDevicePath(sg2d, p, antialiased(sg2d));
@@ -327,6 +330,42 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             p.moveTo(ix, iy); p.lineTo(ix + idx1, iy + idy1); p.lineTo(ix + idx1 + idx2, iy + idy1 + idy2); p.lineTo(ix + idx2, iy + idy2); p.closePath();
         }
         fillDevicePath(sg2d, p, antialiased(sg2d));
+    }
+
+    /**
+     * A colour-filled parallelogram under a rectangular clip without the path machinery (fixed cost
+     * round 3, 2026-11-02: a rotated fillRect took 3.9x the loops' time as a Path2D, its arrays and
+     * Skia's path fill; an antialiased line is the converter's pen parallelogram and took 1.33x).
+     * Non-antialiased: the loops' FillParallelogram span arithmetic as a store of the colour, when
+     * the composite is a store (an opaque SrcOver, or Src). Antialiased: the four points as a Skia
+     * path. True when drawn (or empty); false when the paint, the clip or the composite need the
+     * general path route.
+     */
+    private static boolean fillColorParallelogram(SunGraphics2D sg2d, double x, double y, double dx1, double dy1, double dx2, double dy2) {
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            return false;
+        }
+        Region clip = sg2d.getCompClip();
+        if (!clip.isRectangular()) {
+            return false;
+        }
+        boolean aa = antialiased(sg2d);
+        // the pixels the parallelogram reaches (ParallelogramUtils' PGRAM_MIN_MAX), inside the clip
+        double xmin = Math.min(x, x + dx1), xmax = Math.max(x, x + dx1), ymin = Math.min(y, y + dy1), ymax = Math.max(y, y + dy1);
+        if (dx2 < 0) xmin += dx2; else xmax += dx2;
+        if (dy2 < 0) ymin += dy2; else ymax += dy2;
+        int bx1 = (int) Math.floor(aa ? xmin : xmin + 0.5), by1 = (int) Math.floor(aa ? ymin : ymin + 0.5);
+        int bx2 = aa ? (int) Math.ceil(xmax) : (int) Math.floor(xmax + 0.5), by2 = aa ? (int) Math.ceil(ymax) : (int) Math.floor(ymax + 0.5);
+        int cx1 = Math.max(clip.getLoX(), bx1), cy1 = Math.max(clip.getLoY(), by1), cx2 = Math.min(clip.getHiX(), bx2), cy2 = Math.min(clip.getHiY(), by2);
+        if (cx1 >= cx2 || cy1 >= cy2) {
+            return true;
+        }
+        SKRasterSurfaceData sd = (SKRasterSurfaceData) sg2d.surfaceData;
+        boolean drawn = fillParallelogramColor(sd, sd.pixelFormat(), new double[] {x, y, dx1, dy1, dx2, dy2}, flags(sg2d, aa), sg2d.eargb, packed(cx1, cy1), packed(cx2, cy2));
+        if (drawn && !aa) {
+            nonAntialiasedBySkia.incrementAndGet();
+        }
+        return drawn;
     }
 
     private static void fillDeviceRect(SunGraphics2D sg2d, float x1, float y1, float x2, float y2) {
@@ -375,6 +414,8 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
      * rectangle's pixels inside the clip, so the canvas is not clipped; a non-antialiased opaque SrcOver
      * or any Src fill is a store into the pixels, as the loops' FillRect, without the canvas or the mirror.
      */
+    /** The colour parallelogram (x, y, dx1, dy1, dx2, dy2 as doubles): the loops' spans stored, or Skia's antialiased path; false if not handled. */
+    private static native boolean fillParallelogramColor(SKRasterSurfaceData sd, int pixelFormat, double[] pgram, int flags, int argb, int boxLeftTop, int boxRightBottom);
     private static native void fillRectColor(SKRasterSurfaceData sd, int pixelFormat, float x1, float y1, float x2, float y2,
                                              int flags, int argb, int boxLeftTop, int boxRightBottom);
 

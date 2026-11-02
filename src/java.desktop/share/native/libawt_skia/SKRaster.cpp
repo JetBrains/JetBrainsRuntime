@@ -416,6 +416,97 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRectColor(JNIEnv *env, jclass clazz, 
     op.canvas()->drawRect(rect, paint);
 }
 
+// The loops' FillParallelogram (FillParallelogram.c, ParallelogramUtils.h, LoopMacros.h's solid span
+// store) for a colour under a rectangular clip, into Java's own pixels: the same sort of the edges,
+// the same half-up rounding of the vertical extent, the same 32.32 fixed-point edge stepping per
+// scanline with WholeOfLong truncation — so a rotated fillRect lands on the pixels the loops give it,
+// without a Path2D, its arrays or a path fill (fixed cost round 3, 2026-11-02). Antialiased: the four
+// points as a Skia path. False when the composite is not a store (the Java side takes the path route).
+namespace {
+inline jlong dblToLong(double d) { return (jlong) (d * 4294967296.0); }
+inline jint wholeOfLong(jlong l) { return (jint) (l >> 32); }
+const jlong kLongOneHalf = ((jlong) 1) << 31;
+inline jlong pgramInitX(jint starty, double x, double y, double slope) { return dblToLong(x + slope * (starty + 0.5 - y)) + kLongOneHalf - 1; }
+
+struct PgramStore {
+    Operation &op; uint32_t pixel; RasterTarget *target; uint32_t mirrorPixel;
+    void spans(jint lox, jint loy, jint hix, jint hiy, jlong leftx, jlong dleftx, jlong rightx, jlong drightx) {
+        for (jint y = loy; y < hiy; y++) {
+            jint lx = std::max(lox, wholeOfLong(leftx)), rx = std::min(hix, wholeOfLong(rightx));
+            if (lx < rx) {
+                std::fill_n(op.row(y) + (lx - op.box.fLeft), rx - lx, pixel);
+                if (target != nullptr) std::fill_n(target->mirror.getAddr32(lx, y), rx - lx, mirrorPixel);
+            }
+            leftx += dleftx; rightx += drightx;
+        }
+    }
+};
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_skia_SKRasterShapePipe_fillParallelogramColor(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat, jdoubleArray pgramArray,
+                                                               jint flags, jint argb, jint boxLeftTop, jint boxRightBottom)
+{
+    const jint compositeRule = flags & 0xff; const bool antialias = (flags >> 8) & 1, mirrorKept = (flags >> 15) & 1;
+    const jint boxX1 = px(boxLeftTop), boxY1 = py(boxLeftTop), boxX2 = px(boxRightBottom), boxY2 = py(boxRightBottom);
+    jdouble g[6]; env->GetDoubleArrayRegion(pgramArray, 0, 6, g);
+    double x0 = g[0], y0 = g[1], dx1 = g[2], dy1 = g[3], dx2 = g[4], dy2 = g[5];
+    if ((dy1 == 0 && dx1 == 0) || (dy2 == 0 && dx2 == 0)) return JNI_TRUE;
+    const bool opaque = ((argb >> 24) & 0xff) == 0xff;
+    const bool store = !antialias && (compositeRule == java_awt_AlphaComposite_SRC || (opaque && compositeRule == java_awt_AlphaComposite_SRC_OVER));
+    if (!antialias && !store) return JNI_FALSE;   // a translucent non-antialiased colour: the path route keeps the loops' blend
+    if (antialias) {
+        Operation op(env, sData, pixelFormat, boxX1, boxY1, boxX2, boxY2, Operation::kBox, mirrorKept);
+        if (!op.ok) return JNI_TRUE;
+        SkPaint paint;
+        paint.setAntiAlias(true);
+        paint.setColor(swizzled(argb));
+        paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
+        const SkPoint corners[4] = {{(float) x0, (float) y0}, {(float) (x0 + dx1), (float) (y0 + dy1)},
+                                    {(float) (x0 + dx1 + dx2), (float) (y0 + dy1 + dy2)}, {(float) (x0 + dx2), (float) (y0 + dy2)}};
+        op.canvas()->drawPath(SkPath::Polygon(SkSpan<const SkPoint>(corners, 4), true), paint);
+        return JNI_TRUE;
+    }
+    // SORT_PGRAM: each delta with a non-negative y, dxy1 left of dxy2
+    if (dy1 < 0) { x0 += dx1; y0 += dy1; dx1 = -dx1; dy1 = -dy1; }
+    if (dy2 < 0) { x0 += dx2; y0 += dy2; dx2 = -dx2; dy2 = -dy2; }
+    if (dx1 * dy2 > dx2 * dy1) { std::swap(dx1, dx2); std::swap(dy1, dy2); }
+    // the vertical extent, half up; the box from Java is PGRAM_MIN_MAX inside the clip
+    const jint iy1 = std::max(boxY1, (jint) std::floor(y0 + 0.5)), iy2 = std::min(boxY2, (jint) std::floor(y0 + dy1 + dy2 + 0.5));
+    const jint ix1 = boxX1, ix2 = boxX2;
+    if (iy1 >= iy2 || ix1 >= ix2) return JNI_TRUE;
+    Operation op(env, sData, pixelFormat, ix1, iy1, ix2, iy2, Operation::kDirect, mirrorKept);
+    if (!op.ok) return JNI_TRUE;
+    const uint32_t pixel = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE ? premultiplied((uint32_t) argb) : (uint32_t) argb;
+    RasterTarget *target = peekTarget(op.ops);
+    if (target != nullptr && target->viaMirror()) {
+        if (!target->mirrorCurrent(mirrorKept)) { target->invalidateMirror(); target = nullptr; }
+    } else {
+        target = nullptr;
+    }
+    PgramStore st{op, pixel, target, premultiplied((uint32_t) argb)};
+    const double lslope = dy1 == 0 ? 0 : dx1 / dy1, rslope = dy2 == 0 ? 0 : dx2 / dy2;
+    const jlong ldx = dblToLong(lslope), rdx = dblToLong(rslope);
+    const double ex1 = x0 + dx1, ey1 = y0 + dy1, ex2 = x0 + dx2, ey2 = y0 + dy2;   // the legs' corners
+    const jint cy1 = (jint) std::floor(ey1 + 0.5), cy2 = (jint) std::floor(ey2 + 0.5);
+    // top triangle
+    { jint loy = iy1, hiy = std::min(std::min(cy1, cy2), iy2);
+      if (loy < hiy) st.spans(ix1, loy, ix2, hiy, pgramInitX(loy, x0, y0, lslope), ldx, pgramInitX(loy, x0, y0, rslope), rdx); }
+    // middle: slanted right (left leg turned at ey1) or left (right leg turned at ey2)
+    if (cy1 < cy2) {
+        jint loy = std::max(cy1, iy1), hiy = std::min(cy2, iy2);
+        if (loy < hiy) st.spans(ix1, loy, ix2, hiy, pgramInitX(loy, ex1, ey1, rslope), rdx, pgramInitX(loy, x0, y0, rslope), rdx);
+    } else if (cy2 < cy1) {
+        jint loy = std::max(cy2, iy1), hiy = std::min(cy1, iy2);
+        if (loy < hiy) st.spans(ix1, loy, ix2, hiy, pgramInitX(loy, x0, y0, lslope), ldx, pgramInitX(loy, ex2, ey2, lslope), ldx);
+    }
+    // bottom triangle
+    { jint loy = std::max(std::max(cy1, cy2), iy1), hiy = iy2;
+      if (loy < hiy) st.spans(ix1, loy, ix2, hiy, pgramInitX(loy, ex1, ey1, rslope), rdx, pgramInitX(loy, ex2, ey2, lslope), ldx); }
+    if (target != nullptr) target->epoch = tLastWriteLock;
+    return JNI_TRUE;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, jobject sData, jint pixelFormat,
                                                    jbyteArray typesArray, jint typeCount, jfloatArray coordsArray, jint coordCount, jint flags,
