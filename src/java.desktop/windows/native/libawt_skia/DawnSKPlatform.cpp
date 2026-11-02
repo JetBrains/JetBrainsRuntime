@@ -1005,6 +1005,13 @@ bool SKPlatform_LcdOrderIsBGR()
     return orientation == FE_FONTSMOOTHINGORIENTATIONBGR;
 }
 
+// Windows' smoothing settings are the desktop hints' business (SPI_GETFONTSMOOTHING); the
+// platform's masks follow the hint the pipe asks for, so nothing is switched off here.
+bool SKPlatform_FontSmoothingEnabled()
+{
+    return true;
+}
+
 // The display scale from which DirectWrite's symmetric mode halves its placement
 // and coverage sampling (measured between 1.792 and 1.8125; 173 dpi).
 const float HIGH_DPI_SCALE = 1.8f;

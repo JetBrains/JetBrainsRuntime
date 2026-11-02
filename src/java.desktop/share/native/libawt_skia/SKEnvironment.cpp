@@ -31,6 +31,7 @@
 #include "jlong.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "SKBackend.h"
+#include "SKPlatform.h"
 #include "SKGlyphCache.h"
 #include "SKPipelineCache.h"
 #include "Trace.h"
@@ -85,6 +86,12 @@ JNIEXPORT jint JNICALL
 Java_sun_java2d_skia_SKEnvironment_glyphCacheSizeNative(JNIEnv *env, jclass clazz)
 {
     return SKBackend_GlyphCacheTexels();
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_skia_SKEnvironment_platformFontSmoothingNative(JNIEnv *env, jclass clazz)
+{
+    return SKPlatform_FontSmoothingEnabled() ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jint JNICALL

@@ -36,6 +36,7 @@
 #include "include/ports/SkFontMgr_mac_ct.h"
 #include "include/ports/SkTypeface_mac.h"
 #include "include/core/SkMatrix.h"
+#import <Foundation/Foundation.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreText/CoreText.h>
 #import <objc/runtime.h>
@@ -253,6 +254,19 @@ bool SKPlatform_LcdOrderIsBGR()
     return false;
 }
 
+// AppleFontSmoothing as AppKit reads it (NSUserDefaults, so a process's -AppleFontSmoothing
+// argument counts too): unset or non-zero is on, 0 is off. Measured 2026-11-02: AppKit renders
+// unsmoothed at 0 and identically for unset, 1, 2 and 3, while a CoreGraphics bitmap context
+// smooths by default whatever the preference says — so the switch must be set explicitly.
+bool SKPlatform_FontSmoothingEnabled()
+{
+    static const bool enabled = [] {
+        id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleFontSmoothing"];
+        return value == nil || ![value respondsToSelector:@selector(integerValue)] || [value integerValue] != 0;
+    }();
+    return enabled;
+}
+
 int SKPlatform_GlyphPlacementGrid(const SkTypeface *, float, float displayScale, bool lcd)
 {
     if (lcd) {
@@ -294,7 +308,7 @@ bool SKPlatform_SmoothedGlyphMask(const SkTypeface *typeface, uint16_t glyph, co
     CGContextFillRect(cg, CGRectMake(0, 0, width, height));
     CGContextSetShouldAntialias(cg, true);
     CGContextSetAllowsFontSmoothing(cg, true);
-    CGContextSetShouldSmoothFonts(cg, true);
+    CGContextSetShouldSmoothFonts(cg, SKPlatform_FontSmoothingEnabled());   // the user's preference, as AppKit honours it
     CGContextSetAllowsFontSubpixelPositioning(cg, true);
     CGContextSetShouldSubpixelPositionFonts(cg, true);
     // quantization on, as AppKit draws: the glyph origin arrives on the platform's grid

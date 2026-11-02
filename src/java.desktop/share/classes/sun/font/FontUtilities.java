@@ -151,9 +151,14 @@ public final class FontUtilities {
             // (CoreGraphics on macOS as "cg", DirectWrite on Windows as "platform")
             String gray = System.getProperty("sun.java2d.skia.text.gray", "");
             textLuminanceClasses = luminanceClassesProperty();
-            textLuminanceDependent = useSkiaScaler
-                    && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray))
-                    && textLuminanceClasses > 1;
+            boolean platformRoute = useSkiaScaler && ("cg".equalsIgnoreCase(gray) || "platform".equalsIgnoreCase(gray));
+            if (platformRoute && OSInfo.getOSType() == OSInfo.OSType.MACOSX
+                    && !sun.java2d.skia.SKEnvironment.platformFontSmoothing()) {
+                // smoothing off (AppleFontSmoothing 0): CoreGraphics' output no longer depends on the text's
+                // luminance, so one class is every class
+                textLuminanceClasses = 1;
+            }
+            textLuminanceDependent = platformRoute && textLuminanceClasses > 1;
             if (textLuminanceDependent) {
                 try {
                     lcdColorBits = Math.max(0, Math.min(8, Integer.parseInt(System.getProperty("sun.java2d.skia.text.lcdColorBits", "0"))));

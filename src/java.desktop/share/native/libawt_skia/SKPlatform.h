@@ -172,5 +172,11 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, f
 // images follow. Windows: SPI_GETFONTSMOOTHINGORIENTATION, as the JDK's
 // lcdglyph.c reads it for the desktop hints; macOS: false (no sub-pixel masks).
 bool SKPlatform_LcdOrderIsBGR();
+// Whether the user has font smoothing on, as the platform's own text stack decides it:
+// macOS reads AppleFontSmoothing the way AppKit does (0 = off, anything else on; the
+// historic strength levels render alike on current macOS), Windows always true (its
+// smoothing settings are the desktop hints' business). The platform's smoothed masks
+// (SKPlatform_SmoothedGlyphMask) and Skia's text path's smoothing request follow it.
+bool SKPlatform_FontSmoothingEnabled();
 
 #endif /* SKPlatform_h_Included */

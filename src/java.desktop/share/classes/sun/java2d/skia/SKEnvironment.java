@@ -378,9 +378,19 @@ public final class SKEnvironment {
         return TEXT_PARAGRAPH_BY_SKIA;
     }
 
-    /** Whether Skia's text path requests the platform's font smoothing for its glyph masks. */
+    /** Whether Skia's text path requests the platform's font smoothing for its glyph masks — only where the user has smoothing on. */
     public static boolean textSmoothing() {
-        return TEXT_SMOOTHING;
+        return TEXT_SMOOTHING && platformFontSmoothing();
+    }
+
+    /**
+     * Whether the user has font smoothing on, as the platform's text stack decides it (macOS:
+     * AppleFontSmoothing read like AppKit reads it, 0 is off; Windows: always). The platform's
+     * smoothed glyph masks follow it, and with it off their luminance classes collapse to one.
+     * True when the library is not there: nothing to switch off then.
+     */
+    public static boolean platformFontSmoothing() {
+        return !loadLibrary() || platformFontSmoothingNative();
     }
 
     /** How many glyphs the backend has drawn through Skia's text path so far (diagnostics, tests). */
@@ -545,6 +555,8 @@ public final class SKEnvironment {
     }
 
     private static native int luminanceClassesNative();
+
+    private static native boolean platformFontSmoothingNative();
 
     /**
      * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a

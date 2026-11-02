@@ -427,6 +427,24 @@ CGGI_GetRenderingMode(const AWTStrike *strike)
 #pragma mark --- Canvas Management ---
 
 /*
+ * The user's font smoothing preference, as AppKit honours it: AppleFontSmoothing 0 is off,
+ * unset or anything else on (the historic strength levels render identically on current
+ * macOS). A CoreGraphics bitmap context smooths by default whatever the preference says, so
+ * the canvas sets the switch explicitly after the rendering style. Read once, like AppKit.
+ */
+static bool
+CGGI_FontSmoothingEnabled(void)
+{
+    static bool enabled = true;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleFontSmoothing"];
+        enabled = value == nil || ![value respondsToSelector:@selector(integerValue)] || [value integerValue] != 0;
+    });
+    return enabled;
+}
+
+/*
  * Creates a new canvas of a fixed size, and initializes the CGContext as
  * an 32-bit ARGB BitmapContext with some generic RGB color space.
  */
@@ -537,6 +555,7 @@ CGGI_SizeCanvas(CGGI_GlyphCanvas *canvas, const vImagePixelCount width,
                     h,
                     mode);
     JRSFontSetRenderingStyleOnContext(canvas->context, mode->cgFontMode);
+    CGContextSetShouldSmoothFonts(canvas->context, CGGI_FontSmoothingEnabled());
 }
 
 /*
@@ -868,6 +887,7 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
 
     CGContextSetFont(canvas->context, strike->fAWTFont->fNativeCGFont);
     JRSFontSetRenderingStyleOnContext(canvas->context, strike->fStyle);
+    CGContextSetShouldSmoothFonts(canvas->context, CGGI_FontSmoothingEnabled());
 
     CTFontRef mainFont = (CTFontRef)strike->fAWTFont->fFont;
     CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, mainFont);
