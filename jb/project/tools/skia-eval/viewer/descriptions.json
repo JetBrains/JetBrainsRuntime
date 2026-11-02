@@ -702,7 +702,7 @@
     "gray": "skia"
    },
    "title": "Skia backend, Skia's shaper and text path",
-   "description": "Everything from the characters on is Skia's: HarfBuzz shaping through SkShaper, Skia's font fallback, Skia's strike, atlas and blending with its gamma model (`-Dsun.java2d.skia.text=shaper`). Java supplies the font, size and baseline origin; kerning and ligatures are off, as in Java's drawString. Measured pixel-identical to the Java-layout arm on these sheets at 1× (fractional and whole-pixel), one glyph apart at 2×."
+   "description": "Everything from the characters on is Skia's: HarfBuzz shaping through SkShaper, Skia's font fallback, Skia's strike, atlas and blending with its gamma model (`-Dsun.java2d.skia.text.shaping=skia`). Java supplies the font, size and baseline origin; kerning and ligatures are off, as in Java's drawString. Measured pixel-identical to the Java-layout arm on these sheets at 1× (fractional and whole-pixel), one glyph apart at 2×."
   },
   "skia-shaper-smoothed": {
    "dims": {
@@ -724,7 +724,7 @@
     "gray": "skia smoothed"
    },
    "title": "Skia backend, Skia's paragraph engine, shaper and text path",
-   "description": "Everything from the characters on is Skia's, for attributed strings too: SkParagraph lays out the runs and draws the underline, SkShaper shapes, Skia's text path rasterizes and blends (`-Dsun.java2d.skia.text=paragraph`). The plain rows equal the shaper arm pixel for pixel; in the underlined row the glyphs sit where the plain row's do and take the sheet's antialiasing, positioning and smoothing. The underline comes from the font's underline metrics without snapping to the pixel grid: it lands up to one pixel above Java's and CoreText's, spread over two scanlines, starts one pixel earlier, and is anti-aliased even on the aliased sheet."
+   "description": "Everything from the characters on is Skia's, for attributed strings too: SkParagraph lays out the runs and draws the underline, SkShaper shapes, Skia's text path rasterizes and blends (`-Dsun.java2d.skia.text.paragraphs=skia`). The plain rows equal the shaper arm pixel for pixel; in the underlined row the glyphs sit where the plain row's do and take the sheet's antialiasing, positioning and smoothing. The underline comes from the font's underline metrics without snapping to the pixel grid: it lands up to one pixel above Java's and CoreText's, spread over two scanlines, starts one pixel earlier, and is anti-aliased even on the aliased sheet."
   },
   "skia-text-cg": {
    "dims": {
@@ -735,7 +735,7 @@
     "gray": "cg"
    },
    "title": "Skia backend, Skia's text path with CoreGraphics masks",
-   "description": "Skia's own text path (strike, atlas, blending) from Java's glyph codes and positions, with the glyph masks inside Skia's strike coming from CoreGraphics with font smoothing for the text color's luminance class, blended plainly (`-Dsun.java2d.skia.text=skia -Dsun.java2d.skia.text.gray=cg`): the native look through Skia's atlas. Compare with the Skia pipe's glyph images on the same route."
+   "description": "Skia's own text path (strike, atlas, blending) from Java's glyph codes and positions, with the glyph masks inside Skia's strike coming from CoreGraphics with font smoothing for the text color's luminance class, blended plainly (`-Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=system`): the native look through Skia's atlas. Compare with the Skia pipe's glyph images on the same route."
   },
   "skia-paragraph-cg": {
    "dims": {
@@ -746,7 +746,7 @@
     "gray": "cg"
    },
    "title": "Skia backend, Skia's layout, shaping and text path with CoreGraphics masks",
-   "description": "The whole route Skia's (paragraph engine, shaper, strike, atlas, blending) with CoreGraphics' smoothed masks per text-luminance class inside Skia's strike (`-Dsun.java2d.skia.text=paragraph -Dsun.java2d.skia.text.gray=cg`). The candidate for 'all text by Skia with the native look'."
+   "description": "The whole route Skia's (paragraph engine, shaper, strike, atlas, blending) with CoreGraphics' smoothed masks per text-luminance class inside Skia's strike (`-Dsun.java2d.skia.text.paragraphs=skia -Dsun.java2d.skia.text.blend=system`). The candidate for 'all text by Skia with the native look'."
   },
   "coretext-continuous": {
    "dims": {
@@ -967,7 +967,7 @@
     "gray": "cg"
    },
    "title": "Skia backend, Skia's shaper and text path with CoreGraphics masks",
-   "description": "drawString shaped by Skia's shaper (HarfBuzz, features off) and drawn through Skia's text path, the masks CoreGraphics' per text brightness inside Skia's strike (-Dsun.java2d.skia.text=shaper -Dsun.java2d.skia.text.gray=cg): the full-Skia route for plain strings at native fidelity; the FS arm of the performance comparison."
+   "description": "drawString shaped by Skia's shaper (HarfBuzz, features off) and drawn through Skia's text path, the masks CoreGraphics' per text brightness inside Skia's strike (-Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=system): the full-Skia route for plain strings at native fidelity; the FS arm of the performance comparison."
   },
   "F5-skia-full-cg": {
    "dims": {
@@ -1185,6 +1185,51 @@
    },
    "title": "R5: Skia raster surface, Skia's text path with DirectWrite masks",
    "description": "The raster surface with the Skia scaler and Skia's own text path (sun.java2d.font.scaler=skia, sun.java2d.skia.text=skia): every glyph rasterized by Skia's DirectWrite host and blended by Skia, on the CPU. Captured 2026-10-28, compared against the 2026-10-27 software baseline (A0)."
+  },
+  "software-skia-scaler-coverage": {
+   "dims": {
+    "renderer": "software",
+    "layout": "java2d",
+    "blend": "plain",
+    "scaler": "skia",
+    "gray": "coverage",
+    "lcdSource": "scaler"
+   },
+   "title": "Software loops, Skia scaler, plain coverage",
+   "description": "Java's software loops with the Skia font scaler's own coverage masks and no darkening (`-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none`)."
+  },
+  "metal-skia-scaler-coverage": {
+   "dims": {
+    "renderer": "metal",
+    "layout": "java2d",
+    "scaler": "skia",
+    "gray": "coverage",
+    "blend": "gamma"
+   },
+   "description": "The Metal pipeline with the Skia font scaler's own coverage masks and no darkening (`-Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none`).",
+   "title": "Metal pipeline, Skia scaler, plain coverage"
+  },
+  "skia-text-darkening": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "java2d",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed"
+   },
+   "title": "Skia backend, Skia's text path with the user's font smoothing",
+   "description": "Skia's own text path from Java's layout with the darkening the user's font smoothing preference asks for — on the CoreText host Skia's smoothed masks through its own gamma model (`-Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=system`)."
+  },
+  "skia-shaper-darkening": {
+   "dims": {
+    "renderer": "skia",
+    "layout": "skia shaper",
+    "blend": "skia text path",
+    "scaler": "skia",
+    "gray": "skia smoothed"
+   },
+   "title": "Skia backend, Skia's shaper and text path with the user's font smoothing",
+   "description": "Skia's shaper and text path with the darkening the user's font smoothing preference asks for (`-Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=system`)."
   }
  },
  "sets": {
@@ -1898,7 +1943,10 @@
   "T2-skia-darkened",
   "T3-skia-smoothed",
   "skia-scaler-darkened",
-  "skia-scaler-smoothed"
+  "skia-scaler-smoothed",
+  "software-skia-scaler",
+  "metal-skia-scaler",
+  "skia-text-smoothed"
  ],
  "pages": {
   "macOS": {
