@@ -31,6 +31,7 @@
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <tuple>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -54,8 +55,8 @@ namespace {
 class SKLuminanceScalerContext final : public SkScalerContext {
 public:
     SKLuminanceScalerContext(SkTypeface &typeface, const SkScalerContextEffects &effects,
-                             const SkDescriptor *desc, std::unique_ptr<SkScalerContext> inner, int luminance)
-        : SkScalerContext(typeface, effects, desc), fInner(std::move(inner)), fLuminance(luminance) {}
+                             const SkDescriptor *desc, std::unique_ptr<SkScalerContext> inner, int luminance, int grid)
+        : SkScalerContext(typeface, effects, desc), fInner(std::move(inner)), fLuminance(luminance), fGrid(grid) {}
 
 protected:
     GlyphMetrics generateMetrics(const SkGlyph &glyph, SkArenaAlloc *alloc) override {
@@ -106,7 +107,13 @@ private:
         // the glyph's design space in device pixels: size, synthetic skew and the 2x2 remainder
         const SkMatrix glyphToDevice = fRec.getSingleMatrix();
         const float stroke = (fRec.fFlags & kEmbolden_Flag) ? fRec.fTextSize * SK_SYNTHETIC_BOLD_EM : 0;   // as Java's synthetic bold
-        const float originX = (float) -glyph.left() + SkFixedToFloat(glyph.getSubXFixed());
+        // Skia's sub-pixel position is the nearest quarter; on the platform's grid the text path
+        // placed the glyph on a step first, so the quarter bucket names that step: back onto it
+        float subX = SkFixedToFloat(glyph.getSubXFixed());
+        if (fGrid > 0) {
+            subX = (float) std::lround(subX * fGrid) / (float) fGrid;
+        }
+        const float originX = (float) -glyph.left() + subX;
         const float originY = (float) -glyph.top() + SkFixedToFloat(glyph.getSubYFixed());
         std::vector<uint8_t> mask((size_t) width * height);
         // displayScale 1: the rec carries no display scale; CoreGraphics takes the device transform
@@ -123,26 +130,27 @@ private:
     }
 
     std::unique_ptr<SkScalerContext> fInner;
+    const int fGrid;
     const int fLuminance;
 };
 
 class SKLuminanceTypeface final : public SkTypeface {
 public:
-    SKLuminanceTypeface(sk_sp<SkTypeface> inner, int luminance)
-        : SkTypeface(inner->fontStyle(), inner->isFixedPitch()), fInner(std::move(inner)), fLuminance(luminance) {}
+    SKLuminanceTypeface(sk_sp<SkTypeface> inner, int luminance, int grid)
+        : SkTypeface(inner->fontStyle(), inner->isFixedPitch()), fInner(std::move(inner)), fLuminance(luminance), fGrid(grid) {}
 
 protected:
     std::unique_ptr<SkScalerContext> onCreateScalerContext(const SkScalerContextEffects &effects,
                                                            const SkDescriptor *desc) const override {
         return std::make_unique<SKLuminanceScalerContext>(*const_cast<SKLuminanceTypeface *>(this), effects, desc,
-                                                          fInner->createScalerContext(effects, desc), fLuminance);
+                                                          fInner->createScalerContext(effects, desc), fLuminance, fGrid);
     }
     void onFilterRec(SkScalerContextRec *rec) const override {
         fInner->filterRec(rec);
         rec->ignorePreBlend();   // the masks are final coverage: no gamma or contrast on top
     }
     sk_sp<SkTypeface> onMakeClone(const SkFontArguments &args) const override {
-        return SKLuminanceTypeface_For(fInner->makeClone(args), fLuminance);
+        return SKLuminanceTypeface_For(fInner->makeClone(args), fLuminance, fGrid);
     }
     std::unique_ptr<SkAdvancedTypefaceMetrics> onGetAdvancedMetrics() const override {
         return nullptr;   // PDF only; the wrapped typeface's are private to it
@@ -216,11 +224,12 @@ protected:
 private:
     sk_sp<SkTypeface> fInner;
     const int fLuminance;
+    const int fGrid;
 };
 
 class SKLuminanceFontMgr final : public SkFontMgr {
 public:
-    SKLuminanceFontMgr(sk_sp<SkFontMgr> inner, int luminance) : fInner(std::move(inner)), fLuminance(luminance) {}
+    SKLuminanceFontMgr(sk_sp<SkFontMgr> inner, int luminance, int grid) : fInner(std::move(inner)), fLuminance(luminance), fGrid(grid) {}
 
 protected:
     int onCountFamilies() const override { return fInner->countFamilies(); }
@@ -252,35 +261,36 @@ protected:
 
 private:
     sk_sp<SkTypeface> wrap(sk_sp<SkTypeface> typeface) const {
-        return typeface ? SKLuminanceTypeface_For(std::move(typeface), fLuminance) : nullptr;
+        return typeface ? SKLuminanceTypeface_For(std::move(typeface), fLuminance, fGrid) : nullptr;
     }
 
     sk_sp<SkFontMgr> fInner;
     const int fLuminance;
+    const int fGrid;
 };
 
 } // namespace
 
-sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance) {
-    static std::map<std::pair<const SkFontMgr *, int>, sk_sp<SkFontMgr>> managers;   // render thread only
+sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance, int grid) {
+    static std::map<std::tuple<const SkFontMgr *, int, int>, sk_sp<SkFontMgr>> managers;   // render thread only
     if (!manager) {
         return nullptr;
     }
-    sk_sp<SkFontMgr> &proxy = managers[{manager.get(), luminance}];
+    sk_sp<SkFontMgr> &proxy = managers[{manager.get(), luminance, grid}];
     if (!proxy) {
-        proxy = sk_make_sp<SKLuminanceFontMgr>(std::move(manager), luminance);
+        proxy = sk_make_sp<SKLuminanceFontMgr>(std::move(manager), luminance, grid);
     }
     return proxy;
 }
 
-sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance) {
-    static std::map<std::pair<SkTypefaceID, int>, sk_sp<SkTypeface>> proxies;   // render thread only
+sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance, int grid) {
+    static std::map<std::tuple<SkTypefaceID, int, int>, sk_sp<SkTypeface>> proxies;   // render thread only
     if (!typeface) {
         return nullptr;
     }
-    sk_sp<SkTypeface> &proxy = proxies[{typeface->uniqueID(), luminance}];
+    sk_sp<SkTypeface> &proxy = proxies[{typeface->uniqueID(), luminance, grid}];
     if (!proxy) {
-        proxy = sk_make_sp<SKLuminanceTypeface>(std::move(typeface), luminance);
+        proxy = sk_make_sp<SKLuminanceTypeface>(std::move(typeface), luminance, grid);
     }
     return proxy;
 }

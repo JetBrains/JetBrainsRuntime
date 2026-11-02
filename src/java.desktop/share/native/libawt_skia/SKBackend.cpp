@@ -1920,17 +1920,38 @@ static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
            && font.getEdging() == SkFont::Edging::kAntiAlias && font.getTypeface() != nullptr;
 }
 
-static void applyGrayRoute(SkFont &font, jlong pScalerContext, SkColor textColour) {
+// The platform's placement steps per pixel for the strike when it rounds positions down to its
+// grid (CoreGraphics: thirds at 1x, halves at 2x — SKPlatform_GlyphPlacementGrid < 0), else 0:
+// the glyph-image route places glyphs on that grid as AppKit does; Skia's text path must too, or
+// the same masks land a quarter pixel apart (2026-11-02: 3× the distance to AppKit at fractional
+// positions, identical at whole-pixel ones).
+static int placementGrid(jlong pScalerContext) {
+    const int grid = SKFontScaler_PlacementGrid(pScalerContext);
+    return grid < 0 ? -grid : 0;
+}
+
+// Rounds a glyph's x down to the platform's grid with the same tie nudge the glyph-image path
+// applies before it floors (adjustSubpixel): a position a hair below a step is that step on both.
+static float snapX(float x, int grid) {
+    return grid > 0 ? std::floor((x + SUBPIXEL_TIE_NUDGE) * (float) grid) / (float) grid : x;
+}
+
+// Puts the strike's luminance proxy on the font when the strike takes the platform's masks;
+// returns the placement grid the caller snaps positions to (0 when none).
+static int applyGrayRoute(SkFont &font, jlong pScalerContext, SkColor textColour) {
     if (takesGrayRoute(font, pScalerContext)) {
-        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(textColour, pScalerContext)));
+        const int grid = placementGrid(pScalerContext);
+        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(textColour, pScalerContext), grid));
+        return grid;
     }
+    return 0;
 }
 
 // The font manager for the fallback runs: the platform's, or its luminance proxy when the
 // strike takes the cg route, so the characters the strike's font lacks get the route too.
 static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, SkColor textColour) {
     sk_sp<SkFontMgr> platform = SKPlatform_FontManager();
-    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(textColour, pScalerContext)) : platform;
+    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(textColour, pScalerContext), placementGrid(pScalerContext)) : platform;
 }
 
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
@@ -1982,14 +2003,14 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
         if (!SKFontScaler_ResolveGlyph(pScalerContext, code, &font, &glyph)) {
             continue;
         }
-        applyGrayRoute(font, pScalerContext, textColour);
+        const int grid = applyGrayRoute(font, pScalerContext, textColour);
         if (font.getTypeface() != runTypeface) {
             flushRun();
             runFont = font;
             runTypeface = font.getTypeface();
         }
         ids.push_back(glyph);
-        points.push_back({gx, gy});
+        points.push_back({font.isSubpixel() ? snapX(gx, grid) : gx, gy});
     }
     flushRun();
     return drawn;
@@ -2020,14 +2041,25 @@ namespace {
 // its origin, the top of the line.)
 class BaselineRunHandler final : public SkShaper::RunHandler {
 public:
+    // grid > 0: the platform's placement steps; the runs' x positions are rounded down to them
+    // in device space (the blob is drawn at originX), as the glyph-image route places glyphs
+    BaselineRunHandler(int grid, float originX) : grid(grid), originX(originX) {}
     void beginLine() override { pen = {0, 0}; }
     void runInfo(const RunInfo &) override {}
     void commitRunInfo() override {}
     Buffer runBuffer(const RunInfo &info) override {
         const SkTextBlobBuilder::RunBuffer &run = builder.allocRunPos(info.fFont, (int) info.glyphCount);
+        lastPoints = run.points();
+        lastCount = (int) info.glyphCount;
         return {run.glyphs, run.points(), nullptr, nullptr, pen};
     }
     void commitRunBuffer(const RunInfo &info) override {
+        if (grid > 0 && lastPoints != nullptr && info.fFont.isSubpixel()) {
+            for (int i = 0; i < lastCount; i++) {
+                lastPoints[i].fX = std::floor((originX + lastPoints[i].fX + SUBPIXEL_TIE_NUDGE) * (float) grid) / (float) grid - originX;
+            }
+        }
+        lastPoints = nullptr;
         pen += info.fAdvance;
         glyphs += info.glyphCount;
     }
@@ -2036,6 +2068,10 @@ public:
 
     size_t glyphs = 0;
 private:
+    const int grid;
+    const float originX;
+    SkPoint *lastPoints = nullptr;
+    int lastCount = 0;
     SkTextBlobBuilder builder;
     SkPoint pen = {0, 0};
 };
@@ -2079,7 +2115,7 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     }
     const SkPaint paint = SKBackend_MakePaint(true);
     sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, paint.getColor());
-    applyGrayRoute(font, pScalerContext, paint.getColor());
+    const int grid = applyGrayRoute(font, pScalerContext, paint.getColor());
     const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
     // Paragraph direction left to right (the shaper reorders right-to-left runs within it);
     // Java's drawString takes it from the first strong character.
@@ -2099,7 +2135,7 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
         {SkSetFourByteTag('c', 'l', 'i', 'g'), 0, 0, ~0u},
         {SkSetFourByteTag('c', 'a', 'l', 't'), 0, 0, ~0u},
     };
-    BaselineRunHandler handler;
+    BaselineRunHandler handler(grid, originX);
     s.shaper->shape(utf8.c_str(), utf8.size(), *fonts, *bidi, *script, *language,
                     javaDefaults, std::size(javaDefaults), SK_ScalarMax, &handler);
     sk_sp<SkTextBlob> blob = handler.makeBlob();

@@ -39,6 +39,7 @@ bool SKFontScaler_Font(jlong pContext, SkFont *font);
 // The strike's grayscale route (sun.font.SKFontScaler.GRAY_*), for the text path to apply it.
 jint SKFontScaler_BlendMode(jlong pContext);   // SKFontScaler.BLEND_*
 bool SKFontScaler_TextDarkening();             // the darkening dimension, resolved (one value per process)
+jint SKFontScaler_PlacementGrid(jlong pContext);   // the platform's glyph placement grid for the context's strike (SKPlatform_GlyphPlacementGrid; 0 when the strike is not on the platform's masks or has whole-pixel metrics)
 jint SKFontScaler_GrayLuminance(jlong pContext);   // the luminance the context's cg masks are rasterized for (SKFontScaler.GRAY_LUMINANCE when the strike has no class)
 
 #endif /* SKFontScaler_h_Included */
