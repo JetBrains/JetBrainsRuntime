@@ -2230,12 +2230,13 @@ void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, int to
               const std::vector<std::pair<float, float>> *gaps) {
     const int left = (int) std::lround(x1), right = (int) std::lround(x2);
     if (right <= left) return;
+    // the band's rows and ends are whole; a gap's edges are fractional and antialiased, as CoreText's
     SkPaint solid = paint;
-    solid.setAntiAlias(false);
+    solid.setAntiAlias(true);
     float start = (float) left;
     if (gaps != nullptr) {
         for (const auto &gap : *gaps) {
-            const float gx1 = std::floor(gap.first - kDecorationClearance), gx2 = std::ceil(gap.second + kDecorationClearance);
+            const float gx1 = gap.first - kDecorationClearance, gx2 = gap.second + kDecorationClearance;
             if (gx2 <= start || gx1 >= right) continue;
             if (gx1 > start) canvas->drawRect(SkRect::MakeLTRB(start, (float) top, gx1, (float) (top + rows)), solid);
             start = std::max(start, gx2);

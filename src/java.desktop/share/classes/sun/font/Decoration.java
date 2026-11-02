@@ -214,6 +214,10 @@ public class Decoration {
 
                 float ulBottom = cm.underlineOffset;
                 ulBottom += stdUnderline.getLowerDrawLimit(cm.underlineThickness);
+                if (sun.java2d.skia.SKEnvironment.decorationsSnapped() && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)) {
+                    // the system convention snaps the underline to device rows (TextDecorations): the bounds reach them
+                    ulBottom = Math.max(ulBottom, TextDecorations.underlineBottom(TextDecorations.fontMetrics(cm)));
+                }
                 maxY = Math.max(maxY, ulBottom);
             }
 
@@ -246,7 +250,7 @@ public class Decoration {
             // metrics on whole device rows, placed as CoreText places them, gaps where the ink crosses an
             // underline on macOS; the same rule draws Skia's paragraphs' decorations (SKBackend.cpp)
             boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped() && TextDecorations.snappable(g2d);
-            float[] fontDecorations = system ? TextDecorations.fontMetrics(label, cm) : null;
+            float[] fontDecorations = system ? TextDecorations.fontMetrics(cm) : null;
             if (strikethrough) {
                 if (system) {
                     TextDecorations.drawStrikethrough(g2d, x1, x2, y, fontDecorations[2], fontDecorations[3]);

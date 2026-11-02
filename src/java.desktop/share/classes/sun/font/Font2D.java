@@ -441,6 +441,19 @@ public abstract class Font2D {
         metrics[3] = strikeMetrics.getMaxAdvance();
 
         getStyleMetrics(font.getSize2D(), metrics, 4);
+        // the system text decorations (sun.java2d.skia.text.decorations=system) draw the font's own
+        // decoration metrics where the scaler reports them (the Skia scaler does): the line metrics
+        // say the same, as Java's offsets to the stroke's centre, so layouts and bounds follow the ink
+        if (sun.java2d.skia.SKEnvironment.decorationsSnapped()) {
+            if (!Float.isNaN(strikeMetrics.underlineOffset) && strikeMetrics.underlineThickness > 0) {
+                metrics[6] = strikeMetrics.underlineOffset + strikeMetrics.underlineThickness / 2;
+                metrics[7] = strikeMetrics.underlineThickness;
+            }
+            if (!Float.isNaN(strikeMetrics.strikethroughOffset) && strikeMetrics.strikethroughThickness > 0) {
+                metrics[4] = strikeMetrics.strikethroughOffset - strikeMetrics.strikethroughThickness / 2;
+                metrics[5] = strikeMetrics.strikethroughThickness;
+            }
+        }
     }
 
     /**

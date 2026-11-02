@@ -21,11 +21,13 @@ package sun.font;
 
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,32 +54,21 @@ public final class TextDecorations {
     }
 
     /**
-     * The font's decoration metrics for the label, in user space: {underline position (baseline to the top
-     * of the stroke, positive below), underline thickness, strikethrough centre (negative above the
-     * baseline), strikethrough thickness}. The strike's own values when its scaler reports them (the Skia
-     * scaler does), else Java's nominal ones from the core metrics, converted to the same convention. The
-     * paragraph route (SKBackend.cpp, drawSystemDecorations) resolves them the same way.
+     * The decoration metrics behind the core metrics, in user space: {underline position (baseline to the top
+     * of the stroke, positive below), underline thickness, strikethrough centre (negative above the baseline),
+     * strikethrough thickness}. Under the system convention the core metrics carry the font's own values
+     * (Font2D.getFontMetrics, from the scaler's StrikeMetrics), else Java's nominal ones; both as offsets to the
+     * stroke's centre. The paragraph route (SKBackend.cpp, drawSystemDecorations) resolves the same values from
+     * Skia's font metrics.
      */
-    public static float[] fontMetrics(Decoration.Label label, CoreMetrics cm) {
-        float[] m = {cm.underlineOffset - cm.underlineThickness / 2, cm.underlineThickness, cm.strikethroughOffset, cm.strikethroughThickness};
-        Font font = label.getFont();
-        FontRenderContext frc = label.getFRC();
-        if (font == null || frc == null) {
-            return m;
-        }
-        Font2D font2D = FontUtilities.getFont2D(font);
-        int aa = FontStrikeDesc.getAAHintIntVal(frc.getAntiAliasingHint(), font2D, font.getSize());
-        int fm = FontStrikeDesc.getFMHintIntVal(frc.getFractionalMetricsHint());
-        StrikeMetrics sm = font2D.getStrike(font, new AffineTransform(), aa, fm).getFontMetrics();   // user space: the device scale is the graphics'
-        if (!Float.isNaN(sm.underlineOffset) && sm.underlineThickness > 0) {
-            m[0] = sm.underlineOffset;
-            m[1] = sm.underlineThickness;
-        }
-        if (!Float.isNaN(sm.strikethroughOffset) && sm.strikethroughThickness > 0) {
-            m[2] = sm.strikethroughOffset - sm.strikethroughThickness / 2;   // Skia's position is the stroke's bottom
-            m[3] = sm.strikethroughThickness;
-        }
-        return m;
+    public static float[] fontMetrics(CoreMetrics cm) {
+        return new float[] {cm.underlineOffset - cm.underlineThickness / 2, cm.underlineThickness, cm.strikethroughOffset, cm.strikethroughThickness};
+    }
+
+    /** The bottom of the underline's band in user space at scale 1, for bounds (the rows at other scales lie within it). */
+    public static float underlineBottom(float[] fontMetrics) {
+        int[] band = underlineBand(fontMetrics[0], fontMetrics[1]);
+        return band[0] + band[1];
     }
 
     /**
@@ -97,7 +88,8 @@ public final class TextDecorations {
     /**
      * Draws an underline from {@code x1} to {@code x2} under the baseline {@code y} (user space) by
      * {@link #underlineBand}; with {@code outline} (the glyphs' outline in user space) the line leaves gaps
-     * where the ink crosses it, one device pixel clear on each side.
+     * where the ink crosses it, one device pixel clear on each side, the gap's edges antialiased at their
+     * fractional positions as CoreText's are (the rows stay whole).
      */
     public static void drawUnderline(Graphics2D g2d, float x1, float x2, float y, float position, float thickness, Shape outline) {
         AffineTransform at = g2d.getTransform();
@@ -122,25 +114,31 @@ public final class TextDecorations {
         fillBand(g2d, a.getX(), b.getX(), top, rows, List.of());
     }
 
-    /** Fills the device rows {@code [top, top + rows)} from {@code x1} to {@code x2} (device), skipping the gaps widened by the clearance. */
+    /**
+     * Fills the device rows {@code [top, top + rows)} from {@code x1} to {@code x2} (device), skipping the gaps
+     * widened by the clearance; the gaps' edges are fractional and antialiased, the band's rows and ends whole.
+     */
     static void fillBand(Graphics2D g2d, double x1, double x2, int top, int rows, List<double[]> gaps) {
         int left = (int) Math.round(x1), right = (int) Math.round(x2);
         if (right <= left) {
             return;
         }
         AffineTransform saved = g2d.getTransform();
+        Object savedAA = g2d.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
         g2d.setTransform(new AffineTransform());
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         try {
-            int start = left;
+            double start = left;
             for (double[] gap : gaps) {
-                int gx1 = (int) Math.floor(gap[0] - CLEARANCE), gx2 = (int) Math.ceil(gap[1] + CLEARANCE);
+                double gx1 = gap[0] - CLEARANCE, gx2 = gap[1] + CLEARANCE;
                 if (gx2 <= start || gx1 >= right) continue;
-                if (gx1 > start) g2d.fillRect(start, top, gx1 - start, rows);
+                if (gx1 > start) g2d.fill(new Rectangle2D.Double(start, top, gx1 - start, rows));
                 start = Math.max(start, gx2);
             }
-            if (start < right) g2d.fillRect(start, top, right - start, rows);
+            if (start < right) g2d.fill(new Rectangle2D.Double(start, top, right - start, rows));
         } finally {
             g2d.setTransform(saved);
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, savedAA == null ? RenderingHints.VALUE_ANTIALIAS_DEFAULT : savedAA);
         }
     }
 
