@@ -662,15 +662,6 @@ bool SKFontScaler_Font(jlong pContext, SkFont *font)
     return true;
 }
 
-jint SKFontScaler_PlacementGrid(jlong pContext)
-{
-    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
-    if (context == nullptr || !context->fractionalMetrics || context->blend == sun_font_SKFontScaler_BLEND_CORRECTED) {
-        return 0;
-    }
-    return SKPlatform_GlyphPlacementGrid(context->font.getTypeface(), (float) context->font.getSize(), (float) context->displayScale, false);
-}
-
 bool SKFontScaler_TextDarkening()
 {
     return gTextDarkening;

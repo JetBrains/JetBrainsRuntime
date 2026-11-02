@@ -36,16 +36,12 @@
 // the wrapped typeface's. The proxy's own identity is the strike key, so Skia keeps one
 // strike per luminance class, as the Java side does with FontStrikeDesc.luminance.
 // luminance: the class representative (0..255). One proxy per (typeface, class).
-// grid > 0: the platform's placement steps per pixel (thirds, halves): Skia's nearest-quarter sub-pixel
-// position of a glyph is mapped onto that grid when the mask is rendered, and the text path snaps
-// positions to the grid before Skia sees them — the glyph lands where the glyph-image route and AppKit
-// put it (2026-11-02). 0: Skia's own placement.
-sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance, int grid = 0);
+sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance);
 
 // A font manager whose matches (fallback for a character, a family and style, the
 // legacy lookup) are the luminance proxies of the wrapped manager's typefaces, so the
 // fallback runs of Skia's shaper and paragraph engine take the route too. One per
 // (manager, class).
-sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance, int grid = 0);
+sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance);
 
 #endif /* SKLuminanceTypeface_h_Included */
