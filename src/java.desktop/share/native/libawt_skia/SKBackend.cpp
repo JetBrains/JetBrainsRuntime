@@ -2165,7 +2165,7 @@ SkString typefaceAlias(const SkTypeface *typeface) {
 // pixel of clearance on each side (macOS; Windows' DirectWrite draws through the ink). The runs come
 // from the paragraph's visitor in device space; a run's UTF-8 start maps it onto Java's run.
 namespace {
-constexpr float kDecorationClearance = 1.0f;
+constexpr float kDecorationClearance = 1.0f;   // in user-space pixels: CoreText clears one point beside the ink (two device pixels at 2x)
 
 void addCrossing(std::vector<std::pair<float, float>> &ranges, SkPoint a, SkPoint b, float yTop, float yBottom) {
     const float lo = std::min(a.fY, b.fY), hi = std::max(a.fY, b.fY);
@@ -2227,7 +2227,7 @@ DecorationBand underlineBand(float position, float thickness) {
 }
 
 void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, int top, int rows,
-              const std::vector<std::pair<float, float>> *gaps) {
+              const std::vector<std::pair<float, float>> *gaps, float clearance) {
     const int left = (int) std::lround(x1), right = (int) std::lround(x2);
     if (right <= left) return;
     // the band's rows and ends are whole; a gap's edges are fractional and antialiased, as CoreText's
@@ -2236,7 +2236,7 @@ void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, int to
     float start = (float) left;
     if (gaps != nullptr) {
         for (const auto &gap : *gaps) {
-            const float gx1 = gap.first - kDecorationClearance, gx2 = gap.second + kDecorationClearance;
+            const float gx1 = gap.first - clearance, gx2 = gap.second + clearance;
             if (gx2 <= start || gx1 >= right) continue;
             if (gx1 > start) canvas->drawRect(SkRect::MakeLTRB(start, (float) top, gx1, (float) (top + rows)), solid);
             start = std::max(start, gx2);
@@ -2267,7 +2267,7 @@ DecorationMetrics decorationMetrics(const SkFont &font) {
 }
 
 void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, const jchar *chars, jint length,
-                           jint runCount, const jint *runEnds, const jint *colours, const jint *flags, const SkPaint &paint) {
+                           jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags, const SkPaint &paint) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
     if (!any) return;
@@ -2319,12 +2319,13 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                         gaps = inkCrossings(info->font, info->glyphs, info->positions, info->count, runOrigin, (float) underlineTop, (float) (underlineTop + band.rows));
                         gapsReady = true;
                     }
-                    fillBand(canvas, runPaint, x1, x2, underlineTop, band.rows, skipInk ? &gaps : nullptr);
+                    fillBand(canvas, runPaint, x1, x2, underlineTop, band.rows, skipInk ? &gaps : nullptr,
+                             kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]));
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
                     const int rows = std::max(1, (int) std::lround(m.strikethroughThickness));
                     const int top = (int) std::lround(runOrigin.fY + m.strikethroughCentre - rows / 2.0f);
-                    fillBand(canvas, runPaint, x1, x2, top, rows, nullptr);
+                    fillBand(canvas, runPaint, x1, x2, top, rows, nullptr, 0);
                 }
             }
             i = j;
@@ -2426,7 +2427,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
     paragraph->layout(1e9f);   // one line: no wrapping
     const float paragraphTop = originY - paragraph->getAlphabeticBaseline();
     paragraph->paint(g.canvas, originX, paragraphTop);
-    drawSystemDecorations(*paragraph, g.canvas, originX, paragraphTop, chars, length, runCount, runEnds, colours, flags, paint);
+    drawSystemDecorations(*paragraph, g.canvas, originX, paragraphTop, chars, length, runCount, runEnds, contexts, colours, flags, paint);
     gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
     gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);   // the character count stands in for the glyph count
     gGlyphsDrawnBySkia.fetch_add(length, std::memory_order_relaxed);

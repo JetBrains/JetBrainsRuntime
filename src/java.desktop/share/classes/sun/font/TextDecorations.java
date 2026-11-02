@@ -44,7 +44,7 @@ import java.util.List;
 public final class TextDecorations {
     private TextDecorations() {}
 
-    /** The horizontal clearance around ink crossing an underline, in device pixels. */
+    /** The horizontal clearance around ink crossing an underline, in user-space pixels (CoreText's: one point, two device pixels at 2x). */
     static final double CLEARANCE = 1.0;
 
     /** Whether the graphics' transform lets a device-aligned line be drawn: a translation and a uniform scale. */
@@ -98,7 +98,7 @@ public final class TextDecorations {
         int[] band = underlineBand(position * scale, thickness * scale);
         int top = (int) Math.round(a.getY()) + band[0], rows = band[1];
         List<double[]> gaps = outline != null ? inkCrossings(outline, at, top, top + rows) : List.of();
-        fillBand(g2d, a.getX(), b.getX(), top, rows, gaps);
+        fillBand(g2d, a.getX(), b.getX(), top, rows, gaps, CLEARANCE * scale);
     }
 
     /**
@@ -111,14 +111,15 @@ public final class TextDecorations {
         Point2D a = at.transform(new Point2D.Double(x1, y), null), b = at.transform(new Point2D.Double(x2, y), null);
         int rows = Math.max(1, (int) Math.round(thickness * scale));
         int top = (int) Math.round(a.getY() + offset * scale - rows / 2.0);
-        fillBand(g2d, a.getX(), b.getX(), top, rows, List.of());
+        fillBand(g2d, a.getX(), b.getX(), top, rows, List.of(), 0);
     }
 
     /**
      * Fills the device rows {@code [top, top + rows)} from {@code x1} to {@code x2} (device), skipping the gaps
-     * widened by the clearance; the gaps' edges are fractional and antialiased, the band's rows and ends whole.
+     * widened by {@code clearance} device pixels; the gaps' edges are fractional and antialiased, the band's rows
+     * and ends whole.
      */
-    static void fillBand(Graphics2D g2d, double x1, double x2, int top, int rows, List<double[]> gaps) {
+    static void fillBand(Graphics2D g2d, double x1, double x2, int top, int rows, List<double[]> gaps, double clearance) {
         int left = (int) Math.round(x1), right = (int) Math.round(x2);
         if (right <= left) {
             return;
@@ -130,7 +131,7 @@ public final class TextDecorations {
         try {
             double start = left;
             for (double[] gap : gaps) {
-                double gx1 = gap[0] - CLEARANCE, gx2 = gap[1] + CLEARANCE;
+                double gx1 = gap[0] - clearance, gx2 = gap[1] + clearance;
                 if (gx2 <= start || gx1 >= right) continue;
                 if (gx1 > start) g2d.fill(new Rectangle2D.Double(start, top, gx1 - start, rows));
                 start = Math.max(start, gx2);

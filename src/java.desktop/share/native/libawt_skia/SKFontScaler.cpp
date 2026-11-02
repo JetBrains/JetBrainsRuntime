@@ -665,6 +665,12 @@ bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkG
     return true;
 }
 
+double SKFontScaler_DisplayScale(jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context == nullptr ? 1.0 : context->displayScale;
+}
+
 bool SKFontScaler_Font(jlong pContext, SkFont *font)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
