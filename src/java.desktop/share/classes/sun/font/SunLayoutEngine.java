@@ -75,17 +75,37 @@ public final class SunLayoutEngine {
                 : Set.of();
     }
 
+    // HarfBuzz keeps up to 5 code points of context on each side of the run
+    // (hb_buffer_t::CONTEXT_LENGTH in its internal hb-buffer.hh), at most 10 UTF-16 units.
+    // jb/java/awt/Font/ShapingContextTest checks the value in case of a future change.
+    private static final int HB_CONTEXT_LENGTH = 10;
+
     public static void layout(Font2D font, int script, FontStrikeDesc desc, float[] mat, int slot, int slotShift,
                        int baseIndex, TextRecord tr, boolean ltrDirection, String[] features,
                        Point2D.Float pt, GVData data) {
 
         FontStrike strike = font.getStrike(desc);
+
+        // Both shapers copy the entire array to native memory on every call,
+        // and long text is shaped in many runs, so pass only the run itself and its context.
+        char[] text = tr.text;
+        int start = tr.start;
+        int limit = tr.limit;
+
+        int contextStart = Math.max(0, start - HB_CONTEXT_LENGTH);
+        int contextLimit = Math.min(text.length, limit + HB_CONTEXT_LENGTH);
+        if (contextStart > 0 || contextLimit < text.length) {
+            text = Arrays.copyOfRange(text, contextStart, contextLimit);
+            start -= contextStart;
+            limit -= contextStart;
+        }
+
         if (useFFM) {
             MemorySegment face = HBShaper.getFace(font);
             if (face != null) {
                 HBShaper.shape(font, strike, mat, face,
-                        tr.text, data, script,
-                        tr.start, tr.limit, baseIndex, pt,
+                        text, data, script,
+                        start, limit, baseIndex, pt,
                         ltrDirection, String.join(";", features),
                         slot, slotShift);
             }
@@ -93,8 +113,8 @@ public final class SunLayoutEngine {
             long pFace = getFacePtr(font);
             if (pFace != 0) {
                 shape(font, strike, mat, pFace,
-                        tr.text, data, script,
-                        tr.start, tr.limit, baseIndex, pt,
+                        text, data, script,
+                        start, limit, baseIndex, pt,
                         ltrDirection, String.join(";", features),
                         slot, slotShift);
             }
