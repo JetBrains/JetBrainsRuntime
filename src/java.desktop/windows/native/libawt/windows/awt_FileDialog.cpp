@@ -118,15 +118,15 @@ public:
         m_pointer = other;
     }
 
-    operator bool() {
+    virtual operator bool() {
         return m_pointer != NULL;
     }
 
-    operator T*() {
+    virtual operator T*() {
         return m_pointer;
     }
 
-    ~SmartHolderBase() {
+    virtual ~SmartHolderBase() {
         Clean();
     }
 protected:
@@ -147,9 +147,9 @@ class SmartHolder : public SmartHolderBase<T> {
 template <typename T>
 class SmartHolder<T[]> : public SmartHolderBase<T> {
     virtual void Clean() {
-        if (m_pointer) {
-            delete [] m_pointer;
-            m_pointer = NULL;
+        if (this->m_pointer) {
+            delete [] this->m_pointer;
+            this->m_pointer = NULL;
         }
     }
 };
@@ -625,9 +625,9 @@ public:
 
                 LPCWSTR buttonLabel = nullptr;
                 if (isFolder) {
-                    buttonLabel = data->selectFolderButtonText ? data->selectFolderButtonText : L"Select Folder";
+                    buttonLabel = (bool)data->selectFolderButtonText ? (LPCWSTR)data->selectFolderButtonText : L"Select Folder";
                 } else {
-                    buttonLabel = data->openButtonText ? data->openButtonText : L"Open";
+                    buttonLabel = (bool)data->openButtonText ? (LPCWSTR)data->openButtonText : L"Open";
                 }
                 OLE_HRT(fileDialog->SetOkButtonLabel(buttonLabel));
 

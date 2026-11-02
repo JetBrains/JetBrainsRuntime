@@ -287,6 +287,7 @@ public:
     return (k->shared_classpath_index() != UNREGISTERED_INDEX);
   }
   static bool add_unregistered_class(Thread* current, InstanceKlass* k);
+  static InstanceKlass* get_unregistered_class(Symbol* name);
 
   static void check_excluded_classes();
   static bool check_for_exclusion(InstanceKlass* k, DumpTimeClassInfo* info);

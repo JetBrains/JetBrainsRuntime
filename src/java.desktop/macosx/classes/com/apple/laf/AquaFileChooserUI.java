@@ -1188,6 +1188,9 @@ public class AquaFileChooserUI extends FileChooserUI {
             setText(fc.getName(file));
             setIcon(fc.getIcon(file));
             setEnabled(isSelectableInList(file));
+
+            putClientProperty("html.disable", getFileChooser().getClientProperty("html.disable"));
+
             return this;
         }
     }
@@ -1253,6 +1256,9 @@ public class AquaFileChooserUI extends FileChooserUI {
                 final JFileChooser chooser = getFileChooser();
                 setText(chooser.getName(directory));
                 setIcon(chooser.getIcon(directory));
+
+                putClientProperty("html.disable", getFileChooser().getClientProperty("html.disable"));
+
                 return this;
             }
         };
