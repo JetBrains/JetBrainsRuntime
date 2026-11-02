@@ -1495,7 +1495,6 @@ static const TypeFunc* make_kyberAddPoly_2_Type() {
     return TypeFunc::make(domain, range);
 }
 
-
 // Kyber add 3 polynomials function
 static const TypeFunc* make_kyberAddPoly_3_Type() {
     int argcnt = 4;
@@ -1516,7 +1515,6 @@ static const TypeFunc* make_kyberAddPoly_3_Type() {
     const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
     return TypeFunc::make(domain, range);
 }
-
 
 // Kyber XOF output parsing into polynomial coefficients candidates
 // or decompress(12,...) function
