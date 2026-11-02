@@ -86,7 +86,11 @@ public final class SKEnvironment {
      * (system | plain | corrected: how a mask meets the text colour and the background —
      * masks rendered for the colour where the engine does that, CoreGraphics per luminance
      * and DirectWrite per colour; coverage interpolating the sRGB-encoded colours as stored;
-     * or the pipe's contrast curve, Java2D's LCD contrast and the pipes' text gamma).
+     * or the pipe's contrast curve, Java2D's LCD contrast and the pipes' text gamma), and
+     * {@code decorations} (system | java2d: underlines and strikethroughs on whole device
+     * rows from the font's own metrics, placed as CoreText places them and, on macOS, with
+     * gaps where the ink crosses an underline — the same rule on Java's TextLayout and on
+     * Skia's paragraphs; or Java's stroked lines at its nominal offsets).
      * Retired spellings still resolve: {@code sun.java2d.skia.text=skia|shaper|paragraph}
      * sets the route choices; {@code text.gray=cg|platform} is blend system, {@code coverage}
      * blend corrected with darkening none, {@code platformcoverage} blend plain with
@@ -97,6 +101,13 @@ public final class SKEnvironment {
     public enum TextHinting { SYSTEM, NONE, SLIGHT, NORMAL, FULL }
     public enum TextDarkening { SYSTEM, NONE }
     public enum TextBlend { SYSTEM, PLAIN, CORRECTED }
+    /**
+     * {@code decorations}: how underlines and strikethroughs are drawn. {@code system} = as the operating
+     * system's text draws them: on a whole device pixel row, at least one pixel thick, and on macOS with
+     * gaps where glyph ink crosses the line (CoreText skips descenders); the same rule on Java's TextLayout
+     * and on Skia's paragraphs (2026-11-02). {@code java2d} = Java's stroked line through the descenders.
+     */
+    public enum TextDecorations { SYSTEM, JAVA2D }
 
     private static final String TEXT_ROUTE = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);   // retired
     private static final boolean TEXT_PARAGRAPH_BY_SKIA = skiaChoice("sun.java2d.skia.text.paragraphs", TEXT_ROUTE.equals("paragraph"));
@@ -106,6 +117,7 @@ public final class SKEnvironment {
     private static final TextHinting TEXT_HINTING = enumProperty("sun.java2d.skia.text.hinting", TextHinting.class, TextHinting.SYSTEM);
     private static final TextDarkening TEXT_DARKENING;
     private static final TextBlend TEXT_BLEND;
+    private static final TextDecorations TEXT_DECORATIONS = enumProperty("sun.java2d.skia.text.decorations", TextDecorations.class, TextDecorations.SYSTEM);
     static {
         String gray = System.getProperty("sun.java2d.skia.text.gray");   // retired
         TextBlend blend = TextBlend.SYSTEM;
@@ -446,6 +458,21 @@ public final class SKEnvironment {
     }
 
     /** The blend dimension as configured ({@code sun.java2d.skia.text.blend}). */
+    /** The decorations dimension as configured ({@code sun.java2d.skia.text.decorations}). */
+    public static TextDecorations textDecorations() {
+        return TEXT_DECORATIONS;
+    }
+
+    /** Whether decorations snap to device pixels (the system convention everywhere). */
+    public static boolean decorationsSnapped() {
+        return TEXT_DECORATIONS == TextDecorations.SYSTEM;
+    }
+
+    /** Whether an underline leaves gaps where glyph ink crosses it: the system convention on macOS. */
+    public static boolean decorationsSkipInk() {
+        return TEXT_DECORATIONS == TextDecorations.SYSTEM && System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+    }
+
     public static TextBlend textBlend() {
         return TEXT_BLEND;
     }

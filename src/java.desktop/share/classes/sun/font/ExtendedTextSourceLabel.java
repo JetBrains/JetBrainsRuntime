@@ -417,6 +417,14 @@ final class ExtendedTextSourceLabel implements TextLineComponent, Decoration.Lab
     return cm;
   }
 
+  public Font getFont() {
+    return source.getFont();
+  }
+
+  public FontRenderContext getFRC() {
+    return source.getFRC();
+  }
+
   /**
    * Return the x location of the character at the given logical index.
    */

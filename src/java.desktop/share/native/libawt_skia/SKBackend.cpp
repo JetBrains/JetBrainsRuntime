@@ -95,6 +95,7 @@
 #include <unordered_set>
 #include <array>
 #include <cfloat>
+#include <limits>
 #include <vector>
 
 using namespace skgpu::graphite;
@@ -2157,6 +2158,177 @@ SkString typefaceAlias(const SkTypeface *typeface) {
 
 } // namespace
 
+// Text decorations as the operating system's text draws them, for the paragraph's runs that asked
+// for them (SK_PARAGRAPH_SYSTEM_DECORATIONS; SkParagraph painted none): the same rule and arithmetic
+// as sun.font.TextDecorations — the line's top row is the rounded top of the stroked line, at least one
+// row thick; an underline leaves a gap wherever the glyphs' outlines cross the band, with one device
+// pixel of clearance on each side (macOS; Windows' DirectWrite draws through the ink). The runs come
+// from the paragraph's visitor in device space; a run's UTF-8 start maps it onto Java's run.
+namespace {
+constexpr float kDecorationClearance = 1.0f;
+
+void addCrossing(std::vector<std::pair<float, float>> &ranges, SkPoint a, SkPoint b, float yTop, float yBottom) {
+    const float lo = std::min(a.fY, b.fY), hi = std::max(a.fY, b.fY);
+    if (hi <= yTop || lo >= yBottom) return;   // strictly inside the band: glyph bottoms resting on its edge do not cross
+    float xa = a.fX, xb = b.fX;
+    if (a.fY != b.fY) {
+        const float t0 = std::clamp((yTop - a.fY) / (b.fY - a.fY), 0.0f, 1.0f), t1 = std::clamp((yBottom - a.fY) / (b.fY - a.fY), 0.0f, 1.0f);
+        xa = a.fX + (b.fX - a.fX) * std::min(t0, t1);
+        xb = a.fX + (b.fX - a.fX) * std::max(t0, t1);
+    }
+    ranges.emplace_back(std::min(xa, xb), std::max(xa, xb));
+}
+
+// the x ranges where the glyph outlines of a run cross the band, merged
+std::vector<std::pair<float, float>> inkCrossings(const SkFont &font, const SkGlyphID *glyphs, const SkPoint *positions, int count,
+                                                  SkPoint runOrigin, float yTop, float yBottom) {
+    std::vector<std::pair<float, float>> ranges;
+    for (int i = 0; i < count; i++) {
+        const std::optional<SkPath> path = font.getPath(glyphs[i]);
+        if (!path || path->isEmpty()) continue;
+        const SkRect bounds = path->getBounds().makeOffset(runOrigin.fX + positions[i].fX, runOrigin.fY + positions[i].fY);
+        if (bounds.fBottom < yTop || bounds.fTop > yBottom) continue;
+        const SkPath placed = path->makeOffset(runOrigin.fX + positions[i].fX, runOrigin.fY + positions[i].fY);
+        SkPath::Iter it(placed, true);
+        SkPoint pts[4];
+        for (SkPath::Verb v = it.next(pts); v != SkPath::kDone_Verb; v = it.next(pts)) {
+            switch (v) {
+                case SkPath::kLine_Verb: addCrossing(ranges, pts[0], pts[1], yTop, yBottom); break;
+                case SkPath::kQuad_Verb: case SkPath::kConic_Verb: {
+                    SkPoint prev = pts[0];
+                    for (int k = 1; k <= 8; k++) { const float t = k / 8.0f; SkPoint q = {(1-t)*(1-t)*pts[0].fX + 2*(1-t)*t*pts[1].fX + t*t*pts[2].fX, (1-t)*(1-t)*pts[0].fY + 2*(1-t)*t*pts[1].fY + t*t*pts[2].fY}; addCrossing(ranges, prev, q, yTop, yBottom); prev = q; }
+                    break; }
+                case SkPath::kCubic_Verb: {
+                    SkPoint prev = pts[0];
+                    for (int k = 1; k <= 8; k++) { const float t = k / 8.0f, u = 1 - t; SkPoint q = {u*u*u*pts[0].fX + 3*u*u*t*pts[1].fX + 3*u*t*t*pts[2].fX + t*t*t*pts[3].fX, u*u*u*pts[0].fY + 3*u*u*t*pts[1].fY + 3*u*t*t*pts[2].fY + t*t*t*pts[3].fY}; addCrossing(ranges, prev, q, yTop, yBottom); prev = q; }
+                    break; }
+                default: break;
+            }
+        }
+    }
+    std::sort(ranges.begin(), ranges.end());
+    std::vector<std::pair<float, float>> merged;
+    for (const auto &r : ranges) {
+        if (!merged.empty() && r.first <= merged.back().second) merged.back().second = std::max(merged.back().second, r.second);
+        else merged.push_back(r);
+    }
+    return merged;
+}
+
+// the device rows of an underline: sun.font.TextDecorations.underlineBand (CoreText's placement, measured)
+struct DecorationBand { int top; int rows; };
+DecorationBand underlineBand(float position, float thickness) {
+    const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
+    const int top = std::max(rows + 1, (int) std::floor(position + 1.5f - rows / 2.0f));
+    return {top, rows};
+}
+
+void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, int top, int rows,
+              const std::vector<std::pair<float, float>> *gaps) {
+    const int left = (int) std::lround(x1), right = (int) std::lround(x2);
+    if (right <= left) return;
+    SkPaint solid = paint;
+    solid.setAntiAlias(false);
+    float start = (float) left;
+    if (gaps != nullptr) {
+        for (const auto &gap : *gaps) {
+            const float gx1 = std::floor(gap.first - kDecorationClearance), gx2 = std::ceil(gap.second + kDecorationClearance);
+            if (gx2 <= start || gx1 >= right) continue;
+            if (gx1 > start) canvas->drawRect(SkRect::MakeLTRB(start, (float) top, gx1, (float) (top + rows)), solid);
+            start = std::max(start, gx2);
+        }
+    }
+    if (start < right) canvas->drawRect(SkRect::MakeLTRB(start, (float) top, (float) right, (float) (top + rows)), solid);
+}
+
+// the font's decoration metrics as sun.font.TextDecorations.fontMetrics resolves them: the font's own,
+// else Java's nominal ones (Font2D.getStyleMetrics) in the same convention
+struct DecorationMetrics { float underlinePosition, underlineThickness, strikethroughCentre, strikethroughThickness; };
+DecorationMetrics decorationMetrics(const SkFont &font) {
+    SkFontMetrics metrics;
+    font.getMetrics(&metrics);
+    const float size = font.getSize();
+    const float nominalThickness = size / 12;
+    DecorationMetrics m = {nominalThickness / 1.5f - nominalThickness / 2, nominalThickness, metrics.fAscent / 2.5f, nominalThickness};
+    float position, thickness;
+    if (metrics.hasUnderlinePosition(&position) && metrics.hasUnderlineThickness(&thickness) && thickness > 0) {
+        m.underlinePosition = position;
+        m.underlineThickness = thickness;
+    }
+    if (metrics.hasStrikeoutPosition(&position) && metrics.hasStrikeoutThickness(&thickness) && thickness > 0) {
+        m.strikethroughCentre = position - thickness / 2;
+        m.strikethroughThickness = thickness;
+    }
+    return m;
+}
+
+void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, const jchar *chars, jint length,
+                           jint runCount, const jint *runEnds, const jint *colours, const jint *flags, const SkPaint &paint) {
+    bool any = false;
+    for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
+    if (!any) return;
+    // Java's runs in UTF-8 offsets (the paragraph was built from the runs' UTF-8)
+    std::vector<uint32_t> runUtf8Start(runCount + 1, 0);
+    jint start = 0;
+    for (jint r = 0; r < runCount; r++) {
+        const jint end = runEnds[r];
+        runUtf8Start[r + 1] = runUtf8Start[r] + (uint32_t) SkUnicode::convertUtf16ToUtf8((const char16_t *) chars + start, end - start).size();
+        start = end;
+    }
+    const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
+    SkAutoCanvasRestore restore(canvas, true);
+    canvas->resetMatrix();   // the bands are device rectangles (the text canvas carries no matrix; be sure)
+    paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
+        if (info == nullptr || info->count <= 0) return;
+        auto runOf = [&](uint32_t utf8) {
+            jint r = 0;
+            while (r + 1 < runCount && runUtf8Start[r + 1] <= utf8) r++;
+            return r;
+        };
+        const DecorationMetrics m = decorationMetrics(info->font);
+        // the paragraph is laid out in device space (SKTextRenderer passes the device origin, the strikes carry
+        // the device scale): the baseline row is the rounded baseline, as TextDecorations rounds the graphics' one
+        const SkPoint runOrigin = {originX + info->origin.fX, paragraphTop + info->origin.fY};
+        const int baselineRow = (int) std::lround(runOrigin.fY);
+        const DecorationBand band = underlineBand(m.underlinePosition, m.underlineThickness);
+        const int underlineTop = baselineRow + band.top;
+        std::vector<std::pair<float, float>> gaps;
+        bool gapsReady = false;
+        // SkParagraph's visitor runs are split by font and colour, not by decoration: the glyphs grouped by
+        // Java's run (each glyph's UTF-8 start names it), the decorations of each group over its glyphs' extent
+        for (int i = 0; i < info->count;) {
+            const jint r = runOf(info->utf8Starts[i]);
+            int j = i + 1;
+            while (j < info->count && runOf(info->utf8Starts[j]) == r) j++;
+            if (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) {
+                SkPaint runPaint = paint;
+                if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint.setColor((SkColor) colours[r]);
+                float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
+                for (int k = i; k < j; k++) {
+                    SkScalar advance = 0;
+                    info->font.getWidths({&info->glyphs[k], 1}, {&advance, 1});
+                    x1 = std::min(x1, runOrigin.fX + info->positions[k].fX);
+                    x2 = std::max(x2, runOrigin.fX + info->positions[k].fX + advance);
+                }
+                if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
+                    if (skipInk && !gapsReady) {   // the whole visitor run's ink: a neighbour's descender may cross this group's line
+                        gaps = inkCrossings(info->font, info->glyphs, info->positions, info->count, runOrigin, (float) underlineTop, (float) (underlineTop + band.rows));
+                        gapsReady = true;
+                    }
+                    fillBand(canvas, runPaint, x1, x2, underlineTop, band.rows, skipInk ? &gaps : nullptr);
+                }
+                if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
+                    const int rows = std::max(1, (int) std::lround(m.strikethroughThickness));
+                    const int top = (int) std::lround(runOrigin.fY + m.strikethroughCentre - rows / 2.0f);
+                    fillBand(canvas, runPaint, x1, x2, top, rows, nullptr);
+                }
+            }
+            i = j;
+        }
+    });
+}
+}
+
 void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags) {
@@ -2230,7 +2402,10 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
             decoration |= tl::kLineThrough;
         }
-        ts.setDecoration((tl::TextDecoration) decoration);
+        // decorations=system: SkParagraph draws none; ours follow after the paint (drawSystemDecorations),
+        // by the rule Java's TextLayout uses (sun.font.TextDecorations) — the two routes render alike
+        const bool ownDecorations = (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
+        ts.setDecoration(ownDecorations ? tl::TextDecoration::kNoDecoration : (tl::TextDecoration) decoration);
         ts.setDecorationMode(tl::kThrough);   // Java's underline runs through the descenders
         ts.setDecorationStyle(tl::kSolid);
         ts.setDecorationColor(runPaint.getColor());
@@ -2245,7 +2420,9 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         return;
     }
     paragraph->layout(1e9f);   // one line: no wrapping
-    paragraph->paint(g.canvas, originX, originY - paragraph->getAlphabeticBaseline());
+    const float paragraphTop = originY - paragraph->getAlphabeticBaseline();
+    paragraph->paint(g.canvas, originX, paragraphTop);
+    drawSystemDecorations(*paragraph, g.canvas, originX, paragraphTop, chars, length, runCount, runEnds, colours, flags, paint);
     gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
     gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);   // the character count stands in for the glyph count
     gGlyphsDrawnBySkia.fetch_add(length, std::memory_order_relaxed);

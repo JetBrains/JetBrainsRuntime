@@ -72,7 +72,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     }
 
     /** Paragraph run flags, as SKBackend.h's SK_PARAGRAPH_*: the colour flag says colours[r] applies. */
-    private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4;
+    private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4,
+            PARAGRAPH_SYSTEM_DECORATIONS = 8;   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
 
     /** Render-queue opcodes of the Skia text path: the backend's own range above {@code BufferedOpCodes}, after {@code SKShapePipe}'s. */
     @Native static final int DRAW_GLYPHS_BY_SKIA = 210, DRAW_SHAPED_BY_SKIA = 211, DRAW_PARAGRAPH_BY_SKIA = 212;
@@ -233,11 +234,17 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                         return false;
                     }
                     runFlags |= PARAGRAPH_UNDERLINE;
+                    if (SKEnvironment.decorationsSnapped()) {
+                        runFlags |= PARAGRAPH_SYSTEM_DECORATIONS;
+                    }
                 } else if (a == TextAttribute.STRIKETHROUGH) {
                     if (!TextAttribute.STRIKETHROUGH_ON.equals(v)) {
                         return false;
                     }
                     runFlags |= PARAGRAPH_STRIKETHROUGH;
+                    if (SKEnvironment.decorationsSnapped()) {
+                        runFlags |= PARAGRAPH_SYSTEM_DECORATIONS;
+                    }
                 } else {
                     return false;
                 }

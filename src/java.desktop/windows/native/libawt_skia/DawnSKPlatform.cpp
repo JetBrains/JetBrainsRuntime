@@ -1006,7 +1006,7 @@ const SKTextDefaults &SKPlatform_TextDefaults()
         UINT orientation = FE_FONTSMOOTHINGORIENTATIONRGB;
         const bool bgr = SystemParametersInfo(SPI_GETFONTSMOOTHINGORIENTATION, 0, &orientation, 0)
                          && orientation == FE_FONTSMOOTHINGORIENTATIONBGR;
-        return SKTextDefaults{SkFontHinting::kNormal, true, bgr};
+        return SKTextDefaults{SkFontHinting::kNormal, true, bgr, false};
     }();
     return defaults;
 }

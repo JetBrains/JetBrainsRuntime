@@ -63,6 +63,19 @@ public final class StrikeMetrics {
     public float maxAdvanceX;
     public float maxAdvanceY;
 
+    /* The font's own decoration metrics when the scaler reports them (the Skia
+     * scaler does, from the font's post and OS/2 tables), NaN otherwise; Skia's
+     * convention: the underline offset is the distance from the baseline to the
+     * top of the stroke (positive below), the strikethrough offset the distance
+     * to the bottom of the stroke (negative above). Font.getLineMetrics keeps
+     * Java's nominal values; sun.font.TextDecorations draws the system
+     * convention with these.
+     */
+    public float underlineOffset = Float.NaN;
+    public float underlineThickness = Float.NaN;
+    public float strikethroughOffset = Float.NaN;
+    public float strikethroughThickness = Float.NaN;
+
 
     /* The no-args constructor is used by CompositeStrike, which then
      * merges in the metrics of physical fonts.
@@ -128,6 +141,14 @@ public final class StrikeMetrics {
      void merge(StrikeMetrics other) {
          if (other == null) {
              return;
+         }
+         if (Float.isNaN(underlineOffset)) {   // the first slot that knows its decorations decides
+             underlineOffset = other.underlineOffset;
+             underlineThickness = other.underlineThickness;
+         }
+         if (Float.isNaN(strikethroughOffset)) {
+             strikethroughOffset = other.strikethroughOffset;
+             strikethroughThickness = other.strikethroughThickness;
          }
          if (other.ascentX < ascentX) {
              ascentX = other.ascentX;

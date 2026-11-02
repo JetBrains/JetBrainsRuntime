@@ -178,6 +178,7 @@ struct SKTextDefaults {
     SkFontHinting hinting;
     bool darkening;
     bool lcdOrderBGR;
+    bool decorationGaps;   // an underline leaves gaps where the ink crosses it (CoreText does, DirectWrite does not)
 };
 const SKTextDefaults &SKPlatform_TextDefaults();
 // The hinting an SkFont is given: the request (-1 = the platform's own, else an

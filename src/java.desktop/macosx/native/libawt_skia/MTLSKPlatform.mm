@@ -259,7 +259,7 @@ const SKTextDefaults &SKPlatform_TextDefaults()
     static const SKTextDefaults defaults = [] {
         id value = [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleFontSmoothing"];
         const bool on = value == nil || ![value respondsToSelector:@selector(integerValue)] || [value integerValue] != 0;
-        return SKTextDefaults{SkFontHinting::kNone, on, false};
+        return SKTextDefaults{SkFontHinting::kNone, on, false, true};
     }();
     return defaults;
 }

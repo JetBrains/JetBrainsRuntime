@@ -229,7 +229,7 @@ jlong SKBackend_GlyphsShapedBySkia();
 // (strike, colour, decorations) laid out and decorated by SkParagraph on one line, shaped as
 // DrawShapedBySkia, painted with its first baseline at the origin. runEnds[r] is the UTF-16 end
 // of run r; colours[r] is ARGB when flags[r] has SK_PARAGRAPH_COLOUR.
-enum { SK_PARAGRAPH_UNDERLINE = 1, SK_PARAGRAPH_STRIKETHROUGH = 2, SK_PARAGRAPH_COLOUR = 4 };
+enum { SK_PARAGRAPH_UNDERLINE = 1, SK_PARAGRAPH_STRIKETHROUGH = 2, SK_PARAGRAPH_COLOUR = 4, SK_PARAGRAPH_SYSTEM_DECORATIONS = 8 };
 void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags);

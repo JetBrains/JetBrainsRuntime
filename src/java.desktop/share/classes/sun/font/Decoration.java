@@ -34,12 +34,14 @@ import java.util.Map;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.RenderingHints;
 import java.awt.Shape;
 import java.awt.Stroke;
 
+import java.awt.font.FontRenderContext;
 import java.awt.font.TextAttribute;
 
 import java.awt.geom.Area;
@@ -68,6 +70,9 @@ public class Decoration {
     public interface Label {
         CoreMetrics getCoreMetrics();
         Rectangle2D getLogicalBounds();
+        /** The label's font and its render context, for the font's own decoration metrics; null when it has none. */
+        default Font getFont() { return null; }
+        default FontRenderContext getFRC() { return null; }
 
         void handleDraw(Graphics2D g2d, float x, float y);
         Rectangle2D handleGetCharVisualBounds(int index);
@@ -237,21 +242,35 @@ public class Decoration {
             float x2 = x1 + (float)label.getLogicalBounds().getWidth();
 
             CoreMetrics cm = label.getCoreMetrics();
+            // the system convention (sun.java2d.skia.text.decorations=system): the font's own decoration
+            // metrics on whole device rows, placed as CoreText places them, gaps where the ink crosses an
+            // underline on macOS; the same rule draws Skia's paragraphs' decorations (SKBackend.cpp)
+            boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped() && TextDecorations.snappable(g2d);
+            float[] fontDecorations = system ? TextDecorations.fontMetrics(label, cm) : null;
             if (strikethrough) {
-                Stroke savedStroke = g2d.getStroke();
-                g2d.setStroke(new BasicStroke(cm.strikethroughThickness,
-                                              BasicStroke.CAP_BUTT,
-                                              BasicStroke.JOIN_MITER));
-                float strikeY = y + cm.strikethroughOffset;
-                g2d.draw(new Line2D.Float(x1, strikeY, x2, strikeY));
-                g2d.setStroke(savedStroke);
+                if (system) {
+                    TextDecorations.drawStrikethrough(g2d, x1, x2, y, fontDecorations[2], fontDecorations[3]);
+                } else {
+                    Stroke savedStroke = g2d.getStroke();
+                    g2d.setStroke(new BasicStroke(cm.strikethroughThickness,
+                                                  BasicStroke.CAP_BUTT,
+                                                  BasicStroke.JOIN_MITER));
+                    float strikeY = y + cm.strikethroughOffset;
+                    g2d.draw(new Line2D.Float(x1, strikeY, x2, strikeY));
+                    g2d.setStroke(savedStroke);
+                }
             }
 
             float ulOffset = cm.underlineOffset;
             float ulThickness = cm.underlineThickness;
 
             if (stdUnderline != null) {
-                stdUnderline.drawUnderline(g2d, ulThickness, x1, x2, y + ulOffset);
+                if (system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)) {
+                    Shape ink = sun.java2d.skia.SKEnvironment.decorationsSkipInk() ? label.handleGetOutline(x, y) : null;
+                    TextDecorations.drawUnderline(g2d, x1, x2, y, fontDecorations[0], fontDecorations[1], ink);
+                } else {
+                    stdUnderline.drawUnderline(g2d, ulThickness, x1, x2, y + ulOffset);
+                }
             }
 
             if (imUnderline != null) {

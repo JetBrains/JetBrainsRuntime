@@ -145,7 +145,7 @@ bool resolveGlyph(SKScalerContext *context, jint glyphCode, SkFont *font, SkGlyp
     return true;
 }
 
-jobject strikeMetrics(JNIEnv *env, float ay, float dy, float ly, float mx) {
+jobject strikeMetrics(JNIEnv *env, float ay, float dy, float ly, float mx, const SkFontMetrics *decorations) {
     jclass cls = env->FindClass("sun/font/StrikeMetrics");
     if (cls == nullptr) {
         return nullptr;
@@ -156,7 +156,21 @@ jobject strikeMetrics(JNIEnv *env, float ay, float dy, float ly, float mx) {
     }
     // Same convention as the CoreText and FreeType scalers: ascent negative (up),
     // descent positive, baseline 1, x components zero.
-    return env->NewObject(cls, ctor, 0.0f, ay, 0.0f, dy, 1.0f, 0.0f, 0.0f, ly, mx, 0.0f);
+    jobject metrics = env->NewObject(cls, ctor, 0.0f, ay, 0.0f, dy, 1.0f, 0.0f, 0.0f, ly, mx, 0.0f);
+    if (metrics == nullptr || decorations == nullptr) {
+        return metrics;
+    }
+    // the font's decoration metrics, in Skia's convention (StrikeMetrics documents it); left NaN when unknown
+    SkScalar position, thickness;
+    if (decorations->hasUnderlinePosition(&position) && decorations->hasUnderlineThickness(&thickness) && thickness > 0) {
+        env->SetFloatField(metrics, env->GetFieldID(cls, "underlineOffset", "F"), position);
+        env->SetFloatField(metrics, env->GetFieldID(cls, "underlineThickness", "F"), thickness);
+    }
+    if (decorations->hasStrikeoutPosition(&position) && decorations->hasStrikeoutThickness(&thickness) && thickness > 0) {
+        env->SetFloatField(metrics, env->GetFieldID(cls, "strikethroughOffset", "F"), position);
+        env->SetFloatField(metrics, env->GetFieldID(cls, "strikethroughThickness", "F"), thickness);
+    }
+    return metrics;
 }
 
 } // namespace
@@ -286,7 +300,7 @@ Java_sun_font_SKFontScaler_getFontMetricsNative(JNIEnv *env, jclass clazz, jlong
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
     if (context == nullptr) {
-        return strikeMetrics(env, 0, 0, 0, 0);
+        return strikeMetrics(env, 0, 0, 0, 0, nullptr);
     }
     SkFontMetrics metrics;
     context->font.getMetrics(&metrics);
@@ -309,7 +323,7 @@ Java_sun_font_SKFontScaler_getFontMetricsNative(JNIEnv *env, jclass clazz, jlong
 #endif
     // Skia has no maximum advance; the widest glyph box is the nearest value
     // (FontDesignMetrics.getMaxAdvance).
-    return strikeMetrics(env, metrics.fAscent, metrics.fDescent, metrics.fLeading, metrics.fMaxCharWidth);
+    return strikeMetrics(env, metrics.fAscent, metrics.fDescent, metrics.fLeading, metrics.fMaxCharWidth, &metrics);
 }
 
 // The advance in device space. Without fractional metrics it is a whole
