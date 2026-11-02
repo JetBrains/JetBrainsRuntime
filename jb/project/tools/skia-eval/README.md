@@ -72,7 +72,8 @@ assembled from (matched by the trees' titles; a new tree replaces an entry by ca
 the entry's title is edited in the generated manifest); `make-dist.py --workflow`; `publish.sh "message"`
 (one force-pushed commit to the Pages repository; the user runs it).
 
-**Benches** (`bench/`): `run-rpt-arms.sh`, `run-raster-bench.sh`; records go next to the numbers in the
+**Benches** (`bench/`): `run-rpt-arms.sh` (Windows) and `run-rpt-mac.sh` (macOS) run RenderPerfTest over
+interleaved arms, `rpt-summary.py` summarises; `run-raster-bench.sh`; records go next to the numbers in the
 machine's raw record.
 
 ## Status of the other platforms
