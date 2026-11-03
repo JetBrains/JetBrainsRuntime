@@ -2913,12 +2913,28 @@ void SKBackend_CopyArea(jint x, jint y, jint w, jint h, jint dx, jint dy) {
 // Submission / presentation
 // ---------------------------------------------------------------------------
 
+// Where Graphite presents (Windows over Vulkan): a window's draw into its next swap chain image,
+// recorded into the window's context at the end of a flush, before the flush's submit, so that
+// the frame is one recording and one submit instead of two of each. SKBackend_FlushRecording
+// inserts the context's recording with the image's semaphores (wait for the acquire, signal the
+// present) and its present layout; SKBackend_EndOfFlush presents it after the submit. One window
+// per context and flush; any other window of the context presents on its own (presentThroughGraphite).
+struct SKFoldedPresent {
+    SKSDOps *dst = nullptr;
+    SKPlatformPresentTarget target;
+    sk_sp<SkSurface> image;   // null: the image could not be wrapped, nothing drawn into it
+    bool inserted = false;
+};
+static std::unordered_map<SKConfigContext *, SKFoldedPresent> gFolded;
+
 void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return;
     }
     flushBatchesOf(cc);
     cc->recordingGeneration++;
+    auto folded = gFolded.find(cc);
+    SKFoldedPresent *present = folded != gFolded.end() && !folded->second.inserted ? &folded->second : nullptr;
     // Graphite registers a recording's new pipelines while snap() builds its draw passes and
     // compiles them in insertRecording (tint, the D3D shader compiler, the driver's compiler
     // threads): such an insert costs tens of milliseconds where a warm one costs a fraction of one
@@ -2931,14 +2947,33 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (recording) {
         InsertRecordingInfo info;
         info.fRecording = recording.get();
+        if (present != nullptr) {
+            SKPlatformPresentTarget &t = present->target;
+            info.fTargetSurface = present->image.get();
+            info.fTargetTextureState = present->image ? &t.presentState : nullptr;
+            info.fNumWaitSemaphores = 1;
+            info.fWaitSemaphores = &t.waitSemaphore;
+            info.fNumSignalSemaphores = 1;
+            info.fSignalSemaphores = &t.signalSemaphore;
+            info.fFinishedProc = t.finishedProc;     // Graphite calls it whether or not the insert succeeds
+            info.fFinishedContext = t.finishedContext;
+            present->inserted = true;
+        }
         const uint64_t start = SKStats_IsEnabled() ? SKStats_Now() : 0;
         SKStatsScope insertStats(SK_SPAN_INSERT);
         if (!cc->context->insertRecording(info)) {
             J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_FlushRecording: insertRecording failed");
+            if (present != nullptr) {
+                present->image.reset();   // nothing to present
+            }
         }
         if (start != 0 && gPipelinesBuilt != pipelinesBefore) {
             SKStats_AddSpan(SK_SPAN_INSERT_COMPILING, SKStats_Now() - start);
         }
+    } else if (present != nullptr && present->target.finishedProc != nullptr) {
+        present->target.finishedProc(present->target.finishedContext, skgpu::CallbackResult::kFailed);
+        present->inserted = true;
+        present->image.reset();
     }
 }
 
@@ -2997,10 +3032,69 @@ static void countFrame(JNIEnv *env, SKSDOps *dst, bool presented) {
     }
 }
 
-// Where Graphite presents (SKPlatform_AcquirePresentTarget, Windows over Vulkan): draws
-// the window surface's client area into the next swap chain image in a recording of
-// its own, which waits for the image and leaves it ready to present, submits it and
-// presents. False where the platform presents itself (SKPlatform_RequestRedraw).
+// Draws the window surface's client area into the acquired swap chain image (wrapped once per
+// image of a swap chain generation); null if the image cannot be wrapped.
+static sk_sp<SkSurface> drawIntoPresentTarget(SKSurfaceState *st, SKConfigContext *cc, const SKPlatformPresentTarget &target) {
+    const uint32_t generation = (uint32_t) (target.imageKey >> 32);
+    if (generation != st->presentGeneration) {
+        st->presentTargets.clear();   // the images of an earlier swap chain
+        st->presentGeneration = generation;
+    }
+    sk_sp<SkSurface> &image = st->presentTargets[target.imageKey];
+    if (!image) {
+        image = SkSurfaces::WrapBackendTexture(cc->recorder.get(), target.texture, target.colorType, nullptr, nullptr);
+    }
+    if (image) {
+        const SkIRect &source = target.source;
+        SkPaint paint;
+        paint.setBlendMode(SkBlendMode::kSrc);
+        image->getCanvas()->drawImageRect(SkSurfaces::AsImage(st->surface), SkRect::Make(source),
+                                          SkRect::MakeIWH(source.width(), source.height()),
+                                          SkSamplingOptions(SkFilterMode::kNearest), &paint,
+                                          SkCanvas::kFast_SrcRectConstraint);
+    } else {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "drawIntoPresentTarget: cannot wrap the swap chain image (%dx%d)",
+                      target.texture.dimensions().width(), target.texture.dimensions().height());
+    }
+    return image;
+}
+
+// Before the flush's submit (SKFoldedPresent): acquires the window's next swap chain image and
+// records the window's draw into it. False where the platform presents itself, when the window
+// was never drawn into, or when the context has a folded present already.
+static bool foldPresent(SKSDOps *dst) {
+    SKSurfaceState *st = dst->state;
+    SKConfigContext *cc = st != nullptr ? st->cc : nullptr;
+    if (cc == nullptr || !st->surface || !cc->context || gFolded.count(cc) != 0) {
+        return false;
+    }
+    SKPlatformPresentTarget target;
+    bool acquired;
+    {
+        SKStatsScope acquireStats(SK_SPAN_PRESENT_ACQUIRE);
+        acquired = SKPlatform_AcquirePresentTarget(dst->platform, &target);
+    }
+    if (!acquired) {
+        return false;
+    }
+    SKFoldedPresent &folded = gFolded[cc];
+    folded.dst = dst;
+    if (!target.texture.isValid()) {
+        folded.inserted = true;   // no image now: nothing to insert, the present fails
+        return true;
+    }
+    SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);   // the draw into the image (its recording is the flush's)
+    flushBatchesOf(cc);   // the window's batched quads, before the draw that presents them
+    folded.target = target;
+    folded.image = drawIntoPresentTarget(st, cc, target);
+    return true;
+}
+
+// Where Graphite presents (SKPlatform_AcquirePresentTarget, Windows over Vulkan) and the window's
+// present was not folded into the flush (a second window of its context): draws the window
+// surface's client area into the next swap chain image in a recording of its own, which waits for
+// the image and leaves it ready to present, submits it and presents. False where the platform
+// presents itself (SKPlatform_RequestRedraw).
 static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
     SKSurfaceState *st = dst->state;
     SKConfigContext *cc = st != nullptr ? st->cc : nullptr;
@@ -3020,28 +3114,8 @@ static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
     if (!target.texture.isValid()) {
         return true;
     }
-    const uint32_t generation = (uint32_t) (target.imageKey >> 32);
-    if (generation != st->presentGeneration) {
-        st->presentTargets.clear();   // the images of an earlier swap chain
-        st->presentGeneration = generation;
-    }
     SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);   // the draw into the image, its recording and submit
-    sk_sp<SkSurface> &image = st->presentTargets[target.imageKey];
-    if (!image) {
-        image = SkSurfaces::WrapBackendTexture(cc->recorder.get(), target.texture, target.colorType, nullptr, nullptr);
-    }
-    if (image) {
-        const SkIRect &source = target.source;
-        SkPaint paint;
-        paint.setBlendMode(SkBlendMode::kSrc);
-        image->getCanvas()->drawImageRect(SkSurfaces::AsImage(st->surface), SkRect::Make(source),
-                                          SkRect::MakeIWH(source.width(), source.height()),
-                                          SkSamplingOptions(SkFilterMode::kNearest), &paint,
-                                          SkCanvas::kFast_SrcRectConstraint);
-    } else {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "presentThroughGraphite: cannot wrap the swap chain image (%dx%d)",
-                      target.texture.dimensions().width(), target.texture.dimensions().height());
-    }
+    sk_sp<SkSurface> image = drawIntoPresentTarget(st, cc, target);
     // inserted even without a draw: the image's acquire semaphore must be waited for
     std::unique_ptr<Recording> recording = cc->recorder->snap();
     InsertRecordingInfo info;
@@ -3100,6 +3174,18 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             gDeferredFlushes++;
         }
     } else {
+        // where Graphite presents, each context's first window to present is drawn into its swap
+        // chain image now, inside the recording the submit below sends (SKFoldedPresent)
+        for (SKSDOps *dst : g.touchedWindows) {
+            if ((everything || g.requestedWindows.count(dst) != 0) && dst->platform != nullptr) {
+                SKStatsScope presentStats(SK_SPAN_PRESENT);
+                if (foldPresent(dst)) {
+                    // its context is submitted below even if this flush drew nothing into it (a
+                    // window drawn earlier and presented at its paint cycle's end, present=cycle)
+                    g.touchedContexts.insert(dst->state->cc);
+                }
+            }
+        }
         const std::vector<SKConfigContext *> sent = gPendingSubmit;   // submitted by submitPending
         submitPending(nullptr, syncToCpu);
         for (SKConfigContext *cc : g.touchedContexts) {
@@ -3122,7 +3208,21 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             bool presented;
             {
                 SKStatsScope presentStats(SK_SPAN_PRESENT);
-                if (!presentThroughGraphite(dst, &presented)) {
+                SKFoldedPresent *folded = nullptr;
+                for (auto &entry : gFolded) {
+                    if (entry.second.dst == dst) {
+                        folded = &entry.second;
+                        break;
+                    }
+                }
+                if (folded != nullptr) {
+                    if (!folded->inserted && folded->target.finishedProc != nullptr) {
+                        // never inserted (its context was not submitted): release what the acquire took
+                        folded->target.finishedProc(folded->target.finishedContext, skgpu::CallbackResult::kFailed);
+                    }
+                    SKStatsScope callStats(SK_SPAN_PRESENT_CALL);
+                    presented = folded->inserted && folded->image && SKPlatform_PresentTarget(dst->platform);
+                } else if (!presentThroughGraphite(dst, &presented)) {
                     presented = SKPlatform_RequestRedraw(dst->platform);
                 }
             }
@@ -3135,6 +3235,7 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
         }
         it = g.touchedWindows.erase(it);
     }
+    gFolded.clear();
     g.requestedWindows.clear();
     return !g.touchedWindows.empty() || !gPendingSubmit.empty();
 }
