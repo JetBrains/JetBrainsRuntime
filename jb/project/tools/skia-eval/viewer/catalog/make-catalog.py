@@ -15,7 +15,7 @@ BUILD = os.path.join(REPO, 'build')                 # the capture trees live und
 
 def load_manifest(path):
     src = open(path).read()
-    return json.loads(src[src.index('=') + 1:].strip().rstrip(';'))
+    return json.JSONDecoder().raw_decode(src[src.index('=') + 1:].lstrip())[0]   # the first statement's value; more statements may follow (window.COMPARE_START)
 
 def reroot(manifest, viewer_dir):
     """Image paths in a source manifest are relative to its viewer directory; the catalog serves

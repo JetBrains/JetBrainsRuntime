@@ -70,7 +70,8 @@
           "skia shaper": "Skia SkShaper (HarfBuzz + ICU)",
           "skia paragraph": "Skia SkParagraph + SkShaper",
           "native": "operating system",
-          "chrome": "Blink (HarfBuzz)"
+          "chrome": "Blink (HarfBuzz)",
+          "skia paragraph only": "SkParagraph (attributed text only)"
         },
         "macOS": {
           "native": "CoreText"
@@ -110,7 +111,9 @@
           "plain": "plain: coverage × color in sRGB",
           "gamma": "JBR Metal gamma blend (JBR-3820)",
           "native": "operating system",
-          "skia text path": "Skia's text path (Skia's gamma model)"
+          "skia text path": "Skia's text path (Skia's gamma model)",
+          "system": "system masks (CoreGraphics / DirectWrite)",
+          "corrected": "the pipe's correction curve"
         },
         "macOS": {
           "native": "CoreGraphics compositing"

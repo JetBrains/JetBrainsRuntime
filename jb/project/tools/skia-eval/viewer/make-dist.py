@@ -26,7 +26,7 @@ cwebp = shutil.which('cwebp') if webp else None
 if webp and not cwebp: print('cwebp not found: shipping PNG only', file=sys.stderr)
 
 src = open(os.path.join(CAT, 'manifest.js')).read()
-catalog = json.loads(src[src.index('=') + 1:].strip().rstrip(';'))
+catalog = json.JSONDecoder().raw_decode(src[src.index('=') + 1:].lstrip())[0]   # the first statement's value; more statements may follow (window.COMPARE_START)
 files = sorted({a['src'] for e in catalog for st in e['manifest']['sets'] for a in st['arms']})
 
 def digest(path):
@@ -68,6 +68,8 @@ for e in catalog:
         for a in st['arms']: a['src'] = 'images/' + os.path.basename(prepared[a['src']][1])
 with open(os.path.join(out, 'manifest.js'), 'w') as fh:
     fh.write('window.COMPARE_CATALOG = ' + json.dumps(catalog, ensure_ascii=False, separators=(',', ':')) + ';\n')
+    for line in src.splitlines():   # the catalog's other statements (window.COMPARE_START: the page, set and preset a visitor starts on)
+        if line.startswith('window.') and not line.startswith('window.COMPARE_CATALOG'): fh.write(line + '\n')
 shutil.copy(os.path.join(HERE, 'viewer.js'), out)
 for f in ('lcd-rgb.png', 'lcd-bgr.png'): shutil.copy(os.path.join(HERE, f), out)
 stamp = hashlib.sha1(open(os.path.join(HERE, 'viewer.js'), 'rb').read() + open(os.path.join(HERE, 'index.html'), 'rb').read()).hexdigest()[:10]
