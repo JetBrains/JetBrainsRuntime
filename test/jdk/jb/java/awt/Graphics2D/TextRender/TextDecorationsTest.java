@@ -46,7 +46,9 @@ import java.util.List;
  *          descenders, over the baseline row) and on Skia's paragraphs (SkParagraph drew its own
  *          continuous decoration a row off), so the two routes render an underlined string alike
  *          (2026-11-02). At 2x the rows and the gaps' clearance scale with the device: one user pixel
- *          beside every descender, as CoreText's (the first version cleared one device pixel).
+ *          beside every descender, as CoreText's (the first version cleared one device pixel). On
+ *          Windows the rows are Direct2D's fractional bands (TextDecorationsDirectWriteTest); here
+ *          only the strikethrough's confinement to its run is checked there.
  * @requires (os.family == "mac" | os.family == "windows")
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia TextDecorationsTest java2d
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia TextDecorationsTest paragraphs
@@ -104,10 +106,11 @@ public class TextDecorationsTest {
         for (int x = textX1; x <= textX2; x++) if (near[x]) addedNear += ink(img, x, ulRow) - ink(plainImg, x, ulRow);
         System.out.printf("%dx: underline row %d (baseline %d): ink added over the %d plain columns %.1f, the row above %.1f, below %.1f; over the %d columns around the %s descenders %.1f%n",
                           scale, ulRow, BASELINE, plain, ulPlain, abovePlain, belowPlain, neighbourhood, countTrue(descender), addedNear);
-        if (ulPlain < plain * 0.9) {
+        // whole rows are CoreText's; Windows' fractional bands are TextDecorationsDirectWriteTest's
+        if (mac && ulPlain < plain * 0.9) {
             errors.add("the underline is not one solid row: row " + ulRow + " gains " + ulPlain + " over " + plain + " plain columns (a stroke smeared over rows, or no underline)");
         }
-        if (abovePlain > plain * 0.15 || belowPlain > plain * 0.15) {
+        if (mac && (abovePlain > plain * 0.15 || belowPlain > plain * 0.15)) {
             errors.add("the underline spills over a neighbouring row: above " + abovePlain + ", below " + belowPlain + " of " + plain);
         }
         if (mac && bandRows != (scale == 1 ? 1 : 2)) {
@@ -166,10 +169,10 @@ public class TextDecorationsTest {
         int struckColumns = sx2 - sx1 + 1, otherColumns = (textX2 - textX1 + 1) - (sx2 - sx1 + 5);
         System.out.printf("%dx: strikethrough row %d (baseline %d): ink over the %d struck columns %.1f (added %.1f, the row above %.1f, below %.1f); added over the %d other columns %.1f%n",
                           scale, stRow, BASELINE, struckColumns, inkStruck[stRow], addedStruck[stRow], addedStruck[stRow - 1], addedStruck[stRow + 1], otherColumns, addedElsewhere[stRow]);
-        if (inkStruck[stRow] < struckColumns * 0.95 || addedStruck[stRow] < struckColumns * 0.3) {
+        if (mac && (inkStruck[stRow] < struckColumns * 0.95 || addedStruck[stRow] < struckColumns * 0.3)) {
             errors.add("the strikethrough is not one solid row over the struck characters: row " + stRow + " carries " + inkStruck[stRow] + " over " + struckColumns + " columns (" + addedStruck[stRow] + " added)");
         }
-        if (addedStruck[stRow - 1] > struckColumns * 0.15 || addedStruck[stRow + 1] > struckColumns * 0.15) {
+        if (mac && (addedStruck[stRow - 1] > struckColumns * 0.15 || addedStruck[stRow + 1] > struckColumns * 0.15)) {
             errors.add("the strikethrough spills over a neighbouring row");
         }
         if (addedElsewhere[stRow] > otherColumns * 0.1) {

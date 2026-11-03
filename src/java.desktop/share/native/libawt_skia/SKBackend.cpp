@@ -2172,10 +2172,13 @@ SkString typefaceAlias(const SkTypeface *typeface) {
 
 // Text decorations as the operating system's text draws them, for the paragraph's runs that asked
 // for them (SK_PARAGRAPH_SYSTEM_DECORATIONS; SkParagraph painted none): the same rule and arithmetic
-// as sun.font.TextDecorations — the line's top row is the rounded top of the stroked line, at least one
-// row thick; an underline leaves a gap wherever the glyphs' outlines cross the band, with one device
-// pixel of clearance on each side (macOS; Windows' DirectWrite draws through the ink). The runs come
-// from the paragraph's visitor in device space; a run's UTF-8 start maps it onto Java's run.
+// as sun.font.TextDecorations, by the platform's rule (SKPlatform_TextDefaults().decorationRule) —
+// CoreText's: the line's top row is the rounded top of the stroked line, at least one row thick, and an
+// underline leaves a gap wherever the glyphs' outlines cross the band, with one device pixel of
+// clearance on each side; Direct2D's (Windows): the underline's top row rounded, its height the font's
+// thickness kept fractional, the strikethrough the unsnapped rectangle of the font's metrics, no gaps
+// (DirectWrite draws through the ink). The runs come from the paragraph's visitor in device space; a
+// run's UTF-8 start maps it onto Java's run.
 namespace {
 constexpr float kDecorationClearance = 1.0f;   // in user-space pixels: CoreText clears one point beside the ink (two device pixels at 2x)
 
@@ -2230,19 +2233,24 @@ std::vector<std::pair<float, float>> inkCrossings(const SkFont &font, const SkGl
     return merged;
 }
 
-// the device rows of an underline: sun.font.TextDecorations.underlineBand (CoreText's placement, measured)
-struct DecorationBand { int top; int rows; };
+// the device band of an underline below the baseline row: sun.font.TextDecorations.underlineBand (CoreText's
+// whole rows, or Direct2D's rounded top with the fractional thickness; both measured)
+struct DecorationBand { float top; float height; };
 DecorationBand underlineBand(float position, float thickness) {
+    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite) {
+        return {(float) std::lround(position), thickness};
+    }
     const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
     const int top = std::max(rows, (int) std::floor(position + 0.5f - rows / 2.0f));
-    return {top, rows};
+    return {(float) top, (float) rows};
 }
 
-void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, int top, int rows,
+void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, float top, float height,
               const std::vector<std::pair<float, float>> *gaps, float clearance) {
     const int left = (int) std::lround(x1), right = (int) std::lround(x2);
-    if (right <= left) return;
-    // the band's rows and ends are whole; a gap's edges are fractional and antialiased, as CoreText's
+    if (right <= left || height <= 0) return;
+    // the band's ends are whole, its rows whole under CoreText's rule and fractional under Direct2D's; a gap's
+    // edges are fractional and antialiased, as CoreText's
     SkPaint solid = paint;
     solid.setAntiAlias(true);
     float start = (float) left;
@@ -2250,11 +2258,11 @@ void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, int to
         for (const auto &gap : *gaps) {
             const float gx1 = gap.first - clearance, gx2 = gap.second + clearance;
             if (gx2 <= start || gx1 >= right) continue;
-            if (gx1 > start) canvas->drawRect(SkRect::MakeLTRB(start, (float) top, gx1, (float) (top + rows)), solid);
+            if (gx1 > start) canvas->drawRect(SkRect::MakeLTRB(start, top, gx1, top + height), solid);
             start = std::max(start, gx2);
         }
     }
-    if (start < right) canvas->drawRect(SkRect::MakeLTRB(start, (float) top, (float) right, (float) (top + rows)), solid);
+    if (start < right) canvas->drawRect(SkRect::MakeLTRB(start, top, (float) right, top + height), solid);
 }
 
 // the font's decoration metrics as sun.font.TextDecorations.fontMetrics resolves them: the font's own,
@@ -2272,7 +2280,10 @@ DecorationMetrics decorationMetrics(const SkFont &font) {
         m.underlineThickness = thickness;
     }
     if (metrics.hasStrikeoutPosition(&position) && metrics.hasStrikeoutThickness(&thickness) && thickness > 0) {
-        m.strikethroughCentre = position - thickness / 2;
+        // sun.font.TextDecorations.strikethroughCentre: Skia names the position the stroke's bottom and CoreText's
+        // placement was fitted on that; the DirectWrite host hands on the OS/2 table's top of the stroke
+        const bool directWrite = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
+        m.strikethroughCentre = directWrite ? position + thickness / 2 : position - thickness / 2;
         m.strikethroughThickness = thickness;
     }
     return m;
@@ -2314,7 +2325,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
         const SkPoint *positions = devicePositions.data();
         const int baselineRow = (int) std::lround(runOrigin.fY);
         const DecorationBand band = underlineBand(m.underlinePosition, m.underlineThickness);
-        const int underlineTop = baselineRow + band.top;
+        const float underlineTop = baselineRow + band.top;
         std::vector<std::pair<float, float>> gaps;
         bool gapsReady = false;
         // SkParagraph's visitor runs are split by font and colour, not by decoration: the glyphs grouped by
@@ -2335,16 +2346,21 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                 }
                 if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
                     if (skipInk && !gapsReady) {   // the whole visitor run's ink: a neighbour's descender may cross this group's line
-                        gaps = inkCrossings(deviceFont, info->glyphs, positions, info->count, runOrigin, (float) underlineTop, (float) (underlineTop + band.rows));
+                        gaps = inkCrossings(deviceFont, info->glyphs, positions, info->count, runOrigin, underlineTop, underlineTop + band.height);
                         gapsReady = true;
                     }
-                    fillBand(canvas, runPaint, x1, x2, underlineTop, band.rows, skipInk ? &gaps : nullptr,
+                    fillBand(canvas, runPaint, x1, x2, underlineTop, band.height, skipInk ? &gaps : nullptr,
                              kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]));
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
-                    const int rows = std::max(1, (int) std::lround(m.strikethroughThickness));
-                    const int top = (int) std::lround(runOrigin.fY + m.strikethroughCentre - rows / 2.0f);
-                    fillBand(canvas, runPaint, x1, x2, top, rows, nullptr, 0);
+                    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite) {
+                        // Direct2D's unsnapped rectangle about the centre, from the glyphs' baseline row (TextDecorations.drawStrikethrough)
+                        fillBand(canvas, runPaint, x1, x2, baselineRow + m.strikethroughCentre - m.strikethroughThickness / 2, m.strikethroughThickness, nullptr, 0);
+                    } else {
+                        const int rows = std::max(1, (int) std::lround(m.strikethroughThickness));
+                        const int top = (int) std::lround(runOrigin.fY + m.strikethroughCentre - rows / 2.0f);
+                        fillBand(canvas, runPaint, x1, x2, (float) top, (float) rows, nullptr, 0);
+                    }
                 }
             }
             i = j;

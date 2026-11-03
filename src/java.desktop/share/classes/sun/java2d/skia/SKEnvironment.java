@@ -88,10 +88,11 @@ public final class SKEnvironment {
      * masks rendered for the colour where the engine does that, CoreGraphics per luminance
      * and DirectWrite per colour; coverage interpolating the sRGB-encoded colours as stored;
      * or the pipe's contrast curve, Java2D's LCD contrast and the pipes' text gamma), and
-     * {@code decorations} (system | java2d: underlines and strikethroughs on whole device
-     * rows from the font's own metrics, placed as CoreText places them and, on macOS, with
-     * gaps where the ink crosses an underline — the same rule on Java's TextLayout and on
-     * Skia's paragraphs; or Java's stroked lines at its nominal offsets).
+     * {@code decorations} (system | java2d: underlines and strikethroughs from the font's own
+     * metrics, placed as the platform's text places them — CoreText's whole rows with gaps where
+     * the ink crosses an underline on macOS, Direct2D's rounded top row and fractional thickness
+     * on Windows — the same rule on Java's TextLayout and on Skia's paragraphs; or Java's stroked
+     * lines at its nominal offsets).
      * Retired spellings still resolve: {@code sun.java2d.skia.text=skia|shaper|paragraph}
      * sets the route choices; {@code text.gray=cg|platform} is blend system, {@code coverage}
      * blend corrected with darkening none, {@code platformcoverage} blend plain with
@@ -104,9 +105,12 @@ public final class SKEnvironment {
     public enum TextBlend { SYSTEM, PLAIN, CORRECTED }
     /**
      * {@code decorations}: how underlines and strikethroughs are drawn. {@code system} = as the operating
-     * system's text draws them: on a whole device pixel row, at least one pixel thick, and on macOS with
-     * gaps where glyph ink crosses the line (CoreText skips descenders); the same rule on Java's TextLayout
-     * and on Skia's paragraphs (2026-11-02). {@code java2d} = Java's stroked line through the descenders.
+     * system's text draws them, from the font's own metrics: on macOS on whole device pixel rows, at least
+     * one pixel thick, with gaps where glyph ink crosses the line (CoreText skips descenders, 2026-11-02);
+     * on Windows as Direct2D's text renderer places them, the underline's top row rounded and its height
+     * the font's fractional thickness, the strikethrough unsnapped, through the descenders (2026-11-03);
+     * the same rule on Java's TextLayout and on Skia's paragraphs. {@code java2d} = Java's stroked line
+     * at its nominal offsets through the descenders.
      */
     public enum TextDecorations { SYSTEM, JAVA2D }
 
@@ -482,6 +486,16 @@ public final class SKEnvironment {
     /** Whether an underline leaves gaps where glyph ink crosses it: the system convention on macOS. */
     public static boolean decorationsSkipInk() {
         return TEXT_DECORATIONS == TextDecorations.SYSTEM && System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
+    }
+
+    /**
+     * How the system's text places a decoration: Direct2D's text renderer's rule on Windows (the underline's top
+     * row rounded, the heights the font's fractional thickness, the strikethrough unsnapped), CoreText's whole
+     * rows elsewhere; the native side's {@code SKTextDefaults.decorationRule} says the same for Skia's paragraphs.
+     */
+    public static sun.font.TextDecorations.Rule decorationRule() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("windows")
+               ? sun.font.TextDecorations.Rule.DIRECT_WRITE : sun.font.TextDecorations.Rule.CORE_TEXT;
     }
 
     public static TextBlend textBlend() {

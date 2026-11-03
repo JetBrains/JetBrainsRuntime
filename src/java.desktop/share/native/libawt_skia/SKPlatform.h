@@ -174,10 +174,15 @@ int SKPlatform_GlyphPlacementGrid(const SkTypeface *typeface, float pixelSize, f
 // true, ClearType's enhanced contrast being DirectWrite's business; Linux FreeType's stem
 // darkening, off unless set), and the display's LCD sub-pixel order (Windows
 // SPI_GETFONTSMOOTHINGORIENTATION; macOS false, no sub-pixel masks).
+// How the system's text places underlines and strikethroughs (sun.font.TextDecorations.Rule):
+// CoreText's whole rows, or Direct2D's rounded top row with the font's fractional thickness and
+// an unsnapped strikethrough (measured 2026-11-03).
+enum class SKDecorationRule { CoreText, DirectWrite };
 struct SKTextDefaults {
     SkFontHinting hinting;
     bool darkening;
     bool lcdOrderBGR;
+    SKDecorationRule decorationRule;
     bool decorationGaps;   // an underline leaves gaps where the ink crosses it (CoreText does, DirectWrite does not)
 };
 const SKTextDefaults &SKPlatform_TextDefaults();
