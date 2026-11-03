@@ -450,7 +450,7 @@ public abstract class Font2D {
                 metrics[7] = strikeMetrics.underlineThickness;
             }
             if (!Float.isNaN(strikeMetrics.strikethroughOffset) && strikeMetrics.strikethroughThickness > 0) {
-                metrics[4] = strikeMetrics.strikethroughOffset - strikeMetrics.strikethroughThickness / 2;
+                metrics[4] = TextDecorations.strikethroughCentre(strikeMetrics.strikethroughOffset, strikeMetrics.strikethroughThickness);
                 metrics[5] = strikeMetrics.strikethroughThickness;
             }
         }

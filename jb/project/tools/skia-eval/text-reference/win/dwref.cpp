@@ -1027,6 +1027,53 @@ static void simulationGeometry(const wchar_t* path) {
 
 // --------------------------------------------------------------------------------------------------------
 
+
+// --decorations <fonts-dir> <dpi>: how Direct2D's own text renderer (DrawTextLayout, pixel snapping on, the
+// renderer every Win32 DirectWrite application gets) draws an underline and a strikethrough: the layout's
+// text at the font's metrics, drawn so the first line's baseline sits at device y 40 (the glyph bottoms
+// in row 39, row 40 the first below the baseline); printed per face: the font's underline position and
+// thickness and strikethrough position and thickness in device pixels at this size, and the mean darkness
+// of the device rows below the baseline (underline) and above it (strikethrough) over the text's width.
+// With "nosnap" as a fourth argument the layout is drawn with D2D1_DRAW_TEXT_OPTIONS_NO_SNAP.
+static void decorationProbe(const Face& f, const char* label, float dpi, bool noSnap) {
+    const float ppd = dpi / 96.0f; const int w = 600, h = 64;
+    ComPtr<IDWriteFontFace> face = faceOf(f);
+    DWRITE_FONT_METRICS fm; face->GetMetrics(&fm);
+    const float em = f.size * ppd;   // the device em (the DIP size at this DPI)
+    printf("  %-18s %3.0f dpi: underline position %.3f thickness %.3f, strikethrough position %.3f thickness %.3f (device px; position = distance from the baseline to the line's top per DirectWrite)\n",
+           label, dpi, -fm.underlinePosition * em / fm.designUnitsPerEm, fm.underlineThickness * em / fm.designUnitsPerEm,
+           fm.strikethroughPosition * em / fm.designUnitsPerEm, fm.strikethroughThickness * em / fm.designUnitsPerEm);
+    ComPtr<IDWriteRenderingParams> params; CHECK(dw->CreateRenderingParams(&params));
+    for (int which = 0; which < 2; which++) {
+        ComPtr<IDWriteTextFormat> format;
+        CHECK(dw->CreateTextFormat(f.family.c_str(), f.collection.Get(), f.weight, f.style, DWRITE_FONT_STRETCH_NORMAL, f.size, L"en-us", &format));
+        // the strikethrough over periods, whose ink stays on the baseline rows, so none confounds the strikethrough rows (the extent comes from the underline pass)
+        static const wchar_t* PERIODS = L"..................................................";   // ink on the baseline only, far below the strikethrough; whitespace alone gets no decoration
+        const wchar_t* text = which == 0 ? TEXT : PERIODS;
+        ComPtr<IDWriteTextLayout> layout; CHECK(dw->CreateTextLayout(text, (UINT32) wcslen(text), format.Get(), 4096, 64, &layout));
+        DWRITE_TEXT_RANGE all = {0, (UINT32) wcslen(text)};
+        if (which == 0) CHECK(layout->SetUnderline(TRUE, all)); else CHECK(layout->SetStrikethrough(TRUE, all));
+        DWRITE_LINE_METRICS lm; UINT32 n = 1; layout->GetLineMetrics(&lm, 1, &n);
+        ComPtr<IWICBitmap> bmp; CHECK(wic->CreateBitmap(w, h, GUID_WICPixelFormat32bppBGR, WICBitmapCacheOnDemand, &bmp));
+        D2D1_RENDER_TARGET_PROPERTIES props = D2D1::RenderTargetProperties(D2D1_RENDER_TARGET_TYPE_SOFTWARE, D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE), dpi, dpi);
+        ComPtr<ID2D1RenderTarget> rt; CHECK(d2d->CreateWicBitmapRenderTarget(bmp.Get(), props, &rt));
+        rt->SetTextRenderingParams(params.Get()); rt->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
+        ComPtr<ID2D1SolidColorBrush> brush; CHECK(rt->CreateSolidColorBrush(D2D1::ColorF(0, 0, 0), &brush));
+        rt->BeginDraw(); rt->Clear(D2D1::ColorF(1, 1, 1));
+        rt->DrawTextLayout(D2D1::Point2F(4 / ppd, 40 / ppd - lm.baseline), layout.Get(), brush.Get(), noSnap ? D2D1_DRAW_TEXT_OPTIONS_NO_SNAP : D2D1_DRAW_TEXT_OPTIONS_NONE);
+        CHECK(rt->EndDraw());
+        std::vector<uint8_t> px((size_t) w * h * 4); CHECK(bmp->CopyPixels(nullptr, w * 4, (UINT) px.size(), px.data()));
+        // the text's horizontal extent from the glyph rows above the baseline
+        int x1 = w, x2 = -1;   // per pass: the periods' run is narrower than TEXT in the proportional faces
+        for (int y = 20; y < 40; y++) for (int x = 0; x < w; x++) if (px[((size_t) y * w + x) * 4 + 1] < 160) { x1 = std::min(x1, x); x2 = std::max(x2, x); }
+        if (x2 < 0) { printf("    no ink\n"); continue; }
+        printf("    %-13s rows %s baseline y 40, mean darkness:", which == 0 ? "underline" : "strikethrough", which == 0 ? "40.." : "..39 up from");
+        if (which == 0) { for (int y = 40; y < 48; y++) { long t = 0; for (int x = x1; x <= x2; x++) t += 255 - px[((size_t) y * w + x) * 4 + 1]; printf(" %ld", t / (x2 - x1 + 1)); } }
+        else { for (int y = 39; y >= 24; y--) { long t = 0; for (int x = x1; x <= x2; x++) t += 255 - px[((size_t) y * w + x) * 4 + 1]; printf(" %ld", t / (x2 - x1 + 1)); } }
+        printf("\n");
+    }
+}
+
 int wmain(int argc, wchar_t** argv) {
     CHECK(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
     CHECK(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory3), (IUnknown**) dw.GetAddressOf()));
@@ -1135,6 +1182,15 @@ int wmain(int argc, wchar_t** argv) {
     }
     if (argc == 6 && wcscmp(argv[1], L"--glyph") == 0) {   // dwref --glyph <font file> <char> <device x> <dpi>
         glyphDump(fileFace(argv[2], 13), argv[3][0], (float) _wtof(argv[4]), (float) _wtof(argv[5]));
+        return 0;
+    }
+    if ((argc == 4 || argc == 5) && wcscmp(argv[1], L"--decorations") == 0) {   // dwref --decorations <fonts-dir> <dpi> [nosnap]
+        std::wstring fonts = argv[2]; float dpi = (float) _wtof(argv[3]); bool noSnap = argc == 5;
+        printf("Direct2D's text renderer, underline and strikethrough%s:\n", noSnap ? " (NO_SNAP)" : "");
+        decorationProbe(fileFace(fonts + L"/Inter-Regular.otf", 13), "Inter 13", dpi, noSnap);
+        decorationProbe(fileFace(fonts + L"/JetBrainsMono-Regular.ttf", 13), "JetBrains Mono 13", dpi, noSnap);
+        decorationProbe(systemFace(L"Segoe UI", DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, 13), "Segoe UI 13", dpi, noSnap);
+        decorationProbe(systemFace(L"Consolas", DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, 12), "Consolas 12", dpi, noSnap);
         return 0;
     }
     if (argc == 3 && wcscmp(argv[1], L"--vgrid") == 0) {   // dwref --vgrid <fonts-dir>

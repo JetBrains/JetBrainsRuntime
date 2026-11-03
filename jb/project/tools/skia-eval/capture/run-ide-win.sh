@@ -60,7 +60,7 @@ case "$ARM" in
   T5) NAME=T5-skia-scaler-platform-colour2; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.lcdColorBits=2" ;;
   T6) NAME=T6-skia-scaler-platform-colour3; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.lcdColorBits=3" ;;
   S5) NAME=S5-software-skia-scaler-platform; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler" ;;
-  F5) NAME=F5-skia-full-platform;       PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.paragraphs=skia" ;;
+  F5) NAME=F5-skia-full-platform;       PROPS="-Dsun.java2d.skia=true -Dsun.java2d.d3d=false -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.layout=skia" ;;
   R1) NAME=R1-d3d9;       PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=true" ;;
   R2) NAME=R2-vulkan;     PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.vulkan=Force" ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;

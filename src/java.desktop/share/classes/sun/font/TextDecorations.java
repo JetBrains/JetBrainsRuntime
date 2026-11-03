@@ -33,19 +33,41 @@ import java.util.List;
 
 /**
  * Text decorations as the operating system's text draws them (the text settings' {@code decorations=system},
- * {@link sun.java2d.skia.SKEnvironment#textDecorations()}): a line occupies whole device pixel rows — its top
- * row is the rounded top of the stroked line, its thickness at least one pixel — and an underline leaves a
- * gap wherever glyph ink crosses the line, with a clearance of one device pixel on each side (CoreText skips
- * the descenders; Windows' DirectWrite does not, so the gaps are macOS only). The same rule, in the same
- * arithmetic, draws the decorations of Skia's paragraphs ({@code SKBackend.cpp}, the paragraph visitor), so
- * Java's TextLayout and SkParagraph render an underlined string alike. Only translations and uniform scales
- * are snapped; under a rotation or shear the stroked line is drawn as before.
+ * {@link sun.java2d.skia.SKEnvironment#textDecorations()}), by the platform's {@link Rule}: under CoreText's a
+ * line occupies whole device pixel rows — its top row is the rounded top of the stroked line, its thickness at
+ * least one pixel — and an underline leaves a gap wherever glyph ink crosses the line, with a clearance of one
+ * device pixel on each side (CoreText skips the descenders); under Direct2D's the underline's top is rounded to
+ * a row but its height is the font's thickness kept fractional and antialiased, the strikethrough is the
+ * unsnapped rectangle of the font's metrics, and nothing is skipped (DirectWrite draws through the ink). The
+ * same rule, in the same arithmetic, draws the decorations of Skia's paragraphs ({@code SKBackend.cpp}, the
+ * paragraph visitor), so Java's TextLayout and SkParagraph render an underlined string alike. Only translations
+ * and uniform scales are snapped; under a rotation or shear the stroked line is drawn as before.
  */
 public final class TextDecorations {
     private TextDecorations() {}
 
+    /**
+     * How the operating system's text places a decoration (the native side's {@code SKTextDefaults.decorationRule},
+     * {@link sun.java2d.skia.SKEnvironment#decorationRule()}).
+     */
+    public enum Rule {
+        /** CoreText's: whole device rows, the thickness rounded up, the band never nearer the baseline than its height (measured 2026-11-02). */
+        CORE_TEXT,
+        /**
+         * Direct2D's text renderer's, the one every DirectWrite application gets (dwref --decorations, measured
+         * at 96 to 192 dpi, 2026-11-03): the underline's top row is the font's underline position rounded, its
+         * height the font's thickness, fractional and antialiased downward; the strikethrough is the unsnapped
+         * rectangle from the font's strikethrough position (the top of the stroke) down by its thickness.
+         */
+        DIRECT_WRITE
+    }
+
     /** The horizontal clearance around ink crossing an underline, in user-space pixels (CoreText's: one point, two device pixels at 2x). */
     static final double CLEARANCE = 1.0;
+
+    static Rule rule() {
+        return sun.java2d.skia.SKEnvironment.decorationRule();
+    }
 
     /** Whether the graphics' transform lets a device-aligned line be drawn: a translation and a uniform scale. */
     public static boolean snappable(Graphics2D g2d) {
@@ -65,24 +87,38 @@ public final class TextDecorations {
         return new float[] {cm.underlineOffset - cm.underlineThickness / 2, cm.underlineThickness, cm.strikethroughOffset, cm.strikethroughThickness};
     }
 
+    /**
+     * The strikethrough's centre (negative above the baseline) from the scaler's strikethrough offset and
+     * thickness. Skia's font metrics name the offset the distance to the bottom of the stroke, and CoreText's
+     * placement was fitted on that reading; Skia's DirectWrite host hands on DWRITE_FONT_METRICS.strikethroughPosition,
+     * the OS/2 table's top of the stroke, and Direct2D draws the stroke from there downward (measured 2026-11-03).
+     */
+    public static float strikethroughCentre(float offset, float thickness) {
+        return rule() == Rule.DIRECT_WRITE ? offset + thickness / 2 : offset - thickness / 2;
+    }
+
     /** The bottom of the underline's band in user space at scale 1, for bounds (the rows at other scales lie within it). */
     public static float underlineBottom(float[] fontMetrics) {
-        int[] band = underlineBand(fontMetrics[0], fontMetrics[1]);
-        return band[0] + band[1];
+        double[] band = underlineBand(fontMetrics[0], fontMetrics[1]);
+        return (float) Math.ceil(band[0] + band[1] - 1e-3);
     }
 
     /**
-     * The device rows of an underline whose metrics (device pixels) put the top of the stroke {@code position}
-     * below the baseline with {@code thickness}: CoreText's placement, measured over 34 fonts and sizes at 1x
-     * (2026-11-02): whole rows, the thickness rounded up, the row holding the stroke's top for one row and
-     * the band growing upwards from there for more, never nearer the baseline than its own height (the row
-     * under the glyph bottoms stays clear). Returns {offset of the top row from the baseline y, rows}: the
-     * baseline y is the glyphs' bottom edge, the row above it holds their bottoms.
+     * The device band of an underline whose metrics (device pixels) put the top of the stroke {@code position}
+     * below the baseline with {@code thickness}, as {offset of the band's top from the baseline y, height}; the
+     * baseline y is the glyphs' bottom edge, the row above it holds their bottoms. CoreText's placement, measured
+     * over 34 fonts and sizes at 1x (2026-11-02): whole rows, the thickness rounded up, the row holding the
+     * stroke's top for one row and the band growing upwards from there for more, never nearer the baseline than
+     * its own height (the row under the glyph bottoms stays clear). Direct2D's: the top rounded to a row, the
+     * height the thickness itself (Segoe UI 13 at 1x: the row under the baseline at 0.76 coverage).
      */
-    public static int[] underlineBand(double position, double thickness) {
+    public static double[] underlineBand(double position, double thickness) {
+        if (rule() == Rule.DIRECT_WRITE) {
+            return new double[] {Math.round(position), thickness};
+        }
         int rows = Math.max(1, (int) Math.ceil(thickness - 1e-3));
         int top = Math.max(rows, (int) Math.floor(position + 0.5 - rows / 2.0));
-        return new int[] {top, rows};
+        return new double[] {top, rows};
     }
 
     /**
@@ -95,33 +131,40 @@ public final class TextDecorations {
         AffineTransform at = g2d.getTransform();
         double scale = at.getScaleX();
         Point2D a = at.transform(new Point2D.Double(x1, y), null), b = at.transform(new Point2D.Double(x2, y), null);
-        int[] band = underlineBand(position * scale, thickness * scale);
-        int top = (int) Math.round(a.getY()) + band[0], rows = band[1];
-        List<double[]> gaps = outline != null ? inkCrossings(outline, at, top, top + rows) : List.of();
-        fillBand(g2d, a.getX(), b.getX(), top, rows, gaps, CLEARANCE * scale);
+        double[] band = underlineBand(position * scale, thickness * scale);
+        double top = Math.round(a.getY()) + band[0], height = band[1];
+        List<double[]> gaps = outline != null ? inkCrossings(outline, at, top, top + height) : List.of();
+        fillBand(g2d, a.getX(), b.getX(), top, height, gaps, CLEARANCE * scale);
     }
 
     /**
      * Draws a strikethrough from {@code x1} to {@code x2} centred {@code offset} (user space, negative above)
-     * from the baseline {@code y}: whole device rows, at least one, the band rounded about the centre.
+     * from the baseline {@code y}: under CoreText's rule whole device rows, at least one, the band rounded about
+     * the centre; under Direct2D's the unsnapped rectangle of the thickness about the centre, from the rounded
+     * baseline (the glyphs' row).
      */
     public static void drawStrikethrough(Graphics2D g2d, float x1, float x2, float y, float offset, float thickness) {
         AffineTransform at = g2d.getTransform();
         double scale = at.getScaleX();
         Point2D a = at.transform(new Point2D.Double(x1, y), null), b = at.transform(new Point2D.Double(x2, y), null);
+        if (rule() == Rule.DIRECT_WRITE) {
+            double height = thickness * scale;
+            fillBand(g2d, a.getX(), b.getX(), Math.round(a.getY()) + offset * scale - height / 2, height, List.of(), 0);
+            return;
+        }
         int rows = Math.max(1, (int) Math.round(thickness * scale));
         int top = (int) Math.round(a.getY() + offset * scale - rows / 2.0);
         fillBand(g2d, a.getX(), b.getX(), top, rows, List.of(), 0);
     }
 
     /**
-     * Fills the device rows {@code [top, top + rows)} from {@code x1} to {@code x2} (device), skipping the gaps
-     * widened by {@code clearance} device pixels; the gaps' edges are fractional and antialiased, the band's rows
-     * and ends whole.
+     * Fills the device band {@code [top, top + height)} from {@code x1} to {@code x2} (device), skipping the gaps
+     * widened by {@code clearance} device pixels; the gaps' edges are fractional and antialiased, the band's ends
+     * whole, its rows whole under CoreText's rule and fractional under Direct2D's.
      */
-    static void fillBand(Graphics2D g2d, double x1, double x2, int top, int rows, List<double[]> gaps, double clearance) {
+    static void fillBand(Graphics2D g2d, double x1, double x2, double top, double height, List<double[]> gaps, double clearance) {
         int left = (int) Math.round(x1), right = (int) Math.round(x2);
-        if (right <= left) {
+        if (right <= left || height <= 0) {
             return;
         }
         AffineTransform saved = g2d.getTransform();
@@ -133,10 +176,10 @@ public final class TextDecorations {
             for (double[] gap : gaps) {
                 double gx1 = gap[0] - clearance, gx2 = gap[1] + clearance;
                 if (gx2 <= start || gx1 >= right) continue;
-                if (gx1 > start) g2d.fill(new Rectangle2D.Double(start, top, gx1 - start, rows));
+                if (gx1 > start) g2d.fill(new Rectangle2D.Double(start, top, gx1 - start, height));
                 start = Math.max(start, gx2);
             }
-            if (start < right) g2d.fill(new Rectangle2D.Double(start, top, right - start, rows));
+            if (start < right) g2d.fill(new Rectangle2D.Double(start, top, right - start, height));
         } finally {
             g2d.setTransform(saved);
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, savedAA == null ? RenderingHints.VALUE_ANTIALIAS_DEFAULT : savedAA);
