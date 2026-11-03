@@ -55,5 +55,7 @@ void SKMaskCache_DrawSolid(SKMaskCache *mc, SkCanvas *canvas, const SkPaint &pai
 // Draws the queued mesh. Called before any other draw, state or destination
 // change, and before ending a recording.
 void SKMaskCache_Flush(SKMaskCache *mc);
+// The queued mesh has a tile within r (SKQuadBatch::touches).
+bool SKMaskCache_Touches(const SKMaskCache *mc, const SkRect &r);
 
 #endif /* SKMaskCache_h_Included */

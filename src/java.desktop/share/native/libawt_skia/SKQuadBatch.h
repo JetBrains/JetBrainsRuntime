@@ -180,6 +180,12 @@ public:
     // The batch's paint is p (for batches that do not merge colours: two passes, blenders).
     bool samePaint(const SkPaint &p) const { return paint == p; }
 
+    // Pending and r meets the bounds of its quads (all of them, as drawn): a draw outside them
+    // commutes with the batch, so it need not draw the batch first (SKBackend_Blit).
+    bool touches(const SkRect &r) const {
+        return pending() && SkRect::Intersects(drawnBounds, r);
+    }
+
     // A pending quad's overlap extent intersects r (tracked under splitOnOverlap only).
     bool overlaps(const SkRect &r) const {
         if (canvas == nullptr || r.isEmpty()) {
@@ -391,6 +397,9 @@ private:
         } else if (base.positions.size() + 4 > 0xffff) {
             drawPending();   // 16-bit indices
         }
+        SkRect quadBounds;
+        quadBounds.setBounds(SkSpan(pos, 4));
+        drawnBounds.join(quadBounds);
         uint16_t first = (uint16_t) target->positions.size();
         target->positions.insert(target->positions.end(), pos, pos + 4);
         if (tex != nullptr) {
@@ -485,6 +494,7 @@ private:
         layerCount = 0;
         colors.clear();
         tracked.setEmpty();
+        drawnBounds.setEmpty();
     }
 
     SkCanvas *canvas = nullptr;
@@ -502,6 +512,7 @@ private:
     size_t layerCount = 0;           // layers in use; the rest keep their vectors for reuse
     std::vector<SkColor> colors;     // per vertex of `base` when colorPerVertex
     SkRect tracked = SkRect::MakeEmpty();   // the union of the tracked overlap extents (overlaps()'s quick test)
+    SkRect drawnBounds = SkRect::MakeEmpty();   // the union of the pending quads' bounds (touches())
 };
 
 #endif /* SKQuadBatch_h_Included */

@@ -75,6 +75,15 @@ enum SKStatsCounter {
     SK_COUNT_MESH_DRAWS_AT_STATE,     // of the mesh draws, those of batches a clip or transform change drew
     SK_COUNT_MESH_DRAWS_AT_SURFACE,   // of the mesh draws, those of batches a destination switch drew
     SK_COUNT_GLYPH_OVERLAP_DRAWS,     // LCD twopass batches of another colour drawn early: a glyph overlapped them
+    // Diagnostics: the mesh draws of destination switches (_AT_SURFACE) by what followed for the surface switched
+    // away from: the same destination set again (a new source only), the surface set again before it was read
+    // (the batches could have stayed open), read first (a source, a read-back, released), or neither before the
+    // flush ended.
+    SK_COUNT_SWITCH_DRAWS_SAME,
+    SK_COUNT_SWITCH_DRAWS_RETURNED,
+    SK_COUNT_SWITCH_DRAWS_READ,
+    SK_COUNT_SWITCH_DRAWS_ENDED,
+    SK_COUNT_BLITS_PAST_BATCHES,      // blits drawn ahead of pending batches they do not touch (SKBackend_Blit)
     SK_COUNT_COUNT
 };
 
@@ -83,6 +92,7 @@ uint64_t SKStats_Now();     // nanoseconds, monotonic
 void SKStats_AddSpan(SKStatsSpan span, uint64_t nanos);
 void SKStats_AddOp(int opcode, uint64_t nanos);
 void SKStats_Count(SKStatsCounter counter, uint64_t n = 1);
+uint64_t SKStats_Counter(SKStatsCounter counter);   // the count since the last print
 // What draws the pending batches now (SK_COUNT_MESH_DRAWS_AT_STATE or _AT_SURFACE), SK_COUNT_COUNT for
 // nothing in particular: mesh draws counted meanwhile are also counted under it.
 void SKStats_SetDrawCause(SKStatsCounter cause);

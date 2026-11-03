@@ -172,3 +172,7 @@ void SKMaskCache_Flush(SKMaskCache *mc) {
         mc->batch.flush();
     }
 }
+
+bool SKMaskCache_Touches(const SKMaskCache *mc, const SkRect &r) {
+    return mc != nullptr && mc->batch.touches(r);
+}

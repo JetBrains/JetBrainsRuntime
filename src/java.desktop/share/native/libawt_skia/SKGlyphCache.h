@@ -87,6 +87,8 @@ void SKGlyphCache_Flush(SKGlyphCache *gc);
 // The cache's sprite batch, for its draw hooks (SKQuadBatch::beforeDraw,
 // afterDraw).
 class SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc);
+// A pending batch of the cache (open or parked) has a quad within r (SKQuadBatch::touches).
+bool SKGlyphCache_Touches(const SKGlyphCache *gc, const SkRect &r);
 
 // The caches' work so far, for diagnostics and tests (SKEnvironment.glyphCacheStats):
 // glyphs drawn from a cell, cells staged (first draw of a glyph image), cells evicted

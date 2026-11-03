@@ -455,3 +455,18 @@ void SKGlyphCache_Flush(SKGlyphCache *gc) {
 SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc) {
     return *gc->batch;
 }
+
+bool SKGlyphCache_Touches(const SKGlyphCache *gc, const SkRect &r) {
+    if (gc == nullptr) {
+        return false;
+    }
+    if (gc->batch->touches(r)) {
+        return true;
+    }
+    for (const auto &b : gc->parked) {
+        if (b->touches(r)) {
+            return true;
+        }
+    }
+    return false;
+}
