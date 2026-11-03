@@ -132,7 +132,10 @@ public class IdeScenes {
                     // search text (its occurrences highlighted); then a four-line selection, lines 15-18, ending at
                     // the caret on Comparable, whose documentation the quick documentation action shows; the
                     // file's first lines — the comment with the CJK, emoji and ligature samples — stay in view
-                    retry(() -> ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to"), 20, 400);   // the full Skia route opened its editor after 1.5 s of retries once (2026-11-03)   // the word selected: the find panel takes it as its text
+                    // the word selected: the find panel takes it as its text. Retried with the IDE re-fronted and the file
+                    // re-opened: the markdown preview's cef_server helper starts about now and can take the activation,
+                    // after which the editor opens but cannot be focused or selected ("Cannot focus editor"; F5 at 1x, 2026-11-03)
+                    retry(() -> { requireIdeInFront(); ide("cmd=open&file=src/Hello.java"); return ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to"); }, 20, 400);   // the word selected: the find panel takes it as its text
                     expect(() -> ide("cmd=action&id=Replace"), 1500);
                     awaitQuiet(150, 1000);
                     ide("cmd=open&file=src/Hello.java");   // the focus back from the search field to the editor
@@ -195,10 +198,10 @@ public class IdeScenes {
 
     /** One command to the scene-driver plugin in the isolated IDE; its answer, "ok" or the error (which aborts the run). */
     /** A command retried while the IDE is not ready for it (an editor still opening): up to attempts, delay ms apart. */
-    static String retry(java.util.function.Supplier<String> command, int attempts, long delay) {
+    static String retry(java.util.concurrent.Callable<String> command, int attempts, long delay) throws Exception {
         for (int i = 1; ; i++) {
             try {
-                return command.get();
+                return command.call();
             } catch (IllegalStateException e) {
                 if (i >= attempts) throw e;
                 System.err.println("  retrying after: " + e.getMessage());
