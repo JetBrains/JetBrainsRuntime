@@ -263,6 +263,7 @@ void SKBackend_RequestPresent(SKSDOps *ops);
 // (sun.java2d.skia.submit=present), for the flusher's timeout flush.
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu = false, bool presentAll = false);
 jlong SKBackend_Flushes();                                     // how many times EndOfFlush ran (diagnostics, tests)
+jlong SKBackend_Recordings();                                  // how many recordings were snapped (diagnostics, tests)
 bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]);   // Graphite's per-draw floor (SKEnvironment.benchGraphite)
 
 #endif /* SKBackend_h_Included */

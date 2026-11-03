@@ -3235,6 +3235,8 @@ struct SKFoldedPresent {
 };
 static std::unordered_map<SKConfigContext *, SKFoldedPresent> gFolded;
 
+static std::atomic<jlong> gRecordings{0};   // recordings snapped (SKBackend_Recordings)
+
 void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return;
@@ -3253,6 +3255,7 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
         recording = cc->recorder->snap();
     }
     if (recording) {
+        gRecordings.fetch_add(1, std::memory_order_relaxed);
         InsertRecordingInfo info;
         info.fRecording = recording.get();
         if (present != nullptr) {
@@ -3421,6 +3424,10 @@ bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
     return true;
 }
 
+jlong SKBackend_Recordings() {
+    return gRecordings.load(std::memory_order_relaxed);
+}
+
 jlong SKBackend_Flushes() {
     return gFlushes.load(std::memory_order_relaxed);
 }
@@ -3572,6 +3579,22 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             break;
         }
     }
+    // A flush that presents nothing and waits for nothing does not end its recordings: the next
+    // flush continues them, so each recording's fixed cost (snap, insert, submit: about 280 µs on
+    // Skia/Vulkan in the IDE) is paid per present, not per render-queue buffer. A tenth of the IDE's
+    // typing flushes presented nothing; holding them, Skia/Vulkan's flush wait −4 % (2026-11-03). At
+    // most MAX_DEFERRED_FLUSHES in a row (upload buffers and scratch textures recycle only after a
+    // submit); the flusher's timeout flush (100 ms, presentAll) follows a flush that returns pending,
+    // and read-backs, syncs and released surfaces submit as before.
+    // J2D_SKIA_RECORDING_PER_FLUSH (diagnostics, A/B): every flush ends its recordings, as before.
+    static const bool recordingPerFlush = getenv("J2D_SKIA_RECORDING_PER_FLUSH") != nullptr;
+    static int heldFlushes = 0;
+    if (!recordingPerFlush && !syncToCpu && !presentAll && !presenting && heldFlushes < MAX_DEFERRED_FLUSHES
+            && !g.touchedContexts.empty()) {
+        heldFlushes++;
+        return true;
+    }
+    heldFlushes = 0;
     // A flush that presents nothing and waits for nothing only inserts its recordings
     // (sun.java2d.skia.submit=present); the next submit sends them, in order.
     const bool defer = gConfig.submitPerPresent && !syncToCpu && !presentAll && !presenting

@@ -58,6 +58,12 @@ Java_sun_java2d_skia_SKEnvironment_paragraphsBySkiaNative(JNIEnv *env, jclass cl
 }
 
 JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_recordingsNative(JNIEnv *env, jclass clazz)
+{
+    return SKBackend_Recordings();
+}
+
+JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKEnvironment_flushesNative(JNIEnv *env, jclass clazz)
 {
     return SKBackend_Flushes();

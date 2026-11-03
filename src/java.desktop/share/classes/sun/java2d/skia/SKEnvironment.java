@@ -532,6 +532,16 @@ public final class SKEnvironment {
         return isSkiaEnabled() ? flushesNative() : 0;
     }
 
+    /**
+     * How many Graphite recordings the backend has snapped so far: a flush that presents nothing
+     * and waits for nothing continues its recordings in the next one (diagnostics, tests).
+     */
+    public static long recordings() {
+        return isSkiaEnabled() ? recordingsNative() : 0;
+    }
+
+    private static native long recordingsNative();
+
     private static Boolean libraryLoaded;
 
     /**
