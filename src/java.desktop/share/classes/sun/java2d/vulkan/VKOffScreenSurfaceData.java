@@ -28,6 +28,7 @@ package sun.java2d.vulkan;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.VolatileImage;
+import java.util.Objects;
 
 import sun.java2d.SurfaceData;
 
@@ -42,6 +43,8 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
     private native void initOps(int format);
 
     public VKOffScreenSurfaceData(VKGraphicsConfig gc, int width, int height, Image image, int transparency, int type) {
+        Objects.requireNonNull(gc.getGPU());
+
         VKFormat format = gc.getFormat();
         super(format, transparency, type);
         this.userWidth = width;
