@@ -37,7 +37,10 @@ while [ $# -gt 0 ]; do
 done
 # an arm code ending in "f": the arm with fractional glyph placement everywhere (the IDE's registry keys as system
 # properties); its captures land in <theme>-<scale>x-fractional (run-scenes-win.sh), a sample condition of the viewer
-PLACEMENT=""; case "$ARM" in *f) ARM="${ARM%f}"; PLACEMENT="-Dide.text.fractional.metrics=Enabled -Deditor.text.fractional.metrics=Enabled" ;; esac
+# the keys are multi-option registries ([Auto*|Disabled|Enabled]): the Registry takes a system property as a choice only in
+# the bracket form with the chosen option starred (RegistryValue.getSelectedOption); a plain "Enabled" fell through to Auto,
+# which under ClearType is off, so the f arms of 2026-11-03 before 13:30 were the default arms
+PLACEMENT=""; case "$ARM" in *f) ARM="${ARM%f}"; PLACEMENT="-Dide.text.fractional.metrics=[Auto|Disabled|Enabled*] -Deditor.text.fractional.metrics=[Auto|Disabled|Enabled*]" ;; esac
 case "$ARM" in
   A0) NAME=A0-software;   PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false" ;;
   R0) NAME=R0-software-raster; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true" ;;
@@ -105,7 +108,7 @@ CP=$(cat "$STATE/classpath.txt")
   echo "-Didea.jre.check=false"
   echo "-Didea.is.internal=false"
   echo "-Dsun.java2d.skia.pipelineCache=$STATE_WIN\pipeline-cache"   # never the default under user.home; IDE_EXTRA_VMOPTIONS may override
-  for p in $PROPS; do echo "$p"; done
+  set -f; for p in $PROPS; do echo "$p"; done; set +f   # -f: no globbing of the placement option's "*"
   # IDE_EXTRA_VMOPTIONS: further options, one per line (a JFR recording, for instance)
   [ -n "${IDE_EXTRA_VMOPTIONS:-}" ] && printf '%s\n' "$IDE_EXTRA_VMOPTIONS"
 } > "$STATE/idea.vmoptions"
