@@ -95,7 +95,13 @@ def main():
                 dims = {}
                 for name, part in zip(opts['setdims'], parts):
                     if '-' in name:
-                        for n, v in zip(name.split('-'), part.split('-')): dims[n] = v
+                        names, values = name.split('-'), part.split('-')
+                        for n, v in zip(names, values): dims[n] = v
+                        # a trailing component the path lacks (dark-2x without the placement): the dimension's first
+                        # value in descriptions.json — the default (placement default, 2026-11-03)
+                        for n in names[len(values):]:
+                            first = next((list(d.get('values', {}).keys()) for d in desc.get('dimensions', []) if d['key'] == n), [])
+                            if first: dims[n] = first[0]
                     else: dims[name] = part
                 s['dims'] = dims
             if rowlabels:
