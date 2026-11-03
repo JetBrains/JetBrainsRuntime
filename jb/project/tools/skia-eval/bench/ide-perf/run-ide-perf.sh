@@ -72,6 +72,15 @@ export IDE_EXTRA_VMOPTIONS="-Dtestscript.filename=$(cygpath -w "$SCRIPT")
 -XX:StartFlightRecording:name=perf,settings=default,dumponexit=true,filename=$STATE_WIN\\log\\perf.jfr,method-timing=$F${EXTRA_VMOPTIONS:+
 $EXTRA_VMOPTIONS}"
 export J2D_SKIA_STATS=1
+# Overlays registered as implicit Vulkan layers (on x64hw: RivaTuner Statistics Server and Overwolf's two)
+# are loaded into every Vulkan process, their applications running or not, and wrap the present and the
+# submits (pass-through: about 15 ms of CPU a typing launch, ETW 2026-11-03). Disabled for the launch, so the
+# measurement does not depend on what is installed, through the variables their manifests declare (Steam's
+# layers are opt-in and stay off);
+# VULKAN_OVERLAYS=keep leaves them.
+if [ "${VULKAN_OVERLAYS:-}" != keep ]; then
+  export DISABLE_RTSS_LAYER=1 DISABLE_VULKAN_OW_OVERLAY_LAYER=1 DISABLE_VULKAN_OW_OBS_CAPTURE=1
+fi
 
 START=$(date +%s)
 bash "$KIT/capture/run-ide-win.sh" "$ARM" --seed "$SEED" -- "$(cygpath -w "$PROJECT")" &
