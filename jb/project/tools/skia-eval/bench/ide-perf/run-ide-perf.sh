@@ -44,6 +44,7 @@ rm -rf -- "${STATE:?}/config" "${STATE:?}/log" "${STATE:?}/plugins" "${STATE:?}/
 mkdir -p "$STATE/plugins"
 [ -d "$OUT_ROOT/capture/plugins/scene-driver" ] && cp -R "$OUT_ROOT/capture/plugins/." "$STATE/plugins/"
 git -C "$PROJECT" checkout -q -- . && git -C "$PROJECT" clean -fdq -e .idea -e '*.iml'
+[ -d "$WORK/pristine" ] && cp -pR "$WORK/pristine/." "$PROJECT/"   # the edited files with their original times (prepare.sh)
 # The project's Maven wrapper stays: the IDE prefers it, and the bundled Maven's server hung on this
 # project (2026-11-03, twice, no answer after 9 minutes). The wrapper's Maven lives in ~/.m2/wrapper,
 # put there by the first warmup; later launches only read it (checked per run by the series).

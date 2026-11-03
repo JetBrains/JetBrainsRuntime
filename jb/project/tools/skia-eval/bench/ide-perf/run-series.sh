@@ -22,6 +22,6 @@ for rep in $(seq "$FIRST" "$LAST"); do
     end=$(grep -c "CommandLogger - %exitApp\|scene driver: exit requested" "$dir/idea.log" 2>/dev/null)
     skia=$(grep -o "Skia rendering enabled: [A-Z]*[^,]*" "$dir/stdout.txt" 2>/dev/null | head -1 | cut -c1-80)
     vk=$(grep -c "Vulkan rendering enabled: YES" "$dir/stdout.txt" 2>/dev/null)
-    echo "  $arm $launch: $(tail -1 "$SERIES/rep$rep-$arm-$launch.log" | cut -c1-60) | end $end | ${skia:-no Skia line} | vulkan $vk | scenes $(wc -l < "$dir/scenes.tsv" 2>/dev/null || echo -) | m2 new $(find ~/.m2 -type f -newer "$MARK" 2>/dev/null | wc -l)"
+    echo "  $arm $launch: $(tail -1 "$SERIES/rep$rep-$arm-$launch.log" | cut -c1-60) | end $end | ${skia:-no Skia line} | vulkan $vk | scenes $([ -f "$dir/scenes.tsv" ] && wc -l < "$dir/scenes.tsv" || echo -) | m2 new $(find ~/.m2 -type f -newer "$MARK" 2>/dev/null | wc -l)"
   done
 done

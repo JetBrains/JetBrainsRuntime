@@ -15,6 +15,11 @@ PROJECT="$WORK/project"
 mkdir -p "$WORK/m2" "$WORK/classes"
 rm -rf "$PROJECT"
 git clone -q --local "$SRC" "$PROJECT"
+# the files the scripts edit, with their timestamps: run-ide-perf.sh puts these copies back, so that a
+# file reset after a typing launch is what the snapshot's file system remembers (a git checkout gives it
+# a new time, and the IDE then asked whether to reload it from disk, a modal dialog, mid-typing)
+rm -rf "$WORK/pristine"; mkdir -p "$WORK/pristine"
+(cd "$PROJECT" && cp -p --parents builder/src/main/java/com/iluwatar/builder/Hero.java "$WORK/pristine/")
 mkdir -p "$PROJECT/.idea"
 M2=$(cygpath -m "$WORK/m2")
 cat > "$PROJECT/.idea/workspace.xml" <<EOF
