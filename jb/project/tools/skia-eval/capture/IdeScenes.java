@@ -132,7 +132,7 @@ public class IdeScenes {
                     // search text (its occurrences highlighted); then a four-line selection, lines 15-18, ending at
                     // the caret on Comparable, whose documentation the quick documentation action shows; the
                     // file's first lines — the comment with the CJK, emoji and ligature samples — stay in view
-                    retry(() -> ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to"), 5, 300);   // the word selected: the find panel takes it as its text
+                    retry(() -> ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to"), 20, 400);   // the full Skia route opened its editor after 1.5 s of retries once (2026-11-03)   // the word selected: the find panel takes it as its text
                     expect(() -> ide("cmd=action&id=Replace"), 1500);
                     awaitQuiet(150, 1000);
                     ide("cmd=open&file=src/Hello.java");   // the focus back from the search field to the editor
