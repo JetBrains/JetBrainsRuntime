@@ -65,7 +65,7 @@ public class VKSurfaceDataProxy extends SurfaceDataProxy {
         if (cachedData == null) {
             try {
                 cachedData = vkgc.createManagedSurface(w, h, transparency);
-            } catch (NullPointerException | OutOfMemoryError ignored) {
+            } catch (OutOfMemoryError ignored) {
                 return null;
             }
         }
