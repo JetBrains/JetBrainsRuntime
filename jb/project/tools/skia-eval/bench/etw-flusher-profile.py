@@ -11,7 +11,8 @@ symbol, so inlined code lands in its caller). Reports, over the named threads of
 the trace: samples by module (exclusive, at the sampled frame), inclusive samples per function
 (a function counts once per stack it appears in), and the top exclusive functions. With
 --flushes, samples are also given per flush (one sample is one sampling interval, 1 ms with WPR's
-CPU profile)."""
+CPU profile). With --paths, for each substring of a symbol: the most common chains of the callers of
+the first frame matching it (--depth frames)."""
 import argparse, bisect, collections, re, subprocess, sys
 
 KERNEL = 0xFFFF800000000000
@@ -60,6 +61,9 @@ def main():
     ap.add_argument("--undname")
     ap.add_argument("--flushes", type=int)
     ap.add_argument("--top", type=int, default=40)
+    ap.add_argument("--paths", action="append", default=[],
+                    help="a substring of a (mangled) symbol in --module: the most common chains of its callers")
+    ap.add_argument("--depth", type=int, default=6)
     a = ap.parse_args()
 
     threads = {}            # tid -> pid, for the named threads
@@ -149,7 +153,24 @@ def main():
                 inclusive[key] += 1
 
     total = len(stacks)
+    chains = {p: collections.Counter() for p in a.paths}
+    if a.paths:
+        for pid, tid, ip, frames in stacks:
+            named = []
+            for fr in frames:
+                if fr >= KERNEL:
+                    continue
+                m2, s2 = locate(pid, fr)
+                named.append(s2 or "[" + m2 + "]")
+            for p in a.paths:
+                for i, s in enumerate(named):
+                    if p in s:
+                        chains[p][tuple(named[i:i + a.depth])] += 1
+                        break
     wanted = set(list(exclusive)[:]) | set(k for k, _ in inclusive.most_common(a.top * 2)) | set(kernel_from)
+    for counter in chains.values():
+        for chain in counter:
+            wanted.update(chain)
     plain = demangle(sorted(wanted), a.undname) if a.undname else {}
 
     def nm(s):
@@ -169,6 +190,11 @@ def main():
     print("\nexclusive, top functions (user mode):")
     for k, n in exclusive.most_common(a.top):
         print("  %6d  %5.1f %%  %s" % (n, 100.0 * n / total, nm(k)))
+    for p in a.paths:
+        n = sum(chains[p].values())
+        print("\nstacks through %r: %d (%.1f %%), the most common chains of callers:" % (p, n, 100.0 * n / total))
+        for chain, c in chains[p].most_common(12):
+            print("  %6d  %s" % (c, " <- ".join(nm(s)[:60] for s in chain)))
 
 
 if __name__ == "__main__":
