@@ -1863,6 +1863,16 @@ public abstract class SunToolkit extends Toolkit
     }
 
     /**
+     * Whether the toolkit's window surfaces are double-buffered themselves: drawn
+     * off-screen and shown only when a paint cycle ends, so that Swing can paint
+     * straight into them without a back buffer of its own, as with
+     * {@code awt.nativeDoubleBuffering} (which wins when set).
+     */
+    public boolean isWindowSurfaceDoubleBuffered() {
+        return false;
+    }
+
+    /**
      * Descendants of the SunToolkit should override and put their own logic here.
      */
     public int getNumberOfButtons(){

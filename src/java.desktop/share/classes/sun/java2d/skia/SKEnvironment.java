@@ -193,17 +193,28 @@ public final class SKEnvironment {
     }
     /**
      * When a window is presented ({@code sun.java2d.skia.present}): {@code flush}
-     * (the default) presents every window a queue flush drew into at the end of
-     * that flush; {@code cycle} presents a window when its paint cycle ends
-     * (Swing's {@code updateWindows}, an AWT paint event, {@code Toolkit.sync})
+     * presents every window a queue flush drew into at the end of that flush;
+     * {@code cycle} (the default on Windows) presents a window when its paint cycle
+     * ends (Swing's {@code updateWindows}, an AWT paint event, {@code Toolkit.sync})
      * or at the flusher's timeout flush, as the other pipelines do: fewer presents
-     * per frame, and the EDT no longer waits behind a present at every flush.
-     * Windows only so far: the macOS window surface does not signal its paint
-     * cycle to the Skia queue yet.
+     * per frame, the EDT no longer waits behind a present at every flush, and a
+     * window is never presented half-painted, so Swing paints straight into it
+     * (see {@link #swingBackBuffer()}). Windows only so far: the macOS window surface
+     * does not signal its paint cycle to the Skia queue yet.
      */
     private static final boolean PRESENT_PER_CYCLE =
-            "cycle".equalsIgnoreCase(System.getProperty("sun.java2d.skia.present", "flush"))
+            "cycle".equalsIgnoreCase(System.getProperty("sun.java2d.skia.present", "cycle"))
             && System.getProperty("os.name", "").startsWith("Windows");
+    /**
+     * Whether Swing keeps its own back buffer for windows on this pipeline
+     * ({@code sun.java2d.skia.swingBackBuffer}). A window surface is already an
+     * off-screen texture that is presented when its paint cycle ends ({@code present=cycle}),
+     * so Swing's back buffer only adds a copy of every repainted region into it: by
+     * default ({@code false}) Swing paints straight into the window, as with native
+     * double buffering ({@code awt.nativeDoubleBuffering}, which wins when set). In
+     * the IDE, typing: Skia/Vulkan's flush wait −15 %, the EDT's paint −8 % (2026-11-03).
+     */
+    private static final boolean SWING_BACK_BUFFER = Boolean.getBoolean("sun.java2d.skia.swingBackBuffer");
     /**
      * When recorded work is submitted to the GPU ({@code sun.java2d.skia.submit}):
      * {@code flush} (the default) submits every context a queue flush drew into at
@@ -427,6 +438,15 @@ public final class SKEnvironment {
     /** Whether windows are presented once per paint cycle rather than at every flush ({@code sun.java2d.skia.present=cycle}). */
     public static boolean presentsPerCycle() {
         return PRESENT_PER_CYCLE && isSkiaEnabled();
+    }
+
+    /**
+     * Whether Swing should keep its back buffer for windows ({@code sun.java2d.skia.swingBackBuffer});
+     * without one Swing paints straight into the window surface, which needs windows presented
+     * per paint cycle. True where the pipeline does not present per cycle.
+     */
+    public static boolean swingBackBuffer() {
+        return SWING_BACK_BUFFER || !presentsPerCycle();
     }
 
     /** Whether every antialiased shape is rasterized by Skia rather than by Marlin. */

@@ -1202,4 +1202,11 @@ public final class WToolkit extends SunToolkit implements Runnable {
     public boolean needUpdateWindowAfterPaint() {
         return VKEnv.isPresentationEnabled() || sun.java2d.skia.SKEnvironment.presentsPerCycle();
     }
+
+    // Skia's window surfaces are off-screen textures presented when their paint cycle ends
+    // (sun.java2d.skia.present=cycle, the default): Swing needs no back buffer of its own.
+    @Override
+    public boolean isWindowSurfaceDoubleBuffered() {
+        return !sun.java2d.skia.SKEnvironment.swingBackBuffer();
+    }
 }

@@ -232,6 +232,12 @@ public class RepaintManager
         } else {
             volatileBufferType = Transparency.OPAQUE;
         }
+        // Window surfaces that are double-buffered themselves (SunToolkit.isWindowSurfaceDoubleBuffered,
+        // JBR's Skia pipeline on Windows): no back buffer, as with awt.nativeDoubleBuffering, unless that is set
+        if (!headless && System.getProperty("awt.nativeDoubleBuffering") == null
+                && (tk instanceof SunToolkit) && ((SunToolkit) tk).isWindowSurfaceDoubleBuffered()) {
+            nativeDoubleBuffering = true;
+        }
     }
 
     private static RepaintManager repaintManager;
