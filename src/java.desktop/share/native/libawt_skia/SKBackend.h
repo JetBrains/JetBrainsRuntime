@@ -86,6 +86,10 @@ struct SKSurfaceState {
     // the swap chain images, by imageKey, of the swap chain generation presentGeneration
     std::unordered_map<uint64_t, sk_sp<SkSurface>> presentTargets;
     uint32_t presentGeneration = 0;
+    // Diagnostics (J2D_SKIA_STATS): drawn into in recording drawnGeneration and not blitted from since
+    // (SK_COUNT_BLITS_OF_PENDING_SOURCES)
+    bool drawnSinceBlit = false;
+    uint32_t drawnGeneration = 0;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C

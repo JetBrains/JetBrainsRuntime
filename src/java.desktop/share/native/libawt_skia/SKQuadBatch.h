@@ -500,9 +500,8 @@ private:
         for (size_t i = 0; i < pendingBatches().size(); ) {
             SKQuadBatch *b = pendingBatches()[i];
             if (b != this && b->family != family && b->canvas == canvas && b->touches(r)) {
-                SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_KIND);
+                SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_KIND);
                 b->drawPending();   // leaves pendingBatches()
-                SKStats_SetDrawCause(SK_COUNT_COUNT);
                 i = 0;
             } else {
                 i++;

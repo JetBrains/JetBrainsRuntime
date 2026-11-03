@@ -56,7 +56,7 @@ const uint64_t origin = SKStats_Now();
 
 const char *const SPAN_NAMES[SK_SPAN_COUNT] = {
     "queue", "batches", "snap", "insert", "insert:compiling", "submit", "submit+wait", "readback", "image upload", "present",
-    "present:acquire", "present:copy", "present:call"
+    "present:acquire", "present:copy", "present:call", "blit:source", "blit:software", "blit:draw"
 };
 
 const char *opName(int opcode) {
@@ -100,16 +100,24 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu\n",
+    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_STATE],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_KIND],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_CANVAS_OP],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_DIRECT],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_BLIT],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_FLUSH],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_IMMEDIATE],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_SURFACE],
             (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_SAME],
             (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_RETURNED],
             (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_READ],
             (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_ENDED],
             (unsigned long long) stats.counters[SK_COUNT_BLITS_PAST_BATCHES],
+            (unsigned long long) stats.counters[SK_COUNT_SURFACE_BLITS],
+            (unsigned long long) stats.counters[SK_COUNT_BLITS_OF_PENDING_SOURCES],
+            (unsigned long long) stats.counters[SK_COUNT_PENDING_SOURCES_VOLATILE],
             (unsigned long long) stats.counters[SK_COUNT_GLYPH_OVERLAP_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_ATLAS_UPLOADS],
             (unsigned long long) stats.counters[SK_COUNT_PRESENTS_FAILED],
@@ -186,8 +194,10 @@ uint64_t SKStats_Counter(SKStatsCounter counter) {
     return stats.counters[counter];
 }
 
-void SKStats_SetDrawCause(SKStatsCounter cause) {
+SKStatsCounter SKStats_SetDrawCause(SKStatsCounter cause) {
+    const SKStatsCounter previous = drawCause;
     drawCause = cause;
+    return previous;
 }
 
 void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash) {

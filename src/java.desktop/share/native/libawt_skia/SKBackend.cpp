@@ -679,6 +679,10 @@ static void markTouched() {
     if (g.cc != nullptr) {
         g.touchedContexts.insert(g.cc);
     }
+    if (SKStats_IsEnabled() && g.dst != nullptr && g.dst->state != nullptr && g.cc != nullptr) {
+        g.dst->state->drawnSinceBlit = true;
+        g.dst->state->drawnGeneration = g.cc->recordingGeneration;
+    }
     if (g.dst != nullptr && g.dst->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
         g.touchedWindows.insert(g.dst);
     }
@@ -1335,7 +1339,7 @@ static bool batchesTouch(const SkRect &r) {
 // replacing another for the same destination, whose blit drew the batches next.
 static bool gBlitPastBatches = false;   // SKBackend_Blit for drawImageQuad
 
-#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches(); ensureCanvasClip()
+#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); { SKDrawCauseScope cause_(SK_COUNT_MESH_DRAWS_AT_CANVAS_OP); flushAllBatches(); } ensureCanvasClip()
 // Before a batched op of one kind (SKQuadBatch::family: rects 0, glyphs 1, tiles 2): the other kinds'
 // pending batches are drawn, unless they stay pending beside the op's (SKQuadBatch::gCrossFamily, each
 // quad then draws those it touches). A coverage tile under a shader paint is drawn on its own, so a
@@ -1716,7 +1720,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
     const bool solidTile = mask == nullptr || masklen == 0;
     if (solidTile && (g.shader || !SKMaskCache_Fits(w, h))) {
         // a solid tile under a shader paint, or an oversized one, is a plain rect
-        flushAllBatches();   // drawn through the canvas: every pending batch first, of any kind
+        { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }   // drawn through the canvas: every pending batch first, of any kind
         ensureCanvasClip();
         SKMaskCache_Flush(g.cc->maskCache);
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
@@ -1737,7 +1741,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
             return;
         }
     }
-    flushAllBatches();    // the rest draws through the canvas: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // the rest draws through the canvas: every pending batch first, of any kind
     ensureCanvasClip();
     if (solidTile) {
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
@@ -2065,7 +2069,7 @@ static SKGlyphCache *glyphCache(bool lcd, const GlyphInfo *ginfo) {
 // Glyphs too large for a cache cell, or LCD glyphs shifted by a third of a
 // pixel, are uploaded and drawn individually (MTLTextRenderer's NoCache paths).
 static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
-    flushAllBatches();    // drawn through the canvas, not batched: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     ensureCanvasClip();
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
@@ -2077,7 +2081,7 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
 
 static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
-    flushAllBatches();    // drawn through the canvas, not batched: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     ensureCanvasClip();
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const int w = ginfo->width, h = ginfo->height;
@@ -2104,7 +2108,7 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowB
 }
 
 static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
-    flushAllBatches();    // drawn through the canvas, not batched: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     ensureCanvasClip();
     SkPixmap pm(SkImageInfo::Make(ginfo->width, ginfo->height, kBGRA_8888_SkColorType, kPremul_SkAlphaType),
                 ginfo->image, ginfo->rowBytes);
@@ -2232,7 +2236,7 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
                                 const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind (SKQuadBatch::gCrossFamily)
-    flushAllBatches();     // glyph-image draws queued before this list stay in order
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this list stay in order
     SkPaint paint = SKBackend_MakePaint(true);
     ensureCanvasClip();   // Skia's text path draws through the canvas
     jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
@@ -2303,7 +2307,7 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
                                 const jchar *chars, jint length) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind (SKQuadBatch::gCrossFamily)
-    flushAllBatches();     // glyph-image draws queued before this text stay in order
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this text stay in order
     SkFont font;
     if (length <= 0 || !SKFontScaler_Font(pScalerContext, &font)) {
         return;
@@ -2591,7 +2595,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
                                    const jint *flags) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind (SKQuadBatch::gCrossFamily)
-    flushAllBatches();  
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }  
     const Shaping &s = shaping();
     if (length <= 0 || runCount <= 0 || !s.unicode) {
         return;
@@ -2885,7 +2889,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
             // otherwise, move nearest-neighbour samples that fall on a texel edge (RenderMatrix
             // clip:RECT/IMAGE_SCALED, up to 184 levels): drawn whole under the canvas clip, as before.
             gBlitPastBatches = false;
-            flushAllBatches();
+            { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT); flushAllBatches(); }
             ensureCanvasClip();
         }
     }
@@ -2898,7 +2902,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
                                             srcRect.fLeft + (dst.fRight - dstRect.fLeft) * su,
                                             srcRect.fTop + (dst.fBottom - dstRect.fTop) * sv);
         if (batchesTouch(dst)) {
-            flushAllBatches();
+            { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT); flushAllBatches(); }
         } else if (SKStats_IsEnabled() && batchesTouch(SkRect::MakeLTRB(-1e9f, -1e9f, 1e9f, 1e9f))) {
             SKStats_Count(SK_COUNT_BLITS_PAST_BATCHES);
         }
@@ -2907,7 +2911,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
                                       {dst.fRight, dst.fBottom}, {dst.fLeft, dst.fBottom}};
         const SkPoint texCoords[4] = {{src.fLeft, src.fTop}, {src.fRight, src.fTop},
                                       {src.fRight, src.fBottom}, {src.fLeft, src.fBottom}};
-        SKStats_Count(SK_COUNT_MESH_DRAWS);
+        SKStats_Count(SK_COUNT_MESH_DRAWS); SKStats_Count(SK_COUNT_MESH_DRAWS_IMMEDIATE);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
                                                     nullptr, 6, quadIndices),
                                SkBlendMode::kModulate, paint);
@@ -2918,7 +2922,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
                                       {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
         const SkPoint texCoords[4] = {{srcRect.fLeft, srcRect.fTop}, {srcRect.fRight, srcRect.fTop},
                                       {srcRect.fRight, srcRect.fBottom}, {srcRect.fLeft, srcRect.fBottom}};
-        SKStats_Count(SK_COUNT_MESH_DRAWS);
+        SKStats_Count(SK_COUNT_MESH_DRAWS); SKStats_Count(SK_COUNT_MESH_DRAWS_IMMEDIATE);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
                                                     nullptr, 6, quadIndices),
                                SkBlendMode::kModulate, paint);
@@ -2949,7 +2953,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
     auto drawSpans = [&]() {   // the mesh so far, in device space
         g.canvas->save();
         g.canvas->resetMatrix();
-        SKStats_Count(SK_COUNT_MESH_DRAWS);
+        SKStats_Count(SK_COUNT_MESH_DRAWS); SKStats_Count(SK_COUNT_MESH_DRAWS_IMMEDIATE);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
                                                     texCoords.data(), nullptr, (int) indices.size(), indices.data()),
                                SkBlendMode::kModulate, paint);
@@ -3041,13 +3045,25 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
                   && !(isoblit && (SKSDOps *) jlong_to_ptr(pSrc) == g.dst) && dx1 < dx2 && dy1 < dy2
                   && sx1 < sx2 && sy1 < sy2);
     if (!gBlitPastBatches) {
-        flushAllBatches();
+        { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT); flushAllBatches(); }
         ensureCanvasClip();
     }
 
     sk_sp<SkImage> image;
     SkRect srcRect;
     if (isoblit) {
+        SKSDOps *src0 = (SKSDOps *) jlong_to_ptr(pSrc);
+        SKStatsScope sourceStats(SK_SPAN_BLIT_SOURCE);
+        if (SKStats_IsEnabled() && src0 != nullptr && src0->state != nullptr && src0->state->cc != nullptr) {
+            SKStats_Count(SK_COUNT_SURFACE_BLITS);
+            if (src0->state->drawnSinceBlit && src0->state->drawnGeneration == src0->state->cc->recordingGeneration) {
+                SKStats_Count(SK_COUNT_BLITS_OF_PENDING_SOURCES);
+                if (src0->type != sun_java2d_pipe_hw_AccelSurface_TEXTURE) {
+                    SKStats_Count(SK_COUNT_PENDING_SOURCES_VOLATILE);
+                }
+            }
+            src0->state->drawnSinceBlit = false;
+        }
         SKSDOps *src = (SKSDOps *) jlong_to_ptr(pSrc);
         if (src != nullptr && !sourceUsable(src, "SKBackend_Blit")) {
             return;
@@ -3062,8 +3078,10 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
         } else {
             image = SKBackend_GetImage(src);
         }
+        sourceStats.end();
         srcRect = SkRect::MakeLTRB(sx1, sy1, sx2, sy2);
     } else {
+        SKStatsScope softwareStats(SK_SPAN_BLIT_SOFTWARE);
         blitSoftwareSource(env, (SurfaceDataOps *) jlong_to_ptr(pSrc), srctype, hint, sx1, sy1, sx2, sy2,
                            SkRect::MakeLTRB((SkScalar) dx1, (SkScalar) dy1, (SkScalar) dx2, (SkScalar) dy2));
         return;
@@ -3075,6 +3093,7 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     SkPaint p;
     applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
+    SKStatsScope drawStats(SK_SPAN_BLIT_DRAW);
     drawImageQuad(image, srcRect, dstRect, samplingForHint(hint), p);
 }
 
@@ -3220,7 +3239,7 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return;
     }
-    flushBatchesOf(cc);
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_FLUSH); flushBatchesOf(cc); }
     cc->recordingGeneration++;
     auto folded = gFolded.find(cc);
     SKFoldedPresent *present = folded != gFolded.end() && !folded->second.inserted ? &folded->second : nullptr;
@@ -3474,7 +3493,7 @@ static bool foldPresent(SKSDOps *dst) {
         return true;
     }
     SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);   // the draw into the image (its recording is the flush's)
-    flushBatchesOf(cc);   // the window's batched quads, before the draw that presents them
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_FLUSH); flushBatchesOf(cc); }   // the window's batched quads, before the draw that presents them
     folded.target = target;
     folded.image = drawIntoPresentTarget(st, cc, target);
     return true;

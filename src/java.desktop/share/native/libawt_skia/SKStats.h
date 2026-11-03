@@ -55,6 +55,9 @@ enum SKStatsSpan {
     SK_SPAN_PRESENT_ACQUIRE,   // of which: GetCurrentTexture (may wait for a free image)
     SK_SPAN_PRESENT_COPY,      // of which: the copy, its encoder and queue submit
     SK_SPAN_PRESENT_CALL,      // of which: Present()
+    SK_SPAN_BLIT_SOURCE,    // BLIT of a Skia surface: the source checked and its image made
+    SK_SPAN_BLIT_SOFTWARE,  // BLIT of a software surface: all of it (uploads, draws)
+    SK_SPAN_BLIT_DRAW,      // BLIT of a Skia surface: the draw (with the batches it touches)
     SK_SPAN_COUNT
 };
 
@@ -75,6 +78,11 @@ enum SKStatsCounter {
     SK_COUNT_MESH_DRAWS_AT_STATE,     // of the mesh draws, those of batches a clip or transform change drew
     SK_COUNT_MESH_DRAWS_AT_SURFACE,   // of the mesh draws, those of batches a destination switch drew
     SK_COUNT_MESH_DRAWS_AT_KIND,      // of the mesh draws, those of batches an op of another kind drew (it touched them)
+    SK_COUNT_MESH_DRAWS_AT_CANVAS_OP, // of the mesh draws, those of batches an op drawing through the canvas drew (REQUIRE_CANVAS)
+    SK_COUNT_MESH_DRAWS_AT_DIRECT,    // ... a draw through the canvas inside a batched op drew (uncached glyphs, Skia's text)
+    SK_COUNT_MESH_DRAWS_AT_BLIT,      // ... a blit that touched them drew
+    SK_COUNT_MESH_DRAWS_AT_FLUSH,     // ... the end of a recording or a present drew
+    SK_COUNT_MESH_DRAWS_IMMEDIATE,    // of the mesh draws, those of no batch (a blit's own quad)
     SK_COUNT_GLYPH_OVERLAP_DRAWS,     // LCD twopass batches of another colour drawn early: a glyph overlapped them
     // Diagnostics: the mesh draws of destination switches (_AT_SURFACE) by what followed for the surface switched
     // away from: the same destination set again (a new source only), the surface set again before it was read
@@ -85,6 +93,9 @@ enum SKStatsCounter {
     SK_COUNT_SWITCH_DRAWS_READ,
     SK_COUNT_SWITCH_DRAWS_ENDED,
     SK_COUNT_BLITS_PAST_BATCHES,      // blits drawn ahead of pending batches they do not touch (SKBackend_Blit)
+    SK_COUNT_SURFACE_BLITS,           // blits from a Skia surface
+    SK_COUNT_BLITS_OF_PENDING_SOURCES,   // of those, from a surface drawn into in the same recording since its last blit
+    SK_COUNT_PENDING_SOURCES_VOLATILE,   // of those, from a render target (a VolatileImage, a back buffer)
     SK_COUNT_COUNT
 };
 
@@ -96,7 +107,21 @@ void SKStats_Count(SKStatsCounter counter, uint64_t n = 1);
 uint64_t SKStats_Counter(SKStatsCounter counter);   // the count since the last print
 // What draws the pending batches now (SK_COUNT_MESH_DRAWS_AT_STATE or _AT_SURFACE), SK_COUNT_COUNT for
 // nothing in particular: mesh draws counted meanwhile are also counted under it.
-void SKStats_SetDrawCause(SKStatsCounter cause);
+// Returns the previous cause.
+SKStatsCounter SKStats_SetDrawCause(SKStatsCounter cause);
+
+// The draw cause for a scope (SKStats_SetDrawCause), the previous one restored after it.
+class SKDrawCauseScope {
+public:
+    explicit SKDrawCauseScope(SKStatsCounter cause) : previous(SKStats_SetDrawCause(cause)) {}
+    ~SKDrawCauseScope() {
+        SKStats_SetDrawCause(previous);
+    }
+    SKDrawCauseScope(const SKDrawCauseScope &) = delete;
+    SKDrawCauseScope &operator=(const SKDrawCauseScope &) = delete;
+private:
+    SKStatsCounter previous;
+};
 // Graphite added a pipeline to its cache (built it) or found one; with the statistics on, an added
 // pipeline's label and key hash are printed, the input of a precompile list.
 void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash);
