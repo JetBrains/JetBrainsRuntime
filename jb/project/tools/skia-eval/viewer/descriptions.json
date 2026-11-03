@@ -83,7 +83,7 @@
         "*": {
           "java2d": "glyph codes from the cmap, advances from the scaler, Java's rounding (whole-pixel or fractional); no kerning or ligatures.",
           "skia shaper": "HarfBuzz through SkShaper with Skia's fallback; features off to match Java; fractional advances in device pixels.",
-          "skia paragraph": "SkParagraph lays out attributed runs and its own underline/strikethrough geometry (unsnapped) on top of SkShaper.",
+          "skia paragraph": "SkParagraph lays out attributed runs on top of SkShaper; the decorations follow the decorations dimension (the system rule by default, since 2026-11-02).",
           "native": "the OS shaper and its advances (CoreText: unrounded, DirectWrite: by measuring mode).",
           "chrome": "Blink's HarfBuzz layout with kerning off."
         },

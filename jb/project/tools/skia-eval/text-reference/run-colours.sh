@@ -18,10 +18,12 @@ TMP="$OUT/.tmp"; mkdir -p "$OUT" "$TMP"
 COLOURS="red:f75464 blue:56a8f5 orange:cf8e6d green:6aab73 purple:c77dba"
 EXTREMES="black:000000 white:ffffff"   # only for the arms run.sh lacks
 PAPERS="white:ffffff black:000000"
-arm_java() {   # name, JVM options...
+JOBS=${SHEET_JOBS:-$(( $(sysctl -n hw.ncpu 2>/dev/null || echo 8) - 2 ))}; [ "$JOBS" -lt 1 ] && JOBS=1
+arm_java() {   # name, JVM options...: the gray sheets only (TEXTREF_AA), its own pipeline cache (the arms run in parallel)
   name=$1; shift
-  "$JDK/bin/java" -Dsun.java2d.uiScale=1 "$@" -cp "$WORK/classes" TextReference "$TMP/$name" "$TMP/rows-$name.txt" "$FONTS" --volatile 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline\|^wrote"
+  TEXTREF_AA=gray "$JDK/bin/java" -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.pipelineCache="$WORK/pipeline-cache/$name" "$@" -cp "$WORK/classes" TextReference "$TMP/$name" "$TMP/rows-$name.txt" "$FONTS" --volatile 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline\|^wrote"
 }
+throttle() { while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do sleep 0.3; done; }
 file() {   # arm, colour, paper: move the gray black-on-white sheets (the override wrote them) into place
   for pos in fractional whole-pixel; do for sc in 1x 2x; do
     src="$TMP/$1/gray/$pos/$sc/black-on-white.png"; dst="$OUT/$1/gray/$pos/$sc/color-on-$3/$2.png"
@@ -36,11 +38,14 @@ for cp in $COLOURS; do colour=${cp%%:*}; ink=${cp##*:}
     "$WORK/ctref" "$TMP/coretext" "$TMP/rows-ct.txt" "$FONTS" >/dev/null 2>&1; file coretext $colour $paper
     # the matrix arms whose blend is the system's masks (the colour question) with the system's darkening and
     # decorations; the platform scaler on Metal with its gamma as the IDE's reference; the class variants of the cg route
-    python3 "$HERE/arms.py" macOS | grep -E "blend-system\+decorations-system|pipe-metal\+scaler-platform.*blend-corrected\+decorations-system" | grep -v "darkening-none" | while IFS=$'\t' read -r name how props; do
-      arm_java "$name" $props; file "$name" $colour $paper
-    done
-    arm_java skia-scaler-cg-classes256 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=256; file skia-scaler-cg-classes256 $colour $paper
-    arm_java skia-scaler-cg-classes1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=1; file skia-scaler-cg-classes1 $colour $paper
+    python3 "$HERE/arms.py" macOS | grep -E "blend-system\+decorations-system|pipe-metal\+scaler-platform.*blend-corrected\+decorations-system" | grep -v "darkening-none" | {
+      while IFS=$'\t' read -r name how props; do
+        throttle; ( arm_java "$name" $props; file "$name" $colour $paper ) &
+      done
+      throttle; ( arm_java skia-scaler-cg-classes256 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=256; file skia-scaler-cg-classes256 $colour $paper ) &
+      throttle; ( arm_java skia-scaler-cg-classes1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=1; file skia-scaler-cg-classes1 $colour $paper ) &
+      wait
+    }
     rm -rf "${TMP:?}"/*
   done
 done

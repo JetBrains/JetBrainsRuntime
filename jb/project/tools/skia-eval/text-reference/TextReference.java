@@ -38,7 +38,9 @@ public class TextReference {
         List<Row> rows = rows(fontsDir);
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
         System.out.println("pipeline: " + (volatileImage ? gc.getClass().getName() : "software loops (BufferedImage)"));
-        for (String aa : AA) for (String pos : POSITIONING) for (String scale : SCALES) for (String paper : PAPERS) {
+        // TEXTREF_AA: the antialiasing modes to render, comma-separated (the colour sheets need gray only)
+        List<String> aaModes = System.getenv("TEXTREF_AA") != null ? List.of(System.getenv("TEXTREF_AA").split(",")) : List.of(AA);
+        for (String aa : aaModes) for (String pos : POSITIONING) for (String scale : SCALES) for (String paper : PAPERS) {
             File dir = new File(out, aa + "/" + pos + "/" + scale);
             dir.mkdirs();
             // plain black on white and white on black since 2026-10-26 (before: the IDE's editor colours,

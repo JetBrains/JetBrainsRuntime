@@ -32,10 +32,18 @@ sheet() {
 # the Java arms: every combination of the text settings this platform offers (arms.py; the viewer reads an
 # arm's dimensions from its name) — 92 arms on macOS, about 20 s each
 ARMS=$(python3 "$HERE/arms.py" macOS | cut -f1 | tr '\n' ',' | sed 's/,$//')
-python3 "$HERE/arms.py" macOS | while IFS=$'\t' read -r name how props; do
-  echo "== $name $(date +%H:%M:%S)"
-  sheet "$name" "$how" $props
-done
+# in parallel: an arm is one JVM writing its own directory; SHEET_JOBS at a time (the cores minus two), each
+# with its own pipeline cache (the cache's index is appended, not safe across processes)
+JOBS=${SHEET_JOBS:-$(( $(sysctl -n hw.ncpu 2>/dev/null || echo 8) - 2 ))}; [ "$JOBS" -lt 1 ] && JOBS=1
+echo "== $(python3 "$HERE/arms.py" macOS --count) Java arms, $JOBS at a time $(date +%H:%M:%S)"
+python3 "$HERE/arms.py" macOS | {
+  while IFS=$'\t' read -r name how props; do
+    while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do sleep 0.3; done
+    sheet "$name" "$how" -Dsun.java2d.skia.pipelineCache="$WORK/pipeline-cache/$name" $props &
+  done
+  wait
+}
+echo "== Java arms done $(date +%H:%M:%S)"
 bash "$KIT/viewer/chrome-ref/render.sh" "$OUT" || echo "Chrome reference skipped" >&2
 bash "$HERE/run-colours.sh" "$OUT"   # the coloured sheets (gray only) into the same tree
 python3 "$KIT/viewer/make-viewer.py" "$OUT" --arms "coretext,coretext-continuous,coretext-unsmoothed,chrome,$ARMS,skia-scaler-cg-classes256,skia-scaler-cg-classes1" --set-dims aa,positioning,scale,paper,color --title "Text sheets $(basename "$OUT") (macOS): platform CoreText vs Java configurations"
