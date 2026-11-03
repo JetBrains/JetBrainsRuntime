@@ -104,16 +104,15 @@ public class WLDesktopPeer implements DesktopPeer {
 
     private void launch(URI uri) throws IOException {
         byte[] uriByteArray = ( uri.toString() + '\0' ).getBytes();
-        boolean result = false;
         SunToolkit.awtLock();
         try {
             if (!nativeLibraryLoaded) {
                 throw new IOException("Failed to load native libraries.");
             }
-            result = gnome_url_show(uriByteArray);
         } finally {
             SunToolkit.awtUnlock();
         }
+        boolean result = gnome_url_show(uriByteArray);
         if (!result) {
             throw new IOException("Failed to show URI:" + uri);
         }
