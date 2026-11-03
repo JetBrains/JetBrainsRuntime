@@ -160,7 +160,6 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
         // as other types may not be trivial to alias for logicOp rendering.
         VkFormat format = (VkFormat) (vksdo->drawableFormat & ~VKSD_FORMAT_OPAQUE_BIT);
 
-        VKSD_ResetImageSurface(vksdo);
         VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
                                         0, format, VK_IMAGE_TILING_OPTIMAL,
                                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
@@ -171,6 +170,7 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
                 vksdo, vksdo->requestedExtent.width, vksdo->requestedExtent.height, format);
             return VK_FALSE;
         }
+        VKSD_ResetImageSurface(vksdo);
         vksdo->image = image;
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, image->extent.width, image->extent.height);
     }
