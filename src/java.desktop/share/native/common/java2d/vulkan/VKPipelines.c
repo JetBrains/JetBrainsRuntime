@@ -190,7 +190,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         // - pStages (but stageCount is set to 2)
         // - pVertexInputState
         // - createInfo.layout
-        pipelineInfos[i].verticesPerInstance = 0; // default = no instancing
         inputAssemblyStates[i] = (VkPipelineInputAssemblyStateCreateInfo) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = descriptors[i].topology
@@ -256,13 +255,12 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     typedef struct {
         const VkPipelineVertexInputStateCreateInfo* vertexInputState;
         VkPipelineShaderStageCreateInfo vertexShader;
-        uint32_t verticesPerInstance;
     } VKPipelineVertexSetupInfo;
 
     const VKPipelineVertexSetupInfo VERTEX_SETUP_INFOS[] = {
-        [SHADER_COVERAGE_NONE] = { .vertexInputState = &INPUT_STATE_PRIMITIVE, .vertexShader = shaders->primitive_vert, .verticesPerInstance = 0 },
-        [SHADER_COVERAGE_MASK] = { .vertexInputState = &INPUT_STATE_MASK_FILL, .vertexShader = shaders->mask_fill_vert, .verticesPerInstance = 0 },
-        [SHADER_COVERAGE_AA_RRECT] = { .vertexInputState = &INPUT_STATE_AA_RRECT, .vertexShader = shaders->aa_rect_vert, .verticesPerInstance = 4 },
+        [SHADER_COVERAGE_NONE] = { .vertexInputState = &INPUT_STATE_PRIMITIVE, .vertexShader = shaders->primitive_vert },
+        [SHADER_COVERAGE_MASK] = { .vertexInputState = &INPUT_STATE_MASK_FILL, .vertexShader = shaders->mask_fill_vert },
+        [SHADER_COVERAGE_AA_RRECT] = { .vertexInputState = &INPUT_STATE_AA_RRECT, .vertexShader = shaders->aa_rect_vert },
     };
 
     for (uint32_t i = 0; i < count; i++) {
@@ -322,7 +320,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
                 VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
             }
             const VKPipelineVertexSetupInfo* vertexSetupInfo = &VERTEX_SETUP_INFOS[coverageSource];
-            pipelineInfos[i].verticesPerInstance = vertexSetupInfo->verticesPerInstance;
             createInfos[i].pVertexInputState = vertexSetupInfo->vertexInputState;
             createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ vertexSetupInfo->vertexShader, fragmentShader }};

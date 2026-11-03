@@ -174,6 +174,7 @@ struct VKRenderPass {
 
     uint32_t           firstVertex;
     uint32_t           vertexCount;
+    uint32_t           verticesPerInstance;
     BufferWritingState vertexBufferWriting;
     BufferWritingState maskFillBufferWriting;
 
@@ -727,7 +728,7 @@ static void VKRenderer_FlushDraw(VKSDOps* surface) {
     assert(surface != NULL && surface->renderPass != NULL);
     if (surface->renderPass->vertexCount > 0) {
         assert(surface->renderPass->pendingCommands);
-        uint32_t verticesPerInstance = surface->renderPass->pipelineInfo.verticesPerInstance;
+        uint32_t verticesPerInstance = surface->renderPass->verticesPerInstance;
         if (verticesPerInstance != 0) {
             surface->device->vkCmdDraw(surface->renderPass->commandBuffer, verticesPerInstance, surface->renderPass->vertexCount, 0, surface->renderPass->firstVertex);
         } else {
@@ -751,6 +752,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     renderPass->transformModCount = 0;
     renderPass->firstVertex = 0;
     renderPass->vertexCount = 0;
+    renderPass->verticesPerInstance = 0;
     renderPass->vertexBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
     renderPass->maskFillBufferWriting = (BufferWritingState) { NULL, 0, VK_FALSE };
     if (renderPass->flushRanges.size > 0) {
@@ -1251,10 +1253,17 @@ BufferWriting VKRenderer_AllocateBufferData(VKSDOps* surface, BufferWritingState
  * This function must be called after all dynamic allocation functions,
  * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
  */
-static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, size_t vertexSize, void** result) {
+static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertices, size_t vertexSize, size_t verticesPerInstance, void** result) {
     assert(vertices > 0 && vertexSize > 0);
     assert(vertexSize * vertices <= VERTEX_BUFFER_SIZE);
     VKSDOps* surface = VKRenderer_GetContext()->surface;
+
+    // vkCmdDraw parameters depend on verticesPerInstance, must flush when changed
+    if (verticesPerInstance != surface->renderPass->verticesPerInstance) {
+        VKRenderer_FlushDraw(surface);
+        surface->renderPass->verticesPerInstance = verticesPerInstance;
+    }
+
     BufferWriting writing = VKRenderer_AllocateBufferData(
             surface, &surface->renderPass->vertexBufferWriting, primitives, vertices * vertexSize, VERTEX_BUFFER_SIZE);
     if (!writing.state.bound) {
@@ -1281,7 +1290,7 @@ static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertic
  * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
  */
 #define VK_DRAW(VERTICES, PRIMITIVE_COUNT, VERTEX_COUNT) \
-    VKRenderer_AllocateVertices((PRIMITIVE_COUNT), (VERTEX_COUNT), sizeof((VERTICES)[0]), (void**) &(VERTICES))
+    VKRenderer_AllocateVertices((PRIMITIVE_COUNT), (VERTEX_COUNT), sizeof((VERTICES)[0]), 0, (void**) &(VERTICES))
 
 /**
 * Allocate instances from the vertex buffer, returning the number of allocated instances (>0).
@@ -1289,8 +1298,8 @@ static uint32_t VKRenderer_AllocateVertices(uint32_t primitives, uint32_t vertic
 * This function must be called after all dynamic allocation functions,
 * which can invalidate the drawing state, e.g., VKRenderer_AllocateMaskFillBytes.
 */
-#define VK_DRAW_INSTANCES(INSTANCES, INSTANCE_COUNT) \
-    VKRenderer_AllocateVertices((INSTANCE_COUNT), 1, sizeof((INSTANCES)[0]), (void**) &(INSTANCES))
+#define VK_DRAW_INSTANCES(INSTANCES, INSTANCE_COUNT, VERTICES_PER_INSTANCE) \
+    VKRenderer_AllocateVertices((INSTANCE_COUNT), 1, sizeof((INSTANCES)[0]), (VERTICES_PER_INSTANCE), (void**) &(INSTANCES))
 
 
 /**
@@ -1929,7 +1938,7 @@ void VKRenderer_FillAARect(jfloat x, jfloat y, jfloat w, jfloat h, jfloat corner
     if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_AA_RRECT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return;
 
     VKAARRectInstance* inst;
-    VK_DRAW_INSTANCES(inst, 1);
+    VK_DRAW_INSTANCES(inst, 1, 4);
     *inst = (VKAARRectInstance) {
         .x1 = x,
         .y1 = y,

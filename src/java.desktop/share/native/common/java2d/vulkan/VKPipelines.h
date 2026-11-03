@@ -106,7 +106,6 @@ typedef struct {
     VkPipeline       pipeline;
     VkPipelineLayout layout;
     AlphaType        outAlphaType;
-    uint32_t         verticesPerInstance;
 } VKPipelineInfo;
 
 /**
