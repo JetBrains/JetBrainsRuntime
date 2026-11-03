@@ -21,7 +21,7 @@ PAPERS="white:ffffff black:000000"
 JOBS=${SHEET_JOBS:-$(( $(sysctl -n hw.ncpu 2>/dev/null || echo 8) - 2 ))}; [ "$JOBS" -lt 1 ] && JOBS=1
 arm_java() {   # name, JVM options...: the gray sheets only (TEXTREF_AA), its own pipeline cache (the arms run in parallel)
   name=$1; shift
-  TEXTREF_AA=gray "$JDK/bin/java" -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.pipelineCache="$WORK/pipeline-cache/$name" "$@" -cp "$WORK/classes" TextReference "$TMP/$name" "$TMP/rows-$name.txt" "$FONTS" --volatile 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline\|^wrote"
+  TEXTREF_AA=gray "$JDK/bin/java" -Dapple.awt.UIElement=true -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.pipelineCache="$WORK/pipeline-cache/$name" "$@" -cp "$WORK/classes" TextReference "$TMP/$name" "$TMP/rows-$name.txt" "$FONTS" --volatile 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline\|^wrote"
 }
 throttle() { while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do sleep 0.3; done; }
 file() {   # arm, colour, paper: move the gray black-on-white sheets (the override wrote them) into place

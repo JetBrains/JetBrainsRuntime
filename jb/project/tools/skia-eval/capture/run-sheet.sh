@@ -18,5 +18,5 @@ case "$ARM" in
   *)  echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
 mkdir -p "$OUT"
-"$JDK/bin/java" $EXPORTS $COMMON $PROPS ${EXTRA_PROPS:-} -cp "$OUT_ROOT/capture/classes" TextSheet --arm "$NAME" --scale "$SCALE" --out "$OUT"
+"$JDK/bin/java" -Dapple.awt.UIElement=true $EXPORTS $COMMON $PROPS ${EXTRA_PROPS:-} -cp "$OUT_ROOT/capture/classes" TextSheet --arm "$NAME" --scale "$SCALE" --out "$OUT"
 "$JDK/bin/java" -cp "$OUT_ROOT/capture/classes" TextSheetDiff "$OUT/$NAME" "${SCALE}x" ${DIFF_ARGS:-}
