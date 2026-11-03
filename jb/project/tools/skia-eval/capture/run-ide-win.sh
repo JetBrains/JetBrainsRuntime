@@ -35,6 +35,9 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
 done
+# an arm code ending in "f": the arm with fractional glyph placement everywhere (the IDE's registry keys as system
+# properties); its captures land in <theme>-<scale>x-fractional (run-scenes-win.sh), a sample condition of the viewer
+PLACEMENT=""; case "$ARM" in *f) ARM="${ARM%f}"; PLACEMENT="-Dide.text.fractional.metrics=Enabled -Deditor.text.fractional.metrics=Enabled" ;; esac
 case "$ARM" in
   A0) NAME=A0-software;   PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false" ;;
   R0) NAME=R0-software-raster; PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.skia.raster=true" ;;
@@ -62,6 +65,7 @@ case "$ARM" in
   R2) NAME=R2-vulkan;     PROPS="-Dsun.java2d.skia=false -Dsun.java2d.d3d=false -Dsun.java2d.vulkan=Force" ;;
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
+if [ -n "$PLACEMENT" ]; then PROPS="$PROPS $PLACEMENT"; fi
 
 STATE="${IDE_STATE_ROOT:-$OUT_ROOT/capture/ide}/$NAME"   # IDE_STATE_ROOT: where the arms' state lives (default: ide/ next to this script)
 mkdir -p "$STATE"/{config,system,log,plugins}

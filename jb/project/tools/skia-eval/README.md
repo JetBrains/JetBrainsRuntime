@@ -61,9 +61,9 @@ at the scale with room for the 1728×980 frame and tells you what to set; the fi
 indexes and saves an index snapshot, later runs clone it. About 28 s per arm for light and dark on a
 Mac. Arms are the cases in `run-ide-mac.sh` / `run-ide-win.sh`; an arm code with an `f` appended (`M0f`)
 is the same arm with fractional glyph placement everywhere (the IDE's registry keys
-`ide.text.fractional.metrics` and `editor.text.fractional.metrics`, read from system properties), captured
-as `<arm>-fractional`; the viewer gives it its base arm's dimensions with `positioning: fractional` and the
-base arm `ide-default`. Scenes since 2026-11-03: `workspace` (tree, the editor with its find-and-replace
+`ide.text.fractional.metrics` and `editor.text.fractional.metrics`, read from system properties), its
+captures filed under `<theme>-<scale>x-fractional` — a sample condition (`placement`) of the viewer, meant
+for Windows (macOS places every text fractionally by default; measured 2026-11-03, zero difference). Scenes since 2026-11-03: `workspace` (tree, the editor with its find-and-replace
 panel on "Comparable", a four-line selection and the quick documentation popup, the terminal), `settings`
 (Appearance & Behavior › Appearance) and `markdown`. Verify one capture of a round before
 trusting it (`Contact out.png cols width imgs…`).

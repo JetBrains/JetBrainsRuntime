@@ -55,7 +55,8 @@ public class IdeScenes {
     static File helperBinary;    // --helper: the built fgfast (macOS); default: next to the fg script
     static int port = 0;         // --port: the isolated IDE's built-in server (idea.log: "built-in server started, port N")
     static List<String> themes = List.of();   // --themes light,dark: captured in one session, the UI theme switched between them
-    static String scaleTag = "2";             // --scale, for the per-theme directory names (<out>/<theme>-<scale>x)
+    static String scaleTag = "2";             // --scale, for the per-theme directory names (<out>/<theme>-<scale>x[-<placement>])
+    static String placement = "";             // --placement fractional: the IDE's glyph placement setting the captures were taken with (Windows; a set dimension of the viewer)
     static boolean exitAtEnd = false;         // --exit: a clean shutdown of the IDE after the scenes (for the system snapshot)
     static final java.util.Map<String, long[]> profileTotals = new java.util.TreeMap<>();   // primitive → {nanos, calls}, printed at the end
     static void profile(String what, long startNanos) {
@@ -74,6 +75,7 @@ public class IdeScenes {
                 case "--settle" -> settleMs = Integer.parseInt(args[++i]);
                 case "--quiesce" -> quiesceMs = Integer.parseInt(args[++i]);
                 case "--scale" -> { scaleTag = args[++i]; requiredScale = Double.parseDouble(scaleTag); }
+                case "--placement" -> placement = args[++i];
                 case "--window" -> { String[] wh = args[++i].toLowerCase().split("x"); windowW = Integer.parseInt(wh[0]); windowH = Integer.parseInt(wh[1]); }
                 case "--pid" -> idePid = Integer.parseInt(args[++i].replaceAll("[^0-9]", ""));   // shells leave CR or BOM bytes
                 case "--fg" -> fgScript = new File(args[++i]);
@@ -106,7 +108,7 @@ public class IdeScenes {
         for (int t = 0; t < themeList.size(); t++) {
           String theme = themeList.get(t);
           if (theme != null) {
-            out = new File(armDir, theme + "-" + scaleTag + "x");
+            out = new File(armDir, theme + "-" + scaleTag + "x" + (placement.isEmpty() ? "" : "-" + placement));
             out.mkdirs();
             if (t > 0) {
                 // the UI theme and colour scheme as the seed of that theme sets them; the frame repaints in steps
@@ -116,16 +118,15 @@ public class IdeScenes {
                 expect(() -> ide("cmd=open&file=src/Hello.java"), 1500);
             }
           }
+          // the project tree: pinned at one width (the full Skia route laid it out wider than the others,
+          // 2026-11-03) and fully expanded, so every scene shows the same panel of file icons and names
+          retry(() -> ide("cmd=toolwindow&id=Project&show=true&width=" + TREE_WIDTH + "&expand=true"), 10, 400);
+          awaitQuiet(150, 1000);
           for (String scene : scenes) {
             final long ts = System.nanoTime();
             requireIdeInFront();
             switch (scene) {
                 case "workspace" -> {
-                    // the terminal at the bottom with a line of fixed output: the shell first, the command once
-                    // the prompt is up; then the editor is focused again through the open command
-                    expect(() -> ide("cmd=terminal"), 2500);
-                    awaitQuiet(150, 1500);
-                    expect(() -> ide("cmd=terminalExec&line=" + (MAC ? "ls" : "echo text rendering scene 0123456789 ffi fl AVfi")), 1200);
                     ide("cmd=open&file=src/Hello.java");
                     awaitQuiet(100, 800);   // the editor opens asynchronously: the first selection found no editor on three of twelve arms (2026-11-03)
                     // the editor's find-and-replace panel with the selected word, Comparable (line 18), as its
@@ -138,8 +139,9 @@ public class IdeScenes {
                     retry(() -> { requireIdeInFront(); ide("cmd=open&file=src/Hello.java"); return ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to"); }, 20, 400);   // the word selected: the find panel takes it as its text
                     expect(() -> ide("cmd=action&id=Replace"), 1500);
                     awaitQuiet(150, 1000);
-                    ide("cmd=open&file=src/Hello.java");   // the focus back from the search field to the editor
-                    ide("cmd=select&from=15:-1&to=18:%40Comparable&caret=to");
+                    // the focus back from the search field to the editor, then the selection (retried: the editor is
+                    // not the selected one for an instant after the find panel took the focus)
+                    retry(() -> { ide("cmd=open&file=src/Hello.java"); return ide("cmd=select&from=15:-1&to=18:%40Comparable&caret=to"); }, 10, 300);
                     expect(() -> ide("cmd=action&id=QuickJavaDoc"), 1500);
                     capture("workspace");
                     ide("cmd=key&code=ESCAPE");   // the popup
@@ -147,7 +149,6 @@ public class IdeScenes {
                     ide("cmd=select&clear=true");
                     ide("cmd=key&code=ESCAPE");   // the find panel
                     awaitQuiet(100, 400);
-                    expect(() -> ide("cmd=toolwindow&id=Terminal&show=false&close=true"), 800);   // the shell too: the next theme opens a fresh one
                 }
                 case "menu" -> {
                     expect(() -> ide("cmd=menu"), 800);   // the main menu as the hamburger button's popup
@@ -172,9 +173,15 @@ public class IdeScenes {
                     awaitQuiet(100, 400);
                 }
                 case "markdown" -> {
+                    // the terminal at the bottom with a line of fixed output: the shell first, the command once
+                    // the prompt is up; then the README with its preview
+                    expect(() -> ide("cmd=terminal"), 2500);
+                    awaitQuiet(150, 1500);
+                    expect(() -> ide("cmd=terminalExec&line=" + (MAC ? "ls" : "echo text rendering scene 0123456789 ffi fl AVfi")), 1200);
                     expect(() -> ide("cmd=open&file=README.md"), 1500);
                     awaitQuiet(250, 1500);   // the preview renders after the editor
                     capture("markdown");
+                    expect(() -> ide("cmd=toolwindow&id=Terminal&show=false&close=true"), 800);   // the shell too: the next theme opens a fresh one
                 }
                 default -> System.err.println("unknown scene " + scene);
             }
@@ -198,6 +205,8 @@ public class IdeScenes {
 
     /** One command to the scene-driver plugin in the isolated IDE; its answer, "ok" or the error (which aborts the run). */
     /** A command retried while the IDE is not ready for it (an editor still opening): up to attempts, delay ms apart. */
+    static final int TREE_WIDTH = 330;   // the project tool window's width in logical pixels
+
     static String retry(java.util.concurrent.Callable<String> command, int attempts, long delay) throws Exception {
         for (int i = 1; ; i++) {
             try {

@@ -1,0 +1,3 @@
+= Architecture
+
+A long file name, truncated in the tree.

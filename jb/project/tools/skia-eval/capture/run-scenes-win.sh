@@ -18,7 +18,8 @@ OUT="${4:-$WORK/out/$(date +%F)/scenes}"; SCENES="${5:-}"
 # finished run (ide/snapshot/<IDE build>/system) — the first run without one indexes, exits the IDE cleanly and
 # saves it (REFRESH_SNAPSHOT=1 to redo); DISPLAY_CHECKED=1 skips the display check (a round script checks once)
 if [ "$THEME" = both ]; then SEED_THEME=light; THEMES="light,dark"; else SEED_THEME=$THEME; THEMES=$THEME; fi
-case "$ARM" in A0) NAME=A0-software;; A1) NAME=A1-blend;; A2) NAME=A2-twopass;; A3) NAME=A3-accumulate;; A4) NAME=A4-cycle;; A5) NAME=A5-submit;; A6) NAME=A6-cycle-submit;; A7) NAME=A7-twopass-d3d12;; A8) NAME=A8-twopass-vulkan;; R0) NAME=R0-software-raster;; R5) NAME=R5-software-raster-skia-text;; R1) NAME=R1-d3d9;; R2) NAME=R2-vulkan;; T0) NAME=T0-skia-platform;; T1) NAME=T1-skia-scaler-coverage;; T4) NAME=T4-skia-scaler-platform;; T5) NAME=T5-skia-scaler-platform-colour2;; T6) NAME=T6-skia-scaler-platform-colour3;; S5) NAME=S5-software-skia-scaler-platform;; F5) NAME=F5-skia-full-platform;; *) echo "unknown arm" >&2; exit 2;; esac
+PLACEMENT=""; SUFFIX=""; case "$ARM" in *f) PLACEMENT=fractional; SUFFIX="-fractional" ;; esac; ARMCODE="${ARM%f}"   # <arm>f: fractional glyph placement (run-ide-win.sh); the captures under <theme>-<scale>x-fractional
+case "$ARMCODE" in A0) NAME=A0-software;; A1) NAME=A1-blend;; A2) NAME=A2-twopass;; A3) NAME=A3-accumulate;; A4) NAME=A4-cycle;; A5) NAME=A5-submit;; A6) NAME=A6-cycle-submit;; A7) NAME=A7-twopass-d3d12;; A8) NAME=A8-twopass-vulkan;; R0) NAME=R0-software-raster;; R5) NAME=R5-software-raster-skia-text;; R1) NAME=R1-d3d9;; R2) NAME=R2-vulkan;; T0) NAME=T0-skia-platform;; T1) NAME=T1-skia-scaler-coverage;; T4) NAME=T4-skia-scaler-platform;; T5) NAME=T5-skia-scaler-platform-colour2;; T6) NAME=T6-skia-scaler-platform-colour3;; S5) NAME=S5-software-skia-scaler-platform;; F5) NAME=F5-skia-full-platform;; *) echo "unknown arm" >&2; exit 2;; esac
 SEED="$IDE_STATE_ROOT/seed-$SEED_THEME"
 rm -rf "$SEED"; mkdir -p "$SEED"
 cp -r "$HERE/seed/common/." "$SEED/"; cp -r "$HERE/seed/win/." "$SEED/"; cp -r "$HERE/seed/$SEED_THEME/." "$SEED/"
@@ -48,7 +49,7 @@ PROJECT="$WORK/text-scene"; rm -rf "$PROJECT"; cp -R "$HERE/text-scene" "$PROJEC
 cp "$HERE/seed/project/workspace.xml" "$PROJECT/.idea/workspace.xml"
 cp "$HERE/seed/project/src/Hello.java" "$PROJECT/src/Hello.java"
 cp "$HERE/seed/project/README.md" "$PROJECT/README.md"
-ARMDIR="$OUT/$NAME"; DEST="$ARMDIR/$SEED_THEME-${SCALE}x"; rm -rf "$DEST"; mkdir -p "$DEST"; [ "$THEME" = both ] && { rm -rf "$ARMDIR/dark-${SCALE}x"; mkdir -p "$ARMDIR/dark-${SCALE}x"; }   # a fresh destination: stale captures and markers of an earlier run must not survive
+ARMDIR="$OUT/$NAME"; DEST="$ARMDIR/$SEED_THEME-${SCALE}x$SUFFIX"; rm -rf "$DEST"; mkdir -p "$DEST"; [ "$THEME" = both ] && { rm -rf "$ARMDIR/dark-${SCALE}x$SUFFIX"; mkdir -p "$ARMDIR/dark-${SCALE}x$SUFFIX"; }   # a fresh destination: stale captures and markers of an earlier run must not survive
 # the display must run at the requested scale with room for the 1728x980 frame (the user sets it in Windows'
 # display settings; this waits and tells them what to set); the driver places and captures the frame at its own bounds
 WINDOW="${WINDOW:-1728x980}"
@@ -83,10 +84,10 @@ PORT=$(grep -o "built-in server started, port [0-9]*" "$LOG" | head -1 | grep -o
 # the inspection pass, the run widget, the error stripe and the inspection widget arrive well after dumb
 # mode ends, later still in the software arm: the driver waits until the screen has been unchanged for
 # 4 s, at most 150 s (--quiesce; 2026-11-02: a fixed 120 s before, which 15 s and 60 s had under-run)
-"$JDK/bin/java" -cp "$CLASSES" IdeScenes --out "$ARMDIR" --pid "$IDE_PID" --fg "$(cygpath -w "$HERE/fg.ps1")" --port "$PORT" --quiesce 4000 --window "$WINDOW" --scale "$SCALE" --themes "$THEMES" --exit ${SCENES:+--scenes "$SCENES"} 2>&1 | tee "$ARMDIR/scenes.log"
+"$JDK/bin/java" -cp "$CLASSES" IdeScenes --out "$ARMDIR" --pid "$IDE_PID"${PLACEMENT:+ --placement fractional} --fg "$(cygpath -w "$HERE/fg.ps1")" --port "$PORT" --quiesce 4000 --window "$WINDOW" --scale "$SCALE" --themes "$THEMES" --exit ${SCENES:+--scenes "$SCENES"} 2>&1 | tee "$ARMDIR/scenes.log"
 DRIVER_STATUS=${PIPESTATUS[0]}
 grep -h -E "Skia rendering|JRE:" "$IDE_STATE_ROOT/$NAME/stdout.txt" "$IDE_STATE_ROOT/$NAME/log/idea.log" 2>/dev/null | head -2 > "$DEST/arm.txt"   # -h: no file-name prefix in the catalog's arm line
-[ "$THEME" = both ] && cp "$DEST/arm.txt" "$ARMDIR/dark-${SCALE}x/arm.txt"
+[ "$THEME" = both ] && cp "$DEST/arm.txt" "$ARMDIR/dark-${SCALE}x$SUFFIX/arm.txt"
 # without a snapshot the driver asked the IDE to exit cleanly: wait for it, then keep its system directory
 if [ "$SNAPSHOT_USED" = 0 ] && [ "$DRIVER_STATUS" = 0 ]; then
   for i in $(seq 1 60); do tasklist //FI "PID eq $IDE_PID" 2>/dev/null | grep -q "$IDE_PID" || break; sleep 0.25; done

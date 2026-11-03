@@ -15,7 +15,7 @@ ARM=$1; THEME=$2; SCALE=$3; OUT="${4:-$WORK/out/$(date +%F)/scenes}"; SCENES="${
 if [ "$THEME" = both ]; then SEED_THEME=light; THEMES="light,dark"; else SEED_THEME=$THEME; THEMES=$THEME; fi
 PLACEMENT=""; case "$ARM" in *f) PLACEMENT=fractional ;; esac; ARMCODE="${ARM%f}"   # <arm>f: the arm with fractional glyph placement (run-ide-mac.sh)
 case "$ARMCODE" in M0) NAME=M0-metal;; M1) NAME=M1-default;; T0m) NAME=T0m-skia-metalprop;; T0) NAME=T0-skia-platform;; T1) NAME=T1-skia-scaler;; T2) NAME=T2-skia-darkened;; T3) NAME=T3-skia-smoothed;; T5) NAME=T5-skia-cg;; M5) NAME=M5-metal-cg-plain;; F5) NAME=F5-skia-full-cg;; *) echo "unknown arm" >&2; exit 2;; esac
-[ -n "$PLACEMENT" ] && NAME="$NAME-fractional"
+SUFFIX=""; [ -n "$PLACEMENT" ] && SUFFIX="-fractional"   # the per-theme directories carry the placement condition
 SEED="$WORK/ide/seed-$SEED_THEME"
 rm -rf "$SEED"; mkdir -p "$SEED"
 cp -R "$HERE/seed/common/." "$SEED/"; cp -R "$HERE/seed/mac/." "$SEED/"; cp -R "$HERE/seed/$SEED_THEME/." "$SEED/"
@@ -45,9 +45,8 @@ if [ -d "$SNAP" ] && [ -z "${REFRESH_SNAPSHOT:-}" ]; then cp -c -R "$SNAP" "$WOR
 # a fresh copy of the scene project (the IDE writes into it; the tracked one stays clean)
 PROJECT="$WORK/text-scene"; rm -rf "$PROJECT"; cp -R "$HERE/text-scene" "$PROJECT"
 cp "$HERE/seed/project/workspace.xml" "$PROJECT/.idea/workspace.xml"
-cp "$HERE/seed/project/src/Hello.java" "$PROJECT/src/Hello.java"
-cp "$HERE/seed/project/README.md" "$PROJECT/README.md"
-ARMDIR="$OUT/$NAME"; DEST="$ARMDIR/$SEED_THEME-${SCALE}x"; mkdir -p "$DEST"; [ "$THEME" = both ] && mkdir -p "$ARMDIR/dark-${SCALE}x"
+(cd "$HERE/seed/project" && find . -type f -not -name workspace.xml) | while IFS= read -r f; do mkdir -p "$PROJECT/$(dirname "$f")"; cp "$HERE/seed/project/$f" "$PROJECT/$f"; done   # the whole seed: the files the tree shows (2026-11-03)
+ARMDIR="$OUT/$NAME"; DEST="$ARMDIR/$SEED_THEME-${SCALE}x$SUFFIX"; mkdir -p "$DEST"; [ "$THEME" = both ] && mkdir -p "$ARMDIR/dark-${SCALE}x$SUFFIX"
 # the display must run at the requested scale with room for the 1728x980 frame (the user sets it in the OS;
 # this waits and tells them what to set); the frame is placed and captured by the driver at its own bounds
 WINDOW="${WINDOW:-1728x980}"
@@ -83,10 +82,10 @@ PORT=$(grep -o "built-in server started, port [0-9]*" "$LOG" | head -1 | grep -o
 # the IDE's post-indexing work (inspections, the project view filling): the driver waits until the
 # screen has been unchanged for 2 s (--quiesce; 2026-10-26: a fixed 15 s, then 5 s)
 # the driver is a UI element: it must never become the active application (its keys would fall through to another window)
-"$JDK/bin/java" -Dapple.awt.UIElement=true -cp "$WORK/classes" IdeScenes --out "$ARMDIR" --pid "$IDE_PID" --fg "$HERE/fg.sh" --helper "$WORK/fgfast" --port "$PORT" --quiesce 1500 --window "$WINDOW" --scale "$SCALE" --themes "$THEMES" ${SCENES:+--scenes "$SCENES"} 2>&1 | tee "$ARMDIR/scenes.log"
+"$JDK/bin/java" -Dapple.awt.UIElement=true -cp "$WORK/classes" IdeScenes --out "$ARMDIR" --pid "$IDE_PID"${PLACEMENT:+ --placement fractional} --fg "$HERE/fg.sh" --helper "$WORK/fgfast" --port "$PORT" --quiesce 1500 --window "$WINDOW" --scale "$SCALE" --themes "$THEMES" ${SCENES:+--scenes "$SCENES"} 2>&1 | tee "$ARMDIR/scenes.log"
 DRIVER_STATUS=${PIPESTATUS[0]}
 grep -E "Skia rendering|JRE:" "$WORK/ide/$NAME/stdout.txt" "$LOG" 2>/dev/null | head -2 > "$DEST/arm.txt"
-[ "$THEME" = both ] && cp "$DEST/arm.txt" "$ARMDIR/dark-${SCALE}x/arm.txt"
+[ "$THEME" = both ] && cp "$DEST/arm.txt" "$ARMDIR/dark-${SCALE}x$SUFFIX/arm.txt"
 # without a snapshot: SIGTERM — the IDE's shutdown hooks flush the indexes (its own exit, asked through the plugin, never
 # came, 2026-11-02; the snapshot from a SIGTERM run was valid: no re-indexing) — then keep its system directory
 if [ "$SNAPSHOT_USED" = 0 ] && [ "$DRIVER_STATUS" = 0 ]; then

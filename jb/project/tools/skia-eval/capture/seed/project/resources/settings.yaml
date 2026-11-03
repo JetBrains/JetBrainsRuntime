@@ -1,0 +1,5 @@
+renderer: skia
+scale: 2
+fonts:
+  - Inter
+  - JetBrains Mono

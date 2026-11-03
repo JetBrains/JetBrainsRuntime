@@ -1,0 +1,1 @@
+Plain text with ligatures: ffi fl AVfi -> != >= :: //

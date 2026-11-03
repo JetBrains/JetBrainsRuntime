@@ -1,0 +1,1 @@
+CREATE TABLE glyphs (id INTEGER PRIMARY KEY, name TEXT NOT NULL, advance REAL);

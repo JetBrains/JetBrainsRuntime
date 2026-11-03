@@ -238,6 +238,17 @@ public final class SceneService extends HttpRequestHandler {
                     if ("Terminal".equals(getStringParameter("id", d))) terminal = null;
                 }
                 if ("false".equals(getStringParameter("show", d))) tw.hide(null); else tw.show(null);
+                // width=<px>: the tool window's width pinned in logical pixels (the project tree came out at
+                // different widths between arms: the full Skia route measured its text wider, 2026-11-03)
+                if (getStringParameter("width", d) != null && tw instanceof com.intellij.openapi.wm.ex.ToolWindowEx ex) {
+                    int target = Integer.parseInt(param(d, "width")), current = tw.getComponent().getWidth();
+                    if (current > 0 && current != target) ex.stretchWidth(target - current);
+                }
+                // expand=true: every node of the project tree open (the file icons and names fill the panel)
+                if ("true".equals(getStringParameter("expand", d)) && "Project".equals(getStringParameter("id", d))) {
+                    com.intellij.ide.projectView.impl.AbstractProjectViewPane pane = com.intellij.ide.projectView.ProjectView.getInstance(project).getCurrentProjectViewPane();
+                    if (pane != null && pane.getTree() != null) com.intellij.util.ui.tree.TreeUtil.expandAll(pane.getTree());
+                }
                 Editor e = editorOrNull(project);
                 if (e != null) IdeFocusManager.getInstance(project).requestFocus(e.getContentComponent(), true);
             }
