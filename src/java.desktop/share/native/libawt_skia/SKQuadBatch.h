@@ -175,6 +175,9 @@ public:
         if (canvas == nullptr || r.isEmpty()) {
             return false;
         }
+        if (!SkRect::Intersects(tracked, r)) {
+            return false;   // nowhere near the batch's quads
+        }
         if (base.overlaps(r)) {
             return true;
         }
@@ -338,6 +341,7 @@ private:
                     target = &base;
                 }
                 target->addBounds(bounds);
+                tracked.join(bounds);
             }
         } else if (base.positions.size() + 4 > 0xffff) {
             drawPending();   // 16-bit indices
@@ -435,6 +439,7 @@ private:
         }
         layerCount = 0;
         colors.clear();
+        tracked.setEmpty();
     }
 
     SkCanvas *canvas = nullptr;
@@ -451,6 +456,7 @@ private:
     std::vector<Mesh> layers;        // quads overlapping an earlier layer's, drawn after it
     size_t layerCount = 0;           // layers in use; the rest keep their vectors for reuse
     std::vector<SkColor> colors;     // per vertex of `base` when colorPerVertex
+    SkRect tracked = SkRect::MakeEmpty();   // the union of the tracked overlap extents (overlaps()'s quick test)
 };
 
 #endif /* SKQuadBatch_h_Included */

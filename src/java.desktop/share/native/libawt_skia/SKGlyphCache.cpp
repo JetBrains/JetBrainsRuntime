@@ -63,7 +63,7 @@ struct SKGlyphCache {
     sk_sp<SkSurface> atlas;
     sk_sp<SkImage> atlasImage;
 
-    SKQuadBatch batch;
+    std::unique_ptr<SKQuadBatch> batch = std::make_unique<SKQuadBatch>();   // the open batch (two passes: of the current colour)
     // The glyph list being drawn: a flush inside the list (an uncached glyph,
     // or an eviction with no cell free of this recording) closes the batch,
     // SKGlyphCache_Draw reopens it.
@@ -102,18 +102,18 @@ static const size_t MAX_PARKED = 15;
 
 static void uploadDirtyRows(SKGlyphCache *gc);
 
-// A closed batch with the hooks of the cache's own.
+// A closed batch (a new one gets the hooks of the cache's own).
 static std::unique_ptr<SKQuadBatch> spareBatch(SKGlyphCache *gc) {
     std::unique_ptr<SKQuadBatch> b;
     if (!gc->spare.empty()) {
         b = std::move(gc->spare.back());
         gc->spare.pop_back();
     } else {
-        b = std::make_unique<SKQuadBatch>();
+        b = std::make_unique<SKQuadBatch>();   // a spare keeps the hooks it was made with
+        b->beforeUpload = gc->batch->beforeUpload;
+        b->beforeDraw = gc->batch->beforeDraw;
+        b->afterDraw = gc->batch->afterDraw;
     }
-    b->beforeUpload = gc->batch.beforeUpload;
-    b->beforeDraw = gc->batch.beforeDraw;
-    b->afterDraw = gc->batch.afterDraw;
     return b;
 }
 
@@ -127,7 +127,7 @@ static void retire(SKGlyphCache *gc, size_t i) {
 
 // Draws the cache's batches: its own and the parked ones (in any order, see `parked`).
 static void drawBatches(SKGlyphCache *gc) {
-    gc->batch.flush();
+    gc->batch->flush();
     while (!gc->parked.empty()) {
         retire(gc, gc->parked.size() - 1);
     }
@@ -137,13 +137,13 @@ static void drawBatches(SKGlyphCache *gc) {
 // the paint's own, if one is parked, comes back. Batches of another canvas, atlas or contrast are
 // drawn first: the parked ones always share the current target.
 static void park(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint, const SKQuadBatchTwoPass *passes) {
-    const bool open = gc->batch.pending();
-    if ((open && !gc->batch.sameTarget(canvas, gc->atlasImage, passes))
+    const bool open = gc->batch->pending();
+    if ((open && !gc->batch->sameTarget(canvas, gc->atlasImage, passes))
             || (!gc->parked.empty() && !gc->parked.front()->sameTarget(canvas, gc->atlasImage, passes))) {
         drawBatches(gc);
         return;
     }
-    if (open && gc->batch.samePaint(paint)) {
+    if (open && gc->batch->samePaint(paint)) {
         return;   // the same colour continues
     }
     std::unique_ptr<SKQuadBatch> resumed;
@@ -159,11 +159,11 @@ static void park(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint, const
             retire(gc, 0);   // the oldest colour is drawn
         }
         std::unique_ptr<SKQuadBatch> aside = spareBatch(gc);
-        std::swap(*aside, gc->batch);   // `aside` holds the open batch, the cache a closed one
+        std::swap(aside, gc->batch);   // `aside` holds the open batch, the cache a closed one
         gc->parked.push_back(std::move(aside));
     }
     if (resumed) {
-        std::swap(*resumed, gc->batch);
+        std::swap(resumed, gc->batch);
         resumed->flush();   // the closed one: nothing to draw
         gc->spare.push_back(std::move(resumed));
     }
@@ -175,6 +175,7 @@ static void park(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint, const
 static void drawOverlapped(SKGlyphCache *gc, const SkRect &extent) {
     for (size_t i = gc->parked.size(); i-- > 0; ) {
         if (gc->parked[i]->overlaps(extent)) {
+            SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
             retire(gc, i);
         }
     }
@@ -183,11 +184,13 @@ static void drawOverlapped(SKGlyphCache *gc, const SkRect &extent) {
         if (other == nullptr || other == gc) {
             continue;
         }
-        if (other->batch.pending() && !other->batch.samePaint(gc->paint) && other->batch.overlaps(extent)) {
-            other->batch.flush();
+        if (other->batch->pending() && other->batch->overlaps(extent) && !other->batch->samePaint(gc->paint)) {
+            SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
+            other->batch->flush();
         }
         for (size_t i = other->parked.size(); i-- > 0; ) {
-            if (!other->parked[i]->samePaint(gc->paint) && other->parked[i]->overlaps(extent)) {
+            if (other->parked[i]->overlaps(extent) && !other->parked[i]->samePaint(gc->paint)) {
+                SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
                 retire(other, i);
             }
         }
@@ -288,7 +291,7 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd, jint cellSize, 
     gc->shadow.eraseColor(SK_ColorTRANSPARENT);
     gc->dirtyRows.resize((size_t) gc->cellsPerRow, SkIRect::MakeEmpty());
     // runs whenever a batch holding quads draws, from whichever path: the batch draw statistic counts here
-    gc->batch.beforeUpload = [gc]() { SKGlyphCache_CountStat(SK_GLYPH_BATCH_DRAWS); uploadDirtyRows(gc); };
+    gc->batch->beforeUpload = [gc]() { SKGlyphCache_CountStat(SK_GLYPH_BATCH_DRAWS); uploadDirtyRows(gc); };
     return gc;
 }
 
@@ -313,7 +316,7 @@ void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint
     if (passes != nullptr) {
         park(gc, canvas, paint, passes);
     }
-    gc->batch.begin(canvas, paint, gc->atlasImage, passes);
+    gc->batch->begin(canvas, paint, gc->atlasImage, passes);
 }
 
 // Uploads the rows of the shadow that changed since the last upload.
@@ -432,14 +435,14 @@ bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboole
     SKGlyphCache_CountStat(SK_GLYPHS_CACHED);
     cell->timesRendered++;
     gc->lastUsed[cellIndex(gc, cell)] = gc->cc->recordingGeneration;
-    if (!gc->batch.active()) {
-        gc->batch.begin(gc->canvas, gc->paint, gc->atlasImage, gc->passes);
+    if (!gc->batch->active()) {
+        gc->batch->begin(gc->canvas, gc->paint, gc->atlasImage, gc->passes);
     }
     if (gc->passes != nullptr) {
         const SkIRect &ink = gc->ink[cellIndex(gc, cell)];
         drawOverlapped(gc, SkRect::MakeLTRB(x + ink.fLeft, y + ink.fTop, x + ink.fRight, y + ink.fBottom));
     }
-    gc->batch.addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(gc, cell)]);
+    gc->batch->addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(gc, cell)]);
     return true;
 }
 
@@ -450,5 +453,5 @@ void SKGlyphCache_Flush(SKGlyphCache *gc) {
 }
 
 SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc) {
-    return gc->batch;
+    return *gc->batch;
 }
