@@ -267,6 +267,12 @@ void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, 
     if (glyphCacheTexels >= 32 && glyphCacheTexels <= 16384 && glyphCacheTexels % 32 == 0) {
         gConfig.glyphCacheTexels = glyphCacheTexels;
     }
+    // Batches of different kinds stay pending side by side (SKQuadBatch::family), but not under
+    // MSAA, nor for LCD text accumulated on a coverage surface (its batch is drawn on another
+    // canvas and composited onto the destination when it draws).
+    // J2D_SKIA_EAGER_KINDS (diagnostics, A/B): a batched op draws the other kinds' batches, as before.
+    SKQuadBatch::gCrossFamily = getenv("J2D_SKIA_EAGER_KINDS") == nullptr && msaaSamples <= 1
+                                && lcdMode != SKLcdMode::Accumulate;
 }
 
 jint SKBackend_GlyphCacheTexels() {
@@ -1330,9 +1336,30 @@ static bool batchesTouch(const SkRect &r) {
 static bool gBlitPastBatches = false;   // SKBackend_Blit for drawImageQuad
 
 #define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches(); ensureCanvasClip()
-#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); if (g.cc != nullptr) SKMaskCache_Flush(g.cc->maskCache); prepareBatch()
-#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); flushGlyphBatches(); prepareBatch()
-#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushAtlasBatches(); prepareBatch(); shaderNeedsCanvasClip()
+// Before a batched op of one kind (SKQuadBatch::family: rects 0, glyphs 1, tiles 2): the other kinds'
+// pending batches are drawn, unless they stay pending beside the op's (SKQuadBatch::gCrossFamily, each
+// quad then draws those it touches). A coverage tile under a shader paint is drawn on its own, so a
+// mask op of a shader paint draws them first anyway.
+static void drawOtherKinds(int family) {
+    if (SKQuadBatch::gCrossFamily && !(family == 2 && g.shader)) {
+        return;
+    }
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_KIND);
+    if (family != 0) {
+        gRects.flush();
+    }
+    if (family != 1) {
+        flushGlyphBatches();
+    }
+    if (family != 2 && g.cc != nullptr) {
+        SKMaskCache_Flush(g.cc->maskCache);
+    }
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
+}
+
+#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); drawOtherKinds(1); prepareBatch()
+#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); drawOtherKinds(2); prepareBatch()
+#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); drawOtherKinds(0); prepareBatch(); shaderNeedsCanvasClip()
 
 void SKBackend_FillRect(jint x, jint y, jint w, jint h) {
     REQUIRE_CANVAS_RECT();
@@ -1689,6 +1716,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
     const bool solidTile = mask == nullptr || masklen == 0;
     if (solidTile && (g.shader || !SKMaskCache_Fits(w, h))) {
         // a solid tile under a shader paint, or an oversized one, is a plain rect
+        flushAllBatches();   // drawn through the canvas: every pending batch first, of any kind
         ensureCanvasClip();
         SKMaskCache_Flush(g.cc->maskCache);
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
@@ -1709,7 +1737,8 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
             return;
         }
     }
-    ensureCanvasClip();   // the rest draws through the canvas
+    flushAllBatches();    // the rest draws through the canvas: every pending batch first, of any kind
+    ensureCanvasClip();
     if (solidTile) {
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
@@ -2036,7 +2065,8 @@ static SKGlyphCache *glyphCache(bool lcd, const GlyphInfo *ginfo) {
 // Glyphs too large for a cache cell, or LCD glyphs shifted by a third of a
 // pixel, are uploaded and drawn individually (MTLTextRenderer's NoCache paths).
 static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
-    ensureCanvasClip();   // drawn through the canvas, not batched
+    flushAllBatches();    // drawn through the canvas, not batched: every pending batch first, of any kind
+    ensureCanvasClip();
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
     SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, ginfo->rowBytes);
@@ -2047,7 +2077,8 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
 
 static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
-    ensureCanvasClip();   // drawn through the canvas, not batched
+    flushAllBatches();    // drawn through the canvas, not batched: every pending batch first, of any kind
+    ensureCanvasClip();
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const int w = ginfo->width, h = ginfo->height;
     std::vector<unsigned char> rgba((size_t) w * h * 4);
@@ -2073,7 +2104,8 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowB
 }
 
 static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
-    ensureCanvasClip();   // drawn through the canvas, not batched
+    flushAllBatches();    // drawn through the canvas, not batched: every pending batch first, of any kind
+    ensureCanvasClip();
     SkPixmap pm(SkImageInfo::Make(ginfo->width, ginfo->height, kBGRA_8888_SkColorType, kPremul_SkAlphaType),
                 ginfo->image, ginfo->rowBytes);
     if (sk_sp<SkImage> img = uploadPixmap(pm)) {
@@ -2199,7 +2231,8 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();   // glyph-image draws queued before this list stay in order
+    // drawn through the canvas: every pending batch first, of any kind (SKQuadBatch::gCrossFamily)
+    flushAllBatches();     // glyph-image draws queued before this list stay in order
     SkPaint paint = SKBackend_MakePaint(true);
     ensureCanvasClip();   // Skia's text path draws through the canvas
     jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
@@ -2269,7 +2302,8 @@ const Shaping &shaping() {
 void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat originX, jfloat originY,
                                 const jchar *chars, jint length) {
     REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();   // glyph-image draws queued before this text stay in order
+    // drawn through the canvas: every pending batch first, of any kind (SKQuadBatch::gCrossFamily)
+    flushAllBatches();     // glyph-image draws queued before this text stay in order
     SkFont font;
     if (length <= 0 || !SKFontScaler_Font(pScalerContext, &font)) {
         return;
@@ -2556,7 +2590,8 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags) {
     REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();
+    // drawn through the canvas: every pending batch first, of any kind (SKQuadBatch::gCrossFamily)
+    flushAllBatches();  
     const Shaping &s = shaping();
     if (length <= 0 || runCount <= 0 || !s.unicode) {
         return;

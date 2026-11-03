@@ -79,6 +79,25 @@ public:
                && pos[0].fX < pos[1].fX && pos[0].fY < pos[3].fY;
     }
 
+    // The kind of primitive a batch holds, set by its owner (SKBackend: rects and lines 0, glyphs 1,
+    // coverage tiles 2). Under gCrossFamily a quad joining a batch first draws the pending batches
+    // of the other families it touches (drawn before it in Java's order, possibly beneath it), so
+    // pending batches of different families never overlap and draw in any order: a batched op
+    // of one kind need not draw the other kinds' batches (SKBackend's REQUIRE_CANVAS_* macros).
+    // Batches of one family keep their own rules (the glyph caches' colour batches, drawOverlapped).
+    int family = 0;
+    static inline bool gCrossFamily = false;
+    // The batches holding quads (one flusher thread); never destroyed, so a static batch that
+    // outlives it at exit (SKBackend's rect batch) still finds it.
+    static std::vector<SKQuadBatch *> &pendingBatches() {
+        static auto *batches = new std::vector<SKQuadBatch *>();
+        return *batches;
+    }
+
+    ~SKQuadBatch() {
+        unregisterPending();
+    }
+
     SKQuadBatch() {
         // 1024 quads: a frame's worth of glyphs or tiles without a reallocation
         base.positions.reserve(4 * 1024);
@@ -360,6 +379,11 @@ private:
                 }
             }
         }
+        SkRect quadBounds;
+        quadBounds.setBounds(SkSpan(pos, 4));
+        if (gCrossFamily && !pendingBatches().empty()) {
+            drawTouchedFamilies(quadBounds);
+        }
         Mesh *target = &base;
         if (splitOnOverlap) {
             // The inked extent suffices for two passes (a pixel without coverage
@@ -397,9 +421,10 @@ private:
         } else if (base.positions.size() + 4 > 0xffff) {
             drawPending();   // 16-bit indices
         }
-        SkRect quadBounds;
-        quadBounds.setBounds(SkSpan(pos, 4));
         drawnBounds.join(quadBounds);
+        if (base.indices.empty() && target == &base) {
+            pendingBatches().push_back(this);   // pending from this quad on (drawPending removes it)
+        }
         uint16_t first = (uint16_t) target->positions.size();
         target->positions.insert(target->positions.end(), pos, pos + 4);
         if (tex != nullptr) {
@@ -462,6 +487,29 @@ private:
         }
     }
 
+    void unregisterPending() {
+        auto it = std::find(pendingBatches().begin(), pendingBatches().end(), this);
+        if (it != pendingBatches().end()) {
+            pendingBatches().erase(it);
+        }
+    }
+
+    // gCrossFamily: before a quad within r joins this batch, the pending batches of other families
+    // on its canvas that touch r are drawn (see `family`).
+    void drawTouchedFamilies(const SkRect &r) {
+        for (size_t i = 0; i < pendingBatches().size(); ) {
+            SKQuadBatch *b = pendingBatches()[i];
+            if (b != this && b->family != family && b->canvas == canvas && b->touches(r)) {
+                SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_KIND);
+                b->drawPending();   // leaves pendingBatches()
+                SKStats_SetDrawCause(SK_COUNT_COUNT);
+                i = 0;
+            } else {
+                i++;
+            }
+        }
+    }
+
     void drawPending() {
         if (canvas != nullptr && !base.indices.empty()) {
             // the bounds matter to the composite after the draw only; the mask
@@ -487,6 +535,7 @@ private:
                 afterDraw(bounds, paint);
             }
         }
+        unregisterPending();
         base.clear();
         for (size_t i = 0; i < layerCount; i++) {
             layers[i].clear();

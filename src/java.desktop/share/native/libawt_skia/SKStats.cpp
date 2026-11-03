@@ -100,9 +100,10 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu\n",
+    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_STATE],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_KIND],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_SURFACE],
             (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_SAME],
             (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_RETURNED],

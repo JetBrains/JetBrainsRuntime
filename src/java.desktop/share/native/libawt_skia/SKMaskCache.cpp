@@ -97,6 +97,7 @@ SKMaskCache *SKMaskCache_Create(SKConfigContext *cc) {
     }
     mc->staging.resize((size_t) CACHE_SIZE * CELL_SIZE);
     mc->batch.beforeDraw = [mc](const SkRect &) { uploadStaging(mc); };
+    mc->batch.family = 2;   // coverage tiles (SKQuadBatch::family)
     // cell 0 is the opaque cell for fully covered tiles (SKMaskCache_DrawSolid)
     std::vector<unsigned char> opaque((size_t) CELL_SIZE * CELL_SIZE, 0xff);
     SKStats_Count(SK_COUNT_ATLAS_UPLOADS);

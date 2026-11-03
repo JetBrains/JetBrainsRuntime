@@ -113,6 +113,7 @@ static std::unique_ptr<SKQuadBatch> spareBatch(SKGlyphCache *gc) {
         b->beforeUpload = gc->batch->beforeUpload;
         b->beforeDraw = gc->batch->beforeDraw;
         b->afterDraw = gc->batch->afterDraw;
+        b->family = gc->batch->family;
     }
     return b;
 }
@@ -292,6 +293,7 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd, jint cellSize, 
     gc->dirtyRows.resize((size_t) gc->cellsPerRow, SkIRect::MakeEmpty());
     // runs whenever a batch holding quads draws, from whichever path: the batch draw statistic counts here
     gc->batch->beforeUpload = [gc]() { SKGlyphCache_CountStat(SK_GLYPH_BATCH_DRAWS); uploadDirtyRows(gc); };
+    gc->batch->family = 1;   // glyphs (SKQuadBatch::family)
     return gc;
 }
 
