@@ -318,7 +318,8 @@
           "native": "the OS default: DirectWrite via Direct2D with the system's rendering parameters, on its placement grid.",
           "skia smoothed": "Skia asks its DirectWrite host for hinted bitmaps (hinting \"normal\"), then applies its gamma pre-blend."
         }
-      }
+      },
+      "under": "renderer"
     },
     {
       "key": "lcdSource",
