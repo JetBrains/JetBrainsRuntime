@@ -35,6 +35,10 @@ stop_ours; sleep 2
 # the seed: the kit's (common, Windows, light) and this bench's overrides (no completion popups)
 SEED="$WORK/seed"; rm -rf "$SEED"; mkdir -p "$SEED"
 cp -r "$KIT/capture/seed/common/." "$KIT/capture/seed/win/." "$KIT/capture/seed/light/." "$HERE/seed/." "$SEED/"
+# TEXT_AA=GREYSCALE: the IDE's and the editor's text antialiased in grey instead of subpixel (the seed's)
+if [ -n "${TEXT_AA:-}" ]; then
+  sed -i "s|\"IDE_AA_TYPE\" value=\"[A-Z]*\"|\"IDE_AA_TYPE\" value=\"$TEXT_AA\"|; s|\"EDITOR_AA_TYPE\" value=\"[A-Z]*\"|\"EDITOR_AA_TYPE\" value=\"$TEXT_AA\"|" "$SEED/options/ui.lnf.xml"
+fi
 if [ -n "${SDK_HOME:-}" ]; then
   sed -i "s|C:.Users.manuel.unterhofer.AppData.Local.Programs.IntelliJ IDEA 2.jbr|$(cygpath -m "$SDK_HOME")|g" "$SEED/options/jdk.table.xml"
 fi

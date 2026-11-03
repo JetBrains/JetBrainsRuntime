@@ -3004,7 +3004,12 @@ static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
         return false;   // never drawn into: nothing Graphite could present
     }
     SKPlatformPresentTarget target;
-    if (!SKPlatform_AcquirePresentTarget(dst->platform, &target)) {
+    bool acquired;
+    {
+        SKStatsScope acquireStats(SK_SPAN_PRESENT_ACQUIRE);
+        acquired = SKPlatform_AcquirePresentTarget(dst->platform, &target);
+    }
+    if (!acquired) {
         return false;
     }
     *presented = false;
@@ -3016,6 +3021,7 @@ static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
         st->presentTargets.clear();   // the images of an earlier swap chain
         st->presentGeneration = generation;
     }
+    SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);   // the draw into the image, its recording and submit
     sk_sp<SkSurface> &image = st->presentTargets[target.imageKey];
     if (!image) {
         image = SkSurfaces::WrapBackendTexture(cc->recorder.get(), target.texture, target.colorType, nullptr, nullptr);
@@ -3052,6 +3058,8 @@ static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
         return true;
     }
     cc->context->submit(SyncToCpu::kNo);
+    copyStats.end();
+    SKStatsScope callStats(SK_SPAN_PRESENT_CALL);
     *presented = image != nullptr && SKPlatform_PresentTarget(dst->platform);
     return true;
 }

@@ -91,8 +91,13 @@ class SKStatsScope {
 public:
     explicit SKStatsScope(SKStatsSpan span) : span(span), start(SKStats_IsEnabled() ? SKStats_Now() : 0) {}
     ~SKStatsScope() {
+        end();
+    }
+    // Ends the span before the scope does (once).
+    void end() {
         if (start != 0) {
             SKStats_AddSpan(span, SKStats_Now() - start);
+            start = 0;
         }
     }
     SKStatsScope(const SKStatsScope &) = delete;
