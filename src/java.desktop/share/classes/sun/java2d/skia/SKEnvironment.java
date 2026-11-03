@@ -677,7 +677,7 @@ public final class SKEnvironment {
 
     /**
      * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a
-     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached
+     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached, batch draws
      * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
      */
     public static long[] glyphCacheStats() {

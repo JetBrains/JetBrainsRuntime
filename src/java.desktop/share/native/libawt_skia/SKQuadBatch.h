@@ -158,6 +158,33 @@ public:
     }
 
     bool active() const { return canvas != nullptr; }
+    // Begun and holding quads: flush() draws something.
+    bool pending() const { return canvas != nullptr && !base.indices.empty(); }
+
+    // Begun on this canvas, atlas and passes (begin() for another paint of them would draw the batch).
+    bool sameTarget(SkCanvas *c, const sk_sp<SkImage> &atlas, const SKQuadBatchTwoPass *passes) const {
+        return canvas == c && atlasImage.get() == atlas.get() && twoPass == passes
+               && twoPassKey == (passes != nullptr ? passes->key : 0);
+    }
+
+    // The batch's paint is p (for batches that do not merge colours: two passes, blenders).
+    bool samePaint(const SkPaint &p) const { return paint == p; }
+
+    // A pending quad's overlap extent intersects r (tracked under splitOnOverlap only).
+    bool overlaps(const SkRect &r) const {
+        if (canvas == nullptr || r.isEmpty()) {
+            return false;
+        }
+        if (base.overlaps(r)) {
+            return true;
+        }
+        for (size_t i = 0; i < layerCount; i++) {
+            if (layers[i].overlaps(r)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // Axis-aligned sprite from the atlas at (tx, ty). `ink`, if given, is the
     // part of the sprite that carries coverage, relative to its origin: the

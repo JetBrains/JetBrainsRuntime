@@ -570,7 +570,9 @@ static void applyCanvasState() {
     if (g.canvas == nullptr) {
         return;
     }
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_STATE);
     flushAllBatches();
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
     g.canvas->restoreToCount(g.baseSaveCount);
     g.canvas->save();
     // Java2D clips are in device space: apply before the transform.
@@ -608,7 +610,9 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
 }
 
 void SKBackend_SetDestination(SKSDOps *dst) {
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_SURFACE);
     flushAllBatches();
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
     g.dst = nullptr;
     g.canvas = nullptr;
     if (dst == nullptr) {

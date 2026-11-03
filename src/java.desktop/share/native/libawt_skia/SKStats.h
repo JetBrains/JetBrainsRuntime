@@ -72,6 +72,8 @@ enum SKStatsCounter {
     SK_COUNT_TEXTURE_COPIES,    // texture-to-texture copies encoded (destination reads, the present copy)
     SK_COUNT_BUFFER_UPLOADS,    // buffer-to-texture copies encoded (texture uploads)
     SK_COUNT_QUEUE_SUBMITS,     // command buffer submits to the device queue
+    SK_COUNT_MESH_DRAWS_AT_STATE,     // of the mesh draws, those of batches a clip or transform change drew
+    SK_COUNT_MESH_DRAWS_AT_SURFACE,   // of the mesh draws, those of batches a destination switch drew
     SK_COUNT_COUNT
 };
 
@@ -80,6 +82,9 @@ uint64_t SKStats_Now();     // nanoseconds, monotonic
 void SKStats_AddSpan(SKStatsSpan span, uint64_t nanos);
 void SKStats_AddOp(int opcode, uint64_t nanos);
 void SKStats_Count(SKStatsCounter counter, uint64_t n = 1);
+// What draws the pending batches now (SK_COUNT_MESH_DRAWS_AT_STATE or _AT_SURFACE), SK_COUNT_COUNT for
+// nothing in particular: mesh draws counted meanwhile are also counted under it.
+void SKStats_SetDrawCause(SKStatsCounter cause);
 // Graphite added a pipeline to its cache (built it) or found one; with the statistics on, an added
 // pipeline's label and key hash are printed, the input of a precompile list.
 void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash);
