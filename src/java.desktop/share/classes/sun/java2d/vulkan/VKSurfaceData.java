@@ -341,7 +341,7 @@ public abstract class VKSurfaceData extends SurfaceData
         if (gc.getFormat() != format) return VolatileImage.IMAGE_INCOMPATIBLE;
         else if (this.gc == gc) return VolatileImage.IMAGE_OK;
         // TODO proxy cache needs to be cleared for this surface data?
-        setBlitProxyCache(gc.getGPU().getSurfaceDataProxyCache());
+        setBlitProxyCache(gc.getSurfaceDataProxyCache());
         this.gc = gc;
         return VolatileImage.IMAGE_RESTORED;
     }
