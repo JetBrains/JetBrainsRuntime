@@ -47,8 +47,7 @@ if [ -d "$SNAP" ] && [ -z "${REFRESH_SNAPSHOT:-}" ]; then cp -R "$SNAP" "$IDE_ST
 # a fresh copy of the scene project (the IDE writes into it; the tracked one stays clean)
 PROJECT="$WORK/text-scene"; rm -rf "$PROJECT"; cp -R "$HERE/text-scene" "$PROJECT"
 cp "$HERE/seed/project/workspace.xml" "$PROJECT/.idea/workspace.xml"
-cp "$HERE/seed/project/src/Hello.java" "$PROJECT/src/Hello.java"
-cp "$HERE/seed/project/README.md" "$PROJECT/README.md"
+(cd "$HERE/seed/project" && find . -type f -not -name workspace.xml) | while IFS= read -r f; do mkdir -p "$PROJECT/$(dirname "$f")"; cp "$HERE/seed/project/$f" "$PROJECT/$f"; done   # the whole seed: the files the tree shows (2026-11-03)
 ARMDIR="$OUT/$NAME"; DEST="$ARMDIR/$SEED_THEME-${SCALE}x$SUFFIX"; rm -rf "$DEST"; mkdir -p "$DEST"; [ "$THEME" = both ] && { rm -rf "$ARMDIR/dark-${SCALE}x$SUFFIX"; mkdir -p "$ARMDIR/dark-${SCALE}x$SUFFIX"; }   # a fresh destination: stale captures and markers of an earlier run must not survive
 # the display must run at the requested scale with room for the 1728x980 frame (the user sets it in Windows'
 # display settings; this waits and tells them what to set); the driver places and captures the frame at its own bounds
