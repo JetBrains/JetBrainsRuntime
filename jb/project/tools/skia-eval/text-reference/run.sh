@@ -23,7 +23,7 @@ rm -rf "$WORK/classes"; mkdir -p "$WORK/classes"; "$JDK/bin/javac" -d "$WORK/cla
 sheet() {
   name=$1; how=$2; shift 2
   flag=""; [ "$how" = volatile ] && flag="--volatile"
-  "$JDK/bin/java" -Dsun.java2d.uiScale=1 "$@" -cp "$WORK/classes" TextReference "$OUT/$name" "$OUT/rows-$name.txt" "$FONTS" $flag 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline"
+  "$JDK/bin/java" -Dapple.awt.UIElement=true -Dsun.java2d.uiScale=1 "$@" -cp "$WORK/classes" TextReference "$OUT/$name" "$OUT/rows-$name.txt" "$FONTS" $flag 2>&1 | grep -v "^Picked up\|^WARNING\|^pipeline"
   cmp -s "$OUT/rows-$name.txt" "$OUT/rows.txt" || echo "row order differs: $name" >&2
   rm -f "$OUT/rows-$name.txt"
 }

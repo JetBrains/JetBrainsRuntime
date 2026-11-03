@@ -14,7 +14,7 @@ source "$HERE/../env.sh"
 WORK="$OUT_ROOT/text-reference"
 FONTS="$JDK/lib/fonts"
 OUT="${1:?the sheet tree, the OUT of run.sh}"
-TMP="$OUT/.tmp"; mkdir -p "$OUT" "$TMP"
+TMPROOT="$OUT/.tmp"; mkdir -p "$OUT" "$TMPROOT"   # a work directory per colour and paper (the arms of one run in parallel; nothing removed before the end)
 COLOURS="red:f75464 blue:56a8f5 orange:cf8e6d green:6aab73 purple:c77dba"
 EXTREMES="black:000000 white:ffffff"   # only for the arms run.sh lacks
 PAPERS="white:ffffff black:000000"
@@ -34,6 +34,7 @@ for cp in $COLOURS; do colour=${cp%%:*}; ink=${cp##*:}
   for pp in $PAPERS; do paper=${pp%%:*}; bg=${pp##*:}
     [ "$colour" = "$paper" ] && continue
     echo "== $colour on $paper $(date +%H:%M:%S)"
+    TMP="$TMPROOT/$colour-on-$paper"; mkdir -p "$TMP"
     export TEXTREF_INK=$ink TEXTREF_PAPER=$bg
     "$WORK/ctref" "$TMP/coretext" "$TMP/rows-ct.txt" "$FONTS" >/dev/null 2>&1; file coretext $colour $paper
     # the matrix arms whose blend is the system's masks (the colour question) with the system's darkening and
@@ -46,13 +47,13 @@ for cp in $COLOURS; do colour=${cp%%:*}; ink=${cp##*:}
       throttle; ( arm_java skia-scaler-cg-classes1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=1; file skia-scaler-cg-classes1 $colour $paper ) &
       wait
     }
-    rm -rf "${TMP:?}"/*
   done
 done
 for cp in $EXTREMES; do colour=${cp%%:*}; ink=${cp##*:}
   for pp in $PAPERS; do paper=${pp%%:*}; bg=${pp##*:}
     [ "$colour" = "$paper" ] && continue
     echo "== $colour on $paper (luminance-class arms) $(date +%H:%M:%S)"
+    TMP="$TMPROOT/extremes-$colour-on-$paper"; mkdir -p "$TMP"
     export TEXTREF_INK=$ink TEXTREF_PAPER=$bg
     for classes in 256 1; do
       arm_java skia-scaler-cg-classes$classes -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=$classes
@@ -61,9 +62,9 @@ for cp in $EXTREMES; do colour=${cp%%:*}; ink=${cp##*:}
         [ -f "$src" ] && mkdir -p "$(dirname "$dst")" && mv "$src" "$dst"
       done; done
     done
-    rm -rf "${TMP:?}"/*
   done
 done
 unset TEXTREF_INK TEXTREF_PAPER
 rm -rf "${TMP:?}"
 echo "colour sheets filed under $OUT"
+rm -rf "${TMPROOT:?}"
