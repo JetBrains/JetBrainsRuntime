@@ -48,14 +48,6 @@ def main():
 
     def describe(arm, label, labels=()):
         d = desc['arms'].get(label, {}) or arm_from_name(label) or {}
-        if d and label + '-fractional' in labels and 'positioning' not in d.get('dims', {}):   # the base arm beside its fractional variant
-            d = dict(d); d['dims'] = dict(d.get('dims', {}), positioning='ide-default')
-        if not d and label.endswith('-fractional'):   # an IDE arm with fractional glyph placement everywhere: its base arm's entry
-            base = desc['arms'].get(label[:-len('-fractional')], {})
-            if base:
-                d = dict(base); d['dims'] = dict(base.get('dims', {}), positioning='fractional')
-                if base.get('title'): d['title'] = base['title'] + ', fractional placement'
-                d['description'] = (base.get('description', '') + " Glyph placement fractional for every text (ide.text.fractional.metrics and editor.text.fractional.metrics enabled).").strip()
         if d.get('dims'): arm['dims'] = dict(d['dims'])
         if d.get('description'): arm['description'] = d['description']
         if d.get('title'): arm['title'] = d['title']

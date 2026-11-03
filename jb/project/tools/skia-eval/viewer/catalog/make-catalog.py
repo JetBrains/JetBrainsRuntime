@@ -56,24 +56,14 @@ def refresh_content(manifest, platform):
     if aa and not manifest.get('setDimensions', [{}])[0].get('key') == 'aa': manifest['antialiasing'] = aa
     manifest['presets'] = desc.get('presets', manifest.get('presets', {}))
     arms = desc.get('arms', {})
-    def arm_entry(label):   # a "-fractional" IDE arm: its base arm's entry with positioning fractional (make-viewer.py does the same)
-        e = arms.get(label) or arm_from_name(label or '')
-        if e or not label or not label.endswith('-fractional'): return e
-        base = arms.get(label[:-len('-fractional')])
-        if not base: return None
-        e = dict(base); e['dims'] = dict(base.get('dims', {}), positioning='fractional')
-        if base.get('title'): e['title'] = base['title'] + ', fractional placement'
-        e['description'] = (base.get('description', '') + " Glyph placement fractional for every text (ide.text.fractional.metrics and editor.text.fractional.metrics enabled).").strip()
-        return e
+    def arm_entry(label):   # an entry of descriptions.json, or the dimensions a generated sheet arm's name spells
+        return arms.get(label) or arm_from_name(label or '')
     for s in manifest.get('sets', []):
-        labels = {a.get('label') for a in s.get('arms', [])}
         for a in s.get('arms', []):
             e = arm_entry(a.get('label'))
             if e:
                 for k in ('description', 'title', 'dims'):
                     if k in e: a[k] = dict(e[k]) if isinstance(e[k], dict) else e[k]
-            if a.get('label') + '-fractional' in labels and 'positioning' not in a.get('dims', {}):   # the base arm beside its fractional variant
-                a.setdefault('dims', {})['positioning'] = 'ide-default'
     return manifest
 
 def drop_retired_arms(manifest):

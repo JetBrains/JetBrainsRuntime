@@ -52,6 +52,65 @@
       }
     },
     {
+      "key": "scaler",
+      "name": "Font scaler & rasterizer",
+      "column": true,
+      "values": {
+        "native": "CoreText lays out and rasterizes the line itself (fractional advances by default).",
+        "platform": "Today's JetBrains Runtime scaler. On macOS every font the JDK knows is a CFont rasterized by CoreText (CStrike), the bundled Inter and JetBrains Mono included (probe 2026-10-26; the JDK registers lib/fonts with CoreText). On Windows and Linux: FreeType for file fonts, GDI or DirectWrite for LCD glyphs of installed fonts. Metrics and bitmaps from these engines.",
+        "skia": "The experimental scaler built on Skia's font host (CoreText typefaces on macOS, FreeType elsewhere): no hinting, linear metrics, sub-pixel positioning with fractional metrics. Its metrics and advances equal the platform scaler's; it offers several ways to produce grayscale bitmaps."
+      },
+      "description": "Which engine turns outlines into glyph bitmaps and supplies the metrics.",
+      "labels": {
+        "*": {
+          "native": "operating system",
+          "platform": "JDK scaler (CoreText on macOS; FreeType / GDI / DirectWrite on Windows)",
+          "skia": "Skia scaler (Skia font host)"
+        },
+        "macOS": {
+          "native": "CoreText",
+          "platform": "JDK via CoreText (CStrike)",
+          "skia": "Skia via CoreText (SkFontHost_mac)"
+        },
+        "Windows": {
+          "native": "DirectWrite / GDI",
+          "platform": "JDK via FreeType (GDI/DirectWrite for LCD)",
+          "skia": "Skia via DirectWrite"
+        }
+      },
+      "effects": {
+        "*": {
+          "native": "the OS rasterizer with its hinting and smoothing.",
+          "platform": "CoreText bitmaps for system fonts (smoothed), FreeType for file fonts (light autohint, linear coverage).",
+          "skia": "Skia's font host over CoreText / DirectWrite / FreeType: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
+        },
+        "Windows": {
+          "platform": "FreeType bitmaps for every font (light autohint, linear coverage); GDI or DirectWrite only where the JDK's opt-in LCD path applies.",
+          "skia": "Skia's font host over DirectWrite: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
+        }
+      }
+    },
+    {
+      "key": "strike",
+      "name": "Glyphs",
+      "description": "Who renders and places the glyph images: Java's glyph cache (the strike's masks drawn by the pipe at Java's positions) or Skia's own text path (Skia's strike, atlas and blend). sun.java2d.skia.text.strike.",
+      "values": {
+        "java2d": "Java's glyph cache: the scaler's masks, cached and drawn by the pipeline at Java's positions.",
+        "skia": "Skia's text path: Skia's strike cache and glyph atlas, its sub-pixel grid (quarters) and its blend; the platform's masks where the blend is system.",
+        "native": "The platform's own text stack: no glyph cache of Java's and no Skia atlas."
+      },
+      "column": true,
+      "labels": {
+        "java2d": "Java glyph cache",
+        "skia": "Skia text path",
+        "native": "native"
+      },
+      "effects": {
+        "java2d": "the pipeline draws cached masks at Java's positions.",
+        "skia": "Skia draws from its atlas on its own grid."
+      }
+    },
+    {
       "key": "layout",
       "name": "Text layout & shaping",
       "column": true,
@@ -61,7 +120,7 @@
         "skia paragraph": "Skia's paragraph engine in addition to its shaper: attributed strings (fonts, colors, underline, strikethrough) are laid out and decorated by SkParagraph instead of Java's TextLayout (`-Dsun.java2d.skia.text=paragraph`). Attributes the route does not model fall back to Java's layout. Measured: the glyphs land where the shaper's do; only the underline differs (see the note).",
         "native": "CoreText lays out the line itself.",
         "chrome": "Blink's text layout with HarfBuzz, kerning off for these samples.",
-        "skia paragraph only": "SkParagraph for attributed strings only (sun.java2d.skia.text.paragraphs=skia with Java's shaping for plain strings)."
+        "skia": "Skia's layout: SkShaper (HarfBuzz through Skia's font fallback) for plain strings and SkParagraph for attributed ones, together (sun.java2d.skia.text.layout=skia; the shaper's features off to match Java)."
       },
       "description": "Which code turns the characters into glyphs and positions, and lays out decorated text.",
       "labels": {
@@ -71,7 +130,8 @@
           "skia paragraph": "Skia SkParagraph + SkShaper",
           "native": "operating system",
           "chrome": "Blink (HarfBuzz)",
-          "skia paragraph only": "SkParagraph (attributed text only)"
+          "skia paragraph only": "SkParagraph (attributed text only)",
+          "skia": "Skia (SkShaper + SkParagraph)"
         },
         "macOS": {
           "native": "CoreText"
@@ -86,11 +146,32 @@
           "skia shaper": "HarfBuzz through SkShaper with Skia's fallback; features off to match Java; fractional advances in device pixels.",
           "skia paragraph": "SkParagraph lays out attributed runs on top of SkShaper; the decorations follow the decorations dimension (the system rule by default, since 2026-11-02).",
           "native": "the OS shaper and its advances (CoreText: unrounded, DirectWrite: by measuring mode).",
-          "chrome": "Blink's HarfBuzz layout with kerning off."
+          "chrome": "Blink's HarfBuzz layout with kerning off.",
+          "skia": "Skia shapes and lays out every string; Java's rounding rules for whole-pixel advances."
         },
         "Windows": {
           "native": "DirectWrite's shaper and advances (by measuring mode)."
         }
+      }
+    },
+    {
+      "key": "darkening",
+      "name": "Darkening",
+      "description": "Whether stems are thickened beyond the outline's coverage — AppleFontSmoothing on macOS, ClearType's enhanced contrast on Windows, FreeType's stem darkening on Linux. sun.java2d.skia.text.darkening (Skia scaler).",
+      "values": {
+        "system": "The platform's own darkening, as the user's settings have it (AppleFontSmoothing honoured on macOS).",
+        "none": "No darkening: the outline's plain coverage.",
+        "native": "The platform's own rendering."
+      },
+      "column": true,
+      "labels": {
+        "system": "system",
+        "none": "none",
+        "native": "native"
+      },
+      "effects": {
+        "system": "stems thickened as the OS does for this user.",
+        "none": "plain outline coverage."
       }
     },
     {
@@ -136,96 +217,23 @@
       }
     },
     {
-      "key": "darkening",
-      "name": "Darkening",
-      "description": "Whether stems are thickened beyond the outline's coverage — AppleFontSmoothing on macOS, ClearType's enhanced contrast on Windows, FreeType's stem darkening on Linux. sun.java2d.skia.text.darkening (Skia scaler).",
-      "values": {
-        "system": "The platform's own darkening, as the user's settings have it (AppleFontSmoothing honoured on macOS).",
-        "none": "No darkening: the outline's plain coverage."
-      },
-      "column": true,
-      "labels": {
-        "system": "system",
-        "none": "none"
-      },
-      "effects": {
-        "system": "stems thickened as the OS does for this user.",
-        "none": "plain outline coverage."
-      }
-    },
-    {
       "key": "decorations",
       "name": "Decorations",
       "description": "Underlines and strikethroughs: the system convention (the font's own metrics on whole device rows where CoreText puts them, gaps around the ink on macOS; the same rule on TextLayout and SkParagraph) or Java's stroked lines at its nominal offsets. sun.java2d.skia.text.decorations.",
       "values": {
         "system": "The system convention: whole device rows from the font's own metrics, placed as CoreText places them, one user pixel of clearance around descenders on macOS.",
-        "java2d": "Java's lines: a stroke of size / 12 centred size / 18 below the baseline, through the descenders."
+        "java2d": "Java's lines: a stroke of size / 12 centred size / 18 below the baseline, through the descenders.",
+        "native": "The platform's own underline."
       },
       "column": true,
       "labels": {
         "system": "system",
-        "java2d": "Java2D"
+        "java2d": "Java2D",
+        "native": "native"
       },
       "effects": {
         "system": "whole rows, the OS's placement, ink gaps on macOS.",
         "java2d": "Java's stroked line through the descenders."
-      }
-    },
-    {
-      "key": "scaler",
-      "name": "Font scaler & rasterizer",
-      "column": true,
-      "values": {
-        "native": "CoreText lays out and rasterizes the line itself (fractional advances by default).",
-        "platform": "Today's JetBrains Runtime scaler. On macOS every font the JDK knows is a CFont rasterized by CoreText (CStrike), the bundled Inter and JetBrains Mono included (probe 2026-10-26; the JDK registers lib/fonts with CoreText). On Windows and Linux: FreeType for file fonts, GDI or DirectWrite for LCD glyphs of installed fonts. Metrics and bitmaps from these engines.",
-        "skia": "The experimental scaler built on Skia's font host (CoreText typefaces on macOS, FreeType elsewhere): no hinting, linear metrics, sub-pixel positioning with fractional metrics. Its metrics and advances equal the platform scaler's; it offers several ways to produce grayscale bitmaps."
-      },
-      "description": "Which engine turns outlines into glyph bitmaps and supplies the metrics.",
-      "labels": {
-        "*": {
-          "native": "operating system",
-          "platform": "JDK scaler (CoreText on macOS; FreeType / GDI / DirectWrite on Windows)",
-          "skia": "Skia scaler (Skia font host)"
-        },
-        "macOS": {
-          "native": "CoreText",
-          "platform": "JDK via CoreText (CStrike)",
-          "skia": "Skia via CoreText (SkFontHost_mac)"
-        },
-        "Windows": {
-          "native": "DirectWrite / GDI",
-          "platform": "JDK via FreeType (GDI/DirectWrite for LCD)",
-          "skia": "Skia via DirectWrite"
-        }
-      },
-      "effects": {
-        "*": {
-          "native": "the OS rasterizer with its hinting and smoothing.",
-          "platform": "CoreText bitmaps for system fonts (smoothed), FreeType for file fonts (light autohint, linear coverage).",
-          "skia": "Skia's font host over CoreText / DirectWrite / FreeType: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
-        },
-        "Windows": {
-          "platform": "FreeType bitmaps for every font (light autohint, linear coverage); GDI or DirectWrite only where the JDK's opt-in LCD path applies.",
-          "skia": "Skia's font host over DirectWrite: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
-        }
-      }
-    },
-    {
-      "key": "strike",
-      "name": "Glyphs",
-      "description": "Who renders and places the glyph images: Java's glyph cache (the strike's masks drawn by the pipe at Java's positions) or Skia's own text path (Skia's strike, atlas and blend). sun.java2d.skia.text.strike.",
-      "values": {
-        "java2d": "Java's glyph cache: the scaler's masks, cached and drawn by the pipeline at Java's positions.",
-        "skia": "Skia's text path: Skia's strike cache and glyph atlas, its sub-pixel grid (quarters) and its blend; the platform's masks where the blend is system."
-      },
-      "column": true,
-      "labels": {
-        "java2d": "Java glyph cache",
-        "skia": "Skia text path"
-      },
-      "effects": {
-        "java2d": "the pipeline draws cached masks at Java's positions.",
-        "skia": "Skia draws from its atlas on its own grid."
       }
     },
     {
@@ -350,18 +358,14 @@
       "name": "Glyph positioning",
       "values": {
         "whole-pixel": "FRACTIONALMETRICS_OFF: every advance rounded to a whole pixel (file fonts in device pixels, system fonts in points — the two rules in today's runtime), one bitmap per glyph. The native reference places glyphs at the same rounded positions so the samples stay comparable; macOS itself has no integer-advance mode.",
-        "fractional": "FRACTIONALMETRICS_ON: fractional advances and sub-pixel glyph positions. IntelliJ on macOS runs with this for UI and editor text; the native reference is CoreText's own layout.",
-        "ide-default": "The IDE's own choice: on macOS, interface text with fractional advances and the editor's text fractional where the runtime offers sub-pixel glyph resolution (the registry keys ide.text.fractional.metrics and editor.text.fractional.metrics on Auto)."
+        "fractional": "FRACTIONALMETRICS_ON: fractional advances and sub-pixel glyph positions. IntelliJ on macOS runs with this for UI and editor text; the native reference is CoreText's own layout."
       },
       "description": "Whether advances are rounded to whole pixels or kept fractional.",
       "effects": {
         "whole-pixel": "advances rounded to whole pixels (file fonts in device pixels, system fonts in points).",
-        "fractional": "fractional advances and sub-pixel glyph positions (variants per pipe).",
-        "ide-default": "the IDE's own placement choice per text kind."
+        "fractional": "fractional advances and sub-pixel glyph positions (variants per pipe)."
       },
-      "labels": {
-        "ide-default": "IDE default"
-      }
+      "labels": {}
     },
     {
       "key": "scale",
@@ -371,6 +375,20 @@
         "2x": "A 2× (Retina) display: four device pixels per point."
       },
       "description": "The device scale factor the sample was rendered for."
+    },
+    {
+      "key": "placement",
+      "name": "Glyph placement",
+      "platform": "Windows",
+      "description": "The IDE's glyph placement setting the screenshot was taken with. On macOS the IDE places every text fractionally by default (interface text since Catalina, the editor where the runtime offers sub-pixel glyph resolution), so there is no choice there; on Windows the defaults round advances to whole pixels under ClearType, and the fractional variant sets the registry keys ide.text.fractional.metrics and editor.text.fractional.metrics.",
+      "values": {
+        "default": "The IDE's defaults: whole-pixel advances under ClearType on Windows.",
+        "fractional": "Fractional advances for every text (ide.text.fractional.metrics and editor.text.fractional.metrics enabled)."
+      },
+      "labels": {
+        "default": "IDE default",
+        "fractional": "fractional"
+      }
     },
     {
       "key": "paper",
@@ -516,7 +534,10 @@
         "layout": "native",
         "scaler": "native",
         "gray": "native",
-        "blend": "native"
+        "blend": "native",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "description": "CoreText and CoreGraphics drawing the samples with font smoothing on, as macOS applications do by default. Kerning off, because Java applies none. Drawn with CoreGraphics' sub-pixel quantization on, as AppKit does by default: glyph positions rounded down to thirds of a device pixel at 1x and halves at 2x (measured 2026-10-23). The 'continuous' arm is the same rendering without quantization. Kerning and the default OpenType features (contextual alternates, ligatures) are switched off, as Java's drawString applies none: Inter's contextual alternates otherwise swap the brackets after digits and the arrow and comparison signs for other glyphs.",
       "title": "Native (macOS default)"
@@ -598,7 +619,10 @@
         "layout": "native",
         "blend": "native",
         "scaler": "native",
-        "gray": "native"
+        "gray": "native",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "title": "DirectWrite via Direct2D, system parameters",
       "description": "DirectWrite drawing the rows (Windows reference). Drawn at the display's DPI in device-independent pixels; the whole-pixel sheets in GDI-classic measuring mode (the hand-over's spec)."
@@ -609,7 +633,10 @@
         "layout": "native",
         "blend": "native",
         "scaler": "native",
-        "gray": "native gdi"
+        "gray": "native gdi",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "title": "GDI ExtTextOut",
       "description": "GDI `ExtTextOut` drawing the rows (Windows reference; the JDK's Windows LCD glyphs come from GDI)."
@@ -643,7 +670,10 @@
         "layout": "native",
         "scaler": "native",
         "gray": "native unsmoothed",
-        "blend": "native"
+        "blend": "native",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "description": "The same with font smoothing off: plain coverage. Kerning and the default OpenType features (contextual alternates, ligatures) are switched off, as Java's drawString applies none: Inter's contextual alternates otherwise swap the brackets after digits and the arrow and comparison signs for other glyphs.",
       "title": "Native, font smoothing off"
@@ -742,7 +772,10 @@
         "layout": "chrome",
         "blend": "skia text path",
         "scaler": "skia",
-        "gray": "skia smoothed"
+        "gray": "skia smoothed",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "title": "Google Chrome (canvas text)",
       "description": "Google Chrome 156 drawing the samples on a canvas: Blink's text goes through Skia's CoreText host with font smoothing on and Skia's gamma model. Rows follow Chrome's own shaping; no kerning."
@@ -819,7 +852,10 @@
         "layout": "native",
         "blend": "native",
         "scaler": "native",
-        "gray": "native continuous"
+        "gray": "native continuous",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "title": "CoreText, smoothing on, continuous glyph positions",
       "description": "CoreText with font smoothing on but CoreGraphics' sub-pixel quantization switched off, so every glyph is rasterized at its exact fractional position. Not AppKit's default (which quantizes); it was this viewer's native reference until 2026-10-23 and stays as the comparison for continuous placement. Kerning and the default OpenType features (contextual alternates, ligatures) are switched off, as Java's drawString applies none: Inter's contextual alternates otherwise swap the brackets after digits and the arrow and comparison signs for other glyphs."
@@ -830,7 +866,10 @@
         "layout": "native",
         "blend": "native",
         "scaler": "native",
-        "gray": "native natural"
+        "gray": "native natural",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "title": "DirectWrite via Direct2D, natural measuring mode",
       "description": "DirectWrite through Direct2D with natural measuring mode for the whole-pixel rows too: the like-for-like comparison for the routes' whole-pixel placement."
@@ -1085,7 +1124,10 @@
         "blend": "skia text path",
         "scaler": "skia",
         "gray": "skia smoothed",
-        "lcdSource": "scaler"
+        "lcdSource": "scaler",
+        "strike": "native",
+        "darkening": "native",
+        "decorations": "native"
       },
       "title": "Microsoft Edge (canvas text)",
       "description": "Headless Microsoft Edge (Chromium: Blink and Skia on the DirectWrite host) drawing the samples on a canvas, the Windows counterpart of the Chrome arm; Chrome is not installed on the VM. Rows follow Blink's own shaping; no kerning."
@@ -1583,7 +1625,7 @@
         "mode": "flicker",
         "arms": {
           "macOS": [
-            "pipe-metal+scaler-platform+strike-java2d+shaping-java2d+paragraphs-java2d+blend-corrected+decorations-system",
+            "pipe-metal+scaler-platform+strike-java2d+layout-java2d+blend-corrected+decorations-system",
             "coretext"
           ],
           "Windows": [
@@ -1599,7 +1641,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system"
+            "pipe-skia+scaler-skia+strike-java2d+layout-java2d+darkening-system+blend-system+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1614,7 +1656,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "pipe-skia+scaler-skia+strike-skia+shaping-skia+paragraphs-skia+darkening-system+blend-system+decorations-system"
+            "pipe-skia+scaler-skia+strike-skia+layout-skia+darkening-system+blend-system+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1632,8 +1674,8 @@
         "id": "coregraphics-masks:-javas-glyph-images-vs-skias-",
         "arms": {
           "macOS": [
-            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system",
-            "pipe-skia+scaler-skia+strike-skia+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system"
+            "pipe-skia+scaler-skia+strike-java2d+layout-java2d+darkening-system+blend-system+decorations-system",
+            "pipe-skia+scaler-skia+strike-skia+layout-java2d+darkening-system+blend-system+decorations-system"
           ],
           "Windows": [
             "skia-scaler-platform",
@@ -1652,7 +1694,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "pipe-skia+scaler-skia+strike-skia+shaping-java2d+paragraphs-java2d+darkening-none+blend-corrected+decorations-system"
+            "pipe-skia+scaler-skia+strike-skia+layout-java2d+darkening-none+blend-corrected+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1705,7 +1747,7 @@
         "arms": {
           "macOS": [
             "skia-text-smoothed",
-            "pipe-skia+scaler-skia+strike-skia+shaping-skia+paragraphs-skia+darkening-system+blend-corrected+decorations-system"
+            "pipe-skia+scaler-skia+strike-skia+layout-skia+darkening-system+blend-corrected+decorations-system"
           ],
           "Windows": [
             "skia-text-smoothed",
@@ -1720,7 +1762,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "pipe-skia+scaler-skia+strike-skia+shaping-skia+paragraphs-skia+darkening-system+blend-corrected+decorations-system"
+            "pipe-skia+scaler-skia+strike-skia+layout-skia+darkening-system+blend-corrected+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1735,7 +1777,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-none+blend-corrected+decorations-system"
+            "pipe-skia+scaler-skia+strike-java2d+layout-java2d+darkening-none+blend-corrected+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1749,7 +1791,7 @@
         "id": "metal-hybrid-(plain-blend,-coregraphics-glyphs)-",
         "arms": {
           "macOS": [
-            "pipe-metal+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system",
+            "pipe-metal+scaler-skia+strike-java2d+layout-java2d+darkening-system+blend-system+decorations-system",
             "coretext"
           ],
           "Windows": [
@@ -1782,7 +1824,7 @@
         "id": "plain-coverage-vs-native-with-smoothing-off",
         "arms": {
           "macOS": [
-            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-none+blend-corrected+decorations-system",
+            "pipe-skia+scaler-skia+strike-java2d+layout-java2d+darkening-none+blend-corrected+decorations-system",
             "coretext-unsmoothed"
           ],
           "Windows": [
@@ -2037,7 +2079,9 @@
     "skia-scaler-smoothed",
     "software-skia-scaler",
     "metal-skia-scaler",
-    "skia-text-smoothed"
+    "skia-text-smoothed",
+    "skia-scaler-cg-classes256",
+    "skia-scaler-cg-classes1"
   ],
   "pages": {
     "macOS": {

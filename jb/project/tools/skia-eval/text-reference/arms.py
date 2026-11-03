@@ -10,8 +10,8 @@ make-viewer.py / make-catalog.py, arm_dims_from_name):
   pipe-<software|metal|skia>          the Java2D pipeline (metal: the Metal pipe; skia: the Skia backend)
   scaler-<platform|skia>              the font scaler (platform: CoreText's CStrike / FreeType; skia: SKFontScaler)
   strike-<java2d|skia>                the glyphs: Java's glyph cache or Skia's own text path (Skia scaler, Skia pipe)
-  shaping-<java2d|skia>               the shaper for plain strings (Skia's needs the Skia strike)
-  paragraphs-<java2d|skia>            attributed strings: Java's TextLayout or SkParagraph (needs the Skia strike)
+  layout-<java2d|skia>                the layout: Java's (shaping and TextLayout) or Skia's shaper and paragraph engine
+                                      together (sun.java2d.skia.text.layout; needs the Skia strike)
   darkening-<system|none>             sun.java2d.skia.text.darkening (Skia scaler only)
   blend-<system|plain|corrected>      sun.java2d.skia.text.blend (Skia scaler); for the platform scaler the pipe's
                                       own blending: corrected = Metal's text gamma, plain = without it / the loops
@@ -36,23 +36,21 @@ def arms(platform):
                 p = list(props)
                 if pipe == 'metal' and blend == 'plain': p.append('-Dsun.java2d.metal.textGammaCorrection=false')
                 p.append(f'-Dsun.java2d.skia.text.decorations={deco}')
-                add([('pipe', pipe), ('scaler', 'platform'), ('strike', 'java2d'), ('shaping', 'java2d'), ('paragraphs', 'java2d'),
+                add([('pipe', pipe), ('scaler', 'platform'), ('strike', 'java2d'), ('layout', 'java2d'),
                      ('blend', blend), ('decorations', deco)], how, p)
     # the Skia scaler, Java's glyph cache: every pipe
     for pipe, (how, props) in pipes.items():
         for dark, blend, deco in itertools.product(['system', 'none'], ['system', 'plain', 'corrected'], decorations):
             p = list(props) + ['-Dsun.java2d.font.scaler=skia', f'-Dsun.java2d.skia.text.darkening={dark}', f'-Dsun.java2d.skia.text.blend={blend}',
                                f'-Dsun.java2d.skia.text.decorations={deco}']
-            add([('pipe', pipe), ('scaler', 'skia'), ('strike', 'java2d'), ('shaping', 'java2d'), ('paragraphs', 'java2d'),
+            add([('pipe', pipe), ('scaler', 'skia'), ('strike', 'java2d'), ('layout', 'java2d'),
                  ('darkening', dark), ('blend', blend), ('decorations', deco)], how, p)
     # Skia's own text path: the Skia pipe only
     how, props = pipes['skia']
-    for shaping, paragraphs, dark, blend, deco in itertools.product(['java2d', 'skia'], ['java2d', 'skia'], ['system', 'none'],
-                                                                      ['system', 'plain', 'corrected'], decorations):
-        p = list(props) + ['-Dsun.java2d.font.scaler=skia', '-Dsun.java2d.skia.text.strike=skia', f'-Dsun.java2d.skia.text.shaping={shaping}',
-                           f'-Dsun.java2d.skia.text.paragraphs={paragraphs}', f'-Dsun.java2d.skia.text.darkening={dark}',
-                           f'-Dsun.java2d.skia.text.blend={blend}', f'-Dsun.java2d.skia.text.decorations={deco}']
-        add([('pipe', 'skia'), ('scaler', 'skia'), ('strike', 'skia'), ('shaping', shaping), ('paragraphs', paragraphs),
+    for layout, dark, blend, deco in itertools.product(['java2d', 'skia'], ['system', 'none'], ['system', 'plain', 'corrected'], decorations):
+        p = list(props) + ['-Dsun.java2d.font.scaler=skia', '-Dsun.java2d.skia.text.strike=skia', f'-Dsun.java2d.skia.text.layout={layout}',
+                           f'-Dsun.java2d.skia.text.darkening={dark}', f'-Dsun.java2d.skia.text.blend={blend}', f'-Dsun.java2d.skia.text.decorations={deco}']
+        add([('pipe', 'skia'), ('scaler', 'skia'), ('strike', 'skia'), ('layout', layout),
              ('darkening', dark), ('blend', blend), ('decorations', deco)], how, p)
     return out
 

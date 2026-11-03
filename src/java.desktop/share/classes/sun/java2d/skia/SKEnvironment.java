@@ -73,10 +73,11 @@ public final class SKEnvironment {
      * each a question with one answer. The route choices — {@code strike} (whose strike
      * makes, caches and composites the glyph masks: {@code java2d}, Java's glyph images
      * through the pipes' caches, or {@code skia}, Skia's strike, atlas and canvas),
-     * {@code shaping} (who maps characters to positioned glyphs and picks fallback fonts:
-     * Java's layout or Skia's shaper) and {@code paragraphs} (who lays out attributed
-     * text: Java's TextLayout or Skia's paragraph engine); a skia shaping or paragraphs
-     * value implies the skia strike. The rendering dimensions, each defaulting to
+     * {@code layout} (who maps characters to positioned glyphs, picks fallback fonts and
+     * lays out attributed text: Java's layout and TextLayout, or Skia's shaper and paragraph
+     * engine together — the two are one choice, 2026-11-03); a skia layout implies the skia
+     * strike. The retired {@code text.shaping} and {@code text.paragraphs} still resolve: either
+     * at skia reads as layout skia. The rendering dimensions, each defaulting to
      * {@code system} = what the operating system's own applications render for this user:
      * {@code hinting} (system | none | slight | normal | full: whether outlines snap to the
      * pixel grid — fontconfig's per-font style on Linux, DirectWrite's recommended mode on
@@ -110,10 +111,16 @@ public final class SKEnvironment {
     public enum TextDecorations { SYSTEM, JAVA2D }
 
     private static final String TEXT_ROUTE = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);   // retired
-    private static final boolean TEXT_PARAGRAPH_BY_SKIA = skiaChoice("sun.java2d.skia.text.paragraphs", TEXT_ROUTE.equals("paragraph"));
-    private static final boolean TEXT_SHAPED_BY_SKIA = skiaChoice("sun.java2d.skia.text.shaping", TEXT_ROUTE.equals("shaper") || TEXT_ROUTE.equals("paragraph"));
+    // layout: Skia's shaper for plain strings and its paragraph engine for attributed ones together, or Java's
+    // layout for both (2026-11-03; the retired text.shaping and text.paragraphs chose them apart — either one
+    // set to skia reads as layout skia)
+    private static final boolean TEXT_LAYOUT_BY_SKIA = skiaChoice("sun.java2d.skia.text.layout",
+            skiaChoice("sun.java2d.skia.text.shaping", TEXT_ROUTE.equals("shaper") || TEXT_ROUTE.equals("paragraph"))
+            || skiaChoice("sun.java2d.skia.text.paragraphs", TEXT_ROUTE.equals("paragraph")));
+    private static final boolean TEXT_PARAGRAPH_BY_SKIA = TEXT_LAYOUT_BY_SKIA;
+    private static final boolean TEXT_SHAPED_BY_SKIA = TEXT_LAYOUT_BY_SKIA;
     private static final boolean TEXT_BY_SKIA = skiaChoice("sun.java2d.skia.text.strike", TEXT_ROUTE.equals("skia") || TEXT_ROUTE.equals("shaper") || TEXT_ROUTE.equals("paragraph"))
-            || TEXT_SHAPED_BY_SKIA || TEXT_PARAGRAPH_BY_SKIA;
+            || TEXT_LAYOUT_BY_SKIA;
     private static final TextHinting TEXT_HINTING = enumProperty("sun.java2d.skia.text.hinting", TextHinting.class, TextHinting.SYSTEM);
     private static final TextDarkening TEXT_DARKENING;
     private static final TextBlend TEXT_BLEND;
@@ -428,6 +435,10 @@ public final class SKEnvironment {
     }
 
     /** Whether drawString's characters are shaped by Skia's shaper rather than laid out by Java. */
+    public static boolean textLayoutBySkia() {
+        return TEXT_LAYOUT_BY_SKIA;
+    }
+
     public static boolean textShapedBySkia() {
         return TEXT_SHAPED_BY_SKIA;
     }
