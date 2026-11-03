@@ -42,6 +42,16 @@ import java.lang.reflect.Method;
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass SkiaLcdColorBatchTest
  */
+
+/*
+ * @test id=vulkan
+ * @summary The same on Graphite's native Vulkan backend (Windows), where a kPlus second pass was
+ *          blended in the shader from an input attachment and the overlap layers lost it.
+ * @requires (os.family == "windows")
+ * @key headful
+ * @modules java.desktop/sun.java2d.skia
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.lcd=twopass SkiaLcdColorBatchTest
+ */
 public class SkiaLcdColorBatchTest {
     static final int W = 900, H = 60;
     static final int TOKENS = 40;

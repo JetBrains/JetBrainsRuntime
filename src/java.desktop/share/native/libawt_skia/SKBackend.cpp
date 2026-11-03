@@ -1705,9 +1705,10 @@ static sk_sp<SkBlender> lcdBlender(jint contrast) {
 
 // LCD text without a destination read (sun.java2d.skia.lcd=twopass and
 // accumulate): the blend  Cr = Cd * (1 - cov) + Cs * cov  per channel as two
-// fixed-function passes, kModulate with (1 - cov) and kPlus with Cs * cov,
+// fixed-function passes, kModulate with (1 - cov) and an addition of Cs * cov,
 // which is how DirectWrite composites ClearType (dual-source blending does both
-// at once; Graphite does not expose it). The destination's gamma cannot be
+// at once; Graphite uses it for its own LCD text only, no mesh or runtime effect has a second
+// output, 2026-11-03). The destination's gamma cannot be
 // applied without reading it; instead the coverage is corrected so that the
 // linear blend reproduces the gamma blend on a white and on a black
 // background, mixed by the channel's text value (dark text is mostly read on
@@ -1716,7 +1717,12 @@ static sk_sp<SkBlender> lcdBlender(jint contrast) {
 // correction depends on the coverage and the text colour only, so it is a
 // 256-entry table per channel, built once per colour and contrast and sampled
 // as a 256x1 texture (lcdTable). The coverage arrives in the atlas' RGB
-// channels. Both passes write alpha 1 over the whole quad and ignore the
+// channels. The addition is kSrcOver with a source alpha of 0 (Cs * cov + Cd), not kPlus: Graphite
+// blends kPlus in the shader wherever the destination is cheap to read (Vulkan's input attachment,
+// Metal's framebuffer fetch; ContextUtils.cpp, CanUseHardwareBlending), which cost a destination read
+// per draw and lost the second pass of overlap layers on Vulkan (2026-10-28); kSrcOver without
+// coverage is fixed-function everywhere, and the unorm destination clamps the sum as kPlus does.
+// Both passes leave the destination's alpha (1) as it is over the whole quad and ignore the
 // paint's alpha, which holds because LCD text is only requested for an opaque
 // colour on an opaque destination (SKSurfaceData.canRenderLCDText).
 
@@ -1777,7 +1783,7 @@ static sk_sp<SkShader> lcdPassShader(const sk_sp<SkShader> &coverage, const SkPa
         )";
         const char *mains[2] = {
             "half4 main(float2 xy) { return half4(1 - coverage(xy), 1); }",
-            "half4 main(float2 xy) { return half4(src * coverage(xy), 1); }",
+            "half4 main(float2 xy) { return half4(src * coverage(xy), 0); }",   // alpha 0: kSrcOver adds
         };
         for (int i = 0; i < 2; i++) {
             auto result = SkRuntimeEffect::MakeForShader(SkStringPrintf("%s%s", common, mains[i]));
@@ -1810,6 +1816,8 @@ static sk_sp<SkShader> lcdPassShader(const sk_sp<SkShader> &coverage, const SkPa
 static SKQuadBatchTwoPass gLcdTwoPass = {
     [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdPassShader(atlas, paint, gLcdTwoPass.key, false); },
     [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdPassShader(atlas, paint, gLcdTwoPass.key, true); },
+    SkBlendMode::kModulate,
+    SkBlendMode::kSrcOver,   // the second shader's alpha is 0: an addition (above)
 };
 
 // The two passes over a coverage image (device coordinates) within `bounds`,
