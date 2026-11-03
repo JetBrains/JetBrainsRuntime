@@ -46,6 +46,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <mutex>
 #include <span>
 #include <string>
@@ -210,18 +211,63 @@ std::string DawnSK_DescribeAdapter() {
     return adapter != nullptr ? describe(adapter, backendType) : std::string();
 }
 
+// A WebGPU device has the features it was created with, not the adapter's: Graphite enables what it
+// finds on the device (DawnCaps), e.g. dual-source blending, without which it blends coverage for
+// modes such as Src and Clear, and its own LCD text, in the shader from a copy of the destination
+// per draw. The features Skia's own Dawn harness asks for wherever the adapter has them
+// (tools/graphite/dawn/GraphiteDawnToggles.cpp, AddPreferredFeatures), but timestamp queries, which
+// Graphite only uses for GPU timings.
+struct PreferredFeature {
+    wgpu::FeatureName feature;
+    const char *name;
+};
+static const PreferredFeature PREFERRED[] = {
+    {wgpu::FeatureName::ImplicitDeviceSynchronization, "ImplicitDeviceSynchronization"},
+    {wgpu::FeatureName::DualSourceBlending, "DualSourceBlending"},
+    {wgpu::FeatureName::FramebufferFetch, "FramebufferFetch"},
+    {wgpu::FeatureName::BufferMapExtendedUsages, "BufferMapExtendedUsages"},
+    {wgpu::FeatureName::DawnAllowUndefinedLoadStoreOp, "DawnAllowUndefinedLoadStoreOp"},
+    {wgpu::FeatureName::DawnLoadResolveTexture, "DawnLoadResolveTexture"},
+    {wgpu::FeatureName::DawnPartialLoadResolveTexture, "DawnPartialLoadResolveTexture"},
+    {wgpu::FeatureName::DawnTexelCopyBufferRowAlignment, "DawnTexelCopyBufferRowAlignment"},
+    {wgpu::FeatureName::MSAARenderToSingleSampled, "MSAARenderToSingleSampled"},
+    {wgpu::FeatureName::ShaderF16, "ShaderF16"},
+    {wgpu::FeatureName::TextureCompressionBC, "TextureCompressionBC"},
+    {wgpu::FeatureName::TextureCompressionETC2, "TextureCompressionETC2"},
+    {wgpu::FeatureName::TextureFormatsTier1, "TextureFormatsTier1"},
+    {wgpu::FeatureName::TransientAttachments, "TransientAttachments"},
+    {wgpu::FeatureName::Unorm16TextureFormats, "Unorm16TextureFormats"},
+    {wgpu::FeatureName::RenderPassRenderArea, "RenderPassRenderArea"},
+};
+
+static std::mutex gFeatureReportLock;
+static std::string gFeatureReport;   // of the last device created (DawnSK_DeviceFeatures)
+
+std::string DawnSK_DeviceFeatures() {
+    std::lock_guard<std::mutex> lock(gFeatureReportLock);
+    return gFeatureReport;
+}
+
 static wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Adapter &adapter,
                                   const std::shared_ptr<std::atomic<bool>> &lost, const std::string &description) {
     wgpu::DeviceDescriptor descriptor;
     // Off-screen surfaces are created on the EDT while the flusher records and
     // submits on the same device; Dawn serializes device access with this.
-    wgpu::FeatureName implicitSync = wgpu::FeatureName::ImplicitDeviceSynchronization;
-    if (adapter.HasFeature(implicitSync)) {
-        descriptor.requiredFeatureCount = 1;
-        descriptor.requiredFeatures = &implicitSync;
-    } else {
+    if (!adapter.HasFeature(wgpu::FeatureName::ImplicitDeviceSynchronization)) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "DawnSK: adapter lacks ImplicitDeviceSynchronization");
     }
+    // The features Graphite would use (PREFERRED, above), wherever the adapter has them.
+    // EXPERIMENT (x64hw, 2026-11-03): J2D_SKIA_DAWN_FEATURES=minimal asks for the first alone, as before
+    const char *featureChoice = getenv("J2D_SKIA_DAWN_FEATURES");
+    const bool minimal = featureChoice != nullptr && strcmp(featureChoice, "minimal") == 0;
+    std::vector<wgpu::FeatureName> features;
+    for (const PreferredFeature &f : PREFERRED) {
+        if (adapter.HasFeature(f.feature) && (!minimal || f.feature == wgpu::FeatureName::ImplicitDeviceSynchronization)) {
+            features.push_back(f.feature);
+        }
+    }
+    descriptor.requiredFeatureCount = features.size();
+    descriptor.requiredFeatures = features.data();
     // The adapter's limits, not WebGPU's defaults: a device gets textures of
     // 8192 pixels at most otherwise, while Direct3D 11 adapters allow 16384,
     // and a tall off-screen image of a HiDPI screen (a 2x scaled 4608-pixel
@@ -299,6 +345,16 @@ static wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Ad
                 }
             });
     instance.WaitAny(request, UINT64_MAX);
+    if (device != nullptr) {
+        std::string report;
+        for (const PreferredFeature &f : PREFERRED) {
+            report += std::string(report.empty() ? "" : " ") + f.name + "=" + (adapter.HasFeature(f.feature) ? "1" : "0")
+                      + "/" + (device.HasFeature(f.feature) ? "1" : "0");
+        }
+        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: device features (offered/granted) %s", report.c_str());
+        std::lock_guard<std::mutex> lock(gFeatureReportLock);
+        gFeatureReport = report;
+    }
     return device;
 }
 

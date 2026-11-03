@@ -97,4 +97,13 @@ Java_sun_java2d_skia_SKEnvironment_framebufferFetchNative(JNIEnv *env, jclass cl
     return JNI_FALSE;
 }
 
+// SKEnvironment.deviceFeatures: Dawn's device features; native Vulkan takes every core feature the
+// adapter has (VKSKPlatform.cpp), so there is nothing to report.
+JNIEXPORT jstring JNICALL
+Java_sun_java2d_skia_SKEnvironment_deviceFeaturesNative(JNIEnv *env, jclass clazz)
+{
+    const std::string report = Win32SK_SelectedApi() == Win32SKApi::Dawn ? DawnSK_DeviceFeatures() : std::string();
+    return env->NewStringUTF(report.c_str());
+}
+
 } // extern "C"

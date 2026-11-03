@@ -676,10 +676,17 @@ public final class SKEnvironment {
     private static native boolean platformFontSmoothingNative();
 
     /**
-     * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a
-     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached, batch draws
-     * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
+     * Diagnostics, tests: the device features Graphite's device was created with, where the
+     * platform chooses them (Dawn on Windows), as {@code name=o/g} entries separated by spaces,
+     * {@code o} 1 if the adapter offers the feature, {@code g} 1 if the device has it; empty
+     * elsewhere, without the backend, or before the first device.
      */
+    public static String deviceFeatures() {
+        return isSkiaEnabled() ? deviceFeaturesNative() : "";
+    }
+
+    private static native String deviceFeaturesNative();
+
     /**
      * Diagnostics: the floor of Graphite's per-draw cost on this device, without the backend's
      * translation in front of it — {@code draws} draws of one kind (0 a rect in one colour, 1 rects
@@ -704,6 +711,11 @@ public final class SKEnvironment {
 
     private static native double[] benchGraphiteNative(int kind, int draws, int frames);
 
+    /**
+     * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a
+     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached, batch draws
+     * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
+     */
     public static long[] glyphCacheStats() {
         return isSkiaEnabled() ? glyphCacheStatsNative() : new long[0];
     }
