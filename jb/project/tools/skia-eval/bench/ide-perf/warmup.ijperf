@@ -1,0 +1,9 @@
+%awaitCompleteProjectConfiguration
+%waitForSmart
+%openFile -file builder/src/main/java/com/iluwatar/builder/Hero.java
+%openFile -file commander/src/main/java/com/iluwatar/commander/Commander.java
+%openFile -file abstract-factory/src/main/java/com/iluwatar/abstractfactory/App.java
+%waitForSmart
+%sleep 20000
+%closeAllTabs
+%exitApp true

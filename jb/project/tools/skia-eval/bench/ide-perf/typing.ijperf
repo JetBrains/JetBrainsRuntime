@@ -1,0 +1,29 @@
+%waitForSmart
+%openFile -file builder/src/main/java/com/iluwatar/builder/Hero.java
+%sleep 2000
+%goto 113 4
+%pressKey ENTER
+%pressKey ENTER
+%delayType 120|public String describe(int level) {
+%pressKey ENTER
+%delayType 120|String prefix = "Level " + level + ": " + name;
+%pressKey ENTER
+%delayType 120|StringBuilder sb = new StringBuilder(prefix);
+%pressKey ENTER
+%delayType 120|sb.append(profession).append(' ').append(hairColor);
+%pressKey ENTER
+%delayType 120|if (weapon != null) sb.append(" with ").append(weapon);
+%pressKey ENTER
+%delayType 120|return sb.append('.').toString();
+%sleep 2000
+%openFile -file commander/src/main/java/com/iluwatar/commander/Commander.java
+%sleep 2000
+%scrollEditor 40
+%goto 1 1
+%sleep 500
+%scrollEditor 40
+%goto 1 1
+%sleep 500
+%scrollEditor 40
+%sleep 1000
+%exitApp true

@@ -1,0 +1,15 @@
+com.intellij.modules.ultimate
+org.jetbrains.kotlin
+org.jetbrains.completion.full.line
+com.intellij.database
+com.jetbrains.restClient
+JavaScript
+tanvd.grazi
+com.intellij.kubernetes
+Docker
+org.jetbrains.plugins.vue
+com.intellij.swagger
+org.intellij.qodana
+com.jetbrains.gateway
+com.jetbrains.remoteDevelopment
+com.intellij.gradle
