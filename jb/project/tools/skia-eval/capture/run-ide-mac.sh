@@ -23,7 +23,9 @@ done
 # an arm code ending in "f" is the arm with fractional glyph placement everywhere (the IDE's registry keys
 # ide.text.fractional.metrics and editor.text.fractional.metrics, which the Registry reads from system
 # properties too): the same arm, its captures filed under <theme>-<scale>x-fractional — a sample condition of the viewer (Windows; macOS places fractionally by default)
-PLACEMENT=""; case "$ARM" in *f) ARM="${ARM%f}"; PLACEMENT="-Dide.text.fractional.metrics=Enabled -Deditor.text.fractional.metrics=Enabled" ;; esac
+# the keys are multi-option registries ([Auto*|Disabled|Enabled]): the Registry takes a system property as a choice only
+# in the bracket form with the chosen option starred (the VM's finding, 2026-11-03; a plain "Enabled" fell through to Auto)
+PLACEMENT=""; case "$ARM" in *f) ARM="${ARM%f}"; PLACEMENT="-Dide.text.fractional.metrics=[Auto|Disabled|Enabled*] -Deditor.text.fractional.metrics=[Auto|Disabled|Enabled*]" ;; esac
 case "$ARM" in
   M0) NAME=M0-metal;        PROPS="-Dsun.java2d.metal=true" ;;
   M1) NAME=M1-default;      PROPS="" ;;   # no Java2D property at all (Metal by default)
@@ -68,7 +70,7 @@ CP=$(python3 -c "import json,sys; app,info=sys.argv[1:]; print(':'.join(app+'/Co
   echo "-Deap.require.license=false"
   echo "-Didea.jre.check=false"
   echo "-Didea.is.internal=false"
-  for p in $PROPS ${EXTRA_PROPS:-}; do echo "$p"; done   # EXTRA_PROPS: ad-hoc properties for experiments
+  set -f; for p in $PROPS ${EXTRA_PROPS:-}; do echo "$p"; done; set +f   # EXTRA_PROPS: ad-hoc properties for experiments; -f: no globbing of the placement option's "*"
 } > "$STATE/idea.vmoptions"
 echo "$NAME: JDK $JDK, state $STATE"
 exec "$JDK/bin/java" "@$STATE/jvmargs.txt" "@$STATE/idea.vmoptions" \
