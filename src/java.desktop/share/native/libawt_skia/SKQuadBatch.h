@@ -69,6 +69,16 @@ struct SKQuadBatchTwoPass {
 
 class SKQuadBatch {
 public:
+    // The rect clip every batch clips its quads to on arrival (push), null for none; set by the
+    // backend's render state for the destination being drawn (one flusher, one state).
+    static inline const SkIRect *gClip = nullptr;
+    // An axis-aligned quad in the order addRect and addSprite give (top-left, top-right, bottom-right,
+    // bottom-left): the quads push() clips to gClip itself.
+    static bool clippable(const SkPoint pos[4]) {
+        return pos[0].fY == pos[1].fY && pos[1].fX == pos[2].fX && pos[2].fY == pos[3].fY && pos[3].fX == pos[0].fX
+               && pos[0].fX < pos[1].fX && pos[0].fY < pos[3].fY;
+    }
+
     SKQuadBatch() {
         // 1024 quads: a frame's worth of glyphs or tiles without a reallocation
         base.positions.reserve(4 * 1024);
@@ -309,6 +319,41 @@ private:
     static constexpr size_t kMaxOverlapTested = 1024;
 
     void push(const SkPoint pos[4], const SkPoint *tex, const SkRect *extent = nullptr) {
+        // The device-space rect clip batched quads are clipped to as they arrive (SKBackend's lazy
+        // canvas clip): an axis-aligned quad in the order addRect and addSprite give, with its
+        // texture coordinates mapped along, exactly; one outside the clip is dropped. Any other
+        // quad goes in as it is (the backend draws it under the canvas clip).
+        SkPoint clippedPos[4], clippedTex[4];
+        SkRect clippedExtent;
+        // Not for a shader paint without an atlas (gradients, textures): such a quad cut to exactly the
+        // surface was drawn differently by Graphite (2026-11-03, RenderMatrix xf:SCALE_2/TEXTURE/FILL_RECT;
+        // the same with an exact-fit rect and the canvas clip), so those keep the canvas clip.
+        if (gClip != nullptr && clippable(pos) && !(atlasImage == nullptr && paint.getShader() != nullptr)) {
+            const float l = pos[0].fX, t = pos[0].fY, r = pos[1].fX, b = pos[2].fY;
+            const float cl = std::max(l, (float) gClip->fLeft), ct = std::max(t, (float) gClip->fTop);
+            const float cr = std::min(r, (float) gClip->fRight), cb = std::min(b, (float) gClip->fBottom);
+            if (cl >= cr || ct >= cb) {
+                return;   // nothing of it inside the clip
+            }
+            if (cl != l || ct != t || cr != r || cb != b) {
+                clippedPos[0] = {cl, ct}; clippedPos[1] = {cr, ct}; clippedPos[2] = {cr, cb}; clippedPos[3] = {cl, cb};
+                if (tex != nullptr) {
+                    const float su = (tex[1].fX - tex[0].fX) / (r - l), sv = (tex[3].fY - tex[0].fY) / (b - t);
+                    const float ul = tex[0].fX + (cl - l) * su, ur = tex[0].fX + (cr - l) * su;
+                    const float vt = tex[0].fY + (ct - t) * sv, vb = tex[0].fY + (cb - t) * sv;
+                    clippedTex[0] = {ul, vt}; clippedTex[1] = {ur, vt}; clippedTex[2] = {ur, vb}; clippedTex[3] = {ul, vb};
+                    tex = clippedTex;
+                }
+                pos = clippedPos;
+                if (extent != nullptr) {
+                    clippedExtent = *extent;
+                    if (!clippedExtent.intersect(SkRect::MakeLTRB(cl, ct, cr, cb))) {
+                        clippedExtent.setEmpty();
+                    }
+                    extent = &clippedExtent;
+                }
+            }
+        }
         Mesh *target = &base;
         if (splitOnOverlap) {
             // The inked extent suffices for two passes (a pixel without coverage

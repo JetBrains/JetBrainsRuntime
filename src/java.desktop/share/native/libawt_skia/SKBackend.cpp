@@ -326,6 +326,8 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     // sun.java2d.skia.pipelineCache for the backends Graphite caches for itself (Vulkan); one file,
     // Graphite checks vendor, device and cache UUID before using it.
     options.fPersistentPipelineStorage = SKPipelineCache_Storage("graphite");
+    // EXPERIMENT (x64hw, 2026-11-03): Graphite's layer-based draw ordering instead of the sorted one
+    options.fUseDrawListLayer = envOrNull("J2D_SKIA_DRAW_LIST_LAYER") != nullptr;
     if (const char *threads = envOrNull("J2D_SKIA_EXECUTOR")) {   // EXPERIMENT, see pipelineCacheEvent
         if (!gExecutor) {
             gExecutor = SkExecutor::MakeFIFOThreadPool(std::max(1, atoi(threads)));
@@ -523,6 +525,9 @@ struct RenderState {
     bool buildingShapeClip = false;
     SkPath shapeClip;
     SkPathBuilder shapeClipBuilder;
+    bool canvasStale = false;             // the canvas' clip is not the one above (a lazy rect clip change, see updateBatchClip)
+    bool canvasOpen = false;              // the canvas has no clip, for batched quads clipped on the CPU
+    bool batchesNeedCanvasClip = false;   // a pending batched quad relies on the canvas clip (requireCanvasClipFor)
 
     // transform
     bool hasMatrix = false;
@@ -566,13 +571,22 @@ static void forgetSurface(SKSDOps *ops) {
     g.requestedWindows.erase(ops);
 }
 
-static void applyCanvasState() {
-    if (g.canvas == nullptr) {
-        return;
-    }
-    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_STATE);
-    flushAllBatches();
-    SKStats_SetDrawCause(SK_COUNT_COUNT);
+// The canvas clip, applied lazily. Batched quads (rects, spans, the glyph and mask caches' sprites)
+// are clipped to the rect clip on the CPU as they join a batch (SKQuadBatch::gClip), so they draw
+// right under any canvas clip that contains theirs, or none. A rect clip change therefore does not
+// draw the pending batches (a third of the UI scenes' mesh draws did): the canvas keeps its old
+// clip (canvasStale) until a batched op needs it open, without a clip (prepareBatch), or an op draws
+// through the canvas, which draws the batches and then applies the clip (ensureCanvasClip). Shape
+// clips, transforms, and batches holding a quad the CPU cannot clip (a slanted parallelogram across
+// the clip, batchesNeedCanvasClip) keep the eager path: draw the batches, apply the state at once.
+// J2D_SKIA_EAGER_CLIP (diagnostics, A/B): the clip applied as it changes, batches drawn first, as before.
+static const bool gEagerClip = getenv("J2D_SKIA_EAGER_CLIP") != nullptr;
+
+static void updateBatchClip() {
+    SKQuadBatch::gClip = !gEagerClip && g.hasRectClip && !g.hasShapeClip && !g.hasMatrix ? &g.rectClip : nullptr;
+}
+
+static void applyCanvasClip() {
     g.canvas->restoreToCount(g.baseSaveCount);
     g.canvas->save();
     // Java2D clips are in device space: apply before the transform.
@@ -583,6 +597,72 @@ static void applyCanvasState() {
         g.canvas->clipPath(g.shapeClip, SkClipOp::kIntersect, false);
     }
     g.canvas->setMatrix(g.hasMatrix ? SkM44(g.matrix) : SkM44());
+    g.canvasStale = false;
+    g.canvasOpen = false;
+}
+
+static void applyCanvasState() {
+    updateBatchClip();
+    if (g.canvas == nullptr) {
+        return;
+    }
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_STATE);
+    flushAllBatches();
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
+    applyCanvasClip();
+}
+
+// A clip change that leaves the pending batches alone (see updateBatchClip): no shape clip, no
+// transform, no pending quad that relies on the canvas clip.
+static bool lazyClip() {
+    return !gEagerClip && g.canvas != nullptr && !g.hasShapeClip && !g.buildingShapeClip && !g.hasMatrix && !g.batchesNeedCanvasClip;
+}
+
+// Before a batched op adds quads: a canvas holding an outdated clip is opened (no clip; the
+// pending quads are clipped already), so the new quads are not cut by the old clip.
+static void prepareBatch() {
+    if (g.canvasStale && !g.canvasOpen) {
+        g.canvas->restoreToCount(g.baseSaveCount);
+        g.canvas->save();
+        g.canvas->setMatrix(g.hasMatrix ? SkM44(g.matrix) : SkM44());
+        g.canvasOpen = true;
+    }
+}
+
+// Before a draw through the canvas (not batched): the batches first, then the current clip.
+static void ensureCanvasClip() {
+    if (g.canvas != nullptr && (g.canvasStale || g.canvasOpen)) {
+        SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_STATE);
+        flushAllBatches();
+        SKStats_SetDrawCause(SK_COUNT_COUNT);
+        applyCanvasClip();
+    }
+}
+
+// Before a batched quad the CPU cannot clip (not axis-aligned) crosses the clip: it is drawn under
+// the canvas clip, which therefore stays until the batches are drawn (no lazy clip change meanwhile).
+// A rect op with a shader paint: its quads are not clipped on the CPU (SKQuadBatch::push), so they
+// draw under the canvas clip, which stays until the batches are drawn.
+static void shaderNeedsCanvasClip() {
+    if (g.shader && SKQuadBatch::gClip != nullptr && !g.batchesNeedCanvasClip) {
+        ensureCanvasClip();
+        g.batchesNeedCanvasClip = true;
+    }
+}
+
+// True if it drew the batches (the rect batch must then be begun again).
+static bool requireCanvasClipFor(const SkPoint pts[4], bool ring = false) {
+    if (SKQuadBatch::gClip == nullptr || g.batchesNeedCanvasClip || (!ring && SKQuadBatch::clippable(pts))) {
+        return false;
+    }
+    SkRect bounds;
+    bounds.setBounds(SkSpan(pts, 4));
+    if (SkRect::Make(*SKQuadBatch::gClip).contains(bounds)) {
+        return false;
+    }
+    ensureCanvasClip();
+    g.batchesNeedCanvasClip = true;
+    return true;
 }
 
 static void markTouched() {
@@ -659,14 +739,21 @@ SKSDOps *SKBackend_CurrentDestination() { return g.dst; }
 // --- clip
 
 void SKBackend_SetRectClip(jint x1, jint y1, jint x2, jint y2) {
+    const bool lazy = lazyClip();
     g.hasRectClip = true;
     g.rectClip = SkIRect::MakeLTRB(x1, y1, x2, y2);
     g.hasShapeClip = false;
+    if (lazy) {
+        g.canvasStale = true;   // the batches stay; see updateBatchClip
+        updateBatchClip();
+        return;
+    }
     applyCanvasState();
 }
 
 void SKBackend_BeginShapeClip() {
     g.hasRectClip = false;   // replaces, not intersects, the rect clip (as MTLContext.beginShapeClip)
+    updateBatchClip();
     g.buildingShapeClip = true;
     g.shapeClipBuilder.reset();
     g.shapeClipBuilder.setFillType(SkPathFillType::kWinding);
@@ -687,9 +774,15 @@ void SKBackend_EndShapeClip() {
 }
 
 void SKBackend_ResetClip() {
+    const bool lazy = lazyClip();
     g.hasRectClip = false;
     g.hasShapeClip = false;
     g.buildingShapeClip = false;
+    if (lazy) {
+        g.canvasStale = true;
+        updateBatchClip();
+        return;
+    }
     applyCanvasState();
 }
 
@@ -1157,12 +1250,13 @@ static void flushAtlasBatches() {
 
 static void flushAllBatches() {
     flushBatchesOf(g.cc);
+    g.batchesNeedCanvasClip = false;
 }
 
-#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches()
-#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); if (g.cc != nullptr) SKMaskCache_Flush(g.cc->maskCache)
-#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); flushGlyphBatches()
-#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushAtlasBatches()
+#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches(); ensureCanvasClip()
+#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); if (g.cc != nullptr) SKMaskCache_Flush(g.cc->maskCache); prepareBatch()
+#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); flushGlyphBatches(); prepareBatch()
+#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushAtlasBatches(); prepareBatch(); shaderNeedsCanvasClip()
 
 void SKBackend_FillRect(jint x, jint y, jint w, jint h) {
     REQUIRE_CANVAS_RECT();
@@ -1217,6 +1311,9 @@ static void lineAsBand(jint x1, jint y1, jint x2, jint y2, bool shorten, bool xM
         pts[0] = {lo, a - 0.5f}; pts[1] = {hi, b - 0.5f}; pts[2] = {hi, b + 0.5f}; pts[3] = {lo, a + 0.5f};
     } else {
         pts[0] = {a - 0.5f, lo}; pts[1] = {a + 0.5f, lo}; pts[2] = {b + 0.5f, hi}; pts[3] = {b - 0.5f, hi};
+    }
+    if (requireCanvasClipFor(pts)) {   // a slanted band across the clip: under the canvas clip
+        gRects.begin(g.canvas, SKBackend_MakePaint(false));
     }
     gRects.addQuad(pts);
 }
@@ -1365,6 +1462,9 @@ void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
         REQUIRE_CANVAS_RECT();
         SkPoint pts[4];
         parallelogramPoints(pts, x11, y11, dx21, dy21, dx12, dy12);
+        if (!SKBackend_Multisampled()) {
+            requireCanvasClipFor(pts);   // a slanted quad across the clip draws under the canvas clip
+        }
         gRects.begin(g.canvas, SKBackend_MakePaint(false));
         if (SKBackend_Multisampled()) {
             convexQuadSpans(pts, [](jint y, jint l, jint r) { gRects.addRect(l, y, r, y + 1); });
@@ -1392,6 +1492,9 @@ void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
     if (!aa) {
         SkPoint outer[4], inner[4];
         parallelogramPoints(outer, ox11, oy11, dx21 + ldx21, dy21 + ldy21, dx12 + ldx12, dy12 + ldy12);
+        if (!SKBackend_Multisampled()) {
+            requireCanvasClipFor(outer, hole);   // a ring or a slanted quad across the clip: under the canvas clip
+        }
         gRects.begin(g.canvas, SKBackend_MakePaint(false));
         if (hole) {
             parallelogramPoints(inner, ix11, iy11, dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
@@ -1510,6 +1613,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
     const bool solidTile = mask == nullptr || masklen == 0;
     if (solidTile && (g.shader || !SKMaskCache_Fits(w, h))) {
         // a solid tile under a shader paint, or an oversized one, is a plain rect
+        ensureCanvasClip();
         SKMaskCache_Flush(g.cc->maskCache);
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
@@ -1529,6 +1633,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
             return;
         }
     }
+    ensureCanvasClip();   // the rest draws through the canvas
     if (solidTile) {
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
@@ -1847,6 +1952,7 @@ static SKGlyphCache *glyphCache(bool lcd, const GlyphInfo *ginfo) {
 // Glyphs too large for a cache cell, or LCD glyphs shifted by a third of a
 // pixel, are uploaded and drawn individually (MTLTextRenderer's NoCache paths).
 static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
+    ensureCanvasClip();   // drawn through the canvas, not batched
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
     SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, ginfo->rowBytes);
@@ -1857,6 +1963,7 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
 
 static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
+    ensureCanvasClip();   // drawn through the canvas, not batched
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const int w = ginfo->width, h = ginfo->height;
     std::vector<unsigned char> rgba((size_t) w * h * 4);
@@ -1882,6 +1989,7 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowB
 }
 
 static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
+    ensureCanvasClip();   // drawn through the canvas, not batched
     SkPixmap pm(SkImageInfo::Make(ginfo->width, ginfo->height, kBGRA_8888_SkColorType, kPremul_SkAlphaType),
                 ginfo->image, ginfo->rowBytes);
     if (sk_sp<SkImage> img = uploadPixmap(pm)) {
@@ -2009,6 +2117,7 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
     REQUIRE_CANVAS_TEXT();
     flushGlyphBatches();   // glyph-image draws queued before this list stay in order
     SkPaint paint = SKBackend_MakePaint(true);
+    ensureCanvasClip();   // Skia's text path draws through the canvas
     jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
                                                originX, originY, codes, images, positions);
     gGlyphsDrawnBySkia.fetch_add(drawn, std::memory_order_relaxed);
@@ -2120,6 +2229,7 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     if (!blob) {
         return;
     }
+    ensureCanvasClip();   // the blob draws through the canvas
     if (layoutScale != 1) {
         SkAutoCanvasRestore restore(g.canvas, true);
         g.canvas->scale(layoutScale, layoutScale);
@@ -2465,6 +2575,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         }
     });
     const float paragraphTop = originY / layoutScale - baseline;   // in layout space
+    ensureCanvasClip();   // the paragraph draws through the canvas
     if (layoutScale != 1) {
         SkAutoCanvasRestore restore(g.canvas, true);
         g.canvas->scale(layoutScale, layoutScale);
@@ -3011,6 +3122,77 @@ void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
 }
 
 static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any Java thread
+
+// The floor of Graphite's per-draw cost on this device, without the backend in front of it
+// (SKEnvironment.benchGraphite): `draws` draws of one kind into an off-screen 1024x1024 surface
+// of the first context, then snap, insert and submit; per frame the nanoseconds of each, and
+// the median over `frames` frames (after as many warm-up frames) divided by the draws goes to
+// out[0..3] (record, snap, insert, submit, ns per draw). Kinds: 0 drawRect in one colour, 1
+// drawRect alternating colours, 2 a one-quad drawVertices (the batches' shape), 3 drawImageRect
+// of a 32x32 texture (blits, icons). Called with the render queue locked (no flush runs).
+bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
+    SKConfigContext *cc = gContexts.empty() ? nullptr : gContexts.begin()->second;
+    if (cc == nullptr || !cc->recorder || !cc->context || draws <= 0 || frames <= 0) {
+        return false;
+    }
+    flushAllBatches();
+    SKBackend_Submit(cc, true);   // nothing of the queue's in the recordings below
+    sk_sp<SkSurface> surface = SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
+    sk_sp<SkSurface> source = SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(32, 32, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
+    if (!surface || !source) {
+        return false;
+    }
+    source->getCanvas()->clear(SK_ColorBLUE);
+    sk_sp<SkImage> image = SkSurfaces::AsImageCopy(source);
+    const SkPoint pos[4] = {{0, 0}, {16, 0}, {16, 16}, {0, 16}};
+    const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
+    std::vector<double> t[4];
+    for (int f = 0; f < 2 * frames; f++) {
+        SkCanvas *canvas = surface->getCanvas();
+        SkPaint paint;
+        const uint64_t t0 = SKStats_Now();
+        for (int i = 0; i < draws; i++) {
+            const float x = (float) ((i * 37) % 1000), y = (float) ((i * 53) % 1000);
+            switch (kind) {
+                case 0: paint.setColor(SK_ColorRED); canvas->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint); break;
+                case 1: paint.setColor(i % 2 ? SK_ColorRED : SK_ColorGREEN); canvas->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint); break;
+                case 2: {
+                    canvas->save();
+                    canvas->translate(x, y);
+                    paint.setColor(SK_ColorRED);
+                    canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, pos, nullptr, nullptr, 6, idx),
+                                         SkBlendMode::kModulate, paint);
+                    canvas->restore();
+                    break;
+                }
+                default: canvas->drawImageRect(image, SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint); break;
+            }
+        }
+        const uint64_t t1 = SKStats_Now();
+        std::unique_ptr<Recording> recording = cc->recorder->snap();
+        const uint64_t t2 = SKStats_Now();
+        InsertRecordingInfo info;
+        info.fRecording = recording.get();
+        cc->context->insertRecording(info);
+        const uint64_t t3 = SKStats_Now();
+        cc->context->submit(SyncToCpu::kNo);
+        const uint64_t t4 = SKStats_Now();
+        cc->context->submit(SyncToCpu::kYes);   // drained between frames, not timed
+        if (f >= frames) {
+            t[0].push_back((double) (t1 - t0));
+            t[1].push_back((double) (t2 - t1));
+            t[2].push_back((double) (t3 - t2));
+            t[3].push_back((double) (t4 - t3));
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        std::sort(t[i].begin(), t[i].end());
+        out[i] = t[i][t[i].size() / 2] / draws;
+    }
+    return true;
+}
 
 jlong SKBackend_Flushes() {
     return gFlushes.load(std::memory_order_relaxed);
