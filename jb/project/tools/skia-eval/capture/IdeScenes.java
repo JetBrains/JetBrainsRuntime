@@ -127,11 +127,12 @@ public class IdeScenes {
                     awaitQuiet(150, 1500);
                     expect(() -> ide("cmd=terminalExec&line=" + (MAC ? "ls" : "echo text rendering scene 0123456789 ffi fl AVfi")), 1200);
                     ide("cmd=open&file=src/Hello.java");
+                    awaitQuiet(100, 800);   // the editor opens asynchronously: the first selection found no editor on three of twelve arms (2026-11-03)
                     // the editor's find-and-replace panel with the selected word, Comparable (line 18), as its
                     // search text (its occurrences highlighted); then a four-line selection, lines 15-18, ending at
                     // the caret on Comparable, whose documentation the quick documentation action shows; the
                     // file's first lines — the comment with the CJK, emoji and ligature samples — stay in view
-                    ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to");   // the word selected: the find panel takes it as its text
+                    retry(() -> ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to"), 5, 300);   // the word selected: the find panel takes it as its text
                     expect(() -> ide("cmd=action&id=Replace"), 1500);
                     awaitQuiet(150, 1000);
                     ide("cmd=open&file=src/Hello.java");   // the focus back from the search field to the editor
@@ -193,6 +194,19 @@ public class IdeScenes {
     static final java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
 
     /** One command to the scene-driver plugin in the isolated IDE; its answer, "ok" or the error (which aborts the run). */
+    /** A command retried while the IDE is not ready for it (an editor still opening): up to attempts, delay ms apart. */
+    static String retry(java.util.function.Supplier<String> command, int attempts, long delay) {
+        for (int i = 1; ; i++) {
+            try {
+                return command.get();
+            } catch (IllegalStateException e) {
+                if (i >= attempts) throw e;
+                System.err.println("  retrying after: " + e.getMessage());
+                try { Thread.sleep(delay); } catch (InterruptedException ie) { throw new IllegalStateException(ie); }
+            }
+        }
+    }
+
     static String ide(String query) {
         try {
             java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + "/api/scene?" + query.replace(" ", "%20")))   // a terminal line with spaces (the Windows one) must be a valid URI
