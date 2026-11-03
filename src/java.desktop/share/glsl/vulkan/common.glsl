@@ -1,3 +1,5 @@
+#extension GL_EXT_control_flow_attributes : enable
+
 ////////////////////////////////////////////////////////////////////////////////
 //// SHADER_SPECIALIZATION /////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -25,7 +27,8 @@ layout(location = 15) out flat uint  out_Data;
 layout(location = 14) out flat vec4  out_Color;
 layout(location = 13) out flat vec4  out_GenericFlatVec4_1;
 layout(location = 12) out flat vec4  out_GenericFlatVec4_2;
-layout(location = 11) out flat ivec4 out_GenericFlatIvec4_1;
+layout(location = 11) out flat vec4  out_GenericFlatVec4_3;
+layout(location = 10) out flat ivec4 out_GenericFlatIvec4_1;
 
 struct VKTransform {
     float m00, m01, m02;
@@ -47,7 +50,8 @@ layout(location = 15) in flat uint  in_Data;
 layout(location = 14) in flat vec4  in_Color;
 layout(location = 13) in flat vec4  in_GenericFlatVec4_1;
 layout(location = 12) in flat vec4  in_GenericFlatVec4_2;
-layout(location = 11) in flat ivec4 in_GenericFlatIvec4_1;
+layout(location = 11) in flat vec4  in_GenericFlatVec4_3;
+layout(location = 10) in flat ivec4 in_GenericFlatIvec4_1;
 
 // TODO: we should change this logic when adding support for masked blits
 #ifndef SHADER_NO_MASK_BUFFER
@@ -131,16 +135,18 @@ int calculateMaskIndex(vec2 localCoord, ivec4 originOffsetAndScanline) {
     return offset + scanline * maskPos.y + min(scanline, maskPos.x);
 }
 
-float getRRectCoverage(vec2 fragCoord, vec4 corners, float radius) {
-    return 1.0f; // TODO!
-}
+#include "aa_rrect_coverage.glsl"
 
 float getCoverage(vec2 fragCoord) {
     if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_AA_RRECT) {
-        return getRRectCoverage(fragCoord, in_GenericFlatVec4_1, in_GenericFlatVec4_2.x);
+        return rrectOuterInnerBoxCoverageDifference(
+            fragCoord,
+            in_GenericFlatVec4_1.xy, in_GenericFlatVec4_1.zw, in_GenericFlatVec4_3.x,
+            in_GenericFlatVec4_2.xy, in_GenericFlatVec4_2.zw, in_GenericFlatVec4_3.y
+        );
     }
 #ifndef SHADER_NO_MASK_BUFFER
-    else if(SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_MASK) {
+    else if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_MASK) {
         return imageLoad(u_Mask, calculateMaskIndex(fragCoord, in_GenericFlatIvec4_1)).r;
     }
 #endif // SHADER_NO_MASK_BUFFER

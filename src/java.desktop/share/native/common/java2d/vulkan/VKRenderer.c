@@ -1932,21 +1932,35 @@ void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {
     }
 }
 
-void VKRenderer_FillAARect(jfloat x, jfloat y, jfloat w, jfloat h, jfloat cornerDiameter) {
-    assert(w > 0.0f && h > 0.0f && 0.0f <= cornerDiameter && cornerDiameter <= w && cornerDiameter <= h);
+void VKRenderer_FillAARectOuterInner(jfloat xMin, jfloat yMin, jfloat xMax, jfloat yMax, jfloat cornerDiameter,
+                                     VkBool32 hasInner, jfloat innerInset, jfloat innerCornerDiameter) {
+    // TODO
+    //assert(w > 0.0f && h > 0.0f && 0.0f <= cornerDiameter && cornerDiameter <= w && cornerDiameter <= h);
 
     if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_AA_RRECT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return;
 
-    VKAARRectInstance* inst;
-    VK_DRAW_INSTANCES(inst, 1, 4);
-    *inst = (VKAARRectInstance) {
-        .x1 = x,
-        .y1 = y,
-        .x2 = x + w,
-        .y2 = y + h,
-        .r = 0.5f * cornerDiameter,
+    VKAARRectInstance inst = {
+        .outerX1 = xMin,
+        .outerY1 = yMin,
+        .outerX2 = xMax,
+        .outerY2 = yMax,
+        .outerCornerRadius = 0.5f * cornerDiameter,
         .data = context.vertexData
     };
+    if (hasInner) {
+        inst.innerX1 = inst.outerX1 + innerInset;
+        inst.innerY1 = inst.outerY1 + innerInset;
+        inst.innerX2 = inst.outerX2 - innerInset;
+        inst.innerY2 = inst.outerY2 - innerInset;
+        inst.innerCornerRadius = 0.5f * innerCornerDiameter;
+    } // otherwise, leave inner params zero-filled
+
+    // The same predicate used in the vertex shader to agree on topology.
+    // This becomes false if the inset makes the inner rrect inverted.
+    bool hasInnerForShader = inst.innerX1 < inst.innerX2 && inst.innerY1 < inst.innerY2;
+    VKAARRectInstance* pInst;
+    VK_DRAW_INSTANCES(pInst, 1, hasInnerForShader ? 10 : 4);
+    *pInst = inst;
 }
 
 void VKRenderer_DrawGlyphList(jint numGlyphs,

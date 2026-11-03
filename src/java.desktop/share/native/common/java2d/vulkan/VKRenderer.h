@@ -135,7 +135,8 @@ void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst);
 
 // Drawing operations.
 
-void VKRenderer_FillAARect(jfloat x, jfloat y, jfloat w, jfloat h, jfloat cornerDiameter);
+void VKRenderer_FillAARectOuterInner(jfloat xMin, jfloat yMin, jfloat xMax, jfloat yMax, jfloat cornerDiameter,
+                                     VkBool32 hasInner, jfloat innerInset, jfloat innerCornerDiameter);
 
 void VKRenderer_RenderRect(VkBool32 fill, jint x, jint y, jint w, jint h);
 

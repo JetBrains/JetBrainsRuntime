@@ -35,10 +35,13 @@ import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
 import sun.java2d.pipe.ShapeDrawPipe;
 
+import java.awt.BasicStroke;
 import java.awt.Shape;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 
+import static sun.java2d.vulkan.VKRichBufferedOpCodes.DRAW_AARRECT;
 import static sun.java2d.vulkan.VKRichBufferedOpCodes.FILL_AARRECT;
 
 public class VKRichRendererProxy
@@ -81,16 +84,23 @@ public class VKRichRendererProxy
 
     @Override
     public void drawRect(SunGraphics2D sg2d, int x, int y, int width, int height) {
+        // This can become a proper rrect if using round joins
+        if (tryDrawRoundRect(sg2d, x, y, width, height, 0.0, 0.0)) return;
+
         pixelDrawFallbackDelegate.drawRect(sg2d, x, y, width, height);
     }
 
     @Override
     public void drawRoundRect(SunGraphics2D sg2d, int x, int y, int width, int height, int arcWidth, int arcHeight) {
+        if (tryDrawRoundRect(sg2d, x, y, width, height, arcWidth, arcHeight)) return;
+
         pixelDrawFallbackDelegate.drawRoundRect(sg2d, x, y, width, height, arcWidth, arcHeight);
     }
 
     @Override
     public void drawOval(SunGraphics2D sg2d, int x, int y, int width, int height) {
+        if (tryDrawRoundRect(sg2d, x, y, width, height, width, height)) return;
+
         pixelDrawFallbackDelegate.drawOval(sg2d, x, y, width, height);
     }
 
@@ -111,22 +121,20 @@ public class VKRichRendererProxy
 
     @Override
     public void fillRect(SunGraphics2D sg2d, int x, int y, int width, int height) {
-        if (tryHandleRoundRect(sg2d, x, y, width, height, 0.0f, 0.0f)) return;
-
+        // Let the parallelogram path handle this
         pixelFillFallbackDelegate.fillRect(sg2d, x, y, width, height);
     }
 
     @Override
     public void fillRoundRect(SunGraphics2D sg2d, int x, int y, int width, int height, int arcWidth, int arcHeight) {
-        if (tryHandleRoundRect(sg2d, x, y, width, height, arcWidth, arcHeight)) return;
+        if (tryFillRoundRect(sg2d, x, y, width, height, arcWidth, arcHeight)) return;
 
         pixelFillFallbackDelegate.fillRoundRect(sg2d, x, y, width, height, arcWidth, arcHeight);
-
     }
 
     @Override
     public void fillOval(SunGraphics2D sg2d, int x, int y, int width, int height) {
-        if (tryHandleRoundRect(sg2d, x, y, width, height, width, height)) return;
+        if (tryFillRoundRect(sg2d, x, y, width, height, width, height)) return;
 
         pixelFillFallbackDelegate.fillOval(sg2d, x, y, width, height);
     }
@@ -143,44 +151,66 @@ public class VKRichRendererProxy
 
     @Override
     public void draw(SunGraphics2D sg2d, Shape s) {
+        if (s instanceof Rectangle2D rect) {
+            // This can become a proper rrect if using round joins
+            if (tryDrawRoundRect(sg2d,
+                    rect.getX(), rect.getY(),
+                    rect.getWidth(), rect.getHeight(),
+                    0.0, 0.0)) return;
+        } else if (s instanceof RoundRectangle2D roundRect) {
+            if (tryDrawRoundRect(sg2d,
+                    roundRect.getX(), roundRect.getY(),
+                    roundRect.getWidth(), roundRect.getHeight(),
+                    roundRect.getArcWidth(), roundRect.getArcHeight())) return;
+        } else if (s instanceof Ellipse2D ellipse) {
+            if (tryDrawRoundRect(sg2d,
+                    ellipse.getX(), ellipse.getY(),
+                    ellipse.getWidth(), ellipse.getHeight(),
+                    ellipse.getWidth(), ellipse.getHeight())) return;
+        }
+
         shapeDrawFallbackDelegate.draw(sg2d, s);
     }
 
     @Override
     public void fill(SunGraphics2D sg2d, Shape s) {
-        if (s instanceof RoundRectangle2D roundRect && tryHandleRoundRect(sg2d,
-                roundRect.getX(), roundRect.getY(),
-                roundRect.getWidth(), roundRect.getHeight(),
-                roundRect.getArcWidth(), roundRect.getArcHeight())) return;
-
-        if (s instanceof Ellipse2D ellipse && tryHandleRoundRect(sg2d,
-                ellipse.getX(), ellipse.getY(),
-                ellipse.getWidth(), ellipse.getHeight(),
-                ellipse.getWidth(), ellipse.getHeight())) return;
+        if (s instanceof RoundRectangle2D roundRect) {
+            if (tryFillRoundRect(sg2d,
+                    roundRect.getX(), roundRect.getY(),
+                    roundRect.getWidth(), roundRect.getHeight(),
+                    roundRect.getArcWidth(), roundRect.getArcHeight())) return;
+        } else if (s instanceof Ellipse2D ellipse) {
+            if (tryFillRoundRect(sg2d,
+                    ellipse.getX(), ellipse.getY(),
+                    ellipse.getWidth(), ellipse.getHeight(),
+                    ellipse.getWidth(), ellipse.getHeight())) return;
+        }
 
         shapeDrawFallbackDelegate.fill(sg2d, s);
     }
 
-    private boolean tryHandleRoundRect(SunGraphics2D sg2d, double x, double y, double width, double height, double arcWidth, double arcHeight) {
-        if (width <= 0 || height <= 0) return true;
+    private boolean tryFillRoundRect(SunGraphics2D sg2d, double x, double y, double width, double height, double arcWidth, double arcHeight) {
+        if (!(width > 0 && height > 0)) return true; // degenerate rrects fill nothing
 
         arcWidth = Math.min(Math.abs(arcWidth), width);
         arcHeight = Math.min(Math.abs(arcHeight), height);
+        // The fast path can only draw circular corners.
         if (arcWidth != arcHeight) return false;
 
-        // TRANSFORM_TRANSLATESCALE guarantee positive scale factors (no flips)
-        double scaleX = sg2d.transform.getScaleX();
-        double scaleY = sg2d.transform.getScaleY();
-        if (arcWidth != 0 && scaleX != scaleY) return false;
-
+        // TRANSFORM_TRANSLATESCALE guarantees positive scale factors (no flips)
+        double scale = sg2d.transform.getScaleX();
+        // Only uniform scale is supported, otherwise the corners would be non-circular.
+        // We have to re-check this every draw because shouldBeInstalled is only called on transformState changes.
+        if (scale != sg2d.transform.getScaleY()) return false;
         double translateX = sg2d.transform.getTranslateX();
         double translateY = sg2d.transform.getTranslateY();
 
-        x = scaleX * x + translateX;
-        y = scaleY * y + translateY;
-        width *= scaleX;
-        height *= scaleY;
-        arcWidth *= scaleX;
+        // Compute the coords in device space
+        double xMinDevice = scale * x + translateX;
+        double yMinDevice = scale * y + translateY;
+        double xMaxDevice = scale * (x + width) + translateX;
+        double yMaxDevice = scale * (y + height) + translateY;
+        double cornerDiameterDevice = scale * arcWidth;
 
         rq.lock();
         try {
@@ -188,15 +218,80 @@ public class VKRichRendererProxy
             rq.ensureCapacity(24);
             RenderBuffer buf = rq.getBuffer();
             buf.putInt(FILL_AARRECT);
-            buf.putFloat((float) x);
-            buf.putFloat((float) y);
-            buf.putFloat((float) width);
-            buf.putFloat((float) height);
-            buf.putFloat((float) arcWidth);
+            buf.putFloat((float) xMinDevice);
+            buf.putFloat((float) yMinDevice);
+            buf.putFloat((float) xMaxDevice);
+            buf.putFloat((float) yMaxDevice);
+            buf.putFloat((float) cornerDiameterDevice);
         } finally {
             rq.unlock();
         }
 
         return true;
+    }
+
+    private boolean tryDrawRoundRect(SunGraphics2D sg2d, double x, double y, double width, double height, double arcWidth, double arcHeight) {
+        if (!(width > 0 && height > 0)) return false; // degenerate rrects can still produce pixels when drawn
+
+        if (sg2d.strokeState == SunGraphics2D.STROKE_CUSTOM) return false;
+        BasicStroke stroke = (BasicStroke) sg2d.stroke;
+        if (stroke.getDashArray() != null) return false;
+
+        arcWidth = Math.min(Math.abs(arcWidth), width);
+        arcHeight = Math.min(Math.abs(arcHeight), height);
+        // The fast path can only draw circular corners.
+        if (arcWidth != arcHeight) return false;
+        // JOIN_ROUND will turn 'sharp' rectangles into proper rrects.
+        if (arcWidth == 0 && stroke.getLineJoin() != BasicStroke.JOIN_ROUND) return false;
+
+        // TRANSFORM_TRANSLATESCALE guarantees positive scale factors (no flips)
+        double scale = sg2d.transform.getScaleX();
+        // Only uniform scale is supported, otherwise the corners would be non-circular.
+        // We have to re-check this every draw because shouldBeInstalled is only called on transformState changes.
+        if (scale != sg2d.transform.getScaleY()) return false;
+        double translateX = sg2d.transform.getTranslateX();
+        double translateY = sg2d.transform.getTranslateY();
+
+        double lwDevice = Math.max(scale * stroke.getLineWidth(), SunGraphics2D.MinPenSizeAA);
+
+        // Compute the coords in device space
+        double xMinDevice = scale * x + translateX;
+        double yMinDevice = scale * y + translateY;
+        double xMaxDevice = scale * (x + width) + translateX;
+        double yMaxDevice = scale * (y + height) + translateY;
+        double cornerDiameterDevice = scale * arcWidth;
+        if (sg2d.strokeHint != SunHints.INTVAL_STROKE_PURE) {
+            xMinDevice = normalize(xMinDevice);
+            yMinDevice = normalize(yMinDevice);
+            xMaxDevice = normalize(xMaxDevice);
+            yMaxDevice = normalize(yMaxDevice);
+            // Check if the rectangle has become degenerate after normalization
+            if (xMinDevice >= xMaxDevice || yMinDevice >= yMaxDevice) return false;
+            // Might have to re-clamp the corner diameter
+            cornerDiameterDevice = Math.min(cornerDiameterDevice, Math.min(xMaxDevice - xMinDevice, yMaxDevice - yMinDevice));
+        }
+
+        double halfLwDevice = lwDevice / 2;
+        rq.lock();
+        try {
+            validateContext(sg2d);
+            rq.ensureCapacity(32);
+            RenderBuffer buf = rq.getBuffer();
+            buf.putInt(DRAW_AARRECT);
+            buf.putFloat((float) (xMinDevice - halfLwDevice));
+            buf.putFloat((float) (yMinDevice - halfLwDevice));
+            buf.putFloat((float) (xMaxDevice + halfLwDevice));
+            buf.putFloat((float) (yMaxDevice + halfLwDevice));
+            buf.putFloat((float) (cornerDiameterDevice + lwDevice));
+            buf.putFloat((float) lwDevice);
+            buf.putFloat((float) Math.max(cornerDiameterDevice - lwDevice, 0.0));
+        } finally {
+            rq.unlock();
+        }
+        return true;
+    }
+
+    private double normalize(double v) {
+        return Math.floor(v) + 0.5; // match Marlin's normalization
     }
 }

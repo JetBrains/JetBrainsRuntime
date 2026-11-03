@@ -217,8 +217,9 @@ typedef struct {
 } VKMaskFillVertex;
 
 typedef struct {
-    float x1, y1, x2, y2;
-    float r;
+    float outerX1, outerY1, outerX2, outerY2;
+    float innerX1, innerY1, innerX2, innerY2;
+    float outerCornerRadius, innerCornerRadius;
     unsigned int data;
 } VKAARRectInstance;
 

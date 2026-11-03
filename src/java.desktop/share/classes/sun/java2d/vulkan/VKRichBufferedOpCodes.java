@@ -29,4 +29,5 @@ import java.lang.annotation.Native;
 
 public class VKRichBufferedOpCodes {
     @Native public static final int FILL_AARRECT = 200;
+    @Native public static final int DRAW_AARRECT = 220;
 }
