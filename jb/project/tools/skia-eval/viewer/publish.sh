@@ -22,3 +22,4 @@ TYPE=legacy; [ -f "$DIST/.github/workflows/pages.yml" ] && TYPE=workflow
 gh api -X POST "repos/$SLUG/pages" -f build_type=$TYPE -f 'source[branch]=main' -f 'source[path]=/' >/dev/null 2>&1 \
   || gh api -X PUT "repos/$SLUG/pages" -f build_type=$TYPE -f 'source[branch]=main' -f 'source[path]=/' >/dev/null
 echo "pushed: https://github.com/$SLUG — site: $(gh api "repos/$SLUG/pages" -q .html_url) (build takes a few minutes)"
+echo "note: Pages caches index.html and manifest.js for ten minutes; a tab opened before then pairs the old manifest with the new images (404s) — the viewer reloads itself once on a missing image, or hard-reload after ten minutes"

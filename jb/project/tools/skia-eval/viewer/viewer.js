@@ -524,7 +524,7 @@
       }
       render();
     };
-    entry.img.onerror = () => { entry.failed = true; render(); };
+    entry.img.onerror = () => { entry.failed = true; render(); staleCheck(); };
     entry.img.src = src;
     cache.set(src, entry);
     return entry;
@@ -847,6 +847,19 @@
   window.addEventListener('keyup', (e) => { if (e.key === ' ') { flip = false; render(); } });
   window.addEventListener('resize', render);
   window.addEventListener('hashchange', () => { readHash(); syncControls(); render(); });
+
+  // A missing image usually means a stale page: the catalog is published as one commit that replaces the
+  // previous release (its images go with it), and GitHub Pages caches index.html and manifest.js for ten
+  // minutes — a tab opened soon after a publish pairs the old manifest with the new images (2026-11-03).
+  // Once per session: re-fetch the page and the manifest past the cache and reload.
+  function staleCheck() {
+    try {
+      if (sessionStorage.getItem('catalog-reloaded') === location.pathname) return;
+      sessionStorage.setItem('catalog-reloaded', location.pathname);
+    } catch (e) { return; }
+    const bust = (u) => fetch(u, { cache: 'reload' }).catch(() => {});
+    Promise.all([bust(location.pathname), ...[...document.scripts].map(sc => sc.src).filter(Boolean).map(bust)]).then(() => location.reload());
+  }
 
   // ---- start -------------------------------------------------------------------------------
   // the catalog's start (descriptions.json "start", written as window.COMPARE_START): the page, the set
