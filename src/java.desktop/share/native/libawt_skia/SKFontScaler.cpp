@@ -671,6 +671,12 @@ double SKFontScaler_DisplayScale(jlong pContext)
     return context == nullptr ? 1.0 : context->displayScale;
 }
 
+double SKFontScaler_LayoutScale(jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context == nullptr || context->fractionalMetrics ? 1.0 : context->deviceScale;
+}
+
 bool SKFontScaler_Font(jlong pContext, SkFont *font)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);

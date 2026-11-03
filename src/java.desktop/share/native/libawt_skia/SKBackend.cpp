@@ -2083,6 +2083,12 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     const SkPaint paint = SKBackend_MakePaint(true);
     sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, paint.getColor());
     applyGrayRoute(font, pScalerContext, paint.getColor());
+    // whole-pixel advances of a system font round in user space (SKFontScaler_LayoutScale): the shaping
+    // runs at the user size and the blob is painted under the scale, so the glyphs land where Java's do
+    const float layoutScale = (float) SKFontScaler_LayoutScale(pScalerContext);
+    if (layoutScale != 1) {
+        font.setSize(font.getSize() / layoutScale);
+    }
     const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
     // Paragraph direction left to right (the shaper reorders right-to-left runs within it);
     // Java's drawString takes it from the first strong character.
@@ -2109,7 +2115,13 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     if (!blob) {
         return;
     }
-    g.canvas->drawTextBlob(blob, originX, originY, paint);
+    if (layoutScale != 1) {
+        SkAutoCanvasRestore restore(g.canvas, true);
+        g.canvas->scale(layoutScale, layoutScale);
+        g.canvas->drawTextBlob(blob, originX / layoutScale, originY / layoutScale, paint);
+    } else {
+        g.canvas->drawTextBlob(blob, originX, originY, paint);
+    }
     gGlyphsShapedBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
     gGlyphsDrawnBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
 }
@@ -2266,7 +2278,8 @@ DecorationMetrics decorationMetrics(const SkFont &font) {
     return m;
 }
 
-void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, const jchar *chars, jint length,
+// originX and paragraphTop in the paragraph's layout space, layoutScale maps it to device space
+void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, float layoutScale, const jchar *chars, jint length,
                            jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags, const SkPaint &paint) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
@@ -2289,10 +2302,16 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
             while (r + 1 < runCount && runUtf8Start[r + 1] <= utf8) r++;
             return r;
         };
-        const DecorationMetrics m = decorationMetrics(info->font);
-        // the paragraph is laid out in device space (SKTextRenderer passes the device origin, the strikes carry
-        // the device scale): the baseline row is the rounded baseline, as TextDecorations rounds the graphics' one
-        const SkPoint runOrigin = {originX + info->origin.fX, paragraphTop + info->origin.fY};
+        // the run in device space: the layout's font, origin and positions scaled by the layout scale (1 when the
+        // paragraph was laid out in device space); the baseline row is the rounded baseline, as TextDecorations
+        // rounds the graphics' one
+        SkFont deviceFont = info->font;
+        deviceFont.setSize(info->font.getSize() * layoutScale);
+        const DecorationMetrics m = decorationMetrics(deviceFont);
+        const SkPoint runOrigin = {(originX + info->origin.fX) * layoutScale, (paragraphTop + info->origin.fY) * layoutScale};
+        std::vector<SkPoint> devicePositions(info->positions, info->positions + info->count);
+        for (SkPoint &pt : devicePositions) pt.scale(layoutScale);
+        const SkPoint *positions = devicePositions.data();
         const int baselineRow = (int) std::lround(runOrigin.fY);
         const DecorationBand band = underlineBand(m.underlinePosition, m.underlineThickness);
         const int underlineTop = baselineRow + band.top;
@@ -2310,13 +2329,13 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                 float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
                 for (int k = i; k < j; k++) {
                     SkScalar advance = 0;
-                    info->font.getWidths({&info->glyphs[k], 1}, {&advance, 1});
-                    x1 = std::min(x1, runOrigin.fX + info->positions[k].fX);
-                    x2 = std::max(x2, runOrigin.fX + info->positions[k].fX + advance);
+                    deviceFont.getWidths({&info->glyphs[k], 1}, {&advance, 1});
+                    x1 = std::min(x1, runOrigin.fX + positions[k].fX);
+                    x2 = std::max(x2, runOrigin.fX + positions[k].fX + advance);
                 }
                 if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
                     if (skipInk && !gapsReady) {   // the whole visitor run's ink: a neighbour's descender may cross this group's line
-                        gaps = inkCrossings(info->font, info->glyphs, info->positions, info->count, runOrigin, (float) underlineTop, (float) (underlineTop + band.rows));
+                        gaps = inkCrossings(deviceFont, info->glyphs, positions, info->count, runOrigin, (float) underlineTop, (float) (underlineTop + band.rows));
                         gapsReady = true;
                     }
                     fillBand(canvas, runPaint, x1, x2, underlineTop, band.rows, skipInk ? &gaps : nullptr,
@@ -2366,6 +2385,10 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
     if (!builder) {
         return;
     }
+    // whole-pixel advances of a system font round in user space (SKFontScaler_LayoutScale): the paragraph
+    // is laid out at the user size and painted under the scale, so the glyphs land where Java's layout puts
+    // them; the first run's strike decides for the paragraph (one graphics, one scale)
+    const float layoutScale = (float) SKFontScaler_LayoutScale(contexts[0]);
     jint start = 0;
     for (jint r = 0; r < runCount; r++) {
         const jint end = std::min(runEnds[r], length);
@@ -2390,7 +2413,7 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         }
         tl::TextStyle ts;
         ts.setFontFamilies({typefaceAlias(typeface.get())});
-        ts.setFontSize(font.getSize());
+        ts.setFontSize(font.getSize() / layoutScale);
         ts.setFontStyle(typeface->fontStyle());
         ts.setFontEdging(font.getEdging());
         ts.setSubpixel(font.isSubpixel());
@@ -2425,9 +2448,26 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         return;
     }
     paragraph->layout(1e9f);   // one line: no wrapping
-    const float paragraphTop = originY - paragraph->getAlphabeticBaseline();
-    paragraph->paint(g.canvas, originX, paragraphTop);
-    drawSystemDecorations(*paragraph, g.canvas, originX, paragraphTop, chars, length, runCount, runEnds, contexts, colours, flags, paint);
+    // the line's baseline in paragraph space from the first glyph run itself: getAlphabeticBaseline() sits
+    // 0.48 px off it at 13 px (SkParagraph rounds its line metrics), which the device rounding of glyph rows
+    // hid at scale 1 and which a layout under a scale would turn into a whole row
+    float baseline = paragraph->getAlphabeticBaseline();
+    bool baselineFound = false;
+    paragraph->visit([&](int, const tl::Paragraph::VisitorInfo *info) {
+        if (info != nullptr && info->count > 0 && !baselineFound) {
+            baseline = info->origin.fY + info->positions[0].fY;
+            baselineFound = true;
+        }
+    });
+    const float paragraphTop = originY / layoutScale - baseline;   // in layout space
+    if (layoutScale != 1) {
+        SkAutoCanvasRestore restore(g.canvas, true);
+        g.canvas->scale(layoutScale, layoutScale);
+        paragraph->paint(g.canvas, originX / layoutScale, paragraphTop);
+    } else {
+        paragraph->paint(g.canvas, originX, paragraphTop);
+    }
+    drawSystemDecorations(*paragraph, g.canvas, originX / layoutScale, paragraphTop, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, paint);
     gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
     gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);   // the character count stands in for the glyph count
     gGlyphsDrawnBySkia.fetch_add(length, std::memory_order_relaxed);

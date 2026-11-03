@@ -40,6 +40,11 @@ bool SKFontScaler_Font(jlong pContext, SkFont *font);
 jint SKFontScaler_BlendMode(jlong pContext);   // SKFontScaler.BLEND_*
 bool SKFontScaler_TextDarkening();             // the darkening dimension, resolved (one value per process)
 jint SKFontScaler_GrayLuminance(jlong pContext);
-double SKFontScaler_DisplayScale(jlong pContext);   // the scale of the strike's device transform (2 on a 200 % display), 1 without a context   // the luminance the context's cg masks are rasterized for (SKFontScaler.GRAY_LUMINANCE when the strike has no class)
+double SKFontScaler_DisplayScale(jlong pContext);
+// The scale Skia's own layouts (shaper, paragraph) lay out under: 1 with fractional metrics or a strike that
+// rounds advances in device pixels, else the strike's device scale — Java rounds a system font's whole-pixel
+// advances in user space (CoreText's rule, getGlyphAdvanceNative), so the layout runs at the user size and
+// is painted under the scale, and lands where Java's layout does
+double SKFontScaler_LayoutScale(jlong pContext);   // the scale of the strike's device transform (2 on a 200 % display), 1 without a context   // the luminance the context's cg masks are rasterized for (SKFontScaler.GRAY_LUMINANCE when the strike has no class)
 
 #endif /* SKFontScaler_h_Included */
