@@ -3129,7 +3129,8 @@ static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any 
 // the median over `frames` frames (after as many warm-up frames) divided by the draws goes to
 // out[0..3] (record, snap, insert, submit, ns per draw). Kinds: 0 drawRect in one colour, 1
 // drawRect alternating colours, 2 a one-quad drawVertices (the batches' shape), 3 drawImageRect
-// of a 32x32 texture (blits, icons). Called with the render queue locked (no flush runs).
+// of a 32x32 texture (blits, icons), 4 the same cycling 16 textures, 5 rect, mesh and image in turn, 6
+// rects switching between two surfaces every 50 draws. Called with the render queue locked.
 bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
     SKConfigContext *cc = gContexts.empty() ? nullptr : gContexts.begin()->second;
     if (cc == nullptr || !cc->recorder || !cc->context || draws <= 0 || frames <= 0) {
@@ -3146,6 +3147,14 @@ bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
     }
     source->getCanvas()->clear(SK_ColorBLUE);
     sk_sp<SkImage> image = SkSurfaces::AsImageCopy(source);
+    // kinds 4-6, the IDE's state churn: 16 textures in turn, three pipelines in turn, two surfaces in turn
+    std::vector<sk_sp<SkImage>> images;
+    for (int i = 0; i < 16; i++) {
+        source->getCanvas()->clear(SkColorSetARGB(255, (U8CPU) (i * 16), 80, 160));
+        images.push_back(SkSurfaces::AsImageCopy(source));
+    }
+    sk_sp<SkSurface> second = SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
     const SkPoint pos[4] = {{0, 0}, {16, 0}, {16, 16}, {0, 16}};
     const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
     std::vector<double> t[4];
@@ -3167,7 +3176,28 @@ bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
                     canvas->restore();
                     break;
                 }
-                default: canvas->drawImageRect(image, SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint); break;
+                case 3: canvas->drawImageRect(image, SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint); break;
+                case 4: canvas->drawImageRect(images[(size_t) i % images.size()], SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint); break;
+                case 5:
+                    if (i % 3 == 0) {
+                        paint.setColor(SK_ColorRED);
+                        canvas->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint);
+                    } else if (i % 3 == 1) {
+                        canvas->save();
+                        canvas->translate(x, y);
+                        canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, pos, nullptr, nullptr, 6, idx),
+                                             SkBlendMode::kModulate, paint);
+                        canvas->restore();
+                    } else {
+                        canvas->drawImageRect(images[(size_t) i % images.size()], SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint);
+                    }
+                    break;
+                default: {
+                    SkCanvas *c = (i / 50) % 2 == 0 || !second ? canvas : second->getCanvas();
+                    paint.setColor(SK_ColorRED);
+                    c->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint);
+                    break;
+                }
             }
         }
         const uint64_t t1 = SKStats_Now();

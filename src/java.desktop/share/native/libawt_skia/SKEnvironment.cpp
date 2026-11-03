@@ -63,6 +63,20 @@ Java_sun_java2d_skia_SKEnvironment_flushesNative(JNIEnv *env, jclass clazz)
     return SKBackend_Flushes();
 }
 
+JNIEXPORT jdoubleArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_benchGraphiteNative(JNIEnv *env, jclass clazz, jint kind, jint draws, jint frames)
+{
+    double out[4];
+    if (!SKBackend_BenchGraphite(kind, draws, frames, out)) {
+        return nullptr;
+    }
+    jdoubleArray result = env->NewDoubleArray(4);
+    if (result != nullptr) {
+        env->SetDoubleArrayRegion(result, 0, 4, out);
+    }
+    return result;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setStrikeCacheLimitNative(JNIEnv *env, jclass clazz, jlong bytes)
 {

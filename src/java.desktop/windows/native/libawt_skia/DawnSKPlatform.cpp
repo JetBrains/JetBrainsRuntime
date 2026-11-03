@@ -246,6 +246,35 @@ static wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Ad
                 }, store);
         descriptor.nextInChain = &cache;
     }
+    // EXPERIMENT (x64hw, 2026-11-03): J2D_SKIA_DAWN_TOGGLES=skip_validation,disable_robustness,... enables
+    // Dawn device toggles (WebGPU validation off, no robustness transforms in the shaders): what Dawn's
+    // own checking costs per call
+    static std::vector<std::string> toggleNames;
+    static std::vector<const char *> toggles;
+    wgpu::DawnTogglesDescriptor togglesDescriptor;
+    if (const char *list = getenv("J2D_SKIA_DAWN_TOGGLES")) {
+        toggleNames.clear();
+        toggles.clear();
+        std::string all(list);
+        for (size_t start = 0; start <= all.size(); ) {
+            size_t end = all.find(',', start);
+            if (end == std::string::npos) {
+                end = all.size();
+            }
+            if (end > start) {
+                toggleNames.push_back(all.substr(start, end - start));
+            }
+            start = end + 1;
+        }
+        for (const std::string &name : toggleNames) {
+            toggles.push_back(name.c_str());
+        }
+        togglesDescriptor.enabledToggleCount = toggles.size();
+        togglesDescriptor.enabledToggles = toggles.data();
+        togglesDescriptor.nextInChain = descriptor.nextInChain;
+        descriptor.nextInChain = &togglesDescriptor;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: device toggles %s", list);
+    }
     descriptor.SetUncapturedErrorCallback(
             [](const wgpu::Device &, wgpu::ErrorType type, wgpu::StringView message) {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "DawnSK: device error %d: %s", (int) type, toString(message).c_str());

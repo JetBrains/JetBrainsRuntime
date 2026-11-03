@@ -680,6 +680,30 @@ public final class SKEnvironment {
      * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached, batch draws
      * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
      */
+    /**
+     * Diagnostics: the floor of Graphite's per-draw cost on this device, without the backend's
+     * translation in front of it — {@code draws} draws of one kind (0 a rect in one colour, 1 rects
+     * alternating colours, 2 a one-quad mesh, 3 a 32x32 image, 4 images of 16 textures in turn, 5 rect,
+     * mesh and image in turn, 6 rects switching between two surfaces) recorded into an off-screen surface,
+     * then snapped, inserted and submitted; the median over {@code frames} frames of each phase in
+     * nanoseconds per draw: record, snap, insert, submit. {@code null} without the backend.
+     */
+    public static double[] benchGraphite(int kind, int draws, int frames) {
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+            return benchGraphiteNative(kind, draws, frames);
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native double[] benchGraphiteNative(int kind, int draws, int frames);
+
     public static long[] glyphCacheStats() {
         return isSkiaEnabled() ? glyphCacheStatsNative() : new long[0];
     }
