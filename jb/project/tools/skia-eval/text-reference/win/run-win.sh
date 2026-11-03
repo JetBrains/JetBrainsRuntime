@@ -42,7 +42,7 @@ JOBS=${SHEET_JOBS:-$(( $(nproc 2>/dev/null || echo 8) - 2 ))}; [ "$JOBS" -lt 1 ]
 echo "== $("$PY" -I "$HERE/../arms.py" Windows --count) Java arms, $JOBS at a time $(date +%H:%M:%S)"
 # the ClearType colour sheets for the arms where the per-channel correction is the question (hand-over 2026-10-26c):
 # the platform's masks (blend system) from the Skia scaler, with the system's darkening and decorations
-"$PY" -I "$HERE/../arms.py" Windows | {
+"$PY" -I "$HERE/../arms.py" Windows | tr -d '\r' | {   # Python on Windows ends the lines with CR LF; a CR on the last property made it unreadable (2026-11-03)
   while IFS=$'\t' read -r name how props; do
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do sleep 0.3; done
     colours=0; case "$name" in *scaler-skia*blend-system+decorations-system*) case "$name" in *darkening-none*) ;; *) colours=1 ;; esac ;; esac
