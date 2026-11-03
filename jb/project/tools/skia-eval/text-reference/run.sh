@@ -29,25 +29,13 @@ sheet() {
 }
 # the arms in the text settings' terms (sun.java2d.skia.text.*; 2026-11-02): coverage = blend corrected without darkening,
 # cg = blend system (CoreGraphics' masks per text luminance), darkening = blend corrected with the user's font smoothing
-sheet software software
-sheet metal-platform volatile
-sheet metal-platform-plain volatile -Dsun.java2d.metal.textGammaCorrection=false
-sheet skia-platform volatile -Dsun.java2d.skia=true
-sheet software-skia-scaler-coverage software -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
-sheet software-skia-scaler-cg software -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system
-sheet metal-skia-scaler-coverage volatile -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
-sheet metal-skia-scaler-cg volatile -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system
-sheet metal-skia-scaler-cg-plain volatile -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.metal.textGammaCorrection=false
-sheet skia-scaler-coverage volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
-sheet skia-scaler-cg volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system
-sheet skia-text volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
-sheet skia-text-darkening volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=system
-sheet skia-text-cg volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=system
-sheet skia-shaper volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none
-sheet skia-shaper-darkening volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=system
-sheet skia-shaper-cg volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.blend=system
-sheet skia-paragraph volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=system
-sheet skia-paragraph-cg volatile -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia -Dsun.java2d.skia.text.blend=system
+# the Java arms: every combination of the text settings this platform offers (arms.py; the viewer reads an
+# arm's dimensions from its name) — 92 arms on macOS, about 20 s each
+ARMS=$(python3 "$HERE/arms.py" macOS | cut -f1 | tr '\n' ',' | sed 's/,$//')
+python3 "$HERE/arms.py" macOS | while IFS=$'\t' read -r name how props; do
+  echo "== $name $(date +%H:%M:%S)"
+  sheet "$name" "$how" $props
+done
 bash "$KIT/viewer/chrome-ref/render.sh" "$OUT" || echo "Chrome reference skipped" >&2
 bash "$HERE/run-colours.sh" "$OUT"   # the coloured sheets (gray only) into the same tree
-python3 "$KIT/viewer/make-viewer.py" "$OUT" --arms coretext,coretext-continuous,coretext-unsmoothed,chrome,software,metal-platform,metal-platform-plain,skia-platform,software-skia-scaler-coverage,software-skia-scaler-cg,metal-skia-scaler-coverage,metal-skia-scaler-cg,metal-skia-scaler-cg-plain,skia-scaler-coverage,skia-scaler-cg,skia-scaler-cg-classes256,skia-scaler-cg-classes1,skia-text,skia-text-darkening,skia-text-cg,skia-shaper,skia-shaper-darkening,skia-shaper-cg,skia-paragraph,skia-paragraph-cg --set-dims aa,positioning,scale,paper,color --title "Text sheets $(basename "$OUT") (macOS): platform CoreText vs Java configurations"
+python3 "$KIT/viewer/make-viewer.py" "$OUT" --arms "coretext,coretext-continuous,coretext-unsmoothed,chrome,$ARMS,skia-scaler-cg-classes256,skia-scaler-cg-classes1" --set-dims aa,positioning,scale,paper,color --title "Text sheets $(basename "$OUT") (macOS): platform CoreText vs Java configurations"

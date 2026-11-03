@@ -66,7 +66,7 @@ public class IdeScenes {
     static final boolean MAC = System.getProperty("os.name").toLowerCase().contains("mac");
 
     public static void main(String[] args) throws Exception {
-        List<String> scenes = List.of("workspace", "menu", "settings", "search", "markdown");
+        List<String> scenes = List.of("workspace", "settings", "markdown");
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--out" -> out = new File(args[++i]);
@@ -127,15 +127,22 @@ public class IdeScenes {
                     awaitQuiet(150, 1500);
                     expect(() -> ide("cmd=terminalExec&line=" + (MAC ? "ls" : "echo text rendering scene 0123456789 ffi fl AVfi")), 1200);
                     ide("cmd=open&file=src/Hello.java");
-                    // a four-line selection, lines 15-18, ending at the caret on Comparable (line 18), whose
-                    // documentation the quick documentation action shows; the file's first lines — the comment
-                    // with the CJK, emoji and ligature samples — stay in view above the terminal
+                    // the editor's find-and-replace panel with the selected word, Comparable (line 18), as its
+                    // search text (its occurrences highlighted); then a four-line selection, lines 15-18, ending at
+                    // the caret on Comparable, whose documentation the quick documentation action shows; the
+                    // file's first lines — the comment with the CJK, emoji and ligature samples — stay in view
+                    ide("cmd=select&from=18:%40Comparable&to=18:52&caret=to");   // the word selected: the find panel takes it as its text
+                    expect(() -> ide("cmd=action&id=Replace"), 1500);
+                    awaitQuiet(150, 1000);
+                    ide("cmd=open&file=src/Hello.java");   // the focus back from the search field to the editor
                     ide("cmd=select&from=15:-1&to=18:%40Comparable&caret=to");
                     expect(() -> ide("cmd=action&id=QuickJavaDoc"), 1500);
                     capture("workspace");
                     ide("cmd=key&code=ESCAPE");   // the popup
                     awaitQuiet(100, 400);
                     ide("cmd=select&clear=true");
+                    ide("cmd=key&code=ESCAPE");   // the find panel
+                    awaitQuiet(100, 400);
                     expect(() -> ide("cmd=toolwindow&id=Terminal&show=false&close=true"), 800);   // the shell too: the next theme opens a fresh one
                 }
                 case "menu" -> {
@@ -145,7 +152,7 @@ public class IdeScenes {
                     awaitQuiet(100, 400);
                 }
                 case "settings" -> {
-                    expect(() -> ide("cmd=settings&class=com.intellij.application.options.editor.fonts.AppEditorFontConfigurable"), 1500);   // Editor > Font (its id is not registered)
+                    expect(() -> ide("cmd=settings&class=com.intellij.ide.ui.AppearanceConfigurable"), 1500);   // Appearance & Behavior > Appearance (by class: its id is not registered)
                     awaitQuiet(150, 1000);
                     capture("settings");
                     ide("cmd=key&code=ESCAPE");   // closes the dialog

@@ -20,6 +20,10 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac
 done
+# an arm code ending in "f" is the arm with fractional glyph placement everywhere (the IDE's registry keys
+# ide.text.fractional.metrics and editor.text.fractional.metrics, which the Registry reads from system
+# properties too): the same captures, named <arm>-fractional
+PLACEMENT=""; case "$ARM" in *f) ARM="${ARM%f}"; PLACEMENT="-Dide.text.fractional.metrics=Enabled -Deditor.text.fractional.metrics=Enabled" ;; esac
 case "$ARM" in
   M0) NAME=M0-metal;        PROPS="-Dsun.java2d.metal=true" ;;
   M1) NAME=M1-default;      PROPS="" ;;   # no Java2D property at all (Metal by default)
@@ -33,6 +37,7 @@ case "$ARM" in
   M5) NAME=M5-metal-cg-plain; PROPS="-Dsun.java2d.metal=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.gray=cg -Dsun.java2d.metal.textGammaCorrection=false" ;;   # the hybrid: Metal pipe, the same glyphs, plain blend
   *) echo "unknown arm $ARM" >&2; exit 2 ;;
 esac
+if [ -n "$PLACEMENT" ]; then NAME="$NAME-fractional"; PROPS="$PROPS $PLACEMENT"; fi
 STATE="$OUT_ROOT/capture/ide/$NAME"
 mkdir -p "$STATE"/{config,system,log,plugins}
 if [ -n "$SEED" ]; then

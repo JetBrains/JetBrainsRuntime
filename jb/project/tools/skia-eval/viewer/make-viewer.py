@@ -18,6 +18,8 @@ arms are matched by label; the theme of nested sets (a 'dark-' / 'light-' path c
 'theme' dimension.
 """
 import json, os, re, shutil, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from kitpaths import arm_from_name
 
 def main():
     args = sys.argv[1:]
@@ -44,8 +46,16 @@ def main():
     if os.path.exists(opts['descriptions']):
         with open(opts['descriptions']) as fh: desc = json.load(fh)
 
-    def describe(arm, label):
-        d = desc['arms'].get(label, {})
+    def describe(arm, label, labels=()):
+        d = desc['arms'].get(label, {}) or arm_from_name(label) or {}
+        if d and label + '-fractional' in labels and 'positioning' not in d.get('dims', {}):   # the base arm beside its fractional variant
+            d = dict(d); d['dims'] = dict(d.get('dims', {}), positioning='ide-default')
+        if not d and label.endswith('-fractional'):   # an IDE arm with fractional glyph placement everywhere: its base arm's entry
+            base = desc['arms'].get(label[:-len('-fractional')], {})
+            if base:
+                d = dict(base); d['dims'] = dict(base.get('dims', {}), positioning='fractional')
+                if base.get('title'): d['title'] = base['title'] + ', fractional placement'
+                d['description'] = (base.get('description', '') + " Glyph placement fractional for every text (ide.text.fractional.metrics and editor.text.fractional.metrics enabled).").strip()
         if d.get('dims'): arm['dims'] = dict(d['dims'])
         if d.get('description'): arm['description'] = d['description']
         if d.get('title'): arm['title'] = d['title']
@@ -77,7 +87,7 @@ def main():
                 for f in sorted(files):
                     if not f.lower().endswith('.png'): continue
                     rel = os.path.relpath(os.path.join(dirpath, f), os.path.join(root, arm)).replace(os.sep, '/')
-                    a = describe({'label': arm, 'src': '../' + arm + '/' + rel}, arm)
+                    a = describe({'label': arm, 'src': '../' + arm + '/' + rel}, arm, armdirs)
                     m = re.search(r'(^|/)(dark|light)(-|/|$)', rel)
                     if m: a.setdefault('dims', {})['theme'] = m.group(2)
                     bysets.setdefault(rel, []).append(a)

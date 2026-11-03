@@ -34,13 +34,13 @@ for cp in $COLOURS; do colour=${cp%%:*}; ink=${cp##*:}
     echo "== $colour on $paper $(date +%H:%M:%S)"
     export TEXTREF_INK=$ink TEXTREF_PAPER=$bg
     "$WORK/ctref" "$TMP/coretext" "$TMP/rows-ct.txt" "$FONTS" >/dev/null 2>&1; file coretext $colour $paper
-    arm_java metal-platform; file metal-platform $colour $paper
-    arm_java metal-skia-scaler-cg-plain -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.metal.textGammaCorrection=false; file metal-skia-scaler-cg-plain $colour $paper
-    arm_java skia-scaler-cg -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system; file skia-scaler-cg $colour $paper
+    # the matrix arms whose blend is the system's masks (the colour question) with the system's darkening and
+    # decorations; the platform scaler on Metal with its gamma as the IDE's reference; the class variants of the cg route
+    python3 "$HERE/arms.py" macOS | grep -E "blend-system\+decorations-system|pipe-metal\+scaler-platform.*blend-corrected\+decorations-system" | grep -v "darkening-none" | while IFS=$'\t' read -r name how props; do
+      arm_java "$name" $props; file "$name" $colour $paper
+    done
     arm_java skia-scaler-cg-classes256 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=256; file skia-scaler-cg-classes256 $colour $paper
     arm_java skia-scaler-cg-classes1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system -Dsun.java2d.skia.text.luminanceClasses=1; file skia-scaler-cg-classes1 $colour $paper
-    arm_java skia-scaler-coverage -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=corrected -Dsun.java2d.skia.text.darkening=none; file skia-scaler-coverage $colour $paper
-    arm_java skia-text-cg -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blend=system; file skia-text-cg $colour $paper
     rm -rf "${TMP:?}"/*
   done
 done

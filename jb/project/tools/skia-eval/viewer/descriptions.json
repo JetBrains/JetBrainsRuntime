@@ -60,7 +60,8 @@
         "skia shaper": "Skia's shaper for drawString and drawChars: the characters go to HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs) and the platform font manager's fallback, and are drawn as one text blob (`-Dsun.java2d.skia.text=shaper`). Kerning and ligatures are off, as in Java's drawString. Attributed strings still take Java's TextLayout.",
         "skia paragraph": "Skia's paragraph engine in addition to its shaper: attributed strings (fonts, colors, underline, strikethrough) are laid out and decorated by SkParagraph instead of Java's TextLayout (`-Dsun.java2d.skia.text=paragraph`). Attributes the route does not model fall back to Java's layout. Measured: the glyphs land where the shaper's do; only the underline differs (see the note).",
         "native": "CoreText lays out the line itself.",
-        "chrome": "Blink's text layout with HarfBuzz, kerning off for these samples."
+        "chrome": "Blink's text layout with HarfBuzz, kerning off for these samples.",
+        "skia paragraph only": "SkParagraph for attributed strings only (sun.java2d.skia.text.paragraphs=skia with Java's shaping for plain strings)."
       },
       "description": "Which code turns the characters into glyphs and positions, and lays out decorated text.",
       "labels": {
@@ -99,7 +100,9 @@
         "plain": "Coverage × color, alpha-blended in the sRGB color space: the software loops, the Skia backend, and Metal with its gamma correction switched off.",
         "gamma": "Metal's default: the JetBrains Runtime raises the coverage to an exponent that depends on the text brightness (1.4 for dark text, 0.45 for light), an imitation of macOS's luminance-dependent font smoothing done in the shader. With the same glyph bitmaps this draws about 12 % less ink than the plain blend on light backgrounds and 18 % more on dark ones.",
         "native": "CoreGraphics' own compositing, linear in the destination.",
-        "skia text path": "Skia's own text path: Skia's strike cache, glyph atlas and blending, with Skia's gamma model (sRGB device gamma, contrast 0.5, and on the CoreText host a halved luminance). Java only supplies the glyph codes and positions."
+        "skia text path": "Skia's own text path: Skia's strike cache, glyph atlas and blending, with Skia's gamma model (sRGB device gamma, contrast 0.5, and on the CoreText host a halved luminance). Java only supplies the glyph codes and positions.",
+        "system": "The platform's own masks for the text colour: CoreGraphics' per-luminance masks on macOS, DirectWrite's per-colour on Windows (the cg / platform route).",
+        "corrected": "Coverage through the pipe's correction curve — Java2D's LCD contrast and the pipes' text gamma (Metal's text gamma correction on macOS)."
       },
       "description": "How the pipeline blends a glyph's coverage with the text color into the background.",
       "labels": {
@@ -127,6 +130,42 @@
         "Windows": {
           "native": "the OS composites its own masks: Direct2D with per-channel ClearType correction, GDI its own."
         }
+      }
+    },
+    {
+      "key": "darkening",
+      "name": "Darkening",
+      "description": "Whether stems are thickened beyond the outline's coverage — AppleFontSmoothing on macOS, ClearType's enhanced contrast on Windows, FreeType's stem darkening on Linux. sun.java2d.skia.text.darkening (Skia scaler).",
+      "values": {
+        "system": "The platform's own darkening, as the user's settings have it (AppleFontSmoothing honoured on macOS).",
+        "none": "No darkening: the outline's plain coverage."
+      },
+      "column": true,
+      "labels": {
+        "system": "system",
+        "none": "none"
+      },
+      "effects": {
+        "system": "stems thickened as the OS does for this user.",
+        "none": "plain outline coverage."
+      }
+    },
+    {
+      "key": "decorations",
+      "name": "Decorations",
+      "description": "Underlines and strikethroughs: the system convention (the font's own metrics on whole device rows where CoreText puts them, gaps around the ink on macOS; the same rule on TextLayout and SkParagraph) or Java's stroked lines at its nominal offsets. sun.java2d.skia.text.decorations.",
+      "values": {
+        "system": "The system convention: whole device rows from the font's own metrics, placed as CoreText places them, one user pixel of clearance around descenders on macOS.",
+        "java2d": "Java's lines: a stroke of size / 12 centred size / 18 below the baseline, through the descenders."
+      },
+      "column": true,
+      "labels": {
+        "system": "system",
+        "java2d": "Java2D"
+      },
+      "effects": {
+        "system": "whole rows, the OS's placement, ink gaps on macOS.",
+        "java2d": "Java's stroked line through the descenders."
       }
     },
     {
@@ -166,6 +205,24 @@
           "platform": "FreeType bitmaps for every font (light autohint, linear coverage); GDI or DirectWrite only where the JDK's opt-in LCD path applies.",
           "skia": "Skia's font host over DirectWrite: no hinting, linear metrics, sub-pixel variants; the gray option decides the bitmap."
         }
+      }
+    },
+    {
+      "key": "strike",
+      "name": "Glyphs",
+      "description": "Who renders and places the glyph images: Java's glyph cache (the strike's masks drawn by the pipe at Java's positions) or Skia's own text path (Skia's strike, atlas and blend). sun.java2d.skia.text.strike.",
+      "values": {
+        "java2d": "Java's glyph cache: the scaler's masks, cached and drawn by the pipeline at Java's positions.",
+        "skia": "Skia's text path: Skia's strike cache and glyph atlas, its sub-pixel grid (quarters) and its blend; the platform's masks where the blend is system."
+      },
+      "column": true,
+      "labels": {
+        "java2d": "Java glyph cache",
+        "skia": "Skia text path"
+      },
+      "effects": {
+        "java2d": "the pipeline draws cached masks at Java's positions.",
+        "skia": "Skia draws from its atlas on its own grid."
       }
     },
     {
@@ -290,12 +347,17 @@
       "name": "Glyph positioning",
       "values": {
         "whole-pixel": "FRACTIONALMETRICS_OFF: every advance rounded to a whole pixel (file fonts in device pixels, system fonts in points — the two rules in today's runtime), one bitmap per glyph. The native reference places glyphs at the same rounded positions so the samples stay comparable; macOS itself has no integer-advance mode.",
-        "fractional": "FRACTIONALMETRICS_ON: fractional advances and sub-pixel glyph positions. IntelliJ on macOS runs with this for UI and editor text; the native reference is CoreText's own layout."
+        "fractional": "FRACTIONALMETRICS_ON: fractional advances and sub-pixel glyph positions. IntelliJ on macOS runs with this for UI and editor text; the native reference is CoreText's own layout.",
+        "ide-default": "The IDE's own choice: on macOS, interface text with fractional advances and the editor's text fractional where the runtime offers sub-pixel glyph resolution (the registry keys ide.text.fractional.metrics and editor.text.fractional.metrics on Auto)."
       },
       "description": "Whether advances are rounded to whole pixels or kept fractional.",
       "effects": {
         "whole-pixel": "advances rounded to whole pixels (file fonts in device pixels, system fonts in points).",
-        "fractional": "fractional advances and sub-pixel glyph positions (variants per pipe)."
+        "fractional": "fractional advances and sub-pixel glyph positions (variants per pipe).",
+        "ide-default": "the IDE's own placement choice per text kind."
+      },
+      "labels": {
+        "ide-default": "IDE default"
       }
     },
     {
@@ -1518,7 +1580,7 @@
         "mode": "flicker",
         "arms": {
           "macOS": [
-            "metal-platform",
+            "pipe-metal+scaler-platform+strike-java2d+shaping-java2d+paragraphs-java2d+blend-corrected+decorations-system",
             "coretext"
           ],
           "Windows": [
@@ -1534,7 +1596,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "skia-scaler-cg"
+            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1549,7 +1611,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "skia-paragraph-cg"
+            "pipe-skia+scaler-skia+strike-skia+shaping-skia+paragraphs-skia+darkening-system+blend-system+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1567,8 +1629,8 @@
         "id": "coregraphics-masks:-javas-glyph-images-vs-skias-",
         "arms": {
           "macOS": [
-            "skia-scaler-cg",
-            "skia-text-cg"
+            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system",
+            "pipe-skia+scaler-skia+strike-skia+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system"
           ],
           "Windows": [
             "skia-scaler-platform",
@@ -1587,7 +1649,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "skia-text"
+            "pipe-skia+scaler-skia+strike-skia+shaping-java2d+paragraphs-java2d+darkening-none+blend-corrected+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1640,7 +1702,7 @@
         "arms": {
           "macOS": [
             "skia-text-smoothed",
-            "skia-paragraph"
+            "pipe-skia+scaler-skia+strike-skia+shaping-skia+paragraphs-skia+darkening-system+blend-corrected+decorations-system"
           ],
           "Windows": [
             "skia-text-smoothed",
@@ -1655,7 +1717,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "skia-paragraph"
+            "pipe-skia+scaler-skia+strike-skia+shaping-skia+paragraphs-skia+darkening-system+blend-corrected+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1670,7 +1732,7 @@
         "arms": {
           "macOS": [
             "coretext",
-            "skia-scaler-coverage"
+            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-none+blend-corrected+decorations-system"
           ],
           "Windows": [
             "directwrite",
@@ -1684,7 +1746,7 @@
         "id": "metal-hybrid-(plain-blend,-coregraphics-glyphs)-",
         "arms": {
           "macOS": [
-            "metal-skia-scaler-cg-plain",
+            "pipe-metal+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-system+blend-system+decorations-system",
             "coretext"
           ],
           "Windows": [
@@ -1717,7 +1779,7 @@
         "id": "plain-coverage-vs-native-with-smoothing-off",
         "arms": {
           "macOS": [
-            "skia-scaler-coverage",
+            "pipe-skia+scaler-skia+strike-java2d+shaping-java2d+paragraphs-java2d+darkening-none+blend-corrected+decorations-system",
             "coretext-unsmoothed"
           ],
           "Windows": [
@@ -1779,6 +1841,21 @@
       }
     ],
     "scenes": [
+      {
+        "id": "today-vs-full-skia",
+        "name": "Today's IDE vs the full Skia text route",
+        "mode": "flicker",
+        "arms": {
+          "macOS": [
+            "M0-metal",
+            "F5-skia-full-cg"
+          ],
+          "Windows": [
+            "A0-software",
+            "F5-skia-full-platform"
+          ]
+        }
+      },
       {
         "id": "ide-vs-platform-route",
         "name": "Today's IDE vs the Skia backend with the platform's glyphs",
@@ -1963,7 +2040,7 @@
     "macOS": {
       "text": {
         "title": "Text samples on macOS: AppKit's text stack vs Java2D configurations",
-        "description": "Captured 2026-10-26 on an Apple-silicon Mac. Each row is one font and style — regular, italic, bold, bold italic, regular underlined — for Inter 13 and JetBrains Mono 13 (IntelliJ's bundled fonts, loaded from files; Inter's bold is the bundled SemiBold) and the system fonts Helvetica Neue 13 and Menlo 12. Rows are 28 px tall at 1× and 56 px at 2×, the text starts at (4, 19) points. Move the mouse over a row to see its name in the status bar. The AppKit reference is CoreText and CoreGraphics drawing the same rows with font smoothing on, as macOS applications do by default; Chrome's canvas is a second reference."
+        "description": "Captured 2026-11-03 on an Apple-silicon Mac. Each row is one font and style — regular, italic, bold, bold italic, regular underlined — for Inter 13 and JetBrains Mono 13 (IntelliJ's bundled fonts, loaded from files; Inter's bold is the bundled SemiBold) and the system fonts Helvetica Neue 13 and Menlo 12. Rows are 28 px tall at 1× and 56 px at 2×, the text starts at (4, 19) points. Move the mouse over a row to see its name in the status bar. The AppKit reference is CoreText and CoreGraphics drawing the same rows. The Java renderings are every combination of the text settings the Skia backend offers on macOS (pipeline, scaler, glyphs, layout, darkening, blend, decorations): pick a value per dimension and the matching rendering is shown; a combination that does not exist is marked."
       },
       "scenes": {
         "title": "IntelliJ screenshots on macOS: the Metal pipeline today vs the Skia backend with different text rasterizers",
@@ -1979,6 +2056,16 @@
         "title": "IntelliJ screenshots on Windows: the software pipeline today vs OpenGL, the Skia backend with different text rasterizers, and Skia's CPU rasterizer",
         "description": "Ten IntelliJ scenes (editor, project tree, menus, search, settings, terminal, tooltip, Markdown, presentation mode) captured by a Robot driver on a Windows 11 virtual machine at 100, 125, 150 and 200 % display scale in the light and dark themes. The IDE build and the project are the same for every rendering; only the Java2D properties differ. IntelliJ draws its text with sub-pixel (LCD) antialiasing on Windows, so these screenshots are LCD-rendered. The GPU and software arms were captured 2026-10-27; the full Skia text route (F5) was re-captured 2026-11-02 after its LCD rendering was fixed (its surface had declared no pixel geometry, so Skia had drawn its text grayscale); the two Skia-raster-surface arms (R0, R5) were captured 2026-10-28 at 100 and 200 % and are compared against the 2026-10-27 software baseline."
       }
+    }
+  },
+  "start": {
+    "platform": "macOS",
+    "kind": "scenes",
+    "preset": "today-vs-full-skia",
+    "set": {
+      "scene": "workspace",
+      "theme": "dark",
+      "scale": "2x"
     }
   }
 }

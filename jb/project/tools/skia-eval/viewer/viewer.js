@@ -849,6 +849,16 @@
   window.addEventListener('hashchange', () => { readHash(); syncControls(); render(); });
 
   // ---- start -------------------------------------------------------------------------------
+  // the catalog's start (descriptions.json "start", written as window.COMPARE_START): the page, the set
+  // whose dimension values match, and a preset — the first thing a visitor sees; a hash overrides it
+  function applyStart() {
+    const st = window.COMPARE_START; if (!st || location.hash) return;
+    const e = CATALOG.find(c => c.platform === st.platform && c.kind === st.kind); if (!e) return;
+    entry = e; M = e.manifest;
+    if (st.set) { const si = sets().findIndex(x => Object.entries(st.set).every(([k, v]) => (x.dims || {})[k] === v)); if (si >= 0) state.set = si; }
+    if (st.preset) { const pi = presetsFor().findIndex(p => (p.id || p.name) === st.preset); if (pi >= 0) applyPreset(pi); }
+  }
+  applyStart();
   readHash();
   document.title = (M.pageTitle || M.title || 'Text rendering comparison');   // after the hash picked the page
   if (state.b === state.a && current().arms.length > 1) state.b = (state.a + 1) % current().arms.length;

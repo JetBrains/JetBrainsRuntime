@@ -13,7 +13,9 @@ source "$HERE/../env.sh"
 WORK="$OUT_ROOT/capture"   # everything this routine generates: IDE state, classes, the helper, the plugin, snapshots, captures
 ARM=$1; THEME=$2; SCALE=$3; OUT="${4:-$WORK/out/$(date +%F)/scenes}"; SCENES="${5:-}"
 if [ "$THEME" = both ]; then SEED_THEME=light; THEMES="light,dark"; else SEED_THEME=$THEME; THEMES=$THEME; fi
-case "$ARM" in M0) NAME=M0-metal;; M1) NAME=M1-default;; T0m) NAME=T0m-skia-metalprop;; T0) NAME=T0-skia-platform;; T1) NAME=T1-skia-scaler;; T2) NAME=T2-skia-darkened;; T3) NAME=T3-skia-smoothed;; T5) NAME=T5-skia-cg;; M5) NAME=M5-metal-cg-plain;; F5) NAME=F5-skia-full-cg;; *) echo "unknown arm" >&2; exit 2;; esac
+PLACEMENT=""; case "$ARM" in *f) PLACEMENT=fractional ;; esac; ARMCODE="${ARM%f}"   # <arm>f: the arm with fractional glyph placement (run-ide-mac.sh)
+case "$ARMCODE" in M0) NAME=M0-metal;; M1) NAME=M1-default;; T0m) NAME=T0m-skia-metalprop;; T0) NAME=T0-skia-platform;; T1) NAME=T1-skia-scaler;; T2) NAME=T2-skia-darkened;; T3) NAME=T3-skia-smoothed;; T5) NAME=T5-skia-cg;; M5) NAME=M5-metal-cg-plain;; F5) NAME=F5-skia-full-cg;; *) echo "unknown arm" >&2; exit 2;; esac
+[ -n "$PLACEMENT" ] && NAME="$NAME-fractional"
 SEED="$WORK/ide/seed-$SEED_THEME"
 rm -rf "$SEED"; mkdir -p "$SEED"
 cp -R "$HERE/seed/common/." "$SEED/"; cp -R "$HERE/seed/mac/." "$SEED/"; cp -R "$HERE/seed/$SEED_THEME/." "$SEED/"
