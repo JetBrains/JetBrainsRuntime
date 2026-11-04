@@ -90,6 +90,11 @@ struct SKSurfaceState {
     // (SK_COUNT_BLITS_OF_PENDING_SOURCES)
     bool drawnSinceBlit = false;
     uint32_t drawnGeneration = 0;
+    // EXPERIMENT (x64hw, 2026-11-04, J2D_SKIA_EXP_UNLINKED_BLITS): the last recording in which a view of
+    // the surface's texture not linked to its device was drawn (blitSourceImage), and that view
+    uint32_t unlinkedReadGeneration = 0;
+    sk_sp<SkImage> unlinkedImage;
+    void *unlinkedTexture = nullptr;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C

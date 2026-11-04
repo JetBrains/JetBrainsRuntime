@@ -376,6 +376,7 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     // has drawn every pending batch.
     for (SKSurfaceState *st : cc->surfaces) {
         st->surface.reset();
+        st->unlinkedImage.reset();
         st->wrappedTexture = nullptr;
         st->cc = nullptr;
     }
@@ -434,6 +435,7 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
         flushAllBatches();
         forgetSurface(ops);
         st->surface.reset();
+        st->unlinkedImage.reset();
     }
     BackendTexture bt;
     SkColorType colorType;
@@ -500,6 +502,7 @@ void SKBackend_ReleaseSurface(SKSDOps *ops, bool dispose) {
         ops->state->cc->surfaces.erase(ops->state);
     }
     ops->state->surface.reset();
+    ops->state->unlinkedImage.reset();
     ops->state->presentTargets.clear();
     ops->state->wrappedTexture = nullptr;
     ops->state->cc = nullptr;
@@ -679,7 +682,12 @@ static void markTouched() {
     if (g.cc != nullptr) {
         g.touchedContexts.insert(g.cc);
     }
-    if (SKStats_IsEnabled() && g.dst != nullptr && g.dst->state != nullptr && g.cc != nullptr) {
+    if (g.dst != nullptr && g.dst->state != nullptr && g.cc != nullptr) {
+        if (g.dst->state->unlinkedReadGeneration == g.cc->recordingGeneration) {
+            // EXPERIMENT (J2D_SKIA_EXP_UNLINKED_BLITS): read through an unlinked view in this
+            // recording (blitSourceImage): the reads are recorded before this write
+            SKBackend_FlushRecording(g.cc);
+        }
         g.dst->state->drawnSinceBlit = true;
         g.dst->state->drawnGeneration = g.cc->recordingGeneration;
     }
@@ -3027,6 +3035,37 @@ static void blitSoftwareSource(JNIEnv *env, SurfaceDataOps *src, jint srctype, j
     }
 }
 
+// EXPERIMENT (x64hw, 2026-11-04): J2D_SKIA_EXP_UNLINKED_BLITS. A source not drawn into in the current
+// recording is sampled through a view of its texture not linked to its device (Graphite flushes a
+// linked view's device at every draw of it and makes its next modification flush every reader); a
+// draw into such a source later in the same recording ends the recording first (markTouched).
+// Tried 2026-11-03 without a difference, when Swing's back buffer copies (which need the link)
+// dominated the blits; again now that they are gone.
+static const bool gExpUnlinkedBlits = getenv("J2D_SKIA_EXP_UNLINKED_BLITS") != nullptr;
+
+static sk_sp<SkImage> blitSourceImage(SKSDOps *src) {
+    SKSurfaceState *st = src->state;
+    if (!gExpUnlinkedBlits || st->drawnGeneration == g.cc->recordingGeneration) {
+        return SkSurfaces::AsImage(st->surface);
+    }
+    if (!st->unlinkedImage || st->unlinkedTexture != st->wrappedTexture) {
+        BackendTexture bt;
+        SkColorType colorType;
+        if (!SKPlatform_BackendTexture(src->platform, &bt, &colorType)) {
+            return SkSurfaces::AsImage(st->surface);
+        }
+        st->unlinkedImage = SkImages::WrapTexture(g.cc->recorder.get(), bt,
+                                                  src->isOpaque ? kOpaque_SkAlphaType : kPremul_SkAlphaType,
+                                                  nullptr, skgpu::Origin::kTopLeft);
+        st->unlinkedTexture = st->wrappedTexture;
+        if (!st->unlinkedImage) {
+            return SkSurfaces::AsImage(st->surface);
+        }
+    }
+    st->unlinkedReadGeneration = g.cc->recordingGeneration;
+    return st->unlinkedImage;
+}
+
 void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2, jlong pSrc, jlong pDst) {
     if (g.canvas == nullptr) {
@@ -3074,7 +3113,7 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
             // source's pending draws before this recording samples it. A bare
             // WrapTexture of the same texture would not carry that dependency.
             switchDrawsResolved(src, SK_COUNT_SWITCH_DRAWS_READ);
-            image = SkSurfaces::AsImage(src->state->surface);
+            image = blitSourceImage(src);
         } else {
             image = SKBackend_GetImage(src);
         }
