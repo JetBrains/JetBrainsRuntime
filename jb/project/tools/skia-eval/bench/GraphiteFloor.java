@@ -30,7 +30,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 /**
- * Where a draw's time goes, layer by layer (x64hw 2026-11-03): GraphiteFloor graphite|java2d|compare [draws] [frames] [runs]
+ * Where a draw's time goes, layer by layer (x64hw 2026-11-03): GraphiteFloor graphite|java2d|compare [draws] [frames] [runs], or GraphiteFloor profile <backend> <kind> [draws] [frames]
  * <ul>
  * <li>graphite: SKEnvironment.benchGraphite — Graphite alone on the backend's context, no Java2D and no
  *     backend in front: ns per draw for record, snap, insert and submit, per kind (rect, rects alternating
@@ -47,8 +47,9 @@ public class GraphiteFloor {
 
     public static void main(String[] args) throws Exception {
         String mode = args[0];
-        int draws = args.length > 1 ? Integer.parseInt(args[1]) : 2000;
-        int frames = args.length > 2 ? Integer.parseInt(args[2]) : 40;
+        boolean profile = mode.equals("profile");
+        int draws = !profile && args.length > 1 ? Integer.parseInt(args[1]) : 2000;
+        int frames = !profile && args.length > 2 ? Integer.parseInt(args[2]) : 40;
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
         VolatileImage vi = gc.createCompatibleVolatileImage(1024, 1024, Transparency.OPAQUE);
         vi.validate(gc);
@@ -57,6 +58,12 @@ public class GraphiteFloor {
         g0.dispose();
         vi.getSnapshot();
         System.out.println("#config " + gc.getClass().getSimpleName());
+        if (mode.equals("profile")) {   // profile <backend> <kind> [draws] [frames]: SKEnvironment.profileBench
+            String text = (String) Class.forName("sun.java2d.skia.SKEnvironment").getMethod("profileBench", String.class, int.class, int.class, int.class, String.class)
+                    .invoke(null, args[1], Integer.parseInt(args[2]), args.length > 3 ? Integer.parseInt(args[3]) : 2000, args.length > 4 ? Integer.parseInt(args[4]) : 1000, null);
+            System.out.print(text == null ? "no profile" + System.lineSeparator() : text);
+            return;
+        }
         if (mode.equals("compare")) {
             compare(draws, frames, args.length > 3 ? Integer.parseInt(args[3]) : 5);
             return;
@@ -84,7 +91,8 @@ public class GraphiteFloor {
         Class<?> env = Class.forName("sun.java2d.skia.SKEnvironment");
         Method graphite = env.getMethod("benchGraphite", int.class, int.class, int.class);
         Method ganesh = env.getMethod("benchGanesh", int.class, int.class, int.class, boolean.class);
-        String[] backends = {"graphite", "ganesh", "ganesh-reduce"};
+        Method canvas = env.getMethod("benchCanvas", int.class, int.class, int.class, boolean.class);
+        String[] backends = {"graphite", "ganesh", "ganesh-reduce", "canvas", "raster"};
         java.util.Map<String, java.util.List<double[]>> results = new java.util.TreeMap<>();
         java.util.Random random = new java.util.Random(4711);
         for (int run = 0; run < runs; run++) {
@@ -98,8 +106,11 @@ public class GraphiteFloor {
             for (String job : jobs) {
                 int k = Integer.parseInt(job.substring(0, job.indexOf(':')));
                 String b = job.substring(job.indexOf(':') + 1);
-                double[] r = b.equals("graphite") ? (double[]) graphite.invoke(null, k, draws, frames)
-                        : (double[]) ganesh.invoke(null, k, draws, frames, b.equals("ganesh-reduce"));
+                double[] r = switch (b) {
+                    case "graphite" -> (double[]) graphite.invoke(null, k, draws, frames);
+                    case "canvas", "raster" -> (double[]) canvas.invoke(null, k, draws, frames, b.equals("raster"));
+                    default -> (double[]) ganesh.invoke(null, k, draws, frames, b.equals("ganesh-reduce"));
+                };
                 if (r == null) {
                     throw new RuntimeException("no " + b + " context (Ganesh needs sun.java2d.skia.graphiteApi=vulkan)");
                 }
