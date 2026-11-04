@@ -178,26 +178,26 @@ enum SSLTrafficKeyDerivation implements SSLKeyDerivationGenerator {
 
     private enum KeySchedule {
         // Note that we use enum name as the key/ name.
-        TlsKey              ("key", false),
-        TlsIv               ("iv",  true),
-        TlsUpdateNplus1     ("traffic upd", false);
+        TlsKey              ("key"),
+        TlsIv               ("iv"),
+        TlsUpdateNplus1     ("traffic upd");
 
         private final byte[] label;
-        private final boolean isIv;
 
-        private KeySchedule(String label, boolean isIv) {
+        private KeySchedule(String label) {
             this.label = ("tls13 " + label).getBytes();
-            this.isIv = isIv;
         }
 
         int getKeyLength(CipherSuite cs) {
-            if (this == KeySchedule.TlsUpdateNplus1)
-                return cs.hashAlg.hashLength;
-            return isIv ? cs.bulkCipher.ivSize : cs.bulkCipher.keySize;
+            return switch (this) {
+                case TlsUpdateNplus1 -> cs.hashAlg.hashLength;
+                case TlsIv -> cs.bulkCipher.ivSize;
+                case TlsKey -> cs.bulkCipher.keySize;
+            };
         }
 
         String getAlgorithm(CipherSuite cs, String algorithm) {
-            return isIv ? algorithm : cs.bulkCipher.algorithm;
+            return this == TlsKey ? cs.bulkCipher.algorithm : algorithm;
         }
     }
 
