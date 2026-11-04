@@ -93,6 +93,9 @@ VKSKConfigInfo *VKSK_CreateConfig();
 void VKSK_DisposeConfig(VKSKConfigInfo *config);
 bool VKSK_IsLost(const VKSKConfigInfo *config);
 void VKSK_SimulateDeviceLoss(bool persistent);
+// The current device's Vulkan context, for a second Skia context on the same device (diagnostics:
+// SKEnvironment.benchGanesh); keeps the device alive while held; null without a device or once lost.
+std::shared_ptr<const skgpu::VulkanBackendContext> VKSK_SharedBackend();
 
 // The image (and, for a window, its surface; the swap chain follows at the first present)
 // on the configuration's device; null on failure. A window surface takes the swap chain

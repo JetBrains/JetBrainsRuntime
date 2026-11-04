@@ -359,6 +359,14 @@ void VKSK_DisposeConfig(VKSKConfigInfo *config) {
     delete config;
 }
 
+std::shared_ptr<const skgpu::VulkanBackendContext> VKSK_SharedBackend() {
+    std::lock_guard<std::mutex> lock(gLock);
+    if (gDevice == nullptr || gDevice->lost->load()) {
+        return nullptr;
+    }
+    return std::shared_ptr<const skgpu::VulkanBackendContext>(gDevice, &gDevice->backend);
+}
+
 bool VKSK_IsLost(const VKSKConfigInfo *config) {
     return config == nullptr || config->gpu == nullptr || config->gpu->lost->load();
 }

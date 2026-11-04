@@ -742,6 +742,32 @@ public final class SKEnvironment {
     private static native double[] benchGraphiteNative(int kind, int draws, int frames);
 
     /**
+     * EXPERIMENT (x64hw, 2026-11-04), diagnostics: the same floor for Ganesh, Skia's older GPU backend, on
+     * the Vulkan device of the backend's Graphite context (Windows, {@code sun.java2d.skia.graphiteApi=vulkan}):
+     * the kinds of {@link #benchGraphite}, recorded into a Ganesh surface, then flushed (ops prepared and
+     * executed into the command buffer) and submitted; the median over {@code frames} frames in nanoseconds
+     * per draw: record, flush, submit. {@code reduceOpsTaskSplitting}: Ganesh's option to keep one ops task
+     * per surface across surface switches. {@code null} without that device (or on other platforms).
+     */
+    public static double[] benchGanesh(int kind, int draws, int frames, boolean reduceOpsTaskSplitting) {
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();   // Graphite's work on the shared queue finished first
+            return benchGaneshNative(kind, draws, frames, reduceOpsTaskSplitting);
+        } catch (UnsatisfiedLinkError e) {
+            return null;   // only the Windows library has it
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native double[] benchGaneshNative(int kind, int draws, int frames, boolean reduceOpsTaskSplitting);
+
+    /**
      * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a
      * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached, batch draws
      * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
