@@ -182,8 +182,21 @@ public final class SKRenderQueue extends RenderQueue {
                     logger.fine("QueueFlusher.flushNow: interrupted");
                 }
             }
+            throwHandOffError();
             if (error != null) {
                 throw error;
+            }
+        }
+
+        // A failed hand-off's error: thrown where a synchronous flush would have thrown it, at the next
+        // flush that waits or the next hand-off (ASYNC_PRESENT).
+        private Error handOffError;
+
+        private void throwHandOffError() {
+            Error e = handOffError;
+            if (e != null) {
+                handOffError = null;
+                throw e;
             }
         }
 
@@ -208,6 +221,7 @@ public final class SKRenderQueue extends RenderQueue {
                     logger.fine("QueueFlusher.handOff: interrupted");
                 }
             }
+            throwHandOffError();
             if (buf.position() == 0 && !pendingPresent) {
                 return;
             }
@@ -223,15 +237,33 @@ public final class SKRenderQueue extends RenderQueue {
             notifyAll();
         }
 
+        // Tests only: sun.java2d.skia.test.handOffDelay holds every hand-off that many milliseconds
+        // before it runs (in flight: the monitor stays held, so whatever waits for it waits), turning
+        // the races a hand-off allows into deterministic cases; sun.java2d.skia.test.handOffError=N
+        // makes the N-th hand-off fail with an injected error instead of running.
+        private static final int TEST_HANDOFF_DELAY = Integer.getInteger("sun.java2d.skia.test.handOffDelay", 0);
+        private static final int TEST_HANDOFF_ERROR = Integer.getInteger("sun.java2d.skia.test.handOffError", 0);
+        private int handOffs;
+
         // Runs the handed-off content: in the order given, before any flush asked for later.
         private void runHandOff() {
             try {
+                if (TEST_HANDOFF_DELAY > 0) {
+                    try {
+                        Thread.sleep(TEST_HANDOFF_DELAY);
+                    } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.runHandOff: interrupted");
+                    }
+                }
+                if (++handOffs == TEST_HANDOFF_ERROR) {
+                    throw new InternalError("injected failure of hand-off " + handOffs + " (sun.java2d.skia.test.handOffError)");
+                }
                 if (handed.position() > 0 || pendingPresent) {
                     pendingPresent = flushBuffer(handed.getAddress(), handed.position(), false);
                 }
             } catch (Error e) {
                 logger.severe("QueueFlusher.runHandOff: error occurred", e);
-                error = e;   // thrown by the next flushNow
+                handOffError = e;   // thrown by the next flushNow or hand-off (a synchronous flush resets `error`)
             } catch (Exception x) {
                 logger.severe("QueueFlusher.runHandOff: exception occurred", x);
             } finally {
