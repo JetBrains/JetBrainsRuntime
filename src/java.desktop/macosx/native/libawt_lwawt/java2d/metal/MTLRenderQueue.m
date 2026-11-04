@@ -659,7 +659,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     if (mtlc != NULL) {
                         [mtlc.glyphCacheAA free];
                         [mtlc.glyphCacheLCD free];
-                        [mtlc commitCommandBuffer:NO display:NO];
+                        if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
+                            [mtlc commitCommandBuffer:YES display:YES];
+                        } else {
+                            [mtlc commitCommandBuffer:NO display:NO];
+                        }
                     }
 
                     if (mtlInfo != NULL) {
