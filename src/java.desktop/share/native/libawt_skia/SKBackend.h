@@ -68,6 +68,8 @@ struct SKConfigContext {
     bool glyphCachesAAFailed[SK_GLYPH_BUCKETS] = {}, glyphCachesLCDFailed[SK_GLYPH_BUCKETS] = {};
     SKMaskCache *maskCache = nullptr;
     bool maskCacheFailed = false;
+    struct SKIconAtlas *iconAtlas = nullptr;   // EXPERIMENT sun.java2d.skia.iconAtlas: small image sources as atlas sprites (SKIconAtlas.h)
+    bool iconAtlasFailed = false;
     std::unordered_set<struct SKSurfaceState *> surfaces;   // wrapped with this recorder
     std::unordered_map<uint64_t, sk_sp<SkImage>> lcdTables;   // coverage correction per text colour and contrast
     sk_sp<SkSurface> lcdCoverage;            // scratch for sun.java2d.skia.lcd=accumulate, destination-sized
@@ -82,6 +84,8 @@ struct SKConfigContext {
 struct SKSurfaceState {
     sk_sp<SkSurface> surface;
     void *wrappedTexture = nullptr;   // identity of the platform texture `surface` wraps (SKPlatform_TextureHandle)
+    uint64_t uid = 0;              // unique for the life of the process (SKIconAtlas keys copies by it)
+    uint64_t contentVersion = 0;   // advanced by every op drawing into the surface (markTouched)
     SKConfigContext *cc = nullptr;
     // window surfaces Graphite presents (SKPlatform_AcquirePresentTarget): the wrappers of
     // the swap chain images, by imageKey, of the swap chain generation presentGeneration
@@ -131,7 +135,7 @@ SkPixelGeometry SKBackend_LcdPixelGeometry();
 // luminanceClasses: FontUtilities.textLuminanceClasses (1, 2, 4, ... 256), the classes the cg route's masks are rasterized for
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent, SKLcdOrder lcdOrder);
+                         bool submitPerPresent, SKLcdOrder lcdOrder, bool orderedRecordings, bool iconAtlas);
 jint SKBackend_LuminanceClasses();     // the count the text path quantizes with
 size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
 jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with

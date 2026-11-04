@@ -97,6 +97,8 @@ enum SKStatsCounter {
     SK_COUNT_SURFACE_BLITS,           // blits from a Skia surface
     SK_COUNT_BLITS_OF_PENDING_SOURCES,   // of those, from a surface drawn into in the same recording since its last blit
     SK_COUNT_PENDING_SOURCES_VOLATILE,   // of those, from a render target (a VolatileImage, a back buffer)
+    SK_COUNT_ICON_BLITS,              // EXPERIMENT sun.java2d.skia.iconAtlas: blits drawn as atlas sprites (SKIconAtlas)
+    SK_COUNT_ICON_COPIES,             // ... copies into the atlas
     SK_COUNT_COUNT
 };
 

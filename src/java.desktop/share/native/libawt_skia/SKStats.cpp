@@ -58,6 +58,118 @@ const char *const SPAN_NAMES[SK_SPAN_COUNT] = {
     "queue", "batches", "snap", "insert", "insert:compiling", "submit", "submit+wait", "readback", "image upload", "present",
     "present:acquire", "present:copy", "present:call", "blit:source", "blit:software", "blit:draw"
 };
+double millis(uint64_t nanos);
+
+// The queue entries by duration since the start (not reset per interval): a histogram of counts and time
+// (bucket upper edges 0.125 ms * 2^b, the last open), and the longest entries with their phases, from the
+// differences of the accumulators across the entry (SKStats_EndOfEntry takes the base after each entry).
+constexpr int BUCKETS = 11;
+constexpr int LONGEST = 6;
+const SKStatsSpan ENTRY_SPANS[] = {SK_SPAN_BATCHES, SK_SPAN_BLIT_DRAW, SK_SPAN_IMAGE_UPLOAD, SK_SPAN_READBACK, SK_SPAN_SNAP,
+                                   SK_SPAN_INSERT, SK_SPAN_INSERT_COMPILING, SK_SPAN_SUBMIT, SK_SPAN_SUBMIT_WAIT, SK_SPAN_PRESENT};
+constexpr int ENTRY_SPAN_COUNT = sizeof(ENTRY_SPANS) / sizeof(ENTRY_SPANS[0]);
+const SKStatsCounter ENTRY_COUNTERS[] = {SK_COUNT_MESH_DRAWS, SK_COUNT_SURFACE_BLITS, SK_COUNT_PIPELINES_ADDED,
+                                         SK_COUNT_ATLAS_UPLOADS, SK_COUNT_RENDER_PASSES};
+const char *const ENTRY_COUNTER_NAMES[] = {"mesh draws", "surface blits", "pipelines built", "atlas uploads", "render passes"};
+constexpr int ENTRY_COUNTER_COUNT = sizeof(ENTRY_COUNTERS) / sizeof(ENTRY_COUNTERS[0]);
+
+struct Entry {
+    uint64_t nanos = 0;
+    uint64_t at = 0;   // ms since the start
+    uint64_t ops = 0;
+    uint64_t spans[ENTRY_SPAN_COUNT] = {};
+    uint64_t counters[ENTRY_COUNTER_COUNT] = {};
+};
+
+struct EntryLog {
+    Accumulator buckets[BUCKETS];
+    Entry longest[LONGEST];   // descending
+    // the accumulators after the previous entry
+    uint64_t baseSpans[SK_SPAN_COUNT] = {};
+    uint64_t baseOps = 0;
+    uint64_t baseCounters[SK_COUNT_COUNT] = {};
+};
+
+EntryLog entryLog;
+
+uint64_t opCount() {
+    uint64_t ops = 0;
+    for (const Accumulator &a : stats.ops) {
+        ops += a.count;
+    }
+    return ops;
+}
+
+void takeEntryBase() {
+    for (int s = 0; s < SK_SPAN_COUNT; s++) {
+        entryLog.baseSpans[s] = stats.spans[s].nanos;
+    }
+    entryLog.baseOps = opCount();
+    for (int c = 0; c < SK_COUNT_COUNT; c++) {
+        entryLog.baseCounters[c] = stats.counters[c];
+    }
+}
+
+void logEntry(uint64_t nanos) {
+    int b = 0;
+    while (b < BUCKETS - 1 && nanos >= (125000ull << b)) {
+        b++;
+    }
+    entryLog.buckets[b].count++;
+    entryLog.buckets[b].nanos += nanos;
+    if (nanos <= entryLog.longest[LONGEST - 1].nanos) {
+        return;
+    }
+    Entry e;
+    e.nanos = nanos;
+    e.at = (SKStats_Now() - origin) / 1000000;
+    e.ops = opCount() - entryLog.baseOps;
+    for (int i = 0; i < ENTRY_SPAN_COUNT; i++) {
+        e.spans[i] = stats.spans[ENTRY_SPANS[i]].nanos - entryLog.baseSpans[ENTRY_SPANS[i]];
+    }
+    for (int i = 0; i < ENTRY_COUNTER_COUNT; i++) {
+        e.counters[i] = stats.counters[ENTRY_COUNTERS[i]] - entryLog.baseCounters[ENTRY_COUNTERS[i]];
+    }
+    int i = LONGEST - 1;
+    while (i > 0 && entryLog.longest[i - 1].nanos < nanos) {
+        entryLog.longest[i] = entryLog.longest[i - 1];
+        i--;
+    }
+    entryLog.longest[i] = e;
+}
+
+void dumpEntryLog(uint64_t now) {
+    const unsigned long long t = (unsigned long long) ((now - origin) / 1000000);
+    fprintf(stderr, "[%7llums] SKStats entries by duration since the start:", t);
+    for (int b = 0; b < BUCKETS; b++) {
+        if (b < BUCKETS - 1) {
+            fprintf(stderr, " <%g ms", (125000ull << b) / 1e6);
+        } else {
+            fprintf(stderr, " >=%g ms", (125000ull << (b - 1)) / 1e6);
+        }
+        fprintf(stderr, " %llu (%.1f ms)", (unsigned long long) entryLog.buckets[b].count, millis(entryLog.buckets[b].nanos));
+    }
+    fprintf(stderr, "\n[%7llums] SKStats longest entries since the start:", t);
+    for (const Entry &e : entryLog.longest) {
+        if (e.nanos == 0) {
+            break;
+        }
+        fprintf(stderr, " {%.2f ms at %llu ms: %llu ops;", millis(e.nanos), (unsigned long long) e.at, (unsigned long long) e.ops);
+        for (int i = 0; i < ENTRY_SPAN_COUNT; i++) {
+            if (e.spans[i] != 0) {
+                fprintf(stderr, " %s %.2f", SPAN_NAMES[ENTRY_SPANS[i]], millis(e.spans[i]));
+            }
+        }
+        for (int i = 0; i < ENTRY_COUNTER_COUNT; i++) {
+            if (e.counters[i] != 0) {
+                fprintf(stderr, "; %s %llu", ENTRY_COUNTER_NAMES[i], (unsigned long long) e.counters[i]);
+            }
+        }
+        fprintf(stderr, "}");
+    }
+    fprintf(stderr, "\n");
+}
+
 
 const char *opName(int opcode) {
 #define NAME(op) case sun_java2d_pipe_BufferedOpCodes_##op: return #op
@@ -100,7 +212,7 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu\n",
+    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu, icon atlas blits %llu, icon atlas copies %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_STATE],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_KIND],
@@ -131,7 +243,9 @@ void dump(uint64_t now) {
             (unsigned long long) stats.counters[SK_COUNT_TEXTURE_COPIES],
             (unsigned long long) stats.counters[SK_COUNT_BUFFER_UPLOADS],
             (unsigned long long) stats.counters[SK_COUNT_QUEUE_SUBMITS],
-            (unsigned long long) stats.counters[SK_COUNT_TIMEOUT_FLUSHES]);
+            (unsigned long long) stats.counters[SK_COUNT_TIMEOUT_FLUSHES],
+            (unsigned long long) stats.counters[SK_COUNT_ICON_BLITS],
+            (unsigned long long) stats.counters[SK_COUNT_ICON_COPIES]);
 
     int order[OPCODE_SLOTS];
     int n = 0;
@@ -154,6 +268,7 @@ void dump(uint64_t now) {
                 a.nanos / 1e3 / a.count);
     }
     fprintf(stderr, "\n");
+    dumpEntryLog(now);
     fflush(stderr);
 }
 
@@ -172,6 +287,9 @@ uint64_t SKStats_Now() {
 void SKStats_AddSpan(SKStatsSpan span, uint64_t nanos) {
     stats.spans[span].count++;
     stats.spans[span].nanos += nanos;
+    if (span == SK_SPAN_QUEUE) {
+        logEntry(nanos);
+    }
 }
 
 void SKStats_AddOp(int opcode, uint64_t nanos) {
@@ -227,4 +345,5 @@ void SKStats_EndOfEntry() {
         stats = Stats();
         stats.intervalStart = now;
     }
+    takeEntryBase();   // the next entry's phases are the differences from here
 }
