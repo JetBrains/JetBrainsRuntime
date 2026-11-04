@@ -30,7 +30,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 /**
- * Where a draw's time goes, layer by layer (x64hw 2026-11-03): GraphiteFloor graphite|java2d [draws] [frames]
+ * Where a draw's time goes, layer by layer (x64hw 2026-11-03): GraphiteFloor graphite|java2d|compare [draws] [frames] [runs]
  * <ul>
  * <li>graphite: SKEnvironment.benchGraphite — Graphite alone on the backend's context, no Java2D and no
  *     backend in front: ns per draw for record, snap, insert and submit, per kind (rect, rects alternating
@@ -57,6 +57,10 @@ public class GraphiteFloor {
         g0.dispose();
         vi.getSnapshot();
         System.out.println("#config " + gc.getClass().getSimpleName());
+        if (mode.equals("compare")) {
+            compare(draws, frames, args.length > 3 ? Integer.parseInt(args[3]) : 5);
+            return;
+        }
         if (mode.equals("graphite")) {
             Method m = Class.forName("sun.java2d.skia.SKEnvironment").getMethod("benchGraphite", int.class, int.class, int.class);
             for (int k = 0; k < KINDS.length; k++) {
@@ -68,6 +72,67 @@ public class GraphiteFloor {
             }
             return;
         }
+        java2d(vi, draws, frames);
+    }
+
+    // compare: Graphite against Ganesh on the same Vulkan device (SKEnvironment.benchGanesh, run with
+    // sun.java2d.skia.graphiteApi=vulkan), `runs` runs, each timing every kind once on each of graphite, ganesh
+    // and ganesh with reduceOpsTaskSplitting, in a random order. Per kind and backend: the phases' medians over
+    // the runs and the total's median [min-max], ns per draw. Graphite's phases: record, snap, insert, submit;
+    // Ganesh's: record, flush (snap and insert together), submit.
+    static void compare(int draws, int frames, int runs) throws Exception {
+        Class<?> env = Class.forName("sun.java2d.skia.SKEnvironment");
+        Method graphite = env.getMethod("benchGraphite", int.class, int.class, int.class);
+        Method ganesh = env.getMethod("benchGanesh", int.class, int.class, int.class, boolean.class);
+        String[] backends = {"graphite", "ganesh", "ganesh-reduce"};
+        java.util.Map<String, java.util.List<double[]>> results = new java.util.TreeMap<>();
+        java.util.Random random = new java.util.Random(4711);
+        for (int run = 0; run < runs; run++) {
+            java.util.List<String> jobs = new java.util.ArrayList<>();
+            for (int k = 0; k < KINDS.length; k++) {
+                for (String b : backends) {
+                    jobs.add(k + ":" + b);
+                }
+            }
+            java.util.Collections.shuffle(jobs, random);
+            for (String job : jobs) {
+                int k = Integer.parseInt(job.substring(0, job.indexOf(':')));
+                String b = job.substring(job.indexOf(':') + 1);
+                double[] r = b.equals("graphite") ? (double[]) graphite.invoke(null, k, draws, frames)
+                        : (double[]) ganesh.invoke(null, k, draws, frames, b.equals("ganesh-reduce"));
+                if (r == null) {
+                    throw new RuntimeException("no " + b + " context (Ganesh needs sun.java2d.skia.graphiteApi=vulkan)");
+                }
+                results.computeIfAbsent(String.format("%d %s\t%s", k, KINDS[k], b), x -> new java.util.ArrayList<>()).add(r);
+            }
+        }
+        System.out.println("#draws " + draws + ", frames " + frames + ", runs " + runs
+                + "; ns per draw: phases (graphite record/snap/insert/submit, ganesh record/flush/submit), total median [min-max]");
+        for (var e : results.entrySet()) {
+            java.util.List<double[]> rs = e.getValue();
+            int phases = rs.get(0).length;
+            StringBuilder sb = new StringBuilder(e.getKey().substring(e.getKey().indexOf(' ') + 1));
+            for (int p = 0; p < phases; p++) {
+                final int pp = p;
+                sb.append(String.format("\t%.0f", median(rs.stream().mapToDouble(r -> r[pp]).toArray())));
+            }
+            if (phases == 3) {
+                sb.append("\t");
+            }
+            double[] totals = rs.stream().mapToDouble(r -> Arrays.stream(r).sum()).toArray();
+            Arrays.sort(totals);
+            sb.append(String.format("\t%.0f [%.0f-%.0f]", median(totals), totals[0], totals[totals.length - 1]));
+            System.out.println(sb);
+        }
+    }
+
+    static double median(double[] v) {
+        double[] s = v.clone();
+        Arrays.sort(s);
+        return s.length % 2 == 1 ? s[s.length / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+    }
+
+    static void java2d(VolatileImage vi, int draws, int frames) {
         BufferedImage icon = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
         Graphics2D ig = icon.createGraphics();
         ig.setColor(Color.BLUE);
