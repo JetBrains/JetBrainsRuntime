@@ -3604,6 +3604,9 @@ void SKBackend_RequestPresent(SKSDOps *ops) {
 }
 
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
+    if (presentAll) {
+        SKStats_Count(SK_COUNT_TIMEOUT_FLUSHES);
+    }
     gFlushes.fetch_add(1, std::memory_order_relaxed);
     switchDrawsEnded();
     // Which windows to present: every one drawn into at the end of every flush

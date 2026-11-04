@@ -36,13 +36,14 @@ import sun.java2d.skia.SKEnvironment;
  *          handed to the flusher without the EDT waiting for it: after a heavy frame drawn onto a
  *          window, the paint cycle's commit returns at once and the next sync point (Toolkit.sync)
  *          waits for the frame instead; without the property the commit runs the frame and the
- *          sync finds nothing left. Either way the window shows the whole frame after the sync.
+ *          sync finds nothing left. Either way the window shows the whole frame after the sync, and
+ *          a window is presented once per paint cycle, never mid-cycle before a pending hand-off.
  *          When Skia is unavailable there is nothing to test.
  * @key headful
  * @requires (os.family == "windows")
- * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.asyncPresent=true SkiaAsyncPresentTest true
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaAsyncPresentTest false
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia java.desktop/sun.awt
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.asyncPresent=true -Dawt.window.counters=java2d.native.frames SkiaAsyncPresentTest true
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dawt.window.counters=java2d.native.frames SkiaAsyncPresentTest false
  */
 public class SkiaAsyncPresentTest {
     static final int W = 900, H = 600, ROUNDS = 5;
@@ -105,6 +106,34 @@ public class SkiaAsyncPresentTest {
                     throw new RuntimeException("round " + round + ": the window shows " + c + ", expected " + marker);
                 }
             }
+            // Presents per paint cycle: a cycle draws, copies a software image (a flush that waits, and
+            // presents nothing under present=cycle, leaving the window drawn into and not presented),
+            // draws again and commits. One present per cycle; a timeout flush mistaken for one while a
+            // hand-off is pending would present the window first, mid-cycle (2026-11-04).
+            final int cycles = 40;
+            long framesBefore = frames();
+            java.awt.image.BufferedImage icon = new java.awt.image.BufferedImage(16, 16, java.awt.image.BufferedImage.TYPE_INT_RGB);
+            for (int cycle = 0; cycle < cycles; cycle++) {
+                final int c = cycle;
+                SwingUtilities.invokeAndWait(() -> {
+                    Graphics2D g = (Graphics2D) frame.getGraphics();
+                    g.setColor(c % 2 == 0 ? Color.YELLOW : Color.ORANGE);
+                    g.fillRect(0, 0, W / 2, H);
+                    icon.setRGB(c % 16, 0, 0xff0000 + c);   // a changed image: copied as a software source
+                    g.drawImage(icon, 10, 10, null);
+                    g.fillRect(W / 2, 0, W / 2, H);
+                    ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commit();
+                    g.dispose();
+                });
+                robot.delay(20);
+            }
+            Toolkit.getDefaultToolkit().sync();
+            robot.delay(300);
+            long presents = frames() - framesBefore;
+            System.out.println(cycles + " paint cycles: " + presents + " presents");
+            if (presents >= 0 && presents > cycles + cycles / 4) {
+                throw new RuntimeException(presents + " presents for " + cycles + " paint cycles: windows presented mid-cycle");
+            }
             // handed off: the sync waits for the frame (commit shorter in most rounds); run at once: the reverse
             boolean asyncSeen = commitLonger <= ROUNDS / 2;
             System.out.println("commit longer than the sync in " + commitLonger + " of " + ROUNDS + " rounds");
@@ -120,5 +149,9 @@ public class SkiaAsyncPresentTest {
                 }
             });
         }
+    }
+
+    static long frames() {
+        return sun.awt.AWTAccessor.getWindowAccessor().getCounter(frame, "java2d.native.frames");
     }
 }

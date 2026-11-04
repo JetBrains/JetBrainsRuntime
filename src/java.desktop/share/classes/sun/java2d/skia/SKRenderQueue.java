@@ -258,7 +258,9 @@ public final class SKRenderQueue extends RenderQueue {
                         wait(100);
                         // Flush on the timeout only when the queue can be locked
                         // without blocking and holds something; otherwise keep waiting.
-                        if (!needsFlush && (timedOut = tryLock())) {
+                        // A hand-off's notify is not a timeout: it runs first, and a timeout
+                        // flush here would present the windows before it (mid-cycle content).
+                        if (!needsFlush && !handedPending && (timedOut = tryLock())) {
                             if (buf.position() > 0 || pendingPresent) {
                                 needsFlush = true;
                             } else {

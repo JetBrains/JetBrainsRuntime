@@ -75,6 +75,7 @@ enum SKStatsCounter {
     SK_COUNT_TEXTURE_COPIES,    // texture-to-texture copies encoded (destination reads, the present copy)
     SK_COUNT_BUFFER_UPLOADS,    // buffer-to-texture copies encoded (texture uploads)
     SK_COUNT_QUEUE_SUBMITS,     // command buffer submits to the device queue
+    SK_COUNT_TIMEOUT_FLUSHES,   // flushes the flusher ran on its own (the 100 ms timeout, presentAll)
     SK_COUNT_MESH_DRAWS_AT_STATE,     // of the mesh draws, those of batches a clip or transform change drew
     SK_COUNT_MESH_DRAWS_AT_SURFACE,   // of the mesh draws, those of batches a destination switch drew
     SK_COUNT_MESH_DRAWS_AT_KIND,      // of the mesh draws, those of batches an op of another kind drew (it touched them)
