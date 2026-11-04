@@ -3711,3 +3711,8 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
     g.requestedWindows.clear();
     return !g.touchedWindows.empty() || !gPendingSubmit.empty();
 }
+
+std::recursive_mutex &SKBackend_EntryMutex() {
+    static auto *mutex = new std::recursive_mutex();   // never destroyed: entry points may run during exit
+    return *mutex;
+}

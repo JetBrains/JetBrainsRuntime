@@ -222,7 +222,7 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
             rq.ensureCapacityAndAlignment(12, 4);
             buf.putInt(FLUSH_BUFFER);
             buf.putLong(getNativeOps());
-            rq.flushNow();
+            rq.flushForPresent();   // ASYNC_PRESENT: without waiting for it
         } finally {
             rq.unlock();
         }

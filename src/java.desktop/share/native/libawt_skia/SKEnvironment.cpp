@@ -72,6 +72,7 @@ Java_sun_java2d_skia_SKEnvironment_flushesNative(JNIEnv *env, jclass clazz)
 JNIEXPORT jdoubleArray JNICALL
 Java_sun_java2d_skia_SKEnvironment_benchGraphiteNative(JNIEnv *env, jclass clazz, jint kind, jint draws, jint frames)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     double out[4];
     if (!SKBackend_BenchGraphite(kind, draws, frames, out)) {
         return nullptr;
@@ -86,6 +87,7 @@ Java_sun_java2d_skia_SKEnvironment_benchGraphiteNative(JNIEnv *env, jclass clazz
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setStrikeCacheLimitNative(JNIEnv *env, jclass clazz, jlong bytes)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     const size_t previous = SkGraphics::SetFontCacheLimit((size_t) bytes);
     J2dRlsTraceLn(J2D_TRACE_INFO, "SKEnvironment: Skia strike cache limit %zu -> %lld bytes", previous, (long long) bytes);
 }
@@ -141,6 +143,7 @@ Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, ji
                                                    jint luminanceClasses, jboolean presentPerCycle,
                                                    jboolean submitPerPresent, jint lcdOrder)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses,
                        presentPerCycle == JNI_TRUE, submitPerPresent == JNI_TRUE, (SKLcdOrder) lcdOrder);
@@ -150,6 +153,7 @@ Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, ji
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setPipelineCacheNative(JNIEnv *env, jclass clazz, jstring directory)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     if (directory == nullptr) {
         SKPipelineCache_SetDirectory(nullptr);
         return;
@@ -164,6 +168,7 @@ Java_sun_java2d_skia_SKEnvironment_setPipelineCacheNative(JNIEnv *env, jclass cl
 JNIEXPORT jlongArray JNICALL
 Java_sun_java2d_skia_SKEnvironment_pipelineCacheCountersNative(JNIEnv *env, jclass clazz)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     const SKPipelineCacheCounters c = SKPipelineCache_Counters();
     const jlong values[3] = { (jlong) c.loads, (jlong) c.hits, (jlong) c.stores };
     jlongArray array = env->NewLongArray(3);
@@ -184,6 +189,7 @@ extern "C" {
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_prepareContext(JNIEnv *env, jclass clazz, jlong pConfig)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
     SKBackend_ContextFor((SKPlatformConfig *) jlong_to_ptr(pConfig));
     } // SKPlatformScope

@@ -58,6 +58,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKSurfaceData_initOps(JNIEnv *env, jobject skiasd,
                                              jlong platformOps, jint type, jboolean isOpaque)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     SKSDOps *ops = (SKSDOps *) SurfaceData_InitOps(env, skiasd, sizeof(SKSDOps));
     if (ops == nullptr) {
         JNU_ThrowOutOfMemoryError(env, "Initialization of SurfaceData failed.");
@@ -78,6 +79,7 @@ Java_sun_java2d_skia_SKSurfaceData_initOps(JNIEnv *env, jobject skiasd,
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKSurfaceData_setCountFrames(JNIEnv *env, jobject skiasd, jboolean countFrames)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     SKSDOps *ops = (SKSDOps *) SurfaceData_GetOps(env, skiasd);
     if (ops != nullptr) {
         ops->countFrames = countFrames;

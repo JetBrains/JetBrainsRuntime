@@ -51,6 +51,7 @@
 #include "include/gpu/graphite/PrecompileContext.h"
 
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -269,6 +270,14 @@ void SKBackend_RequestPresent(SKSDOps *ops);
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu = false, bool presentAll = false);
 jlong SKBackend_Flushes();                                     // how many times EndOfFlush ran (diagnostics, tests)
 jlong SKBackend_Recordings();                                  // how many recordings were snapped (diagnostics, tests)
+
+// The backend's state belongs to the flusher thread while it runs a flush, and to the entry points
+// other threads call outside one (surface and configuration creation and disposal). With
+// sun.java2d.skia.asyncPresent the flusher runs a handed-off flush while no Java thread holds the AWT
+// lock that otherwise keeps them apart, so every JNI entry point that touches backend or platform
+// state holds this (recursive: a flush calls back into Java, which may call an entry point).
+std::recursive_mutex &SKBackend_EntryMutex();
+#define SK_ENTRY_LOCK std::lock_guard<std::recursive_mutex> skEntryLock(SKBackend_EntryMutex())
 bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]);   // Graphite's per-draw floor (SKEnvironment.benchGraphite)
 
 #endif /* SKBackend_h_Included */

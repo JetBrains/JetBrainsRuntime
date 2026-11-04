@@ -42,6 +42,7 @@ Java_sun_java2d_skia_Win32SKSurfaceData_createPlatformSurface(JNIEnv *env, jclas
                                                               jlong hwnd, jint width, jint height,
                                                               jlong previousOps, jboolean isOpaque)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     auto *config = (Win32SKConfigInfo *) jlong_to_ptr(pConfigInfo);
     if (config == nullptr || width <= 0 || height <= 0) {
         return 0;

@@ -114,6 +114,16 @@ public final class RenderBuffer {
         curOffset = 0;
     }
 
+    /**
+     * Copies this buffer's content up to its position to the start of {@code dst},
+     * whose position becomes the same (a queue handing its content to another thread
+     * while its writers keep this buffer).
+     */
+    public final void copyTo(RenderBuffer dst) {
+        MemorySegment.copy(segment, 0, dst.segment, 0, curOffset);
+        dst.curOffset = curOffset;
+    }
+
     public final RenderBuffer skip(int numBytes) {
         curOffset += numBytes;
         return this;
