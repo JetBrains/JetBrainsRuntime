@@ -34,7 +34,7 @@ import sun.java2d.skia.SKEnvironment;
  * @test
  * @summary With sun.java2d.skia.asyncPresent=true the flush that ends a window's paint cycle is
  *          handed to the flusher without the EDT waiting for it: after a heavy frame drawn onto a
- *          window, the paint cycle's commit returns at once and the next sync point (Toolkit.sync)
+ *          window, the paint cycle's commitLater() returns at once and the next sync point (Toolkit.sync)
  *          waits for the frame instead; without the property the commit runs the frame and the
  *          sync finds nothing left. Either way the window shows the whole frame after the sync, and
  *          a window is presented once per paint cycle, never mid-cycle before a pending hand-off.
@@ -85,7 +85,7 @@ public class SkiaAsyncPresentTest {
                     g.fillRect(W - 60, H - 60, 50, 50);
                     BufferedSurfaceDataExt sd = (BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData();
                     long t0 = System.nanoTime();
-                    sd.commit();   // the paint cycle's end, as Swing's updateWindows does it
+                    sd.commitLater();   // the paint cycle's end, as Swing's updateWindows does it
                     long t1 = System.nanoTime();
                     Toolkit.getDefaultToolkit().sync();
                     long t2 = System.nanoTime();
@@ -122,7 +122,7 @@ public class SkiaAsyncPresentTest {
                     icon.setRGB(c % 16, 0, 0xff0000 + c);   // a changed image: copied as a software source
                     g.drawImage(icon, 10, 10, null);
                     g.fillRect(W / 2, 0, W / 2, H);
-                    ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commit();
+                    ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commitLater();
                     g.dispose();
                 });
                 robot.delay(20);

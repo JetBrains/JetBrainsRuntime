@@ -209,9 +209,11 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
      * The window's paint cycle ended: present it at the end of the flush
      * ({@code sun.java2d.skia.present=cycle}; nothing happens for a window the
      * queue did not draw into). The platform window surfaces call this from
-     * their {@code BufferedSurfaceDataExt.commit()}.
+     * their {@code BufferedSurfaceDataExt.commit()}, which waits for the flush,
+     * and {@code commitLater()}, which may hand it to the flusher
+     * ({@code sun.java2d.skia.asyncPresent}, {@link SKRenderQueue#flushForPresent}).
      */
-    protected void requestPresent() {
+    protected void requestPresent(boolean later) {
         SKRenderQueue rq = SKRenderQueue.getInstance();
         rq.lock();
         try {
@@ -222,7 +224,11 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
             rq.ensureCapacityAndAlignment(12, 4);
             buf.putInt(FLUSH_BUFFER);
             buf.putLong(getNativeOps());
-            rq.flushForPresent();   // ASYNC_PRESENT: without waiting for it
+            if (later) {
+                rq.flushForPresent();   // ASYNC_PRESENT: without waiting for it
+            } else {
+                rq.flushNow();
+            }
         } finally {
             rq.unlock();
         }

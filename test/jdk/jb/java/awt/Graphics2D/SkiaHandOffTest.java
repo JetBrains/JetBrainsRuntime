@@ -101,7 +101,7 @@ public class SkiaHandOffTest {
         }
     }
 
-    // One paint cycle onto the window, ended as Swing ends it (the window surface's commit): handed off.
+    // One paint cycle onto the window, ended as Swing ends it (the window surface's commitLater): handed off.
     static void cycle(Paint p) throws Exception {
         Exception[] failure = new Exception[1];
         SwingUtilities.invokeAndWait(() -> {
@@ -111,7 +111,7 @@ public class SkiaHandOffTest {
             } catch (Exception e) {
                 failure[0] = e;
             }
-            ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commit();
+            ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commitLater();
             g.dispose();
         });
         if (failure[0] != null) {
@@ -241,7 +241,7 @@ public class SkiaHandOffTest {
             Graphics2D g = (Graphics2D) frame.getGraphics();
             g.setColor(Color.ORANGE);
             g.fillRect(0, 0, 20, 20);
-            ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commit();
+            ((BufferedSurfaceDataExt) ((SunGraphics2D) g).getSurfaceData()).commitLater();
             g.dispose();
             long t0 = System.nanoTime();
             Toolkit.getDefaultToolkit().sync();

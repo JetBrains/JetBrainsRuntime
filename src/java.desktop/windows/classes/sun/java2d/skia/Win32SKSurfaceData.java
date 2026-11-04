@@ -187,11 +187,22 @@ public abstract class Win32SKSurfaceData extends SKSurfaceData {
             return true;
         }
 
-        /** Swing's {@code updateWindows} and the peer's paint events end a paint cycle here (WWindowPeer, WComponentPeer). */
+        /**
+         * The peer's paint events (expose, live resize: WComponentPeer) and the translucency, opacity
+         * and shape updates (WWindowPeer) end a paint cycle here, and wait for its flush.
+         */
         @Override
         public void commit() {
             if (SKEnvironment.presentsPerCycle()) {
-                requestPresent();
+                requestPresent(false);
+            }
+        }
+
+        /** Swing's repaint cycle ends here (RepaintManager, through WWindowPeer.updateWindowLater). */
+        @Override
+        public void commitLater() {
+            if (SKEnvironment.presentsPerCycle()) {
+                requestPresent(true);
             }
         }
 

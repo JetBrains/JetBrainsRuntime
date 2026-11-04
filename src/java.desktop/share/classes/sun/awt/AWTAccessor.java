@@ -288,6 +288,14 @@ public final class AWTAccessor {
          */
         void updateWindow(Window window);
 
+        /*
+         * The same at the end of Swing's repaint cycle: the content may still be on its way to the
+         * screen when this returns (WindowPeer.updateWindowLater).
+         */
+        default void updateWindowLater(Window window) {
+            updateWindow(window);
+        }
+
         /** Sets the synchronous status of focus requests on lightweight
          * components in the specified window to the specified value.
          */

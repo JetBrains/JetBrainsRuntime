@@ -3841,6 +3841,15 @@ public class Window extends Container implements Accessible {
         }
     }
 
+    private void updateWindowLater() {
+        synchronized (getTreeLock()) {
+            WindowPeer peer = (WindowPeer) this.peer;
+            if (peer != null) {
+                peer.updateWindowLater();
+            }
+        }
+    }
+
     /**
      * {@inheritDoc}
      *
@@ -4181,6 +4190,10 @@ public class Window extends Container implements Accessible {
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
             public void updateWindow(Window window) {
                 window.updateWindow();
+            }
+
+            public void updateWindowLater(Window window) {
+                window.updateWindowLater();
             }
 
             public void setLWRequestStatus(Window changed, boolean status) {

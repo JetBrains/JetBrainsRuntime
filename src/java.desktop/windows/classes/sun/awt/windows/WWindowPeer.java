@@ -839,10 +839,21 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     @Override
     public void updateWindow() {
-        updateWindow(false);
+        updateWindow(false, false);
+    }
+
+    @Override
+    public void updateWindowLater() {
+        updateWindow(false, true);
     }
 
     private void updateWindow(boolean repaint) {
+        updateWindow(repaint, false);
+    }
+
+    // later: the content may still be on its way to the screen when this returns
+    // (BufferedSurfaceDataExt.commitLater); a translucent window's painter reads it back, so it commits
+    private void updateWindow(boolean repaint, boolean later) {
         Window w = (Window)target;
         synchronized (getStateLock()) {
             if (!w.isVisible() ||
@@ -859,7 +870,11 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
                 }
             }
             if (surfaceData instanceof BufferedSurfaceDataExt csd) {
-                csd.commit();
+                if (later && isOpaque) {
+                    csd.commitLater();
+                } else {
+                    csd.commit();
+                }
             }
         }
     }

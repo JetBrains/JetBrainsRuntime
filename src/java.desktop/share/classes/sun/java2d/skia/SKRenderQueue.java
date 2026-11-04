@@ -97,9 +97,10 @@ public final class SKRenderQueue extends RenderQueue {
     }
 
     /**
-     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.asyncPresent=true}: the flush that ends a
-     * window's paint cycle ({@link SKSurfaceData#requestPresent}, most of a frame's work, since the
-     * buffer rarely fills) is handed to the flusher without waiting for it, so the EDT goes on with its
+     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.asyncPresent=true}: the flush that ends
+     * Swing's repaint cycle of a window ({@link SKSurfaceData#requestPresent} from
+     * {@code BufferedSurfaceDataExt.commitLater()}, most of a frame's work, since the buffer rarely
+     * fills) is handed to the flusher without waiting for it, so the EDT goes on with its
      * events while the frame is encoded and presented. Every other flush ({@link #flushNow}, also
      * {@code flushAndInvokeNow}, {@code sync}, read-backs, software sources, disposals) still waits,
      * first for a hand-off in flight, so whatever relies on the queue having run still sees it run.

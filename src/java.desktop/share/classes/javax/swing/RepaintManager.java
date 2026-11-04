@@ -735,7 +735,7 @@ public class RepaintManager
             }
 
             for (Window window : windows) {
-                AWTAccessor.getWindowAccessor().updateWindow(window);
+                AWTAccessor.getWindowAccessor().updateWindowLater(window);
                 AWTAccessor.getWindowAccessor().incrementCounter(window, "swing.RepaintManager.updateWindows");
             }
         } else {
@@ -1270,7 +1270,7 @@ public class RepaintManager
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit tk) {
             final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
             if (window != null && tk.needUpdateWindowAfterPaint()) {
-                AWTAccessor.getWindowAccessor().updateWindow(window);
+                AWTAccessor.getWindowAccessor().updateWindowLater(window);
             }
         }
     }
