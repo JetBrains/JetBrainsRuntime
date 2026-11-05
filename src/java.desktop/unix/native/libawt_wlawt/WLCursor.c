@@ -29,7 +29,6 @@
 #include <jni_util.h>
 
 #include "WLToolkit.h"
-#include "WLGraphicsEnvironment.h"
 
 #include "cursor-shape-v1.h"
 #include "sun_awt_wl_WLCursorManager.h"
