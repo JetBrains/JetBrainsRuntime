@@ -30,6 +30,8 @@ import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 import sun.java2d.wl.WLSurfaceDataExt;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -42,6 +44,8 @@ public class WLSurface {
     protected boolean isValid = true;
 
     private SurfaceData surfaceData;
+
+    private final List<WLOutput> outputs = new ArrayList<>();
 
     static {
         initIDs();
@@ -142,12 +146,31 @@ public class WLSurface {
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
     }
 
-    void notifyEnteredOutput(int wlOutputID) {
-        // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+    // Called from native code whenever the corresponding wl_surface enters an output (monitor)
+    void notifyEnteredOutput(WLOutput output) {
+        synchronized (outputs) {
+            outputs.removeIf(WLOutput::isDisconnected);
+            if (!outputs.contains(output)) {
+                outputs.add(output);
+            }
+        }
+        WLGraphicsEnvironment.getSingleInstance().notifySurfaceEntered(this, output);
     }
 
-    void notifyLeftOutput(int wlOutputID) {
-        // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+    // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+    void notifyLeftOutput(WLOutput output) {
+        synchronized (outputs) {
+            outputs.removeIf(WLOutput::isDisconnected);
+            outputs.remove(output);
+        }
+        WLGraphicsEnvironment.getSingleInstance().notifySurfaceLeft(this, output);
+    }
+
+    List<WLOutput> getOutputs() {
+        synchronized (outputs) {
+            outputs.removeIf(WLOutput::isDisconnected);
+            return new ArrayList<>(outputs);
+        }
     }
 
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {
