@@ -47,10 +47,12 @@ import java.awt.image.WritableRaster;
 
 public abstract class WLGraphicsConfig extends GraphicsConfiguration implements LWGraphicsConfig {
     private final WLGraphicsDevice device;
+    private final WLOutputState outputInfo;
     private BufferCapabilities bufferCaps;
 
     protected WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
+        this.outputInfo = device.getOutputState();
     }
 
     @Override
@@ -68,31 +70,32 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
 
     @Override
     public AffineTransform getDefaultTransform() {
-        double scale = device.getEffectiveScale();
+        double scale = outputInfo.effectiveScale();
         return AffineTransform.getScaleInstance(scale, scale);
     }
 
     @Override
     public AffineTransform getNormalizingTransform() {
-        double xScale = device.getResolutionX(this) / 72.0;
-        double yScale = device.getResolutionY(this) / 72.0;
+        Dimension dpi = outputInfo.dpi();
+        double xScale = dpi.width / 72.0;
+        double yScale = dpi.height / 72.0;
         return new AffineTransform(xScale, 0.0, 0.0, yScale, 0.0, 0.0);
     }
 
     @Override
     public Rectangle getBounds() {
-        return device.getBounds();
+        return new Rectangle(outputInfo.logicalBounds());
     }
 
-    public Rectangle getRealBounds() {
-        return device.getRealBounds();
+    public Dimension getPhysicalSizeMm() {
+        return new Dimension(outputInfo.physicalSizeMm());
     }
 
     /**
      * Returns the preferred Wayland buffer scale for this display configuration.
      */
     public int getDisplayScale() {
-        return device.getDisplayScale();
+        return outputInfo.scale();
     }
 
     /**
@@ -100,7 +103,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
      * if overridden with the sun.java2d.uiScale system property.
      */
     public double getEffectiveScale() {
-       return device.getEffectiveScale();
+       return outputInfo.effectiveScale();
     }
 
     public abstract SurfaceType getSurfaceType();

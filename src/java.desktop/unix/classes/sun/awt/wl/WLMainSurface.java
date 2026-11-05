@@ -62,7 +62,6 @@ public class WLMainSurface extends WLSurface {
         return theDevice;
     }
 
-    @Override
     void notifyEnteredOutput(int wlOutputID) {
         // Called from native code whenever the corresponding wl_surface enters an output (monitor)
         WLGraphicsDevice gd;
@@ -79,7 +78,6 @@ public class WLMainSurface extends WLSurface {
         }
     }
 
-    @Override
     void notifyLeftOutput(int wlOutputID) {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
         WLGraphicsDevice gd;

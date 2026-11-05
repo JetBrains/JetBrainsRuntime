@@ -1212,8 +1212,8 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         performLocked(() -> nativeRequestUnmaximized(nativePtr));
     }
 
-    final void requestFullScreen(int wlID) {
-        performLocked(() -> nativeRequestFullScreen(nativePtr, wlID));
+    final void requestFullScreen(WLOutput output) {
+        performLocked(() -> nativeRequestFullScreen(nativePtr, output.getNativePtr()));
     }
 
     final void requestUnsetFullScreen() {
@@ -1289,7 +1289,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
     private native void nativeRequestMinimized(long ptr);
     private native void nativeRequestMaximized(long ptr);
     private native void nativeRequestUnmaximized(long ptr);
-    private native void nativeRequestFullScreen(long ptr, int wlID);
+    private native void nativeRequestFullScreen(long ptr, long wlOutputPtr);
     private native void nativeRequestUnsetFullScreen(long ptr);
 
     private native void nativeSetWindowGeometry(long ptr, int x, int y, int width, int height);
@@ -1858,14 +1858,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         } finally {
             setSizeIsBeingConfigured(false);
         }
-    }
-
-    void notifyEnteredOutput(int wlOutputID) {
-        performLocked(() -> {
-            if (wlSurface != null) {
-                wlSurface.notifyEnteredOutput(wlOutputID);
-            }
-        });
     }
 
     void notifyPopupDone() {

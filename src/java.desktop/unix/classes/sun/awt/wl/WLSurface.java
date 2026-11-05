@@ -142,12 +142,14 @@ public class WLSurface {
         nativeSetOpaqueRegion(nativePtr, x, y, width, height);
     }
 
-    void notifyEnteredOutput(int wlOutputID) {
+    void notifyEnteredOutput(WLOutput output) {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+        WLGraphicsEnvironment.getSingleInstance().postOutputEvent(new WLOutputEvent.SurfaceEntered(this, output));
     }
 
-    void notifyLeftOutput(int wlOutputID) {
+    void notifyLeftOutput(WLOutput output) {
         // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
+        WLGraphicsEnvironment.getSingleInstance().postOutputEvent(new WLOutputEvent.SurfaceLeft(this, output));
     }
 
     public void updateSurfaceSize(int surfaceWidth, int surfaceHeight) {

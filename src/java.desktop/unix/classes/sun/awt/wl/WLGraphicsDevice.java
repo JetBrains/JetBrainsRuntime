@@ -30,6 +30,7 @@ import sun.awt.AWTAccessor;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.vulkan.WLVKGraphicsConfig;
 
+import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.Insets;
@@ -42,6 +43,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
+ * TODO: update this comment!!!
  * Corresponds to a Wayland output and is identified by its wlID.
  * Owns all graphics configurations associated with this device.
  * Encapsulates all the other properties of the output, such as its size
@@ -50,76 +52,15 @@ import java.util.WeakHashMap;
  * the GraphicsConfiguration objects get re-created to let referents know of the change.
  */
 public class WLGraphicsDevice extends GraphicsDevice {
-    private static final double MM_IN_INCH = 25.4;
-
     public enum OutputChange {
         CHANGED, ENTERED, LEFT
     }
 
     public static final int WL_OUTPUT_CHANGED_ORIGIN = 1;
 
-    /**
-     *  ID of the corresponding wl_output object received from Wayland.
-     *  Only changes when the device gets invalidated.
-     */
-    private volatile int wlID;
-
-    /**
-     * Some human-readable name of the device that came from Wayland.
-     * NOT considered part of device's identity.
-     */
-    private volatile String name;
-
-    /**
-     * The horizontal location of this device in the multi-monitor configuration.
-     */
-    private volatile int x;
-
-    /**
-     * The vertical location of this device in the multi-monitor configuration.
-     */
-    private volatile int y;
-
-    /**
-     * Pixel width, mostly for accounting and reporting.
-     */
-    private volatile int width;
-
-    /**
-     * Pixel height, mostly for accounting and reporting.
-     */
-    private volatile int height;
-
-    /**
-     * Logical (scaled) width in Java units.
-     */
-    private volatile int widthLogical;
-
-    /**
-     * Logical (scaled) height in Java units.
-     */
-    private volatile int heightLogical;
-
-    /**
-     * Width in millimeters.
-     */
-    private volatile int widthMm;
-
-    /**
-     * Height in millimeters.
-     */
-    private volatile int heightMm;
-
-    /**
-     * The device's scale factor as reported by Wayland.
-     * Since it is an integer, it's usually higher than the real fraction scale.
-     */
-    private volatile int displayScale;
-
-    /**
-     * The effective scale factor as determined by Java.
-     */
-    private volatile double effectiveScale;
+    private final WLOutput output;
+    private final String idString;
+    private volatile WLOutputState outputState;
 
     private volatile GraphicsConfiguration[] configs;
     private volatile WLGraphicsConfig defaultConfig; // A reference to the configs array
@@ -131,30 +72,14 @@ public class WLGraphicsDevice extends GraphicsDevice {
      */
     private final Set<WLComponentPeer> toplevels = Collections.newSetFromMap(new WeakHashMap<>()); // guarded by 'this'
 
-    private WLGraphicsDevice(int id,
-                             String name,
-                             int x, int y,
-                             int width, int height,
-                             int widthLogical, int heightLogical,
-                             int widthMm, int heightMm,
-                             int displayScale) {
-        assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
-        assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
-        assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
-        assert displayScale > 0 : String.format("Invalid display scale: %d", displayScale);
-
-        this.wlID = id;
-        this.name = name;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.widthLogical = widthLogical;
-        this.heightLogical = heightLogical;
-        this.widthMm = widthMm;
-        this.heightMm = heightMm;
-        this.displayScale = displayScale;
-        this.effectiveScale = WLGraphicsEnvironment.effectiveScaleFrom(displayScale);
+    private WLGraphicsDevice(WLOutput output, WLOutputState state) {
+        this.output = output;
+        this.outputState = state;
+        if (state.name() != null) {
+            this.idString = String.format("%s (#%d)", state.name(), output.getUniqueId());
+        } else {
+            this.idString = String.format("%s %s (#%d)", state.make(), state.model(), output.getUniqueId());
+        }
 
         makeGC();
     }
@@ -180,30 +105,11 @@ public class WLGraphicsDevice extends GraphicsDevice {
         defaultConfig = newDefaultConfig;
     }
 
-    void updateConfiguration(String name,
-                             int x, int y,
-                             int width, int height,
-                             int widthLogical, int heightLogical,
-                             int widthMm, int heightMm,
-                             int scale) {
-        assert width > 0 && height > 0 : String.format("Invalid device size: %dx%d", width, height);
-        assert widthLogical > 0 && heightLogical > 0 : String.format("Invalid logical device size: %dx%d", widthLogical, heightLogical);
-        assert widthMm > 0 && heightMm > 0 : String.format("Invalid physical device size: %dx%d", widthMm, heightMm);
-        assert scale > 0 : String.format("Invalid display scale: %d", scale);
-
-        this.name = name;
+    void updateConfiguration(WLOutputState state) {
+        WLOutputState prevState = this.outputState;
+        this.outputState = state;
         int dx = x - this.x;
         int dy = y - this.y;
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.widthLogical = widthLogical;
-        this.heightLogical = heightLogical;
-        this.widthMm = widthMm;
-        this.heightMm = heightMm;
-        this.displayScale = scale;
-        this.effectiveScale =  WLGraphicsEnvironment.effectiveScaleFrom(scale);
 
         // It is necessary to create new config objects whenever this device changes
         // as GraphicsConfiguration identity is used to detect changes in scale, among other things.
@@ -228,47 +134,12 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     }
 
-    /**
-     * Changes all aspects of this device, including its identity to be that of the given
-     * device. Only used for devices that are no longer physically present, but references
-     * to which may still exist in the program.
-     */
     void invalidate(WLGraphicsDevice similarDevice) {
-        // Note: It is expected that all the surface this device used to host have already received
-        // the 'leave' event and updated their device/graphics configurations accordingly.
-        this.wlID = similarDevice.wlID;
-        updateConfiguration(similarDevice.name,
-                similarDevice.x,
-                similarDevice.y,
-                similarDevice.width,
-                similarDevice.height,
-                similarDevice.widthLogical,
-                similarDevice.heightLogical,
-                similarDevice.widthMm,
-                similarDevice.heightMm,
-                similarDevice.displayScale);
+        updateConfiguration(similarDevice.getOutputState());
     }
 
-    public static WLGraphicsDevice createWithConfiguration(int id, String name,
-                                                           int x, int y,
-                                                           int width, int height, int widthLogical, int heightLogical,
-                                                           int widthMm, int heightMm,
-                                                           int scale) {
-        return new WLGraphicsDevice(id, name, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm, scale);
-    }
-
-    boolean hasSameNameAs(WLGraphicsDevice otherDevice) {
-        var localName = name;
-        var otherName = otherDevice.name;
-        return localName != null && localName.equals(otherName);
-    }
-
-    boolean hasSameSizeAs(WLGraphicsDevice modelDevice) {
-        var config = defaultConfig;
-        var modelConfig = modelDevice.defaultConfig;
-        return config != null
-                && modelConfig != null
-                && config.getBounds().equals(modelConfig.getBounds());
+    public static WLGraphicsDevice createWithConfiguration(WLOutput output, WLOutputState state) {
+        return new WLGraphicsDevice(output, state);
     }
 
     @Override
@@ -278,7 +149,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
 
     @Override
     public String getIDstring() {
-        return name;
+        return idString;
     }
 
     @Override
@@ -296,49 +167,41 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return defaultConfig;
     }
 
-    int getID() {
-        return wlID;
+    public WLOutput getOutput() {
+        return output;
+    }
+
+    public WLOutputState getOutputState() {
+        return outputState;
     }
 
     Rectangle getBounds() {
-        return new Rectangle(x, y, widthLogical, heightLogical);
+        return outputState.logicalBounds();
     }
 
-    Rectangle getRealBounds() {
-        return new Rectangle(x, y, width, height);
+    Dimension getPhysicalSizeMm() {
+        return outputState.physicalSizeMm();
     }
 
     int getDisplayScale() {
-        return displayScale;
+        return outputState.scale();
     }
 
     double getEffectiveScale() {
-        return effectiveScale;
+        return outputState.effectiveScale();
     }
 
     int getResolution() {
         // must match the horizontal resolution to pass tests
-        return getResolutionX(defaultConfig);
+        return outputState.dpi().width;
     }
 
     double getPhysicalScale() {
-        Rectangle bounds = defaultConfig.getRealBounds();
-        double daigInPixels = Math.sqrt(bounds.width * bounds.width + bounds.height * bounds.height);
-        bounds = defaultConfig.getBounds();
-        double diagInUnits = Math.sqrt(bounds.width * bounds.width + bounds.height * bounds.height);
-        return daigInPixels / diagInUnits;
-    }
-
-    int getResolutionX(WLGraphicsConfig config) {
-        Rectangle bounds = config.getBounds();
-        if (bounds.width == 0) return 0;
-        return (int)((double)bounds.width  * MM_IN_INCH / widthMm);
-    }
-
-    int getResolutionY(WLGraphicsConfig config) {
-        Rectangle bounds = config.getBounds();
-        if (bounds.height == 0) return 0;
-        return (int)((double)bounds.height * MM_IN_INCH / heightMm);
+        Dimension sizePixels = outputState.pixelSize();
+        double diagPixels = Math.hypot(sizePixels.width, sizePixels.height);
+        Dimension sizeUnits = outputState.logicalBounds().getSize();
+        double diagUnits = Math.hypot(sizeUnits.width, sizeUnits.height);
+        return diagPixels / diagUnits;
     }
 
     @Override
@@ -346,6 +209,7 @@ public class WLGraphicsDevice extends GraphicsDevice {
         return true;
     }
 
+    @Override
     public void setFullScreenWindow(Window w) {
         Window old = getFullScreenWindow();
         if (w == old) {
@@ -398,8 +262,8 @@ public class WLGraphicsDevice extends GraphicsDevice {
     @Override
     public String toString() {
         var config = defaultConfig;
-        return String.format("WLGraphicsDevice: '%s' id=%d at (%d, %d) with %s",
-                name, wlID, x, y, config != null ? config : "<no configs>");
+        return String.format("WLGraphicsDevice: '%s' outputState=%s with %s",
+                idString, outputState, config != null ? config : "<no configs>");
     }
 
     public Insets getInsets() {

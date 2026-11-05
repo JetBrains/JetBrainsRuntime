@@ -162,6 +162,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private static native void initLibwaylandLogging();
     private static native void initIDs(long displayPtr);
+    private static native void waitForSyncDuringInit();
+
+    private static int numCallbacksBeforeEndOfInit = 0;
 
     static {
         // This field must be initialized BEFORE initIDs is called because it'll be read there
@@ -175,6 +178,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             long display = WLDisplay.getInstance().getDisplayPtr();
             VKEnv.init(() -> VKEnv.initPlatformWayland(display));
             initIDs(display);
+            WLOutput.initialize();
+            while (numCallbacksBeforeEndOfInit > 0) {
+                waitForSyncDuringInit();
+            }
         }
         String desktop = System.getenv("XDG_CURRENT_DESKTOP");
         isKDE = desktop != null && desktop.toLowerCase().contains("kde");
@@ -480,7 +487,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             // If by that time we get an enter event, assume a crossing, and restore modifiers from pendingCrossingModifiers
             // (this happens in WLInputState.updatedFromPointerEvent)
             // Otherwise, reset pendingCrossingModifiers
-            syncCallbackOnEDT(() -> {
+            syncCallback(() -> {
                 setInputState(inputState.resetPendingCrossingState());
             });
         }
@@ -1263,8 +1270,20 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private native void dispatchNonDefaultQueuesImpl();
     private static native void syncCallbackImpl(Runnable callback);
 
-    public static void syncCallbackOnEDT(Runnable callback) {
-        syncCallbackImpl(callback);
+    public static void syncCallback(Runnable callback) {
+        if (isInitialized()) {
+            syncCallbackImpl(callback);
+        } else {
+            ++numCallbacksBeforeEndOfInit;
+            syncCallbackImpl(() -> {
+                try {
+                    callback.run();
+                } finally {
+                    --numCallbacksBeforeEndOfInit;
+                }
+            });
+        }
+
     }
 
     public static void targetDisposedPeer(Object target, Object peer) {
