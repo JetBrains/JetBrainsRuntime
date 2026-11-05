@@ -23,7 +23,7 @@
  * questions.
  */
 
-#include "SKIconAtlas.h"
+#include "SKImageAtlas.h"
 #include "SKBackend.h"
 #include "SKStats.h"
 #include "SKQuadBatch.h"
@@ -64,7 +64,7 @@ struct KeyHash {
 struct Cell {
     jint x, y;
     uint64_t version;
-    uint64_t batchEpoch;   // the batch generation it last joined (SKIconAtlas::batchEpoch)
+    uint64_t batchEpoch;   // the batch generation it last joined (SKImageAtlas::batchEpoch)
 };
 
 // Rows of cells of one rounded height, filled left to right.
@@ -72,11 +72,11 @@ struct Shelf {
     jint y, h, x;
 };
 
-std::atomic<jlong> gStats[SK_ICON_STAT_COUNT];
+std::atomic<jlong> gStats[SK_IMAGE_ATLAS_STAT_COUNT];
 
 } // namespace
 
-struct SKIconAtlas {
+struct SKImageAtlas {
     SKConfigContext *cc = nullptr;
     sk_sp<SkSurface> atlas;
     sk_sp<SkImage> atlasImage;
@@ -87,43 +87,43 @@ struct SKIconAtlas {
     uint64_t batchEpoch = 1;   // advanced by every draw of the batch: a cell of the current epoch has pending sprites
 };
 
-SKIconAtlas *SKIconAtlas_Create(SKConfigContext *cc) {
+SKImageAtlas *SKImageAtlas_Create(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return nullptr;
     }
     sk_sp<SkSurface> atlas = SkSurfaces::RenderTarget(cc->recorder.get(),
             SkImageInfo::Make(ATLAS_SIZE, ATLAS_SIZE, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
     if (!atlas) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKIconAtlas_Create: cannot create the atlas surface");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKImageAtlas_Create: cannot create the atlas surface");
         return nullptr;
     }
-    auto *ia = new SKIconAtlas();
+    auto *ia = new SKImageAtlas();
     ia->cc = cc;
     ia->atlas = std::move(atlas);
     ia->atlas->getCanvas()->clear(SK_ColorTRANSPARENT);
     ia->atlasImage = SkSurfaces::AsImage(ia->atlas);
     if (!ia->atlasImage) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKIconAtlas_Create: cannot image the atlas");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "SKImageAtlas_Create: cannot image the atlas");
         delete ia;
         return nullptr;
     }
     ia->batch.family = 3;   // atlas sprites of images (SKQuadBatch::family)
     ia->batch.beforeDraw = [ia](const SkRect &) {
-        gStats[SK_ICON_BATCH_DRAWS]++;
+        gStats[SK_IMAGE_ATLAS_BATCH_DRAWS]++;
         ia->batchEpoch++;   // the pending sprites are drawn now
     };
     return ia;
 }
 
-void SKIconAtlas_Free(SKIconAtlas *ia) {
+void SKImageAtlas_Free(SKImageAtlas *ia) {
     delete ia;
 }
 
-bool SKIconAtlas_Fits(jint w, jint h) {
+bool SKImageAtlas_Fits(jint w, jint h) {
     return w > 0 && h > 0 && w <= MAX_CELL && h <= MAX_CELL;
 }
 
-static bool allocCell(SKIconAtlas *ia, jint w, jint h, jint *cx, jint *cy) {
+static bool allocCell(SKImageAtlas *ia, jint w, jint h, jint *cx, jint *cy) {
     const jint sh = std::max<jint>(8, (h + GAP + 7) & ~7);   // shelf heights in steps of 8 texels
     for (Shelf &s : ia->shelves) {
         if (s.h == sh && s.x + w + GAP <= ATLAS_SIZE) {
@@ -144,18 +144,18 @@ static bool allocCell(SKIconAtlas *ia, jint w, jint h, jint *cx, jint *cy) {
 }
 
 // Full: the batch is drawn and the recording that sampled the cells ended, then the atlas starts over.
-static void refill(SKIconAtlas *ia) {
-    SKIconAtlas_Flush(ia);
+static void refill(SKImageAtlas *ia) {
+    SKImageAtlas_Flush(ia);
     SKBackend_FlushRecording(ia->cc);
     ia->cells.clear();
     ia->shelves.clear();
     ia->nextY = 0;
-    gStats[SK_ICON_REFILLS]++;
+    gStats[SK_IMAGE_ATLAS_REFILLS]++;
 }
 
-bool SKIconAtlas_Draw(SKIconAtlas *ia, SkCanvas *canvas, const SkPaint &paint, SKSurfaceState *st,
+bool SKImageAtlas_Draw(SKImageAtlas *ia, SkCanvas *canvas, const SkPaint &paint, SKSurfaceState *st,
                       const sk_sp<SkImage> &source, jint sx, jint sy, jint w, jint h, jint dx, jint dy) {
-    if (ia == nullptr || st == nullptr || !source || !SKIconAtlas_Fits(w, h)) {
+    if (ia == nullptr || st == nullptr || !source || !SKImageAtlas_Fits(w, h)) {
         return false;
     }
     const Key key{st->uid, sx, sy, w, h};
@@ -175,7 +175,7 @@ bool SKIconAtlas_Draw(SKIconAtlas *ia, SkCanvas *canvas, const SkPaint &paint, S
         // pending sprites of this cell show the content before the source changed: they are drawn first (today a
         // change of a source switches the destination, which draws every batch; kept for batches that survive it)
         if (it->second.batchEpoch == ia->batchEpoch) {
-            SKIconAtlas_Flush(ia);
+            SKImageAtlas_Flush(ia);
         }
         copy = true;
     }
@@ -189,27 +189,27 @@ bool SKIconAtlas_Draw(SKIconAtlas *ia, SkCanvas *canvas, const SkPaint &paint, S
                                               SkSamplingOptions(SkFilterMode::kNearest), &copyPaint,
                                               SkCanvas::kStrict_SrcRectConstraint);
         it->second.version = st->contentVersion;
-        gStats[SK_ICON_COPIES]++;
-        SKStats_Count(SK_COUNT_ICON_COPIES);
+        gStats[SK_IMAGE_ATLAS_COPIES]++;
+        SKStats_Count(SK_COUNT_IMAGE_ATLAS_COPIES);
     }
     ia->batch.begin(canvas, paint, ia->atlasImage);
     ia->batch.addSprite((float) dx, (float) dy, (float) w, (float) h, (float) it->second.x, (float) it->second.y);
     it->second.batchEpoch = ia->batchEpoch;
-    gStats[SK_ICON_BLITS]++;
-    SKStats_Count(SK_COUNT_ICON_BLITS);
+    gStats[SK_IMAGE_ATLAS_BLITS]++;
+    SKStats_Count(SK_COUNT_IMAGE_ATLAS_BLITS);
     return true;
 }
 
-void SKIconAtlas_Flush(SKIconAtlas *ia) {
+void SKImageAtlas_Flush(SKImageAtlas *ia) {
     if (ia != nullptr) {
         ia->batch.flush();
     }
 }
 
-bool SKIconAtlas_Touches(const SKIconAtlas *ia, const SkRect &r) {
+bool SKImageAtlas_Touches(const SKImageAtlas *ia, const SkRect &r) {
     return ia != nullptr && ia->batch.touches(r);
 }
 
-jlong SKIconAtlas_Stat(SKIconAtlasStat stat) {
+jlong SKImageAtlas_Stat(SKImageAtlasStat stat) {
     return gStats[stat].load();
 }

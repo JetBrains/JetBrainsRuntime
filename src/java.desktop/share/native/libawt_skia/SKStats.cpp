@@ -212,7 +212,7 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu, icon atlas blits %llu, icon atlas copies %llu\n",
+    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu, image atlas blits %llu, image atlas copies %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_STATE],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_KIND],
@@ -244,8 +244,8 @@ void dump(uint64_t now) {
             (unsigned long long) stats.counters[SK_COUNT_BUFFER_UPLOADS],
             (unsigned long long) stats.counters[SK_COUNT_QUEUE_SUBMITS],
             (unsigned long long) stats.counters[SK_COUNT_TIMEOUT_FLUSHES],
-            (unsigned long long) stats.counters[SK_COUNT_ICON_BLITS],
-            (unsigned long long) stats.counters[SK_COUNT_ICON_COPIES]);
+            (unsigned long long) stats.counters[SK_COUNT_IMAGE_ATLAS_BLITS],
+            (unsigned long long) stats.counters[SK_COUNT_IMAGE_ATLAS_COPIES]);
 
     int order[OPCODE_SLOTS];
     int n = 0;

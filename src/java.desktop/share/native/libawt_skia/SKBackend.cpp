@@ -33,7 +33,7 @@
 #include "SKLuminanceTypeface.h"
 #include "sun_font_SKFontScaler.h"
 #include "SKMaskCache.h"
-#include "SKIconAtlas.h"
+#include "SKImageAtlas.h"
 #include "SKQuadBatch.h"
 #include "SKPipelineCache.h"
 #include "SKStats.h"
@@ -129,7 +129,7 @@ static struct {
     bool submitPerPresent = false;  // sun.java2d.skia.submit=present: submit only for a present, a wait or the cap
     SKLcdOrder lcdOrder = SKLcdOrder::System;   // sun.java2d.skia.lcdOrder: the sub-pixel order the surfaces declare
     bool orderedRecordings = false;  // EXPERIMENT sun.java2d.skia.orderedRecordings: ContextOptions::fRequireOrderedRecordings
-    bool iconAtlas = false;          // EXPERIMENT sun.java2d.skia.iconAtlas: small image sources drawn from an atlas (SKIconAtlas.h)
+    bool imageAtlas = false;          // EXPERIMENT sun.java2d.skia.imageAtlas: small image sources drawn from an atlas (SKImageAtlas.h)
 } gConfig;
 
 SkPixelGeometry SKBackend_LcdPixelGeometry() {
@@ -255,8 +255,8 @@ static void precompileStoredPipelines(SKConfigContext *cc) {
 
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent, SKLcdOrder lcdOrder, bool orderedRecordings, bool iconAtlas) {
-    gConfig.iconAtlas = iconAtlas;
+                         bool submitPerPresent, SKLcdOrder lcdOrder, bool orderedRecordings, bool imageAtlas) {
+    gConfig.imageAtlas = imageAtlas;
     gConfig.orderedRecordings = orderedRecordings;
     gConfig.submitPerPresent = submitPerPresent;
     gConfig.lcdOrder = lcdOrder;
@@ -390,7 +390,7 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     }
     cc->surfaces.clear();
     SKMaskCache_Free(cc->maskCache);
-    SKIconAtlas_Free(cc->iconAtlas);
+    SKImageAtlas_Free(cc->imageAtlas);
     for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
         SKGlyphCache_Free(cc->glyphCachesAA[b]);
         SKGlyphCache_Free(cc->glyphCachesLCD[b]);
@@ -1319,7 +1319,7 @@ static void flushBatchesOf(SKConfigContext *cc) {
     if (cc != nullptr) {
         flushGlyphCaches(cc);
         SKMaskCache_Flush(cc->maskCache);
-        SKIconAtlas_Flush(cc->iconAtlas);
+        SKImageAtlas_Flush(cc->imageAtlas);
     }
     gRects.flush();
 }
@@ -1349,7 +1349,7 @@ static bool batchesTouch(const SkRect &r) {
             return true;
         }
     }
-    return SKMaskCache_Touches(g.cc->maskCache, r) || SKIconAtlas_Touches(g.cc->iconAtlas, r);
+    return SKMaskCache_Touches(g.cc->maskCache, r) || SKImageAtlas_Touches(g.cc->imageAtlas, r);
 }
 
 // Blits past the pending batches: an image blit under a rect clip and no transform is clipped on the
@@ -1380,7 +1380,7 @@ static void drawOtherKinds(int family) {
         SKMaskCache_Flush(g.cc->maskCache);
     }
     if (family != 3 && g.cc != nullptr) {
-        SKIconAtlas_Flush(g.cc->iconAtlas);
+        SKImageAtlas_Flush(g.cc->imageAtlas);
     }
     SKStats_SetDrawCause(SK_COUNT_COUNT);
 }
@@ -3082,31 +3082,31 @@ static sk_sp<SkImage> blitSourceImage(SKSDOps *src) {
     return st->unlinkedImage;
 }
 
-// EXPERIMENT (x64hw, 2026-11-04), sun.java2d.skia.iconAtlas: a blit of a small Skia surface of this context,
+// EXPERIMENT (x64hw, 2026-11-04), sun.java2d.skia.imageAtlas: a blit of a small Skia surface of this context,
 // unscaled and pixel-aligned, under the conditions of blits past the batches (no transform, a rect clip or
 // none, no XOR, no MSAA, not from the destination) and with a plain SrcOver composite, becomes a sprite of the
-// context's icon atlas (SKIconAtlas.h): one mesh for the icons of a frame instead of a draw each, each with
+// context's image atlas (SKImageAtlas.h): one mesh for the small images of a frame instead of a draw each, each with
 // its own image paint key. False: the caller draws the blit itself.
-static bool iconAtlasBlit(SKSDOps *src, const sk_sp<SkImage> &image, const SkPaint &p, jint sx1, jint sy1, jint sx2, jint sy2,
+static bool imageAtlasBlit(SKSDOps *src, const sk_sp<SkImage> &image, const SkPaint &p, jint sx1, jint sy1, jint sx2, jint sy2,
                           jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
-    if (!gConfig.iconAtlas || !gBlitPastBatches || src == nullptr || src->state == nullptr || g.cc == nullptr
+    if (!gConfig.imageAtlas || !gBlitPastBatches || src == nullptr || src->state == nullptr || g.cc == nullptr
             || sx2 - sx1 != dx2 - dx1 || sy2 - sy1 != dy2 - dy1 || dx1 != std::floor(dx1) || dy1 != std::floor(dy1)
-            || !SKIconAtlas_Fits(sx2 - sx1, sy2 - sy1) || p.asBlendMode() != SkBlendMode::kSrcOver
+            || !SKImageAtlas_Fits(sx2 - sx1, sy2 - sy1) || p.asBlendMode() != SkBlendMode::kSrcOver
             || p.getShader() != nullptr || p.getColorFilter() != nullptr) {
         return false;
     }
-    if (g.cc->iconAtlas == nullptr && !g.cc->iconAtlasFailed) {
-        g.cc->iconAtlas = SKIconAtlas_Create(g.cc);
-        g.cc->iconAtlasFailed = g.cc->iconAtlas == nullptr;
+    if (g.cc->imageAtlas == nullptr && !g.cc->imageAtlasFailed) {
+        g.cc->imageAtlas = SKImageAtlas_Create(g.cc);
+        g.cc->imageAtlasFailed = g.cc->imageAtlas == nullptr;
     }
-    if (g.cc->iconAtlas == nullptr) {
+    if (g.cc->imageAtlas == nullptr) {
         return false;
     }
     drawOtherKinds(3);
     prepareBatch();
     SkPaint sprite = p;
     sprite.setColor4f(SkColor4f{1, 1, 1, g.extraAlpha});   // the colour modulates the atlas texel: white, the extra alpha
-    return SKIconAtlas_Draw(g.cc->iconAtlas, g.canvas, sprite, src->state, image, sx1, sy1, sx2 - sx1, sy2 - sy1,
+    return SKImageAtlas_Draw(g.cc->imageAtlas, g.canvas, sprite, src->state, image, sx1, sy1, sx2 - sx1, sy2 - sy1,
                             (jint) dx1, (jint) dy1);
 }
 
@@ -3179,7 +3179,7 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
     SKStatsScope drawStats(SK_SPAN_BLIT_DRAW);
-    if (iconAtlasBlit(linkedSrc, image, p, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)) {
+    if (imageAtlasBlit(linkedSrc, image, p, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)) {
         return;
     }
     drawImageQuad(image, srcRect, dstRect, samplingForHint(hint), p);

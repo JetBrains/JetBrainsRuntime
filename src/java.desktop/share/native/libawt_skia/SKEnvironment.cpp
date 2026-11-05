@@ -33,7 +33,7 @@
 #include "SKBackend.h"
 #include "SKPlatform.h"
 #include "SKGlyphCache.h"
-#include "SKIconAtlas.h"
+#include "SKImageAtlas.h"
 #include "SKPipelineCache.h"
 #include "Trace.h"
 #include "include/core/SkGraphics.h"
@@ -138,15 +138,15 @@ Java_sun_java2d_skia_SKEnvironment_glyphCacheStatsNative(JNIEnv *env, jclass cla
 }
 
 JNIEXPORT jlongArray JNICALL
-Java_sun_java2d_skia_SKEnvironment_iconAtlasStatsNative(JNIEnv *env, jclass clazz)
+Java_sun_java2d_skia_SKEnvironment_imageAtlasStatsNative(JNIEnv *env, jclass clazz)
 {
-    jlong values[SK_ICON_STAT_COUNT];
-    for (int i = 0; i < SK_ICON_STAT_COUNT; i++) {
-        values[i] = SKIconAtlas_Stat((SKIconAtlasStat) i);
+    jlong values[SK_IMAGE_ATLAS_STAT_COUNT];
+    for (int i = 0; i < SK_IMAGE_ATLAS_STAT_COUNT; i++) {
+        values[i] = SKImageAtlas_Stat((SKImageAtlasStat) i);
     }
-    jlongArray out = env->NewLongArray(SK_ICON_STAT_COUNT);
+    jlongArray out = env->NewLongArray(SK_IMAGE_ATLAS_STAT_COUNT);
     if (out != nullptr) {
-        env->SetLongArrayRegion(out, 0, SK_ICON_STAT_COUNT, values);
+        env->SetLongArrayRegion(out, 0, SK_IMAGE_ATLAS_STAT_COUNT, values);
     }
     return out;
 }
@@ -157,13 +157,13 @@ Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, ji
                                                    jlong glyphAtlasBytes, jint glyphCacheTexels,
                                                    jint luminanceClasses, jboolean presentPerCycle,
                                                    jboolean submitPerPresent, jint lcdOrder, jboolean orderedRecordings,
-                                                   jboolean iconAtlas)
+                                                   jboolean imageAtlas)
 {
     SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses,
                        presentPerCycle == JNI_TRUE, submitPerPresent == JNI_TRUE, (SKLcdOrder) lcdOrder,
-                       orderedRecordings == JNI_TRUE, iconAtlas == JNI_TRUE);
+                       orderedRecordings == JNI_TRUE, imageAtlas == JNI_TRUE);
 }
 
 

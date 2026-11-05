@@ -234,11 +234,11 @@ public final class SKEnvironment {
      */
     private static final boolean ORDERED_RECORDINGS = Boolean.getBoolean("sun.java2d.skia.orderedRecordings");
     /**
-     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.iconAtlas=true}: blits of small Skia surfaces
-     * (icons, cached images), unscaled and pixel-aligned under a rect clip, are drawn as sprites of one mesh
-     * from an atlas of their copies (SKIconAtlas.h) instead of one Graphite draw each.
+     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.imageAtlas=true}: blits of small Skia surfaces
+     * (the images of a UI, cached images), unscaled and pixel-aligned under a rect clip, are drawn as sprites of one mesh
+     * from an atlas of their copies (SKImageAtlas.h) instead of one Graphite draw each.
      */
-    private static final boolean ICON_ATLAS = Boolean.getBoolean("sun.java2d.skia.iconAtlas");
+    private static final boolean IMAGE_ATLAS = Boolean.getBoolean("sun.java2d.skia.imageAtlas");
     /**
      * The graphics API Graphite renders through ({@code sun.java2d.skia.graphiteApi}),
      * read by the native side before the first adapter request: {@code dawn} (the
@@ -637,7 +637,7 @@ public final class SKEnvironment {
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
                                 FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE,
-                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal(), ORDERED_RECORDINGS, ICON_ATLAS);
+                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal(), ORDERED_RECORDINGS, IMAGE_ATLAS);
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
@@ -678,7 +678,7 @@ public final class SKEnvironment {
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
                                                long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses,
                                                boolean presentPerCycle, boolean submitPerPresent, int lcdOrder,
-                                               boolean orderedRecordings, boolean iconAtlas);
+                                               boolean orderedRecordings, boolean imageAtlas);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();
@@ -849,15 +849,15 @@ public final class SKEnvironment {
     private static native long[] glyphCacheStatsNative();
 
     /**
-     * The icon atlas' work since the start (diagnostics, tests; {@code sun.java2d.skia.iconAtlas}): blits drawn
-     * from it, copies into it, refills, mesh draws of its batch (SKIconAtlas.h's SKIconAtlasStat order); an
+     * The image atlas' work since the start (diagnostics, tests; {@code sun.java2d.skia.imageAtlas}): blits drawn
+     * from it, copies into it, refills, mesh draws of its batch (SKImageAtlas.h's SKImageAtlasStat order); an
      * empty array without the backend.
      */
-    public static long[] iconAtlasStats() {
-        return isSkiaEnabled() ? iconAtlasStatsNative() : new long[0];
+    public static long[] imageAtlasStats() {
+        return isSkiaEnabled() ? imageAtlasStatsNative() : new long[0];
     }
 
-    private static native long[] iconAtlasStatsNative();
+    private static native long[] imageAtlasStatsNative();
 
     /**
      * Where the GPU backends keep what they compiled, across sessions
