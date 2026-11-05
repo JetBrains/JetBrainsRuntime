@@ -29,71 +29,15 @@ package sun.awt.wl;
 import sun.awt.SunToolkit;
 import sun.java2d.SurfaceData;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class WLMainSurface extends WLSurface {
     private final WLWindowPeer peer;
-
-    // Graphics devices this top-level component is visible on
-    private final List<WLGraphicsDevice> devices = new ArrayList<>();
 
     public WLMainSurface(WLWindowPeer peer) {
         this.peer = peer;
     }
 
-    WLGraphicsDevice getGraphicsDevice() {
-        int scale = 0;
-        WLGraphicsDevice theDevice = null;
-        // AFAIK there's no way of knowing which WLGraphicsDevice is displaying
-        // the largest portion of this component, so choose the first in the ordered list
-        // of devices with the maximum scale simply to be deterministic.
-        // NB: devices are added to the end of the list when we enter the corresponding
-        // Wayland's output and are removed as soon as we have left.
-        synchronized (devices) {
-            for (WLGraphicsDevice gd : devices) {
-                if (gd.getDisplayScale() > scale) {
-                    scale = gd.getDisplayScale();
-                    theDevice = gd;
-                }
-            }
-        }
-
-        return theDevice;
-    }
-
-    @Override
-    void notifyEnteredOutput(int wlOutputID) {
-        // Called from native code whenever the corresponding wl_surface enters an output (monitor)
-        WLGraphicsDevice gd;
-        synchronized (devices) {
-            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            gd = ge.deviceWithID(wlOutputID);
-            if (gd != null) {
-                devices.add(gd);
-            }
-        }
-
-        if (gd != null) {
-            peer.notifyOutputChanged(gd, WLGraphicsDevice.OutputChange.ENTERED, 0, 0, 0);
-        }
-    }
-
-    @Override
-    void notifyLeftOutput(int wlOutputID) {
-        // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
-        WLGraphicsDevice gd;
-        synchronized (devices) {
-            final WLGraphicsEnvironment ge = (WLGraphicsEnvironment)WLGraphicsEnvironment.getLocalGraphicsEnvironment();
-            gd = ge.deviceWithID(wlOutputID);
-            if (gd != null) {
-                devices.remove(gd);
-            }
-        }
-
-        if (gd != null) {
-            peer.notifyOutputChanged(gd, WLGraphicsDevice.OutputChange.LEFT, 0, 0, 0);
-        }
+    public WLWindowPeer getPeer() {
+        return peer;
     }
 
     public void activateByAnotherSurface(long serial, long activatingSurfacePtr) {
