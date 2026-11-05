@@ -40,16 +40,6 @@ public class WLSubSurface extends WLSurface {
     }
 
     @Override
-    void notifyEnteredOutput(int wlOutputID) {
-        // Deliberately ignored
-    }
-
-    @Override
-    void notifyLeftOutput(int wlOutputID) {
-        // Deliberately ignored
-    }
-
-    @Override
     public void dispose() {
         if (isValid) {
             nativeDestroyWlSubSurface(wlSubSurfacePtr);
