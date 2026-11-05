@@ -51,7 +51,6 @@
 #include "awt.h"
 #include "sun_awt_wl_WLToolkit.h"
 #include "sun_awt_wl_WLDisplay.h"
-#include "WLGraphicsEnvironment.h"
 #include "memory_utils.h"
 #include "java_awt_event_KeyEvent.h"
 
@@ -707,7 +706,6 @@ registry_global(void *data, struct wl_registry *wl_registry,
         xdg_wm_base = wl_registry_bind(wl_registry, name, &xdg_wm_base_interface, wm_base_version);
         if (xdg_wm_base != NULL) {
             xdg_wm_base_add_listener(xdg_wm_base, &xdg_wm_base_listener, NULL);
-            process_new_listener_before_end_of_init();
         }
     } else if (strcmp(interface, wl_seat_interface.name) == 0) {
         wl_seat = wl_registry_bind(wl_registry, name, &wl_seat_interface, 5);
@@ -715,9 +713,6 @@ registry_global(void *data, struct wl_registry *wl_registry,
             wl_seat_add_listener(wl_seat, &wl_seat_listener, NULL);
             process_new_listener_before_end_of_init();
         }
-    } else if (strcmp(interface, wl_output_interface.name) == 0) {
-        WLOutputRegister(wl_registry, name);
-        process_new_listener_before_end_of_init();
     } else if (strcmp(interface, xdg_activation_v1_interface.name) == 0) {
         xdg_activation_v1 = wl_registry_bind(wl_registry, name, &xdg_activation_v1_interface, 1);
     }
@@ -739,10 +734,6 @@ registry_global(void *data, struct wl_registry *wl_registry,
     } else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
         uint32_t versionToBind = version >= 3 ? 3 : version;
         zxdg_output_manager_v1 = wl_registry_bind(wl_registry, name, &zxdg_output_manager_v1_interface, versionToBind);
-        if (zxdg_output_manager_v1 != NULL) {
-            WLOutputXdgOutputManagerBecameAvailable();
-            process_new_listener_before_end_of_init();
-        }
     } else if (strcmp(interface, zwp_text_input_manager_v3_interface.name) == 0) {
         // If the requested version is higher than the provided one by the compositor,
         //   the event loop may shut down as soon as it gets launched (wl_display_dispatch will return -1),
@@ -772,8 +763,7 @@ registry_global(void *data, struct wl_registry *wl_registry,
 static void
 registry_global_remove(void *data, struct wl_registry *wl_registry, uint32_t name)
 {
-    WLOutputDeregister(wl_registry, name);
-    // TODO: also handle wl_seat removal
+    // TODO: handle wl_seat removal
 }
 
 static const struct wl_registry_listener wl_registry_listener = {
@@ -916,7 +906,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
     CHECK_NULL_RETURN(wlgeClass, JNI_FALSE);
 
-    return WLGraphicsEnvironment_initIDs(env, wlgeClass);
+    return JNI_TRUE;
 }
 
 // Reading cursor theme/size using 'gsettings' command line tool proved to be faster than initializing GTK and reading
@@ -1067,6 +1057,14 @@ Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
     finalizeInit(env);
 
     checkInterfacesPresent(env);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_waitForSyncDuringInit(JNIEnv *env, jclass clazz)
+{
+    if (wl_display_dispatch(wl_display) < 0) {
+        JNU_ThrowByName(env, "java/awt/AWTError", "wl_display_dispatch() failed");
+    }
 }
 
 static bool wlCheckProtocolError(JNIEnv *env)
