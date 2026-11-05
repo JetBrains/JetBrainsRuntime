@@ -11,20 +11,14 @@ const float BOX_NUDGE_LENGTH = 0.51;
 
 void main() {
     vec2 position;
-    bool hasInner = in_InnerCorners.x < in_InnerCorners.z && in_InnerCorners.y < in_InnerCorners.w;
-    if (hasInner) {
-        bvec2 cornerIndex = bvec2((((gl_VertexIndex >> 1) + 1) & 2) != 0, ((gl_VertexIndex >> 1) & 2) != 0);
-        float innerNudgeLength = (sqrt(2.0) - 1.0) * in_OuterInnerRadii.y + BOX_NUDGE_LENGTH;
-        vec4 nudgedInnerCorners = vec4(in_InnerCorners.xy + innerNudgeLength, in_InnerCorners.zw - innerNudgeLength);
-        position = (gl_VertexIndex & 1) != 0 // is this an inner corner?
-            ? (nudgedInnerCorners.x < nudgedInnerCorners.z && nudgedInnerCorners.y < nudgedInnerCorners.w
-                ? mix(nudgedInnerCorners.xy, nudgedInnerCorners.zw, cornerIndex)
-                : in_InnerCorners.xy) // in case the inner rectangle is inverted after nudging, collapse it to a point instead
-            : mix(in_OuterCorners.xy - BOX_NUDGE_LENGTH, in_OuterCorners.zw + BOX_NUDGE_LENGTH, cornerIndex);
-    } else {
-        bvec2 cornerIndex = bvec2((gl_VertexIndex & 1) != 0, (gl_VertexIndex & 2) != 0);
-        position = mix(in_OuterCorners.xy - BOX_NUDGE_LENGTH, in_OuterCorners.zw + BOX_NUDGE_LENGTH, cornerIndex);
-    }
+    bvec2 cornerIndex = bvec2((((gl_VertexIndex >> 1) + 1) & 2) != 0, ((gl_VertexIndex >> 1) & 2) != 0);
+    float innerNudgeLength = (sqrt(2.0) - 1.0) * in_OuterInnerRadii.y + BOX_NUDGE_LENGTH;
+    vec4 nudgedInnerCorners = vec4(in_InnerCorners.xy + innerNudgeLength, in_InnerCorners.zw - innerNudgeLength);
+    position = (gl_VertexIndex & 1) != 0 // is this an inner corner?
+        ? (nudgedInnerCorners.x < nudgedInnerCorners.z && nudgedInnerCorners.y < nudgedInnerCorners.w
+            ? mix(nudgedInnerCorners.xy, nudgedInnerCorners.zw, cornerIndex)
+            : in_OuterCorners.xy - BOX_NUDGE_LENGTH) // in case the inner rectangle is inverted after nudging, collapse it to the outer rect's nudged top-left vertex instead
+        : mix(in_OuterCorners.xy - BOX_NUDGE_LENGTH, in_OuterCorners.zw + BOX_NUDGE_LENGTH, cornerIndex);
 
     gl_Position = transformToDeviceSpace(position);
     passVertexData(in_Data);

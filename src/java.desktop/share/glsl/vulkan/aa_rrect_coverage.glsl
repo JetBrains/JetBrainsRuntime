@@ -79,11 +79,12 @@ float rrectBoxCoverage(vec2 boxCenter, vec2 rrectMin, vec2 rrectMax, float r) {
 
 float rrectOuterInnerBoxCoverageDifference(
     vec2 boxCenter,
-    vec2 outerP1, vec2 outerP2, float outerRadius,
-    vec2 innerP1, vec2 innerP2, float innerRadius
+    vec2 outerMin, vec2 outerMax, float outerRadius,
+    vec2 innerMin, vec2 innerMax, float innerRadius
 ) {
-    bool hasInner = innerP1.x < innerP2.x && innerP1.y < innerP2.y;
-    float coverage = rrectBoxCoverage(boxCenter, outerP1, outerP2, outerRadius);
-    if (hasInner) coverage -= rrectBoxCoverage(boxCenter, innerP1, innerP2, innerRadius);
+    float coverage = rrectBoxCoverage(boxCenter, outerMin, outerMax, outerRadius);
+    if (innerMin.x < innerMax.x && innerMin.y < innerMax.y) {
+        coverage -= rrectBoxCoverage(boxCenter, innerMin, innerMax, innerRadius);
+    }
     return clamp(coverage, 0.0, 1.0);
 }
