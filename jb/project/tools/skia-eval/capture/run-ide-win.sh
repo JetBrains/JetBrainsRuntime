@@ -7,7 +7,7 @@
 #   run-ide.sh <arm> [--scale N] [--seed <dir>] [--wait S --shot <png>] [-- <idea args, e.g. a project path>]
 #     arms: A0 (software loops), A1 blend, A2 twopass, A3 accumulate, A4 accumulate + present=cycle,
 #           A5 accumulate + submit=present, A6 accumulate + present=cycle + submit=present,
-#           A7 twopass on Dawn's D3D12 backend, A8 twopass on native Vulkan, A8o A8 with orderedRecordings, A8i A8 with the icon atlas,
+#           A7 twopass on Dawn's D3D12 backend, A8 twopass on native Vulkan, A8o A8 with orderedRecordings, A8i A8 with the image atlas,
 #           R1 Direct3D 9, R2 JBR's Vulkan pipeline, R0 BufferedImages (Swing's back buffer) drawn
 #           by Skia's raster backend (sun.java2d.skia.raster), R5 R0 with Skia's scaler and text route,
 #           the text arms T0 (Skia pipe, JDK scaler), T1 (Skia scaler coverage), T4 (platform masks, the
@@ -48,7 +48,7 @@ case "$ARM" in
   A7) NAME=A7-twopass-d3d12; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.dawn.backend=d3d12" ;;
   A8) NAME=A8-twopass-vulkan; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan" ;;
   A8o) NAME=A8o-ordered; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.orderedRecordings=true" ;;   # A8, Graphite told the recordings come in order (2026-11-04)
-  A8i) NAME=A8i-icons; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.iconAtlas=true" ;;   # A8 with the icon atlas (2026-11-04)
+  A8i) NAME=A8i-images; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.imageAtlas=true" ;;   # A8 with the image atlas (2026-11-04)
   # the text arms of the VM's rounds (2026-10-23 … 11-02), in the six-dimension spellings: the Skia pipe with the
   # JDK's scaler (T0), the Skia scaler's own coverage under the pipes' contrast curve (T1), the platform's masks and
   # blend — the default — (T4), with the LCD strikes keyed by colour at 2 or 3 bits (T5, T6), the hybrid on today's
