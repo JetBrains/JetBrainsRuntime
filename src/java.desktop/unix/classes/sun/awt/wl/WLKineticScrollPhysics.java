@@ -33,6 +33,7 @@ import java.util.ArrayDeque;
 public final class WLKineticScrollPhysics {
     private static final long UINT32_MASK = 0xFFFFFFFFL;
     private static final long VELOCITY_WINDOW_MS = 150;
+    // velocities are in wl_pointer::axis units (surface-local coordinates) per second
     private static final double FRICTION = 4.0;
     private static final double MIN_START_VELOCITY = 50;
     private static final double MAX_VELOCITY = 8000;
@@ -80,7 +81,7 @@ public final class WLKineticScrollPhysics {
         final double vx = distanceX * 1000 / intervalMs;
         final double vy = distanceY * 1000 / intervalMs;
         final double v = Math.hypot(vx, vy);
-        if (v == 0 || v < MIN_START_VELOCITY) {
+        if (v < MIN_START_VELOCITY) {
             return false;
         }
         final double clamp = Math.min(1, MAX_VELOCITY / v);

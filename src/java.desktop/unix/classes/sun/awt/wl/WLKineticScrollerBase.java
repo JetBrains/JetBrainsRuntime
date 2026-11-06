@@ -53,7 +53,6 @@ abstract class WLKineticScrollerBase {
         int awtAbsY,
         int awtModifiers,
 
-        WLPointerEvent.AxisSourceType axisSource,
         double xAxisVector,
         int xAxisSteps120Value,
         double yAxisVector,
@@ -329,7 +328,6 @@ abstract class WLKineticScrollerBase {
                         xAbsolute,
                         yAbsolute,
                         modifiers,
-                        WLPointerEvent.AxisSourceType.FINGER,
                         passedDistanceX,
                         0,
                         passedDistanceY,

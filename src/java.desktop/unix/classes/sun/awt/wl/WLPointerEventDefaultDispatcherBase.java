@@ -31,11 +31,10 @@ import java.awt.EventQueue;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
-import java.util.Objects;
 
 
 abstract class WLPointerEventDefaultDispatcherBase {
-    protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDefaultPointerEventDispatcherBase");
+    protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLPointerEventDefaultDispatcherBase");
 
 
     /**
@@ -106,7 +105,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
             int awtAbsY,
             int awtModifiers,
 
-            WLPointerEvent.AxisSourceType axisSource,
             double xAxisVector,
             int xAxisSteps120Value,
             double yAxisVector,
@@ -118,7 +116,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
                 awtAbsX, awtAbsY,
                 awtModifiers,
                 false,
-                axisSource,
                 xAxisVector,
                 xAxisSteps120Value,
                 yAxisVector,
@@ -210,7 +207,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
         final int     awtModifiers,
         final boolean awtIsPopupTrigger,
 
-        final WLPointerEvent.AxisSourceType pointerAxisSource,
         final double xAxisVector,
         final int    xAxisSteps120Value,
         final double yAxisVector,
@@ -280,7 +276,7 @@ abstract class WLPointerEventDefaultDispatcherBase {
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine(
-                "dispatchPointerAxisEventToOwner: " +
+                "notifyRawPointerAxisEvent: " +
                 "xAxisVector={0} " +
                 "xAxisSteps120Value={1} " +
                 "yAxisVector={2} " +
@@ -512,7 +508,7 @@ abstract class WLPointerEventDefaultDispatcherBase {
                 }
 
                 clickCount = newInputState.getClickCount();
-                isPopupTrigger = buttonCode.isPopupTrigger() && e.getIsButtonPressed();
+                isPopupTrigger = buttonCode.isPopupTrigger() && e.hasButtonEvent() && e.getIsButtonPressed();
                 buttonChanged = buttonCode.javaCode;
             }
 
@@ -567,11 +563,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
         final int modifiers = newInputState.getModifiers();
 
         if (e.hasAnyAxisLikeEvents()) {
-            final WLPointerEvent.AxisSourceType axisSource = Objects.requireNonNullElse(
-                e.hasAxisSourceEvent() ? WLPointerEvent.AxisSourceType.recognizedOrNull(e.getAxisSource()) : null,
-                WLPointerEvent.AxisSourceType.WHEEL
-            );
-
             final double xAxisVector = e.xAxisHasVectorValue() ? e.getXAxisVectorValue() : 0;
             final int xAxisSteps120Value = e.xAxisHasSteps120Value() ? e.getXAxisSteps120Value() : 0;
 
@@ -586,7 +577,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
                 awtAbsY,
                 modifiers,
                 false,
-                axisSource,
                 xAxisVector,
                 xAxisSteps120Value,
                 yAxisVector,
