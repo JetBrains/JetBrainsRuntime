@@ -99,6 +99,8 @@ enum SKStatsCounter {
     SK_COUNT_PENDING_SOURCES_VOLATILE,   // of those, from a render target (a VolatileImage, a back buffer)
     SK_COUNT_IMAGE_ATLAS_BLITS,              // EXPERIMENT sun.java2d.skia.imageAtlas: blits drawn as atlas sprites (SKImageAtlas)
     SK_COUNT_IMAGE_ATLAS_COPIES,             // ... copies into the atlas
+    SK_COUNT_TEXT_BLOB_HITS,          // EXPERIMENT sun.java2d.skia.text.blobCache: runs drawn from a cached text blob
+    SK_COUNT_TEXT_BLOB_MISSES,        // ... runs whose blob was made (and cached)
     SK_COUNT_COUNT
 };
 

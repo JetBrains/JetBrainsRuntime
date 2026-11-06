@@ -169,6 +169,13 @@ public final class SKEnvironment {
      */
     private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 64);
     /**
+     * EXPERIMENT (x64hw, 2026-11-06), {@code sun.java2d.skia.text.blobCache=<entries>}: Skia's text path keeps the
+     * text blobs of the last {@code entries} distinct glyph runs and draws a repeated run from the same blob, so
+     * Graphite's cache of prepared text, keyed by the blob's identity, can reuse it across frames. 0 (the default):
+     * off, every run drawn as a new glyph run.
+     */
+    private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 0);
+    /**
      * {@code sun.java2d.skia.glyphAtlas=<MB>}: the budget of Graphite's glyph atlas
      * ({@code ContextOptions::fGlyphCacheTextureMaximumBytes}, the GPU-side glyph
      * masks of Skia's text path); 0 keeps Skia's default of 8 MB.
@@ -641,6 +648,9 @@ public final class SKEnvironment {
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
+                if (TEXT_BLOB_CACHE > 0) {
+                    setTextBlobCacheNative(TEXT_BLOB_CACHE);
+                }
                 pipelineCache = pipelineCacheDirectory();
                 setPipelineCacheNative(pipelineCache);
             }
@@ -688,6 +698,42 @@ public final class SKEnvironment {
     private static native long flushesNative();
 
     private static native void setStrikeCacheLimitNative(long bytes);
+
+    /**
+     * The text blob cache ({@code sun.java2d.skia.text.blobCache}) at run time (tests, diagnostics): its capacity
+     * in entries, 0 = off; the cache is emptied either way. No effect without the backend.
+     */
+    public static void setTextBlobCache(int entries) {
+        if (!isSkiaEnabled()) {
+            return;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();   // nothing queued is drawn under the old setting afterwards
+            setTextBlobCacheNative(entries);
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    /** The text blob cache's hits and misses since the start (tests, diagnostics); an empty array without the backend. */
+    public static long[] textBlobCacheStats() {
+        if (!isSkiaEnabled()) {
+            return new long[0];
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();
+            return textBlobCacheStatsNative();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native void setTextBlobCacheNative(int entries);
+    private static native long[] textBlobCacheStatsNative();
 
     /** The budget of Skia's strike cache in bytes as the backend runs it (diagnostics, tests). */
     public static long strikeCacheLimit() {

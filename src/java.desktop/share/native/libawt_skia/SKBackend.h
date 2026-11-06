@@ -231,11 +231,19 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
 jlong SKBackend_GlyphsDrawnBySkia();
 // The same glyph loop on any canvas (the raster surface's): the paint as the canvas wants
 // it, textColour the text's colour as Java sees it (the cg route's luminance class); returns
-// the glyphs drawn.
+// the glyphs drawn. cacheBlobs: the runs go through the text blob cache (SKBackend_SetTextBlobCache;
+// the flusher only, since the cache is not synchronised).
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
-                                   const jfloat *positions);
+                                   const jfloat *positions, bool cacheBlobs = false);
+// EXPERIMENT (x64hw, 2026-11-06), sun.java2d.skia.text.blobCache=<entries>: Skia's text path keeps the text
+// blobs of the last `entries` distinct runs and draws a repeated one from the same SkTextBlob, so Graphite's
+// cache of prepared text (TextBlobRedrawCoordinator, keyed by the blob's identity) can reuse its sub-runs across
+// frames; 0 = off (every run drawn with drawGlyphs, rebuilt by Graphite every time).
+void SKBackend_SetTextBlobCache(jint entries);
+// The blob cache's hits and misses since the start (tests, diagnostics).
+void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses);
 // Skia's shaper (sun.java2d.skia.text=shaper): the characters of a drawString shaped by
 // HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs)
 // and the platform font manager's fallback, drawn as one text blob at the baseline

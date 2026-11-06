@@ -92,6 +92,9 @@
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <list>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
@@ -2193,24 +2196,103 @@ static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext
     return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(textColour, pScalerContext)) : platform;
 }
 
+// The text blob cache (SKBackend_SetTextBlobCache): least recently used first out. A key is the bytes of a
+// call's runs: per run the typeface's identity (a cached blob holds a reference to it, so the address is not
+// reused while the key lives), the font's parameters, the glyph ids and their positions relative to the
+// call's origin. The paint is not part of a blob and not of the key.
+namespace {
+struct TextBlobCache {
+    size_t capacity = 0;
+    std::list<std::pair<std::string, sk_sp<SkTextBlob>>> lru;   // most recently used first
+    std::unordered_map<std::string_view, decltype(lru)::iterator> index;   // views into the keys in lru
+    jlong hits = 0, misses = 0;
+
+    sk_sp<SkTextBlob> find(const std::string &key) {
+        auto it = index.find(std::string_view(key));
+        if (it == index.end()) {
+            return nullptr;
+        }
+        lru.splice(lru.begin(), lru, it->second);
+        return it->second->second;
+    }
+    void add(std::string key, sk_sp<SkTextBlob> blob) {
+        lru.emplace_front(std::move(key), std::move(blob));
+        index.emplace(std::string_view(lru.front().first), lru.begin());
+        while (lru.size() > capacity) {
+            index.erase(std::string_view(lru.back().first));
+            lru.pop_back();
+        }
+    }
+    void clear() {
+        index.clear();
+        lru.clear();
+    }
+};
+TextBlobCache gTextBlobs;   // the flusher's, under the entry mutex
+
+template <typename T> void appendBytes(std::string &key, const T &value) {
+    key.append(reinterpret_cast<const char *>(&value), sizeof(T));
+}
+
+void appendFont(std::string &key, const SkFont &font) {
+    appendBytes(key, (uintptr_t) font.getTypeface());
+    appendBytes(key, font.getSize());
+    appendBytes(key, font.getScaleX());
+    appendBytes(key, font.getSkewX());
+    const uint32_t flags = (uint32_t) font.getEdging() | (uint32_t) font.getHinting() << 4
+                           | (uint32_t) font.isSubpixel() << 8 | (uint32_t) font.isLinearMetrics() << 9
+                           | (uint32_t) font.isEmbolden() << 10 | (uint32_t) font.isBaselineSnap() << 11
+                           | (uint32_t) font.isForceAutoHinting() << 12 | (uint32_t) font.isEmbeddedBitmaps() << 13;
+    appendBytes(key, flags);
+}
+} // namespace
+
+void SKBackend_SetTextBlobCache(jint entries) {
+    gTextBlobs.capacity = entries > 0 ? (size_t) entries : 0;
+    gTextBlobs.clear();
+}
+
+void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses) {
+    *hits = gTextBlobs.hits;
+    *misses = gTextBlobs.misses;
+}
+
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
-                                   const jfloat *positions) {
+                                   const jfloat *positions, bool cacheBlobs) {
     jlong drawn = 0;
     if (contextCount <= 0) return 0;
+    cacheBlobs = cacheBlobs && gTextBlobs.capacity > 0;
     // runs of glyphs sharing a font (the strike's own, or a platform fallback font)
     std::vector<SkGlyphID> ids;
     std::vector<SkPoint> points;
     SkFont runFont;
     const SkTypeface *runTypeface = nullptr;
+    // cached: the runs collected (positions relative to the origin) into one blob, looked up by their bytes
+    struct Run {
+        SkFont font;
+        size_t first, count;
+    };
+    std::vector<Run> runs;
+    std::vector<SkGlyphID> allIds;
+    std::vector<SkPoint> allPoints;
     auto flushRun = [&] {
-        if (!ids.empty()) {
-            canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
-            drawn += (jlong) ids.size();
-            ids.clear();
-            points.clear();
+        if (ids.empty()) {
+            return;
         }
+        if (cacheBlobs) {
+            runs.push_back(Run{runFont, allIds.size(), ids.size()});
+            allIds.insert(allIds.end(), ids.begin(), ids.end());
+            for (const SkPoint &p : points) {
+                allPoints.push_back({p.fX - originX, p.fY - originY});
+            }
+        } else {
+            canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+        }
+        drawn += (jlong) ids.size();
+        ids.clear();
+        points.clear();
     };
     float penX = originX, penY = originY;
     for (jint i = 0; i < numGlyphs; i++) {
@@ -2252,6 +2334,37 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
         points.push_back({gx, gy});
     }
     flushRun();
+    if (cacheBlobs && !runs.empty()) {
+        std::string key;
+        key.reserve(runs.size() * 40 + allIds.size() * (sizeof(SkGlyphID) + sizeof(SkPoint)));
+        for (const Run &run : runs) {
+            appendFont(key, run.font);
+            appendBytes(key, run.count);
+            key.append(reinterpret_cast<const char *>(allIds.data() + run.first), run.count * sizeof(SkGlyphID));
+            key.append(reinterpret_cast<const char *>(allPoints.data() + run.first), run.count * sizeof(SkPoint));
+        }
+        sk_sp<SkTextBlob> blob = gTextBlobs.find(key);
+        if (blob) {
+            gTextBlobs.hits++;
+            SKStats_Count(SK_COUNT_TEXT_BLOB_HITS);
+        } else {
+            SkTextBlobBuilder builder;
+            for (const Run &run : runs) {
+                const SkTextBlobBuilder::RunBuffer &buffer = builder.allocRunPos(run.font, (int) run.count);
+                memcpy(buffer.glyphs, allIds.data() + run.first, run.count * sizeof(SkGlyphID));
+                memcpy(buffer.points(), allPoints.data() + run.first, run.count * sizeof(SkPoint));
+            }
+            blob = builder.make();
+            gTextBlobs.misses++;
+            SKStats_Count(SK_COUNT_TEXT_BLOB_MISSES);
+            if (blob) {
+                gTextBlobs.add(std::move(key), blob);
+            }
+        }
+        if (blob) {
+            canvas->drawTextBlob(blob, originX, originY, paint);
+        }
+    }
     return drawn;
 }
 
@@ -2264,7 +2377,7 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
     SkPaint paint = SKBackend_MakePaint(true);
     ensureCanvasClip();   // Skia's text path draws through the canvas
     jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
-                                               originX, originY, codes, images, positions);
+                                               originX, originY, codes, images, positions, true);
     gGlyphsDrawnBySkia.fetch_add(drawn, std::memory_order_relaxed);
 }
 
