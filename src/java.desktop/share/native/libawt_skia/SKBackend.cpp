@@ -1362,6 +1362,7 @@ static bool batchesTouch(const SkRect &r) {
 // 93 % of the mesh draws destination switches caused in the IDE (2026-11-03) were of an image source
 // replacing another for the same destination, whose blit drew the batches next.
 static bool gBlitPastBatches = false;   // SKBackend_Blit for drawImageQuad
+static bool gInOrderAtlas = false;      // SKBackend_Blit, diagnostics: the in-order baseline (J2D_SKIA_EAGER_SURFACES)
 
 #define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); { SKDrawCauseScope cause_(SK_COUNT_MESH_DRAWS_AT_CANVAS_OP); flushAllBatches(); } ensureCanvasClip()
 
@@ -3288,7 +3289,7 @@ static sk_sp<SkImage> blitSourceImage(SKSDOps *src) {
 // its own image paint key. False: the caller draws the blit itself.
 static bool imageAtlasBlit(SKSDOps *src, const sk_sp<SkImage> &image, const SkPaint &p, jint sx1, jint sy1, jint sx2, jint sy2,
                           jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
-    if (!gConfig.imageAtlas || !gBlitPastBatches || src == nullptr || src->state == nullptr || g.cc == nullptr
+    if (!gConfig.imageAtlas || !(gBlitPastBatches || gInOrderAtlas) || src == nullptr || src->state == nullptr || g.cc == nullptr
             || sx2 - sx1 != dx2 - dx1 || sy2 - sy1 != dy2 - dy1 || dx1 != std::floor(dx1) || dy1 != std::floor(dy1)
             || !SKImageAtlas_Fits(sx2 - sx1, sy2 - sy1) || p.asBlendMode() != SkBlendMode::kSrcOver
             || p.getShader() != nullptr || p.getColorFilter() != nullptr) {
@@ -3326,7 +3327,19 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     } pastBatches(!gEagerSurfaces && lazyClip() && !g.xorMode && !SKBackend_Multisampled() && !SKBackend_EdgeAAQuads()
                   && !(isoblit && (SKSDOps *) jlong_to_ptr(pSrc) == g.dst) && dx1 < dx2 && dy1 < dy2
                   && sx1 < sx2 && sy1 < sy2);
-    if (!gBlitPastBatches) {
+    // Diagnostics (J2D_SKIA_EAGER_SURFACES, the in-order baseline of 2026-11-06): a blit that may become an image
+    // atlas sprite draws only the other kinds' batches, so consecutive sprites share the atlas batch as an in-order
+    // renderer's would; one that does not become a sprite draws the atlas batch first (below).
+    struct InOrderAtlas {
+        ~InOrderAtlas() { gInOrderAtlas = false; }
+    } inOrderAtlas;
+    if (!gBlitPastBatches && gEagerSurfaces && isoblit && !g.xorMode && !SKBackend_Multisampled() && !SKBackend_EdgeAAQuads()
+            && !g.hasMatrix && (SKSDOps *) jlong_to_ptr(pSrc) != g.dst && dx1 < dx2 && dy1 < dy2 && sx1 < sx2 && sy1 < sy2) {
+        gInOrderAtlas = true;
+        { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT); drawOtherKinds(3); }
+        ensureCanvasClip();
+    }
+    if (!gBlitPastBatches && !gInOrderAtlas) {
         if (SKStats_IsEnabled()) {
             SKStats_Count(!lazyClip() ? SK_COUNT_BLITS_NOT_PAST_CLIP
                           : isoblit && (SKSDOps *) jlong_to_ptr(pSrc) == g.dst ? SK_COUNT_BLITS_NOT_PAST_SELF
@@ -3385,6 +3398,10 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     SKStatsScope drawStats(SK_SPAN_BLIT_DRAW);
     if (imageAtlasBlit(linkedSrc, image, p, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)) {
         return;
+    }
+    if (gInOrderAtlas && g.cc != nullptr) {
+        SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT);
+        flushAllBatches();   // in order: everything pending before this blit first
     }
     drawImageQuad(image, srcRect, dstRect, samplingForHint(hint), p);
 }
