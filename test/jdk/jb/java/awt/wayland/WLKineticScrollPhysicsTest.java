@@ -54,6 +54,17 @@ public class WLKineticScrollPhysicsTest {
         addSamples(p, 0, 10, 0);
         check(!p.startFling(100 + 151));
 
+        // pause of 100 ms before stop: samples at 50..100 remain, 50 units over 150 ms
+        p = new WLKineticScrollPhysics();
+        addSamples(p, 0, 10, 0);
+        check(p.startFling(200));
+        sumX = 0;
+        while (p.advance(8)) {
+            sumX += p.getDeltaX();
+        }
+        sumX += p.getDeltaX();
+        check(Math.abs(sumX - 50 * 1000 / 150.0 / 4) < 1e-6);
+
         // too slow
         p = new WLKineticScrollPhysics();
         p.addSample(0, 1, 0);

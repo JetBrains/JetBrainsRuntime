@@ -66,7 +66,8 @@ public final class WLKineticScrollPhysics {
         if (samples.size() < 2) {
             return false;
         }
-        final long intervalMs = (samples.getLast().timeMs - samples.getFirst().timeMs) & UINT32_MASK;
+        // like GTK4, measure up to the stop, so that a pause before lifting the fingers slows the fling down
+        final long intervalMs = (stopTimeMs - samples.getFirst().timeMs) & UINT32_MASK;
         if (intervalMs == 0) {
             return false;
         }
