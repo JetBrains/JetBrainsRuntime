@@ -31,11 +31,12 @@
 // Cubic filter is currently not supported, see VK_EXT_filter_cubic.
 #define SAMPLER_FILTER_COUNT java_awt_image_AffineTransformOp_TYPE_BILINEAR
 
+// This is one enum because some combinations (like repeat + unnormalized) are unsupported.
 typedef enum {
-    SAMPLER_WRAP_BORDER = 0,
-    SAMPLER_WRAP_REPEAT = 1,
-    SAMPLER_WRAP_COUNT  = 2
-} VKSamplerWrap;
+    SAMPLER_ADDRESSING_EDGE_UNNORMALIZED,
+    SAMPLER_ADDRESSING_REPEAT_NORMALIZED,
+    SAMPLER_ADDRESSING_COUNT
+} VKSamplerAddressing;
 
 typedef struct {
     VkDescriptorPool descriptorPool;
@@ -43,11 +44,11 @@ typedef struct {
     struct {
         VkSampler sampler;
         VkDescriptorSet descriptorSet;
-    } table[SAMPLER_FILTER_COUNT][SAMPLER_WRAP_COUNT];
+    } table[SAMPLER_FILTER_COUNT][SAMPLER_ADDRESSING_COUNT];
 } VKSamplers;
 
 VKSamplers VKSamplers_Create(VKDevice* device);
 void VKSamplers_Destroy(VKDevice* device, VKSamplers samplers);
-VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* samplers, jint filter, VKSamplerWrap wrap);
+VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* samplers, jint filter, VKSamplerAddressing addressing);
 
 #endif //VKSamplers_h_Included

@@ -96,6 +96,22 @@ static inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
     return vksdo->drawableFormat & VKSD_FORMAT_OPAQUE_BIT ? VK_TRUE : VK_FALSE;
 }
 
+// When the surface is sampled as a texture,
+// opaque formats use an alpha swizzle ONE and are treated as STRAIGHT.
+static inline VKPackedSwizzle VKSD_GetSamplingSwizzle(VKSDOps* vksdo) {
+    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(
+        VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_ONE);
+
+    return VKSD_IsOpaque(vksdo) ? OPAQUE_SWIZZLE : 0;
+}
+static inline AlphaType VKSD_GetSamplingInAlphaType(VKSDOps* vksdo) {
+    return VKSD_IsOpaque(vksdo) ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
+}
+
+
 VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR* createInfo);
 VKSwapchain* VKSwapchain_Retain(VKSwapchain* swapchain);
 void VKSwapchain_Release(VKSwapchain* swapchain);
@@ -104,6 +120,11 @@ void VKSwapchain_Release(VKSwapchain* swapchain);
  * Release all resources of the surface, resetting it to initial state.
  */
 void VKSD_ResetSurface(VKSDOps* vksdo);
+
+/**
+ * Like VKSD_ResetSurface, but called when the surface will never be used again.
+ */
+void VKSD_DisposeSurface(VKSDOps* vksdo);
 
 /**
  * Configure image surface. This [re]initializes the device and surface image.

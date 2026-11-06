@@ -55,8 +55,7 @@ abstract class VKPaints {
         impls.put(SunGraphics2D.PAINT_GRADIENT, new Gradient());
         impls.put(SunGraphics2D.PAINT_LIN_GRADIENT, new LinearGradient());
         impls.put(SunGraphics2D.PAINT_RAD_GRADIENT, new RadialGradient());
-        // TODO: only register Texture when it's actually supported, otherwise the registration will produce incorrect draws
-        // impls.put(SunGraphics2D.PAINT_TEXTURE, new Texture());
+        impls.put(SunGraphics2D.PAINT_TEXTURE, new Texture());
     }
 
     /**
@@ -100,11 +99,7 @@ abstract class VKPaints {
 
         /**
          * Returns true if the given TexturePaint instance can be used by the
-         * accelerated VKPaints.Texture implementation.  A TexturePaint is
-         * considered valid if the following conditions are met:
-         *   - the texture image dimensions are power-of-two
-         *   - the texture image can be (or is already) cached in an Metal
-         *     texture object
+         * accelerated VKPaints.Texture implementation.
          */
         @Override
         boolean isPaintValid(SunGraphics2D sg2d) {

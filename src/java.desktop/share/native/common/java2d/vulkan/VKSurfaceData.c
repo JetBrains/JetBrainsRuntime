@@ -141,6 +141,18 @@ void VKSD_ResetSurface(VKSDOps* vksdo) {
     }
 }
 
+void VKSD_DisposeSurface(VKSDOps* vksdo) {
+    // If this surface is the texture source, reset the texture source.
+    // This can be reached through Image.flush() in java2d,
+    // which will destroy the surface, but not reset the paint.
+    if (VKRenderer_GetContext()->textureSource.surface == vksdo) {
+        VKRenderer_ResetTextureSource();
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSD_DisposeSurface(%p): reset texture source", vksdo);
+    }
+
+    VKSD_ResetSurface(vksdo);
+}
+
 static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) {
     VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
 }

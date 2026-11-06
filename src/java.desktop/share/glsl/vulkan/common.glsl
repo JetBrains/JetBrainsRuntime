@@ -19,6 +19,15 @@ layout (constant_id = 1) const uint const_ShaderModifier = 0;
 #define SHADER_COVERAGE_MASK 1
 #define SHADER_COVERAGE_AA_PARALLELOGRAM 2
 
+struct VKTransform {
+    float m00, m01, m02;
+    float m10, m11, m12;
+};
+
+vec2 applyTransform(VKTransform t, vec2 v) {
+    return vec3(v, 1.0) * mat2x3(t.m00, t.m01, t.m02, t.m10, t.m11, t.m12);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //// Vertex shader common outputs and transform push constants /////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,14 +39,10 @@ layout(location = 12) out flat vec4  out_GenericFlatVec4_2;
 layout(location = 11) out flat vec4  out_GenericFlatVec4_3;
 layout(location = 10) out flat ivec4 out_GenericFlatIvec4_1;
 
-struct VKTransform {
-    float m00, m01, m02;
-    float m10, m11, m12;
-};
 layout(push_constant) uniform PushConstants { VKTransform transform; } push;
 
 vec4 transformToDeviceSpace(vec2 v) {
-    return vec4(vec3(v, 1.0) * mat2x3(push.transform.m00, push.transform.m01, push.transform.m02, push.transform.m10, push.transform.m11, push.transform.m12), 0.0, 1.0);
+    return vec4(applyTransform(push.transform, v), 0.0, 1.0);
 }
 #endif // STAGE_VERT
 
@@ -53,10 +58,7 @@ layout(location = 12) in flat vec4  in_GenericFlatVec4_2;
 layout(location = 11) in flat vec4  in_GenericFlatVec4_3;
 layout(location = 10) in flat ivec4 in_GenericFlatIvec4_1;
 
-// TODO: we should change this logic when adding support for masked blits
-#ifndef SHADER_NO_MASK_BUFFER
 layout(set = 0, binding = 0, r8) uniform readonly restrict imageBuffer u_Mask;
-#endif // SHADER_NO_MASK_BUFFER
 
 layout(location = 0, index = 0) out vec4 out_Color;
 
@@ -145,11 +147,9 @@ float getCoverage(vec2 fragCoord) {
             in_GenericFlatVec4_1.zw, in_GenericFlatVec4_3.xy, in_GenericFlatVec4_3.zw
         );
     }
-#ifndef SHADER_NO_MASK_BUFFER
     else if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_MASK) {
         return imageLoad(u_Mask, calculateMaskIndex(fragCoord, in_GenericFlatIvec4_1)).r;
     }
-#endif // SHADER_NO_MASK_BUFFER
     else {
         return 1.0f;
     }

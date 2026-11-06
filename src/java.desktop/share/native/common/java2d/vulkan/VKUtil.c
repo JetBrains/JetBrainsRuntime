@@ -355,3 +355,36 @@ void VKUtil_ConcatenateTransform(VKTransform* dst, const VKTransform* src) {
   dst->m11 = d10 * s01 + d11 * s11;
   dst->m12 = d10 * s02 + d11 * s12 + d12;
 }
+
+/**
+ * Make a transform that maps the rectangle `from` to the rectangle `to` and return VK_TRUE.
+ * If `from` is a degenerate rectangle, return VK_FALSE instead without modifying `out`.
+ */
+VkBool32 VKUtil_MakeRectToRectTransform(float fromX1, float fromY1, float fromX2, float fromY2,
+                                        float toX1, float toY1, float toX2, float toY2,
+                                        VKTransform* out) {
+    if (fromX1 == fromX2 || fromY1 == fromY2) {
+        return VK_FALSE;
+    }
+    float scaleX = (toX2 - toX1) / (fromX2 - fromX1);
+    float scaleY = (toY2 - toY1) / (fromY2 - fromY1);
+    *out = (VKTransform) {
+        .m00 = scaleX, .m01 = 0.0f, .m02 = toX1 - fromX1 * scaleX,
+        .m10 = 0.0f, .m11 = scaleY, .m12 = toY1 - fromY1 * scaleY
+    };
+    return VK_TRUE;
+}
+
+/**
+ * Invert the transform and return VK_TRUE.
+ * If the transform is degenerate (rank <= 1), return VK_FALSE instead without modifying `t`.
+ */
+VkBool32 VKUtil_InvertTransform(VKTransform *t) {
+    float det = t->m00 * t->m11 - t->m01 * t->m10;
+    if (det == 0.0f) return VK_FALSE;
+    *t = (VKTransform) {
+        .m00 = t->m11 / det, .m01 = -t->m01 / det, .m02 = (t->m01 * t->m12 - t->m11 * t->m02) / det,
+        .m10 = -t->m10 / det, .m11 = t->m00 / det, .m12 = (t->m10 * t->m02 - t->m00 * t->m12) / det
+    };
+    return VK_TRUE;
+}

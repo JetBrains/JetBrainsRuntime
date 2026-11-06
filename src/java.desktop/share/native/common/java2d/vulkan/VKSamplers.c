@@ -28,7 +28,7 @@
 VKSamplers VKSamplers_Create(VKDevice* device) {
     VKSamplers result = { 0 };
     // Create descriptor pool.
-    uint32_t size = SAMPLER_FILTER_COUNT * SAMPLER_WRAP_COUNT;
+    uint32_t size = SAMPLER_FILTER_COUNT * SAMPLER_ADDRESSING_COUNT;
     VkDescriptorPoolSize poolSize = {
         .type = VK_DESCRIPTOR_TYPE_SAMPLER,
         .descriptorCount = size
@@ -66,17 +66,17 @@ void VKSamplers_Destroy(VKDevice* device, VKSamplers samplers) {
     device->vkDestroyDescriptorPool(device->handle, samplers.descriptorPool, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, samplers.descriptorSetLayout, NULL);
     for (jint filter = 0; filter < SAMPLER_FILTER_COUNT; filter++) {
-        for (VKSamplerWrap wrap = 0; wrap < SAMPLER_WRAP_COUNT; wrap++) {
-            device->vkDestroySampler(device->handle, samplers.table[filter][wrap].sampler, NULL);
+        for (VKSamplerAddressing addressing = 0; addressing < SAMPLER_ADDRESSING_COUNT; addressing++) {
+            device->vkDestroySampler(device->handle, samplers.table[filter][addressing].sampler, NULL);
         }
     }
 }
 
-VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* samplers, jint filter, VKSamplerWrap wrap) {
+VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* samplers, jint filter, VKSamplerAddressing addressing) {
     assert(device != NULL && samplers != NULL);
     assert(filter > 0 && filter <= SAMPLER_FILTER_COUNT);
-    assert(wrap >= 0 && wrap < SAMPLER_WRAP_COUNT);
-    if (samplers->table[filter-1][wrap].descriptorSet == VK_NULL_HANDLE) {
+    assert(addressing >= 0 && addressing < SAMPLER_ADDRESSING_COUNT);
+    if (samplers->table[filter-1][addressing].descriptorSet == VK_NULL_HANDLE) {
         // Resolve filtering mode.
         VkFilter filterMode;
         switch (filter) {
@@ -94,12 +94,15 @@ VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* sample
         }
         // Resolve address mode.
         VkSamplerAddressMode addressMode;
-        switch (wrap) {
-        case SAMPLER_WRAP_BORDER:
-            addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        VkBool32 unnormalizedCoordinates;
+        switch (addressing) {
+        case SAMPLER_ADDRESSING_EDGE_UNNORMALIZED:
+            addressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            unnormalizedCoordinates = VK_TRUE;
             break;
-        case SAMPLER_WRAP_REPEAT:
+        case SAMPLER_ADDRESSING_REPEAT_NORMALIZED:
             addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            unnormalizedCoordinates = VK_FALSE;
             break;
         default: return VK_NULL_HANDLE;
         }
@@ -111,9 +114,9 @@ VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* sample
             .addressModeU = addressMode,
             .addressModeV = addressMode,
             .addressModeW = addressMode,
-            .unnormalizedCoordinates = VK_TRUE
+            .unnormalizedCoordinates = unnormalizedCoordinates
         };
-        VK_IF_ERROR(device->vkCreateSampler(device->handle, &samplerCreateInfo, NULL, &samplers->table[filter-1][wrap].sampler)) {
+        VK_IF_ERROR(device->vkCreateSampler(device->handle, &samplerCreateInfo, NULL, &samplers->table[filter-1][addressing].sampler)) {
             VK_UNHANDLED_ERROR();
         }
         // Create descriptor set.
@@ -124,15 +127,15 @@ VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* sample
             .pSetLayouts = &samplers->descriptorSetLayout
         };
         VK_IF_ERROR(device->vkAllocateDescriptorSets(device->handle, &descriptorSetAllocateInfo,
-                                                     &samplers->table[filter-1][wrap].descriptorSet)) {
+                                                     &samplers->table[filter-1][addressing].descriptorSet)) {
             VK_UNHANDLED_ERROR();
         }
         VkDescriptorImageInfo samplerImageInfo = {
-            .sampler = samplers->table[filter-1][wrap].sampler
+            .sampler = samplers->table[filter-1][addressing].sampler
         };
         VkWriteDescriptorSet descriptorWrites = {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .dstSet = samplers->table[filter-1][wrap].descriptorSet,
+            .dstSet = samplers->table[filter-1][addressing].descriptorSet,
             .dstBinding = 0,
             .dstArrayElement = 0,
             .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
@@ -141,5 +144,5 @@ VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* sample
         };
         device->vkUpdateDescriptorSets(device->handle, 1, &descriptorWrites, 0, NULL);
     }
-    return samplers->table[filter-1][wrap].descriptorSet;
+    return samplers->table[filter-1][addressing].descriptorSet;
 }

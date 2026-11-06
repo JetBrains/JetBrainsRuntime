@@ -42,6 +42,20 @@ sun_java2d_pipe_BufferedTextPipe_BYTES_PER_GLYPH_POSITION
 #define J2D_VK_NO_CLIP_RECT_INITIALIZER {{0, 0}, {0x7FFFFFFFU, 0x7FFFFFFFU}}
 #define J2D_VK_NO_CLIP_RECT ((VkRect2D) J2D_VK_NO_CLIP_RECT_INITIALIZER)
 
+// The data used to bind the texture and sampler descriptor sets.
+typedef struct {
+    // If surface is set, validation resolves it to get the image and swizzle.
+    VKSDOps*        surface;
+
+    // Otherwise, image and swizzle must be set directly.
+    VKImage*        image;
+    VKPackedSwizzle swizzle;
+
+    // These should always be set directly and can apply to any texture source.
+    jint                filter;
+    VKSamplerAddressing addressing;
+} VKTextureSource;
+
 struct VKRenderingContext {
     VKSDOps*        surface;
 
@@ -54,6 +68,9 @@ struct VKRenderingContext {
     uint64_t        constantsModCount;
     uint64_t        transformModCount;
 
+    uint64_t        textureSourceModCount;
+    VKTextureSource textureSource;
+
     uint64_t           clipModCount; // Used to track changes to the clip.
     VkRect2D           clipRect;
     ARRAY(VKIntVertex) clipSpanVertices;
@@ -62,6 +79,13 @@ struct VKRenderingContext {
 typedef void (*VKCleanupHandler)(VKDevice* device, void* data);
 
 VKRenderer* VKRenderer_Create(VKDevice* device);
+
+/**
+ * Validate the pipeline-independent parts of the renderer:
+ * ensure the render pass is created and open with the correct composite, clip, stencil, transform.
+ * Returns FALSE if the surface is not yet ready for drawing.
+ */
+VkBool32 VKRenderer_ValidateRenderPass();
 
 /**
  * Setup pipeline for drawing. Returns FALSE if the surface is not yet ready for drawing.
@@ -164,10 +188,9 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans);
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
                          jint maskoff, jint maskscan, jint masklen, const uint8_t *mask);
 
-void VKRenderer_DrawImage(VKImage* image, VkFormat format,
-                          VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
-                          float sx1, float sy1, float sx2, float sy2,
-                          float dx1, float dy1, float dx2, float dy2);
+void VKRenderer_BlitFromTemporaryTextureSource(VKTextureSource textureSource, AlphaType textureAlphaType,
+                                               float sx1, float sy1, float sx2, float sy2,
+                                               float dx1, float dy1, float dx2, float dy2);
 
 void VKRenderer_SetLinearGradientPaint(jboolean linear, jint cycleMethod, jint numStops,
                                        float p0, float p1, float p3,
@@ -178,6 +201,12 @@ void VKRenderer_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint n
                                        float m10, float m11, float m12,
                                        float focusX,
                                        void* fractions, void* pixels);
+
+void VKRenderer_SetTexturePaint(jboolean filter, VKSDOps* pSrc,
+                                jdouble xp0, jdouble xp1, jdouble xp3,
+                                jdouble yp0, jdouble yp1, jdouble yp3);
+void VKRenderer_ResetTextureSource();
+void VKRenderer_ResetPaint();
 
 void VKRenderer_DrawGlyphList(jint numGlyphs,
                               jfloat glyphListOrigX, jfloat glyphListOrigY,

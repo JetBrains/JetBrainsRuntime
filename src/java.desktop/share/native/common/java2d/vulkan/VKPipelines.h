@@ -57,7 +57,7 @@ typedef enum {
     SHADER_GRADIENT,
     SHADER_GRADIENT_LINEAR_PUSH,
     SHADER_GRADIENT_RADIAL_PUSH,
-    SHADER_BLIT,
+    SHADER_TEXTURE,
     SHADER_CLIP,
 
     // The sign bit (bit 31) is unused for portability reasons.
@@ -115,11 +115,11 @@ typedef struct {
  */
 struct VKPipelineContext {
     VKDevice*                   device;
-    VkPipelineLayout            commonPipelineLayout;
+    VkPipelineLayout            commonPipelineLayout; // no descriptor sets
     VkDescriptorSetLayout       textureDescriptorSetLayout;
-    VkPipelineLayout            texturePipelineLayout;
+    VkPipelineLayout            texturePipelineLayout; // descriptor sets: 0=mask, 1=texture, 2=sampler
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
-    VkPipelineLayout            maskFillPipelineLayout;
+    VkPipelineLayout            maskFillPipelineLayout; // descriptor sets: 0=mask
 
     VKSamplers                  samplers;
     struct VKShaders*           shaders;
@@ -186,6 +186,7 @@ typedef union {
     VKGradientPaintConstants gradientPaint;
     VKLinearGradientPaintConstants linearGradientPaint;
     VKRadialGradientPaintConstants radialGradientPaint;
+    VKTransform texturePaint;
 } VKShaderConstants;
 #define MAX_SHADER_CONSTANTS_SIZE 96 // We expect 96 bytes
 typedef char VKShaderConstantsCheckOffset[sizeof(VKShaderConstants) == MAX_SHADER_CONSTANTS_SIZE ? 1 : -1]; // Verify.
@@ -207,11 +208,6 @@ typedef struct {
     float x, y;
     unsigned int data;
 } VKVertex;
-
-typedef struct {
-    float px, py;
-    float u, v;
-} VKTxVertex;
 
 typedef struct {
     int x, y, maskOffset, maskScanline;

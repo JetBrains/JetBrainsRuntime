@@ -96,31 +96,14 @@ void VKBlitLoops_IsoBlit(VKSDOps* srcOps, jint filter,
         return;
     }
 
-    VKRenderingContext* context = VKRenderer_GetContext();
-    if (srcOps == context->surface) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: surface blit into itself (%p)", srcOps);
-        return;
-    }
-
-    // Ensure all prior drawing to src surface have finished.
-    VKRenderer_FlushRenderPass(srcOps);
-    if (srcOps->image == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKBlitLoops_IsoBlit: srcOps->image is null");
-        return;
-    }
-
-    VkBool32 srcOpaque = VKSD_IsOpaque(srcOps);
-    AlphaType alphaType = srcOpaque ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
-    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_ONE);
-    VKPackedSwizzle swizzle = srcOpaque ? OPAQUE_SWIZZLE : 0;
-
-    if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
-    VKRenderer_DrawImage(srcOps->image, srcOps->image->format, swizzle, filter, SAMPLER_WRAP_BORDER,
-                         (float)sx1, (float)sy1, (float)sx2, (float)sy2, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
-    VKRenderer_AddSurfaceDependency(srcOps, context->surface);
+    VKTextureSource textureSource = {
+        .surface = srcOps,
+        .filter = filter,
+        .addressing = SAMPLER_ADDRESSING_EDGE_UNNORMALIZED
+    };
+    VKRenderer_BlitFromTemporaryTextureSource(textureSource, VKSD_GetSamplingInAlphaType(srcOps),
+                                              (float)sx1, (float)sy1, (float)sx2, (float)sy2,
+                                              (float)dx1, (float)dy1, (float)dx2, (float)dy2);
 }
 
 static void VKBlitLoops_DisposeTexture(VKDevice* device, void* data) {
@@ -145,10 +128,7 @@ static void VKBlitLoops_TransferAndDrawTile(jshort srctype, jint filter,
                                      const void* src, jint sw, jint sh, jint pixelStride, jint scanStride,
                                      jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
     // Need to validate render pass early, as image may not yet be configured.
-    AlphaType alphaType = getSrcAlphaType(srctype);
-    if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) {
-        return;
-    }
+    if (!VKRenderer_ValidateRenderPass()) return;
 
     VKRenderingContext* context = VKRenderer_GetContext();
     VKDevice* device = context->surface->device;
@@ -209,18 +189,16 @@ static void VKBlitLoops_TransferAndDrawTile(jshort srctype, jint filter,
     };
     device->vkCmdCopyBufferToImage(VKRenderer_Record(device->renderer), buffer.handle, image->handle,
                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-    {
-        VkImageMemoryBarrier barrier;
-        VKBarrierBatch barrierBatch = {0};
-        VKImage_AddBarrier(&barrier, &barrierBatch, image,
-                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                           VK_ACCESS_SHADER_READ_BIT,
-                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
-    }
 
-    VKRenderer_DrawImage(image, type.format, type.swizzle, filter, SAMPLER_WRAP_BORDER,
-                         0, 0, (float)sw, (float)sh, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
+    VKTextureSource textureSource = {
+        .image = image,
+        .swizzle = type.swizzle,
+        .filter = filter,
+        .addressing = SAMPLER_ADDRESSING_EDGE_UNNORMALIZED
+    };
+    VKRenderer_BlitFromTemporaryTextureSource(textureSource, getSrcAlphaType(srctype),
+                                              0, 0, (float)sw, (float)sh,
+                                              (float)dx1, (float)dy1, (float)dx2, (float)dy2);
 
     VKRenderer_FlushMemory(context->surface, buffer.range);
 }

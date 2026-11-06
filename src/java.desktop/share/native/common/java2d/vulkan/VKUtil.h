@@ -155,6 +155,20 @@ FormatGroup VKUtil_GetFormatGroup(VkFormat format);
  */
 void VKUtil_ConcatenateTransform(VKTransform* dst, const VKTransform* src);
 
+/**
+ * Make a transform that maps the rectangle `from` to the rectangle `to` and return VK_TRUE.
+ * If `from` is a degenerate rectangle, return VK_FALSE instead without modifying `out`.
+ */
+VkBool32 VKUtil_MakeRectToRectTransform(float fromX1, float fromY1, float fromX2, float fromY2,
+                                        float toX1, float toY1, float toX2, float toY2,
+                                        VKTransform* out);
+
+/**
+ * Invert the transform and return VK_TRUE.
+ * If the transform is degenerate (rank <= 1), return VK_FALSE instead without modifying `t`.
+ */
+VkBool32 VKUtil_InvertTransform(VKTransform* t);
+
 /*
  * The following macros allow the caller to return (or continue) if the
  * provided value is NULL.  (The strange else clause is included below to
