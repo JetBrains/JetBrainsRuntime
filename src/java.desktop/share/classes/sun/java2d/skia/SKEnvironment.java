@@ -169,12 +169,12 @@ public final class SKEnvironment {
      */
     private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 64);
     /**
-     * EXPERIMENT (x64hw, 2026-11-06), {@code sun.java2d.skia.text.blobCache=<entries>}: Skia's text path keeps the
+     * {@code sun.java2d.skia.text.blobCache=<entries>} (default 16384 since 2026-11-06): Skia's text path keeps the
      * text blobs of the last {@code entries} distinct glyph runs and draws a repeated run from the same blob, so
-     * Graphite's cache of prepared text, keyed by the blob's identity, can reuse it across frames. 0 (the default):
-     * off, every run drawn as a new glyph run.
+     * Graphite's cache of prepared text, keyed by the blob's identity, can reuse it across frames. 0: off, every run
+     * drawn as a new glyph run. Only Skia's own text path (sun.java2d.skia.text.strike=skia) uses it.
      */
-    private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 0);
+    private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 16384);
     /**
      * {@code sun.java2d.skia.canvasOpsPastBatches} (default true): antialiased shapes and parallelograms Skia draws
      * through its canvas, when they touch no pending batch, are drawn ahead of the batches under their clip instead

@@ -139,6 +139,15 @@ static void drawBatches(SKGlyphCache *gc) {
 // drawn first: the parked ones always share the current target.
 static void park(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint, const SKQuadBatchTwoPass *passes) {
     const bool open = gc->batch->pending();
+    // J2D_SKIA_EAGER_LCD_COLOURS (diagnostics, the in-order baseline of 2026-11-06): no batch is parked; a colour
+    // change draws the open batch, as an in-order renderer would
+    static const bool eagerColours = getenv("J2D_SKIA_EAGER_LCD_COLOURS") != nullptr;
+    if (eagerColours) {
+        if (open && !(gc->batch->sameTarget(canvas, gc->atlasImage, passes) && gc->batch->samePaint(paint))) {
+            gc->batch->flush();
+        }
+        return;
+    }
     if ((open && !gc->batch->sameTarget(canvas, gc->atlasImage, passes))
             || (!gc->parked.empty() && !gc->parked.front()->sameTarget(canvas, gc->atlasImage, passes))) {
         drawBatches(gc);

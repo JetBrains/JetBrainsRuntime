@@ -237,7 +237,7 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                    const jfloat *positions, bool cacheBlobs = false);
-// EXPERIMENT (x64hw, 2026-11-06), sun.java2d.skia.text.blobCache=<entries>: Skia's text path keeps the text
+// sun.java2d.skia.text.blobCache=<entries> (x64hw, 2026-11-06; 16384 by default): Skia's text path keeps the text
 // blobs of the last `entries` distinct runs and draws a repeated one from the same SkTextBlob, so Graphite's
 // cache of prepared text (TextBlobRedrawCoordinator, keyed by the blob's identity) can reuse its sub-runs across
 // frames; 0 = off (every run drawn with drawGlyphs, rebuilt by Graphite every time).
