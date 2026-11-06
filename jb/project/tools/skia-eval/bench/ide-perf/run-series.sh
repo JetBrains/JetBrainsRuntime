@@ -1,5 +1,6 @@
 #!/bin/bash
 # IDE performance series (bench/ide-perf): run-series.sh <series dir> <first rep> <last rep> <arm> [<arm> ...]
+# (an arm may be LABEL=ARM@IMAGE: ARM run on the JDK image IMAGE, its launches named LABEL)
 # Every repetition runs each (arm, launch) once — launches typing and ui (LAUNCHES overrides) — in a fresh
 # random order, into <series dir>/rep<N>-<arm>-<launch>; a later call with higher reps continues the
 # series. After each launch: the launch's validity (the Skia arms' "Skia rendering enabled" line, the IDE
@@ -17,8 +18,16 @@ for rep in $(seq "$FIRST" "$LAST"); do
   echo "rep $rep: $order"
   for job in $order; do
     arm=${job%|*}; launch=${job#*|}
+    # an arm given as LABEL=ARM@IMAGE runs ARM on that image (a POSIX path without spaces), its launches named LABEL:
+    # one series can compare images (before and after a change without a switch)
+    real=$arm; image=""
+    if [[ $arm == *=*@* ]]; then real=${arm#*=}; image=${real#*@}; real=${real%%@*}; arm=${arm%%=*}; fi
     dir="$SERIES/rep$rep-$arm-$launch"; rm -rf "$dir"
-    bash "$HERE/run-ide-perf.sh" "$arm" "$launch" "$dir" > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
+    if [ -n "$image" ]; then
+      JDK="$image" bash "$HERE/run-ide-perf.sh" "$real" "$launch" "$dir" > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
+    else
+      bash "$HERE/run-ide-perf.sh" "$arm" "$launch" "$dir" > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
+    fi
     end=$(grep -c "CommandLogger - %exitApp\|scene driver: exit requested" "$dir/idea.log" 2>/dev/null)
     skia=$(grep -o "Skia rendering enabled: [A-Z]*[^,]*" "$dir/stdout.txt" 2>/dev/null | head -1 | cut -c1-80)
     vk=$(grep -c "Vulkan rendering enabled: YES" "$dir/stdout.txt" 2>/dev/null)
