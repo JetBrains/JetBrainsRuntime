@@ -101,6 +101,14 @@ enum SKStatsCounter {
     SK_COUNT_IMAGE_ATLAS_COPIES,             // ... copies into the atlas
     SK_COUNT_TEXT_BLOB_HITS,          // EXPERIMENT sun.java2d.skia.text.blobCache: runs drawn from a cached text blob
     SK_COUNT_TEXT_BLOB_MISSES,        // ... runs whose blob was made (and cached)
+    // Diagnostics: why a blit drew the pending batches (SKBackend_Blit): not past them, for its clip or transform
+    // (no lazy clip), for its source being the destination, or otherwise (XOR, MSAA, edge-AA quads, empty rects);
+    // past them but touching one
+    SK_COUNT_BLITS_NOT_PAST_CLIP,
+    SK_COUNT_BLITS_NOT_PAST_SELF,
+    SK_COUNT_BLITS_NOT_PAST_OTHER,
+    SK_COUNT_BLITS_TOUCHING,
+    SK_COUNT_CANVAS_OPS_PAST_BATCHES,   // shapes and AA parallelograms drawn ahead of the pending batches (canvasOpsPastBatches)
     SK_COUNT_COUNT
 };
 
@@ -114,6 +122,8 @@ uint64_t SKStats_Counter(SKStatsCounter counter);   // the count since the last 
 // nothing in particular: mesh draws counted meanwhile are also counted under it.
 // Returns the previous cause.
 SKStatsCounter SKStats_SetDrawCause(SKStatsCounter cause);
+// The op being interpreted (SKStatsOpScope), -1 between ops: the batch draws are counted by cause and op.
+void SKStats_SetCurrentOp(int opcode);
 
 // The draw cause for a scope (SKStats_SetDrawCause), the previous one restored after it.
 class SKDrawCauseScope {
@@ -157,10 +167,15 @@ private:
 // Times one render-queue op (the body of the interpreter's loop) under its opcode.
 class SKStatsOpScope {
 public:
-    explicit SKStatsOpScope(int opcode) : opcode(opcode), start(SKStats_IsEnabled() ? SKStats_Now() : 0) {}
+    explicit SKStatsOpScope(int opcode) : opcode(opcode), start(SKStats_IsEnabled() ? SKStats_Now() : 0) {
+        if (start != 0) {
+            SKStats_SetCurrentOp(opcode);
+        }
+    }
     ~SKStatsOpScope() {
         if (start != 0) {
             SKStats_AddOp(opcode, SKStats_Now() - start);
+            SKStats_SetCurrentOp(-1);
         }
     }
     SKStatsOpScope(const SKStatsOpScope &) = delete;

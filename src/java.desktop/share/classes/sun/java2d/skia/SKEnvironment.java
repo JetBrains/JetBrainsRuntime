@@ -176,6 +176,13 @@ public final class SKEnvironment {
      */
     private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 0);
     /**
+     * {@code sun.java2d.skia.canvasOpsPastBatches} (default true): antialiased shapes and parallelograms Skia draws
+     * through its canvas, when they touch no pending batch, are drawn ahead of the batches under their clip instead
+     * of drawing every batch first (x64hw, 2026-11-06). false: the old order.
+     */
+    private static final boolean CANVAS_OPS_PAST_BATCHES =
+            !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.canvasOpsPastBatches"));
+    /**
      * EXPERIMENT (x64hw, 2026-11-06), diagnostics (Windows): {@code sun.java2d.skia.profileFlusher=<seconds>} samples
      * the flusher thread in place for that long, starting {@code sun.java2d.skia.profileFlusherDelay} seconds after
      * its first flush, and writes the report (as {@link #profileBench}'s) to {@code sun.java2d.skia.profileFlusherOut}
@@ -655,6 +662,9 @@ public final class SKEnvironment {
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
+                if (!CANVAS_OPS_PAST_BATCHES) {
+                    setCanvasOpsPastBatchesNative(false);
+                }
                 if (TEXT_BLOB_CACHE > 0) {
                     setTextBlobCacheNative(TEXT_BLOB_CACHE);
                 }
@@ -664,7 +674,8 @@ public final class SKEnvironment {
                             System.getProperty("java.io.tmpdir") + java.io.File.separator + "skia-flusher-profile.txt");
                     try {
                         profileFlusherNative(Integer.getInteger("sun.java2d.skia.profileFlusherDelay", 0), PROFILE_FLUSHER_SECONDS,
-                                             out, home + "\\bin;" + home + "\\..\\symbols\\bin");
+                                             out, home + "\\bin;" + home + "\\..\\symbols\\bin",
+                                             System.getProperty("sun.java2d.skia.profileFlusherFocus"));
                     } catch (UnsatisfiedLinkError e) {
                         // only the Windows library has it
                     }
@@ -751,8 +762,25 @@ public final class SKEnvironment {
     }
 
     private static native void setTextBlobCacheNative(int entries);
-    private static native void profileFlusherNative(int delaySeconds, int seconds, String out, String symbolPath);
+    private static native void profileFlusherNative(int delaySeconds, int seconds, String out, String symbolPath, String focus);
     private static native long[] textBlobCacheStatsNative();
+
+    /** {@code sun.java2d.skia.canvasOpsPastBatches} at run time (tests). No effect without the backend. */
+    public static void setCanvasOpsPastBatches(boolean on) {
+        if (!isSkiaEnabled()) {
+            return;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();
+            setCanvasOpsPastBatchesNative(on);
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native void setCanvasOpsPastBatchesNative(boolean on);
 
     /** The budget of Skia's strike cache in bytes as the backend runs it (diagnostics, tests). */
     public static long strikeCacheLimit() {

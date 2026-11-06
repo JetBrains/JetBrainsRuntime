@@ -82,7 +82,8 @@ public class SkiaKindBatchTest {
             throw new RuntimeException("interleaved rects, glyphs and shapes differ from the software loops: " + beyond
                     + " pixels beyond 32 levels (max " + max + ")");
         }
-        if (draws > 18) {   // 13 by construction: 12 rects and ovals drawn over their token, and the end
+        if (draws > 14) {   // 13 by construction: 12 rects and ovals drawn over their token, and the end (18 before shapes
+                            // touching no glyph were drawn ahead of the batches, 2026-11-06)
             throw new RuntimeException(draws + " glyph batch draws for " + CELLS + " cells in one text colour: rects and shapes draw the glyph batch");
         }
         System.out.println("PASSED");

@@ -1364,6 +1364,49 @@ static bool batchesTouch(const SkRect &r) {
 static bool gBlitPastBatches = false;   // SKBackend_Blit for drawImageQuad
 
 #define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); { SKDrawCauseScope cause_(SK_COUNT_MESH_DRAWS_AT_CANVAS_OP); flushAllBatches(); } ensureCanvasClip()
+
+// Draws through the canvas past the pending batches (x64hw, 2026-11-06; sun.java2d.skia.canvasOpsPastBatches, on by
+// default): an antialiased shape or parallelogram drawn by Skia whose device bounds touch no pending batch, under the
+// lazy clip's conditions (a rect clip or none, no transform, no pending quad relying on the canvas clip) and neither
+// XOR nor MSAA, is drawn now, ahead of the batches, under its rect clip in a save/restore of the open canvas: draws on
+// disjoint pixels commute, and the batches stay pending (one per kind rather than one per shape). It took every batch
+// drawn first before: 35 % of the IDE's batch draws while typing (FILL_SHAPE, 2026-11-06). Otherwise REQUIRE_CANVAS.
+static bool gCanvasOpsPastBatches = true;
+
+static bool canvasOpPastBatches(const SkRect &deviceBounds) {
+    return gCanvasOpsPastBatches && lazyClip() && !g.xorMode && !SKBackend_Multisampled() && deviceBounds.isFinite()
+           && !batchesTouch(deviceBounds);
+}
+
+#define BEGIN_CANVAS_PAST(bounds, past) \
+    markTouched(); \
+    past = canvasOpPastBatches(bounds); \
+    if (past) { \
+        SKStats_Count(SK_COUNT_CANVAS_OPS_PAST_BATCHES); \
+        prepareBatch(); \
+        g.canvas->save(); \
+        if (g.hasRectClip) { g.canvas->clipIRect(g.rectClip); } \
+    } else { \
+        { SKDrawCauseScope cause_(SK_COUNT_MESH_DRAWS_AT_CANVAS_OP); flushAllBatches(); } \
+        ensureCanvasClip(); \
+    }
+#define REQUIRE_CANVAS_PAST(bounds, past) \
+    if (g.canvas == nullptr) { return; } \
+    bool past = false; \
+    BEGIN_CANVAS_PAST(bounds, past)
+#define END_CANVAS_PAST(past) if (past) { g.canvas->restore(); }
+
+void SKBackend_SetCanvasOpsPastBatches(bool on) {
+    flushAllBatches();
+    gCanvasOpsPastBatches = on;
+}
+
+// The device bounds of a parallelogram's corners, a pixel wider for the antialiased edge.
+static SkRect pointsBounds(const SkPoint *pts, int n) {
+    SkRect r;
+    r.setBounds(SkSpan(pts, n));
+    return r.makeOutset(1, 1);
+}
 // Before a batched op of one kind (SKQuadBatch::family: rects 0, glyphs 1, tiles 2): the other kinds'
 // pending batches are drawn, unless they stay pending beside the op's (SKQuadBatch::gCrossFamily, each
 // quad then draws those it touches). A coverage tile under a shader paint is drawn on its own, so a
@@ -1607,20 +1650,31 @@ void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
         }
         return;
     }
-    REQUIRE_CANVAS();
+    SkPoint corners[4];
+    parallelogramPoints(corners, x11, y11, dx21, dy21, dx12, dy12);
+    REQUIRE_CANVAS_PAST(pointsBounds(corners, 4), past);
     SkPathBuilder pb;
     addParallelogram(pb, x11, y11, dx21, dy21, dx12, dy12);
     g.canvas->drawPath(pb.detach(), SKBackend_MakePaint(aa));
+    END_CANVAS_PAST(past);
 }
 
 void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, jfloat dy21, jfloat dx12, jfloat dy12,
                                    jfloat lwr21, jfloat lwr12) {
-    if (aa) { REQUIRE_CANVAS(); } else { REQUIRE_CANVAS_RECT(); }
     // The given parallelogram is the stroke centerline (see MTLRenderer_DrawParallelogram):
     // grow it by half the line width for the outer edge, shrink it for the inner one.
     float ldx21 = dx21 * lwr21, ldy21 = dy21 * lwr21;
     float ldx12 = dx12 * lwr12, ldy12 = dy12 * lwr12;
     float ox11 = x11 - (ldx21 + ldx12) / 2.0f, oy11 = y11 - (ldy21 + ldy12) / 2.0f;
+    bool past = false;
+    if (aa) {
+        if (g.canvas == nullptr) { return; }
+        SkPoint outerCorners[4];
+        parallelogramPoints(outerCorners, ox11, oy11, dx21 + ldx21, dy21 + ldy21, dx12 + ldx12, dy12 + ldy12);
+        BEGIN_CANVAS_PAST(pointsBounds(outerCorners, 4), past);
+    } else {
+        REQUIRE_CANVAS_RECT();
+    }
     bool hole = lwr21 < 1.0f && lwr12 < 1.0f; // otherwise the stroke covers the interior
     float ix11 = x11 + (ldx21 + ldx12) / 2.0f, iy11 = y11 + (ldy21 + ldy12) / 2.0f;
     if (!aa) {
@@ -1663,12 +1717,42 @@ void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
         addParallelogram(pb, ix11, iy11, dx21 - ldx21, dy21 - ldy21, dx12 - ldx12, dy12 - ldy12);
     }
     g.canvas->drawPath(pb.detach(), SKBackend_MakePaint(aa));
+    END_CANVAS_PAST(past);
 }
 
 void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat *stroke,
                          const jfloat *params, jint windingRule, jint numTypes, const jint *types,
                          jint numCoords, const jfloat *coords) {
-    REQUIRE_CANVAS();
+    // The device bounds, for drawing past the batches: the geometry's (a path's control points bound it), a stroke's
+    // half width times its miter limit (or the square cap's diagonal) further, mapped by the shape's transform, and a
+    // pixel for the antialiased edge.
+    SkRect bounds;
+    if (kind == sun_java2d_skia_SKShapePipe_KIND_RECT || kind == sun_java2d_skia_SKShapePipe_KIND_ROUND_RECT
+            || kind == sun_java2d_skia_SKShapePipe_KIND_OVAL) {
+        bounds = SkRect::MakeXYWH(params[0], params[1], params[2], params[3]).makeSorted();
+    } else {
+        float l = 0, t = 0, r = 0, b = 0;
+        for (jint i = 0; i + 1 < numCoords; i += 2) {
+            const float x = coords[i], y = coords[i + 1];
+            if (i == 0) {
+                l = r = x;
+                t = b = y;
+            } else {
+                l = std::min(l, x);
+                r = std::max(r, x);
+                t = std::min(t, y);
+                b = std::max(b, y);
+            }
+        }
+        bounds = SkRect::MakeLTRB(l, t, r, b);
+    }
+    if (!fill) {
+        const float half = stroke[0] / 2 * std::max(1.5f, (int) stroke[2] == 0 ? stroke[3] : 1.5f);
+        bounds.outset(half, half);
+    }
+    const SkMatrix toDevice = SkMatrix::MakeAll(xform[0], xform[2], xform[4], xform[1], xform[3], xform[5], 0, 0, 1);
+    bounds = toDevice.mapRect(bounds).makeOutset(1, 1);
+    REQUIRE_CANVAS_PAST(bounds, past);
     SkPaint p = SKBackend_MakePaint(true);
     if (!fill) {
         // BasicStroke: width, cap, join, miter limit (dashed strokes arrive as fills)
@@ -1737,6 +1821,7 @@ void SKBackend_DrawShape(bool fill, jint kind, const jfloat *xform, const jfloat
     if (!identity) {
         g.canvas->restore();
     }
+    END_CANVAS_PAST(past);
 }
 
 void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint maskscan, jint masklen,
@@ -3039,6 +3124,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
                                             srcRect.fLeft + (dst.fRight - dstRect.fLeft) * su,
                                             srcRect.fTop + (dst.fBottom - dstRect.fTop) * sv);
         if (batchesTouch(dst)) {
+            SKStats_Count(SK_COUNT_BLITS_TOUCHING);
             { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT); flushAllBatches(); }
         } else if (SKStats_IsEnabled() && batchesTouch(SkRect::MakeLTRB(-1e9f, -1e9f, 1e9f, 1e9f))) {
             SKStats_Count(SK_COUNT_BLITS_PAST_BATCHES);
@@ -3241,6 +3327,11 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
                   && !(isoblit && (SKSDOps *) jlong_to_ptr(pSrc) == g.dst) && dx1 < dx2 && dy1 < dy2
                   && sx1 < sx2 && sy1 < sy2);
     if (!gBlitPastBatches) {
+        if (SKStats_IsEnabled()) {
+            SKStats_Count(!lazyClip() ? SK_COUNT_BLITS_NOT_PAST_CLIP
+                          : isoblit && (SKSDOps *) jlong_to_ptr(pSrc) == g.dst ? SK_COUNT_BLITS_NOT_PAST_SELF
+                          : SK_COUNT_BLITS_NOT_PAST_OTHER);
+        }
         { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT); flushAllBatches(); }
         ensureCanvasClip();
     }

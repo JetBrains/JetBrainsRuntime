@@ -93,6 +93,13 @@ Java_sun_java2d_skia_SKEnvironment_setStrikeCacheLimitNative(JNIEnv *env, jclass
     J2dRlsTraceLn(J2D_TRACE_INFO, "SKEnvironment: Skia strike cache limit %zu -> %lld bytes", previous, (long long) bytes);
 }
 
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_setCanvasOpsPastBatchesNative(JNIEnv *env, jclass clazz, jboolean on)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    SKBackend_SetCanvasOpsPastBatches(on == JNI_TRUE);
+}
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setTextBlobCacheNative(JNIEnv *env, jclass clazz, jint entries)
 {

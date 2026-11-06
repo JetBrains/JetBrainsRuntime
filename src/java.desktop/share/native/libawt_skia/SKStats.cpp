@@ -38,6 +38,8 @@ namespace {
 constexpr int OPCODE_SLOTS = 256;
 constexpr uint64_t DUMP_INTERVAL = 1000000000ull;   // 1 s
 constexpr int TOP_OPS = 8;
+constexpr int CAUSES = SK_COUNT_MESH_DRAWS_IMMEDIATE - SK_COUNT_MESH_DRAWS_AT_STATE + 1;
+int currentOp = -1;   // SKStats_SetCurrentOp
 
 struct Accumulator {
     uint64_t count = 0;
@@ -48,6 +50,8 @@ struct Stats {
     Accumulator spans[SK_SPAN_COUNT];
     Accumulator ops[OPCODE_SLOTS];
     uint64_t counters[SK_COUNT_COUNT] = {};
+    // the batch draws by cause (SK_COUNT_MESH_DRAWS_AT_STATE ... _AT_FLUSH, then _IMMEDIATE) and by the op that caused them
+    uint64_t causeOps[CAUSES][OPCODE_SLOTS] = {};
     uint64_t intervalStart = 0;
 };
 
@@ -270,6 +274,39 @@ void dump(uint64_t now) {
                 a.nanos / 1e3 / a.count);
     }
     fprintf(stderr, "\n");
+    // the batch draws by cause and op (the five ops that caused most under each cause), and the blits' reasons
+    static const char *const CAUSE_NAMES[CAUSES] = {"state changes", "surface switches", "other kinds", "canvas ops",
+                                                    "direct draws", "blits", "flush ends", "immediate"};
+    fprintf(stderr, "[%7llums] SKStats batch draws by cause and op:", (unsigned long long) ((now - origin) / 1000000));
+    for (int c = 0; c < CAUSES; c++) {
+        int order[OPCODE_SLOTS];
+        int n = 0;
+        for (int op = 0; op < OPCODE_SLOTS; op++) {
+            if (stats.causeOps[c][op] != 0) {
+                order[n++] = op;
+            }
+        }
+        if (n == 0) {
+            continue;
+        }
+        std::sort(order, order + n, [c](int a, int b) { return stats.causeOps[c][a] > stats.causeOps[c][b]; });
+        fprintf(stderr, " %s:", CAUSE_NAMES[c]);
+        for (int i = 0; i < std::min(n, 5); i++) {
+            const char *name = opName(order[i]);
+            if (name != nullptr) {
+                fprintf(stderr, " %s %llu", name, (unsigned long long) stats.causeOps[c][order[i]]);
+            } else {
+                fprintf(stderr, " op%d %llu", order[i], (unsigned long long) stats.causeOps[c][order[i]]);
+            }
+        }
+        fprintf(stderr, ";");
+    }
+    fprintf(stderr, " | blits not past the batches: clip or transform %llu, from the destination %llu, other %llu; past but touching %llu | canvas ops past the batches %llu\n",
+            (unsigned long long) stats.counters[SK_COUNT_BLITS_NOT_PAST_CLIP],
+            (unsigned long long) stats.counters[SK_COUNT_BLITS_NOT_PAST_SELF],
+            (unsigned long long) stats.counters[SK_COUNT_BLITS_NOT_PAST_OTHER],
+            (unsigned long long) stats.counters[SK_COUNT_BLITS_TOUCHING],
+            (unsigned long long) stats.counters[SK_COUNT_CANVAS_OPS_PAST_BATCHES]);
     dumpEntryLog(now);
     fflush(stderr);
 }
@@ -302,11 +339,21 @@ void SKStats_AddOp(int opcode, uint64_t nanos) {
 
 static SKStatsCounter drawCause = SK_COUNT_COUNT;
 
+void SKStats_SetCurrentOp(int opcode) {
+    currentOp = opcode;
+}
+
 void SKStats_Count(SKStatsCounter counter, uint64_t n) {
     if (SKStats_IsEnabled()) {
         stats.counters[counter] += n;
         if (counter == SK_COUNT_MESH_DRAWS && drawCause != SK_COUNT_COUNT) {
             stats.counters[drawCause] += n;
+            if (drawCause >= SK_COUNT_MESH_DRAWS_AT_STATE && drawCause < SK_COUNT_MESH_DRAWS_IMMEDIATE && currentOp >= 0) {
+                stats.causeOps[drawCause - SK_COUNT_MESH_DRAWS_AT_STATE][currentOp & (OPCODE_SLOTS - 1)] += n;
+            }
+        }
+        if (counter == SK_COUNT_MESH_DRAWS_IMMEDIATE && currentOp >= 0) {
+            stats.causeOps[CAUSES - 1][currentOp & (OPCODE_SLOTS - 1)] += n;
         }
     }
 }

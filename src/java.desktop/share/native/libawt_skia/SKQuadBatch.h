@@ -172,6 +172,20 @@ public:
         twoPassKey = passes != nullptr ? passes->key : 0;
         meshPaint = p;
         if (atlas) {
+            // the atlas paints of the batch's last few (atlas, paint, passes), most recent first: a batch begun again
+            // for a colour it had (the LCD two-pass batches change colour with every token) reuses the shaders built
+            // for it instead of building the atlas shader and the two passes' runtime shaders again (x64hw, 2026-11-06)
+            const uint32_t atlasId = atlas->uniqueID();
+            const int passKey = passes != nullptr ? passes->key : 0;
+            for (size_t i = 0; i < paintCache.size(); i++) {
+                PaintCacheEntry &e = paintCache[i];
+                if (e.atlasId == atlasId && e.passes == passes && e.passKey == passKey && e.key == p) {
+                    meshPaint = e.meshPaint;
+                    secondPaint = e.secondPaint;
+                    std::rotate(paintCache.begin(), paintCache.begin() + (ptrdiff_t) i, paintCache.begin() + (ptrdiff_t) i + 1);
+                    return;
+                }
+            }
             sk_sp<SkShader> atlasShader = atlas->makeShader(SkTileMode::kClamp, SkTileMode::kClamp,
                                                             SkSamplingOptions(SkFilterMode::kNearest));
             if (passes != nullptr) {
@@ -183,6 +197,10 @@ public:
             } else {
                 meshPaint.setShader(std::move(atlasShader));
             }
+            if (paintCache.size() == kPaintCacheSize) {
+                paintCache.pop_back();
+            }
+            paintCache.insert(paintCache.begin(), PaintCacheEntry{atlasId, passes, passKey, p, meshPaint, secondPaint});
         }
     }
 
@@ -549,6 +567,16 @@ private:
     SkPaint paint;          // the batch key: the paint, colour white if colours are merged
     SkPaint meshPaint;      // the first paint of the batch, with the atlas as its shader
     SkPaint secondPaint;    // the second pass (SKQuadBatchTwoPass)
+    struct PaintCacheEntry {
+        uint32_t atlasId;
+        const SKQuadBatchTwoPass *passes;
+        int passKey;
+        SkPaint key;        // the paint begin() was given
+        SkPaint meshPaint;
+        SkPaint secondPaint;
+    };
+    static constexpr size_t kPaintCacheSize = 16;
+    std::vector<PaintCacheEntry> paintCache;   // begin()'s atlas paints, most recent first
     const SKQuadBatchTwoPass *twoPass = nullptr;
     int twoPassKey = 0;
     bool colorPerVertex = false;     // a second colour arrived: `colors` is filled

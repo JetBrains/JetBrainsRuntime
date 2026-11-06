@@ -347,22 +347,10 @@ std::unordered_map<DWORD64, std::string> nameAll(const Sampler &s, const char *s
     return names;
 }
 
-std::string report(const Sampler &s, const char *symbolPath, double seconds) {
+// The report: all samples, then per focus (a substring of "module!function") the samples whose stack holds a
+// frame matching it, as shares of those samples, prefixed "focus <name>".
+std::string report(const Sampler &s, const char *symbolPath, double seconds, const std::vector<std::string> &focus = {}) {
     const std::unordered_map<DWORD64, std::string> names = nameAll(s, symbolPath);
-    std::map<std::string, size_t> inclusive, exclusive, modules;
-    for (size_t i = 0; i < s.samples; i++) {
-        std::unordered_set<std::string> seen;
-        for (int d = 0; d < s.depths[i]; d++) {
-            const std::string &n = names.at(s.frames[i * DEPTH + d]);
-            if (d == 0) {
-                exclusive[n]++;
-                modules[n.substr(0, n.find('!'))]++;
-            }
-            if (seen.insert(n).second) {
-                inclusive[n]++;
-            }
-        }
-    }
     auto top = [](const std::map<std::string, size_t> &m, size_t count) {
         std::vector<std::pair<std::string, size_t>> v(m.begin(), m.end());
         std::sort(v.begin(), v.end(), [](const auto &a, const auto &b) { return a.second > b.second; });
@@ -375,18 +363,53 @@ std::string report(const Sampler &s, const char *symbolPath, double seconds) {
     char line[1024];
     snprintf(line, sizeof line, "#samples %zu in %.1f s\n", s.samples, seconds);
     out += line;
-    const double n = (double) std::max<size_t>(1, s.samples);
-    for (const auto &e : top(modules, 12)) {
-        snprintf(line, sizeof line, "module\t%.1f%%\t%zu\t%s\n", 100.0 * e.second / n, e.second, e.first.c_str());
-        out += line;
-    }
-    for (const auto &e : top(inclusive, 70)) {
-        snprintf(line, sizeof line, "inclusive\t%.1f%%\t%zu\t%s\n", 100.0 * e.second / n, e.second, e.first.c_str());
-        out += line;
-    }
-    for (const auto &e : top(exclusive, 50)) {
-        snprintf(line, sizeof line, "exclusive\t%.1f%%\t%zu\t%s\n", 100.0 * e.second / n, e.second, e.first.c_str());
-        out += line;
+    auto section = [&](const std::string &prefix, const std::string *match, size_t inclusiveCount, size_t exclusiveCount) {
+        std::map<std::string, size_t> inclusive, exclusive, modules;
+        size_t selected = 0;
+        for (size_t i = 0; i < s.samples; i++) {
+            if (match != nullptr) {
+                bool hit = false;
+                for (int d = 0; d < s.depths[i] && !hit; d++) {
+                    hit = names.at(s.frames[i * DEPTH + d]).find(*match) != std::string::npos;
+                }
+                if (!hit) {
+                    continue;
+                }
+            }
+            selected++;
+            std::unordered_set<std::string> seen;
+            for (int d = 0; d < s.depths[i]; d++) {
+                const std::string &n = names.at(s.frames[i * DEPTH + d]);
+                if (d == 0) {
+                    exclusive[n]++;
+                    modules[n.substr(0, n.find('!'))]++;
+                }
+                if (seen.insert(n).second) {
+                    inclusive[n]++;
+                }
+            }
+        }
+        if (match != nullptr) {
+            snprintf(line, sizeof line, "%s#samples %zu\n", prefix.c_str(), selected);
+            out += line;
+        }
+        const double n = (double) std::max<size_t>(1, selected);
+        for (const auto &e : top(modules, 12)) {
+            snprintf(line, sizeof line, "%smodule\t%.1f%%\t%zu\t%s\n", prefix.c_str(), 100.0 * e.second / n, e.second, e.first.c_str());
+            out += line;
+        }
+        for (const auto &e : top(inclusive, inclusiveCount)) {
+            snprintf(line, sizeof line, "%sinclusive\t%.1f%%\t%zu\t%s\n", prefix.c_str(), 100.0 * e.second / n, e.second, e.first.c_str());
+            out += line;
+        }
+        for (const auto &e : top(exclusive, exclusiveCount)) {
+            snprintf(line, sizeof line, "%sexclusive\t%.1f%%\t%zu\t%s\n", prefix.c_str(), 100.0 * e.second / n, e.second, e.first.c_str());
+            out += line;
+        }
+    };
+    section("", nullptr, 70, 50);
+    for (const std::string &f : focus) {
+        section("focus " + f + "\t", &f, 90, 60);
     }
     return out;
 }
@@ -429,6 +452,7 @@ struct FlusherProfile {
     int durationMs = 0;
     std::string out;
     std::string symbols;
+    std::vector<std::string> focus;   // sun.java2d.skia.profileFlusherFocus, comma-separated
     std::atomic<bool> started{false};
 };
 FlusherProfile gFlusherProfile;
@@ -455,7 +479,7 @@ void SKBackend_NoteFlusherThread() {
         sampler->stop.store(true);
         run.join();
         const double seconds = (SKStats_Now() - t0) / 1e9;
-        const std::string text = report(*sampler, gFlusherProfile.symbols.c_str(), seconds);
+        const std::string text = report(*sampler, gFlusherProfile.symbols.c_str(), seconds, gFlusherProfile.focus);
         if (FILE *f = fopen(gFlusherProfile.out.c_str(), "wb")) {
             fwrite(text.data(), 1, text.size(), f);
             fclose(f);
@@ -467,13 +491,26 @@ void SKBackend_NoteFlusherThread() {
 
 extern "C" JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_profileFlusherNative(JNIEnv *env, jclass clazz, jint delaySeconds, jint seconds,
-                                                        jstring out, jstring symbolPath)
+                                                        jstring out, jstring symbolPath, jstring focus)
 {
     const char *o = env->GetStringUTFChars(out, nullptr);
     const char *s = env->GetStringUTFChars(symbolPath, nullptr);
     if (o != nullptr && s != nullptr) {
         gFlusherProfile.out = o;
         gFlusherProfile.symbols = s;
+        if (focus != nullptr) {
+            if (const char *f = env->GetStringUTFChars(focus, nullptr)) {
+                std::string all(f);
+                env->ReleaseStringUTFChars(focus, f);
+                for (size_t at = 0; at <= all.size();) {
+                    const size_t comma = std::min(all.find(',', at), all.size());
+                    if (comma > at) {
+                        gFlusherProfile.focus.push_back(all.substr(at, comma - at));
+                    }
+                    at = comma + 1;
+                }
+            }
+        }
         gFlusherProfile.delayMs = std::max(0, (int) delaySeconds) * 1000;
         gFlusherProfile.durationMs = std::min((int) seconds, (int) (MAX_SAMPLES / 1000)) * 1000;   // at most the buffer's samples
     }

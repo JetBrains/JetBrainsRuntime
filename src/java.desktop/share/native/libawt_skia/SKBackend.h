@@ -244,6 +244,9 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
 void SKBackend_SetTextBlobCache(jint entries);
 // The blob cache's hits and misses since the start (tests, diagnostics).
 void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses);
+// sun.java2d.skia.canvasOpsPastBatches (on by default): shapes and AA parallelograms touching no pending batch are
+// drawn ahead of the batches instead of drawing them first. Draws the pending batches before switching.
+void SKBackend_SetCanvasOpsPastBatches(bool on);
 #ifdef _WIN32
 // EXPERIMENT (x64hw, 2026-11-06), diagnostics, Windows (VKSKGaneshBench.cpp): sun.java2d.skia.profileFlusher.
 // Called at every flush on the flusher thread; the first call starts a sampling profile of that thread if one
