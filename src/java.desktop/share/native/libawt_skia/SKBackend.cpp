@@ -132,7 +132,7 @@ static struct {
     bool submitPerPresent = false;  // sun.java2d.skia.submit=present: submit only for a present, a wait or the cap
     SKLcdOrder lcdOrder = SKLcdOrder::System;   // sun.java2d.skia.lcdOrder: the sub-pixel order the surfaces declare
     bool orderedRecordings = false;  // EXPERIMENT sun.java2d.skia.orderedRecordings: ContextOptions::fRequireOrderedRecordings
-    bool imageAtlas = false;          // EXPERIMENT sun.java2d.skia.imageAtlas: small image sources drawn from an atlas (SKImageAtlas.h)
+    bool imageAtlas = true;           // sun.java2d.skia.imageAtlas: small image sources drawn from an atlas (SKImageAtlas.h)
 } gConfig;
 
 SkPixelGeometry SKBackend_LcdPixelGeometry() {
@@ -3281,7 +3281,7 @@ static sk_sp<SkImage> blitSourceImage(SKSDOps *src) {
     return st->unlinkedImage;
 }
 
-// EXPERIMENT (x64hw, 2026-11-04), sun.java2d.skia.imageAtlas: a blit of a small Skia surface of this context,
+// sun.java2d.skia.imageAtlas (x64hw, 2026-11-04; on by default since 2026-11-06): a blit of a small Skia surface of this context,
 // unscaled and pixel-aligned, under the conditions of blits past the batches (no transform, a rect clip or
 // none, no XOR, no MSAA, not from the destination) and with a plain SrcOver composite, becomes a sprite of the
 // context's image atlas (SKImageAtlas.h): one mesh for the small images of a frame instead of a draw each, each with

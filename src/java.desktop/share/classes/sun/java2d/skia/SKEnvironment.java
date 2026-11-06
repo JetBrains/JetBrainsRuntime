@@ -255,11 +255,11 @@ public final class SKEnvironment {
      */
     private static final boolean ORDERED_RECORDINGS = Boolean.getBoolean("sun.java2d.skia.orderedRecordings");
     /**
-     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.imageAtlas=true}: blits of small Skia surfaces
+     * {@code sun.java2d.skia.imageAtlas} (default true since 2026-11-06; x64hw s25, s31: UI flush wait -3 %, typing level): blits of small Skia surfaces
      * (the images of a UI, cached images), unscaled and pixel-aligned under a rect clip, are drawn as sprites of one mesh
-     * from an atlas of their copies (SKImageAtlas.h) instead of one Graphite draw each.
+     * from an atlas of their copies (SKImageAtlas.h) instead of one Graphite draw each. false: one draw each.
      */
-    private static final boolean IMAGE_ATLAS = Boolean.getBoolean("sun.java2d.skia.imageAtlas");
+    private static final boolean IMAGE_ATLAS = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.imageAtlas"));
     /**
      * The graphics API Graphite renders through ({@code sun.java2d.skia.graphiteApi}),
      * read by the native side before the first adapter request: {@code dawn} (the

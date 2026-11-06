@@ -30,20 +30,20 @@ import java.lang.reflect.Method;
 
 /**
  * @test
- * @summary With sun.java2d.skia.imageAtlas, unscaled blits of small accelerated images are drawn
+ * @summary By default (sun.java2d.skia.imageAtlas), unscaled blits of small accelerated images are drawn
  *          from an atlas of their copies as sprites of a few meshes, not one Graphite draw each. A frame of
  *          200 blits of 16 images, in cell clips that cut some of them, under rect fills drawn over some
  *          and over rect fills drawn before others, some at half extra alpha, and one image changed in the
  *          middle of the frame (the sprites drawn before show its old pixels, those after its new ones),
- *          matches the software loops; the atlas draws them in at most 25 mesh draws (200 without it). Without the
- *          property (the last run line) the frame matches as well and nothing is drawn from the atlas.
+ *          matches the software loops; the atlas draws them in at most 25 mesh draws (200 without it). With the property false (the last run line)
+ *          the frame matches as well and nothing is drawn from the atlas.
  *          When Skia is unavailable there is nothing to test.
  * @key headful
  * @requires (os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.imageAtlas=true SkiaImageAtlasTest on
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.imageAtlas=true SkiaImageAtlasTest on
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaImageAtlasTest off
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaImageAtlasTest on
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan SkiaImageAtlasTest on
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.imageAtlas=false SkiaImageAtlasTest off
  */
 public class SkiaImageAtlasTest {
     static final int W = 960, H = 200;
@@ -122,7 +122,7 @@ public class SkiaImageAtlasTest {
         }
         if (!on) {
             if (blits != 0) {
-                throw new RuntimeException(blits + " blits drawn from the atlas without sun.java2d.skia.imageAtlas");
+                throw new RuntimeException(blits + " blits drawn from the atlas with sun.java2d.skia.imageAtlas=false");
             }
             System.out.println("PASSED");
             return;
