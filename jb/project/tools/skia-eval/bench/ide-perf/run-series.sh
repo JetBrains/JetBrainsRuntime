@@ -22,11 +22,14 @@ for rep in $(seq "$FIRST" "$LAST"); do
     # one series can compare images (before and after a change without a switch)
     real=$arm; image=""
     if [[ $arm == *=*@* ]]; then real=${arm#*=}; image=${real#*@}; real=${real%%@*}; arm=${arm%%=*}; fi
+    # LABEL=ARM%VAR1,VAR2: ARM run with those environment variables set to 1 (the backend's diagnostic switches)
+    envs=""
+    if [[ $arm == *=*%* ]]; then real=${arm#*=}; envs=${real#*%}; real=${real%%%*}; arm=${arm%%=*}; fi
     dir="$SERIES/rep$rep-$arm-$launch"; rm -rf "$dir"
     if [ -n "$image" ]; then
       JDK="$image" bash "$HERE/run-ide-perf.sh" "$real" "$launch" "$dir" > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
     else
-      bash "$HERE/run-ide-perf.sh" "$arm" "$launch" "$dir" > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
+      (for v in ${envs//,/ }; do export "$v=1"; done; bash "$HERE/run-ide-perf.sh" "$real" "$launch" "$dir") > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
     fi
     end=$(grep -c "CommandLogger - %exitApp\|scene driver: exit requested" "$dir/idea.log" 2>/dev/null)
     skia=$(grep -o "Skia rendering enabled: [A-Z]*[^,]*" "$dir/stdout.txt" 2>/dev/null | head -1 | cut -c1-80)
