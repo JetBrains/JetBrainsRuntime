@@ -57,6 +57,7 @@ typedef enum {
     SHADER_GRADIENT,
     SHADER_GRADIENT_LINEAR_PUSH,
     SHADER_GRADIENT_RADIAL_PUSH,
+    SHADER_TEXTURE,
     SHADER_BLIT,
     SHADER_CLIP,
 
@@ -115,11 +116,12 @@ typedef struct {
  */
 struct VKPipelineContext {
     VKDevice*                   device;
-    VkPipelineLayout            commonPipelineLayout;
+    VkPipelineLayout            commonPipelineLayout; // no descriptor sets
     VkDescriptorSetLayout       textureDescriptorSetLayout;
-    VkPipelineLayout            texturePipelineLayout;
+    VkPipelineLayout            texturePipelineLayout; // descriptor sets: 0=texture, 1=sampler
+    VkPipelineLayout            texturePaintPipelineLayout; // descriptor sets: 0=mask, 1=texture, 2=sampler
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
-    VkPipelineLayout            maskFillPipelineLayout;
+    VkPipelineLayout            maskFillPipelineLayout; // descriptor sets: 0=mask
 
     VKSamplers                  samplers;
     struct VKShaders*           shaders;
@@ -186,6 +188,7 @@ typedef union {
     VKGradientPaintConstants gradientPaint;
     VKLinearGradientPaintConstants linearGradientPaint;
     VKRadialGradientPaintConstants radialGradientPaint;
+    VKTransform texturePaint;
 } VKShaderConstants;
 #define MAX_SHADER_CONSTANTS_SIZE 96 // We expect 96 bytes
 typedef char VKShaderConstantsCheckOffset[sizeof(VKShaderConstants) == MAX_SHADER_CONSTANTS_SIZE ? 1 : -1]; // Verify.

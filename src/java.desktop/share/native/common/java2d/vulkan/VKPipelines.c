@@ -312,20 +312,27 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             switch ((int) baseShader) {
             case SHADER_COLOR:
                 fragmentShader = shaders->color_frag;
+                createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
                 break;
             case SHADER_GRADIENT:
                 fragmentShader = shaders->gradient_frag;
+                createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
                 break;
             case SHADER_GRADIENT_LINEAR_PUSH:
                 fragmentShader = shaders->gradient_linear_push_frag;
+                createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
                 break;
             case SHADER_GRADIENT_RADIAL_PUSH:
                 fragmentShader = shaders->gradient_radial_push_frag;
+                createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+                break;
+            case SHADER_TEXTURE:
+                fragmentShader = shaders->texture_frag;
+                createInfos[i].layout = pipelineContext->texturePaintPipelineLayout;
                 break;
             default:
                 VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
             }
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
             stages[i] = (ShaderStages) {{ vertexShader, fragmentShader }};
         }
         }
@@ -536,6 +543,17 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
     VK_IF_ERROR(result) return result;
 
+    // Texture paint pipeline.
+    VkDescriptorSetLayout texturePaintDescriptorSetLayouts[] = {
+        pipelines->maskFillDescriptorSetLayout,
+        pipelines->textureDescriptorSetLayout,
+        pipelines->samplers.descriptorSetLayout
+    };
+    createInfo.setLayoutCount = SARRAY_COUNT_OF(texturePaintDescriptorSetLayouts);
+    createInfo.pSetLayouts = texturePaintDescriptorSetLayouts;
+    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePaintPipelineLayout);
+    VK_IF_ERROR(result) return result;
+
     return VK_SUCCESS;
 }
 
@@ -580,6 +598,7 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
 
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->commonPipelineLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePipelineLayout, NULL);
+    device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePaintPipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->textureDescriptorSetLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->maskFillPipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->maskFillDescriptorSetLayout, NULL);

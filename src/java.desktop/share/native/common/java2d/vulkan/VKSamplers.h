@@ -43,11 +43,11 @@ typedef struct {
     struct {
         VkSampler sampler;
         VkDescriptorSet descriptorSet;
-    } table[SAMPLER_FILTER_COUNT][SAMPLER_WRAP_COUNT];
+    } table[SAMPLER_FILTER_COUNT][SAMPLER_WRAP_COUNT][2];
 } VKSamplers;
 
 VKSamplers VKSamplers_Create(VKDevice* device);
 void VKSamplers_Destroy(VKDevice* device, VKSamplers samplers);
-VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* samplers, jint filter, VKSamplerWrap wrap);
+VkDescriptorSet VKSamplers_GetDescriptorSet(VKDevice* device, VKSamplers* samplers, jint filter, VKSamplerWrap wrap, VkBool32 unnormalizedCoordinates);
 
 #endif //VKSamplers_h_Included

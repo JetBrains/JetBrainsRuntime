@@ -109,16 +109,8 @@ void VKBlitLoops_IsoBlit(VKSDOps* srcOps, jint filter,
         return;
     }
 
-    VkBool32 srcOpaque = VKSD_IsOpaque(srcOps);
-    AlphaType alphaType = srcOpaque ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
-    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                                  VK_COMPONENT_SWIZZLE_ONE);
-    VKPackedSwizzle swizzle = srcOpaque ? OPAQUE_SWIZZLE : 0;
-
-    if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, alphaType)) return;
-    VKRenderer_DrawImage(srcOps->image, srcOps->image->format, swizzle, filter, SAMPLER_WRAP_BORDER,
+    if (!VKRenderer_Validate(SHADER_BLIT, NO_SHADER_VARIANT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VKSD_GetSamplingInAlphaType(srcOps))) return;
+    VKRenderer_DrawImage(srcOps->image, srcOps->image->format, VKSD_GetSamplingSwizzle(srcOps), filter, SAMPLER_WRAP_BORDER,
                          (float)sx1, (float)sy1, (float)sx2, (float)sy2, (float)dx1, (float)dy1, (float)dx2, (float)dy2);
     VKRenderer_AddSurfaceDependency(srcOps, context->surface);
 }

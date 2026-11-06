@@ -19,6 +19,15 @@ layout (constant_id = 1) const uint const_ShaderModifier = 0;
 #define SHADER_COVERAGE_MASK 1
 #define SHADER_COVERAGE_AA_PARALLELOGRAM 2
 
+struct VKTransform {
+    float m00, m01, m02;
+    float m10, m11, m12;
+};
+
+vec2 applyTransform(VKTransform t, vec2 v) {
+    return vec3(v, 1.0) * mat2x3(t.m00, t.m01, t.m02, t.m10, t.m11, t.m12);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //// Vertex shader common outputs and transform push constants /////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,14 +39,10 @@ layout(location = 12) out flat vec4  out_GenericFlatVec4_2;
 layout(location = 11) out flat vec4  out_GenericFlatVec4_3;
 layout(location = 10) out flat ivec4 out_GenericFlatIvec4_1;
 
-struct VKTransform {
-    float m00, m01, m02;
-    float m10, m11, m12;
-};
 layout(push_constant) uniform PushConstants { VKTransform transform; } push;
 
 vec4 transformToDeviceSpace(vec2 v) {
-    return vec4(vec3(v, 1.0) * mat2x3(push.transform.m00, push.transform.m01, push.transform.m02, push.transform.m10, push.transform.m11, push.transform.m12), 0.0, 1.0);
+    return vec4(applyTransform(push.transform, v), 0.0, 1.0);
 }
 #endif // STAGE_VERT
 

@@ -183,6 +183,7 @@ struct VKRenderPass {
     uint64_t             constantsModCount; // Just a tag to detect when constants were changed.
     uint64_t             transformModCount; // Just a tag to detect when transform was changed.
     uint64_t             clipModCount; // Just a tag to detect when clip was changed.
+    uint64_t             texturePaintModCount; // Just a tag to detect when the texture paint was changed.
     VkBool32             pendingFlush    : 1;
     VkBool32             pendingCommands : 1;
     VkBool32             pendingClear    : 1;
@@ -203,6 +204,9 @@ static VKRenderingContext context = {
             .transform = J2D_VK_ID_TRANSFORM_INITIALIZER,
             .composite = { 0, 1.0f }
         },
+        .texturePaintModCount = 1,
+        .texturePaintSurface = NULL,
+        .texturePaintAffineTransformOp = 0,
         .clipModCount = 1,
         .clipRect = J2D_VK_NO_CLIP_RECT_INITIALIZER,
         .clipSpanVertices = { .as_untyped = {0} }
@@ -750,6 +754,7 @@ static void VKRenderer_ResetDrawing(VKSDOps* surface) {
     renderPass->state.shader = NO_SHADER;
     renderPass->constantsModCount = 0;
     renderPass->transformModCount = 0;
+    renderPass->texturePaintModCount = 0;
     renderPass->firstVertex = 0;
     renderPass->vertexCount = 0;
     renderPass->verticesPerInstance = 0;
@@ -877,6 +882,7 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
             .constantsModCount = 0,
             .transformModCount = 0,
             .clipModCount = 0,
+            .texturePaintModCount = 0,
             .pendingFlush = VK_FALSE,
             .pendingCommands = VK_FALSE,
             .pendingClear = VK_FALSE,
@@ -1375,6 +1381,53 @@ static void VKRenderer_ValidateConstants() {
     }
 }
 
+// returns VK_FALSE is the draw should be skipped (texture unavailable)
+static VkBool32 VKRenderer_ValidateTexturePaint() {
+    VKRenderingContext* context = VKRenderer_GetContext();
+    assert(context->surface != NULL);
+    VKSDOps* surface = context->surface;
+    VKRenderPass* renderPass = surface->renderPass;
+
+    if ((renderPass->state.shader & SHADER_ENUM_BASE_MASK) != SHADER_TEXTURE) return VK_TRUE;
+    if (renderPass->texturePaintModCount == context->texturePaintModCount) return VK_TRUE;
+    renderPass->texturePaintModCount = context->texturePaintModCount;
+
+    VKSDOps* textureSurface = context->texturePaintSurface;
+    assert(textureSurface != NULL && textureSurface != surface);
+
+    VKRenderer_FlushRenderPass(textureSurface); // TODO: why?
+    if (textureSurface->image == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_ValidateTexturePaint: texture paint source has no image (%p)", textureSurface);
+        return VK_FALSE;
+    }
+
+    VKDevice* device = surface->device;
+
+    // Copied from VKRenderer_DrawImage.
+    {
+        VkImageMemoryBarrier barrier;
+        VKBarrierBatch barrierBatch = { 0 };
+        VKImage_AddBarrier(&barrier, &barrierBatch, textureSurface->image,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT,
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        VKRenderer_RecordBarriers(device->renderer, NULL, NULL, &barrier, &barrierBatch);
+    }
+    VKRenderer_AddSurfaceDependency(textureSurface, surface); // TODO: why is this not in VKRenderer_DrawImage?
+
+    VKRenderer_FlushDraw(surface);
+
+    // Bind image & sampler descriptor sets.
+    VkDescriptorSet descriptorSets[] = {
+        VKImage_GetDescriptorSet(device, textureSurface->image, textureSurface->image->format, VKSD_GetSamplingSwizzle(textureSurface)),
+        VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, context->texturePaintAffineTransformOp, SAMPLER_WRAP_REPEAT, VK_FALSE)
+    };
+    device->vkCmdBindDescriptorSets(surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    device->renderer->pipelineContext->texturePaintPipelineLayout, 1, 2, descriptorSets, 0, NULL);
+
+    return VK_TRUE;
+}
+
 /**
  * Setup stencil attachment according to the context clip state.
  * If there is a clip shape, attachment is cleared with "fail" value and then
@@ -1542,18 +1595,24 @@ VkBool32 VKRenderer_Validate(VKShader shader, VKShaderVariant shaderVariant, VkP
         renderPass->vertexBufferWriting.bound = VK_FALSE;
         renderPass->maskFillBufferWriting.bound = VK_FALSE;
 
+        // Always revalidate texturePaint on pipeline change
+        // because its descriptor set might have been disturbed
+        renderPass->texturePaintModCount = 0;
+
         // If pipeline uses mask fill layout, but the shader is not actually a MASK one, that must be a generic-layout pipeline.
         // In that case, we need to bind a mask buffer, even if we won't ever use it.
         // We could use VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT or nullDescriptor, but those require
         // optional features or extensions, so don't bother for now...
         // TODO this is ugly, do something with it.
-        if (pipelineInfo.layout == surface->device->renderer->pipelineContext->maskFillPipelineLayout && VKShader_GetCoverageSource(shader) != SHADER_COVERAGE_MASK) {
+        if ((pipelineInfo.layout == surface->device->renderer->pipelineContext->maskFillPipelineLayout ||
+            pipelineInfo.layout == surface->device->renderer->pipelineContext->texturePaintPipelineLayout) &&
+            VKShader_GetCoverageSource(shader) != SHADER_COVERAGE_MASK) {
             VKRenderer_AllocateMaskFillBytes(0);
         }
     }
 
     VKRenderer_ValidateConstants();
-    return VK_TRUE;
+    return VKRenderer_ValidateTexturePaint();
 }
 
 static VkBool32 VKRenderer_ValidatePaint(VKShaderCoverageSource shaderCoverageSource, VkPrimitiveTopology primitiveTopology) {
@@ -1936,7 +1995,7 @@ void VKRenderer_DrawImage(VKImage* image, VkFormat format,
     // Bind image & sampler descriptor sets.
     VkDescriptorSet descriptorSets[] = {
             VKImage_GetDescriptorSet(device, image, format, swizzle),
-            VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, filter, wrap)
+            VKSamplers_GetDescriptorSet(device, &device->renderer->pipelineContext->samplers, filter, wrap, VK_TRUE)
     };
     device->vkCmdBindDescriptorSets(surface->renderPass->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     device->renderer->pipelineContext->texturePipelineLayout, 0, 2, descriptorSets, 0, NULL);
@@ -1988,6 +2047,38 @@ void VKRenderer_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint n
     memcpy(constants->fractions, fractions, numStops * sizeof(float));
     memcpy(constants->sRGBPackedColors, pixels, numStops * sizeof(uint32_t));
     context.constantsModCount++;
+}
+
+void VKRenderer_SetTexturePaint(jboolean filter, VKSDOps* pSrc,
+                                jdouble xp0, jdouble xp1, jdouble xp3,
+                                jdouble yp0, jdouble yp1, jdouble yp3) {
+    if (pSrc == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKRenderer_SetTexturePaint: pSrc is null");
+        return;
+    }
+
+    context.inAlphaType = VKSD_GetSamplingInAlphaType(pSrc);
+
+    context.texturePaintSurface = pSrc;
+    context.texturePaintAffineTransformOp = filter
+        ? java_awt_image_AffineTransformOp_TYPE_BILINEAR
+        : java_awt_image_AffineTransformOp_TYPE_NEAREST_NEIGHBOR;
+    ++context.texturePaintModCount;
+
+    context.shader = SHADER_TEXTURE;
+    context.shaderVariant = NO_SHADER_VARIANT;
+    context.constants.shader.texturePaint = (VKTransform) {
+        .m00 = (float) xp0, .m01 = (float) xp1, .m02 = (float) xp3,
+        .m10 = (float) yp0, .m11 = (float) yp1, .m12 = (float) yp3
+    };
+    ++context.constantsModCount;
+}
+
+void VKRenderer_ResetPaint() {
+    if (context.texturePaintSurface != NULL) {
+        context.texturePaintSurface = NULL;
+        context.texturePaintModCount++;
+    }
 }
 
 void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {

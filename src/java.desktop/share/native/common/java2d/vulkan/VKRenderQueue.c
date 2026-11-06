@@ -605,6 +605,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             {
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: RESET_PAINT");
+                VKRenderer_ResetPaint();
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
@@ -689,6 +690,9 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 jdouble yp3     = NEXT_DOUBLE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: SET_TEXTURE_PAINT");
+                (void) useMask; // ignore
+                VKRenderer_SetTexturePaint(filter, jlong_to_ptr(pSrc),
+                    xp0, xp1, xp3, yp0, yp1, yp3);
             }
             break;
 

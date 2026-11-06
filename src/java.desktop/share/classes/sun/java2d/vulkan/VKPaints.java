@@ -55,8 +55,7 @@ abstract class VKPaints {
         impls.put(SunGraphics2D.PAINT_GRADIENT, new Gradient());
         impls.put(SunGraphics2D.PAINT_LIN_GRADIENT, new LinearGradient());
         impls.put(SunGraphics2D.PAINT_RAD_GRADIENT, new RadialGradient());
-        // TODO: only register Texture when it's actually supported, otherwise the registration will produce incorrect draws
-        // impls.put(SunGraphics2D.PAINT_TEXTURE, new Texture());
+        impls.put(SunGraphics2D.PAINT_TEXTURE, new Texture());
     }
 
     /**

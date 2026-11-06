@@ -54,6 +54,10 @@ struct VKRenderingContext {
     uint64_t        constantsModCount;
     uint64_t        transformModCount;
 
+    uint64_t        texturePaintModCount;
+    VKSDOps*        texturePaintSurface;
+    jint            texturePaintAffineTransformOp;
+
     uint64_t           clipModCount; // Used to track changes to the clip.
     VkRect2D           clipRect;
     ARRAY(VKIntVertex) clipSpanVertices;
@@ -178,6 +182,11 @@ void VKRenderer_SetRadialGradientPaint(jboolean linear, jint cycleMethod, jint n
                                        float m10, float m11, float m12,
                                        float focusX,
                                        void* fractions, void* pixels);
+
+void VKRenderer_SetTexturePaint(jboolean filter, VKSDOps* pSrc,
+                                jdouble xp0, jdouble xp1, jdouble xp3,
+                                jdouble yp0, jdouble yp1, jdouble yp3);
+void VKRenderer_ResetPaint();
 
 void VKRenderer_DrawGlyphList(jint numGlyphs,
                               jfloat glyphListOrigX, jfloat glyphListOrigY,

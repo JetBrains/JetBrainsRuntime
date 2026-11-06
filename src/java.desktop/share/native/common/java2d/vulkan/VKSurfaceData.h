@@ -96,6 +96,22 @@ static inline VkBool32 VKSD_IsOpaque(VKSDOps* vksdo) {
     return vksdo->drawableFormat & VKSD_FORMAT_OPAQUE_BIT ? VK_TRUE : VK_FALSE;
 }
 
+// When the surface is sampled as a texture,
+// opaque formats use an alpha swizzle ONE and are treated as STRAIGHT.
+static inline VKPackedSwizzle VKSD_GetSamplingSwizzle(VKSDOps* vksdo) {
+    static const VKPackedSwizzle OPAQUE_SWIZZLE = VK_PACK_SWIZZLE(
+        VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_ONE);
+
+    return VKSD_IsOpaque(vksdo) ? OPAQUE_SWIZZLE : 0;
+}
+static inline AlphaType VKSD_GetSamplingInAlphaType(VKSDOps* vksdo) {
+    return VKSD_IsOpaque(vksdo) ? ALPHA_TYPE_STRAIGHT : ALPHA_TYPE_PRE_MULTIPLIED;
+}
+
+
 VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR* createInfo);
 VKSwapchain* VKSwapchain_Retain(VKSwapchain* swapchain);
 void VKSwapchain_Release(VKSwapchain* swapchain);

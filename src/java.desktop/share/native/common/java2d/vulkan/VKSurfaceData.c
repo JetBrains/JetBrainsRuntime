@@ -36,6 +36,14 @@
  * Release VKSDOps resources & reset to initial state.
  */
 static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
+    // If this image is the texture paint, reset the texture paint.
+    // This can be reached through Image.flush() in java2d,
+    // Which will destroy the surface, but not reset the paint.
+    if (VKRenderer_GetContext()->texturePaintSurface == vksdo) {
+        VKRenderer_ResetPaint();
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSD_ResetImageSurface(%p): reset texture paint", vksdo);
+    }
+
     if (vksdo == NULL) return;
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ResetImageSurface(%p)", vksdo);
