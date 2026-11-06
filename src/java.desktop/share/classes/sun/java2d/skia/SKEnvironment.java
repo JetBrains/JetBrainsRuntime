@@ -176,6 +176,13 @@ public final class SKEnvironment {
      */
     private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 0);
     /**
+     * EXPERIMENT (x64hw, 2026-11-06), diagnostics (Windows): {@code sun.java2d.skia.profileFlusher=<seconds>} samples
+     * the flusher thread in place for that long, starting {@code sun.java2d.skia.profileFlusherDelay} seconds after
+     * its first flush, and writes the report (as {@link #profileBench}'s) to {@code sun.java2d.skia.profileFlusherOut}
+     * (default: {@code skia-flusher-profile.txt} in {@code java.io.tmpdir}).
+     */
+    private static final int PROFILE_FLUSHER_SECONDS = Integer.getInteger("sun.java2d.skia.profileFlusher", 0);
+    /**
      * {@code sun.java2d.skia.glyphAtlas=<MB>}: the budget of Graphite's glyph atlas
      * ({@code ContextOptions::fGlyphCacheTextureMaximumBytes}, the GPU-side glyph
      * masks of Skia's text path); 0 keeps Skia's default of 8 MB.
@@ -651,6 +658,17 @@ public final class SKEnvironment {
                 if (TEXT_BLOB_CACHE > 0) {
                     setTextBlobCacheNative(TEXT_BLOB_CACHE);
                 }
+                if (PROFILE_FLUSHER_SECONDS > 0) {
+                    String home = System.getProperty("java.home");
+                    String out = System.getProperty("sun.java2d.skia.profileFlusherOut",
+                            System.getProperty("java.io.tmpdir") + java.io.File.separator + "skia-flusher-profile.txt");
+                    try {
+                        profileFlusherNative(Integer.getInteger("sun.java2d.skia.profileFlusherDelay", 0), PROFILE_FLUSHER_SECONDS,
+                                             out, home + "\\bin;" + home + "\\..\\symbols\\bin");
+                    } catch (UnsatisfiedLinkError e) {
+                        // only the Windows library has it
+                    }
+                }
                 pipelineCache = pipelineCacheDirectory();
                 setPipelineCacheNative(pipelineCache);
             }
@@ -733,6 +751,7 @@ public final class SKEnvironment {
     }
 
     private static native void setTextBlobCacheNative(int entries);
+    private static native void profileFlusherNative(int delaySeconds, int seconds, String out, String symbolPath);
     private static native long[] textBlobCacheStatsNative();
 
     /** The budget of Skia's strike cache in bytes as the backend runs it (diagnostics, tests). */
@@ -781,7 +800,8 @@ public final class SKEnvironment {
      * Diagnostics: the floor of Graphite's per-draw cost on this device, without the backend's
      * translation in front of it — {@code draws} draws of one kind (0 a rect in one colour, 1 rects
      * alternating colours, 2 a one-quad mesh, 3 a 32x32 image, 4 images of 16 textures in turn, 5 rect,
-     * mesh and image in turn, 6 rects switching between two surfaces) recorded into an off-screen surface,
+     * mesh and image in turn, 6 rects switching between two surfaces; 7-10 12-glyph strings as a temporary glyph
+     * run, as a retained text blob, and the two in LCD) recorded into an off-screen surface,
      * then snapped, inserted and submitted; the median over {@code frames} frames of each phase in
      * nanoseconds per draw: record, snap, insert, submit. {@code null} without the backend.
      */

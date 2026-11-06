@@ -419,6 +419,72 @@ static std::string profileBench(int backend, int kind, int draws, int frames, co
     return ran ? report(sampler, symbolPath, seconds) : std::string();
 }
 
+// The flusher thread profiled in place (sun.java2d.skia.profileFlusher=<seconds>, after
+// sun.java2d.skia.profileFlusherDelay seconds, into sun.java2d.skia.profileFlusherOut): the first flush on the
+// flusher thread starts a sampler thread on it; the report (as profileBench's, of all the flusher's samples, idle
+// ones included) is written to the file when the time is up. The flusher never waits for any of it.
+namespace {
+struct FlusherProfile {
+    int delayMs = 0;
+    int durationMs = 0;
+    std::string out;
+    std::string symbols;
+    std::atomic<bool> started{false};
+};
+FlusherProfile gFlusherProfile;
+} // namespace
+
+void SKBackend_NoteFlusherThread() {
+    if (gFlusherProfile.durationMs <= 0 || gFlusherProfile.started.exchange(true)) {
+        return;
+    }
+    HANDLE target = nullptr;
+    if (!DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &target,
+                         THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_INFORMATION, FALSE, 0)) {
+        return;
+    }
+    std::thread([target] {
+        Sleep((DWORD) gFlusherProfile.delayMs);
+        auto *sampler = new Sampler();
+        sampler->target = target;
+        sampler->frames.resize(MAX_SAMPLES * DEPTH);
+        sampler->depths.resize(MAX_SAMPLES);
+        const uint64_t t0 = SKStats_Now();
+        std::thread run([sampler] { sampler->run(); });
+        Sleep((DWORD) gFlusherProfile.durationMs);
+        sampler->stop.store(true);
+        run.join();
+        const double seconds = (SKStats_Now() - t0) / 1e9;
+        const std::string text = report(*sampler, gFlusherProfile.symbols.c_str(), seconds);
+        if (FILE *f = fopen(gFlusherProfile.out.c_str(), "wb")) {
+            fwrite(text.data(), 1, text.size(), f);
+            fclose(f);
+        }
+        CloseHandle(sampler->target);
+        delete sampler;
+    }).detach();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_profileFlusherNative(JNIEnv *env, jclass clazz, jint delaySeconds, jint seconds,
+                                                        jstring out, jstring symbolPath)
+{
+    const char *o = env->GetStringUTFChars(out, nullptr);
+    const char *s = env->GetStringUTFChars(symbolPath, nullptr);
+    if (o != nullptr && s != nullptr) {
+        gFlusherProfile.out = o;
+        gFlusherProfile.symbols = s;
+        gFlusherProfile.delayMs = std::max(0, (int) delaySeconds) * 1000;
+        gFlusherProfile.durationMs = std::min((int) seconds, (int) (MAX_SAMPLES / 1000)) * 1000;   // at most the buffer's samples
+    }
+    if (o != nullptr) {
+        env->ReleaseStringUTFChars(out, o);
+    }
+    if (s != nullptr) {
+        env->ReleaseStringUTFChars(symbolPath, s);
+    }
+}
+
 extern "C" JNIEXPORT jdoubleArray JNICALL
 Java_sun_java2d_skia_SKEnvironment_benchGaneshNative(JNIEnv *env, jclass clazz, jint kind, jint draws, jint frames,
                                                      jboolean reduceOpsTaskSplitting)

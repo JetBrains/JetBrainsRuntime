@@ -244,6 +244,12 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
 void SKBackend_SetTextBlobCache(jint entries);
 // The blob cache's hits and misses since the start (tests, diagnostics).
 void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses);
+#ifdef _WIN32
+// EXPERIMENT (x64hw, 2026-11-06), diagnostics, Windows (VKSKGaneshBench.cpp): sun.java2d.skia.profileFlusher.
+// Called at every flush on the flusher thread; the first call starts a sampling profile of that thread if one
+// is configured.
+void SKBackend_NoteFlusherThread();
+#endif
 // Skia's shaper (sun.java2d.skia.text=shaper): the characters of a drawString shaped by
 // HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs)
 // and the platform font manager's fallback, drawn as one text blob at the baseline

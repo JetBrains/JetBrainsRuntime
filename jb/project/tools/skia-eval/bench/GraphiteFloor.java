@@ -44,6 +44,8 @@ import java.util.Arrays;
  */
 public class GraphiteFloor {
     static final String[] KINDS = {"rect", "rect-2colours", "mesh-quad", "image-32", "image-16-textures", "rect-mesh-image", "two-surfaces"};
+    // benchGraphite only: Skia's text path, 12-glyph strings, a temporary glyph run or a retained blob, grayscale or LCD
+    static final String[] TEXT_KINDS = {"glyph-run", "blob", "glyph-run-lcd", "blob-lcd"};
 
     public static void main(String[] args) throws Exception {
         String mode = args[0];
@@ -70,12 +72,30 @@ public class GraphiteFloor {
         }
         if (mode.equals("graphite")) {
             Method m = Class.forName("sun.java2d.skia.SKEnvironment").getMethod("benchGraphite", int.class, int.class, int.class);
-            for (int k = 0; k < KINDS.length; k++) {
-                double[] r = (double[]) m.invoke(null, k, draws, frames);
-                if (r == null) {
-                    throw new RuntimeException("no Graphite context");
+            int runs = args.length > 3 ? Integer.parseInt(args[3]) : 1;
+            int kinds = KINDS.length + TEXT_KINDS.length;   // the text kinds follow the others (7-10)
+            java.util.Map<Integer, java.util.List<double[]>> results = new java.util.TreeMap<>();
+            for (int run = 0; run < runs; run++) {
+                for (int k = 0; k < kinds; k++) {
+                    double[] r = (double[]) m.invoke(null, k, draws, frames);
+                    if (r == null) {
+                        throw new RuntimeException("no Graphite context");
+                    }
+                    results.computeIfAbsent(k, x -> new java.util.ArrayList<>()).add(r);
                 }
-                System.out.printf("%s\t%.0f\t%.0f\t%.0f\t%.0f%n", KINDS[k], r[0], r[1], r[2], r[3]);
+            }
+            for (var e : results.entrySet()) {
+                int k = e.getKey();
+                String name = k < KINDS.length ? KINDS[k] : TEXT_KINDS[k - KINDS.length];
+                StringBuilder sb = new StringBuilder(name);
+                for (int p = 0; p < 4; p++) {
+                    final int pp = p;
+                    sb.append(String.format("\t%.0f", median(e.getValue().stream().mapToDouble(r -> r[pp]).toArray())));
+                }
+                double[] totals = e.getValue().stream().mapToDouble(r -> Arrays.stream(r).sum()).toArray();
+                Arrays.sort(totals);
+                sb.append(String.format("\t%.0f [%.0f-%.0f]", median(totals), totals[0], totals[totals.length - 1]));
+                System.out.println(sb);
             }
             return;
         }

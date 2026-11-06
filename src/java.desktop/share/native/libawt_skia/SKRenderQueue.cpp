@@ -77,6 +77,9 @@ extern "C" {
 static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool presentAll)
 {
     jboolean pending = JNI_FALSE;
+#ifdef _WIN32
+    SKBackend_NoteFlusherThread();   // diagnostics: sun.java2d.skia.profileFlusher (VKSKGaneshBench.cpp)
+#endif
     unsigned char *end = b + limit;
 
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);

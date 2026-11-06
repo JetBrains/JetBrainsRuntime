@@ -3531,7 +3531,9 @@ static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any 
 // out[0..3] (record, snap, insert, submit, ns per draw). Kinds: 0 drawRect in one colour, 1
 // drawRect alternating colours, 2 a one-quad drawVertices (the batches' shape), 3 drawImageRect
 // of a 32x32 texture (blits, icons), 4 the same cycling 16 textures, 5 rect, mesh and image in turn, 6
-// rects switching between two surfaces every 50 draws. Called with the render queue locked.
+// rects switching between two surfaces every 50 draws; 7-10 Skia's text path, 12-glyph strings of 50 distinct ones:
+// 7 a temporary glyph run (drawGlyphs), 8 a retained SkTextBlob, 9 and 10 the same in LCD. Called with the render
+// queue locked.
 bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
     SKConfigContext *cc = gContexts.empty() ? nullptr : gContexts.begin()->second;
     if (cc == nullptr || !cc->recorder || !cc->context || draws <= 0 || frames <= 0) {
@@ -3556,6 +3558,43 @@ bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
     }
     sk_sp<SkSurface> second = SkSurfaces::RenderTarget(cc->recorder.get(),
             SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
+    // kinds 7-10, Skia's text path: 12-glyph strings of 50 distinct ones, drawn as a temporary glyph run
+    // (drawGlyphs, as the text route draws) or from a retained SkTextBlob (the text blob cache), grayscale
+    // or LCD, at whole-pixel origins, on a surface with the display's pixel geometry (LCD otherwise grayscale)
+    const SkSurfaceProps textProps(0, SKBackend_LcdPixelGeometry());
+    sk_sp<SkSurface> textSurface = kind >= 7 ? SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType), skgpu::Mipmapped::kNo, &textProps) : nullptr;
+    SkFont textFont(SKPlatform_FontManager()->legacyMakeTypeface(nullptr, SkFontStyle()), 14);
+    textFont.setEdging(kind == 9 || kind == 10 ? SkFont::Edging::kSubpixelAntiAlias : SkFont::Edging::kAntiAlias);
+    textFont.setSubpixel(true);
+    std::vector<std::vector<SkGlyphID>> strings;
+    std::vector<std::vector<SkPoint>> stringPositions;
+    std::vector<sk_sp<SkTextBlob>> blobs;
+    for (int s = 0; s < 50; s++) {
+        char chars[13];
+        for (int c = 0; c < 12; c++) {
+            chars[c] = (char) ('a' + (s * 7 + c * 3) % 26);
+        }
+        chars[12] = 0;
+        std::vector<SkGlyphID> glyphs(12);
+        textFont.textToGlyphs(chars, 12, SkTextEncoding::kUTF8, glyphs);
+        std::vector<SkScalar> advances(12);
+        textFont.getWidths(glyphs, advances);
+        std::vector<SkPoint> points(12);
+        SkScalar penX = 0;
+        for (int c = 0; c < 12; c++) {
+            points[c] = {penX, 0};
+            penX += advances[c];
+        }
+        SkTextBlobBuilder builder;
+        const SkTextBlobBuilder::RunBuffer &run = builder.allocRunPos(textFont, 12);
+        memcpy(run.glyphs, glyphs.data(), 12 * sizeof(SkGlyphID));
+        memcpy(run.points(), points.data(), 12 * sizeof(SkPoint));
+        blobs.push_back(builder.make());
+        strings.push_back(std::move(glyphs));
+        stringPositions.push_back(std::move(points));
+    }
+    std::vector<SkPoint> shifted(12);
     const SkPoint pos[4] = {{0, 0}, {16, 0}, {16, 16}, {0, 16}};
     const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
     std::vector<double> t[4];
@@ -3592,6 +3631,19 @@ bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
                     } else {
                         canvas->drawImageRect(images[(size_t) i % images.size()], SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint);
                     }
+                    break;
+                case 7: case 9: {   // a temporary glyph run, as the text route draws
+                    const size_t s = (size_t) i % strings.size();
+                    for (int c = 0; c < 12; c++) {
+                        shifted[c] = {stringPositions[s][c].fX + x, stringPositions[s][c].fY + y + 14};
+                    }
+                    paint.setColor(i % 2 ? SK_ColorBLACK : SK_ColorBLUE);
+                    textSurface->getCanvas()->drawGlyphs(SkSpan<const SkGlyphID>(strings[s]), SkSpan<const SkPoint>(shifted), {0, 0}, textFont, paint);
+                    break;
+                }
+                case 8: case 10:   // a retained blob, as the text blob cache draws
+                    paint.setColor(i % 2 ? SK_ColorBLACK : SK_ColorBLUE);
+                    textSurface->getCanvas()->drawTextBlob(blobs[(size_t) i % blobs.size()], x, y + 14, paint);
                     break;
                 default: {
                     SkCanvas *c = (i / 50) % 2 == 0 || !second ? canvas : second->getCanvas();
