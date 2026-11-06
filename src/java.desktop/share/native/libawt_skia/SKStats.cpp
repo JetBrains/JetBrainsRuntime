@@ -216,7 +216,7 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu: same destination %llu, returned %llu, read %llu, ended %llu), blits past pending batches %llu, surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu, image atlas blits %llu, image atlas copies %llu, text blob hits %llu, text blob misses %llu\n",
+    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu), surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu, image atlas blits %llu, image atlas copies %llu, text blob hits %llu, text blob misses %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_STATE],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_KIND],
@@ -226,11 +226,6 @@ void dump(uint64_t now) {
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_FLUSH],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_IMMEDIATE],
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_SURFACE],
-            (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_SAME],
-            (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_RETURNED],
-            (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_READ],
-            (unsigned long long) stats.counters[SK_COUNT_SWITCH_DRAWS_ENDED],
-            (unsigned long long) stats.counters[SK_COUNT_BLITS_PAST_BATCHES],
             (unsigned long long) stats.counters[SK_COUNT_SURFACE_BLITS],
             (unsigned long long) stats.counters[SK_COUNT_BLITS_OF_PENDING_SOURCES],
             (unsigned long long) stats.counters[SK_COUNT_PENDING_SOURCES_VOLATILE],
@@ -274,7 +269,7 @@ void dump(uint64_t now) {
                 a.nanos / 1e3 / a.count);
     }
     fprintf(stderr, "\n");
-    // the batch draws by cause and op (the five ops that caused most under each cause), and the blits' reasons
+    // the batch draws by cause and op (the five ops that caused most under each cause)
     static const char *const CAUSE_NAMES[CAUSES] = {"state changes", "surface switches", "other kinds", "canvas ops",
                                                     "direct draws", "blits", "flush ends", "immediate"};
     fprintf(stderr, "[%7llums] SKStats batch draws by cause and op:", (unsigned long long) ((now - origin) / 1000000));
@@ -301,12 +296,7 @@ void dump(uint64_t now) {
         }
         fprintf(stderr, ";");
     }
-    fprintf(stderr, " | blits not past the batches: clip or transform %llu, from the destination %llu, other %llu; past but touching %llu | canvas ops past the batches %llu\n",
-            (unsigned long long) stats.counters[SK_COUNT_BLITS_NOT_PAST_CLIP],
-            (unsigned long long) stats.counters[SK_COUNT_BLITS_NOT_PAST_SELF],
-            (unsigned long long) stats.counters[SK_COUNT_BLITS_NOT_PAST_OTHER],
-            (unsigned long long) stats.counters[SK_COUNT_BLITS_TOUCHING],
-            (unsigned long long) stats.counters[SK_COUNT_CANVAS_OPS_PAST_BATCHES]);
+    fprintf(stderr, "\n");
     dumpEntryLog(now);
     fflush(stderr);
 }

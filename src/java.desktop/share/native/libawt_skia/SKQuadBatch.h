@@ -69,35 +69,6 @@ struct SKQuadBatchTwoPass {
 
 class SKQuadBatch {
 public:
-    // The rect clip every batch clips its quads to on arrival (push), null for none; set by the
-    // backend's render state for the destination being drawn (one flusher, one state).
-    static inline const SkIRect *gClip = nullptr;
-    // An axis-aligned quad in the order addRect and addSprite give (top-left, top-right, bottom-right,
-    // bottom-left): the quads push() clips to gClip itself.
-    static bool clippable(const SkPoint pos[4]) {
-        return pos[0].fY == pos[1].fY && pos[1].fX == pos[2].fX && pos[2].fY == pos[3].fY && pos[3].fX == pos[0].fX
-               && pos[0].fX < pos[1].fX && pos[0].fY < pos[3].fY;
-    }
-
-    // The kind of primitive a batch holds, set by its owner (SKBackend: rects and lines 0, glyphs 1,
-    // coverage tiles 2). Under gCrossFamily a quad joining a batch first draws the pending batches
-    // of the other families it touches (drawn before it in Java's order, possibly beneath it), so
-    // pending batches of different families never overlap and draw in any order: a batched op
-    // of one kind need not draw the other kinds' batches (SKBackend's REQUIRE_CANVAS_* macros).
-    // Batches of one family keep their own rules (the glyph caches' colour batches, drawOverlapped).
-    int family = 0;
-    static inline bool gCrossFamily = false;
-    // The batches holding quads (one flusher thread); never destroyed, so a static batch that
-    // outlives it at exit (SKBackend's rect batch) still finds it.
-    static std::vector<SKQuadBatch *> &pendingBatches() {
-        static auto *batches = new std::vector<SKQuadBatch *>();
-        return *batches;
-    }
-
-    ~SKQuadBatch() {
-        unregisterPending();
-    }
-
     SKQuadBatch() {
         // 1024 quads: a frame's worth of glyphs or tiles without a reallocation
         base.positions.reserve(4 * 1024);
@@ -216,12 +187,6 @@ public:
 
     // The batch's paint is p (for batches that do not merge colours: two passes, blenders).
     bool samePaint(const SkPaint &p) const { return paint == p; }
-
-    // Pending and r meets the bounds of its quads (all of them, as drawn): a draw outside them
-    // commutes with the batch, so it need not draw the batch first (SKBackend_Blit).
-    bool touches(const SkRect &r) const {
-        return pending() && SkRect::Intersects(drawnBounds, r);
-    }
 
     // A pending quad's overlap extent intersects r (tracked under splitOnOverlap only).
     bool overlaps(const SkRect &r) const {
@@ -362,46 +327,7 @@ private:
     static constexpr size_t kMaxOverlapTested = 1024;
 
     void push(const SkPoint pos[4], const SkPoint *tex, const SkRect *extent = nullptr) {
-        // The device-space rect clip batched quads are clipped to as they arrive (SKBackend's lazy
-        // canvas clip): an axis-aligned quad in the order addRect and addSprite give, with its
-        // texture coordinates mapped along, exactly; one outside the clip is dropped. Any other
-        // quad goes in as it is (the backend draws it under the canvas clip).
-        SkPoint clippedPos[4], clippedTex[4];
-        SkRect clippedExtent;
-        // Not for a shader paint without an atlas (gradients, textures): such a quad cut to exactly the
-        // surface was drawn differently by Graphite (2026-11-03, RenderMatrix xf:SCALE_2/TEXTURE/FILL_RECT;
-        // the same with an exact-fit rect and the canvas clip), so those keep the canvas clip.
-        if (gClip != nullptr && clippable(pos) && !(atlasImage == nullptr && paint.getShader() != nullptr)) {
-            const float l = pos[0].fX, t = pos[0].fY, r = pos[1].fX, b = pos[2].fY;
-            const float cl = std::max(l, (float) gClip->fLeft), ct = std::max(t, (float) gClip->fTop);
-            const float cr = std::min(r, (float) gClip->fRight), cb = std::min(b, (float) gClip->fBottom);
-            if (cl >= cr || ct >= cb) {
-                return;   // nothing of it inside the clip
-            }
-            if (cl != l || ct != t || cr != r || cb != b) {
-                clippedPos[0] = {cl, ct}; clippedPos[1] = {cr, ct}; clippedPos[2] = {cr, cb}; clippedPos[3] = {cl, cb};
-                if (tex != nullptr) {
-                    const float su = (tex[1].fX - tex[0].fX) / (r - l), sv = (tex[3].fY - tex[0].fY) / (b - t);
-                    const float ul = tex[0].fX + (cl - l) * su, ur = tex[0].fX + (cr - l) * su;
-                    const float vt = tex[0].fY + (ct - t) * sv, vb = tex[0].fY + (cb - t) * sv;
-                    clippedTex[0] = {ul, vt}; clippedTex[1] = {ur, vt}; clippedTex[2] = {ur, vb}; clippedTex[3] = {ul, vb};
-                    tex = clippedTex;
-                }
-                pos = clippedPos;
-                if (extent != nullptr) {
-                    clippedExtent = *extent;
-                    if (!clippedExtent.intersect(SkRect::MakeLTRB(cl, ct, cr, cb))) {
-                        clippedExtent.setEmpty();
-                    }
-                    extent = &clippedExtent;
-                }
-            }
-        }
-        SkRect quadBounds;
-        quadBounds.setBounds(SkSpan(pos, 4));
-        if (gCrossFamily && !pendingBatches().empty()) {
-            drawTouchedFamilies(quadBounds);
-        }
+        // (The quads draw under the canvas clip of the moment: a clip change draws the batches first.)
         Mesh *target = &base;
         if (splitOnOverlap) {
             // The inked extent suffices for two passes (a pixel without coverage
@@ -438,10 +364,6 @@ private:
             }
         } else if (base.positions.size() + 4 > 0xffff) {
             drawPending();   // 16-bit indices
-        }
-        drawnBounds.join(quadBounds);
-        if (base.indices.empty() && target == &base) {
-            pendingBatches().push_back(this);   // pending from this quad on (drawPending removes it)
         }
         uint16_t first = (uint16_t) target->positions.size();
         target->positions.insert(target->positions.end(), pos, pos + 4);
@@ -505,28 +427,6 @@ private:
         }
     }
 
-    void unregisterPending() {
-        auto it = std::find(pendingBatches().begin(), pendingBatches().end(), this);
-        if (it != pendingBatches().end()) {
-            pendingBatches().erase(it);
-        }
-    }
-
-    // gCrossFamily: before a quad within r joins this batch, the pending batches of other families
-    // on its canvas that touch r are drawn (see `family`).
-    void drawTouchedFamilies(const SkRect &r) {
-        for (size_t i = 0; i < pendingBatches().size(); ) {
-            SKQuadBatch *b = pendingBatches()[i];
-            if (b != this && b->family != family && b->canvas == canvas && b->touches(r)) {
-                SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_KIND);
-                b->drawPending();   // leaves pendingBatches()
-                i = 0;
-            } else {
-                i++;
-            }
-        }
-    }
-
     void drawPending() {
         if (canvas != nullptr && !base.indices.empty()) {
             // the bounds matter to the composite after the draw only; the mask
@@ -552,7 +452,6 @@ private:
                 afterDraw(bounds, paint);
             }
         }
-        unregisterPending();
         base.clear();
         for (size_t i = 0; i < layerCount; i++) {
             layers[i].clear();
@@ -560,7 +459,6 @@ private:
         layerCount = 0;
         colors.clear();
         tracked.setEmpty();
-        drawnBounds.setEmpty();
     }
 
     SkCanvas *canvas = nullptr;
@@ -588,7 +486,6 @@ private:
     size_t layerCount = 0;           // layers in use; the rest keep their vectors for reuse
     std::vector<SkColor> colors;     // per vertex of `base` when colorPerVertex
     SkRect tracked = SkRect::MakeEmpty();   // the union of the tracked overlap extents (overlaps()'s quick test)
-    SkRect drawnBounds = SkRect::MakeEmpty();   // the union of the pending quads' bounds (touches())
 };
 
 #endif /* SKQuadBatch_h_Included */

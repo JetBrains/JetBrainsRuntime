@@ -81,34 +81,17 @@ enum SKStatsCounter {
     SK_COUNT_MESH_DRAWS_AT_KIND,      // of the mesh draws, those of batches an op of another kind drew (it touched them)
     SK_COUNT_MESH_DRAWS_AT_CANVAS_OP, // of the mesh draws, those of batches an op drawing through the canvas drew (REQUIRE_CANVAS)
     SK_COUNT_MESH_DRAWS_AT_DIRECT,    // ... a draw through the canvas inside a batched op drew (uncached glyphs, Skia's text)
-    SK_COUNT_MESH_DRAWS_AT_BLIT,      // ... a blit that touched them drew
+    SK_COUNT_MESH_DRAWS_AT_BLIT,      // ... a blit drew
     SK_COUNT_MESH_DRAWS_AT_FLUSH,     // ... the end of a recording or a present drew
     SK_COUNT_MESH_DRAWS_IMMEDIATE,    // of the mesh draws, those of no batch (a blit's own quad)
     SK_COUNT_GLYPH_OVERLAP_DRAWS,     // LCD twopass batches of another colour drawn early: a glyph overlapped them
-    // Diagnostics: the mesh draws of destination switches (_AT_SURFACE) by what followed for the surface switched
-    // away from: the same destination set again (a new source only), the surface set again before it was read
-    // (the batches could have stayed open), read first (a source, a read-back, released), or neither before the
-    // flush ended.
-    SK_COUNT_SWITCH_DRAWS_SAME,
-    SK_COUNT_SWITCH_DRAWS_RETURNED,
-    SK_COUNT_SWITCH_DRAWS_READ,
-    SK_COUNT_SWITCH_DRAWS_ENDED,
-    SK_COUNT_BLITS_PAST_BATCHES,      // blits drawn ahead of pending batches they do not touch (SKBackend_Blit)
     SK_COUNT_SURFACE_BLITS,           // blits from a Skia surface
     SK_COUNT_BLITS_OF_PENDING_SOURCES,   // of those, from a surface drawn into in the same recording since its last blit
     SK_COUNT_PENDING_SOURCES_VOLATILE,   // of those, from a render target (a VolatileImage, a back buffer)
-    SK_COUNT_IMAGE_ATLAS_BLITS,              // EXPERIMENT sun.java2d.skia.imageAtlas: blits drawn as atlas sprites (SKImageAtlas)
-    SK_COUNT_IMAGE_ATLAS_COPIES,             // ... copies into the atlas
-    SK_COUNT_TEXT_BLOB_HITS,          // EXPERIMENT sun.java2d.skia.text.blobCache: runs drawn from a cached text blob
+    SK_COUNT_IMAGE_ATLAS_BLITS,       // sun.java2d.skia.imageAtlas: blits drawn as atlas sprites (SKImageAtlas)
+    SK_COUNT_IMAGE_ATLAS_COPIES,      // ... copies into the atlas
+    SK_COUNT_TEXT_BLOB_HITS,          // sun.java2d.skia.text.blobCache: runs drawn from a cached text blob
     SK_COUNT_TEXT_BLOB_MISSES,        // ... runs whose blob was made (and cached)
-    // Diagnostics: why a blit drew the pending batches (SKBackend_Blit): not past them, for its clip or transform
-    // (no lazy clip), for its source being the destination, or otherwise (XOR, MSAA, edge-AA quads, empty rects);
-    // past them but touching one
-    SK_COUNT_BLITS_NOT_PAST_CLIP,
-    SK_COUNT_BLITS_NOT_PAST_SELF,
-    SK_COUNT_BLITS_NOT_PAST_OTHER,
-    SK_COUNT_BLITS_TOUCHING,
-    SK_COUNT_CANVAS_OPS_PAST_BATCHES,   // shapes and AA parallelograms drawn ahead of the pending batches (canvasOpsPastBatches)
     SK_COUNT_COUNT
 };
 

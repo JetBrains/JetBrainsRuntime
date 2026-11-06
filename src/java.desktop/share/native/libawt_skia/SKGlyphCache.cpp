@@ -88,107 +88,20 @@ struct SKGlyphCache {
     // batch draws (SKQuadBatch::beforeUpload), instead of one upload per glyph.
     SkBitmap shadow;
     std::vector<SkIRect> dirtyRows;   // per cell row, the pixels to upload
-    // Two passes (LCD twopass): the batches of other colours, kept open beside `batch` on its
-    // canvas, atlas and passes instead of being drawn at every colour change. No quad of an open
-    // batch overlaps a quad of another open batch of a different colour (a sprite that would
-    // first draws the batch it overlaps, see drawOverlapped), so the order in which open batches
-    // are drawn does not matter, and glyphs of one colour commute under the two passes. A line of
-    // syntax-coloured tokens is then a draw or two per colour instead of one per token.
-    std::vector<std::unique_ptr<SKQuadBatch>> parked;
-    std::vector<std::unique_ptr<SKQuadBatch>> spare;   // drawn batches, kept for their vectors
 };
-
-static const size_t MAX_PARKED = 15;
 
 static void uploadDirtyRows(SKGlyphCache *gc);
 
-// A closed batch (a new one gets the hooks of the cache's own).
-static std::unique_ptr<SKQuadBatch> spareBatch(SKGlyphCache *gc) {
-    std::unique_ptr<SKQuadBatch> b;
-    if (!gc->spare.empty()) {
-        b = std::move(gc->spare.back());
-        gc->spare.pop_back();
-    } else {
-        b = std::make_unique<SKQuadBatch>();   // a spare keeps the hooks it was made with
-        b->beforeUpload = gc->batch->beforeUpload;
-        b->beforeDraw = gc->batch->beforeDraw;
-        b->afterDraw = gc->batch->afterDraw;
-        b->family = gc->batch->family;
-    }
-    return b;
-}
-
-// Draws a parked batch and keeps it as a spare.
-static void retire(SKGlyphCache *gc, size_t i) {
-    std::unique_ptr<SKQuadBatch> b = std::move(gc->parked[i]);
-    gc->parked.erase(gc->parked.begin() + (std::ptrdiff_t) i);
-    b->flush();
-    gc->spare.push_back(std::move(b));
-}
-
-// Draws the cache's batches: its own and the parked ones (in any order, see `parked`).
+// Draws the cache's batch.
 static void drawBatches(SKGlyphCache *gc) {
     gc->batch->flush();
-    while (!gc->parked.empty()) {
-        retire(gc, gc->parked.size() - 1);
-    }
 }
 
-// Two passes, a glyph list of this paint begins: the open batch of another colour goes aside and
-// the paint's own, if one is parked, comes back. Batches of another canvas, atlas or contrast are
-// drawn first: the parked ones always share the current target.
-static void park(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint, const SKQuadBatchTwoPass *passes) {
-    const bool open = gc->batch->pending();
-    // J2D_SKIA_EAGER_LCD_COLOURS (diagnostics, the in-order baseline of 2026-11-06): no batch is parked; a colour
-    // change draws the open batch, as an in-order renderer would
-    static const bool eagerColours = getenv("J2D_SKIA_EAGER_LCD_COLOURS") != nullptr;
-    if (eagerColours) {
-        if (open && !(gc->batch->sameTarget(canvas, gc->atlasImage, passes) && gc->batch->samePaint(paint))) {
-            gc->batch->flush();
-        }
-        return;
-    }
-    if ((open && !gc->batch->sameTarget(canvas, gc->atlasImage, passes))
-            || (!gc->parked.empty() && !gc->parked.front()->sameTarget(canvas, gc->atlasImage, passes))) {
-        drawBatches(gc);
-        return;
-    }
-    if (open && gc->batch->samePaint(paint)) {
-        return;   // the same colour continues
-    }
-    std::unique_ptr<SKQuadBatch> resumed;
-    for (size_t i = 0; i < gc->parked.size(); i++) {
-        if (gc->parked[i]->samePaint(paint)) {
-            resumed = std::move(gc->parked[i]);
-            gc->parked.erase(gc->parked.begin() + (std::ptrdiff_t) i);
-            break;
-        }
-    }
-    if (open) {
-        if (gc->parked.size() >= MAX_PARKED) {
-            retire(gc, 0);   // the oldest colour is drawn
-        }
-        std::unique_ptr<SKQuadBatch> aside = spareBatch(gc);
-        std::swap(aside, gc->batch);   // `aside` holds the open batch, the cache a closed one
-        gc->parked.push_back(std::move(aside));
-    }
-    if (resumed) {
-        std::swap(resumed, gc->batch);
-        resumed->flush();   // the closed one: nothing to draw
-        gc->spare.push_back(std::move(resumed));
-    }
-}
-
-// Before a sprite with this overlap extent joins the batch of `gc`: every open batch of another
-// colour that it overlaps, parked here or open in another size bucket of the context, is drawn
-// first, so the sprite composes over it as it was given.
+// Two passes (LCD twopass): the colour is a uniform of the passes' shaders, so a batch holds one colour and a colour
+// change draws it (SKQuadBatch::begin). Before a sprite with this overlap extent joins the batch of `gc`, the open
+// batch of another colour in another size bucket of the context that it overlaps is drawn first, so the sprite
+// composes over it as it was given.
 static void drawOverlapped(SKGlyphCache *gc, const SkRect &extent) {
-    for (size_t i = gc->parked.size(); i-- > 0; ) {
-        if (gc->parked[i]->overlaps(extent)) {
-            SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
-            retire(gc, i);
-        }
-    }
     for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
         SKGlyphCache *other = gc->lcd ? gc->cc->glyphCachesLCD[b] : gc->cc->glyphCachesAA[b];
         if (other == nullptr || other == gc) {
@@ -197,12 +110,6 @@ static void drawOverlapped(SKGlyphCache *gc, const SkRect &extent) {
         if (other->batch->pending() && other->batch->overlaps(extent) && !other->batch->samePaint(gc->paint)) {
             SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
             other->batch->flush();
-        }
-        for (size_t i = other->parked.size(); i-- > 0; ) {
-            if (other->parked[i]->overlaps(extent) && !other->parked[i]->samePaint(gc->paint)) {
-                SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
-                retire(other, i);
-            }
         }
     }
 }
@@ -302,7 +209,6 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd, jint cellSize, 
     gc->dirtyRows.resize((size_t) gc->cellsPerRow, SkIRect::MakeEmpty());
     // runs whenever a batch holding quads draws, from whichever path: the batch draw statistic counts here
     gc->batch->beforeUpload = [gc]() { SKGlyphCache_CountStat(SK_GLYPH_BATCH_DRAWS); uploadDirtyRows(gc); };
-    gc->batch->family = 1;   // glyphs (SKQuadBatch::family)
     return gc;
 }
 
@@ -324,9 +230,6 @@ void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint
     gc->canvas = canvas;
     gc->paint = paint;
     gc->passes = passes;
-    if (passes != nullptr) {
-        park(gc, canvas, paint, passes);
-    }
     gc->batch->begin(canvas, paint, gc->atlasImage, passes);
 }
 
@@ -467,17 +370,3 @@ SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc) {
     return *gc->batch;
 }
 
-bool SKGlyphCache_Touches(const SKGlyphCache *gc, const SkRect &r) {
-    if (gc == nullptr) {
-        return false;
-    }
-    if (gc->batch->touches(r)) {
-        return true;
-    }
-    for (const auto &b : gc->parked) {
-        if (b->touches(r)) {
-            return true;
-        }
-    }
-    return false;
-}

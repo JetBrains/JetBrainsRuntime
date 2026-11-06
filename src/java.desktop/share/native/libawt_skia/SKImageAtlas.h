@@ -37,7 +37,7 @@ struct SKSurfaceState;
 struct SKImageAtlas;
 
 // Small Skia-surface sources (the images of a UI, cached images) blitted unscaled and pixel-aligned are copied once into
-// an RGBA atlas of the context and drawn from it as sprites of one mesh (SKQuadBatch family 3), instead of
+// an RGBA atlas of the context and drawn from it as sprites of one mesh (an SKQuadBatch), instead of
 // one Graphite draw per blit (each with its own image paint key, and a flush check of the source's device).
 // A copy is keyed by the source surface's identity (SKSurfaceState::uid) and its rect, and dated by the
 // source's content version (SKSurfaceState::contentVersion): a source drawn into since is copied again.
@@ -57,8 +57,6 @@ bool SKImageAtlas_Draw(SKImageAtlas *ia, SkCanvas *canvas, const SkPaint &paint,
 // Draws the queued mesh (before any other draw that may overlap it, a state or destination change, and the
 // end of a recording).
 void SKImageAtlas_Flush(SKImageAtlas *ia);
-// The queued mesh has a sprite within r (SKQuadBatch::touches).
-bool SKImageAtlas_Touches(const SKImageAtlas *ia, const SkRect &r);
 
 // Diagnostics and tests (SKEnvironment.imageAtlasStats): since the start, blits drawn from the atlas, copies
 // into it, refills, and the atlas batch's mesh draws.

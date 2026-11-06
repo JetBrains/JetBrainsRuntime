@@ -176,13 +176,6 @@ public final class SKEnvironment {
      */
     private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 16384);
     /**
-     * {@code sun.java2d.skia.canvasOpsPastBatches} (default true): antialiased shapes and parallelograms Skia draws
-     * through its canvas, when they touch no pending batch, are drawn ahead of the batches under their clip instead
-     * of drawing every batch first (x64hw, 2026-11-06). false: the old order.
-     */
-    private static final boolean CANVAS_OPS_PAST_BATCHES =
-            !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.canvasOpsPastBatches"));
-    /**
      * EXPERIMENT (x64hw, 2026-11-06), diagnostics (Windows): {@code sun.java2d.skia.profileFlusher=<seconds>} samples
      * the flusher thread in place for that long, starting {@code sun.java2d.skia.profileFlusherDelay} seconds after
      * its first flush, and writes the report (as {@link #profileBench}'s) to {@code sun.java2d.skia.profileFlusherOut}
@@ -248,15 +241,8 @@ public final class SKEnvironment {
     private static final boolean SUBMIT_PER_PRESENT =
             "present".equalsIgnoreCase(System.getProperty("sun.java2d.skia.submit", "flush"));
     /**
-     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.orderedRecordings=true}: Graphite's
-     * {@code ContextOptions::fRequireOrderedRecordings}. The backend inserts every recording in the order it was
-     * snapped anyway; with the option Graphite knows it, and no longer invalidates its text, path and clip
-     * atlases at every snap (Recorder::snap).
-     */
-    private static final boolean ORDERED_RECORDINGS = Boolean.getBoolean("sun.java2d.skia.orderedRecordings");
-    /**
      * {@code sun.java2d.skia.imageAtlas} (default true since 2026-11-06; x64hw s25, s31: UI flush wait -3 %, typing level): blits of small Skia surfaces
-     * (the images of a UI, cached images), unscaled and pixel-aligned under a rect clip, are drawn as sprites of one mesh
+     * (the images of a UI, cached images), unscaled and pixel-aligned, are drawn as sprites of one mesh
      * from an atlas of their copies (SKImageAtlas.h) instead of one Graphite draw each. false: one draw each.
      */
     private static final boolean IMAGE_ATLAS = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.imageAtlas"));
@@ -658,12 +644,9 @@ public final class SKEnvironment {
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
                                 FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE,
-                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal(), ORDERED_RECORDINGS, IMAGE_ATLAS);
+                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal(), IMAGE_ATLAS);
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
-                }
-                if (!CANVAS_OPS_PAST_BATCHES) {
-                    setCanvasOpsPastBatchesNative(false);
                 }
                 if (TEXT_BLOB_CACHE > 0) {
                     setTextBlobCacheNative(TEXT_BLOB_CACHE);
@@ -717,7 +700,7 @@ public final class SKEnvironment {
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
                                                long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses,
                                                boolean presentPerCycle, boolean submitPerPresent, int lcdOrder,
-                                               boolean orderedRecordings, boolean imageAtlas);
+                                               boolean imageAtlas);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();
@@ -764,23 +747,6 @@ public final class SKEnvironment {
     private static native void setTextBlobCacheNative(int entries);
     private static native void profileFlusherNative(int delaySeconds, int seconds, String out, String symbolPath, String focus);
     private static native long[] textBlobCacheStatsNative();
-
-    /** {@code sun.java2d.skia.canvasOpsPastBatches} at run time (tests). No effect without the backend. */
-    public static void setCanvasOpsPastBatches(boolean on) {
-        if (!isSkiaEnabled()) {
-            return;
-        }
-        SKRenderQueue rq = SKRenderQueue.getInstance();
-        rq.lock();
-        try {
-            SKRenderQueue.sync();
-            setCanvasOpsPastBatchesNative(on);
-        } finally {
-            rq.unlock();
-        }
-    }
-
-    private static native void setCanvasOpsPastBatchesNative(boolean on);
 
     /** The budget of Skia's strike cache in bytes as the backend runs it (diagnostics, tests). */
     public static long strikeCacheLimit() {

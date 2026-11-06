@@ -107,7 +107,6 @@ SKImageAtlas *SKImageAtlas_Create(SKConfigContext *cc) {
         delete ia;
         return nullptr;
     }
-    ia->batch.family = 3;   // atlas sprites of images (SKQuadBatch::family)
     ia->batch.beforeDraw = [ia](const SkRect &) {
         gStats[SK_IMAGE_ATLAS_BATCH_DRAWS]++;
         ia->batchEpoch++;   // the pending sprites are drawn now
@@ -206,9 +205,6 @@ void SKImageAtlas_Flush(SKImageAtlas *ia) {
     }
 }
 
-bool SKImageAtlas_Touches(const SKImageAtlas *ia, const SkRect &r) {
-    return ia != nullptr && ia->batch.touches(r);
-}
 
 jlong SKImageAtlas_Stat(SKImageAtlasStat stat) {
     return gStats[stat].load();

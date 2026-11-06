@@ -95,12 +95,6 @@ Java_sun_java2d_skia_SKEnvironment_setStrikeCacheLimitNative(JNIEnv *env, jclass
 
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKEnvironment_setCanvasOpsPastBatchesNative(JNIEnv *env, jclass clazz, jboolean on)
-{
-    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
-    SKBackend_SetCanvasOpsPastBatches(on == JNI_TRUE);
-}
-JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setTextBlobCacheNative(JNIEnv *env, jclass clazz, jint entries)
 {
     SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
@@ -183,14 +177,14 @@ Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, ji
                                                    jint lcdMode, jboolean framebufferFetch,
                                                    jlong glyphAtlasBytes, jint glyphCacheTexels,
                                                    jint luminanceClasses, jboolean presentPerCycle,
-                                                   jboolean submitPerPresent, jint lcdOrder, jboolean orderedRecordings,
+                                                   jboolean submitPerPresent, jint lcdOrder,
                                                    jboolean imageAtlas)
 {
     SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses,
                        presentPerCycle == JNI_TRUE, submitPerPresent == JNI_TRUE, (SKLcdOrder) lcdOrder,
-                       orderedRecordings == JNI_TRUE, imageAtlas == JNI_TRUE);
+                       imageAtlas == JNI_TRUE);
 }
 
 
@@ -224,10 +218,10 @@ Java_sun_java2d_skia_SKEnvironment_pipelineCacheCountersNative(JNIEnv *env, jcla
 
 } // extern "C"
 
-// EXPERIMENT (x64hw, 2026-10-23): the Graphite context of a configuration created
+// The Graphite context of a configuration created
 // on the flusher before the first draw needs it (SKEnvironment.prepareContext
-// through flushAndInvokeNow), so the precompile of stored pipeline keys starts
-// earlier (SKBackend_ContextFor, J2D_SKIA_PIPELINE_CACHE).
+// through flushAndInvokeNow), so its creation is not part of the first frame
+// (SKBackend_ContextFor).
 extern "C" {
 
 JNIEXPORT void JNICALL

@@ -48,7 +48,6 @@
 #include "include/core/SkColorSpace.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/Recorder.h"
-#include "include/gpu/graphite/PrecompileContext.h"
 
 #include <memory>
 #include <mutex>
@@ -75,10 +74,6 @@ struct SKConfigContext {
     sk_sp<SkSurface> lcdCoverage;            // scratch for sun.java2d.skia.lcd=accumulate, destination-sized
     uint32_t recordingGeneration = 1;        // advanced by every SKBackend_FlushRecording; the glyph caches date cells by it
     uint64_t lastPipelineSync = 0;           // when the context last offered its pipeline data to the cache (SKPipelineCache)
-    // EXPERIMENT (x64hw): the pipeline keys of earlier sessions compiled ahead, off the flusher,
-    // on the context's executor (J2D_SKIA_PIPELINE_CACHE, J2D_SKIA_EXECUTOR)
-    std::unique_ptr<skgpu::graphite::PrecompileContext> precompileContext;
-    std::thread precompileThread;
 };
 
 struct SKSurfaceState {
@@ -95,11 +90,6 @@ struct SKSurfaceState {
     // (SK_COUNT_BLITS_OF_PENDING_SOURCES)
     bool drawnSinceBlit = false;
     uint32_t drawnGeneration = 0;
-    // EXPERIMENT (x64hw, 2026-11-04, J2D_SKIA_EXP_UNLINKED_BLITS): the last recording in which a view of
-    // the surface's texture not linked to its device was drawn (blitSourceImage), and that view
-    uint32_t unlinkedReadGeneration = 0;
-    sk_sp<SkImage> unlinkedImage;
-    void *unlinkedTexture = nullptr;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C
@@ -135,7 +125,7 @@ SkPixelGeometry SKBackend_LcdPixelGeometry();
 // luminanceClasses: FontUtilities.textLuminanceClasses (1, 2, 4, ... 256), the classes the cg route's masks are rasterized for
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent, SKLcdOrder lcdOrder, bool orderedRecordings, bool imageAtlas);
+                         bool submitPerPresent, SKLcdOrder lcdOrder, bool imageAtlas);
 jint SKBackend_LuminanceClasses();     // the count the text path quantizes with
 size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
 jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with
@@ -244,9 +234,6 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
 void SKBackend_SetTextBlobCache(jint entries);
 // The blob cache's hits and misses since the start (tests, diagnostics).
 void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses);
-// sun.java2d.skia.canvasOpsPastBatches (on by default): shapes and AA parallelograms touching no pending batch are
-// drawn ahead of the batches instead of drawing them first. Draws the pending batches before switching.
-void SKBackend_SetCanvasOpsPastBatches(bool on);
 #ifdef _WIN32
 // EXPERIMENT (x64hw, 2026-11-06), diagnostics, Windows (VKSKGaneshBench.cpp): sun.java2d.skia.profileFlusher.
 // Called at every flush on the flusher thread; the first call starts a sampling profile of that thread if one
