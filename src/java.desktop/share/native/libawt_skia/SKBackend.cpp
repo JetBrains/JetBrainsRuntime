@@ -535,8 +535,17 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
 }
 
 void SKBackend_SetDestination(SKSDOps *dst) {
-    // Every SET_SURFACES draws the pending batches (they belong to the canvas being left, or were added under the
-    // render state the destination's state replaces) and applies the state again.
+    // The same destination again, its texture unchanged: a redundant state change. BufferedContext.validate sends
+    // SET_SURFACES for a new source as well (before a blit of another image, and after it), and sends the clip and
+    // the rest of the render state again only for a new destination, so the canvas, its clip and the pending
+    // batches stay as they are.
+    if (dst != nullptr && dst == g.dst && g.canvas != nullptr && dst->state != nullptr && dst->state->surface
+            && dst->state->cc == g.cc && dst->platform != nullptr
+            && dst->state->wrappedTexture == SKPlatform_TextureHandle(dst->platform)) {
+        return;
+    }
+    // Another destination: the pending batches belong to the canvas being left; they are drawn, and the render
+    // state is applied to the new canvas.
     SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_SURFACE);
     flushAllBatches();
     SKStats_SetDrawCause(SK_COUNT_COUNT);

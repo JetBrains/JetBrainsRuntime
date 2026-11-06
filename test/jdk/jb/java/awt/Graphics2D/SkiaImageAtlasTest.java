@@ -31,13 +31,15 @@ import java.lang.reflect.Method;
 /**
  * @test
  * @summary By default (sun.java2d.skia.imageAtlas), unscaled blits of small accelerated images are drawn
- *          from an atlas of their copies as sprites, consecutive blits of one image in one mesh rather than
- *          one Graphite draw each. A frame of 200 blits of 16 images, in cell clips that cut some of them,
- *          under rect fills drawn over some and over rect fills drawn before others, some at half extra
- *          alpha, and one image changed in the middle of the frame (the sprites drawn before show its old
- *          pixels, those after its new ones), matches the software loops; 150 blits of one image in a row
- *          under one clip take one atlas batch draw. With the property false (the last run line) the frame
- *          matches as well and nothing is drawn from the atlas.
+ *          from an atlas of their copies as sprites, consecutive blits in one mesh rather than one Graphite
+ *          draw each, also when the source image changes from one blit to the next (a SET_SURFACES that
+ *          keeps the destination keeps the batch). A frame of 200 blits of 16 images, in cell clips that cut
+ *          some of them, under rect fills drawn over some and over rect fills drawn before others, some at
+ *          half extra alpha, and one image changed in the middle of the frame (the sprites drawn before show
+ *          its old pixels, those after its new ones), matches the software loops; 150 blits of the 16 images
+ *          in a row under one clip take one atlas batch draw (150 when each new source drew the batch). With
+ *          the property false (the last run line) the frame matches as well and nothing is drawn from the
+ *          atlas.
  *          When Skia is unavailable there is nothing to test.
  * @key headful
  * @requires (os.family == "windows")
@@ -133,17 +135,17 @@ public class SkiaImageAtlasTest {
         if (copies < 2) {
             throw new RuntimeException(copies + " copies into the atlas: the changed image was not copied again (twice per frame)");
         }
-        // consecutive blits of one image under one clip share the atlas batch: a row of them, one draw (another
-        // source image ends the batch: its SET_SURFACES draws the pending batches)
+        // consecutive blits under one clip share the atlas batch, of any of the images in it: a row of them, one
+        // draw (each new source image is a SET_SURFACES of the same destination, which keeps the batch)
         Graphics2D g = vi.createGraphics();
         long rowBefore = ((long[]) stats.invoke(null))[3];
         for (int i = 0; i < ROW; i++) {
-            g.drawImage(sources[0], 4 + (i % 50) * 19, 4 + (i / 50) * 19, null);
+            g.drawImage(sources[i % SOURCES], 4 + (i % 50) * 19, 4 + (i / 50) * 19, null);
         }
         g.dispose();
         vi.getSnapshot();
         long rowDraws = ((long[]) stats.invoke(null))[3] - rowBefore;
-        System.out.println(ROW + " blits of one image in a row under one clip: " + rowDraws + " atlas batch draws");
+        System.out.println(ROW + " blits of " + SOURCES + " images in a row under one clip: " + rowDraws + " atlas batch draws");
         if (rowDraws > MAX_ROW_DRAWS) {
             throw new RuntimeException(rowDraws + " atlas batch draws for " + ROW + " blits in a row (at most " + MAX_ROW_DRAWS + ")");
         }
