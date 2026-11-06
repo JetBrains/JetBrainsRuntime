@@ -10,9 +10,14 @@ layout(location = 3) in uint in_Data;
 const float BOX_NUDGE_LENGTH = 0.51;
 
 void main() {
+    // Topology: two nested rectangles - the outer boundary and the inner 'hole'.
+    // The area between those rectangles is covered.
+    // This is achieved with a triangle strip of 10 vertices in this order (oTL = 'outer top-left', etc.):
+    // oTL, iTL, oTR, iTR, oBR, iBR, oBL, iBL, oTL, iTL
     vec2 position;
     bvec2 cornerIndex = bvec2((((gl_VertexIndex >> 1) + 1) & 2) != 0, ((gl_VertexIndex >> 1) & 2) != 0);
-    float innerNudgeLength = (sqrt(2.0) - 1.0) * in_OuterInnerRadii.y + BOX_NUDGE_LENGTH;
+    // The inner 'hole' should be nudged diagonally by (sqrt(2) - 1) * innerRadius, which is (1 - 1/sqrt(2)) * innerRadius per axis.
+    float innerNudgeLength = (1.0 - 1.0 / sqrt(2.0)) * in_OuterInnerRadii.y + BOX_NUDGE_LENGTH;
     vec4 nudgedInnerCorners = vec4(in_InnerCorners.xy + innerNudgeLength, in_InnerCorners.zw - innerNudgeLength);
     position = (gl_VertexIndex & 1) != 0 // is this an inner corner?
         ? (nudgedInnerCorners.x < nudgedInnerCorners.z && nudgedInnerCorners.y < nudgedInnerCorners.w
