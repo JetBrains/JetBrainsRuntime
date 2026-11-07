@@ -47,6 +47,18 @@
 
 compiler/c2/TestVerifyConstraintCasts.java 8355574,JBR-8714 generic-all,linux-aarch64
 compiler/c2/irTests/TestFloat16ScalarOperations.java 8367028 windows-all
+compiler/loopopts/superword/TestAliasing.java JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#byte-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#byte-buffer JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#byte-buffer-direct JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#char-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#double-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#float-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#int-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#long-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#native JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment.java#short-array JBR-10805 generic-all
+compiler/loopopts/superword/TestMemorySegment_8365982.java JBR-10805 generic-all
 
 #############################################################################
 
@@ -67,6 +79,13 @@ runtime/ErrorHandling/ShowEventsOnCrashTest.java JBR-8524 windows-aarch64
 runtime/ErrorHandling/ShowRegistersOnAssertTest.java JBR-8524 windows-aarch64
 runtime/stringtable/StringTableCorruptionTest.java JBR-8524 windows-aarch64
 runtime/Unsafe/RangeCheck.java JBR-8529 windows-aarch64
+
+containers/docker/DockerBasicTest.java JBR-10802 generic-all
+containers/docker/ShareTmpDir.java JBR-10802 generic-all
+containers/docker/TestCPUAwareness.java JBR-10802 generic-all
+containers/docker/TestJFRNetworkEvents.java JBR-10802 generic-all
+containers/docker/TestJFRWithJMX.java JBR-10802 generic-all
+containers/docker/TestLimitsUpdating.java JBR-10802 generic-all
 
 #############################################################################
 

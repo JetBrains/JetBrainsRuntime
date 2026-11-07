@@ -51,7 +51,7 @@ java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-6134 windows-all
 java/awt/Mixing/MixingOnDialog.java JBR-6134 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Mouse/MouseEnterExitTest.java JBR-8096 linux-all,windows-all
-java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java JBR-7309 fedora-42-gnome,fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
+java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java JBR-7309 fedora-42-gnome,fedora-kde
 java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881,JBR-7915,JBR-8746 macosx-all,linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-7035,JBR-8726 windows-all,macosx-all,linux-all
 java/awt/Robot/ScreenCaptureRobotTest.java#id0 JBR-8784 macosx-all
@@ -59,11 +59,13 @@ java/awt/Scrollbar/UnitIncrementTest.java JBR-8733 windows-all
 java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java 8253184,JBR-9387 windows-all,fedora-42-x64-plasma,fedora-42-x64-kde
 java/awt/TextField/GetTextTest/GetTextTest.java JBR-8734 windows-all
 java/awt/Window/AlwaysOnTop/SyncAlwaysOnTopFieldTest.java JBR-6845 linux-all
+java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 8013450,8253184,JBR-9705 macosx-all,windows-all,fedora-42-gnome
 java/awt/Window/TopLevelLocation/TopLevelLocation.java JBR-5799 windows-all
 java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
+javax/swing/GroupLayout/8079640/bug8079640.java JBR-10052 fedora-kde,fedora-42-gnome
 javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
 javax/swing/JButton/bug4323121.java JBR-8924 windows-all
 javax/swing/JButton/bug4490179.java JBR-8925 windows-all
@@ -75,6 +77,7 @@ javax/swing/JPopupMenu/6580930/bug6580930.java JBR-5071 ubuntu-22.04-x64,ubuntu-
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all,windows-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8747 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
+javax/swing/RepaintManager/IconifyTest/IconifyTest.java JBR-9729 fedora-42-gnome
 
 jb/java/awt/event/MouseEvent/ReleaseAndClickModifiers.java JBR-6589 windows-all
 jb/java/awt/Focus/ModalDialogOverSiblingTest.java                                   JBR-5716 windows-all
@@ -93,6 +96,12 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285 generic-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java JBR-6685 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
+sun/java2d/OpenGL/DrawImageBg.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/DrawImageBg.java#id1 JBR-9847 macosx-all
+sun/java2d/OpenGL/SrcMaskOps.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/SrcMaskOps.java#id1 JBR-9847 macosx-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id1 JBR-9847 macosx-all
 
 #
 # the below tests are not intended to be executed in S2 configurations because
@@ -138,7 +147,7 @@ java/awt/Robot/HiDPIScreenCapture/ScreenCaptureResolutionTest.java nobug generic
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java nobug generic-all
 java/awt/Robot/ScreenCaptureRobotTest.java#id1 nobug generic-all
 java/awt/Toolkit/ScreenInsetsDPIVariation/ScreenInsetsDPIVariation.java nobug generic-all
-java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-6.16.7-200.fc42.x86_64,linux-6.17.7-200.fc42.x86_64,linux-6.17.8-200.fc42.x86_64,linux-6.17.13-200.fc42.aarch64,linux-6.18.4-100.fc42.aarch64,linux-6.17.13-200.fc42.x86_64,linux-6.18.4-100.fc42.x86_64,linux-6.17.12-300.fc43.aarch64,linux-6.18.4-200.fc43.aarch64,linux-6.17.12-300.fc43.x86_64,linux-6.18.4-200.fc43.x86_64
+java/awt/TrayIcon/RightClickWhenBalloonDisplayed/RightClickWhenBalloonDisplayed.java 8238720,JBR-6931 windows-all,linux-all
 java/awt/Window/8159168/SetShapeTest.java nobug generic-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java nobug generic-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java nobug generic-all
@@ -184,6 +193,7 @@ javax/swing/JButton/TestGlyphBreak.java nobug generic-all
 javax/swing/JComboBox/6559152/bug6559152.java JBR-8964 windows-all
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java JBR-9583 windows-all
 javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java JBR-9583 windows-all
+javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-9732 windows-all
 javax/swing/JComboBox/DisabledComboBoxFontTestAuto.java nobug generic-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java nobug generic-all
 javax/swing/JInternalFrame/8069348/bug8069348.java nobug generic-all

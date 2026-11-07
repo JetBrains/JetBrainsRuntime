@@ -1,1 +1,2 @@
 java/awt/font/ComplexEmoji.java JBR-8399 linux-x64
+java/awt/FullScreen/SetFullScreenTest.java.SetFullScreenTest JBR-10744 linux-x64
