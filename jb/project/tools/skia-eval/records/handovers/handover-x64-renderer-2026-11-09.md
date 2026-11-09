@@ -56,3 +56,18 @@ hardware coverage list. The verification bar is §4's.
 
 **Also, separately (after the package):** the Metal fixes as their own PRs (the glyph atlas eviction fix first) — the
 Mac's job; the shared sub-pixel tie rule as its own PR.
+
+## Addendum (Mac, 2026-11-09 late afternoon): texture paints
+
+The evaluation branch found and fixed what your `SkiaTexturePaintTest` covers (the black fill in the flush that
+caches the texture: `1ea0f81bdb4d`, the blit's linked image), and one thing the renderer branch still has: its
+`setTexturePaintShader` moves every texture paint by half a texel (`preTranslate(-0.5f, -0.5f)`), which is right
+when filtering and for integer mappings, but nearest under a fractional mapping then takes texel `floor(u + 0.5)`
+where `TexturePaintContext` takes `floor(u)`. Measured on the Mac with your rule switched in: nearest at a 2.5×
+anchor 10,872 of 13,056 pixels off the loops (with the evaluation branch's rule 231, all on the loops' own 32-px
+tile seams). The rule to take is `SKBackend_TexturePaintSampling` in `50674e82145d`: the half texel only when
+filtering; for nearest a 1/1024-texel bias per axis towards the side the context's truncated fixed-point steps
+take (whole steps: the texel above an exact tie; fractional: the one below), derived from the plane equation.
+Its test cases (bilinear 2.5×, nearest 1× and 2×, the 2× one allowing one row and one column in 32) are in the
+evaluation branch's `SkiaTexturePaintTest` (mac | windows) — same name as yours; fold the nearest-2× case into
+yours, red before on the renderer branch by the numbers above.
