@@ -467,25 +467,62 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
 
     /**
      * The surface of the state's texture paint image when Skia's raster path can sample it, else null:
-     * an INT_ARGB, INT_ARGB_PRE or INT_RGB image with one int per pixel (the formats the natives read,
-     * as for transformed images), a non-empty anchor (the loops paint a degenerate one as a single
-     * texel), and not the destination itself (its pixels would be read while being written).
+     * an INT_ARGB, INT_ARGB_PRE or INT_RGB image with one int per pixel (read in place, as for transformed
+     * images) or another type with a native conversion ({@link #textureConversion}), a non-empty anchor (the
+     * loops paint a degenerate one as a single texel), and not the destination itself (its pixels would be
+     * read while being written).
      */
     static SurfaceData textureSource(SunGraphics2D sg2d) {
         if (sg2d.paintState != SunGraphics2D.PAINT_TEXTURE || !(sg2d.paint instanceof java.awt.TexturePaint tp)) {
-            return null;
-        }
-        java.awt.image.BufferedImage img = tp.getImage();
-        if (texturePixelFormat(img) < 0 || !(img.getRaster() instanceof IntegerComponentRaster icr)
-                || icr.getPixelStride() != 1 || icr.getDataOffsets().length != 1) {
             return null;
         }
         java.awt.geom.Rectangle2D anchor = tp.getAnchorRect();
         if (!(anchor.getWidth() > 0 && anchor.getHeight() > 0)) {
             return null;
         }
+        java.awt.image.BufferedImage img = tp.getImage();
         SurfaceData src = SurfaceData.getPrimarySurfaceData(img);
-        return src instanceof BufImgSurfaceData && src != sg2d.surfaceData ? src : null;
+        if (!(src instanceof BufImgSurfaceData) || src == sg2d.surfaceData) {
+            return null;
+        }
+        if (texturePixelFormat(img) >= 0) {
+            return img.getRaster() instanceof IntegerComponentRaster icr && icr.getPixelStride() == 1 && icr.getDataOffsets().length == 1 ? src : null;
+        }
+        boolean filter = sg2d.interpolationType != java.awt.image.AffineTransformOp.TYPE_NEAREST_NEIGHBOR;
+        if (filter && !filteredLikeArgb(img.getType())) {
+            return null;
+        }
+        return textureConversion(sg2d, src) != 0 ? src : null;
+    }
+
+    /**
+     * Whether the loops' TexturePaintContext filters a texture of this type as 8-bit unpremultiplied ARGB without
+     * re-quantising the blend: its Int context (INT_BGR), its ByteFilter context (BYTE_INDEXED) and its generic
+     * context over 8-bit channels (3BYTE_BGR, 4BYTE_ABGR, 4BYTE_ABGR_PRE). The generic context stores each blend back
+     * into the image's format — 5 or 6 bits a channel, gray through the colour space, one bit — so a filtered texture
+     * of USHORT_565 / 555 (measured 4 levels off), BYTE_GRAY / USHORT_GRAY (18) or BYTE_BINARY (122) stays the loops'.
+     */
+    private static boolean filteredLikeArgb(int type) {
+        return switch (type) {
+            case java.awt.image.BufferedImage.TYPE_INT_BGR, java.awt.image.BufferedImage.TYPE_3BYTE_BGR,
+                 java.awt.image.BufferedImage.TYPE_4BYTE_ABGR, java.awt.image.BufferedImage.TYPE_4BYTE_ABGR_PRE,
+                 java.awt.image.BufferedImage.TYPE_BYTE_INDEXED -> true;
+            default -> false;
+        };
+    }
+
+    /**
+     * For a texture of another type: the native primitive of the loops' blit from its surface type to IntArgb, which
+     * the natives run over the whole image before they lock the destination; the loops' contexts blend such a texture
+     * as unpremultiplied ARGB (nearest copies stored values). 0 when there is none (custom image types).
+     */
+    private static long textureConversion(SunGraphics2D sg2d, SurfaceData src) {
+        try {
+            return sun.java2d.loops.Blit.getFromCache(src.getSurfaceType(), sun.java2d.loops.CompositeType.SrcNoEa,
+                                                      sun.java2d.loops.SurfaceType.IntArgb).getNativePrim();
+        } catch (InternalError e) {
+            return 0;
+        }
     }
 
     private static int texturePixelFormat(java.awt.image.BufferedImage img) {
@@ -546,7 +583,8 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
      * its geometry, stops and colours plus the graphics transform and the paint's
      * own, which the shader applies as its local matrix; or a texture paint: the
      * filter, the image's pixel format and the same two transforms (the paint's is
-     * the anchor's mapping of the image). Colours are ARGB; the native side
+     * the anchor's mapping of the image), and for an image of another type the
+     * native primitive converting it to IntArgb in the two colour slots. Colours are ARGB; the native side
      * swizzles them for the N32 destination.
      */
     private static float[] paintOf(SunGraphics2D sg2d, int[] colorsOut) {
@@ -595,8 +633,16 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
                 java.awt.image.BufferedImage img = tp.getImage();
                 java.awt.geom.Rectangle2D anchor = tp.getAnchorRect();
                 boolean filter = sg2d.interpolationType != java.awt.image.AffineTransformOp.TYPE_NEAREST_NEIGHBOR;
+                int pixelFormat = texturePixelFormat(img);
+                if (pixelFormat < 0) {
+                    // another type: converted to IntArgb natively; the conversion's primitive rides in the colour slots
+                    long conversion = textureConversion(sg2d, SurfaceData.getPrimarySurfaceData(img));
+                    colorsOut[0] = (int) conversion;
+                    colorsOut[1] = (int) (conversion >>> 32);
+                    pixelFormat = SKSurfaceData.PF_INT_ARGB;
+                }
                 texturesBySkia.incrementAndGet();
-                return new float[] {PAINT_TEXTURE, extraAlpha, filter ? 1 : 0, texturePixelFormat(img), exactTextureSteps(at, anchor, img), m[0], m[1], m[2], m[3], m[4], m[5],
+                return new float[] {PAINT_TEXTURE, extraAlpha, filter ? 1 : 0, pixelFormat, exactTextureSteps(at, anchor, img), m[0], m[1], m[2], m[3], m[4], m[5],
                                     (float) (anchor.getWidth() / img.getWidth()), 0, 0, (float) (anchor.getHeight() / img.getHeight()), (float) anchor.getX(), (float) anchor.getY()};
             }
             default -> {

@@ -40,13 +40,25 @@ import java.util.function.Consumer;
  *          the pixel's corner sampled, the image repeated; an unpremultiplied
  *          texture filtered unpremultiplied) within the filter's rounding, and
  *          the paint reaches Skia (the counter) instead of the loops' paint
- *          pipes. Textures of other image types, and a texture whose image is
- *          the destination, stay with the loops.
+ *          pipes. The other standard image types are converted by the loops'
+ *          own blit and sampled alike (nearest for every one, filtered where the
+ *          loops' context blends 8-bit ARGB without re-quantising); custom image
+ *          types, and a texture whose image is the destination, stay with the loops.
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia.raster=true -Djava.awt.headless=true SkiaRasterTexturePaintTest
  */
 public class SkiaRasterTexturePaintTest {
     static final int W = 160, H = 120;
+
+    /**
+     * The other types whose filtered texture paints Skia draws: those whose loops' context blends unpremultiplied
+     * 8-bit ARGB and stores it losslessly (the Int and ByteFilter contexts, and the generic one over 8-bit
+     * channels); the generic context re-quantises a blend to 565 / 555, gray (through its colour space) or one
+     * bit, which stays with the loops (measured with Skia taking them: 565 / 555 4 levels off, the gray types 18,
+     * BYTE_BINARY 122; the five below 0 or 1).
+     */
+    static final java.util.Set<Integer> FILTERED_BY_SKIA = java.util.Set.of(BufferedImage.TYPE_INT_BGR, BufferedImage.TYPE_3BYTE_BGR,
+            BufferedImage.TYPE_4BYTE_ABGR, BufferedImage.TYPE_4BYTE_ABGR_PRE, BufferedImage.TYPE_BYTE_INDEXED);
 
     public static void main(String[] args) throws Exception {
         BufferedImage rgb = texture(BufferedImage.TYPE_INT_RGB, 7, 5, false);
@@ -93,12 +105,37 @@ public class SkiaRasterTexturePaintTest {
             g.setPaint(new TexturePaint(pre, new Rectangle2D.Double(0, 0, 12.5, 10))); g.draw(new Ellipse2D.Double(25, 20, 110, 80)); },
             new BasicStroke(14, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND).createStrokedShape(new Ellipse2D.Double(25, 20, 110, 80)), true);
 
+        // the other standard types, converted to ARGB by the loops' own blit: nearest copies stored values on both
+        // sides; filtering blends unpremultiplied ARGB, as the loops' contexts do for these types
+        int[] others = {BufferedImage.TYPE_INT_BGR, BufferedImage.TYPE_3BYTE_BGR, BufferedImage.TYPE_4BYTE_ABGR, BufferedImage.TYPE_4BYTE_ABGR_PRE,
+                BufferedImage.TYPE_USHORT_565_RGB, BufferedImage.TYPE_USHORT_555_RGB, BufferedImage.TYPE_BYTE_GRAY, BufferedImage.TYPE_USHORT_GRAY,
+                BufferedImage.TYPE_BYTE_BINARY, BufferedImage.TYPE_BYTE_INDEXED};
+        for (int type : others) {
+            BufferedImage t = texture(type, 7, 5, true);
+            int rounding = t.getColorModel().hasAlpha() ? 1 : 0;   // translucent texels: 1 level of the loops' compositing rounding
+            compare("type " + type + " nearest, anchor at (3,2), AA oval", true, rounding, 0, true, g -> {
+                g.setPaint(new TexturePaint(t, new Rectangle2D.Double(3, 2, 7, 5))); g.fill(oval); }, oval, true);
+            compare("type " + type + " nearest, anchor scaled 2x, non-AA rect", false, rounding, 0.07, true, g -> {
+                g.setPaint(new TexturePaint(t, new Rectangle2D.Double(-1, 4, 14, 10))); g.fill(box); }, box, false);
+            long beforeFiltered = texturesBySkia();
+            compare("type " + type + " bilinear, anchor scaled 2.5x", true, 2, 0, FILTERED_BY_SKIA.contains(type), g -> {
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g.setPaint(new TexturePaint(t, new Rectangle2D.Double(1, 3, 17.5, 12.5))); g.fill(oval); }, oval, true);
+            if (!FILTERED_BY_SKIA.contains(type) && texturesBySkia() != beforeFiltered) {
+                throw new RuntimeException("type " + type + ": a filtered texture reached Skia's raster path (expected: the loops, which re-quantise the blend)");
+            }
+        }
+
         long before = texturesBySkia();
-        BufferedImage abgr = texture(BufferedImage.TYPE_4BYTE_ABGR, 6, 6, true);
-        compare("4BYTE_ABGR texture: the loops", true, 0, 0, false, g -> {
-            g.setPaint(new TexturePaint(abgr, new Rectangle2D.Double(0, 0, 6, 6))); g.fill(oval); }, oval, true);
+        // a custom image type has no native conversion: the loops
+        java.awt.image.ColorModel cm = new java.awt.image.ComponentColorModel(java.awt.color.ColorSpace.getInstance(java.awt.color.ColorSpace.CS_sRGB),
+                true, false, java.awt.Transparency.TRANSLUCENT, java.awt.image.DataBuffer.TYPE_USHORT);
+        BufferedImage custom = new BufferedImage(cm, cm.createCompatibleWritableRaster(6, 6), false, null);
+        custom.createGraphics().drawImage(texture(BufferedImage.TYPE_INT_ARGB, 6, 6, true), 0, 0, null);
+        compare("custom (16-bit RGBA) texture: the loops", true, 0, 0, false, g -> {
+            g.setPaint(new TexturePaint(custom, new Rectangle2D.Double(0, 0, 6, 6))); g.fill(oval); }, oval, true);
         if (texturesBySkia() != before) {
-            throw new RuntimeException("a 4BYTE_ABGR texture reached Skia's raster path (expected: the loops)");
+            throw new RuntimeException("a custom-type texture reached Skia's raster path (expected: the loops)");
         }
         // the destination as its own texture: the loops (the pixels would be read while being written)
         BufferedImage self = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE);

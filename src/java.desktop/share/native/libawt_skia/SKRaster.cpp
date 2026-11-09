@@ -392,6 +392,11 @@ struct PaintData {
     }
     SkPaint paint(jint compositeRule, bool antialias, SkImage *texture = nullptr) { return paintFor(d.data, (jint) d.size, colors.data, compositeRule, antialias, texture); }
     jint texturePixelFormat() const { return d.size >= 17 && (int) d.data[0] == PAINT_TEXTURE ? (jint) d.data[3] : -1; }
+    // a texture of another type: the native primitive of the loops' blit converting it to IntArgb (SKRasterShapePipe.paintOf)
+    NativePrimitive *textureConversion() const {
+        if (texturePixelFormat() < 0 || colors.size < 2) return nullptr;
+        return (NativePrimitive *) jlong_to_ptr((jlong) (((uint64_t) (uint32_t) colors.data[1] << 32) | (uint32_t) colors.data[0]));
+    }
 };
 
 // A texture paint's image for one operation: its whole raster locked for reading after the destination's
@@ -399,11 +404,10 @@ struct PaintData {
 // locked) and wrapped without a copy. Declared after the Operation, so it is released before the destination.
 struct TextureSource {
     JNIEnv *env; SurfaceDataOps *ops; SurfaceDataRasInfo ras{}; bool locked = false; sk_sp<SkImage> image;
-    const bool wanted;               // the paint is a texture paint
     std::vector<uint32_t> opaque;    // INT_RGB: the image with its alpha bytes made 255
 
-    TextureSource(JNIEnv *e, SurfaceDataOps *o, jint pixelFormat) : env(e), ops(o), wanted(pixelFormat >= 0) {
-        if (ops == nullptr || !wanted) return;
+    TextureSource(JNIEnv *e, SurfaceDataOps *o, jint pixelFormat) : env(e), ops(o) {
+        if (ops == nullptr || pixelFormat < 0) return;
         const SurfaceDataBounds &bounds = ((BufImgSDOps *) ops)->rasbounds;
         ras.bounds = bounds;
         if (ops->Lock(env, ops, &ras, SD_LOCK_READ) != SD_SUCCESS) return;
@@ -425,12 +429,42 @@ struct TextureSource {
         }
         image = SkImages::RasterFromPixmap(SkPixmap(infoFor(pixelFormat, w, h), pixels, rowBytes), nullptr, nullptr);
     }
-    /** A texture paint whose image could not be read: the operation draws nothing. */
-    bool missing() const { return wanted && !image; }
     ~TextureSource() {
         image.reset();
         if (locked) { SurfaceData_InvokeRelease(env, ops, &ras); SurfaceData_InvokeUnlock(env, ops, &ras); }
     }
+};
+
+// A texture of another type converted to IntArgb by the loops' blit, the whole image, before the destination is locked:
+// the texture's lock may need its colour model's tables through JNI, which a pinned destination forbids. The loops'
+// contexts blend such a texture as unpremultiplied ARGB, so the image is declared unpremultiplied.
+struct ConvertedTexture {
+    std::vector<uint32_t> pixels; sk_sp<SkImage> image;
+
+    ConvertedTexture(JNIEnv *env, SurfaceDataOps *ops, NativePrimitive *prim) {
+        if (ops == nullptr || prim == nullptr) return;
+        const SurfaceDataBounds &bounds = ((BufImgSDOps *) ops)->rasbounds;
+        const int w = bounds.x2 - bounds.x1, h = bounds.y2 - bounds.y1;
+        if (w <= 0 || h <= 0) return;
+        SurfaceDataRasInfo si{};
+        si.bounds = bounds;
+        if (ops->Lock(env, ops, &si, prim->srcflags) != SD_SUCCESS) return;
+        ops->GetRasInfo(env, ops, &si);
+        if (si.rasBase != nullptr && si.bounds.x1 == bounds.x1 && si.bounds.y1 == bounds.y1 && si.bounds.x2 == bounds.x2 && si.bounds.y2 == bounds.y2) {
+            pixels.resize((size_t) w * h);
+            SurfaceDataRasInfo di{};
+            di.bounds.x2 = w; di.bounds.y2 = h;
+            di.rasBase = pixels.data(); di.pixelStride = 4; di.scanStride = w * 4;
+            CompositeInfo ci{};
+            (*prim->funcs.blit)(PtrCoord(si.rasBase, bounds.x1, si.pixelStride, bounds.y1, si.scanStride), pixels.data(), (juint) w, (juint) h, &si, &di, prim, &ci);
+        }
+        SurfaceData_InvokeRelease(env, ops, &si);
+        SurfaceData_InvokeUnlock(env, ops, &si);
+        if (!pixels.empty()) {
+            image = SkImages::RasterFromPixmap(SkPixmap(infoFor(sun_java2d_skia_SKSurfaceData_PF_INT_ARGB, w, h), pixels.data(), (size_t) w * 4), nullptr, nullptr);
+        }
+    }
+    bool active() const { return !pixels.empty(); }
 };
 
 SurfaceDataOps *textureOps(JNIEnv *env, jobject texture) {
@@ -453,13 +487,15 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobje
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     PaintData pd(env, paintArray, colorsArray);
     SurfaceDataOps *texOps = textureOps(env, texture);
+    ConvertedTexture converted(env, texOps, pd.textureConversion());
     Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
-    TextureSource tex(env, texOps, pd.texturePixelFormat());
-    if (tex.missing()) return;
+    TextureSource tex(env, converted.active() ? nullptr : texOps, pd.texturePixelFormat());
+    SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
+    if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
     if (probe < 3) return;
-    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), pd.paint(compositeRule, antialias, tex.image.get()));
+    op.canvas()->drawRect(SkRect::MakeLTRB(x1, y1, x2, y2), pd.paint(compositeRule, antialias, texImage));
 }
 
 JNIEXPORT void JNICALL
@@ -608,11 +644,13 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     static const SkPaint::Join joins[] = { SkPaint::kMiter_Join, SkPaint::kRound_Join, SkPaint::kBevel_Join };
     PaintData pd(env, paintArray, colorsArray);
     SurfaceDataOps *texOps = textureOps(env, texture);
+    ConvertedTexture converted(env, texOps, pd.textureConversion());
     Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
-    TextureSource tex(env, texOps, pd.texturePixelFormat());
-    if (tex.missing()) return;
-    SkPaint paint = pd.paint(compositeRule, antialias, tex.image.get());
+    TextureSource tex(env, converted.active() ? nullptr : texOps, pd.texturePixelFormat());
+    SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
+    if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
+    SkPaint paint = pd.paint(compositeRule, antialias, texImage);
     paint.setStyle(SkPaint::kStroke_Style);
     paint.setStrokeWidth(lineWidth);
     paint.setStrokeCap(caps[std::clamp((int) cap, 0, 2)]);
@@ -639,12 +677,14 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     SkPath path = pathOf(types.data, typeCount, coords.data, windingRule);
     PaintData pd(env, paintArray, colorsArray);
     SurfaceDataOps *texOps = textureOps(env, texture);
+    ConvertedTexture converted(env, texOps, pd.textureConversion());
     Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
-    TextureSource tex(env, texOps, pd.texturePixelFormat());
-    if (tex.missing()) return;
+    TextureSource tex(env, converted.active() ? nullptr : texOps, pd.texturePixelFormat());
+    SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
+    if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
-    op.canvas()->drawPath(path, pd.paint(compositeRule, antialias, tex.image.get()));
+    op.canvas()->drawPath(path, pd.paint(compositeRule, antialias, texImage));
 }
 
 JNIEXPORT void JNICALL
