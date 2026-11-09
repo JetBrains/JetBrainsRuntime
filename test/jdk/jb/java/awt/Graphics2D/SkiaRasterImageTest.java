@@ -28,7 +28,8 @@ import java.util.function.Consumer;
  * @summary Transformed images on a Skia raster surface are drawn by Skia:
  *          scaled, rotated and sheared draws of INT_ARGB, INT_ARGB_PRE and
  *          INT_RGB sources (with the alpha byte of 0 Java's colour model
- *          stores) with nearest-neighbour, bilinear and bicubic
+ *          stores), and of the other standard image types (converted by the
+ *          loops' own blit), with nearest-neighbour, bilinear and bicubic
  *          interpolation, with a translucent source and a translucent
  *          composite, match the software loops' transform helper within
  *          its sampling tolerance (a few pixels on a sampling tie may pick the
@@ -46,13 +47,19 @@ public class SkiaRasterImageTest {
     static final int W = 160, H = 120;
 
     public static void main(String[] args) throws Exception {
-        for (int srcType : new int[] {BufferedImage.TYPE_INT_ARGB, BufferedImage.TYPE_INT_ARGB_PRE, BufferedImage.TYPE_INT_RGB}) {
+        // the int formats are read in place; every other standard format is converted to premultiplied ARGB by the
+        // loops' own blit first, the conversion the loops' transform helper applies as it reads the source
+        int[] types = {BufferedImage.TYPE_INT_ARGB, BufferedImage.TYPE_INT_ARGB_PRE, BufferedImage.TYPE_INT_RGB,
+                BufferedImage.TYPE_INT_BGR, BufferedImage.TYPE_3BYTE_BGR, BufferedImage.TYPE_4BYTE_ABGR, BufferedImage.TYPE_4BYTE_ABGR_PRE,
+                BufferedImage.TYPE_USHORT_565_RGB, BufferedImage.TYPE_USHORT_555_RGB, BufferedImage.TYPE_BYTE_GRAY, BufferedImage.TYPE_USHORT_GRAY,
+                BufferedImage.TYPE_BYTE_BINARY, BufferedImage.TYPE_BYTE_INDEXED};
+        for (int srcType : types) {
             BufferedImage src = source(srcType);
             for (Object interp : new Object[] {RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR, RenderingHints.VALUE_INTERPOLATION_BILINEAR, RenderingHints.VALUE_INTERPOLATION_BICUBIC}) {
                 String name = "source type " + srcType + ", " + interp;
                 int tol = interp == RenderingHints.VALUE_INTERPOLATION_BICUBIC ? 8 : interp == RenderingHints.VALUE_INTERPOLATION_BILINEAR ? 4 : 0;   // measured: 0 / 1 / 2
                 compare(name + ", scale 1.5 x 0.8", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.drawImage(src, AffineTransform.getScaleInstance(1.5, 0.8), null); }, tol);
-                compare(name + ", rotation", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.rotate(0.35, 80, 60); g.drawImage(src, 40, 30, null); }, tol);
+                bySkia(name + ", rotation", () -> compare(name + ", rotation", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.rotate(0.35, 80, 60); g.drawImage(src, 40, 30, null); }, tol));
                 compare(name + ", shear, translucent composite", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f)); g.shear(0.3, 0.1); g.drawImage(src, 20, 20, null); }, tol);
                 // a background colour: the loops composite the source over it into a temporary image (INT_RGB for an
                 // opaque colour, INT_ARGB for a translucent one) and transform that; the Skia route samples the source
@@ -62,7 +69,7 @@ public class SkiaRasterImageTest {
                 // (an opaque source under a scale hides the colour and stays the loops' scaled blit, as without one)
                 Runnable scaled = () -> compare(name + ", scale 1.25, translucent background colour", g -> {
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.scale(1.25, 1.25); g.drawImage(src, 20, 20, new Color(40, 160, 90, 110), null); }, Math.max(tol, 2));
-                if (srcType == BufferedImage.TYPE_INT_RGB) scaled.run(); else bySkia(name + ", scale 1.25, translucent background colour", scaled);
+                if (src.getTransparency() == java.awt.Transparency.OPAQUE) scaled.run(); else bySkia(name + ", scale 1.25, translucent background colour", scaled);
                 bySkia(name + ", rotation, background colour, translucent composite", () -> compare(name + ", rotation, background colour, translucent composite", g -> {
                     g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f));
                     g.rotate(-0.2, 80, 60); g.drawImage(src, 40, 30, new Color(200, 60, 160), null); }, Math.max(tol, 2)));
@@ -80,8 +87,9 @@ public class SkiaRasterImageTest {
         Graphics2D g = img.createGraphics();
         g.setColor(new Color(30, 80, 200)); g.fillRect(0, 0, 64, 48);
         g.setColor(new Color(240, 200, 40)); g.fillRect(8, 8, 24, 16);
-        g.setColor(new Color(200, 40, 40, type == BufferedImage.TYPE_INT_RGB ? 255 : 120)); g.fillOval(30, 10, 30, 30);
-        if (type != BufferedImage.TYPE_INT_RGB) { g.setComposite(AlphaComposite.Clear); g.fillRect(50, 36, 14, 12); }   // a transparent corner
+        boolean alpha = img.getColorModel().hasAlpha();
+        g.setColor(new Color(200, 40, 40, alpha ? 120 : 255)); g.fillOval(30, 10, 30, 30);
+        if (alpha) { g.setComposite(AlphaComposite.Clear); g.fillRect(50, 36, 14, 12); }   // a transparent corner
         g.dispose();
         if (type == BufferedImage.TYPE_INT_RGB) {
             // INT_RGB pixels as Java's colour model stores them (setRGB, decoded images, the loops): the alpha byte is 0,

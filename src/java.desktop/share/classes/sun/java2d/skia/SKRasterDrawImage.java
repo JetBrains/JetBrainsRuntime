@@ -19,6 +19,7 @@ package sun.java2d.skia;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Image;
+import java.awt.Transparency;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,6 +28,9 @@ import sun.awt.image.BufImgSurfaceData;
 import sun.awt.image.IntegerComponentRaster;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.Blit;
+import sun.java2d.loops.CompositeType;
+import sun.java2d.loops.SurfaceType;
 import sun.java2d.pipe.DrawImage;
 import sun.java2d.pipe.Region;
 
@@ -41,8 +45,11 @@ import sun.java2d.pipe.Region;
  * follow Java's transform helper (centre inside the source; neighbours clamped).
  * A background colour is sampled under the source (the loops composite the
  * source over it into a temporary image and transform that; source-over-colour
- * is linear in premultiplied values, so filtering either alike). Other sources
- * and custom composites stay with the loops.
+ * is linear in premultiplied values, so filtering either alike). The int
+ * formats are read in place; the other standard formats are converted to
+ * premultiplied ARGB first by the loops' own blit, the conversion the loops'
+ * transform helper applies to them. Formats without a native blit and custom
+ * composites stay with the loops.
  */
 final class SKRasterDrawImage extends DrawImage {
 
@@ -61,19 +68,35 @@ final class SKRasterDrawImage extends DrawImage {
 
     private static boolean transformBySkia(SunGraphics2D sg, BufferedImage src, SKRasterSurfaceData dst, AffineTransform tx, int interpType,
                                            int sx1, int sy1, int sx2, int sy2, Color bgColor) {
-        int srcPf;
-        switch (src.getType()) {
-            case BufferedImage.TYPE_INT_ARGB -> srcPf = SKSurfaceData.PF_INT_ARGB;
-            case BufferedImage.TYPE_INT_ARGB_PRE -> srcPf = SKSurfaceData.PF_INT_ARGB_PRE;
-            case BufferedImage.TYPE_INT_RGB -> srcPf = SKSurfaceData.PF_INT_RGB;
-            default -> { return false; }
-        }
-        if (!(src.getRaster() instanceof IntegerComponentRaster icr) || icr.getPixelStride() != 1 || icr.getDataOffsets().length != 1) {
-            return false;
+        if (sx2 > 0xffff || sy2 > 0xffff) {
+            return false;   // the natives pack source points into 16 bits a coordinate
         }
         SurfaceData srcData = SurfaceData.getPrimarySurfaceData(src);
         if (!(srcData instanceof BufImgSurfaceData) || srcData == dst) {
             return false;   // the loops know how to lock everything else; drawing an image onto itself stays theirs too
+        }
+        int srcPf;
+        long conversion = 0;
+        boolean premultiplyAfter = false;
+        switch (src.getType()) {
+            case BufferedImage.TYPE_INT_ARGB -> srcPf = SKSurfaceData.PF_INT_ARGB;
+            case BufferedImage.TYPE_INT_ARGB_PRE -> srcPf = SKSurfaceData.PF_INT_ARGB_PRE;
+            case BufferedImage.TYPE_INT_RGB -> srcPf = SKSurfaceData.PF_INT_RGB;
+            default -> {
+                srcPf = SKSurfaceData.PF_INT_ARGB_PRE;   // what the conversion yields
+                conversion = nativeBlit(srcData, SurfaceType.IntArgbPre);
+                if (conversion == 0) {
+                    // no direct blit for some types (IntBgr, the 4-byte, ushort and binary ones): to IntArgb, premultiplied after
+                    conversion = nativeBlit(srcData, SurfaceType.IntArgb);
+                    premultiplyAfter = true;
+                }
+                if (conversion == 0) {
+                    return false;
+                }
+            }
+        }
+        if (conversion == 0 && (!(src.getRaster() instanceof IntegerComponentRaster icr) || icr.getPixelStride() != 1 || icr.getDataOffsets().length != 1)) {
+            return false;   // read in place: one int per pixel
         }
         // the destination box: the transformed source corners, as DrawImage computes them
         double w = sx2 - sx1, h = sy2 - sy1;
@@ -91,10 +114,11 @@ final class SKRasterDrawImage extends DrawImage {
         int rule = sg.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
         float[] m = {(float) tx.getScaleX(), (float) tx.getShearY(), (float) tx.getShearX(), (float) tx.getScaleY(), (float) tx.getTranslateX(), (float) tx.getTranslateY(), extraAlpha};
         // an opaque source hides the colour (the loops' isBgOperation): drawn without it
-        boolean background = bgColor != null && srcPf != SKSurfaceData.PF_INT_RGB;
+        boolean background = bgColor != null && srcData.getTransparency() != Transparency.OPAQUE;
         imagesBySkia.incrementAndGet();
         drawImage(dst, dst.pixelFormat(), srcData, srcPf, SKRasterShapePipe.packed(sx1, sy1), SKRasterShapePipe.packed(sx2, sy2), m,
-                  rule | interpType << 8 | (dst.untouchedByJava() ? 1 << 16 : 0) | (background ? 1 << 17 : 0), background ? bgColor.getRGB() : 0,
+                  rule | interpType << 8 | (dst.untouchedByJava() ? 1 << 16 : 0) | (background ? 1 << 17 : 0) | (premultiplyAfter ? 1 << 18 : 0),
+                  background ? bgColor.getRGB() : 0, conversion,
                   SKRasterShapePipe.packed(dx1, dy1), SKRasterShapePipe.packed(dx2, dy2), SKRasterShapePipe.spansOf(clip, dx1, dy1, dx2, dy2));
         return true;
     }
@@ -104,8 +128,22 @@ final class SKRasterDrawImage extends DrawImage {
      * destination; the extra alpha rides in the array's seventh slot), sampling with the
      * interpolation type of AffineTransformOp (1 nearest, 2 bilinear, 3 bicubic, in bits 8–15 over
      * the composite rule; bit 16: the mirror may be kept; bit 17: the source is drawn over the background colour
-     * {@code bgArgb}); the source is locked for reading while it is drawn. Points are packed as SKRasterShapePipe.packed.
+     * {@code bgArgb}; bit 18: the conversion yields IntArgb, premultiplied after it); the source is locked for reading
+     * while it is drawn, or, with a {@code conversion} (the native primitive of a blit from the source's type to
+     * IntArgbPre or IntArgb), converted through it before the destination is locked. Points are packed as SKRasterShapePipe.packed. Fourteen parameter slots: the fast signature handler's limit.
      */
     private static native void drawImage(SKRasterSurfaceData dst, int dstPixelFormat, SurfaceData src, int srcPixelFormat, int srcLeftTop, int srcRightBottom,
-                                         float[] xformAndAlpha, int ruleAndInterpolation, int bgArgb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                         float[] xformAndAlpha, int ruleAndInterpolation, int bgArgb, long conversion, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+
+    /**
+     * The native primitive of the loops' blit from the source's surface type to {@code to} — the conversion their
+     * transform helper applies to such a source — or 0 when there is no native one.
+     */
+    private static long nativeBlit(SurfaceData srcData, SurfaceType to) {
+        try {
+            return Blit.getFromCache(srcData.getSurfaceType(), CompositeType.SrcNoEa, to).getNativePrim();
+        } catch (InternalError e) {
+            return 0;
+        }
+    }
 }

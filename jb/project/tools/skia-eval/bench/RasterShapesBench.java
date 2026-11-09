@@ -128,6 +128,17 @@ public class RasterShapesBench {
                 g.drawImage(picture, at, null);
             }
         });
+        for (int sourceType : new int[] {BufferedImage.TYPE_3BYTE_BGR, BufferedImage.TYPE_4BYTE_ABGR}) {
+            BufferedImage other = image(64, 48, sourceType);
+            run(target, frames, "image 64x48 " + (sourceType == BufferedImage.TYPE_3BYTE_BGR ? "3BYTE_BGR" : "4BYTE_ABGR") + " rotated bilinear x500", false, g -> {
+                g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                for (int i = 0; i < 500; i++) {
+                    AffineTransform at = AffineTransform.getTranslateInstance(xs[i], ys[i]);
+                    at.rotate(0.3);
+                    g.drawImage(other, at, null);
+                }
+            });
+        }
         Color background = new Color(40, 160, 90);
         run(target, frames, "image 64x48 rotated bilinear on a background colour x500", false, g -> {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);

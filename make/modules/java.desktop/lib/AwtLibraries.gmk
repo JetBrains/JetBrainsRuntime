@@ -636,6 +636,8 @@ ifeq ($(SKIA_ENABLED), true)
       common/awt/debug \
       common/font \
       libawt/java2d \
+      libawt/java2d/loops \
+      libawt/java2d/pipe \
       libawt/awt/image \
       libawt/awt/image/cvutils \
       common/awt \

@@ -44,6 +44,8 @@
 #include "include/core/SkSurfaceProps.h"
 #include "java_awt_AlphaComposite.h"
 #include "BufImgSurfaceData.h"
+#include "GraphicsPrimitiveMgr.h"
+#include "jlong.h"
 #include "include/core/SkFont.h"
 #include "include/core/SkSamplingOptions.h"
 
@@ -648,59 +650,100 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat,
                                                  jobject srcData, jint srcPixelFormat, jint srcLeftTop, jint srcRightBottom,
-                                                 jfloatArray xformArray, jint ruleAndInterpolation, jint bgArgb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
+                                                 jfloatArray xformArray, jint ruleAndInterpolation, jint bgArgb, jlong conversion,
+                                                 jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
     const jint compositeRule = ruleAndInterpolation & 0xff, interpType = (ruleAndInterpolation >> 8) & 0xff;
-    const bool mirrorKept = (ruleAndInterpolation >> 16) & 1, background = (ruleAndInterpolation >> 17) & 1;
+    const bool mirrorKept = (ruleAndInterpolation >> 16) & 1, background = (ruleAndInterpolation >> 17) & 1, premultiplyAfter = (ruleAndInterpolation >> 18) & 1;
     const jint sx1 = px(srcLeftTop), sy1 = py(srcLeftTop), sx2 = px(srcRightBottom), sy2 = py(srcRightBottom);
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
+    const int sw = sx2 - sx1, sh = sy2 - sy1;
+    if (sw <= 0 || sh <= 0) return;
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     jfloat xf[7]; env->GetFloatArrayRegion(xformArray, 0, 7, xf);   // the transform, then the extra alpha
     const jfloat extraAlpha = xf[6];
     SurfaceDataOps *srcOps = SurfaceData_GetOps(env, srcData);   // every JNI call before the pins
     if (srcOps == nullptr) return;
+    const uint32_t background0 = premultiplied((uint32_t) bgArgb);
+    // A source of another format is converted to IntArgbPre by the loops' own blit (the conversion their transform
+    // helper applies as it reads such a source), before the destination is locked: its lock may fetch the colour
+    // model's tables through JNI, which a pinned destination forbids
+    Buffer<4096, uint32_t> preconverted(conversion != 0 ? (size_t) sw * sh : 0);
+    if (conversion != 0) {
+        NativePrimitive *prim = (NativePrimitive *) jlong_to_ptr(conversion);
+        SurfaceDataRasInfo si{};
+        si.bounds.x1 = sx1; si.bounds.y1 = sy1; si.bounds.x2 = sx2; si.bounds.y2 = sy2;
+        if (srcOps->Lock(env, srcOps, &si, prim->srcflags) != SD_SUCCESS) return;
+        srcOps->GetRasInfo(env, srcOps, &si);
+        const bool whole = si.rasBase != nullptr && si.bounds.x1 == sx1 && si.bounds.y1 == sy1 && si.bounds.x2 == sx2 && si.bounds.y2 == sy2;
+        if (whole) {
+            SurfaceDataRasInfo di{};
+            di.bounds.x2 = sw; di.bounds.y2 = sh;
+            di.rasBase = preconverted.data; di.pixelStride = 4; di.scanStride = sw * 4;
+            CompositeInfo ci{};
+            (*prim->funcs.blit)(PtrCoord(si.rasBase, sx1, si.pixelStride, sy1, si.scanStride), preconverted.data, (juint) sw, (juint) sh, &si, &di, prim, &ci);
+        }
+        SurfaceData_InvokeRelease(env, srcOps, &si);
+        SurfaceData_InvokeUnlock(env, srcOps, &si);
+        if (!whole) return;
+        if (premultiplyAfter || background) {
+            for (size_t i = 0; i < preconverted.size; i++) {
+                uint32_t p = premultiplyAfter ? premultiplied(preconverted.data[i]) : preconverted.data[i];
+                preconverted.data[i] = background ? overBackground(p, background0) : p;
+            }
+        }
+    }
     // AffineTransformOp: 1 nearest neighbour, 2 bilinear, 3 bicubic (Java's kernel is Catmull-Rom's, a = -0.5)
     SkSamplingOptions sampling = interpType == 3 ? SkSamplingOptions(SkCubicResampler::CatmullRom())
                                : interpType == 2 ? SkSamplingOptions(SkFilterMode::kLinear) : SkSamplingOptions(SkFilterMode::kNearest);
     Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
-    // the source, locked for reading (a nested pin: no JNI call until it is released)
-    SurfaceDataRasInfo sr{};
-    sr.bounds.x1 = sx1; sr.bounds.y1 = sy1; sr.bounds.x2 = sx2; sr.bounds.y2 = sy2;
-    if (srcOps->Lock(env, srcOps, &sr, SD_LOCK_READ) != SD_SUCCESS) return;
-    srcOps->GetRasInfo(env, srcOps, &sr);
-    const int sw = sx2 - sx1, sh = sy2 - sy1;
-    const uint32_t background0 = premultiplied((uint32_t) bgArgb);
     const bool unpremultiplied = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB, opaque = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_RGB;
-    Buffer<4096, uint32_t> converted(unpremultiplied || opaque || background ? (size_t) sw * sh : 0);
-    if (sr.rasBase != nullptr && sw > 0 && sh > 0) {
-        // the source rectangle only (a filter's neighbours clamp to its edge, as in Java's transform helper).
-        // An unpremultiplied source is premultiplied first, as the helper does: Skia would filter the stored
-        // values and premultiply the result, which differs wherever alpha varies between neighbours
-        const void *pixels = (const char *) sr.rasBase + (size_t) sy1 * sr.scanStride + (size_t) sx1 * 4;
-        size_t rowBytes = (size_t) sr.scanStride;
-        SkImageInfo info = infoFor(srcPixelFormat, sw, sh);
-        if (converted.size) {
-            for (int y = 0; y < sh; y++) {
-                const uint32_t *in = (const uint32_t *) ((const char *) pixels + y * rowBytes);
-                uint32_t *out = converted.data + (size_t) y * sw;
-                if (opaque) {
-                    // Java's INT_RGB pixels carry an alpha byte of 0 (the colour model stores only the colour):
-                    // Skia takes an opaque image's alpha as it is stored, so it is made 255
-                    for (int x = 0; x < sw; x++) out[x] = in[x] | 0xff000000u;
-                } else if (background) {
-                    // the source over the background colour before it is sampled, as the loops' temporary image holds
-                    // it: a filter that overshoots (bicubic) clamps the composite, not the source
-                    for (int x = 0; x < sw; x++) out[x] = overBackground(unpremultiplied ? premultiplied(in[x]) : in[x], background0);
-                } else {
-                    for (int x = 0; x < sw; x++) out[x] = premultiplied(in[x]);
+    Buffer<4096, uint32_t> converted(conversion == 0 && (unpremultiplied || opaque || background) ? (size_t) sw * sh : 0);
+    SurfaceDataRasInfo sr{};
+    bool locked = false;
+    const void *pixels = nullptr;
+    size_t rowBytes = (size_t) sw * 4;
+    SkImageInfo info = SkImageInfo::MakeN32(sw, sh, kPremul_SkAlphaType);
+    if (conversion != 0) {
+        pixels = preconverted.data;
+    } else {
+        // the source, locked for reading (a nested pin: no JNI call until it is released)
+        sr.bounds.x1 = sx1; sr.bounds.y1 = sy1; sr.bounds.x2 = sx2; sr.bounds.y2 = sy2;
+        if (srcOps->Lock(env, srcOps, &sr, SD_LOCK_READ) != SD_SUCCESS) return;
+        locked = true;
+        srcOps->GetRasInfo(env, srcOps, &sr);
+        if (sr.rasBase != nullptr) {
+            // the source rectangle only (a filter's neighbours clamp to its edge, as in Java's transform helper).
+            // An unpremultiplied source is premultiplied first, as the helper does: Skia would filter the stored
+            // values and premultiply the result, which differs wherever alpha varies between neighbours
+            pixels = (const char *) sr.rasBase + (size_t) sy1 * sr.scanStride + (size_t) sx1 * 4;
+            rowBytes = (size_t) sr.scanStride;
+            info = infoFor(srcPixelFormat, sw, sh);
+            if (converted.size) {
+                for (int y = 0; y < sh; y++) {
+                    const uint32_t *in = (const uint32_t *) ((const char *) pixels + y * rowBytes);
+                    uint32_t *out = converted.data + (size_t) y * sw;
+                    if (opaque) {
+                        // Java's INT_RGB pixels carry an alpha byte of 0 (the colour model stores only the colour):
+                        // Skia takes an opaque image's alpha as it is stored, so it is made 255
+                        for (int x = 0; x < sw; x++) out[x] = in[x] | 0xff000000u;
+                    } else if (background) {
+                        // the source over the background colour before it is sampled, as the loops' temporary image
+                        // holds it: a filter that overshoots (bicubic) clamps the composite, not the source
+                        for (int x = 0; x < sw; x++) out[x] = overBackground(unpremultiplied ? premultiplied(in[x]) : in[x], background0);
+                    } else {
+                        for (int x = 0; x < sw; x++) out[x] = premultiplied(in[x]);
+                    }
                 }
+                pixels = converted.data; rowBytes = (size_t) sw * 4;
+                if (unpremultiplied || background) info = info.makeAlphaType(kPremul_SkAlphaType);
             }
-            pixels = converted.data; rowBytes = (size_t) sw * 4;
-            if (unpremultiplied || background) info = info.makeAlphaType(kPremul_SkAlphaType);
         }
+    }
+    if (pixels != nullptr) {
         sk_sp<SkImage> image = SkImages::RasterFromPixmap(SkPixmap(info, pixels, rowBytes), nullptr, nullptr);   // no copy: the pixels live until the unlock
         if (image) {
             SkPaint paint;
@@ -716,8 +759,10 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
             image.reset();
         }
     }
-    SurfaceData_InvokeRelease(env, srcOps, &sr);
-    SurfaceData_InvokeUnlock(env, srcOps, &sr);
+    if (locked) {
+        SurfaceData_InvokeRelease(env, srcOps, &sr);
+        SurfaceData_InvokeUnlock(env, srcOps, &sr);
+    }
 }
 
 JNIEXPORT void JNICALL
