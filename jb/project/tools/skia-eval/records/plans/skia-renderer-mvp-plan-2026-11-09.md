@@ -1,0 +1,226 @@
+# The first Skia package: the renderer behind a flag — state, the line, the gaps, the plan (2026-11-09)
+
+Goal (user): make the first Skia package ready to be merged into JBR and shipped in IDEA behind a flag — the Skia
+*renderer* in its minimum viable form, to keep the review burden manageable, in the most production-ready shape the
+package can have. Everything below is measured against that goal; the evaluation branch keeps going separately.
+
+## 1. Where the project stands (inventory of 2026-11-09)
+
+**The branch** `manuel.unterhofer/JBR-10654-skia-backend` carries 246 commits since its fork point (`beee138cfe19`,
+2026-10-21): 122 backend commits (112 "Skia", 5 "Metal", 3 "Windows", 1 "macOS", 1 raster), 120 evaluation-kit
+commits, 4 others. The twin on the JBR 25 release line (`…-skia-backend-jbr25`) stopped in mid-October.
+
+**Footprint.** Backend code in its own directories ≈ 15,800 lines: native shared 7,944 (`SKBackend.cpp` 3,078,
+`SKRenderQueue.cpp` 684, `SKRaster.cpp` 668, `SKFontScaler.cpp` 707, `SKGlyphCache.cpp` 343, `SKLuminanceTypeface.cpp`
+286, `SKStats` 318, …), macOS native 487, Windows native 1,393, Java `sun.java2d.skia` 4,687 (21 classes), platform Java
+797, new `sun.font` classes 772 (`SKFontScaler`, `SKFontStrike`, `SKDrawableStrike`, `TextDecorations`). **Existing JDK
+files changed: 51, +1,016 / −135** — macOS Metal native +301/−84 (glyph caches, text renderer, measurement switches),
+`sun.font` +320/−26 (the Skia scaler's hooks, luminance classes, decorations), `java2d` core +75/−8
+(`SunGraphics2D` +54: the raster pipes and dirty tracking), Windows Java +32/−5, make +89, build scripts +67. The eval
+kit is 364 files / 23,206 lines; the tests 62 files / 7,335 lines (55 mention the flag; 38 are platform-guarded).
+
+**Flags.** 1 product switch (`sun.java2d.skia`), 1 deployment switch (`skia.pipelineCache`), 3 tuning knobs (strike
+cache, glyph atlas, glyph cache size), 16 evaluation knobs (shapes, strokes, msaa, blitQuads, lcd, present, submit,
+raster, seven `text.*` dimensions, lcdOrder), 6 retired spellings, plus luminance classes, `strokeBend`,
+`dawnBackend`, `font.scaler=skia`, `font.lcdGlyphs`, three Metal options, five `J2D_SKIA_*` environment variables.
+
+**Build and dependency.** Optional at build time (`--with-skia=<dir>`, `SKIA_ENABLED` conditionals), off at runtime
+without the flag; the prebuilt is pinned (`skia_prebuilt.conf`: JetBrains/skia release `m156-24300fbbcb`, SHA-256 per
+platform) and fetched by `fetch_skia.sh` from the mac and Windows `mkimages` scripts when `WITH_SKIA=1`. Linux: no
+platform half (configure stops), pins exist. `libawt_skia.dylib` is 9.6 MB *with* the text stack (skparagraph,
+skshaper, skunicode, ICU); it was 1.3 MB with core + Graphite only (WP 1.3). No CI job builds with Skia. No legal
+notices for Skia, ICU, Dawn, libwebp, wuffs, expat, piex, dng_sdk, skcms. No IDE wiring in this repository.
+
+**Quality evidence.** Five independent review rounds (2026-10-14 … 10-20) with every macOS-fixable finding applied;
+the 1,152-cell three-way matrix within 32 levels of the software loops (analytic 814 / marlin 844 / skia 794 cells
+exact); the headless Java2D jtreg suites with the raster flag (287/292 …); RenderPerfTest 1.46× over Metal (macOS),
+1.03× over GDI on the Windows VM; IDEA 2026.2/2026.3 run on both; the Windows VM's whole Skia jtreg set 47 passed.
+
+**Known defects and risks on the backend proper** (the ledger's §13.2–13.5, the VM records): the render-queue flusher
+crash on the VM (`awt_skia.dll` read fault in `SKRenderQueue.flushBuffer`, once, unreproduced); the RenderPerfTest hang
+in analytic mode on `RotatedBox_XOR`; a failed Skia start on Windows lands on GDI (D3D is switched off before Skia
+initializes); only the default screen is on Skia on Windows, other monitors GDI; native render state is one global `g`
+reconciled from Java (per-context state as Metal's is a "later"); presentation not serialised with the queue
+(review R2), cross-context sources on Windows (R7); device loss on Windows only logged (a recovery test exists for the
+window surviving); GPU memory ≈ 280 MB above Metal on RenderPerfTest (Graphite budget 256 MB + atlases), the
+`accumulate` LCD scratch never released; Dawn pipeline compilation ≈ 0.6 s at first use (the persistent cache exists,
+`~/.java/skia/<ver>`); unbounded proxy/typeface caches in the text stack; real Windows hardware (NVIDIA, AMD, Intel,
+Snapdragon), RDP and Hyper-V unmeasured.
+
+## 2. The line: what the first package is, and what stays out
+
+**In — "the Skia renderer": a Java2D pipeline that draws what today's Metal and D3D pipelines draw, behind
+`-Dsun.java2d.skia=true`, on macOS (Graphite on Metal) and Windows (Graphite on Dawn, D3D11 first).**
+
+- Surfaces and presentation: window surfaces through `MTLLayer` on macOS and Dawn's swap chain on Windows, volatile
+  images, the surface manager, screen update manager; the software fallback for images that cannot be accelerated.
+- Pipes: fills and draws with analytic antialiased shapes as the default and Marlin masks for general paths (the
+  hybrid of variant 2), Skia's stroker (decided 2026-10-22), blits and transformed images (mesh quads), paints
+  (colour, gradients, textures where accelerated), Porter-Duff composites, XOR, clips, mask fills and mask blits.
+- Text: Java's glyph images (today's scalers: CoreText through `CStrike`, FreeType / DirectWrite on Windows) drawn
+  through the pipe's glyph cache; grayscale on macOS, LCD on Windows with one compositing mode per platform.
+- The render queue and the flusher thread, the pipeline cache directory, the Dawn backend selection.
+- Build: `--with-skia`, the pin and fetch script, the `mkimages` hooks, the legal notices; Linux configures as
+  "no Skia" without an error.
+
+**Out — kept on the evaluation branch for the later text-quality rounds:**
+
+- The whole text stack: the Skia scaler (`sun.java2d.font.scaler=skia`, `SKFontScaler`, `SKFontStrike`,
+  `SKDrawableStrike`, `SKLuminanceTypeface`), Skia's text path, shaper and paragraph engine, the text settings
+  (`text.*`), luminance classes, system text decorations (`TextDecorations`, the `Decoration` / `Font2D` /
+  `StrikeMetrics` changes), `font.lcdGlyphs`, the `FontStrikeDesc.luminance` plumbing. With it the dylib loses
+  skparagraph, skshaper, skunicode and ICU (9.6 MB → about 1.3 MB).
+- The Skia raster surface (`sun.java2d.skia.raster`, `SKRaster.cpp`, the `SKRaster*` pipes, the `SunGraphics2D` dirty
+  tracking and `BufImgSurfaceData` hooks).
+- The comparison knobs and instrumentation: `shapes=skia`, `strokes=java`, `msaa`, `blitQuads=edgeAA`, `present`,
+  `submit`, the alternative LCD modes, `strokeBend`, `SKStats`, the `J2D_SKIA_*` environment variables, the retired
+  spellings, the "EXPERIMENT" paths.
+- The Metal changes: the glyph-cache size buckets and 2048-texel caches, the measurement switches, `textGammaCorrection`
+  (JBR-10667) — each its own PR against Metal, not part of the Skia package. The glyph atlas eviction fix
+  (`MTLTextRenderer`, 2026-11-02) is a bug fix for Metal and goes first, separately.
+- The evaluation kit (`jb/project/tools/skia-eval`), the records, the catalog tooling.
+
+**Kept as supported switches (documented, few):** `sun.java2d.skia` (on/off), `sun.java2d.skia.verbose`,
+`sun.java2d.skia.pipelineCache` (directory or off), `sun.java2d.skia.shapes=analytic|marlin` (the one triage switch:
+Marlin masks are the proven fallback for a rendering difference report), `sun.java2d.skia.dawnBackend=d3d11|d3d12`
+(Windows triage). Everything else becomes a fixed default.
+
+**Why this line.** The renderer is what the IDE needs first — Windows is fully software today and macOS gains the
+analytic shapes — and its correctness evidence is the strongest (the matrix, the suites, five reviews). Every text
+change touches shared `sun.font` code that every platform's text runs through, carries metric and layout risk, and is
+still being worked; it needs its own review package later. The raster surface is a performance experiment with an
+open accuracy question (strokers). The knobs exist to compare arms; a shipped renderer compares nothing.
+
+## 3. Gaps to fill before the review (what "production-ready" asks for)
+
+Ordered by what blocks a merge; sizes are working days for one engineer with the VM for the Windows half.
+
+**A. Failure and recovery paths (blocking)**
+1. Windows: a failed Skia start must land on D3D, not GDI — decide Skia's availability before `WindowsFlags` turns D3D
+   off, or re-enable D3D on failure. Test: a forced init failure (`dawnBackend=none` or an injected error) renders
+   through D3D. 1 d.
+2. Windows multi-monitor: every `Win32GraphicsDevice` on Skia, or none (one adapter per device; cross-adapter sources
+   R7). Decide, implement, test on the VM with a second virtual display. 2–3 d.
+3. Device loss on Windows: Dawn's device-lost callback must recreate the device and surfaces or fall back to D3D (the
+   D3D9 lost/restore protocol is the model). The existing recovery test is the start. 2–3 d, VM.
+4. The flusher crash (`hs_err_pid11528`): symbolize `awt_skia.dll+0x8e7258` against the VM's build, audit the text
+   record reads near a buffer's end (`SKRenderQueue.cpp`), run the arm under `-XX:+CreateMinidumpOnCrash`. 1–2 d.
+5. The analytic-mode XOR hang (`RotatedBox_XOR`): reproduce on the XOR tests alone, fix or route XOR through the
+   Marlin path. 1–2 d.
+6. Native render state: either per-`SKContext` state (as Metal) or a documented argument why the global `g` with
+   Java-side invalidation is sound under multiple displays — review R2 (presentation serialised with the queue) and
+   the unlocked `pTexture`/`layer` reads belong here. 2–4 d.
+
+**B. Resources and startup (blocking for "behind a flag", measured not guessed)**
+7. GPU memory budget: set Graphite's `fGpuBudgetInBytes` and the atlas sizes for an IDE, measure RenderPerfTest and
+   an IDE session against Metal (today ≈ 280 MB above). 1–2 d.
+8. The pipeline cache: directory under the JBR's convention (not `~/.java/skia` unless agreed), versioned by the Skia
+   tag and driver, bounded, cleaned; first-present timing with and without on the VM (≈ 0.6 s today). 1 d.
+9. `libawt_skia` without the text modules: re-link, confirm ≈ 1.3 MB, confirm the export list, dead-stripping, `-MT`
+   on Windows. 0.5 d.
+
+**C. Build, CI, legal (blocking)**
+10. Legal notices: `src/java.desktop/share/legal/skia.md` (BSD-3) and notices for ICU, Dawn, skcms, libwebp, wuffs,
+    piex, dng_sdk, expat — whatever stays linked after item 9 — into `legal/java.desktop/`. 0.5 d.
+11. CI: a build configuration per platform with `WITH_SKIA=1` (TeamCity through the `jb` CLI, or the GitHub
+    workflows), the non-Skia build verified, Linux configure a no-op for the flag; the `jbr_skia` jtreg group
+    running the Skia tests with the flag on, and the standard `jdk_desktop` group with the flag on as a nightly.
+    1–2 d + the CI owners.
+12. The prebuilt's provenance: the JetBrains/skia release tag, the build script, who rebuilds it, how the pin is
+    bumped (a page in `jb/project/tools/common`). 0.5 d.
+
+**D. Tests (blocking)**
+13. Every Skia test skips cleanly without Skia (`@requires` or `jtreg.SkippedException`); today 9 fail on a non-Skia
+    build. The MVP subset: the pipeline, shape, gradient, XOR, translucent, LCD, glyph-cache and device-loss tests;
+    the text-stack and raster tests stay on the evaluation branch. 1 d.
+14. The three-way matrix as a jtreg test (Skia vs the software loops within the agreed thresholds, per cell group),
+    nightly on both platforms. 1–2 d.
+15. The RenderPerfTest arms as a documented benchmark procedure (not a test). 0.5 d.
+
+**E. Code quality for the review (blocking for the burden, not for function)**
+16. Strip the evaluation knobs and instrumentation listed in §2, the retired spellings, the "EXPERIMENT" paths;
+    `SKStats` reduced to what tests and `verbose` need. 1–2 d.
+17. `SKBackend.cpp` (3,078 lines) split by concern — surfaces, shapes, images, text, state — so a reviewer can read
+    one file per topic; the naming rule (`g`, `cc`) resolved by item 6. 1–2 d.
+18. The cleanup-review items marked "later" in §13.2 re-checked against the MVP code (b, c, d); the JNI 14-slot rule
+    and the kN32 rule written where they apply. 0.5 d.
+19. An architecture note for reviewers (`src/java.desktop/share/native/libawt_skia/README.md`): the queue, the
+    flusher, the contexts, the glyph cache, the hybrid shape rule, the platform halves, the known differences to
+    Metal and D3D with their sizes (the matrix's residues, gradient dithering ±1–4 levels, 1-px stroke joins). 1 d.
+
+**F. Defaults to settle (decisions, mostly taken)**
+20. Shapes: analytic default, Marlin fallback (taken). Strokes: Skia's (taken). LCD mode per platform (Windows
+    twopass by the test; confirm with the VM's LCD findings). Blit quads: mesh. MSAA: off. Present and submit: flush.
+21. The fidelity residues accepted for the package: listed in the README with numbers; the triage with design is the
+    later text-quality round, not this package.
+
+**G. Outside this repository**
+22. IDE wiring: the flag in `idea.properties` or a registry key, off by default; a Help › Diagnostic indication
+    (`verbose`); the IDE's `sun.java2d.metal` / `d3d` handling when Skia is requested. A note for the IDE team.
+23. Windows hardware coverage: untested on real GPUs. The flag-off package may ship without it; turning it on for
+    users needs the WP 2.2 matrix (NVIDIA, AMD, Intel Xe, Snapdragon X, RDP, Hyper-V). A smoke list for the release
+    team, and a blocklist / fallback story before any default change.
+
+**Not gaps for this package:** Linux (no platform half; the flag is a no-op), Vulkan (no Skia backend for it), text
+fidelity against the platform (the evaluation's stream), the raster surface, performance beyond parity (1.46× / 1.03×
+measured).
+
+## 4. The plan: a review branch built from the evaluation branch
+
+**Target.** `manuel.unterhofer/JBR-10654-skia-renderer` on `origin` from `origin/main`'s tip (the JBR 26 line), with
+a backport branch on the JBR 25 release line once the review is through — IDEA ships on JBR 25; the user decides
+which line the first package targets (a package on `jbr25` first means the backport is the review, and `main` follows).
+
+**Shape.** Not the evaluation history: a curated series of about ten commits, each one reviewable alone, each
+building and passing its tests on both platforms:
+
+1. Build and dependency: `lib-skia.m4`, the pin, `fetch_skia.sh`, the `mkimages` hooks, the make rules, the legal
+   notices; configure on Linux says "no Skia" and builds.
+2. The render queue and the native core: `SKRenderQueue`, `SKBackend` split by concern, `SKEnvironment`, the glyph
+   and mask caches, the quad batches, the pipeline cache — no text stack, no raster, no stats beyond the counters tests
+   read.
+3. The Java pipeline: `sun.java2d.skia` without the raster and text-route classes; the hooks in `SunGraphics2D`,
+   `SurfaceData`, `ValidatePipe` reduced to what the pipeline needs.
+4. macOS: `MTLSKEnvironment`, `MTLSKPlatform`, `MTLSKSurfaceData`, the `MTLGraphicsConfig` / `MTLLayer` / `MTLContext`
+   hooks, `MacOSFlags`.
+5. Windows: Dawn environment and platform, `Win32SK*`, `WindowsFlags`, `ScreenUpdateManager`, `Win32GraphicsDevice`,
+   `WToolkit`, the ICU-less copy rule.
+6. Failure paths and resources: the items A1–A6 and B7–B8, each with its test.
+7. Tests: the MVP subset, guarded; the matrix test; the `jbr_skia` group.
+8. Documentation: the README for reviewers, the flag documentation, the known-differences list.
+9. (Separately, before 1) Metal: the glyph atlas eviction fix as its own PR; the other Metal commits stay out.
+
+**Method.** Each commit is assembled by extracting from the evaluation branch (`git diff` of the relevant paths at
+the evaluation tip, trimmed by the §2 line), not by cherry-picking history; the evaluation branch keeps its history
+and continues. A script in the kit records the extraction (which paths, which hunks dropped) so the two branches can be
+re-synchronised when the evaluation fixes something the package also needs. The test-first rule holds: every gap of
+§3 gets its red test on the review branch before its fix; the tests of the evaluation branch that cover the kept code
+move over as they are.
+
+**Order and effort.** Phase 0 (user decisions, half a day): the target line, Windows in or macOS first, the kept
+switches, the pipeline cache location. Phase 1 (2–3 d): commits 1–5 as the skeleton, building and passing the kept
+tests on both platforms (the VM builds and runs the Windows half). Phase 2 (5–8 d): §3 A and B — the failure paths,
+device loss, the multi-monitor decision, the crash and the hang, the global state, the budgets. Phase 3 (3–4 d): §3 C,
+D, E — CI, legal, test guarding, the matrix test, the split and the README. Phase 4 (2 d): the review package — the PR
+description with the evidence (matrix, suites, benchmarks, reviews), the known differences, the IDE note; then the
+backport. About four weeks of one engineer with the VM, with the Windows items the long pole; macOS first would save
+Phase 2's Windows half (about a week) and ship the smaller gain.
+
+**Verification bar for "ready for review":** both platforms build with and without `--with-skia`; `jbr_skia` green
+on both and `jdk_desktop` with the flag on at the evaluation's pass rate or better; the matrix test green; the
+RenderPerfTest arms at or above the recorded ratios; IDEA runs a working day on each platform with the flag on with
+no crash, hang or leak visible in the GPU budget; a forced init failure, a device loss and a second monitor behave as
+decided; the legal notices present; the dylib at its core size; no evaluation knob left; the README answers a
+reviewer's first ten questions.
+
+**What the evaluation branch does meanwhile.** It stays the place for the text-quality rounds and the raster surface;
+after the package is cut, the evaluation branch rebases on top of it (the package becomes the baseline) so the text
+stack is a delta on the shipped renderer rather than the other way round.
+
+## 5. Decisions needed from the user before Phase 1
+
+1. The target line: `main` (JBR 26) with a `jbr25` backport, or `jbr25` first.
+2. Windows in the first package, or macOS first with Windows as the second package.
+3. The kept switches (§2's list of five) — anything to add or drop.
+4. The pipeline cache's home and the GPU budget target (an IDE default).
+5. Whether the Metal fixes go as separate PRs first (recommended) or wait.
