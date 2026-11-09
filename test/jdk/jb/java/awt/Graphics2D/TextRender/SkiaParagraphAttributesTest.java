@@ -34,7 +34,9 @@ import java.util.function.Consumer;
  *          kerning or ligatures — iterator attributes on runs described by FAMILY and SIZE, or
  *          carried by a run's FONT (which, as for TextLayout, outranks the iterator's) — and renders
  *          them as TextLayout's lines are rendered (pixel-identical: the routes render alike);
- *          a run whose font carries another layout attribute (tracking) stays TextLayout's.
+ *          tracking likewise (on runs and carried by fonts, positive and negative, with kerning
+ *          and with ligatures, fractional and whole-pixel advances); a run whose font carries
+ *          another layout attribute (superscript) stays TextLayout's.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest
@@ -43,6 +45,7 @@ public class SkiaParagraphAttributesTest {
     static final String KERNED = "AVATAR Wave To Tw Yo LT";
     static final String LIGATED = "office fluffy affine fjord";
     static final int W = 420, H = 48;
+    static boolean fractional = true;
 
     public static void main(String[] args) throws Exception {
         Font font = new Font(System.getProperty("os.name").startsWith("Mac") ? "Helvetica Neue" : "Segoe UI", Font.PLAIN, 18);
@@ -58,8 +61,19 @@ public class SkiaParagraphAttributesTest {
         expect("KERNING_ON next to a FONT (ignored, as by TextLayout)", withAttribute(KERNED, font, TextAttribute.KERNING, TextAttribute.KERNING_ON), true);
         expect("a font carrying KERNING_ON", runs(KERNED, font.deriveFont(Map.of(TextAttribute.KERNING, TextAttribute.KERNING_ON))), true);
         expect("a font carrying LIGATURES_ON", runs(LIGATED, font.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON))), true);
+        // tracking: Java adds tracking x the font's size to each glyph's advance (glyphs sharing a position, a ligature's, move together)
+        differ("tracking", layout(byAttributes(KERNED, font, null, null)), layout(byAttributes(KERNED, font, TextAttribute.TRACKING, 0.1f)));
+        expect("TRACKING 0.1 with FAMILY and SIZE", byAttributes(KERNED, font, TextAttribute.TRACKING, 0.1f), true);
+        expect("TRACKING -0.05 with FAMILY and SIZE", byAttributes(KERNED, font, TextAttribute.TRACKING, -0.05f), true);
+        expect("a font carrying TRACKING", runs(KERNED, font.deriveFont(Map.of(TextAttribute.TRACKING, 0.1f))), true);
+        expect("a font carrying TRACKING and KERNING_ON", runs(KERNED, font.deriveFont(Map.of(TextAttribute.TRACKING, 0.08f, TextAttribute.KERNING, TextAttribute.KERNING_ON))), true);
+        expect("a font carrying TRACKING and LIGATURES_ON", runs(LIGATED, font.deriveFont(Map.of(TextAttribute.TRACKING, 0.08f, TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON))), true);
+        fractional = false;
+        expect("TRACKING 0.1, whole-pixel advances", byAttributes(KERNED, font, TextAttribute.TRACKING, 0.1f), true);
+        expect("a font carrying TRACKING and KERNING_ON, whole-pixel advances", runs(KERNED, font.deriveFont(Map.of(TextAttribute.TRACKING, 0.08f, TextAttribute.KERNING, TextAttribute.KERNING_ON))), true);
+        fractional = true;
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
-        expect("a font carrying TRACKING", runs(KERNED, font.deriveFont(Map.of(TextAttribute.TRACKING, 0.1f))), false);
+        expect("a font carrying SUPERSCRIPT", runs(KERNED, font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUPER))), false);
         System.out.println("PASSED");
     }
 
@@ -106,7 +120,7 @@ public class SkiaParagraphAttributesTest {
         Graphics2D g = vi.createGraphics();
         g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, fractional ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
         g.setColor(Color.BLACK);
         drawing.accept(g);
         g.dispose();

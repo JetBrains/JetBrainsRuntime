@@ -211,13 +211,13 @@ static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool pre
             jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
             const jlong *contexts = (const jlong *) b;
             const jint *ends = (const jint *) (contexts + runs);
-            const jint *colours = ends + runs, *flags = colours + runs;
-            const jchar *chars = (const jchar *) (flags + runs);
+            const jint *colours = ends + runs, *flags = colours + runs, *trackings = flags + runs;
+            const jchar *chars = (const jchar *) (trackings + runs);
             if (runs > 0) {
                 SKBackend_DrawParagraphBySkia(EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), origX, origY, chars, length,
-                                              runs, ends, contexts, colours, flags);
+                                              runs, ends, contexts, colours, flags, trackings);
             }
-            SKIP_BYTES(b, runs * (jint) (sizeof(jlong) + 3 * sizeof(jint)) + PADDED_CHARS(length));
+            SKIP_BYTES(b, runs * (jint) (sizeof(jlong) + 4 * sizeof(jint)) + PADDED_CHARS(length));
             break;
         }
 
@@ -633,28 +633,29 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass clazz, jboolean smoothing,
                                                           jfloat originX, jfloat originY, jstring text,
                                                           jintArray endArray, jlongArray contextArray,
-                                                          jintArray colourArray, jintArray flagArray)
+                                                          jintArray colourArray, jintArray flagArray, jintArray trackingArray)
 {
     SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
     const jint length = env->GetStringLength(text);
     const jint runs = env->GetArrayLength(endArray);
     if (runs <= 0 || env->GetArrayLength(contextArray) < runs || env->GetArrayLength(colourArray) < runs
-        || env->GetArrayLength(flagArray) < runs) {
+        || env->GetArrayLength(flagArray) < runs || env->GetArrayLength(trackingArray) < runs) {
         return;
     }
-    std::vector<jint> ends(runs), colours(runs), flags(runs);
+    std::vector<jint> ends(runs), colours(runs), flags(runs), trackings(runs);
     std::vector<jlong> contexts(runs);
     env->GetIntArrayRegion(endArray, 0, runs, ends.data());
     env->GetLongArrayRegion(contextArray, 0, runs, contexts.data());
     env->GetIntArrayRegion(colourArray, 0, runs, colours.data());
     env->GetIntArrayRegion(flagArray, 0, runs, flags.data());
+    env->GetIntArrayRegion(trackingArray, 0, runs, trackings.data());
     const jchar *chars = env->GetStringChars(text, nullptr);
     if (chars == nullptr) {
         return;
     }
     SKBackend_DrawParagraphBySkia(smoothing, originX, originY, chars, length, runs, ends.data(), contexts.data(),
-                                  colours.data(), flags.data());
+                                  colours.data(), flags.data(), trackings.data());
     env->ReleaseStringChars(text, chars);
     SKBackend_EndOfFlush(env);
     } // SKPlatformScope

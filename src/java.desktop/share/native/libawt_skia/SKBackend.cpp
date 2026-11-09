@@ -2537,7 +2537,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
 
 void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
-                                   const jint *flags) {
+                                   const jint *flags, const jint *trackingBits) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }  
@@ -2597,6 +2597,11 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         tl::TextStyle ts;
         ts.setFontFamilies({typefaceAlias(typeface.get())});
         ts.setFontSize(font.getSize() / layoutScale);
+        float tracking;
+        std::memcpy(&tracking, &trackingBits[r], sizeof(tracking));
+        if (tracking != 0) {
+            ts.setLetterSpacing(tracking * ts.getFontSize());   // Java's tracking: em of the run's font per glyph advance
+        }
         ts.setFontStyle(typeface->fontStyle());
         ts.setFontEdging(font.getEdging());
         ts.setSubpixel(font.isSubpixel());
