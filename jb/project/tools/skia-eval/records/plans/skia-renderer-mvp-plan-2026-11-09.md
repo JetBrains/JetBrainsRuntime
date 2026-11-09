@@ -365,3 +365,22 @@ toggles entry by entry (each a judgment), and the IDE's own telemetry feeding a 
   (seventh commit). Open for Phase 1's close: the Windows half compiled and its tests run on the VM or the x64
   machine (`handovers/handover-win-renderer-2026-11-09.md`; `Win32SKPlatform.cpp` gained `SKPlatform_LcdOrderBGR`,
   blind here); the link list without the image codecs (B9); the series folded (a history rewrite of the branch).
+
+## 9. Decision 2026-11-09 (late): the first package is Windows-only, and the x64 machine owns it from here
+
+The user: hand the renderer-branch work over entirely to the x64 machine, and remove macOS from the branch. So:
+
+- **The package** is the Skia renderer on Windows (Graphite on Dawn/D3D11 by default, Vulkan as the alternative)
+  behind `-Dsun.java2d.skia=true`, from `main`, no backport. The macOS half (Graphite on Metal, the Metal pipeline's
+  hooks) stays on the evaluation branch for a later package; the renderer branch's configure accepts `--with-skia` on
+  Windows only, its tests require Windows (`9e7d5d13a4dd`).
+- **Ownership:** the x64 machine continues on `manuel.unterhofer/JBR-10654-skia-renderer` through Phases 2–4 of §4
+  (its own branch names `…-skia-renderer-x64hwN` on the fork for its rounds; the Mac integrates onto the renderer
+  branch as before, unless the user moves integration to the x64 as well). The hand-over:
+  `handovers/handover-x64-renderer-2026-11-09.md`.
+- **This Mac's remaining contribution to the package:** the build without `--with-skia` verified on macOS (item C1,
+  the branch's Java classes under `sun.java2d.skia` compile on every platform), the records, and the integration.
+- **§3 re-scoped to Windows:** A1 (the fallback ladder Dawn → Vulkan → JBR D3D), A2 (multi-monitor), A3 (device loss),
+  A4 (the flusher crash), A5 (the XOR hang: reproduce on Windows, it was seen with RenderPerfTest on the Mac — if it is
+  macOS-only it leaves the package's list), A6 (the global render state), B7–B9, C10–C13 and C13b (the blocklist), D13–15,
+  E16–19, F20–21, G22–23 — all on the x64, with the VM for a second Windows machine (Dawn only).
