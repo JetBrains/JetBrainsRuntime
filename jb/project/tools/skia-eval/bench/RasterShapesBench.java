@@ -26,6 +26,7 @@ import java.awt.MultipleGradientPaint;
 import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.TexturePaint;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Path2D;
@@ -104,6 +105,16 @@ public class RasterShapesBench {
                         MultipleGradientPaint.CycleMethod.NO_CYCLE));
                 g.fill(new Ellipse2D.Float(xs[i], ys[i], 40, 40));
             }
+        });
+        BufferedImage tile = image(16, 16, BufferedImage.TYPE_INT_ARGB), pattern = image(64, 64, BufferedImage.TYPE_INT_RGB);
+        run(target, frames, "texture rrect 24x24 fills x2000", true, g -> {
+            g.setPaint(new TexturePaint(tile, new Rectangle2D.Float(0, 0, 16, 16)));
+            for (int i = 0; i < 2000; i++) g.fill(new RoundRectangle2D.Float(xs[i], ys[i], 24, 24, 8, 8));
+        });
+        run(target, frames, "non-AA texture rect 40x30 bilinear x2000", false, g -> {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.setPaint(new TexturePaint(pattern, new Rectangle2D.Float(3, 2, 80, 80)));
+            for (int i = 0; i < 2000; i++) g.fill(new Rectangle2D.Float(xs[i], ys[i], 40, 30));
         });
         run(target, frames, "icon 16->20 bilinear x2000", false, g -> {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);

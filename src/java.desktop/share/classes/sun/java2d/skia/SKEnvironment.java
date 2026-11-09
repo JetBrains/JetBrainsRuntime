@@ -441,6 +441,11 @@ public final class SKEnvironment {
         return SKRasterShapePipe.paintsBySkia.get();
     }
 
+    /** Fills on raster surfaces with a texture paint Skia sampled (not the loops' paint pipes), for tests. */
+    public static long rasterTexturesBySkia() {
+        return SKRasterShapePipe.texturesBySkia.get();
+    }
+
     /** Strokes on raster surfaces that Skia's stroker built (not Java's outline), for tests. */
     public static long rasterStrokesBySkia() {
         return SKRasterShapePipe.strokesBySkia.get();

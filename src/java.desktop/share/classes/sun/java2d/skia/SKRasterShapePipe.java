@@ -27,6 +27,9 @@ import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.PathIterator;
 
 import sun.awt.SunHints;
+import sun.awt.image.BufImgSurfaceData;
+import sun.awt.image.IntegerComponentRaster;
+import sun.java2d.SurfaceData;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.awt.geom.PathConsumer2D;
@@ -233,8 +236,9 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         // the transform, then the pen: line width and miter limit
         float[] xform = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY(), width, bs.getMiterLimit()};
         strokesBySkia.incrementAndGet();
+        float[] paint = paintOf(sg2d, colors);
         strokePath(sd, sd.pixelFormat(), d.types, d.typeCount, d.coords, d.coordCount, flags(sg2d, aa) | path.getWindingRule() << 9 | bs.getEndCap() << 10 | bs.getLineJoin() << 12,
-                   xform, paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
+                   xform, paint, colors, textureOf(sg2d), packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
     /**
@@ -385,7 +389,8 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
             return;
         }
         int[] colors = colorsFor(sg2d);
-        fillRect(sd, sd.pixelFormat(), x1, y1, x2, y2, flags(sg2d, aa), paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
+        float[] paint = paintOf(sg2d, colors);
+        fillRect(sd, sd.pixelFormat(), x1, y1, x2, y2, flags(sg2d, aa), paint, colors, textureOf(sg2d), packed(cx1, cy1), packed(cx2, cy2), spansOf(clip, cx1, cy1, cx2, cy2));
     }
 
     /**
@@ -457,6 +462,75 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
     /** Fills with a gradient paint Skia built, for the test of the route. */
     static final java.util.concurrent.atomic.AtomicLong paintsBySkia = new java.util.concurrent.atomic.AtomicLong();
 
+    /** Fills with a texture paint Skia sampled, for the test of the route. */
+    static final java.util.concurrent.atomic.AtomicLong texturesBySkia = new java.util.concurrent.atomic.AtomicLong();
+
+    /**
+     * The surface of the state's texture paint image when Skia's raster path can sample it, else null:
+     * an INT_ARGB, INT_ARGB_PRE or INT_RGB image with one int per pixel (the formats the natives read,
+     * as for transformed images), a non-empty anchor (the loops paint a degenerate one as a single
+     * texel), and not the destination itself (its pixels would be read while being written).
+     */
+    static SurfaceData textureSource(SunGraphics2D sg2d) {
+        if (sg2d.paintState != SunGraphics2D.PAINT_TEXTURE || !(sg2d.paint instanceof java.awt.TexturePaint tp)) {
+            return null;
+        }
+        java.awt.image.BufferedImage img = tp.getImage();
+        if (texturePixelFormat(img) < 0 || !(img.getRaster() instanceof IntegerComponentRaster icr)
+                || icr.getPixelStride() != 1 || icr.getDataOffsets().length != 1) {
+            return null;
+        }
+        java.awt.geom.Rectangle2D anchor = tp.getAnchorRect();
+        if (!(anchor.getWidth() > 0 && anchor.getHeight() > 0)) {
+            return null;
+        }
+        SurfaceData src = SurfaceData.getPrimarySurfaceData(img);
+        return src instanceof BufImgSurfaceData && src != sg2d.surfaceData ? src : null;
+    }
+
+    private static int texturePixelFormat(java.awt.image.BufferedImage img) {
+        return switch (img.getType()) {
+            case java.awt.image.BufferedImage.TYPE_INT_ARGB -> SKSurfaceData.PF_INT_ARGB;
+            case java.awt.image.BufferedImage.TYPE_INT_ARGB_PRE -> SKSurfaceData.PF_INT_ARGB_PRE;
+            case java.awt.image.BufferedImage.TYPE_INT_RGB -> SKSurfaceData.PF_INT_RGB;
+            default -> -1;
+        };
+    }
+
+    /**
+     * Which image axes the loops' TexturePaintContext steps exactly: it walks the image coordinates from a
+     * tile's first pixel in 31-bit fixed point with the increments' fractions truncated, so along an axis
+     * with a fractional increment (across or down) its coordinate runs a little below the exact one and a
+     * texel boundary that falls exactly on a pixel goes to the texel before it; with whole increments it is
+     * exact and goes to the texel after. Bit 0 for x, bit 1 for y; computed as the context computes them.
+     */
+    private static int exactTextureSteps(AffineTransform at, java.awt.geom.Rectangle2D anchor, java.awt.image.BufferedImage img) {
+        AffineTransform xform = new AffineTransform(at);
+        xform.translate(anchor.getX(), anchor.getY());
+        xform.scale(anchor.getWidth() / img.getWidth(), anchor.getHeight() / img.getHeight());
+        try {
+            xform = xform.createInverse();
+        } catch (NoninvertibleTransformException e) {
+            return 3;
+        }
+        boolean x = whole(xform.getScaleX(), img.getWidth()) && whole(xform.getShearX(), img.getWidth());
+        boolean y = whole(xform.getShearY(), img.getHeight()) && whole(xform.getScaleY(), img.getHeight());
+        return (x ? 1 : 0) | (y ? 2 : 0);
+    }
+
+    /** TexturePaintContext.fractAsInt(mod(increment, size)) == 0: the increment carries no fraction. */
+    private static boolean whole(double increment, int size) {
+        double mod = increment % size;
+        if (mod < 0) {
+            mod += size;
+        }
+        return (int) ((mod % 1.0) * Integer.MAX_VALUE) == 0;
+    }
+
+    private static SurfaceData textureOf(SunGraphics2D sg2d) {
+        return sg2d.paintState == SunGraphics2D.PAINT_TEXTURE ? textureSource(sg2d) : null;
+    }
+
     /** Whether the state's paint is a gradient the raster pipe renders as a Skia shader. */
     static boolean isGradient(SunGraphics2D sg2d) {
         return sg2d.paintState == SunGraphics2D.PAINT_GRADIENT || sg2d.paintState == SunGraphics2D.PAINT_LIN_GRADIENT
@@ -464,14 +538,16 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
     }
 
     // Paint descriptor kinds (the native side's switch)
-    static final int PAINT_COLOR = 0, PAINT_GRADIENT = 1, PAINT_LINEAR = 2, PAINT_RADIAL = 3;
+    static final int PAINT_COLOR = 0, PAINT_GRADIENT = 1, PAINT_LINEAR = 2, PAINT_RADIAL = 3, PAINT_TEXTURE = 4;
 
     /**
      * The paint for the native side: a solid colour (the colour with the
      * composite's extra alpha, {@code sg2d.eargb}), or a gradient in user space —
      * its geometry, stops and colours plus the graphics transform and the paint's
-     * own, which the shader applies as its local matrix. Colours are ARGB; the
-     * native side swizzles them for the N32 destination.
+     * own, which the shader applies as its local matrix; or a texture paint: the
+     * filter, the image's pixel format and the same two transforms (the paint's is
+     * the anchor's mapping of the image). Colours are ARGB; the native side
+     * swizzles them for the N32 destination.
      */
     private static float[] paintOf(SunGraphics2D sg2d, int[] colorsOut) {
         AffineTransform at = sg2d.transform;
@@ -511,6 +587,17 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
                 System.arraycopy(geo, 0, d, 17, geo.length); System.arraycopy(fractions, 0, d, 17 + geo.length, fractions.length);
                 paintsBySkia.incrementAndGet();
                 return d;
+            }
+            case SunGraphics2D.PAINT_TEXTURE -> {
+                // the image's pixel space to user space: the anchor's origin and scale (TexturePaint.createContext);
+                // filtered as the loops' TexturePaintContext decides it, by the graphics' interpolation type
+                java.awt.TexturePaint tp = (java.awt.TexturePaint) sg2d.paint;
+                java.awt.image.BufferedImage img = tp.getImage();
+                java.awt.geom.Rectangle2D anchor = tp.getAnchorRect();
+                boolean filter = sg2d.interpolationType != java.awt.image.AffineTransformOp.TYPE_NEAREST_NEIGHBOR;
+                texturesBySkia.incrementAndGet();
+                return new float[] {PAINT_TEXTURE, extraAlpha, filter ? 1 : 0, texturePixelFormat(img), exactTextureSteps(at, anchor, img), m[0], m[1], m[2], m[3], m[4], m[5],
+                                    (float) (anchor.getWidth() / img.getWidth()), 0, 0, (float) (anchor.getHeight() / img.getHeight()), (float) anchor.getX(), (float) anchor.getY()};
             }
             default -> {
                 colorsOut[0] = sg2d.eargb;
@@ -552,18 +639,22 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         int[] spans = spansOf(clip, cx1, cy1, cx2, cy2);
         PathData d = PathData.of(path);
         int[] colors = colorsFor(sg2d);
-        fillPath(sd, sd.pixelFormat(), d.types, d.typeCount, d.coords, d.coordCount, flags(sg2d, aa) | path.getWindingRule() << 9, paintOf(sg2d, colors), colors, packed(cx1, cy1), packed(cx2, cy2), spans);
+        float[] paint = paintOf(sg2d, colors);
+        fillPath(sd, sd.pixelFormat(), d.types, d.typeCount, d.coords, d.coordCount, flags(sg2d, aa) | path.getWindingRule() << 9, paint, colors, textureOf(sg2d), packed(cx1, cy1), packed(cx2, cy2), spans);
     }
 
     /** Strokes the user-space path under the transform with Skia's stroker (width, cap, join, miter limit as BasicStroke's). */
     private static native void strokePath(SKRasterSurfaceData sd, int pixelFormat, byte[] types, int typeCount, float[] coords, int coordCount,
-                                          int flags, float[] xformAndPen, float[] paint, int[] colors, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                          int flags, float[] xformAndPen, float[] paint, int[] colors, SurfaceData texture, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
     /** Fills the device-space rectangle into the surface's pixels: edges antialiased where fractional, or the pixels whose centre is inside. */
     private static native void fillRect(SKRasterSurfaceData sd, int pixelFormat, float x1, float y1, float x2, float y2, int flags,
-                                        float[] paint, int[] colors, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                        float[] paint, int[] colors, SurfaceData texture, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
-    /** Fills the device-space path into the surface's pixels: colour with its alpha, Porter-Duff rule, clip box and optional clip spans. */
+    /**
+     * Fills the device-space path into the surface's pixels: colour with its alpha, Porter-Duff rule, clip box and optional clip spans.
+     * A texture paint's image is the {@code texture} surface (null for every other paint), locked for reading while the fill draws.
+     */
     private static native void fillPath(SKRasterSurfaceData sd, int pixelFormat, byte[] types, int typeCount, float[] coords, int coordCount,
-                                        int flags, float[] paint, int[] colors, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                        int flags, float[] paint, int[] colors, SurfaceData texture, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 }

@@ -124,8 +124,8 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
     int imageHeight() { return height; }
 
     /**
-     * The loops' pipes for everything, then Skia for the antialiased shapes a
-     * solid colour or a gradient and a Porter-Duff composite can express: fills and strokes
+     * The loops' pipes for everything, then Skia for the shapes a solid colour,
+     * a gradient or a texture paint and a Porter-Duff composite can express: fills and strokes
      * of any shape, and the antialiased rectangles and lines the converter
      * turns into parallelograms.
      */
@@ -137,7 +137,7 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
                 && sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
             sg2d.textpipe = SKRasterTextPipe.of(sg2d.textpipe);   // Skia's text path for strikes on the Skia scaler, the loops' glyph images otherwise
         }
-        if ((sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d))
+        if ((sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKRasterShapePipe.isGradient(sg2d) || SKRasterShapePipe.textureSource(sg2d) != null)
                 && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA) {
             if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON) {
                 sg2d.drawpipe = aaConverter;
