@@ -624,6 +624,55 @@ ifeq ($(call isTargetOs, macosx), true)
 endif
 
 ################################################################################
+## Build libawt_skia (the Skia rendering backend, -Dsun.java2d.skia=true; JBR-10654)
+################################################################################
+
+ifeq ($(SKIA_ENABLED), true)
+  # Shared Java2D headers (SurfaceData, Trace, glyph structs, generated
+  # opcode/constant headers) and AccelGlyphCache (common/font), whose cell
+  # bookkeeping the glyph cache reuses. colordata.h, which BufImgSurfaceData.h
+  # includes, is a libawt Windows header (common/awt holds the unix one).
+  # java.base:libjvm for jvm.h, which debug_util.h includes (through Trace.h);
+  # headers only, nothing in libjvm is called.
+  # Windows exports JNI only by default. winmm: timeGetTime in Chromium's
+  # allocator under Dawn; mincore: CompareObjectHandles in Dawn's Direct3D 11
+  # shared fences. The JDK's -MD, -std:c++17 and -Zc:wchar_t- are filtered
+  # out: the prebuilt is -MT, its headers need C++20 and it uses wchar_t as a
+  # native type (SKIA_CFLAGS). OPTIMIZATION := LOW is -O1 on MSVC, as for most
+  # of libawt; the heavy code is in the optimized prebuilt. Disabled warnings,
+  # raised by Skia's and Dawn's headers: C4244 and C4267 (narrowing
+  # conversions, size_t among them), C4996 (deprecated CRT names), C5030 (an
+  # attribute MSVC does not know).
+  $(eval $(call SetupJdkLibrary, BUILD_LIBAWT_SKIA, \
+      NAME := awt_skia, \
+      OPTIMIZATION := LOW, \
+      LINK_TYPE := C++, \
+      EXTRA_SRC := common/font, \
+      CFLAGS := $(SKIA_CRT_FLAGS), \
+      CFLAGS_FILTER_OUT := -MD, \
+      CXXFLAGS := $(SKIA_CFLAGS), \
+      CXXFLAGS_FILTER_OUT := -MD -std:c++17 -Zc:wchar_t-, \
+      EXTRA_HEADER_DIRS := \
+          include \
+          common/awt/debug \
+          common/font \
+          libawt/java2d \
+          libawt/awt/image \
+          libawt/awt/image/cvutils \
+          common/awt \
+          libawt/windows \
+          java.base:libjava \
+          java.base:libjvm, \
+      DISABLED_WARNINGS_microsoft := 4244 4267 4996 5030, \
+      JDK_LIBS := libawt java.base:libjava, \
+      LIBS := $(SKIA_LIBS), \
+      LIBS_windows := d3d11.lib d3d12.lib dxgi.lib dxguid.lib user32.lib winmm.lib mincore.lib, \
+  ))
+
+  TARGETS += $(BUILD_LIBAWT_SKIA)
+endif
+
+################################################################################
 ## Build libjawt
 ################################################################################
 

@@ -132,6 +132,8 @@ import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.d3d.D3DRenderQueue;
+import sun.java2d.skia.SKEnvironment;
+import sun.java2d.skia.SKRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.windows.WindowsFlags;
@@ -253,7 +255,9 @@ public final class WToolkit extends SunToolkit implements Runnable {
     private void registerShutdownHook() {
         Thread shutdown = new Thread(ThreadGroupUtils.getRootThreadGroup(), () -> {
             // D3D's Java2D Queue Flusher thread needs to be syncronized with shutdown logic
-            if (WindowsFlags.isD3DEnabled()) {
+            // JBR-10654: not when Skia renders, which leaves the Direct3D pipeline unused even
+            // with sun.java2d.d3d=true (Win32GraphicsEnvironment creates no Direct3D devices)
+            if (WindowsFlags.isD3DEnabled() && !SKEnvironment.isSkiaStarted()) {
                 D3DRenderQueue.getInstance().flushAndInvokeNow(() -> {
                     shutdown();
                 });
@@ -636,6 +640,10 @@ public final class WToolkit extends SunToolkit implements Runnable {
         OGLRenderQueue.sync();
         // now flush the D3D pipeline (this is a no-op if D3D is not enabled)
         D3DRenderQueue.sync();
+        // and the Skia pipeline (a no-op if Skia is not enabled)
+        if (SKEnvironment.isSkiaStarted()) {
+            SKRenderQueue.sync();
+        }
     }
 
     @Override

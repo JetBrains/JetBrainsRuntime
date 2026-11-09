@@ -37,6 +37,7 @@ import java.util.ListIterator;
 import sun.awt.windows.WToolkit;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.d3d.D3DGraphicsDevice;
+import sun.java2d.skia.SKEnvironment;
 import sun.java2d.windows.WindowsFlags;
 
 /**
@@ -199,7 +200,9 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
     @Override
     protected GraphicsDevice makeScreenDevice(int screennum) {
         Win32GraphicsDevice device = null;
-        if (WindowsFlags.isD3DEnabled()) {
+        // a Skia pipeline that started owns the screen (Win32GraphicsDevice,
+        // ScreenUpdateManager); Direct3D devices would claim its configurations
+        if (WindowsFlags.isD3DEnabled() && !SKEnvironment.isSkiaEnabled()) {
             device = D3DGraphicsDevice.createDevice(screennum);
         }
         if (device == null) {
