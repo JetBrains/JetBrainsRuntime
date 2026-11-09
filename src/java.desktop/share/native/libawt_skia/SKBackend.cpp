@@ -908,6 +908,17 @@ static sk_sp<SkImage> imageFromSoftwareSurface(JNIEnv *env, SurfaceDataOps *ops,
 // Texture paint: Java encodes device -> image-normalized coordinates as
 // u = xp0*x + xp1*y + xp3, v = yp0*x + yp1*y + yp3; the shader's local matrix
 // maps device space to image pixels.
+// A Skia surface's image for sampling in the current recording (a blit's source, a texture paint's image):
+// a view linked to the surface's device when it has one on this context, so Graphite records the surface's
+// pending draws — a cached texture's upload among them — ahead of the reads, and a later draw into it after
+// them; a bare WrapTexture of the same texture carries no such dependency and may read it before the upload.
+// Otherwise (no device yet, another context's surface) the texture wrapped.
+static sk_sp<SkImage> sampledImage(SKSDOps *src, bool *linked) {
+    *linked = src != nullptr && src->state != nullptr && src->state->surface && src->state->cc == g.cc
+              && src->platform != nullptr && src->state->wrappedTexture == SKPlatform_TextureHandle(src->platform);
+    return *linked ? SkSurfaces::AsImage(src->state->surface) : SKBackend_GetImage(src);
+}
+
 static void setTexturePaintShader(sk_sp<SkImage> image, jboolean filter,
                                   jdouble xp0, jdouble xp1, jdouble xp3, jdouble yp0, jdouble yp1, jdouble yp3) {
     // (u, v) = (xp0*x + xp1*y + xp3, yp0*x + yp1*y + yp3) in [0,1]: device -> image.
@@ -955,7 +966,8 @@ void SKBackend_SetTexturePaint(JNIEnv *env, jboolean filter, jlong pSrc,
         g.shader.reset();
         return;
     }
-    sk_sp<SkImage> image = SKBackend_GetImage(skSrc);
+    bool linked;
+    sk_sp<SkImage> image = sampledImage(skSrc, &linked);
     if (!image) {
         g.shader.reset();
         return;
@@ -2852,11 +2864,6 @@ static void blitSoftwareSource(JNIEnv *env, SurfaceDataOps *src, jint srctype, j
     }
 }
 
-// A Skia surface's image for a blit: linked to its device, so Graphite records the source's pending draws ahead of
-// the reads and a later draw into the source after them.
-static sk_sp<SkImage> blitSourceImage(SKSDOps *src) {
-    return SkSurfaces::AsImage(src->state->surface);
-}
 
 // sun.java2d.skia.imageAtlas (x64hw, 2026-11-04; on by default since 2026-11-06): a blit the caller found may be a
 // sprite (SKBackend_Blit), of a small Skia surface of this context, unscaled and pixel-aligned, with a plain SrcOver
@@ -2926,15 +2933,10 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
         if (src != nullptr && !sourceUsable(src, "SKBackend_Blit")) {
             return;
         }
-        if (src != nullptr && src->state != nullptr && src->state->surface && src->state->cc == g.cc
-                && src->platform != nullptr && src->state->wrappedTexture == SKPlatform_TextureHandle(src->platform)) {
-            // An image view linked to the source's device: Graphite flushes the
-            // source's pending draws before this recording samples it. A bare
-            // WrapTexture of the same texture would not carry that dependency.
-            image = blitSourceImage(src);
+        bool linked = false;
+        image = sampledImage(src, &linked);
+        if (linked) {
             linkedSrc = src;
-        } else {
-            image = SKBackend_GetImage(src);
         }
         sourceStats.end();
         srcRect = SkRect::MakeLTRB(sx1, sy1, sx2, sy2);
