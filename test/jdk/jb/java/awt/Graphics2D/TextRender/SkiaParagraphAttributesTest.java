@@ -47,7 +47,11 @@ import java.util.function.Consumer;
  *          SWAP_COLORS (with and without FOREGROUND and BACKGROUND, the swapped text black or white
  *          by the background's brightness as Java's Decoration chooses) are the paragraph's: the box
  *          behind the run SkParagraph's, within a pixel of TextLayout's fill of the run's logical
- *          bounds; swapped over a paint that is not a colour, TextLayout's.
+ *          bounds; swapped over a paint that is not a colour, TextLayout's. Iterators without a
+ *          FONT or FAMILY (no attributes at all, colours only, SIZE or WEIGHT alone, next to a FONT
+ *          run, characters from several scripts) are the paragraph's with the fonts TextLayout
+ *          resolves for them (FontResolver: Dialog 12 derived with the font attributes, else the
+ *          first font that displays the character), pixel-identical.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest
@@ -129,6 +133,16 @@ public class SkiaParagraphAttributesTest {
         paint = new java.awt.GradientPaint(0, 0, Color.BLACK, W, 0, Color.BLUE);
         expect("SWAP_COLORS over a gradient paint", swapped, false);
         paint = null;
+        // no FONT and no FAMILY: TextLayout's StyledParagraph resolves the fonts per character (FontResolver), not the graphics' font
+        expect("no attributes", new AttributedString(KERNED), true);
+        expect("FOREGROUND only", withAttribute(new AttributedString(KERNED), TextAttribute.FOREGROUND, new Color(0x2050c0), 0, 6), true);
+        expect("SIZE without FAMILY", withAttribute(new AttributedString(KERNED), TextAttribute.SIZE, 18f, 0, KERNED.length()), true);
+        expect("WEIGHT_BOLD and UNDERLINE without FAMILY", withAttribute(withAttribute(new AttributedString(KERNED), TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD, 0, 6),
+                TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON, 3, 12), true);
+        AttributedString mixed = new AttributedString(KERNED);
+        mixed.addAttribute(TextAttribute.FONT, font, 0, 7);
+        expect("a FONT run next to a run without font attributes", mixed, true);
+        expect("several scripts without font attributes", withAttribute(new AttributedString("Text \u6f22\u5b57 \u2211\u2202\u0394 \u2192 \u2260 \u05e9\u05dc"), TextAttribute.SIZE, 16f, 0, 5), true);
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
         expect("a font carrying WIDTH", runs(KERNED, font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED))), false);
         System.out.println("PASSED");

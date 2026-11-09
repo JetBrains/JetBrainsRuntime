@@ -272,6 +272,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         for (char c = it.first(); c != CharacterIterator.DONE; c = it.next()) {
             text.append(c);
         }
+        final char[] chars = text.toString().toCharArray();
         List<Integer> ends = new ArrayList<>();
         List<Long> contexts = new ArrayList<>();
         List<Integer> colours = new ArrayList<>();
@@ -287,7 +288,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             final int limit = it.getRunLimit();
             Map<Attribute, Object> attrs = it.getAttributes();
             Font font = null;
-            boolean fontAttrs = false;
             Color colour = null, background = null;
             boolean swapColors = false;
             int runFlags = 0;
@@ -305,7 +305,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE
                         || a == TextAttribute.KERNING || a == TextAttribute.LIGATURES || a == TextAttribute.TRACKING
                         || a == TextAttribute.SUPERSCRIPT) {
-                    fontAttrs = true;   // the run's font (Font.getFont below, as TextLayout builds it: a FONT attribute outranks them)
+                    // the run's font (resolved below as TextLayout does: a FONT attribute outranks them)
                 } else if (a == TextAttribute.FOREGROUND) {
                     if (!(v instanceof Color c)) {
                         return false;
@@ -338,48 +338,35 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     return false;
                 }
             }
-            if (font == null) {
-                if (!fontAttrs) {
-                    return false;   // TextLayout's default fonts: left to it
-                }
-                // the font from the font attributes alone: underline, strikethrough and foreground are the route's own
-                // (Font.getFont would fold them into the font, whose layout attributes the route refuses below)
+            // the run's fonts as TextLayout's StyledParagraph resolves them: a FONT as it is; with a FAMILY, the font of the
+            // font attributes; without either, FontResolver's per character (Dialog 12, else the first of all fonts that
+            // displays it) derived with the font attributes. Underline, strikethrough and colours are the route's own
+            // (Font.getFont and deriveFont would fold them into the font, whose layout attributes the route refuses below)
+            Font[] runFonts;
+            int[] runLimits;
+            if (font != null) {
+                runFonts = new Font[] {font};
+                runLimits = new int[] {limit};
+            } else {
                 Map<Attribute, Object> fontOnly = new java.util.HashMap<>(attrs);
                 fontOnly.keySet().retainAll(FONT_ATTRIBUTES);
-                font = Font.getFont(fontOnly);
-            }
-            // the run's font as TextLayout lays it out: kerning and ligatures are Java's features (FontAccess.getFeatures:
-            // kern, and liga with calt), anything else that changes the layout is TextLayout's
-            sun.font.AttributeValues values = sun.font.AttributeValues.fromMap(font.getAttributes());
-            if (values.anyNonDefault(UNSUPPORTED_FONT_ATTRIBUTES) || sun.font.FontAccess.getFontAccess().getFeatures(font).length > 3) {
-                return false;   // the font's own layout attributes or JBR font features
-            }
-            runFlags |= (values.getKerning() != 0 ? PARAGRAPH_KERNING : 0) | (values.getLigatures() != 0 ? PARAGRAPH_LIGATURES : 0);
-            // tracking: em of the run's font added to each glyph's advance (StandardGlyphVector: tracking x the font's size)
-            trackings.add(Float.floatToRawIntBits(values.getTracking()));
-            FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
-            SKDrawableStrike strike = skiaStrike(info.fontStrike);
-            if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
-                return false;
-            }
-            if (!layoutLikeTextPath(sg2d, info)) {
-                return false;
-            }
-            double[] r = remainder(info);
-            if (paragraphRemainder == null) {
-                paragraphRemainder = r;
-            } else {
-                for (int i = 0; i < 4; i++) {
-                    if (Math.abs(r[i] - paragraphRemainder[i]) > 1e-9) {
-                        return false;   // runs under different transforms (a font with its own): one paint cannot place them
+                if (attrs.get(TextAttribute.FAMILY) != null) {
+                    runFonts = new Font[] {Font.getFont(fontOnly)};
+                    runLimits = new int[] {limit};
+                } else {
+                    List<Font> resolved = new ArrayList<>(1);
+                    List<Integer> resolvedLimits = new ArrayList<>(1);
+                    sun.font.FontResolver resolver = sun.font.FontResolver.getInstance();
+                    sun.font.CodePointIterator cps = sun.font.CodePointIterator.create(chars, pos - begin, limit - begin);
+                    while (cps.charIndex() < limit - begin) {
+                        int index = resolver.nextFontRunIndex(cps);
+                        resolved.add(resolver.getFont(index, fontOnly));
+                        resolvedLimits.add(cps.charIndex() + begin);
                     }
+                    runFonts = resolved.toArray(new Font[0]);
+                    runLimits = resolvedLimits.stream().mapToInt(Integer::intValue).toArray();
                 }
             }
-            systemDecorations |= (runFlags & PARAGRAPH_SYSTEM_DECORATIONS) != 0;
-            if (systemDecorations && !strike.axisAligned()) {
-                return false;
-            }
-            shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
             // the run's colours as Decoration.drawTextAndDecorations resolves them: swapped, the foreground (the
             // graphics' colour without one) is the background and the text is the background colour, or black or
             // white by the foreground's brightness
@@ -394,12 +381,48 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             if (background != null) {
                 runFlags |= PARAGRAPH_BACKGROUND | (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON ? PARAGRAPH_BACKGROUND_AA : 0);
             }
-            backgrounds.add(background != null ? background.getRGB() : 0);
-            ends.add(limit - begin);
-            contexts.add(strike.skiaScalerContext());
-            colours.add(colour != null ? colour.getRGB() : 0);
-            flags.add(runFlags | (colour != null ? PARAGRAPH_COLOUR : 0));
-            strikes.add(strike);
+            for (int k = 0; k < runFonts.length; k++) {
+                font = runFonts[k];
+                int subFlags = runFlags;
+                // the run's font as TextLayout lays it out: kerning and ligatures are Java's features (FontAccess.getFeatures:
+                // kern, and liga with calt), anything else that changes the layout is TextLayout's
+                sun.font.AttributeValues values = sun.font.AttributeValues.fromMap(font.getAttributes());
+                if (values.anyNonDefault(UNSUPPORTED_FONT_ATTRIBUTES) || sun.font.FontAccess.getFontAccess().getFeatures(font).length > 3) {
+                    return false;   // the font's own layout attributes or JBR font features
+                }
+                subFlags |= (values.getKerning() != 0 ? PARAGRAPH_KERNING : 0) | (values.getLigatures() != 0 ? PARAGRAPH_LIGATURES : 0);
+                // tracking: em of the run's font added to each glyph's advance (StandardGlyphVector: tracking x the font's size)
+                trackings.add(Float.floatToRawIntBits(values.getTracking()));
+                FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
+                SKDrawableStrike strike = skiaStrike(info.fontStrike);
+                if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
+                    return false;
+                }
+                if (!layoutLikeTextPath(sg2d, info)) {
+                    return false;
+                }
+                double[] r = remainder(info);
+                if (paragraphRemainder == null) {
+                    paragraphRemainder = r;
+                } else {
+                    for (int i = 0; i < 4; i++) {
+                        if (Math.abs(r[i] - paragraphRemainder[i]) > 1e-9) {
+                            return false;   // runs under different transforms (a font with its own): one paint cannot place them
+                        }
+                    }
+                }
+                systemDecorations |= (subFlags & PARAGRAPH_SYSTEM_DECORATIONS) != 0;
+                if (systemDecorations && !strike.axisAligned()) {
+                    return false;
+                }
+                shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
+                backgrounds.add(background != null ? background.getRGB() : 0);
+                ends.add(runLimits[k] - begin);
+                contexts.add(strike.skiaScalerContext());
+                colours.add(colour != null ? colour.getRGB() : 0);
+                flags.add(subFlags | (colour != null ? PARAGRAPH_COLOUR : 0));
+                strikes.add(strike);
+            }
             pos = limit;
         }
         final float[] origin = deviceOrigin(sg2d, x, y);
