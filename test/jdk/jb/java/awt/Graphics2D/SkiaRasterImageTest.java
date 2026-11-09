@@ -27,7 +27,8 @@ import java.util.function.Consumer;
  * @test
  * @summary Transformed images on a Skia raster surface are drawn by Skia:
  *          scaled, rotated and sheared draws of INT_ARGB, INT_ARGB_PRE and
- *          INT_RGB sources with nearest-neighbour, bilinear and bicubic
+ *          INT_RGB sources (with the alpha byte of 0 Java's colour model
+ *          stores) with nearest-neighbour, bilinear and bicubic
  *          interpolation, with a translucent source and a translucent
  *          composite, match the software loops' transform helper within
  *          its sampling tolerance (a few pixels on a sampling tie may pick the
@@ -67,6 +68,11 @@ public class SkiaRasterImageTest {
         g.setColor(new Color(200, 40, 40, type == BufferedImage.TYPE_INT_RGB ? 255 : 120)); g.fillOval(30, 10, 30, 30);
         if (type != BufferedImage.TYPE_INT_RGB) { g.setComposite(AlphaComposite.Clear); g.fillRect(50, 36, 14, 12); }   // a transparent corner
         g.dispose();
+        if (type == BufferedImage.TYPE_INT_RGB) {
+            // INT_RGB pixels as Java's colour model stores them (setRGB, decoded images, the loops): the alpha byte is 0,
+            // which a source declared opaque must not carry into an alpha destination
+            for (int y = 0; y < img.getHeight(); y++) for (int x = 0; x < img.getWidth(); x++) img.setRGB(x, y, img.getRGB(x, y));
+        }
         return img;
     }
 

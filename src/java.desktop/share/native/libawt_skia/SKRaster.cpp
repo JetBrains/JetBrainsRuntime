@@ -586,7 +586,8 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
     if (srcOps->Lock(env, srcOps, &sr, SD_LOCK_READ) != SD_SUCCESS) return;
     srcOps->GetRasInfo(env, srcOps, &sr);
     const int sw = sx2 - sx1, sh = sy2 - sy1;
-    Buffer<4096, uint32_t> premul(srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB ? (size_t) sw * sh : 0);
+    const bool unpremultiplied = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB, opaque = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_RGB;
+    Buffer<4096, uint32_t> converted(unpremultiplied || opaque ? (size_t) sw * sh : 0);
     if (sr.rasBase != nullptr && sw > 0 && sh > 0) {
         // the source rectangle only (a filter's neighbours clamp to its edge, as in Java's transform helper).
         // An unpremultiplied source is premultiplied first, as the helper does: Skia would filter the stored
@@ -594,13 +595,20 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
         const void *pixels = (const char *) sr.rasBase + (size_t) sy1 * sr.scanStride + (size_t) sx1 * 4;
         size_t rowBytes = (size_t) sr.scanStride;
         SkImageInfo info = infoFor(srcPixelFormat, sw, sh);
-        if (premul.size) {
+        if (converted.size) {
             for (int y = 0; y < sh; y++) {
                 const uint32_t *in = (const uint32_t *) ((const char *) pixels + y * rowBytes);
-                uint32_t *out = premul.data + (size_t) y * sw;
-                for (int x = 0; x < sw; x++) out[x] = premultiplied(in[x]);
+                uint32_t *out = converted.data + (size_t) y * sw;
+                if (opaque) {
+                    // Java's INT_RGB pixels carry an alpha byte of 0 (the colour model stores only the colour):
+                    // Skia takes an opaque image's alpha as it is stored, so it is made 255
+                    for (int x = 0; x < sw; x++) out[x] = in[x] | 0xff000000u;
+                } else {
+                    for (int x = 0; x < sw; x++) out[x] = premultiplied(in[x]);
+                }
             }
-            pixels = premul.data; rowBytes = (size_t) sw * 4; info = info.makeAlphaType(kPremul_SkAlphaType);
+            pixels = converted.data; rowBytes = (size_t) sw * 4;
+            if (unpremultiplied) info = info.makeAlphaType(kPremul_SkAlphaType);
         }
         sk_sp<SkImage> image = SkImages::RasterFromPixmap(SkPixmap(info, pixels, rowBytes), nullptr, nullptr);   // no copy: the pixels live until the unlock
         if (image) {
