@@ -355,3 +355,12 @@ with three outcomes per rung: use, skip to the next rung, no Skia; (3) `sun.java
 (the seventh kept switch, for support and for the inevitable false positive) and `verbose` naming the entry that
 matched; (4) tests with synthetic adapter info. Later, not in the package: Chromium's driver-bug list mapped to Dawn
 toggles entry by entry (each a judgment), and the IDE's own telemetry feeding a JBR-side list.
+
+## 8. Progress
+
+- **2026-11-09, Phase 1 (skeleton):** `manuel.unterhofer/JBR-10654-skia-renderer` on `origin` and the fork, from
+  `origin/main` `dc4325491a09`, six commits (build, native core, Java pipeline, macOS, Windows, tests), building on
+  macOS; `libawt_skia.dylib` 3.7 MB, 19 exports. Kept switches as §7 plus `dawn.backend=d3d12` as a Windows triage
+  switch (the order Dawn tries). Open for Phase 1's close: the package's tests on this build; the Windows half compiled
+  on the VM or the x64 machine (`Win32SKPlatform.cpp` gained `SKPlatform_LcdOrderBGR`, blind here); the link list
+  without the image codecs (B9).
