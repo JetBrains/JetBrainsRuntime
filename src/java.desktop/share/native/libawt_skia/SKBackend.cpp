@@ -2601,10 +2601,12 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         ts.setFontEdging(font.getEdging());
         ts.setSubpixel(font.isSubpixel());
         ts.setFontHinting(font.getHinting());
-        // as DrawShapedBySkia: Java's drawString applies no kerning and no ligatures
-        for (const char *feature : {"kern", "liga", "clig", "calt"}) {
-            ts.addFontFeature(SkString(feature), 0);
-        }
+        // Java's layout features for the run (FontAccess.getFeatures): kern from KERNING, liga and calt from LIGATURES,
+        // every other feature at the font's default (clig included, as TextLayout leaves it)
+        const int kern = (flags[r] & SK_PARAGRAPH_KERNING) ? 1 : 0, liga = (flags[r] & SK_PARAGRAPH_LIGATURES) ? 1 : 0;
+        ts.addFontFeature(SkString("kern"), kern);
+        ts.addFontFeature(SkString("liga"), liga);
+        ts.addFontFeature(SkString("calt"), liga);
         ts.setForegroundPaint(runPaint);
         unsigned decoration = tl::kNoDecoration;
         if (flags[r] & SK_PARAGRAPH_UNDERLINE) {

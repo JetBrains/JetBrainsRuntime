@@ -73,7 +73,20 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /** Paragraph run flags, as SKBackend.h's SK_PARAGRAPH_*: the colour flag says colours[r] applies. */
     private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4,
-            PARAGRAPH_SYSTEM_DECORATIONS = 8;   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
+            PARAGRAPH_SYSTEM_DECORATIONS = 8,   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
+            PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32;   // the run's font kerns / ligates: Java's kern, and liga with calt
+
+    /**
+     * Layout attributes a run's font may carry for Skia's paragraph engine: kerning and ligatures, which it applies
+     * as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width and superscript (part
+     * of its extra transform), leave the paragraph to TextLayout.
+     */
+    private static final int UNSUPPORTED_FONT_ATTRIBUTES = sun.font.AttributeValues.getMask(
+            sun.font.EAttribute.ECHAR_REPLACEMENT, sun.font.EAttribute.EFOREGROUND, sun.font.EAttribute.EBACKGROUND,
+            sun.font.EAttribute.EUNDERLINE, sun.font.EAttribute.ESTRIKETHROUGH, sun.font.EAttribute.ERUN_DIRECTION,
+            sun.font.EAttribute.EBIDI_EMBEDDING, sun.font.EAttribute.EJUSTIFICATION, sun.font.EAttribute.EINPUT_METHOD_HIGHLIGHT,
+            sun.font.EAttribute.EINPUT_METHOD_UNDERLINE, sun.font.EAttribute.ESWAP_COLORS, sun.font.EAttribute.ENUMERIC_SHAPING,
+            sun.font.EAttribute.ETRACKING, sun.font.EAttribute.ESUPERSCRIPT, sun.font.EAttribute.EWIDTH);
 
     /** Render-queue opcodes of the Skia text path: the backend's own range above {@code BufferedOpCodes}, after {@code SKShapePipe}'s. */
     @Native static final int DRAW_GLYPHS_BY_SKIA = 210, DRAW_SHAPED_BY_SKIA = 211, DRAW_PARAGRAPH_BY_SKIA = 212;
@@ -212,8 +225,9 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /**
      * Lays out and draws the attributed string with Skia's paragraph engine when
-     * every run is a font (FONT, or FAMILY/SIZE/WEIGHT/POSTURE), a foreground colour,
-     * an underline or a strikethrough, and every run's strike is on the Skia scaler with
+     * every run is a font (FONT, or FAMILY/SIZE/WEIGHT/POSTURE with KERNING/LIGATURES; the
+     * font's own kerning and ligatures applied as Java's layout applies them), a foreground
+     * colour, an underline or a strikethrough, and every run's strike is on the Skia scaler with
      * one glyph transform beyond its size for the whole paragraph (laid out once, painted
      * under it; the system decorations' device rows only when it is the identity); false
      * leaves it to Java's TextLayout.
@@ -254,8 +268,9 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                         return false;
                     }
                     font = f;
-                } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE) {
-                    fontAttrs = true;
+                } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE
+                        || a == TextAttribute.KERNING || a == TextAttribute.LIGATURES) {
+                    fontAttrs = true;   // the run's font (Font.getFont below, as TextLayout builds it: a FONT attribute outranks them)
                 } else if (a == TextAttribute.FOREGROUND) {
                     if (!(v instanceof Color c)) {
                         return false;
@@ -287,6 +302,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 }
                 font = Font.getFont(attrs);
             }
+            // the run's font as TextLayout lays it out: kerning and ligatures are Java's features (FontAccess.getFeatures:
+            // kern, and liga with calt), anything else that changes the layout is TextLayout's
+            sun.font.AttributeValues values = sun.font.AttributeValues.fromMap(font.getAttributes());
+            if (values.anyNonDefault(UNSUPPORTED_FONT_ATTRIBUTES) || sun.font.FontAccess.getFontAccess().getFeatures(font).length > 3) {
+                return false;   // the font's own layout attributes or JBR font features
+            }
+            runFlags |= (values.getKerning() != 0 ? PARAGRAPH_KERNING : 0) | (values.getLigatures() != 0 ? PARAGRAPH_LIGATURES : 0);
             FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
             SKDrawableStrike strike = skiaStrike(info.fontStrike);
             if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
