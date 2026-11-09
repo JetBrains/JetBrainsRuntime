@@ -412,26 +412,35 @@ Java_sun_font_SKFontScaler_getGlyphOutlineNative(JNIEnv *env, jclass clazz, jlon
 
 namespace {
 
-// The strike's advance for the glyph record (same rule as getGlyphAdvanceNative).
-float recordAdvance(const SKScalerContext *context, const SkFont &font, SkGlyphID glyph) {
+// The strike's advance for the glyph record: the advance vector under the glyph transform, as the JDK's FreeType
+// scaler gives it — the exact vector with fractional metrics, else whole pixels (of the device scale's grid) when it
+// is horizontal or vertical and the exact vector when it is oblique. The record's vector is what the strike lays a
+// line out with under a device transform (FileFontStrike.getGlyphMetrics); an x component alone put every glyph of
+// a quarter-turned line on one spot.
+SkVector recordAdvance(const SKScalerContext *context, const SkFont &font, SkGlyphID glyph) {
     SkScalar width = 0;
     font.getWidths({&glyph, 1}, {&width, 1});
     if (context->syntheticBold) {
         width += font.getSize() * syntheticStyle().boldEmFraction;   // every glyph, spaces included, as DirectWrite's simulation
     }
-    if (!context->identityRemainder) {
-        width = context->remainder.mapVector({width, 0}).fX;
-    }
+    SkVector advance = context->identityRemainder ? SkVector{width, 0} : context->remainder.mapVector({width, 0});
     if (context->fractionalMetrics) {
-        return width;
+        return advance;
     }
-    return (float) (std::round(width / context->deviceScale) * context->deviceScale);
+    const double scale = context->deviceScale;
+    if (advance.fY == 0) {
+        advance.fX = (float) (std::round(advance.fX / scale) * scale);
+    } else if (advance.fX == 0) {
+        advance.fY = (float) (std::round(advance.fY / scale) * scale);
+    }
+    return advance;
 }
 
-GlyphInfo *emptyGlyph(float advance) {
+GlyphInfo *emptyGlyph(SkVector advance) {
     auto *info = (GlyphInfo *) calloc(sizeof(GlyphInfo), 1);
     if (info != nullptr) {
-        info->advanceX = advance;
+        info->advanceX = advance.fX;
+        info->advanceY = advance.fY;
         info->managed = UNMANAGED_GLYPH;
         info->format = sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
         info->subpixelResolutionX = info->subpixelResolutionY = 1;
@@ -487,9 +496,9 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     SkFont font;
     SkGlyphID glyph;
     if (!resolveGlyph(context, glyphCode, &font, &glyph)) {
-        return ptr_to_jlong(emptyGlyph(0));
+        return ptr_to_jlong(emptyGlyph({0, 0}));
     }
-    const float advance = recordAdvance(context, font, glyph);
+    const SkVector advance = recordAdvance(context, font, glyph);
     const bool lcd = font.getEdging() == SkFont::Edging::kSubpixelAntiAlias;
     const bool aa = font.getEdging() != SkFont::Edging::kAlias;
     // Under the platform's mask routes the variants follow the platform rasterizer's own
@@ -554,8 +563,8 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     if (info == nullptr) {
         return ptr_to_jlong(emptyGlyph(advance));
     }
-    info->advanceX = advance;
-    info->advanceY = 0;
+    info->advanceX = advance.fX;
+    info->advanceY = advance.fY;
     info->width = (UInt16) width;
     info->height = (UInt16) height;
     info->rowBytes = (UInt16) rowBytes;
