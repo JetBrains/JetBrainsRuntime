@@ -67,7 +67,7 @@ void ShenandoahControlThread::run_service() {
 
     // Figure out if we have pending requests.
     const bool alloc_failure_pending = ShenandoahCollectorPolicy::is_allocation_failure(cancelled_cause);
-    const bool is_gc_requested = _gc_requested.is_set();
+    const bool is_gc_requested = _gc_requested.try_unset();
     const GCCause::Cause requested_gc_cause = _requested_gc_cause;
 
     // This control loop iteration has seen this much allocation.
@@ -402,7 +402,6 @@ void ShenandoahControlThread::handle_requested_gc(GCCause::Cause cause) {
 }
 
 void ShenandoahControlThread::notify_gc_waiters() {
-  _gc_requested.unset();
   MonitorLocker ml(&_gc_waiters_lock);
   ml.notify_all();
 }
