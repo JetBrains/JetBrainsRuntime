@@ -48,6 +48,11 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
 
     @Override
     public boolean drawsBySkia() {
+        return fileFont.getScaler() instanceof SKFontScaler scaler && scaler.contextIsInvertible(pScalerContext);
+    }
+
+    @Override
+    public boolean axisAligned() {
         return fileFont.getScaler() instanceof SKFontScaler scaler && scaler.contextIsAxisAligned(pScalerContext);
     }
 

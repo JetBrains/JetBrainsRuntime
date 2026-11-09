@@ -28,6 +28,7 @@
 
 #include "jni.h"
 #include "include/core/SkFont.h"
+#include "include/core/SkMatrix.h"
 
 // What the backend needs from a scaler context (sun.font.SKFontScaler) to
 // draw its glyphs through Skia's own text path: the SkFont and glyph for a
@@ -36,6 +37,9 @@ bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkG
 // The strike's own SkFont (size, edging, sub-pixel positioning, synthetic styles), for
 // shaping the strike's text with Skia's shaper.
 bool SKFontScaler_Font(jlong pContext, SkFont *font);
+// The context's glyph transform beyond its size (glyphTx / size): false when it is the identity (axis-aligned text),
+// else the matrix a run of the context's glyphs is drawn under, positions mapped back through its inverse.
+bool SKFontScaler_Remainder(jlong pContext, SkMatrix *remainder);
 // The strike's grayscale route (sun.font.SKFontScaler.GRAY_*), for the text path to apply it.
 jint SKFontScaler_BlendMode(jlong pContext);   // SKFontScaler.BLEND_*
 bool SKFontScaler_TextDarkening();             // the darkening dimension, resolved (one value per process)

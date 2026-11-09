@@ -111,6 +111,11 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
 
     @Override
     public boolean drawsBySkia() {
+        return scaler.contextIsInvertible(pScalerContext);
+    }
+
+    @Override
+    public boolean axisAligned() {
         return scaler.contextIsAxisAligned(pScalerContext);
     }
 

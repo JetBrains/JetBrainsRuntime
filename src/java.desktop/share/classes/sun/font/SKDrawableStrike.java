@@ -35,6 +35,9 @@ public interface SKDrawableStrike {
     /** The native Skia scaler context, or 0 when this strike is not on the Skia scaler. */
     long skiaScalerContext();
 
-    /** Whether Skia's text path can draw this strike (an axis-aligned glyph transform). */
+    /** Whether Skia's text path can draw this strike's glyphs (any invertible glyph transform: rotated, sheared, scaled). */
     boolean drawsBySkia();
+
+    /** Whether the glyph transform is axis-aligned, as Skia's shaper and paragraph routes need it. */
+    boolean axisAligned();
 }

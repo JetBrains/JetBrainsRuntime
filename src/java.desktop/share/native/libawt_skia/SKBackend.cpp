@@ -2025,12 +2025,24 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
                                    const jfloat *positions, bool cacheBlobs) {
     jlong drawn = 0;
     if (contextCount <= 0) return 0;
-    cacheBlobs = cacheBlobs && gTextBlobs.capacity > 0;
-    // runs of glyphs sharing a font (the strike's own, or a platform fallback font)
+    // A context whose glyph transform goes beyond its size (rotated, sheared or unevenly scaled text) draws its runs
+    // under that remainder, the positions mapped back through it, so Skia renders the glyphs under the whole
+    // transform; such a call draws its runs one by one (the blob cache holds axis-aligned runs, and a cached blob is
+    // drawn after the uncached runs, which would reorder them)
+    bool transformed = false;
+    for (jint c = 0; c < contextCount && !transformed; c++) {
+        SkMatrix unused;
+        transformed = contexts[c] != 0 && SKFontScaler_Remainder(contexts[c], &unused);
+    }
+    cacheBlobs = cacheBlobs && !transformed && gTextBlobs.capacity > 0;
+    // runs of glyphs sharing a font (the strike's own, or a platform fallback font) and a remainder
     std::vector<SkGlyphID> ids;
     std::vector<SkPoint> points;
     SkFont runFont;
     const SkTypeface *runTypeface = nullptr;
+    jlong runContext = 0;
+    SkMatrix runRemainder;
+    bool runTransformed = false;
     // cached: the runs collected (positions relative to the origin) into one blob, looked up by their bytes
     struct Run {
         SkFont font;
@@ -2048,6 +2060,15 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
             allIds.insert(allIds.end(), ids.begin(), ids.end());
             for (const SkPoint &p : points) {
                 allPoints.push_back({p.fX - originX, p.fY - originY});
+            }
+        } else if (runTransformed) {
+            SkMatrix inverse;
+            if (runRemainder.invert(&inverse)) {
+                inverse.mapPoints(SkSpan<SkPoint>(points.data(), points.size()));
+                canvas->save();
+                canvas->concat(runRemainder);
+                canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+                canvas->restore();
             }
         } else {
             canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
@@ -2087,10 +2108,12 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
             continue;
         }
         applyGrayRoute(font, pScalerContext, textColour);
-        if (font.getTypeface() != runTypeface) {
+        if (font.getTypeface() != runTypeface || (transformed && pScalerContext != runContext)) {
             flushRun();
             runFont = font;
             runTypeface = font.getTypeface();
+            runContext = pScalerContext;
+            runTransformed = transformed && SKFontScaler_Remainder(pScalerContext, &runRemainder);
         }
         ids.push_back(glyph);
         points.push_back({gx, gy});

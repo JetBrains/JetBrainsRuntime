@@ -95,9 +95,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         }
     }
 
-    /** The strike when Skia's text path can draw it (on the Skia scaler, axis-aligned transform), else null. */
+    /**
+     * The strike when Skia's shaper or paragraph route can draw it (on the Skia scaler, an axis-aligned transform:
+     * they shape in the SkFont's space and draw at the device origin), else null; other text goes to Java's layout
+     * and Skia's text path, which draws any invertible transform.
+     */
     private static SKDrawableStrike skiaStrike(Object strike) {   // a FontStrike; GlyphList hands it out as Object
-        return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.drawsBySkia() ? s : null;
+        return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.axisAligned() ? s : null;
     }
 
     /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */

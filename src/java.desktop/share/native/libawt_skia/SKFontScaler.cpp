@@ -654,6 +654,13 @@ Java_sun_font_SKFontScaler_contextIsAxisAlignedNative(JNIEnv *env, jclass clazz,
     return context != nullptr && context->identityRemainder ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jboolean JNICALL
+Java_sun_font_SKFontScaler_contextIsInvertibleNative(JNIEnv *env, jclass clazz, jlong pContext)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    return context != nullptr && context->remainder.invert(nullptr) ? JNI_TRUE : JNI_FALSE;
+}
+
 } // extern "C"
 
 // The font for Skia's text path: the context's, with the darkening dimension on the
@@ -662,6 +669,14 @@ Java_sun_font_SKFontScaler_contextIsAxisAlignedNative(JNIEnv *env, jclass clazz,
 static void textPathFont(const SKScalerContext *context, SkFont *font)
 {
     font->setHinting(SKPlatform_FontHinting(context->hinting, context->darkening));
+}
+
+bool SKFontScaler_Remainder(jlong pContext, SkMatrix *remainder)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    if (context == nullptr || context->identityRemainder) return false;
+    *remainder = context->remainder;
+    return true;
 }
 
 bool SKFontScaler_ResolveGlyph(jlong pContext, jint glyphCode, SkFont *font, SkGlyphID *glyph)

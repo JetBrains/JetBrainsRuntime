@@ -35,16 +35,37 @@ import java.util.function.Consumer;
  *          within three pixels, the ink's centre within one and a half pixels
  *          (the reference's own offset, about a pixel on the platform's scaler),
  *          the ink within 15 %.
+ *          On a Skia raster surface and on the Skia GPU pipe the text goes
+ *          through Skia's text path like axis-aligned text (every glyph counted
+ *          there): the strike's transform beyond its size is applied to the
+ *          canvas for the run and the positions mapped back through it.
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia SkiaRotatedTextTest loops
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.raster=true -Dsun.java2d.skia.text.strike=skia SkiaRotatedTextTest raster
+ */
+
+/*
+ * @test id=gpu
+ * @summary Rotated, sheared and scaled text through Skia's text path on the Skia GPU pipe.
+ * @requires (os.family == "mac" | os.family == "windows")
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaRotatedTextTest gpu
  */
 public class SkiaRotatedTextTest {
     static final String TEXT = "Hamburgefonts Quick fox 1234";
     static final int W = 300, H = 300;
 
     /** fm: fractional metrics, so the advances along an oblique baseline and the reference's agree exactly (whole-pixel advances round only an axis-parallel vector). */
+    static String mode = "loops";
+
     record Case(String name, AffineTransform transform, Font font, float x, float y, boolean fm) {}
 
     public static void main(String[] args) throws Exception {
+        mode = args[0];
+        if (mode.equals("gpu") && !PipelineComparison.pipelineActive("skia", java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice().getDefaultConfiguration())) {
+            return;
+        }
         Font font = new Font(Font.DIALOG, Font.PLAIN, 14);
         AffineTransform scaledRotation = AffineTransform.getScaleInstance(1.25, 1.25);
         scaledRotation.rotate(0.5, 120, 120);
@@ -77,8 +98,12 @@ public class SkiaRotatedTextTest {
      * and that image drawn under the transform, bilinear.
      */
     static void check(String what, Case c, Consumer<Graphics2D> drawing, boolean fontTransform) {
-        BufferedImage actual = new BufferedImage(W, H, BufferedImage.TYPE_3BYTE_BGR);
-        Graphics2D g = actual.createGraphics();
+        long before = glyphsBySkia();
+        // loops: the loops draw the Skia scaler's glyph images; raster: an INT_ARGB_PRE raster surface; gpu: a Skia volatile image
+        java.awt.image.VolatileImage volatileImage = mode.equals("gpu") ? java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice().getDefaultConfiguration().createCompatibleVolatileImage(W, H) : null;
+        BufferedImage actual = new BufferedImage(W, H, mode.equals("raster") ? BufferedImage.TYPE_INT_ARGB_PRE : BufferedImage.TYPE_3BYTE_BGR);
+        Graphics2D g = volatileImage != null ? volatileImage.createGraphics() : actual.createGraphics();
         g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, c.fm ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
@@ -86,6 +111,10 @@ public class SkiaRotatedTextTest {
         if (!fontTransform) g.transform(c.transform);
         drawing.accept(g);
         g.dispose();
+        if (volatileImage != null) {
+            actual = volatileImage.getSnapshot();
+        }
+        long drawn = glyphsBySkia() - before;
 
         BufferedImage flat = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR);
         Graphics2D f = flat.createGraphics();
@@ -104,8 +133,11 @@ public class SkiaRotatedTextTest {
         double[] a = inkMoments(actual), e = inkMoments(reference);
         int[] ab = inkBounds(actual), eb = inkBounds(reference);
         double ratio = a[0] / e[0], dx = a[1] - e[1], dy = a[2] - e[2];
-        System.out.printf("%s: ink bounds [%d,%d..%d,%d], reference [%d,%d..%d,%d]; centre off by (%.2f, %.2f); ink ratio %.3f%n",
-                what, ab[0], ab[1], ab[2], ab[3], eb[0], eb[1], eb[2], eb[3], dx, dy, ratio);
+        System.out.printf("%s: %d glyphs by Skia; ink bounds [%d,%d..%d,%d], reference [%d,%d..%d,%d]; centre off by (%.2f, %.2f); ink ratio %.3f%n",
+                what, drawn, ab[0], ab[1], ab[2], ab[3], eb[0], eb[1], eb[2], eb[3], dx, dy, ratio);
+        if (!mode.equals("loops") && drawn < TEXT.replace(" ", "").length()) {
+            throw new RuntimeException(what + ": only " + drawn + " glyphs went through Skia's text path");
+        }
         for (int i = 0; i < 4; i++) {
             if (Math.abs(ab[i] - eb[i]) > 3) {
                 throw new RuntimeException(what + ": the text does not lie along its transformed baseline (ink bounds differ by more than three pixels)");
@@ -118,6 +150,16 @@ public class SkiaRotatedTextTest {
         }
         if (ratio < 0.85 || ratio > 1.15) {
             throw new RuntimeException(what + ": ink ratio " + ratio + " outside [0.85, 1.15]");
+        }
+    }
+
+    static long glyphsBySkia() {
+        String counter = switch (mode) { case "raster" -> "rasterGlyphsBySkia"; case "gpu" -> "glyphsDrawnBySkia"; default -> null; };
+        if (counter == null) return 0;
+        try {
+            return (long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(counter).invoke(null);
+        } catch (ReflectiveOperationException e) {
+            return 0;
         }
     }
 
