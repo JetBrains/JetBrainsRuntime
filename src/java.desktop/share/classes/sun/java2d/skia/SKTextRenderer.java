@@ -76,9 +76,14 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             PARAGRAPH_SYSTEM_DECORATIONS = 8,   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
             PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32;   // the run's font kerns / ligates: Java's kern, and liga with calt
 
+    /** The attributes a run's font is made of when there is no FONT attribute (TextLayout's Font.getFont). */
+    private static final java.util.Set<Attribute> FONT_ATTRIBUTES = java.util.Set.of(TextAttribute.FAMILY, TextAttribute.SIZE,
+            TextAttribute.WEIGHT, TextAttribute.POSTURE, TextAttribute.KERNING, TextAttribute.LIGATURES, TextAttribute.TRACKING,
+            TextAttribute.SUPERSCRIPT);
+
     /**
-     * Layout attributes a run's font may carry for Skia's paragraph engine: kerning, ligatures and tracking, which it
-     * applies as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width and superscript (part
+     * Layout attributes a run's font may carry for Skia's paragraph engine: kerning, ligatures, tracking and
+     * superscript, which it applies as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width and superscript (part
      * of its extra transform), leave the paragraph to TextLayout.
      */
     private static final int UNSUPPORTED_FONT_ATTRIBUTES = sun.font.AttributeValues.getMask(
@@ -86,7 +91,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             sun.font.EAttribute.EUNDERLINE, sun.font.EAttribute.ESTRIKETHROUGH, sun.font.EAttribute.ERUN_DIRECTION,
             sun.font.EAttribute.EBIDI_EMBEDDING, sun.font.EAttribute.EJUSTIFICATION, sun.font.EAttribute.EINPUT_METHOD_HIGHLIGHT,
             sun.font.EAttribute.EINPUT_METHOD_UNDERLINE, sun.font.EAttribute.ESWAP_COLORS, sun.font.EAttribute.ENUMERIC_SHAPING,
-            sun.font.EAttribute.ESUPERSCRIPT, sun.font.EAttribute.EWIDTH);
+            sun.font.EAttribute.EWIDTH);
 
     /** Render-queue opcodes of the Skia text path: the backend's own range above {@code BufferedOpCodes}, after {@code SKShapePipe}'s. */
     @Native static final int DRAW_GLYPHS_BY_SKIA = 210, DRAW_SHAPED_BY_SKIA = 211, DRAW_PARAGRAPH_BY_SKIA = 212;
@@ -248,8 +253,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         List<Integer> flags = new ArrayList<>();
         List<SKDrawableStrike> strikes = new ArrayList<>();
         List<Integer> trackings = new ArrayList<>();
+        List<Integer> shifts = new ArrayList<>();
         double[] paragraphRemainder = null;
         boolean systemDecorations = false;
+        boolean superscripts = false, exactRows = true, decorations = false;
         for (int pos = begin; pos < end; ) {
             it.setIndex(pos);
             final int limit = it.getRunLimit();
@@ -270,7 +277,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     }
                     font = f;
                 } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE
-                        || a == TextAttribute.KERNING || a == TextAttribute.LIGATURES || a == TextAttribute.TRACKING) {
+                        || a == TextAttribute.KERNING || a == TextAttribute.LIGATURES || a == TextAttribute.TRACKING
+                        || a == TextAttribute.SUPERSCRIPT) {
                     fontAttrs = true;   // the run's font (Font.getFont below, as TextLayout builds it: a FONT attribute outranks them)
                 } else if (a == TextAttribute.FOREGROUND) {
                     if (!(v instanceof Color c)) {
@@ -301,7 +309,11 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 if (!fontAttrs) {
                     return false;   // TextLayout's default fonts: left to it
                 }
-                font = Font.getFont(attrs);
+                // the font from the font attributes alone: underline, strikethrough and foreground are the route's own
+                // (Font.getFont would fold them into the font, whose layout attributes the route refuses below)
+                Map<Attribute, Object> fontOnly = new java.util.HashMap<>(attrs);
+                fontOnly.keySet().retainAll(FONT_ATTRIBUTES);
+                font = Font.getFont(fontOnly);
             }
             // the run's font as TextLayout lays it out: kerning and ligatures are Java's features (FontAccess.getFeatures:
             // kern, and liga with calt), anything else that changes the layout is TextLayout's
@@ -312,6 +324,21 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             runFlags |= (values.getKerning() != 0 ? PARAGRAPH_KERNING : 0) | (values.getLigatures() != 0 ? PARAGRAPH_LIGATURES : 0);
             // tracking: em of the run's font added to each glyph's advance (StandardGlyphVector: tracking x the font's size)
             trackings.add(Float.floatToRawIntBits(values.getTracking()));
+            // superscript / subscript: the strike carries the font's 2/3-per-level scale; the baseline shift (the
+            // transform's translation, Font.getTransform) goes in em of the scaled font, so it converts into the
+            // paragraph's layout space at any scale. With an explicit TRANSFORM as well the two compose: TextLayout's
+            float shift = 0;
+            if (values.getSuperscript() != 0) {
+                // SkParagraph places shifted runs on whole layout pixels, corrected natively to the text path's rows:
+                // exact only where layout pixels are device pixels (no transform beyond the size, a layout scale of 1)
+                if (values.isNonDefault(sun.font.EAttribute.ETRANSFORM)) {
+                    return false;
+                }
+                superscripts = true;
+                java.awt.geom.AffineTransform ft = font.getTransform();
+                shift = (float) (ft.getTranslateY() / (font.getSize2D() * ft.getScaleY()));
+            }
+            shifts.add(Float.floatToRawIntBits(shift));
             FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
             SKDrawableStrike strike = skiaStrike(info.fontStrike);
             if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
@@ -334,6 +361,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             if (systemDecorations && !strike.axisAligned()) {
                 return false;
             }
+            if (!strike.axisAligned() || strike.layoutScale() != 1) {
+                exactRows = false;
+            }
+            decorations |= (runFlags & (PARAGRAPH_UNDERLINE | PARAGRAPH_STRIKETHROUGH)) != 0;
+            if (superscripts && (!exactRows || decorations)) {
+                return false;   // a decoration with shifted runs: TextLayout places it by its own rule (7 px apart measured)
+            }
             ends.add(limit - begin);
             contexts.add(strike.skiaScalerContext());
             colours.add(colour != null ? colour.getRGB() : 0);
@@ -348,6 +382,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         final int[] colourArray = colours.stream().mapToInt(Integer::intValue).toArray();
         final int[] flagArray = flags.stream().mapToInt(Integer::intValue).toArray();
         final int[] trackingArray = trackings.stream().mapToInt(Integer::intValue).toArray();
+        final int[] shiftArray = shifts.stream().mapToInt(Integer::intValue).toArray();
         rq.lock();
         try {
             validateContext(sg2d, textComposite(sg2d));
@@ -356,7 +391,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             }
             final boolean smoothing = false   /* the strike's hinting carries the darkening (SKFontScaler) */;
             final int length = string.length(), runs = endArray.length;
-            final int total = 24 + runs * (8 + 4 * 4) + paddedChars(length);
+            final int total = 24 + runs * (8 + 5 * 4) + paddedChars(length);
             RenderBuffer buf = rq.getBuffer();
             if (total <= buf.capacity()) {
                 rq.ensureCapacityAndAlignment(total, 24);
@@ -371,9 +406,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 buf.put(colourArray, 0, runs);
                 buf.put(flagArray, 0, runs);
                 buf.put(trackingArray, 0, runs);
+                buf.put(shiftArray, 0, runs);
                 putChars(buf, string);
             } else {
-                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray, trackingArray));
+                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray));
             }
         } finally {
             rq.unlock();
@@ -383,7 +419,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /** Skia's paragraph engine: runs of (strike, colour, decorations) laid out on one line and painted at the baseline origin (oversized operations). */
     private static native void drawParagraphBySkia(boolean smoothing, float originX, float originY, String text,
-                                                   int[] runEnds, long[] contexts, int[] colours, int[] flags, int[] trackingBits);
+                                                   int[] runEnds, long[] contexts, int[] colours, int[] flags, int[] trackingBits, int[] shiftBits);
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {

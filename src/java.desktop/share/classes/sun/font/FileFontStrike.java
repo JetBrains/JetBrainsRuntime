@@ -52,6 +52,11 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
     }
 
     @Override
+    public double layoutScale() {
+        return fileFont.getScaler() instanceof SKFontScaler scaler ? scaler.contextLayoutScale(pScalerContext) : 1;
+    }
+
+    @Override
     public boolean axisAligned() {
         return fileFont.getScaler() instanceof SKFontScaler scaler && scaler.contextIsAxisAligned(pScalerContext);
     }

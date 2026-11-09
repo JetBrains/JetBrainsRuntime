@@ -256,12 +256,13 @@ jlong SKBackend_GlyphsShapedBySkia();
 // (strike, colour, decorations) laid out and decorated by SkParagraph on one line, shaped as
 // DrawShapedBySkia, painted with its first baseline at the origin. runEnds[r] is the UTF-16 end
 // of run r; colours[r] is ARGB when flags[r] has SK_PARAGRAPH_COLOUR; trackingBits[r] the float bits of the run's
-// TextAttribute.TRACKING (em of its font added to each glyph's advance).
+// TextAttribute.TRACKING (em of its font added to each glyph's advance), shiftBits[r] those of its superscript's
+// baseline shift (em of its font, down positive: Font.getTransform's translation).
 enum { SK_PARAGRAPH_UNDERLINE = 1, SK_PARAGRAPH_STRIKETHROUGH = 2, SK_PARAGRAPH_COLOUR = 4, SK_PARAGRAPH_SYSTEM_DECORATIONS = 8,
        SK_PARAGRAPH_KERNING = 16, SK_PARAGRAPH_LIGATURES = 32 };
 void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
-                                   const jint *flags, const jint *trackingBits);
+                                   const jint *flags, const jint *trackingBits, const jint *shiftBits);
 jlong SKBackend_ParagraphsBySkia();
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
                              jboolean rgbOrder, jint lcdContrast,

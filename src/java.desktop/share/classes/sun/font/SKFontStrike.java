@@ -115,6 +115,11 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
     }
 
     @Override
+    public double layoutScale() {
+        return scaler.contextLayoutScale(pScalerContext);
+    }
+
+    @Override
     public boolean axisAligned() {
         return scaler.contextIsAxisAligned(pScalerContext);
     }

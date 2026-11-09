@@ -267,6 +267,12 @@ public final class SKFontScaler extends FontScaler {
         return contextIsInvertibleNative(pContext);
     }
 
+    /** The scale Skia's layout routes lay the context's text out under (SKFontScaler_LayoutScale): 1, or the device scale for whole-pixel advances. */
+    double contextLayoutScale(long pContext) {
+        return contextLayoutScaleNative(pContext);
+    }
+
+    private static native double contextLayoutScaleNative(long pContext);
     private static native boolean contextIsAxisAlignedNative(long pContext);
     private static native boolean contextIsInvertibleNative(long pContext);
 

@@ -654,6 +654,12 @@ Java_sun_font_SKFontScaler_contextIsAxisAlignedNative(JNIEnv *env, jclass clazz,
     return context != nullptr && context->identityRemainder ? JNI_TRUE : JNI_FALSE;
 }
 
+JNIEXPORT jdouble JNICALL
+Java_sun_font_SKFontScaler_contextLayoutScaleNative(JNIEnv *env, jclass clazz, jlong pContext)
+{
+    return SKFontScaler_LayoutScale(pContext);
+}
+
 JNIEXPORT jboolean JNICALL
 Java_sun_font_SKFontScaler_contextIsInvertibleNative(JNIEnv *env, jclass clazz, jlong pContext)
 {
@@ -675,7 +681,7 @@ bool SKFontScaler_Remainder(jlong pContext, SkMatrix *remainder)
 {
     auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
     if (context == nullptr || context->identityRemainder) return false;
-    *remainder = context->remainder;
+    if (remainder != nullptr) *remainder = context->remainder;
     return true;
 }
 

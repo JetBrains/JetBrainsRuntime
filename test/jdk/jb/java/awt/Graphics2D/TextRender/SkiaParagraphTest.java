@@ -40,7 +40,7 @@ import java.util.function.Consumer;
  *          instead of Java's TextLayout: the backend counts the paragraphs it laid
  *          out, the text lands within two pixels of Java's layout, the underline is
  *          drawn below the baseline, an attribute the route does not support
- *          (superscript) still draws, through Java's layout, and the strike's
+ *          (width) still draws, through Java's layout, and the strike's
  *          edging reaches the paragraph (aliased text has no gray pixels).
  * @requires os.family == "mac"
  * @key headful
@@ -108,21 +108,21 @@ public class SkiaParagraphTest {
         }
 
         // 3. an attribute the route does not handle goes to Java's layout, and still draws
-        Consumer<Graphics2D> superscript = g -> {
+        Consumer<Graphics2D> widened = g -> {
             AttributedString as = new AttributedString(TEXT);
             as.addAttribute(TextAttribute.FONT, font);
-            as.addAttribute(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUPER, 0, 3);
+            as.addAttribute(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED, 0, 3);
             g.drawString(as.getIterator(), 4, BASE);
         };
         before = paragraphs();
-        BufferedImage fallback = onScreen(gc, superscript);
+        BufferedImage fallback = onScreen(gc, widened);
         if (paragraphs() - before != 0) {
-            throw new RuntimeException("a superscript string was laid out by Skia's paragraph");
+            throw new RuntimeException("a widened string was laid out by Skia's paragraph");
         }
         Rectangle fb = inkBounds(fallback);
-        System.out.println("superscript (Java's layout): " + fb);
+        System.out.println("width (Java's layout): " + fb);
         if (fb.width < 200) {
-            throw new RuntimeException("the superscript string was not drawn: " + fb);
+            throw new RuntimeException("the widened string was not drawn: " + fb);
         }
 
         // 4. the strike's edging reaches the paragraph: aliased text has no gray pixels

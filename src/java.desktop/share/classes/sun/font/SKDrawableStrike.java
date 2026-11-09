@@ -40,4 +40,7 @@ public interface SKDrawableStrike {
 
     /** Whether the glyph transform is axis-aligned, as Skia's shaper and paragraph routes need it. */
     boolean axisAligned();
+
+    /** The scale Skia's layout routes lay this strike's text out under: 1, or the device scale for whole-pixel advances. */
+    double layoutScale();
 }
