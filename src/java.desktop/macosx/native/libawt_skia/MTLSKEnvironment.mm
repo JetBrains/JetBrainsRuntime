@@ -63,4 +63,11 @@ Java_sun_java2d_skia_SKEnvironment_framebufferFetchNative(JNIEnv *env, jclass cl
     }
 }
 
+// SKEnvironment.deviceFeatures: Metal devices have no features to request.
+JNIEXPORT jstring JNICALL
+Java_sun_java2d_skia_SKEnvironment_deviceFeaturesNative(JNIEnv *env, jclass clazz)
+{
+    return env->NewStringUTF("");
+}
+
 } // extern "C"

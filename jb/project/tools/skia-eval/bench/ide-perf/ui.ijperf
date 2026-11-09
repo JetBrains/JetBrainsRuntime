@@ -1,0 +1,12 @@
+%waitForSmart
+%openFile -file abstract-factory/src/main/java/com/iluwatar/abstractfactory/App.java
+%openFile -file builder/src/main/java/com/iluwatar/builder/Hero.java
+%openFile -file observer/src/main/java/com/iluwatar/observer/Weather.java
+%openFile -file strategy/src/main/java/com/iluwatar/strategy/App.java
+%openFile -file singleton/src/main/java/com/iluwatar/singleton/App.java
+%openFile -file command/src/main/java/com/iluwatar/command/Wizard.java
+%openFile -file decorator/src/main/java/com/iluwatar/decorator/App.java
+%openFile -file commander/src/main/java/com/iluwatar/commander/Commander.java
+%sleep 3000
+%mark ide-perf-ready
+%sleep 1200000

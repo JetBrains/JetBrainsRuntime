@@ -55,6 +55,9 @@ enum SKStatsSpan {
     SK_SPAN_PRESENT_ACQUIRE,   // of which: GetCurrentTexture (may wait for a free image)
     SK_SPAN_PRESENT_COPY,      // of which: the copy, its encoder and queue submit
     SK_SPAN_PRESENT_CALL,      // of which: Present()
+    SK_SPAN_BLIT_SOURCE,    // BLIT of a Skia surface: the source checked and its image made
+    SK_SPAN_BLIT_SOFTWARE,  // BLIT of a software surface: all of it (uploads, draws)
+    SK_SPAN_BLIT_DRAW,      // BLIT of a Skia surface: the draw (with the batches it touches)
     SK_SPAN_COUNT
 };
 
@@ -72,6 +75,23 @@ enum SKStatsCounter {
     SK_COUNT_TEXTURE_COPIES,    // texture-to-texture copies encoded (destination reads, the present copy)
     SK_COUNT_BUFFER_UPLOADS,    // buffer-to-texture copies encoded (texture uploads)
     SK_COUNT_QUEUE_SUBMITS,     // command buffer submits to the device queue
+    SK_COUNT_TIMEOUT_FLUSHES,   // flushes the flusher ran on its own (the 100 ms timeout, presentAll)
+    SK_COUNT_MESH_DRAWS_AT_STATE,     // of the mesh draws, those of batches a clip or transform change drew
+    SK_COUNT_MESH_DRAWS_AT_SURFACE,   // of the mesh draws, those of batches a destination switch drew
+    SK_COUNT_MESH_DRAWS_AT_KIND,      // of the mesh draws, those of batches an op of another kind drew (it touched them)
+    SK_COUNT_MESH_DRAWS_AT_CANVAS_OP, // of the mesh draws, those of batches an op drawing through the canvas drew (REQUIRE_CANVAS)
+    SK_COUNT_MESH_DRAWS_AT_DIRECT,    // ... a draw through the canvas inside a batched op drew (uncached glyphs, Skia's text)
+    SK_COUNT_MESH_DRAWS_AT_BLIT,      // ... a blit drew
+    SK_COUNT_MESH_DRAWS_AT_FLUSH,     // ... the end of a recording or a present drew
+    SK_COUNT_MESH_DRAWS_IMMEDIATE,    // of the mesh draws, those of no batch (a blit's own quad)
+    SK_COUNT_GLYPH_OVERLAP_DRAWS,     // LCD twopass batches of another colour drawn early: a glyph overlapped them
+    SK_COUNT_SURFACE_BLITS,           // blits from a Skia surface
+    SK_COUNT_BLITS_OF_PENDING_SOURCES,   // of those, from a surface drawn into in the same recording since its last blit
+    SK_COUNT_PENDING_SOURCES_VOLATILE,   // of those, from a render target (a VolatileImage, a back buffer)
+    SK_COUNT_IMAGE_ATLAS_BLITS,       // sun.java2d.skia.imageAtlas: blits drawn as atlas sprites (SKImageAtlas)
+    SK_COUNT_IMAGE_ATLAS_COPIES,      // ... copies into the atlas
+    SK_COUNT_TEXT_BLOB_HITS,          // sun.java2d.skia.text.blobCache: runs drawn from a cached text blob
+    SK_COUNT_TEXT_BLOB_MISSES,        // ... runs whose blob was made (and cached)
     SK_COUNT_COUNT
 };
 
@@ -80,6 +100,26 @@ uint64_t SKStats_Now();     // nanoseconds, monotonic
 void SKStats_AddSpan(SKStatsSpan span, uint64_t nanos);
 void SKStats_AddOp(int opcode, uint64_t nanos);
 void SKStats_Count(SKStatsCounter counter, uint64_t n = 1);
+uint64_t SKStats_Counter(SKStatsCounter counter);   // the count since the last print
+// What draws the pending batches now (SK_COUNT_MESH_DRAWS_AT_STATE or _AT_SURFACE), SK_COUNT_COUNT for
+// nothing in particular: mesh draws counted meanwhile are also counted under it.
+// Returns the previous cause.
+SKStatsCounter SKStats_SetDrawCause(SKStatsCounter cause);
+// The op being interpreted (SKStatsOpScope), -1 between ops: the batch draws are counted by cause and op.
+void SKStats_SetCurrentOp(int opcode);
+
+// The draw cause for a scope (SKStats_SetDrawCause), the previous one restored after it.
+class SKDrawCauseScope {
+public:
+    explicit SKDrawCauseScope(SKStatsCounter cause) : previous(SKStats_SetDrawCause(cause)) {}
+    ~SKDrawCauseScope() {
+        SKStats_SetDrawCause(previous);
+    }
+    SKDrawCauseScope(const SKDrawCauseScope &) = delete;
+    SKDrawCauseScope &operator=(const SKDrawCauseScope &) = delete;
+private:
+    SKStatsCounter previous;
+};
 // Graphite added a pipeline to its cache (built it) or found one; with the statistics on, an added
 // pipeline's label and key hash are printed, the input of a precompile list.
 void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash);
@@ -91,8 +131,13 @@ class SKStatsScope {
 public:
     explicit SKStatsScope(SKStatsSpan span) : span(span), start(SKStats_IsEnabled() ? SKStats_Now() : 0) {}
     ~SKStatsScope() {
+        end();
+    }
+    // Ends the span before the scope does (once).
+    void end() {
         if (start != 0) {
             SKStats_AddSpan(span, SKStats_Now() - start);
+            start = 0;
         }
     }
     SKStatsScope(const SKStatsScope &) = delete;
@@ -105,10 +150,15 @@ private:
 // Times one render-queue op (the body of the interpreter's loop) under its opcode.
 class SKStatsOpScope {
 public:
-    explicit SKStatsOpScope(int opcode) : opcode(opcode), start(SKStats_IsEnabled() ? SKStats_Now() : 0) {}
+    explicit SKStatsOpScope(int opcode) : opcode(opcode), start(SKStats_IsEnabled() ? SKStats_Now() : 0) {
+        if (start != 0) {
+            SKStats_SetCurrentOp(opcode);
+        }
+    }
     ~SKStatsOpScope() {
         if (start != 0) {
             SKStats_AddOp(opcode, SKStats_Now() - start);
+            SKStats_SetCurrentOp(-1);
         }
     }
     SKStatsOpScope(const SKStatsOpScope &) = delete;

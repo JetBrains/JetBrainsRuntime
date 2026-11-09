@@ -47,8 +47,8 @@ import java.awt.image.VolatileImage;
  * Graphics configuration of the Skia backend on Windows. Unlike on macOS,
  * where Skia renders into the Metal pipeline's surfaces, there is no GPU
  * pipeline to wrap here: the Skia surfaces own their textures and the window
- * surfaces their swap chains (native side: {@code DawnSKPlatform.cpp},
- * Graphite on Dawn over Direct3D). Plugged into the Windows toolkit the way
+ * surfaces their swap chains (native side: {@code Win32SKPlatform.h},
+ * Graphite on Dawn over Direct3D by default). Plugged into the Windows toolkit the way
  * {@code WGLGraphicsConfig} is; the window surfaces come from
  * {@link Win32SKScreenUpdateManager}.
  */

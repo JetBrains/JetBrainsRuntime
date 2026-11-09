@@ -1,0 +1,39 @@
+#!/bin/bash
+# IDE performance series (bench/ide-perf): run-series.sh <series dir> <first rep> <last rep> <arm> [<arm> ...]
+# (an arm may be LABEL=ARM@IMAGE: ARM run on the JDK image IMAGE, its launches named LABEL)
+# Every repetition runs each (arm, launch) once — launches typing and ui (LAUNCHES overrides) — in a fresh
+# random order, into <series dir>/rep<N>-<arm>-<launch>; a later call with higher reps continues the
+# series. After each launch: the launch's validity (the Skia arms' "Skia rendering enabled" line, the IDE
+# reaching its end), and that nothing new appeared in ~/.m2. Summarise with summarize.py.
+set -u
+HERE="$(cd "$(dirname "$0")" && pwd)"
+SERIES=$1; FIRST=$2; LAST=$3; shift 3; ARMS=("$@")
+LAUNCHES=(${LAUNCHES:-typing ui})
+mkdir -p "$SERIES"
+MARK="$SERIES/.m2-mark"; [ -f "$MARK" ] || touch "$MARK"
+for rep in $(seq "$FIRST" "$LAST"); do
+  jobs=()
+  for arm in "${ARMS[@]}"; do for l in "${LAUNCHES[@]}"; do jobs+=("$arm|$l"); done; done
+  order=$(printf '%s\n' "${jobs[@]}" | shuf | tr '\n' ' ')
+  echo "rep $rep: $order"
+  for job in $order; do
+    arm=${job%|*}; launch=${job#*|}
+    # an arm given as LABEL=ARM@IMAGE runs ARM on that image (a POSIX path without spaces), its launches named LABEL:
+    # one series can compare images (before and after a change without a switch)
+    real=$arm; image=""
+    if [[ $arm == *=*@* ]]; then real=${arm#*=}; image=${real#*@}; real=${real%%@*}; arm=${arm%%=*}; fi
+    # LABEL=ARM%VAR1,VAR2: ARM run with those environment variables set to 1 (the backend's diagnostic switches)
+    envs=""
+    if [[ $arm == *=*%* ]]; then real=${arm#*=}; envs=${real#*%}; real=${real%%%*}; arm=${arm%%=*}; fi
+    dir="$SERIES/rep$rep-$arm-$launch"; rm -rf "$dir"
+    if [ -n "$image" ]; then
+      JDK="$image" bash "$HERE/run-ide-perf.sh" "$real" "$launch" "$dir" > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
+    else
+      (for v in ${envs//,/ }; do export "$v=1"; done; bash "$HERE/run-ide-perf.sh" "$real" "$launch" "$dir") > "$SERIES/rep$rep-$arm-$launch.log" 2>&1
+    fi
+    end=$(grep -c "CommandLogger - %exitApp\|scene driver: exit requested" "$dir/idea.log" 2>/dev/null)
+    skia=$(grep -o "Skia rendering enabled: [A-Z]*[^,]*" "$dir/stdout.txt" 2>/dev/null | head -1 | cut -c1-80)
+    vk=$(grep -c "Vulkan rendering enabled: YES" "$dir/stdout.txt" 2>/dev/null)
+    echo "  $arm $launch: $(tail -1 "$SERIES/rep$rep-$arm-$launch.log" | cut -c1-60) | end $end | ${skia:-no Skia line} | vulkan $vk | scenes $([ -f "$dir/scenes.tsv" ] && wc -l < "$dir/scenes.tsv" || echo -) | m2 new $(find ~/.m2 -type f -newer "$MARK" 2>/dev/null | wc -l)"
+  done
+done

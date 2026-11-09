@@ -77,6 +77,9 @@ extern "C" {
 static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool presentAll)
 {
     jboolean pending = JNI_FALSE;
+#ifdef _WIN32
+    SKBackend_NoteFlusherThread();   // diagnostics: sun.java2d.skia.profileFlusher (VKSKGaneshBench.cpp)
+#endif
     unsigned char *end = b + limit;
 
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
@@ -490,6 +493,7 @@ static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool pre
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong buf, jint limit, jboolean presentAll)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     unsigned char *b = (unsigned char *) jlong_to_ptr(buf);
     if (b == nullptr) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKRenderQueue_flushBuffer: cannot get direct buffer address");
@@ -505,6 +509,7 @@ Java_sun_java2d_skia_SKRenderer_drawPoly(JNIEnv *env, jobject renderer,
                                            jintArray xpointsArray, jintArray ypointsArray,
                                            jint nPoints, jboolean isClosed, jint transX, jint transY)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     jint *xPoints = (jint *) env->GetPrimitiveArrayCritical(xpointsArray, nullptr);
     if (xPoints != nullptr) {
@@ -525,6 +530,7 @@ Java_sun_java2d_skia_SKShapePipe_drawShape(JNIEnv *env, jclass clazz, jboolean f
                                            jfloatArray xformArr, jfloatArray strokeArr, jint windingRule,
                                            jintArray typesArr, jint numTypes, jfloatArray coordsArr, jint numCoords)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     jfloat *xform = (jfloat *) env->GetPrimitiveArrayCritical(xformArr, nullptr);
     jfloat *stroke = strokeArr != nullptr ? (jfloat *) env->GetPrimitiveArrayCritical(strokeArr, nullptr) : nullptr;
@@ -551,6 +557,7 @@ Java_sun_java2d_skia_SKMaskFill_maskFill(JNIEnv *env, jobject self,
                                            jint maskoff, jint maskscan, jint masklen,
                                            jbyteArray maskArray)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     unsigned char *mask = nullptr;
     if (maskArray != nullptr) {
@@ -574,6 +581,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, 
                                                        jfloat originX, jfloat originY,
                                                        jintArray codeArray, jlongArray imgArray, jfloatArray posArray)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
     // copies, not critical regions: the backend rasterizes glyphs (CoreGraphics on the cg route) in here
     const jint contextCount = contextArray != nullptr ? env->GetArrayLength(contextArray) : 0;
@@ -607,6 +615,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, jlong pScalerContext,
                                                        jboolean smoothing, jfloat originX, jfloat originY, jstring text)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
     const jint length = env->GetStringLength(text);
     const jchar *chars = env->GetStringChars(text, nullptr);
@@ -626,6 +635,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass claz
                                                           jintArray endArray, jlongArray contextArray,
                                                           jintArray colourArray, jintArray flagArray)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
     const jint length = env->GetStringLength(text);
     const jint runs = env->GetArrayLength(endArray);
@@ -659,6 +669,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphList(JNIEnv *env, jobject self,
                                                     jfloat glyphListOrigX, jfloat glyphListOrigY,
                                                     jlongArray imgArray, jfloatArray posArray)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope; SKStatsScope entryStats(SK_SPAN_QUEUE);
     jlong *images = (jlong *) env->GetPrimitiveArrayCritical(imgArray, nullptr);
     if (images == nullptr) {

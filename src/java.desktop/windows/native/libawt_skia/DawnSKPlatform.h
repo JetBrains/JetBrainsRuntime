@@ -25,10 +25,13 @@
 #ifndef DawnSKPlatform_h_Included
 #define DawnSKPlatform_h_Included
 
-// The Dawn objects behind SKPlatform.h on Windows (Graphite on Dawn over
-// Direct3D). There is no host pipeline to wrap here: the Skia backend owns
-// device, textures and swap chains itself. SKPlatformConfig and
-// SKPlatformSurface alias DawnSKConfigInfo and DawnSKSurface.
+// Graphite on Dawn over Direct3D 11 or 12, behind the Windows platform layer
+// (Win32SKPlatform.h): its configurations and surfaces, and the GPU side of
+// SKPlatform.h for them (DawnSK_MakeContext ... DawnSK_DisposeSurface, called by
+// Win32SKPlatform.cpp once it has checked that a configuration or surface is Dawn's).
+
+#include "SKPlatform.h"
+#include "Win32SKPlatform.h"
 
 #include <windows.h>
 #include "webgpu/webgpu_cpp.h"
@@ -52,7 +55,8 @@ struct DawnSKDevice {
 };
 
 // One per Win32SKGraphicsConfig.
-struct DawnSKConfigInfo {
+struct DawnSKConfigInfo : Win32SKConfigInfo {
+    DawnSKConfigInfo() : Win32SKConfigInfo{Win32SKApi::Dawn} {}
     std::shared_ptr<DawnSKDevice> gpu;
     std::string description;   // "<adapter> (D3D11)"
 };
@@ -62,7 +66,8 @@ struct DawnSKConfigInfo {
 // copied to on present. The texture is persistent (Java2D repaints only dirty
 // regions), so it is never a swap chain image itself. Like every AWT window
 // surface it spans the whole window; the client area starts at the insets.
-struct DawnSKSurface {
+struct DawnSKSurface : Win32SKSurface {
+    DawnSKSurface() : Win32SKSurface{Win32SKApi::Dawn} {}
     DawnSKConfigInfo *config = nullptr;   // identity for the shared backend's context lookup; not dereferenced
     std::shared_ptr<DawnSKDevice> gpu;
     HWND hwnd = nullptr;
@@ -83,8 +88,11 @@ wgpu::Instance DawnSK_Instance();
 
 // Name of the adapter Dawn would use ("<adapter> (D3D11)"), empty if none; no device is created.
 std::string DawnSK_DescribeAdapter();
+// The preferred device features (DawnSKPlatform.cpp) of the last device created, as "name=o/g ..." with
+// o whether the adapter offers it and g whether the device has it; empty before the first device.
+std::string DawnSK_DeviceFeatures();
 
-// sun.java2d.skia.dawnBackend: D3D12 before D3D11 (default: D3D11 first); call before the first request.
+// sun.java2d.skia.dawn.backend: D3D12 before D3D11 (default: D3D11 first); call before the first request.
 void DawnSK_PreferBackend(bool d3d12);
 
 // A configuration on the shared device of the first of Dawn's Direct3D
@@ -106,5 +114,17 @@ void DawnSK_SimulateDeviceLoss(bool persistent);
 // it.
 DawnSKSurface *DawnSK_CreateSurface(DawnSKConfigInfo *config, HWND hwnd, uint32_t width, uint32_t height,
                                     DawnSKSurface *previous, bool opaque);
+
+// The GPU side of SKPlatform.h for Dawn's configurations and surfaces (see there).
+std::unique_ptr<skgpu::graphite::Context> DawnSK_MakeContext(SKPlatformConfig *config,
+                                                             const skgpu::graphite::ContextOptions &options);
+SKPlatformConfig *DawnSK_ConfigOf(SKPlatformSurface *surface);
+bool DawnSK_SameDevice(SKPlatformConfig *a, SKPlatformConfig *b);
+void *DawnSK_TextureHandle(SKPlatformSurface *surface);
+bool DawnSK_BackendTexture(SKPlatformSurface *surface, skgpu::graphite::BackendTexture *texture,
+                           SkColorType *colorType);
+bool DawnSK_IsWindow(SKPlatformSurface *surface);
+bool DawnSK_RequestRedraw(SKPlatformSurface *surface);
+void DawnSK_DisposeSurface(SKPlatformSurface *surface);
 
 #endif /* DawnSKPlatform_h_Included */

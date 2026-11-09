@@ -22,15 +22,15 @@ import sun.java2d.skia.SKEnvironment;
 /**
  * @test
  * @summary On Windows Skia runs on Dawn's Direct3D 11 backend unless
- *          sun.java2d.skia.dawnBackend=d3d12 asks for Direct3D 12 first (an
+ *          sun.java2d.skia.dawn.backend=d3d12 asks for Direct3D 12 first (an
  *          evaluation option: Chrome ships WebGPU on Dawn's D3D12 backend,
  *          Skia tests Graphite on D3D11 first). When Skia is unavailable
  *          there is nothing to test.
  * @requires (os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true SkiaDawnBackendTest D3D11
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.dawnBackend=d3d11 SkiaDawnBackendTest D3D11
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.dawnBackend=d3d12 SkiaDawnBackendTest D3D12
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.dawn.backend=d3d11 SkiaDawnBackendTest D3D11
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.dawn.backend=d3d12 SkiaDawnBackendTest D3D12
  */
 public class SkiaDawnBackendTest {
 

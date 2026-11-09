@@ -48,9 +48,9 @@
 #include "include/core/SkColorSpace.h"
 #include "include/gpu/graphite/Context.h"
 #include "include/gpu/graphite/Recorder.h"
-#include "include/gpu/graphite/PrecompileContext.h"
 
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -67,21 +67,29 @@ struct SKConfigContext {
     bool glyphCachesAAFailed[SK_GLYPH_BUCKETS] = {}, glyphCachesLCDFailed[SK_GLYPH_BUCKETS] = {};
     SKMaskCache *maskCache = nullptr;
     bool maskCacheFailed = false;
+    struct SKImageAtlas *imageAtlas = nullptr;   // EXPERIMENT sun.java2d.skia.imageAtlas: small image sources as atlas sprites (SKImageAtlas.h)
+    bool imageAtlasFailed = false;
     std::unordered_set<struct SKSurfaceState *> surfaces;   // wrapped with this recorder
     std::unordered_map<uint64_t, sk_sp<SkImage>> lcdTables;   // coverage correction per text colour and contrast
     sk_sp<SkSurface> lcdCoverage;            // scratch for sun.java2d.skia.lcd=accumulate, destination-sized
     uint32_t recordingGeneration = 1;        // advanced by every SKBackend_FlushRecording; the glyph caches date cells by it
     uint64_t lastPipelineSync = 0;           // when the context last offered its pipeline data to the cache (SKPipelineCache)
-    // EXPERIMENT (x64hw): the pipeline keys of earlier sessions compiled ahead, off the flusher,
-    // on the context's executor (J2D_SKIA_PIPELINE_CACHE, J2D_SKIA_EXECUTOR)
-    std::unique_ptr<skgpu::graphite::PrecompileContext> precompileContext;
-    std::thread precompileThread;
 };
 
 struct SKSurfaceState {
     sk_sp<SkSurface> surface;
     void *wrappedTexture = nullptr;   // identity of the platform texture `surface` wraps (SKPlatform_TextureHandle)
+    uint64_t uid = 0;              // unique for the life of the process (SKImageAtlas keys copies by it)
+    uint64_t contentVersion = 0;   // advanced by every op drawing into the surface (markTouched)
     SKConfigContext *cc = nullptr;
+    // window surfaces Graphite presents (SKPlatform_AcquirePresentTarget): the wrappers of
+    // the swap chain images, by imageKey, of the swap chain generation presentGeneration
+    std::unordered_map<uint64_t, sk_sp<SkSurface>> presentTargets;
+    uint32_t presentGeneration = 0;
+    // Diagnostics (J2D_SKIA_STATS): drawn into in recording drawnGeneration and not blitted from since
+    // (SK_COUNT_BLITS_OF_PENDING_SOURCES)
+    bool drawnSinceBlit = false;
+    uint32_t drawnGeneration = 0;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C
@@ -117,7 +125,7 @@ SkPixelGeometry SKBackend_LcdPixelGeometry();
 // luminanceClasses: FontUtilities.textLuminanceClasses (1, 2, 4, ... 256), the classes the cg route's masks are rasterized for
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent, SKLcdOrder lcdOrder);
+                         bool submitPerPresent, SKLcdOrder lcdOrder, bool imageAtlas);
 jint SKBackend_LuminanceClasses();     // the count the text path quantizes with
 size_t SKBackend_GlyphAtlasBudget();   // the budget the contexts are created with
 jint SKBackend_GlyphCacheTexels();     // the side SKGlyphCache creates its textures with
@@ -213,11 +221,25 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
 jlong SKBackend_GlyphsDrawnBySkia();
 // The same glyph loop on any canvas (the raster surface's): the paint as the canvas wants
 // it, textColour the text's colour as Java sees it (the cg route's luminance class); returns
-// the glyphs drawn.
+// the glyphs drawn. cacheBlobs: the runs go through the text blob cache (SKBackend_SetTextBlobCache;
+// the flusher only, since the cache is not synchronised).
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
-                                   const jfloat *positions);
+                                   const jfloat *positions, bool cacheBlobs = false);
+// sun.java2d.skia.text.blobCache=<entries> (x64hw, 2026-11-06; 16384 by default): Skia's text path keeps the text
+// blobs of the last `entries` distinct runs and draws a repeated one from the same SkTextBlob, so Graphite's
+// cache of prepared text (TextBlobRedrawCoordinator, keyed by the blob's identity) can reuse its sub-runs across
+// frames; 0 = off (every run drawn with drawGlyphs, rebuilt by Graphite every time).
+void SKBackend_SetTextBlobCache(jint entries);
+// The blob cache's hits and misses since the start (tests, diagnostics).
+void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses);
+#ifdef _WIN32
+// EXPERIMENT (x64hw, 2026-11-06), diagnostics, Windows (VKSKGaneshBench.cpp): sun.java2d.skia.profileFlusher.
+// Called at every flush on the flusher thread; the first call starts a sampling profile of that thread if one
+// is configured.
+void SKBackend_NoteFlusherThread();
+#endif
 // Skia's shaper (sun.java2d.skia.text=shaper): the characters of a drawString shaped by
 // HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs)
 // and the platform font manager's fallback, drawn as one text blob at the baseline
@@ -255,5 +277,15 @@ void SKBackend_RequestPresent(SKSDOps *ops);
 // (sun.java2d.skia.submit=present), for the flusher's timeout flush.
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu = false, bool presentAll = false);
 jlong SKBackend_Flushes();                                     // how many times EndOfFlush ran (diagnostics, tests)
+jlong SKBackend_Recordings();                                  // how many recordings were snapped (diagnostics, tests)
+
+// The backend's state belongs to the flusher thread while it runs a flush, and to the entry points
+// other threads call outside one (surface and configuration creation and disposal). With
+// sun.java2d.skia.asyncPresent the flusher runs a handed-off flush while no Java thread holds the AWT
+// lock that otherwise keeps them apart, so every JNI entry point that touches backend or platform
+// state holds this (recursive: a flush calls back into Java, which may call an entry point).
+std::recursive_mutex &SKBackend_EntryMutex();
+#define SK_ENTRY_LOCK std::lock_guard<std::recursive_mutex> skEntryLock(SKBackend_EntryMutex())
+bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]);   // Graphite's per-draw floor (SKEnvironment.benchGraphite)
 
 #endif /* SKBackend_h_Included */

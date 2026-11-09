@@ -33,6 +33,7 @@
 #include "SKLuminanceTypeface.h"
 #include "sun_font_SKFontScaler.h"
 #include "SKMaskCache.h"
+#include "SKImageAtlas.h"
 #include "SKQuadBatch.h"
 #include "SKPipelineCache.h"
 #include "SKStats.h"
@@ -49,7 +50,6 @@
 
 #include "include/core/SkBlender.h"
 #include "include/core/SkData.h"
-#include "include/core/SkExecutor.h"
 #include "include/effects/SkRuntimeEffect.h"
 #include "include/core/SkColorSpace.h"
 #include "include/core/SkMatrix.h"
@@ -91,6 +91,9 @@
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <list>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <array>
@@ -127,6 +130,7 @@ static struct {
     bool presentPerCycle = false;   // sun.java2d.skia.present=cycle: present on FLUSH_BUFFER, SYNC and the timeout flush only
     bool submitPerPresent = false;  // sun.java2d.skia.submit=present: submit only for a present, a wait or the cap
     SKLcdOrder lcdOrder = SKLcdOrder::System;   // sun.java2d.skia.lcdOrder: the sub-pixel order the surfaces declare
+    bool imageAtlas = true;           // sun.java2d.skia.imageAtlas: small image sources drawn from an atlas (SKImageAtlas.h)
 } gConfig;
 
 SkPixelGeometry SKBackend_LcdPixelGeometry() {
@@ -140,68 +144,7 @@ static SKQuadBatch gRects;   // non-AA geometry of the current paint, drawn as o
 // Graphics pipelines Graphite has built so far, over all contexts (flusher thread only).
 static uint64_t gPipelinesBuilt = 0;
 
-// EXPERIMENT (x64hw, 2026-10-23): pipelines compiled ahead of their first draw.
-// J2D_SKIA_PIPELINE_CACHE=<file> keeps the serialized key of every pipeline a
-// session built; the next session's context precompiles them on a thread of
-// its own (PrecompileContext) before the flusher needs them. J2D_SKIA_EXECUTOR=<n>
-// gives Graphite n worker threads for pipeline compilation (SkExecutor), so the
-// pipelines of one recording compile in parallel and the flusher waits for the
-// longest instead of the sum. Both default to off.
-// File layout: records of uint32 key hash, uint32 length, the key's bytes.
 namespace {
-
-std::unique_ptr<SkExecutor> gExecutor;
-std::mutex gPipelineCacheLock;                   // the callback runs on the compiling thread
-std::unordered_set<uint32_t> gStoredPipelineKeys;
-
-const char *envOrNull(const char *name) {   // an empty value counts as unset
-    const char *value = getenv(name);
-    return value != nullptr && *value != 0 ? value : nullptr;
-}
-
-const char *pipelineCachePath() {
-    static const char *path = envOrNull("J2D_SKIA_PIPELINE_CACHE");
-    return path;
-}
-
-std::vector<sk_sp<SkData>> loadPipelineKeys() {
-    std::vector<sk_sp<SkData>> keys;
-    const char *path = pipelineCachePath();
-    if (path == nullptr) {
-        return keys;
-    }
-    std::ifstream in(path, std::ios::binary);
-    uint32_t hash, length;
-    while (in.read((char *) &hash, sizeof hash) && in.read((char *) &length, sizeof length) && length < (1u << 20)) {
-        sk_sp<SkData> key = SkData::MakeUninitialized(length);
-        if (!in.read((char *) key->writable_data(), length)) {
-            break;
-        }
-        std::lock_guard<std::mutex> lock(gPipelineCacheLock);
-        if (gStoredPipelineKeys.insert(hash).second) {
-            keys.push_back(std::move(key));
-        }
-    }
-    J2dRlsTraceLn(J2D_TRACE_INFO, "SKBackend: %zu pipeline keys from %s", keys.size(), path);
-    return keys;
-}
-
-void storePipelineKey(uint32_t hash, const sk_sp<SkData> &key) {
-    const char *path = pipelineCachePath();
-    if (path == nullptr || !key) {
-        return;
-    }
-    std::lock_guard<std::mutex> lock(gPipelineCacheLock);
-    if (!gStoredPipelineKeys.insert(hash).second) {
-        return;
-    }
-    std::ofstream out(path, std::ios::binary | std::ios::app);
-    const uint32_t length = (uint32_t) key->size();
-    out.write((const char *) &hash, sizeof hash);
-    out.write((const char *) &length, sizeof length);
-    out.write((const char *) key->data(), length);
-}
-
 
 // Offers the context's pipeline data to sun.java2d.skia.pipelineCache (Graphite's
 // native Vulkan backend has some, Dawn and Metal none): every 10 s and on dispose.
@@ -223,36 +166,14 @@ static void pipelineCacheEvent(ContextOptions::PipelineCallbackContext, ContextO
     const bool added = op == ContextOptions::PipelineCacheOp::kAddingPipeline;
     if (added) {
         gPipelinesBuilt++;
-        storePipelineKey(keyHash, key);
     }
     SKStats_PipelineEvent(added, fromPrecompile, label.c_str(), keyHash);
 }
 
-// Compiles the stored keys of earlier sessions on a thread of the context's own.
-static void precompileStoredPipelines(SKConfigContext *cc) {
-    std::vector<sk_sp<SkData>> keys = loadPipelineKeys();
-    if (keys.empty()) {
-        return;
-    }
-    cc->precompileContext = cc->context->makePrecompileContext();
-    if (!cc->precompileContext) {
-        return;
-    }
-    PrecompileContext *pc = cc->precompileContext.get();
-    cc->precompileThread = std::thread([pc, keys = std::move(keys)]() {
-        int compiled = 0;
-        for (const sk_sp<SkData> &key : keys) {
-            if (pc->precompile(key)) {
-                compiled++;
-            }
-        }
-        J2dRlsTraceLn(J2D_TRACE_INFO, "SKBackend: precompiled %d of %zu stored pipelines", compiled, keys.size());
-    });
-}
-
 void SKBackend_Configure(jint msaaSamples, bool edgeAAQuads, SKLcdMode lcdMode, bool framebufferFetch, size_t glyphAtlasBytes,
                          jint glyphCacheTexels, jint luminanceClasses, bool presentPerCycle,
-                         bool submitPerPresent, SKLcdOrder lcdOrder) {
+                         bool submitPerPresent, SKLcdOrder lcdOrder, bool imageAtlas) {
+    gConfig.imageAtlas = imageAtlas;
     gConfig.submitPerPresent = submitPerPresent;
     gConfig.lcdOrder = lcdOrder;
     gConfig.presentPerCycle = presentPerCycle;
@@ -326,12 +247,6 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     // sun.java2d.skia.pipelineCache for the backends Graphite caches for itself (Vulkan); one file,
     // Graphite checks vendor, device and cache UUID before using it.
     options.fPersistentPipelineStorage = SKPipelineCache_Storage("graphite");
-    if (const char *threads = envOrNull("J2D_SKIA_EXECUTOR")) {   // EXPERIMENT, see pipelineCacheEvent
-        if (!gExecutor) {
-            gExecutor = SkExecutor::MakeFIFOThreadPool(std::max(1, atoi(threads)));
-        }
-        options.fExecutor = gExecutor.get();
-    }
     std::unique_ptr<Context> context = SKPlatform_MakeContext(config, options);
     if (!context) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend_ContextFor: cannot create Graphite context");
@@ -348,7 +263,6 @@ SKConfigContext *SKBackend_ContextFor(SKPlatformConfig *config) {
     cc->context = std::move(context);
     gContexts[config] = cc;
     J2dTraceLn(J2D_TRACE_INFO, "SKBackend_ContextFor: created Graphite context for config %p", config);
-    precompileStoredPipelines(cc);   // EXPERIMENT, see pipelineCacheEvent
     return cc;
 }
 
@@ -373,16 +287,13 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
     }
     cc->surfaces.clear();
     SKMaskCache_Free(cc->maskCache);
+    SKImageAtlas_Free(cc->imageAtlas);
     for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
         SKGlyphCache_Free(cc->glyphCachesAA[b]);
         SKGlyphCache_Free(cc->glyphCachesLCD[b]);
     }
     cc->lcdTables.clear();
     cc->lcdCoverage.reset();
-    if (cc->precompileThread.joinable()) {   // a precompile still running must end before its context
-        cc->precompileThread.join();
-    }
-    cc->precompileContext.reset();
     cc->recorder.reset();
     cc->context.reset();
     delete cc;
@@ -394,7 +305,9 @@ void SKBackend_DisposeContext(SKPlatformConfig *config) {
 
 static SKSurfaceState *stateOf(SKSDOps *ops) {
     if (ops->state == nullptr) {
+        static uint64_t surfaceUids = 0;   // under the entry mutex (SKBackend_EntryMutex)
         ops->state = new SKSurfaceState();
+        ops->state->uid = ++surfaceUids;
     }
     return ops->state;
 }
@@ -454,6 +367,7 @@ sk_sp<SkSurface> SKBackend_GetSurface(SKSDOps *ops) {
 // destination. Valid until the texture is replaced. Graphite images belong to
 // the recorder that wraps them, so the view is made with the drawing context's
 // recorder, not the source's.
+
 sk_sp<SkImage> SKBackend_GetImage(SKSDOps *ops) {
     if (ops == nullptr || ops->platform == nullptr || SKPlatform_TextureHandle(ops->platform) == nullptr) {
         return nullptr;
@@ -488,6 +402,7 @@ void SKBackend_ReleaseSurface(SKSDOps *ops, bool dispose) {
         ops->state->cc->surfaces.erase(ops->state);
     }
     ops->state->surface.reset();
+    ops->state->presentTargets.clear();
     ops->state->wrappedTexture = nullptr;
     ops->state->cc = nullptr;
     forgetSurface(ops);
@@ -565,11 +480,9 @@ static void forgetSurface(SKSDOps *ops) {
     g.requestedWindows.erase(ops);
 }
 
-static void applyCanvasState() {
-    if (g.canvas == nullptr) {
-        return;
-    }
-    flushAllBatches();
+// The canvas clip and transform follow the render state as it changes: a change draws the pending
+// batches first (their quads were added under the previous state), then applies the new one.
+static void applyCanvasClip() {
     g.canvas->restoreToCount(g.baseSaveCount);
     g.canvas->save();
     // Java2D clips are in device space: apply before the transform.
@@ -582,9 +495,24 @@ static void applyCanvasState() {
     g.canvas->setMatrix(g.hasMatrix ? SkM44(g.matrix) : SkM44());
 }
 
+static void applyCanvasState() {
+    if (g.canvas == nullptr) {
+        return;
+    }
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_STATE);
+    flushAllBatches();
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
+    applyCanvasClip();
+}
+
 static void markTouched() {
     if (g.cc != nullptr) {
         g.touchedContexts.insert(g.cc);
+    }
+    if (g.dst != nullptr && g.dst->state != nullptr && g.cc != nullptr) {
+        g.dst->state->drawnSinceBlit = true;
+        g.dst->state->drawnGeneration = g.cc->recordingGeneration;
+        g.dst->state->contentVersion++;
     }
     if (g.dst != nullptr && g.dst->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
         g.touchedWindows.insert(g.dst);
@@ -607,7 +535,20 @@ static sk_sp<SkImage> uploadPixmap(const SkPixmap &pm) {
 }
 
 void SKBackend_SetDestination(SKSDOps *dst) {
+    // The same destination again, its texture unchanged: a redundant state change. BufferedContext.validate sends
+    // SET_SURFACES for a new source as well (before a blit of another image, and after it), and sends the clip and
+    // the rest of the render state again only for a new destination, so the canvas, its clip and the pending
+    // batches stay as they are.
+    if (dst != nullptr && dst == g.dst && g.canvas != nullptr && dst->state != nullptr && dst->state->surface
+            && dst->state->cc == g.cc && dst->platform != nullptr
+            && dst->state->wrappedTexture == SKPlatform_TextureHandle(dst->platform)) {
+        return;
+    }
+    // Another destination: the pending batches belong to the canvas being left; they are drawn, and the render
+    // state is applied to the new canvas.
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_SURFACE);
     flushAllBatches();
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
     g.dst = nullptr;
     g.canvas = nullptr;
     if (dst == nullptr) {
@@ -1139,6 +1080,7 @@ static void flushBatchesOf(SKConfigContext *cc) {
     if (cc != nullptr) {
         flushGlyphCaches(cc);
         SKMaskCache_Flush(cc->maskCache);
+        SKImageAtlas_Flush(cc->imageAtlas);
     }
     gRects.flush();
 }
@@ -1154,10 +1096,32 @@ static void flushAllBatches() {
     flushBatchesOf(g.cc);
 }
 
-#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); flushAllBatches()
-#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); if (g.cc != nullptr) SKMaskCache_Flush(g.cc->maskCache)
-#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); gRects.flush(); flushGlyphBatches()
-#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); flushAtlasBatches()
+
+#define REQUIRE_CANVAS() if (g.canvas == nullptr) { return; } markTouched(); { SKDrawCauseScope cause_(SK_COUNT_MESH_DRAWS_AT_CANVAS_OP); flushAllBatches(); }
+
+// Before a batched op of one kind (rects and lines 0, glyphs 1, Marlin's coverage tiles 2, image atlas sprites 3): the
+// other kinds' pending batches are drawn first, so the batches pending at any time are of one kind and draw in Java's
+// order, as in any in-order batching renderer.
+static void drawOtherKinds(int kind) {
+    SKStats_SetDrawCause(SK_COUNT_MESH_DRAWS_AT_KIND);
+    if (kind != 0) {
+        gRects.flush();
+    }
+    if (kind != 1) {
+        flushGlyphBatches();
+    }
+    if (kind != 2 && g.cc != nullptr) {
+        SKMaskCache_Flush(g.cc->maskCache);
+    }
+    if (kind != 3 && g.cc != nullptr) {
+        SKImageAtlas_Flush(g.cc->imageAtlas);
+    }
+    SKStats_SetDrawCause(SK_COUNT_COUNT);
+}
+
+#define REQUIRE_CANVAS_TEXT() if (g.canvas == nullptr) { return; } markTouched(); drawOtherKinds(1)
+#define REQUIRE_CANVAS_MASK() if (g.canvas == nullptr) { return; } markTouched(); drawOtherKinds(2)
+#define REQUIRE_CANVAS_RECT() if (g.canvas == nullptr) { return; } markTouched(); drawOtherKinds(0)
 
 void SKBackend_FillRect(jint x, jint y, jint w, jint h) {
     REQUIRE_CANVAS_RECT();
@@ -1376,12 +1340,12 @@ void SKBackend_FillParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, j
 
 void SKBackend_DrawParallelogram(bool aa, jfloat x11, jfloat y11, jfloat dx21, jfloat dy21, jfloat dx12, jfloat dy12,
                                    jfloat lwr21, jfloat lwr12) {
-    if (aa) { REQUIRE_CANVAS(); } else { REQUIRE_CANVAS_RECT(); }
     // The given parallelogram is the stroke centerline (see MTLRenderer_DrawParallelogram):
     // grow it by half the line width for the outer edge, shrink it for the inner one.
     float ldx21 = dx21 * lwr21, ldy21 = dy21 * lwr21;
     float ldx12 = dx12 * lwr12, ldy12 = dy12 * lwr12;
     float ox11 = x11 - (ldx21 + ldx12) / 2.0f, oy11 = y11 - (ldy21 + ldy12) / 2.0f;
+    if (aa) { REQUIRE_CANVAS(); } else { REQUIRE_CANVAS_RECT(); }
     bool hole = lwr21 < 1.0f && lwr12 < 1.0f; // otherwise the stroke covers the interior
     float ix11 = x11 + (ldx21 + ldx12) / 2.0f, iy11 = y11 + (ldy21 + ldy12) / 2.0f;
     if (!aa) {
@@ -1505,6 +1469,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
     const bool solidTile = mask == nullptr || masklen == 0;
     if (solidTile && (g.shader || !SKMaskCache_Fits(w, h))) {
         // a solid tile under a shader paint, or an oversized one, is a plain rect
+        { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }   // drawn through the canvas: every pending batch first, of any kind
         SKMaskCache_Flush(g.cc->maskCache);
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
@@ -1524,6 +1489,7 @@ void SKBackend_MaskFill(jint x, jint y, jint w, jint h, jint maskoff, jint masks
             return;
         }
     }
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // the rest draws through the canvas: every pending batch first, of any kind
     if (solidTile) {
         g.canvas->drawIRect(SkIRect::MakeXYWH(x, y, w, h), p);
         return;
@@ -1595,9 +1561,10 @@ static sk_sp<SkBlender> lcdBlender(jint contrast) {
 
 // LCD text without a destination read (sun.java2d.skia.lcd=twopass and
 // accumulate): the blend  Cr = Cd * (1 - cov) + Cs * cov  per channel as two
-// fixed-function passes, kModulate with (1 - cov) and kPlus with Cs * cov,
+// fixed-function passes, kModulate with (1 - cov) and an addition of Cs * cov,
 // which is how DirectWrite composites ClearType (dual-source blending does both
-// at once; Graphite does not expose it). The destination's gamma cannot be
+// at once; Graphite uses it for its own LCD text only, no mesh or runtime effect has a second
+// output, 2026-11-03). The destination's gamma cannot be
 // applied without reading it; instead the coverage is corrected so that the
 // linear blend reproduces the gamma blend on a white and on a black
 // background, mixed by the channel's text value (dark text is mostly read on
@@ -1606,7 +1573,12 @@ static sk_sp<SkBlender> lcdBlender(jint contrast) {
 // correction depends on the coverage and the text colour only, so it is a
 // 256-entry table per channel, built once per colour and contrast and sampled
 // as a 256x1 texture (lcdTable). The coverage arrives in the atlas' RGB
-// channels. Both passes write alpha 1 over the whole quad and ignore the
+// channels. The addition is kSrcOver with a source alpha of 0 (Cs * cov + Cd), not kPlus: Graphite
+// blends kPlus in the shader wherever the destination is cheap to read (Vulkan's input attachment,
+// Metal's framebuffer fetch; ContextUtils.cpp, CanUseHardwareBlending), which cost a destination read
+// per draw and lost the second pass of overlap layers on Vulkan (2026-10-28); kSrcOver without
+// coverage is fixed-function everywhere, and the unorm destination clamps the sum as kPlus does.
+// Both passes leave the destination's alpha (1) as it is over the whole quad and ignore the
 // paint's alpha, which holds because LCD text is only requested for an opaque
 // colour on an opaque destination (SKSurfaceData.canRenderLCDText).
 
@@ -1667,7 +1639,7 @@ static sk_sp<SkShader> lcdPassShader(const sk_sp<SkShader> &coverage, const SkPa
         )";
         const char *mains[2] = {
             "half4 main(float2 xy) { return half4(1 - coverage(xy), 1); }",
-            "half4 main(float2 xy) { return half4(src * coverage(xy), 1); }",
+            "half4 main(float2 xy) { return half4(src * coverage(xy), 0); }",   // alpha 0: kSrcOver adds
         };
         for (int i = 0; i < 2; i++) {
             auto result = SkRuntimeEffect::MakeForShader(SkStringPrintf("%s%s", common, mains[i]));
@@ -1700,6 +1672,8 @@ static sk_sp<SkShader> lcdPassShader(const sk_sp<SkShader> &coverage, const SkPa
 static SKQuadBatchTwoPass gLcdTwoPass = {
     [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdPassShader(atlas, paint, gLcdTwoPass.key, false); },
     [](const sk_sp<SkShader> &atlas, const SkPaint &paint) { return lcdPassShader(atlas, paint, gLcdTwoPass.key, true); },
+    SkBlendMode::kModulate,
+    SkBlendMode::kSrcOver,   // the second shader's alpha is 0: an addition (above)
 };
 
 // The two passes over a coverage image (device coordinates) within `bounds`,
@@ -1842,6 +1816,7 @@ static SKGlyphCache *glyphCache(bool lcd, const GlyphInfo *ginfo) {
 // Glyphs too large for a cache cell, or LCD glyphs shifted by a third of a
 // pixel, are uploaded and drawn individually (MTLTextRenderer's NoCache paths).
 static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
     SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, ginfo->rowBytes);
@@ -1852,6 +1827,7 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
 
 static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
     const int w = ginfo->width, h = ginfo->height;
     std::vector<unsigned char> rgba((size_t) w * h * 4);
@@ -1877,6 +1853,7 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowB
 }
 
 static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     SkPixmap pm(SkImageInfo::Make(ginfo->width, ginfo->height, kBGRA_8888_SkColorType, kPremul_SkAlphaType),
                 ginfo->image, ginfo->rowBytes);
     if (sk_sp<SkImage> img = uploadPixmap(pm)) {
@@ -1936,24 +1913,103 @@ static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext
     return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(textColour, pScalerContext)) : platform;
 }
 
+// The text blob cache (SKBackend_SetTextBlobCache): least recently used first out. A key is the bytes of a
+// call's runs: per run the typeface's identity (a cached blob holds a reference to it, so the address is not
+// reused while the key lives), the font's parameters, the glyph ids and their positions relative to the
+// call's origin. The paint is not part of a blob and not of the key.
+namespace {
+struct TextBlobCache {
+    size_t capacity = 0;
+    std::list<std::pair<std::string, sk_sp<SkTextBlob>>> lru;   // most recently used first
+    std::unordered_map<std::string_view, decltype(lru)::iterator> index;   // views into the keys in lru
+    jlong hits = 0, misses = 0;
+
+    sk_sp<SkTextBlob> find(const std::string &key) {
+        auto it = index.find(std::string_view(key));
+        if (it == index.end()) {
+            return nullptr;
+        }
+        lru.splice(lru.begin(), lru, it->second);
+        return it->second->second;
+    }
+    void add(std::string key, sk_sp<SkTextBlob> blob) {
+        lru.emplace_front(std::move(key), std::move(blob));
+        index.emplace(std::string_view(lru.front().first), lru.begin());
+        while (lru.size() > capacity) {
+            index.erase(std::string_view(lru.back().first));
+            lru.pop_back();
+        }
+    }
+    void clear() {
+        index.clear();
+        lru.clear();
+    }
+};
+TextBlobCache gTextBlobs;   // the flusher's, under the entry mutex
+
+template <typename T> void appendBytes(std::string &key, const T &value) {
+    key.append(reinterpret_cast<const char *>(&value), sizeof(T));
+}
+
+void appendFont(std::string &key, const SkFont &font) {
+    appendBytes(key, (uintptr_t) font.getTypeface());
+    appendBytes(key, font.getSize());
+    appendBytes(key, font.getScaleX());
+    appendBytes(key, font.getSkewX());
+    const uint32_t flags = (uint32_t) font.getEdging() | (uint32_t) font.getHinting() << 4
+                           | (uint32_t) font.isSubpixel() << 8 | (uint32_t) font.isLinearMetrics() << 9
+                           | (uint32_t) font.isEmbolden() << 10 | (uint32_t) font.isBaselineSnap() << 11
+                           | (uint32_t) font.isForceAutoHinting() << 12 | (uint32_t) font.isEmbeddedBitmaps() << 13;
+    appendBytes(key, flags);
+}
+} // namespace
+
+void SKBackend_SetTextBlobCache(jint entries) {
+    gTextBlobs.capacity = entries > 0 ? (size_t) entries : 0;
+    gTextBlobs.clear();
+}
+
+void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses) {
+    *hits = gTextBlobs.hits;
+    *misses = gTextBlobs.misses;
+}
+
 jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
-                                   const jfloat *positions) {
+                                   const jfloat *positions, bool cacheBlobs) {
     jlong drawn = 0;
     if (contextCount <= 0) return 0;
+    cacheBlobs = cacheBlobs && gTextBlobs.capacity > 0;
     // runs of glyphs sharing a font (the strike's own, or a platform fallback font)
     std::vector<SkGlyphID> ids;
     std::vector<SkPoint> points;
     SkFont runFont;
     const SkTypeface *runTypeface = nullptr;
+    // cached: the runs collected (positions relative to the origin) into one blob, looked up by their bytes
+    struct Run {
+        SkFont font;
+        size_t first, count;
+    };
+    std::vector<Run> runs;
+    std::vector<SkGlyphID> allIds;
+    std::vector<SkPoint> allPoints;
     auto flushRun = [&] {
-        if (!ids.empty()) {
-            canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
-            drawn += (jlong) ids.size();
-            ids.clear();
-            points.clear();
+        if (ids.empty()) {
+            return;
         }
+        if (cacheBlobs) {
+            runs.push_back(Run{runFont, allIds.size(), ids.size()});
+            allIds.insert(allIds.end(), ids.begin(), ids.end());
+            for (const SkPoint &p : points) {
+                allPoints.push_back({p.fX - originX, p.fY - originY});
+            }
+        } else {
+            canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+        }
+        drawn += (jlong) ids.size();
+        ids.clear();
+        points.clear();
     };
     float penX = originX, penY = originY;
     for (jint i = 0; i < numGlyphs; i++) {
@@ -1995,6 +2051,37 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
         points.push_back({gx, gy});
     }
     flushRun();
+    if (cacheBlobs && !runs.empty()) {
+        std::string key;
+        key.reserve(runs.size() * 40 + allIds.size() * (sizeof(SkGlyphID) + sizeof(SkPoint)));
+        for (const Run &run : runs) {
+            appendFont(key, run.font);
+            appendBytes(key, run.count);
+            key.append(reinterpret_cast<const char *>(allIds.data() + run.first), run.count * sizeof(SkGlyphID));
+            key.append(reinterpret_cast<const char *>(allPoints.data() + run.first), run.count * sizeof(SkPoint));
+        }
+        sk_sp<SkTextBlob> blob = gTextBlobs.find(key);
+        if (blob) {
+            gTextBlobs.hits++;
+            SKStats_Count(SK_COUNT_TEXT_BLOB_HITS);
+        } else {
+            SkTextBlobBuilder builder;
+            for (const Run &run : runs) {
+                const SkTextBlobBuilder::RunBuffer &buffer = builder.allocRunPos(run.font, (int) run.count);
+                memcpy(buffer.glyphs, allIds.data() + run.first, run.count * sizeof(SkGlyphID));
+                memcpy(buffer.points(), allPoints.data() + run.first, run.count * sizeof(SkPoint));
+            }
+            blob = builder.make();
+            gTextBlobs.misses++;
+            SKStats_Count(SK_COUNT_TEXT_BLOB_MISSES);
+            if (blob) {
+                gTextBlobs.add(std::move(key), blob);
+            }
+        }
+        if (blob) {
+            canvas->drawTextBlob(blob, originX, originY, paint);
+        }
+    }
     return drawn;
 }
 
@@ -2002,10 +2089,11 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();   // glyph-image draws queued before this list stay in order
+    // drawn through the canvas: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this list stay in order
     SkPaint paint = SKBackend_MakePaint(true);
     jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
-                                               originX, originY, codes, images, positions);
+                                               originX, originY, codes, images, positions, true);
     gGlyphsDrawnBySkia.fetch_add(drawn, std::memory_order_relaxed);
 }
 
@@ -2071,7 +2159,8 @@ const Shaping &shaping() {
 void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat originX, jfloat originY,
                                 const jchar *chars, jint length) {
     REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();   // glyph-image draws queued before this text stay in order
+    // drawn through the canvas: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this text stay in order
     SkFont font;
     if (length <= 0 || !SKFontScaler_Font(pScalerContext, &font)) {
         return;
@@ -2373,7 +2462,8 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags) {
     REQUIRE_CANVAS_TEXT();
-    flushGlyphBatches();
+    // drawn through the canvas: every pending batch first, of any kind
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }  
     const Shaping &s = shaping();
     if (length <= 0 || runCount <= 0 || !s.unicode) {
         return;
@@ -2657,7 +2747,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
                                       {dstRect.fRight, dstRect.fBottom}, {dstRect.fLeft, dstRect.fBottom}};
         const SkPoint texCoords[4] = {{srcRect.fLeft, srcRect.fTop}, {srcRect.fRight, srcRect.fTop},
                                       {srcRect.fRight, srcRect.fBottom}, {srcRect.fLeft, srcRect.fBottom}};
-        SKStats_Count(SK_COUNT_MESH_DRAWS);
+        SKStats_Count(SK_COUNT_MESH_DRAWS); SKStats_Count(SK_COUNT_MESH_DRAWS_IMMEDIATE);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, positions, texCoords,
                                                     nullptr, 6, quadIndices),
                                SkBlendMode::kModulate, paint);
@@ -2688,7 +2778,7 @@ static void drawImageQuad(const sk_sp<SkImage> &image, const SkRect &srcRect, co
     auto drawSpans = [&]() {   // the mesh so far, in device space
         g.canvas->save();
         g.canvas->resetMatrix();
-        SKStats_Count(SK_COUNT_MESH_DRAWS);
+        SKStats_Count(SK_COUNT_MESH_DRAWS); SKStats_Count(SK_COUNT_MESH_DRAWS_IMMEDIATE);
         g.canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, (int) positions.size(), positions.data(),
                                                     texCoords.data(), nullptr, (int) indices.size(), indices.data()),
                                SkBlendMode::kModulate, paint);
@@ -2762,16 +2852,76 @@ static void blitSoftwareSource(JNIEnv *env, SurfaceDataOps *src, jint srctype, j
     }
 }
 
+// A Skia surface's image for a blit: linked to its device, so Graphite records the source's pending draws ahead of
+// the reads and a later draw into the source after them.
+static sk_sp<SkImage> blitSourceImage(SKSDOps *src) {
+    return SkSurfaces::AsImage(src->state->surface);
+}
+
+// sun.java2d.skia.imageAtlas (x64hw, 2026-11-04; on by default since 2026-11-06): a blit the caller found may be a
+// sprite (SKBackend_Blit), of a small Skia surface of this context, unscaled and pixel-aligned, with a plain SrcOver
+// composite, becomes a sprite of the context's image atlas (SKImageAtlas.h): one mesh for the small images drawn in
+// a row instead of a draw each, each with its own image paint key. False: the caller draws the blit itself.
+static bool imageAtlasBlit(SKSDOps *src, const sk_sp<SkImage> &image, const SkPaint &p, jint sx1, jint sy1, jint sx2, jint sy2,
+                          jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2) {
+    if (src == nullptr || src->state == nullptr || g.cc == nullptr
+            || sx2 - sx1 != dx2 - dx1 || sy2 - sy1 != dy2 - dy1 || dx1 != std::floor(dx1) || dy1 != std::floor(dy1)
+            || !SKImageAtlas_Fits(sx2 - sx1, sy2 - sy1) || p.asBlendMode() != SkBlendMode::kSrcOver
+            || p.getShader() != nullptr || p.getColorFilter() != nullptr) {
+        return false;
+    }
+    if (g.cc->imageAtlas == nullptr && !g.cc->imageAtlasFailed) {
+        g.cc->imageAtlas = SKImageAtlas_Create(g.cc);
+        g.cc->imageAtlasFailed = g.cc->imageAtlas == nullptr;
+    }
+    if (g.cc->imageAtlas == nullptr) {
+        return false;
+    }
+    SkPaint sprite = p;
+    sprite.setColor4f(SkColor4f{1, 1, 1, g.extraAlpha});   // the colour modulates the atlas texel: white, the extra alpha
+    return SKImageAtlas_Draw(g.cc->imageAtlas, g.canvas, sprite, src->state, image, sx1, sy1, sx2 - sx1, sy2 - sy1,
+                            (jint) dx1, (jint) dy1);
+}
+
 void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2, jint sy2,
                       jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2, jlong pSrc, jlong pDst) {
-    REQUIRE_CANVAS();
+    if (g.canvas == nullptr) {
+        return;
+    }
+    markTouched();
     jboolean isoblit = (packedParams >> sun_java2d_skia_SKBlitLoops_OFFSET_ISOBLIT) & 1;
     jint hint        = (packedParams >> sun_java2d_skia_SKBlitLoops_OFFSET_HINT) & 0xff;
     jint srctype     = (packedParams >> sun_java2d_skia_SKBlitLoops_OFFSET_SRCTYPE) & 0xff;
+    // A blit that may become an image atlas sprite (of a Skia surface, no transform, no XOR, no MSAA, not from the
+    // destination) draws only the other kinds' batches, so consecutive sprites share the atlas batch; any other blit
+    // draws everything pending first, and so does one that turns out not to be a sprite (below).
+    const bool maySprite = gConfig.imageAtlas && isoblit && !g.xorMode && !SKBackend_Multisampled() && !SKBackend_EdgeAAQuads()
+            && !g.hasMatrix && (SKSDOps *) jlong_to_ptr(pSrc) != g.dst && dx1 < dx2 && dy1 < dy2 && sx1 < sx2 && sy1 < sy2;
+    {
+        SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT);
+        if (maySprite) {
+            drawOtherKinds(3);
+        } else {
+            flushAllBatches();
+        }
+    }
 
     sk_sp<SkImage> image;
+    SKSDOps *linkedSrc = nullptr;   // a Skia surface of this context, sampled through its linked image
     SkRect srcRect;
     if (isoblit) {
+        SKSDOps *src0 = (SKSDOps *) jlong_to_ptr(pSrc);
+        SKStatsScope sourceStats(SK_SPAN_BLIT_SOURCE);
+        if (SKStats_IsEnabled() && src0 != nullptr && src0->state != nullptr && src0->state->cc != nullptr) {
+            SKStats_Count(SK_COUNT_SURFACE_BLITS);
+            if (src0->state->drawnSinceBlit && src0->state->drawnGeneration == src0->state->cc->recordingGeneration) {
+                SKStats_Count(SK_COUNT_BLITS_OF_PENDING_SOURCES);
+                if (src0->type != sun_java2d_pipe_hw_AccelSurface_TEXTURE) {
+                    SKStats_Count(SK_COUNT_PENDING_SOURCES_VOLATILE);
+                }
+            }
+            src0->state->drawnSinceBlit = false;
+        }
         SKSDOps *src = (SKSDOps *) jlong_to_ptr(pSrc);
         if (src != nullptr && !sourceUsable(src, "SKBackend_Blit")) {
             return;
@@ -2781,12 +2931,15 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
             // An image view linked to the source's device: Graphite flushes the
             // source's pending draws before this recording samples it. A bare
             // WrapTexture of the same texture would not carry that dependency.
-            image = SkSurfaces::AsImage(src->state->surface);
+            image = blitSourceImage(src);
+            linkedSrc = src;
         } else {
             image = SKBackend_GetImage(src);
         }
+        sourceStats.end();
         srcRect = SkRect::MakeLTRB(sx1, sy1, sx2, sy2);
     } else {
+        SKStatsScope softwareStats(SK_SPAN_BLIT_SOFTWARE);
         blitSoftwareSource(env, (SurfaceDataOps *) jlong_to_ptr(pSrc), srctype, hint, sx1, sy1, sx2, sy2,
                            SkRect::MakeLTRB((SkScalar) dx1, (SkScalar) dy1, (SkScalar) dx2, (SkScalar) dy2));
         return;
@@ -2798,6 +2951,14 @@ void SKBackend_Blit(JNIEnv *env, jint packedParams, jint sx1, jint sy1, jint sx2
     SkPaint p;
     applyComposite(p, false);
     p.setAlphaf(g.extraAlpha);
+    SKStatsScope drawStats(SK_SPAN_BLIT_DRAW);
+    if (maySprite && imageAtlasBlit(linkedSrc, image, p, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)) {
+        return;
+    }
+    if (maySprite) {
+        SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_BLIT);
+        flushAllBatches();   // not a sprite: everything pending before it first
+    }
     drawImageQuad(image, srcRect, dstRect, samplingForHint(hint), p);
 }
 
@@ -2924,12 +3085,30 @@ void SKBackend_CopyArea(jint x, jint y, jint w, jint h, jint dx, jint dy) {
 // Submission / presentation
 // ---------------------------------------------------------------------------
 
+// Where Graphite presents (Windows over Vulkan): a window's draw into its next swap chain image,
+// recorded into the window's context at the end of a flush, before the flush's submit, so that
+// the frame is one recording and one submit instead of two of each. SKBackend_FlushRecording
+// inserts the context's recording with the image's semaphores (wait for the acquire, signal the
+// present) and its present layout; SKBackend_EndOfFlush presents it after the submit. One window
+// per context and flush; any other window of the context presents on its own (presentThroughGraphite).
+struct SKFoldedPresent {
+    SKSDOps *dst = nullptr;
+    SKPlatformPresentTarget target;
+    sk_sp<SkSurface> image;   // null: the image could not be wrapped, nothing drawn into it
+    bool inserted = false;
+};
+static std::unordered_map<SKConfigContext *, SKFoldedPresent> gFolded;
+
+static std::atomic<jlong> gRecordings{0};   // recordings snapped (SKBackend_Recordings)
+
 void SKBackend_FlushRecording(SKConfigContext *cc) {
     if (cc == nullptr || !cc->recorder) {
         return;
     }
-    flushBatchesOf(cc);
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_FLUSH); flushBatchesOf(cc); }
     cc->recordingGeneration++;
+    auto folded = gFolded.find(cc);
+    SKFoldedPresent *present = folded != gFolded.end() && !folded->second.inserted ? &folded->second : nullptr;
     // Graphite registers a recording's new pipelines while snap() builds its draw passes and
     // compiles them in insertRecording (tint, the D3D shader compiler, the driver's compiler
     // threads): such an insert costs tens of milliseconds where a warm one costs a fraction of one
@@ -2940,16 +3119,36 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
         recording = cc->recorder->snap();
     }
     if (recording) {
+        gRecordings.fetch_add(1, std::memory_order_relaxed);
         InsertRecordingInfo info;
         info.fRecording = recording.get();
+        if (present != nullptr) {
+            SKPlatformPresentTarget &t = present->target;
+            info.fTargetSurface = present->image.get();
+            info.fTargetTextureState = present->image ? &t.presentState : nullptr;
+            info.fNumWaitSemaphores = 1;
+            info.fWaitSemaphores = &t.waitSemaphore;
+            info.fNumSignalSemaphores = 1;
+            info.fSignalSemaphores = &t.signalSemaphore;
+            info.fFinishedProc = t.finishedProc;     // Graphite calls it whether or not the insert succeeds
+            info.fFinishedContext = t.finishedContext;
+            present->inserted = true;
+        }
         const uint64_t start = SKStats_IsEnabled() ? SKStats_Now() : 0;
         SKStatsScope insertStats(SK_SPAN_INSERT);
         if (!cc->context->insertRecording(info)) {
             J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_FlushRecording: insertRecording failed");
+            if (present != nullptr) {
+                present->image.reset();   // nothing to present
+            }
         }
         if (start != 0 && gPipelinesBuilt != pipelinesBefore) {
             SKStats_AddSpan(SK_SPAN_INSERT_COMPILING, SKStats_Now() - start);
         }
+    } else if (present != nullptr && present->target.finishedProc != nullptr) {
+        present->target.finishedProc(present->target.finishedContext, skgpu::CallbackResult::kFailed);
+        present->inserted = true;
+        present->image.reset();
     }
 }
 
@@ -2988,6 +3187,163 @@ void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
 
 static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any Java thread
 
+// The floor of Graphite's per-draw cost on this device, without the backend in front of it
+// (SKEnvironment.benchGraphite): `draws` draws of one kind into an off-screen 1024x1024 surface
+// of the first context, then snap, insert and submit; per frame the nanoseconds of each, and
+// the median over `frames` frames (after as many warm-up frames) divided by the draws goes to
+// out[0..3] (record, snap, insert, submit, ns per draw). Kinds: 0 drawRect in one colour, 1
+// drawRect alternating colours, 2 a one-quad drawVertices (the batches' shape), 3 drawImageRect
+// of a 32x32 texture (blits, icons), 4 the same cycling 16 textures, 5 rect, mesh and image in turn, 6
+// rects switching between two surfaces every 50 draws; 7-10 Skia's text path, 12-glyph strings of 50 distinct ones:
+// 7 a temporary glyph run (drawGlyphs), 8 a retained SkTextBlob, 9 and 10 the same in LCD. Called with the render
+// queue locked.
+bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]) {
+    SKConfigContext *cc = gContexts.empty() ? nullptr : gContexts.begin()->second;
+    if (cc == nullptr || !cc->recorder || !cc->context || draws <= 0 || frames <= 0) {
+        return false;
+    }
+    flushAllBatches();
+    SKBackend_Submit(cc, true);   // nothing of the queue's in the recordings below
+    sk_sp<SkSurface> surface = SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
+    sk_sp<SkSurface> source = SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(32, 32, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
+    if (!surface || !source) {
+        return false;
+    }
+    source->getCanvas()->clear(SK_ColorBLUE);
+    sk_sp<SkImage> image = SkSurfaces::AsImageCopy(source);
+    // kinds 4-6, the IDE's state churn: 16 textures in turn, three pipelines in turn, two surfaces in turn
+    std::vector<sk_sp<SkImage>> images;
+    for (int i = 0; i < 16; i++) {
+        source->getCanvas()->clear(SkColorSetARGB(255, (U8CPU) (i * 16), 80, 160));
+        images.push_back(SkSurfaces::AsImageCopy(source));
+    }
+    sk_sp<SkSurface> second = SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType));
+    // kinds 7-10, Skia's text path: 12-glyph strings of 50 distinct ones, drawn as a temporary glyph run
+    // (drawGlyphs, as the text route draws) or from a retained SkTextBlob (the text blob cache), grayscale
+    // or LCD, at whole-pixel origins, on a surface with the display's pixel geometry (LCD otherwise grayscale)
+    const SkSurfaceProps textProps(0, SKBackend_LcdPixelGeometry());
+    sk_sp<SkSurface> textSurface = kind >= 7 ? SkSurfaces::RenderTarget(cc->recorder.get(),
+            SkImageInfo::Make(1024, 1024, kBGRA_8888_SkColorType, kPremul_SkAlphaType), skgpu::Mipmapped::kNo, &textProps) : nullptr;
+    SkFont textFont(SKPlatform_FontManager()->legacyMakeTypeface(nullptr, SkFontStyle()), 14);
+    textFont.setEdging(kind == 9 || kind == 10 ? SkFont::Edging::kSubpixelAntiAlias : SkFont::Edging::kAntiAlias);
+    textFont.setSubpixel(true);
+    std::vector<std::vector<SkGlyphID>> strings;
+    std::vector<std::vector<SkPoint>> stringPositions;
+    std::vector<sk_sp<SkTextBlob>> blobs;
+    for (int s = 0; s < 50; s++) {
+        char chars[13];
+        for (int c = 0; c < 12; c++) {
+            chars[c] = (char) ('a' + (s * 7 + c * 3) % 26);
+        }
+        chars[12] = 0;
+        std::vector<SkGlyphID> glyphs(12);
+        textFont.textToGlyphs(chars, 12, SkTextEncoding::kUTF8, glyphs);
+        std::vector<SkScalar> advances(12);
+        textFont.getWidths(glyphs, advances);
+        std::vector<SkPoint> points(12);
+        SkScalar penX = 0;
+        for (int c = 0; c < 12; c++) {
+            points[c] = {penX, 0};
+            penX += advances[c];
+        }
+        SkTextBlobBuilder builder;
+        const SkTextBlobBuilder::RunBuffer &run = builder.allocRunPos(textFont, 12);
+        memcpy(run.glyphs, glyphs.data(), 12 * sizeof(SkGlyphID));
+        memcpy(run.points(), points.data(), 12 * sizeof(SkPoint));
+        blobs.push_back(builder.make());
+        strings.push_back(std::move(glyphs));
+        stringPositions.push_back(std::move(points));
+    }
+    std::vector<SkPoint> shifted(12);
+    const SkPoint pos[4] = {{0, 0}, {16, 0}, {16, 16}, {0, 16}};
+    const uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
+    std::vector<double> t[4];
+    for (int f = 0; f < 2 * frames; f++) {
+        SkCanvas *canvas = surface->getCanvas();
+        SkPaint paint;
+        const uint64_t t0 = SKStats_Now();
+        for (int i = 0; i < draws; i++) {
+            const float x = (float) ((i * 37) % 1000), y = (float) ((i * 53) % 1000);
+            switch (kind) {
+                case 0: paint.setColor(SK_ColorRED); canvas->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint); break;
+                case 1: paint.setColor(i % 2 ? SK_ColorRED : SK_ColorGREEN); canvas->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint); break;
+                case 2: {
+                    canvas->save();
+                    canvas->translate(x, y);
+                    paint.setColor(SK_ColorRED);
+                    canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, pos, nullptr, nullptr, 6, idx),
+                                         SkBlendMode::kModulate, paint);
+                    canvas->restore();
+                    break;
+                }
+                case 3: canvas->drawImageRect(image, SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint); break;
+                case 4: canvas->drawImageRect(images[(size_t) i % images.size()], SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint); break;
+                case 5:
+                    if (i % 3 == 0) {
+                        paint.setColor(SK_ColorRED);
+                        canvas->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint);
+                    } else if (i % 3 == 1) {
+                        canvas->save();
+                        canvas->translate(x, y);
+                        canvas->drawVertices(SkVertices::MakeCopy(SkVertices::kTriangles_VertexMode, 4, pos, nullptr, nullptr, 6, idx),
+                                             SkBlendMode::kModulate, paint);
+                        canvas->restore();
+                    } else {
+                        canvas->drawImageRect(images[(size_t) i % images.size()], SkRect::MakeXYWH(x, y, 32, 32), SkSamplingOptions(), &paint);
+                    }
+                    break;
+                case 7: case 9: {   // a temporary glyph run, as the text route draws
+                    const size_t s = (size_t) i % strings.size();
+                    for (int c = 0; c < 12; c++) {
+                        shifted[c] = {stringPositions[s][c].fX + x, stringPositions[s][c].fY + y + 14};
+                    }
+                    paint.setColor(i % 2 ? SK_ColorBLACK : SK_ColorBLUE);
+                    textSurface->getCanvas()->drawGlyphs(SkSpan<const SkGlyphID>(strings[s]), SkSpan<const SkPoint>(shifted), {0, 0}, textFont, paint);
+                    break;
+                }
+                case 8: case 10:   // a retained blob, as the text blob cache draws
+                    paint.setColor(i % 2 ? SK_ColorBLACK : SK_ColorBLUE);
+                    textSurface->getCanvas()->drawTextBlob(blobs[(size_t) i % blobs.size()], x, y + 14, paint);
+                    break;
+                default: {
+                    SkCanvas *c = (i / 50) % 2 == 0 || !second ? canvas : second->getCanvas();
+                    paint.setColor(SK_ColorRED);
+                    c->drawRect(SkRect::MakeXYWH(x, y, 16, 12), paint);
+                    break;
+                }
+            }
+        }
+        const uint64_t t1 = SKStats_Now();
+        std::unique_ptr<Recording> recording = cc->recorder->snap();
+        const uint64_t t2 = SKStats_Now();
+        InsertRecordingInfo info;
+        info.fRecording = recording.get();
+        cc->context->insertRecording(info);
+        const uint64_t t3 = SKStats_Now();
+        cc->context->submit(SyncToCpu::kNo);
+        const uint64_t t4 = SKStats_Now();
+        cc->context->submit(SyncToCpu::kYes);   // drained between frames, not timed
+        if (f >= frames) {
+            t[0].push_back((double) (t1 - t0));
+            t[1].push_back((double) (t2 - t1));
+            t[2].push_back((double) (t3 - t2));
+            t[3].push_back((double) (t4 - t3));
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        std::sort(t[i].begin(), t[i].end());
+        out[i] = t[i][t[i].size() / 2] / draws;
+    }
+    return true;
+}
+
+jlong SKBackend_Recordings() {
+    return gRecordings.load(std::memory_order_relaxed);
+}
+
 jlong SKBackend_Flushes() {
     return gFlushes.load(std::memory_order_relaxed);
 }
@@ -3008,6 +3364,116 @@ static void countFrame(JNIEnv *env, SKSDOps *dst, bool presented) {
     }
 }
 
+// Draws the window surface's client area into the acquired swap chain image (wrapped once per
+// image of a swap chain generation); null if the image cannot be wrapped.
+static sk_sp<SkSurface> drawIntoPresentTarget(SKSurfaceState *st, SKConfigContext *cc, const SKPlatformPresentTarget &target) {
+    const uint32_t generation = (uint32_t) (target.imageKey >> 32);
+    if (generation != st->presentGeneration) {
+        st->presentTargets.clear();   // the images of an earlier swap chain
+        st->presentGeneration = generation;
+    }
+    sk_sp<SkSurface> &image = st->presentTargets[target.imageKey];
+    if (!image) {
+        image = SkSurfaces::WrapBackendTexture(cc->recorder.get(), target.texture, target.colorType, nullptr, nullptr);
+    }
+    if (image) {
+        const SkIRect &source = target.source;
+        SkPaint paint;
+        paint.setBlendMode(SkBlendMode::kSrc);
+        image->getCanvas()->drawImageRect(SkSurfaces::AsImage(st->surface), SkRect::Make(source),
+                                          SkRect::MakeIWH(source.width(), source.height()),
+                                          SkSamplingOptions(SkFilterMode::kNearest), &paint,
+                                          SkCanvas::kFast_SrcRectConstraint);
+    } else {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "drawIntoPresentTarget: cannot wrap the swap chain image (%dx%d)",
+                      target.texture.dimensions().width(), target.texture.dimensions().height());
+    }
+    return image;
+}
+
+// Before the flush's submit (SKFoldedPresent): acquires the window's next swap chain image and
+// records the window's draw into it. False where the platform presents itself, when the window
+// was never drawn into, or when the context has a folded present already.
+static bool foldPresent(SKSDOps *dst) {
+    SKSurfaceState *st = dst->state;
+    SKConfigContext *cc = st != nullptr ? st->cc : nullptr;
+    if (cc == nullptr || !st->surface || !cc->context || gFolded.count(cc) != 0) {
+        return false;
+    }
+    SKPlatformPresentTarget target;
+    bool acquired;
+    {
+        SKStatsScope acquireStats(SK_SPAN_PRESENT_ACQUIRE);
+        acquired = SKPlatform_AcquirePresentTarget(dst->platform, &target);
+    }
+    if (!acquired) {
+        return false;
+    }
+    SKFoldedPresent &folded = gFolded[cc];
+    folded.dst = dst;
+    if (!target.texture.isValid()) {
+        folded.inserted = true;   // no image now: nothing to insert, the present fails
+        return true;
+    }
+    SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);   // the draw into the image (its recording is the flush's)
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_FLUSH); flushBatchesOf(cc); }   // the window's batched quads, before the draw that presents them
+    folded.target = target;
+    folded.image = drawIntoPresentTarget(st, cc, target);
+    return true;
+}
+
+// Where Graphite presents (SKPlatform_AcquirePresentTarget, Windows over Vulkan) and the window's
+// present was not folded into the flush (a second window of its context): draws the window
+// surface's client area into the next swap chain image in a recording of its own, which waits for
+// the image and leaves it ready to present, submits it and presents. False where the platform
+// presents itself (SKPlatform_RequestRedraw).
+static bool presentThroughGraphite(SKSDOps *dst, bool *presented) {
+    SKSurfaceState *st = dst->state;
+    SKConfigContext *cc = st != nullptr ? st->cc : nullptr;
+    if (cc == nullptr || !st->surface || !cc->context) {
+        return false;   // never drawn into: nothing Graphite could present
+    }
+    SKPlatformPresentTarget target;
+    bool acquired;
+    {
+        SKStatsScope acquireStats(SK_SPAN_PRESENT_ACQUIRE);
+        acquired = SKPlatform_AcquirePresentTarget(dst->platform, &target);
+    }
+    if (!acquired) {
+        return false;
+    }
+    *presented = false;
+    if (!target.texture.isValid()) {
+        return true;
+    }
+    SKStatsScope copyStats(SK_SPAN_PRESENT_COPY);   // the draw into the image, its recording and submit
+    sk_sp<SkSurface> image = drawIntoPresentTarget(st, cc, target);
+    // inserted even without a draw: the image's acquire semaphore must be waited for
+    std::unique_ptr<Recording> recording = cc->recorder->snap();
+    InsertRecordingInfo info;
+    info.fRecording = recording.get();
+    info.fTargetSurface = image.get();
+    info.fTargetTextureState = image ? &target.presentState : nullptr;
+    info.fNumWaitSemaphores = 1;
+    info.fWaitSemaphores = &target.waitSemaphore;
+    info.fNumSignalSemaphores = 1;
+    info.fSignalSemaphores = &target.signalSemaphore;
+    info.fFinishedProc = target.finishedProc;
+    info.fFinishedContext = target.finishedContext;
+    if (!recording || !cc->context->insertRecording(info)) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "presentThroughGraphite: insertRecording failed");
+        if (!recording && target.finishedProc != nullptr) {
+            target.finishedProc(target.finishedContext, skgpu::CallbackResult::kFailed);
+        }
+        return true;
+    }
+    cc->context->submit(SyncToCpu::kNo);
+    copyStats.end();
+    SKStatsScope callStats(SK_SPAN_PRESENT_CALL);
+    *presented = image != nullptr && SKPlatform_PresentTarget(dst->platform);
+    return true;
+}
+
 void SKBackend_RequestPresent(SKSDOps *ops) {
     if (ops != nullptr && ops->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
         g.requestedWindows.insert(ops);
@@ -3015,6 +3481,9 @@ void SKBackend_RequestPresent(SKSDOps *ops) {
 }
 
 bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
+    if (presentAll) {
+        SKStats_Count(SK_COUNT_TIMEOUT_FLUSHES);
+    }
     gFlushes.fetch_add(1, std::memory_order_relaxed);
     // Which windows to present: every one drawn into at the end of every flush
     // (sun.java2d.skia.present=flush), or only those whose paint cycle ended
@@ -3028,6 +3497,22 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             break;
         }
     }
+    // A flush that presents nothing and waits for nothing does not end its recordings: the next
+    // flush continues them, so each recording's fixed cost (snap, insert, submit: about 280 µs on
+    // Skia/Vulkan in the IDE) is paid per present, not per render-queue buffer. A tenth of the IDE's
+    // typing flushes presented nothing; holding them, Skia/Vulkan's flush wait −4 % (2026-11-03). At
+    // most MAX_DEFERRED_FLUSHES in a row (upload buffers and scratch textures recycle only after a
+    // submit); the flusher's timeout flush (100 ms, presentAll) follows a flush that returns pending,
+    // and read-backs, syncs and released surfaces submit as before.
+    // J2D_SKIA_RECORDING_PER_FLUSH (diagnostics, A/B): every flush ends its recordings, as before.
+    static const bool recordingPerFlush = getenv("J2D_SKIA_RECORDING_PER_FLUSH") != nullptr;
+    static int heldFlushes = 0;
+    if (!recordingPerFlush && !syncToCpu && !presentAll && !presenting && heldFlushes < MAX_DEFERRED_FLUSHES
+            && !g.touchedContexts.empty()) {
+        heldFlushes++;
+        return true;
+    }
+    heldFlushes = 0;
     // A flush that presents nothing and waits for nothing only inserts its recordings
     // (sun.java2d.skia.submit=present); the next submit sends them, in order.
     const bool defer = gConfig.submitPerPresent && !syncToCpu && !presentAll && !presenting
@@ -3040,6 +3525,18 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             gDeferredFlushes++;
         }
     } else {
+        // where Graphite presents, each context's first window to present is drawn into its swap
+        // chain image now, inside the recording the submit below sends (SKFoldedPresent)
+        for (SKSDOps *dst : g.touchedWindows) {
+            if ((everything || g.requestedWindows.count(dst) != 0) && dst->platform != nullptr) {
+                SKStatsScope presentStats(SK_SPAN_PRESENT);
+                if (foldPresent(dst)) {
+                    // its context is submitted below even if this flush drew nothing into it (a
+                    // window drawn earlier and presented at its paint cycle's end, present=cycle)
+                    g.touchedContexts.insert(dst->state->cc);
+                }
+            }
+        }
         const std::vector<SKConfigContext *> sent = gPendingSubmit;   // submitted by submitPending
         submitPending(nullptr, syncToCpu);
         for (SKConfigContext *cc : g.touchedContexts) {
@@ -3062,7 +3559,23 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
             bool presented;
             {
                 SKStatsScope presentStats(SK_SPAN_PRESENT);
-                presented = SKPlatform_RequestRedraw(dst->platform);
+                SKFoldedPresent *folded = nullptr;
+                for (auto &entry : gFolded) {
+                    if (entry.second.dst == dst) {
+                        folded = &entry.second;
+                        break;
+                    }
+                }
+                if (folded != nullptr) {
+                    if (!folded->inserted && folded->target.finishedProc != nullptr) {
+                        // never inserted (its context was not submitted): release what the acquire took
+                        folded->target.finishedProc(folded->target.finishedContext, skgpu::CallbackResult::kFailed);
+                    }
+                    SKStatsScope callStats(SK_SPAN_PRESENT_CALL);
+                    presented = folded->inserted && folded->image && SKPlatform_PresentTarget(dst->platform);
+                } else if (!presentThroughGraphite(dst, &presented)) {
+                    presented = SKPlatform_RequestRedraw(dst->platform);
+                }
             }
             if (!presented) {
                 SKStats_Count(SK_COUNT_PRESENTS_FAILED);
@@ -3073,6 +3586,12 @@ bool SKBackend_EndOfFlush(JNIEnv *env, bool syncToCpu, bool presentAll) {
         }
         it = g.touchedWindows.erase(it);
     }
+    gFolded.clear();
     g.requestedWindows.clear();
     return !g.touchedWindows.empty() || !gPendingSubmit.empty();
+}
+
+std::recursive_mutex &SKBackend_EntryMutex() {
+    static auto *mutex = new std::recursive_mutex();   // never destroyed: entry points may run during exit
+    return *mutex;
 }

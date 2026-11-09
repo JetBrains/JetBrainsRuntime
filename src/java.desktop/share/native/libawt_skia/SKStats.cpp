@@ -38,6 +38,8 @@ namespace {
 constexpr int OPCODE_SLOTS = 256;
 constexpr uint64_t DUMP_INTERVAL = 1000000000ull;   // 1 s
 constexpr int TOP_OPS = 8;
+constexpr int CAUSES = SK_COUNT_MESH_DRAWS_IMMEDIATE - SK_COUNT_MESH_DRAWS_AT_STATE + 1;
+int currentOp = -1;   // SKStats_SetCurrentOp
 
 struct Accumulator {
     uint64_t count = 0;
@@ -48,6 +50,8 @@ struct Stats {
     Accumulator spans[SK_SPAN_COUNT];
     Accumulator ops[OPCODE_SLOTS];
     uint64_t counters[SK_COUNT_COUNT] = {};
+    // the batch draws by cause (SK_COUNT_MESH_DRAWS_AT_STATE ... _AT_FLUSH, then _IMMEDIATE) and by the op that caused them
+    uint64_t causeOps[CAUSES][OPCODE_SLOTS] = {};
     uint64_t intervalStart = 0;
 };
 
@@ -56,8 +60,120 @@ const uint64_t origin = SKStats_Now();
 
 const char *const SPAN_NAMES[SK_SPAN_COUNT] = {
     "queue", "batches", "snap", "insert", "insert:compiling", "submit", "submit+wait", "readback", "image upload", "present",
-    "present:acquire", "present:copy", "present:call"
+    "present:acquire", "present:copy", "present:call", "blit:source", "blit:software", "blit:draw"
 };
+double millis(uint64_t nanos);
+
+// The queue entries by duration since the start (not reset per interval): a histogram of counts and time
+// (bucket upper edges 0.125 ms * 2^b, the last open), and the longest entries with their phases, from the
+// differences of the accumulators across the entry (SKStats_EndOfEntry takes the base after each entry).
+constexpr int BUCKETS = 11;
+constexpr int LONGEST = 6;
+const SKStatsSpan ENTRY_SPANS[] = {SK_SPAN_BATCHES, SK_SPAN_BLIT_DRAW, SK_SPAN_IMAGE_UPLOAD, SK_SPAN_READBACK, SK_SPAN_SNAP,
+                                   SK_SPAN_INSERT, SK_SPAN_INSERT_COMPILING, SK_SPAN_SUBMIT, SK_SPAN_SUBMIT_WAIT, SK_SPAN_PRESENT};
+constexpr int ENTRY_SPAN_COUNT = sizeof(ENTRY_SPANS) / sizeof(ENTRY_SPANS[0]);
+const SKStatsCounter ENTRY_COUNTERS[] = {SK_COUNT_MESH_DRAWS, SK_COUNT_SURFACE_BLITS, SK_COUNT_PIPELINES_ADDED,
+                                         SK_COUNT_ATLAS_UPLOADS, SK_COUNT_RENDER_PASSES};
+const char *const ENTRY_COUNTER_NAMES[] = {"mesh draws", "surface blits", "pipelines built", "atlas uploads", "render passes"};
+constexpr int ENTRY_COUNTER_COUNT = sizeof(ENTRY_COUNTERS) / sizeof(ENTRY_COUNTERS[0]);
+
+struct Entry {
+    uint64_t nanos = 0;
+    uint64_t at = 0;   // ms since the start
+    uint64_t ops = 0;
+    uint64_t spans[ENTRY_SPAN_COUNT] = {};
+    uint64_t counters[ENTRY_COUNTER_COUNT] = {};
+};
+
+struct EntryLog {
+    Accumulator buckets[BUCKETS];
+    Entry longest[LONGEST];   // descending
+    // the accumulators after the previous entry
+    uint64_t baseSpans[SK_SPAN_COUNT] = {};
+    uint64_t baseOps = 0;
+    uint64_t baseCounters[SK_COUNT_COUNT] = {};
+};
+
+EntryLog entryLog;
+
+uint64_t opCount() {
+    uint64_t ops = 0;
+    for (const Accumulator &a : stats.ops) {
+        ops += a.count;
+    }
+    return ops;
+}
+
+void takeEntryBase() {
+    for (int s = 0; s < SK_SPAN_COUNT; s++) {
+        entryLog.baseSpans[s] = stats.spans[s].nanos;
+    }
+    entryLog.baseOps = opCount();
+    for (int c = 0; c < SK_COUNT_COUNT; c++) {
+        entryLog.baseCounters[c] = stats.counters[c];
+    }
+}
+
+void logEntry(uint64_t nanos) {
+    int b = 0;
+    while (b < BUCKETS - 1 && nanos >= (125000ull << b)) {
+        b++;
+    }
+    entryLog.buckets[b].count++;
+    entryLog.buckets[b].nanos += nanos;
+    if (nanos <= entryLog.longest[LONGEST - 1].nanos) {
+        return;
+    }
+    Entry e;
+    e.nanos = nanos;
+    e.at = (SKStats_Now() - origin) / 1000000;
+    e.ops = opCount() - entryLog.baseOps;
+    for (int i = 0; i < ENTRY_SPAN_COUNT; i++) {
+        e.spans[i] = stats.spans[ENTRY_SPANS[i]].nanos - entryLog.baseSpans[ENTRY_SPANS[i]];
+    }
+    for (int i = 0; i < ENTRY_COUNTER_COUNT; i++) {
+        e.counters[i] = stats.counters[ENTRY_COUNTERS[i]] - entryLog.baseCounters[ENTRY_COUNTERS[i]];
+    }
+    int i = LONGEST - 1;
+    while (i > 0 && entryLog.longest[i - 1].nanos < nanos) {
+        entryLog.longest[i] = entryLog.longest[i - 1];
+        i--;
+    }
+    entryLog.longest[i] = e;
+}
+
+void dumpEntryLog(uint64_t now) {
+    const unsigned long long t = (unsigned long long) ((now - origin) / 1000000);
+    fprintf(stderr, "[%7llums] SKStats entries by duration since the start:", t);
+    for (int b = 0; b < BUCKETS; b++) {
+        if (b < BUCKETS - 1) {
+            fprintf(stderr, " <%g ms", (125000ull << b) / 1e6);
+        } else {
+            fprintf(stderr, " >=%g ms", (125000ull << (b - 1)) / 1e6);
+        }
+        fprintf(stderr, " %llu (%.1f ms)", (unsigned long long) entryLog.buckets[b].count, millis(entryLog.buckets[b].nanos));
+    }
+    fprintf(stderr, "\n[%7llums] SKStats longest entries since the start:", t);
+    for (const Entry &e : entryLog.longest) {
+        if (e.nanos == 0) {
+            break;
+        }
+        fprintf(stderr, " {%.2f ms at %llu ms: %llu ops;", millis(e.nanos), (unsigned long long) e.at, (unsigned long long) e.ops);
+        for (int i = 0; i < ENTRY_SPAN_COUNT; i++) {
+            if (e.spans[i] != 0) {
+                fprintf(stderr, " %s %.2f", SPAN_NAMES[ENTRY_SPANS[i]], millis(e.spans[i]));
+            }
+        }
+        for (int i = 0; i < ENTRY_COUNTER_COUNT; i++) {
+            if (e.counters[i] != 0) {
+                fprintf(stderr, "; %s %llu", ENTRY_COUNTER_NAMES[i], (unsigned long long) e.counters[i]);
+            }
+        }
+        fprintf(stderr, "}");
+    }
+    fprintf(stderr, "\n");
+}
+
 
 const char *opName(int opcode) {
 #define NAME(op) case sun_java2d_pipe_BufferedOpCodes_##op: return #op
@@ -100,8 +216,20 @@ void dump(uint64_t now) {
             fprintf(stderr, " %s %.1f ms (%llu)", SPAN_NAMES[s], millis(a.nanos), (unsigned long long) a.count);
         }
     }
-    fprintf(stderr, " | mesh draws %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu\n",
+    fprintf(stderr, " | mesh draws %llu (at state changes %llu, at other kinds %llu, at canvas ops %llu, at direct draws %llu, at blits %llu, at flush ends %llu, immediate %llu, at surface switches %llu), surface blits %llu (of sources drawn since, in the recording %llu, of them render targets %llu), glyph batches drawn for an overlap %llu, atlas uploads %llu, presents failed %llu, pipelines built %llu (precompiled %llu), found %llu, blobs loaded %llu (hits %llu), stored %llu, render passes %llu, texture copies %llu, uploads %llu, queue submits %llu, timeout flushes %llu, image atlas blits %llu, image atlas copies %llu, text blob hits %llu, text blob misses %llu\n",
             (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_STATE],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_KIND],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_CANVAS_OP],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_DIRECT],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_BLIT],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_FLUSH],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_IMMEDIATE],
+            (unsigned long long) stats.counters[SK_COUNT_MESH_DRAWS_AT_SURFACE],
+            (unsigned long long) stats.counters[SK_COUNT_SURFACE_BLITS],
+            (unsigned long long) stats.counters[SK_COUNT_BLITS_OF_PENDING_SOURCES],
+            (unsigned long long) stats.counters[SK_COUNT_PENDING_SOURCES_VOLATILE],
+            (unsigned long long) stats.counters[SK_COUNT_GLYPH_OVERLAP_DRAWS],
             (unsigned long long) stats.counters[SK_COUNT_ATLAS_UPLOADS],
             (unsigned long long) stats.counters[SK_COUNT_PRESENTS_FAILED],
             (unsigned long long) stats.counters[SK_COUNT_PIPELINES_ADDED],
@@ -113,7 +241,12 @@ void dump(uint64_t now) {
             (unsigned long long) stats.counters[SK_COUNT_RENDER_PASSES],
             (unsigned long long) stats.counters[SK_COUNT_TEXTURE_COPIES],
             (unsigned long long) stats.counters[SK_COUNT_BUFFER_UPLOADS],
-            (unsigned long long) stats.counters[SK_COUNT_QUEUE_SUBMITS]);
+            (unsigned long long) stats.counters[SK_COUNT_QUEUE_SUBMITS],
+            (unsigned long long) stats.counters[SK_COUNT_TIMEOUT_FLUSHES],
+            (unsigned long long) stats.counters[SK_COUNT_IMAGE_ATLAS_BLITS],
+            (unsigned long long) stats.counters[SK_COUNT_IMAGE_ATLAS_COPIES],
+            (unsigned long long) stats.counters[SK_COUNT_TEXT_BLOB_HITS],
+            (unsigned long long) stats.counters[SK_COUNT_TEXT_BLOB_MISSES]);
 
     int order[OPCODE_SLOTS];
     int n = 0;
@@ -136,6 +269,35 @@ void dump(uint64_t now) {
                 a.nanos / 1e3 / a.count);
     }
     fprintf(stderr, "\n");
+    // the batch draws by cause and op (the five ops that caused most under each cause)
+    static const char *const CAUSE_NAMES[CAUSES] = {"state changes", "surface switches", "other kinds", "canvas ops",
+                                                    "direct draws", "blits", "flush ends", "immediate"};
+    fprintf(stderr, "[%7llums] SKStats batch draws by cause and op:", (unsigned long long) ((now - origin) / 1000000));
+    for (int c = 0; c < CAUSES; c++) {
+        int order[OPCODE_SLOTS];
+        int n = 0;
+        for (int op = 0; op < OPCODE_SLOTS; op++) {
+            if (stats.causeOps[c][op] != 0) {
+                order[n++] = op;
+            }
+        }
+        if (n == 0) {
+            continue;
+        }
+        std::sort(order, order + n, [c](int a, int b) { return stats.causeOps[c][a] > stats.causeOps[c][b]; });
+        fprintf(stderr, " %s:", CAUSE_NAMES[c]);
+        for (int i = 0; i < std::min(n, 5); i++) {
+            const char *name = opName(order[i]);
+            if (name != nullptr) {
+                fprintf(stderr, " %s %llu", name, (unsigned long long) stats.causeOps[c][order[i]]);
+            } else {
+                fprintf(stderr, " op%d %llu", order[i], (unsigned long long) stats.causeOps[c][order[i]]);
+            }
+        }
+        fprintf(stderr, ";");
+    }
+    fprintf(stderr, "\n");
+    dumpEntryLog(now);
     fflush(stderr);
 }
 
@@ -154,6 +316,9 @@ uint64_t SKStats_Now() {
 void SKStats_AddSpan(SKStatsSpan span, uint64_t nanos) {
     stats.spans[span].count++;
     stats.spans[span].nanos += nanos;
+    if (span == SK_SPAN_QUEUE) {
+        logEntry(nanos);
+    }
 }
 
 void SKStats_AddOp(int opcode, uint64_t nanos) {
@@ -162,10 +327,35 @@ void SKStats_AddOp(int opcode, uint64_t nanos) {
     a.nanos += nanos;
 }
 
+static SKStatsCounter drawCause = SK_COUNT_COUNT;
+
+void SKStats_SetCurrentOp(int opcode) {
+    currentOp = opcode;
+}
+
 void SKStats_Count(SKStatsCounter counter, uint64_t n) {
     if (SKStats_IsEnabled()) {
         stats.counters[counter] += n;
+        if (counter == SK_COUNT_MESH_DRAWS && drawCause != SK_COUNT_COUNT) {
+            stats.counters[drawCause] += n;
+            if (drawCause >= SK_COUNT_MESH_DRAWS_AT_STATE && drawCause < SK_COUNT_MESH_DRAWS_IMMEDIATE && currentOp >= 0) {
+                stats.causeOps[drawCause - SK_COUNT_MESH_DRAWS_AT_STATE][currentOp & (OPCODE_SLOTS - 1)] += n;
+            }
+        }
+        if (counter == SK_COUNT_MESH_DRAWS_IMMEDIATE && currentOp >= 0) {
+            stats.causeOps[CAUSES - 1][currentOp & (OPCODE_SLOTS - 1)] += n;
+        }
     }
+}
+
+uint64_t SKStats_Counter(SKStatsCounter counter) {
+    return stats.counters[counter];
+}
+
+SKStatsCounter SKStats_SetDrawCause(SKStatsCounter cause) {
+    const SKStatsCounter previous = drawCause;
+    drawCause = cause;
+    return previous;
 }
 
 void SKStats_PipelineEvent(bool added, bool fromPrecompile, const char *label, uint32_t keyHash) {
@@ -194,4 +384,5 @@ void SKStats_EndOfEntry() {
         stats = Stats();
         stats.intervalStart = now;
     }
+    takeEntryBase();   // the next entry's phases are the differences from here
 }

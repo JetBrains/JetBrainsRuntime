@@ -232,6 +232,12 @@ public class RepaintManager
         } else {
             volatileBufferType = Transparency.OPAQUE;
         }
+        // Window surfaces that are double-buffered themselves (SunToolkit.isWindowSurfaceDoubleBuffered,
+        // JBR's Skia pipeline on Windows): no back buffer, as with awt.nativeDoubleBuffering, unless that is set
+        if (!headless && System.getProperty("awt.nativeDoubleBuffering") == null
+                && (tk instanceof SunToolkit) && ((SunToolkit) tk).isWindowSurfaceDoubleBuffered()) {
+            nativeDoubleBuffering = true;
+        }
     }
 
     private static RepaintManager repaintManager;
@@ -729,7 +735,7 @@ public class RepaintManager
             }
 
             for (Window window : windows) {
-                AWTAccessor.getWindowAccessor().updateWindow(window);
+                AWTAccessor.getWindowAccessor().updateWindowLater(window);
                 AWTAccessor.getWindowAccessor().incrementCounter(window, "swing.RepaintManager.updateWindows");
             }
         } else {
@@ -1264,7 +1270,7 @@ public class RepaintManager
         if (Toolkit.getDefaultToolkit() instanceof SunToolkit tk) {
             final Window window = SwingUtilities.getWindowAncestor(paintingComponent);
             if (window != null && tk.needUpdateWindowAfterPaint()) {
-                AWTAccessor.getWindowAccessor().updateWindow(window);
+                AWTAccessor.getWindowAccessor().updateWindowLater(window);
             }
         }
     }

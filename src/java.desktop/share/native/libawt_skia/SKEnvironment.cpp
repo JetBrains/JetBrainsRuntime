@@ -25,7 +25,7 @@
 
 // Platform-independent part of sun.java2d.skia.SKEnvironment's native side;
 // initNative, gpuApiNative and framebufferFetchNative live with the platform
-// (MTLSKEnvironment.mm on macOS, DawnSKEnvironment.cpp on Windows).
+// (MTLSKEnvironment.mm on macOS, Win32SKEnvironment.cpp on Windows).
 
 #include "jni.h"
 #include "jlong.h"
@@ -33,6 +33,7 @@
 #include "SKBackend.h"
 #include "SKPlatform.h"
 #include "SKGlyphCache.h"
+#include "SKImageAtlas.h"
 #include "SKPipelineCache.h"
 #include "Trace.h"
 #include "include/core/SkGraphics.h"
@@ -58,16 +59,59 @@ Java_sun_java2d_skia_SKEnvironment_paragraphsBySkiaNative(JNIEnv *env, jclass cl
 }
 
 JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_recordingsNative(JNIEnv *env, jclass clazz)
+{
+    return SKBackend_Recordings();
+}
+
+JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKEnvironment_flushesNative(JNIEnv *env, jclass clazz)
 {
     return SKBackend_Flushes();
 }
 
+JNIEXPORT jdoubleArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_benchGraphiteNative(JNIEnv *env, jclass clazz, jint kind, jint draws, jint frames)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    double out[4];
+    if (!SKBackend_BenchGraphite(kind, draws, frames, out)) {
+        return nullptr;
+    }
+    jdoubleArray result = env->NewDoubleArray(4);
+    if (result != nullptr) {
+        env->SetDoubleArrayRegion(result, 0, 4, out);
+    }
+    return result;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setStrikeCacheLimitNative(JNIEnv *env, jclass clazz, jlong bytes)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     const size_t previous = SkGraphics::SetFontCacheLimit((size_t) bytes);
     J2dRlsTraceLn(J2D_TRACE_INFO, "SKEnvironment: Skia strike cache limit %zu -> %lld bytes", previous, (long long) bytes);
+}
+
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_setTextBlobCacheNative(JNIEnv *env, jclass clazz, jint entries)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    SKBackend_SetTextBlobCache(entries);
+}
+
+JNIEXPORT jlongArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_textBlobCacheStatsNative(JNIEnv *env, jclass clazz)
+{
+    SK_ENTRY_LOCK;
+    jlong values[2];
+    SKBackend_TextBlobCacheStats(&values[0], &values[1]);
+    jlongArray out = env->NewLongArray(2);
+    if (out != nullptr) {
+        env->SetLongArrayRegion(out, 0, 2, values);
+    }
+    return out;
 }
 
 JNIEXPORT jlong JNICALL
@@ -114,22 +158,40 @@ Java_sun_java2d_skia_SKEnvironment_glyphCacheStatsNative(JNIEnv *env, jclass cla
     return out;
 }
 
+JNIEXPORT jlongArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_imageAtlasStatsNative(JNIEnv *env, jclass clazz)
+{
+    jlong values[SK_IMAGE_ATLAS_STAT_COUNT];
+    for (int i = 0; i < SK_IMAGE_ATLAS_STAT_COUNT; i++) {
+        values[i] = SKImageAtlas_Stat((SKImageAtlasStat) i);
+    }
+    jlongArray out = env->NewLongArray(SK_IMAGE_ATLAS_STAT_COUNT);
+    if (out != nullptr) {
+        env->SetLongArrayRegion(out, 0, SK_IMAGE_ATLAS_STAT_COUNT, values);
+    }
+    return out;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *env, jclass clazz, jint msaaSamples, jboolean edgeAAQuads,
                                                    jint lcdMode, jboolean framebufferFetch,
                                                    jlong glyphAtlasBytes, jint glyphCacheTexels,
                                                    jint luminanceClasses, jboolean presentPerCycle,
-                                                   jboolean submitPerPresent, jint lcdOrder)
+                                                   jboolean submitPerPresent, jint lcdOrder,
+                                                   jboolean imageAtlas)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     SKBackend_Configure(msaaSamples, edgeAAQuads == JNI_TRUE, (SKLcdMode) lcdMode, framebufferFetch == JNI_TRUE,
                        (size_t) glyphAtlasBytes, glyphCacheTexels, luminanceClasses,
-                       presentPerCycle == JNI_TRUE, submitPerPresent == JNI_TRUE, (SKLcdOrder) lcdOrder);
+                       presentPerCycle == JNI_TRUE, submitPerPresent == JNI_TRUE, (SKLcdOrder) lcdOrder,
+                       imageAtlas == JNI_TRUE);
 }
 
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_setPipelineCacheNative(JNIEnv *env, jclass clazz, jstring directory)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     if (directory == nullptr) {
         SKPipelineCache_SetDirectory(nullptr);
         return;
@@ -144,6 +206,7 @@ Java_sun_java2d_skia_SKEnvironment_setPipelineCacheNative(JNIEnv *env, jclass cl
 JNIEXPORT jlongArray JNICALL
 Java_sun_java2d_skia_SKEnvironment_pipelineCacheCountersNative(JNIEnv *env, jclass clazz)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     const SKPipelineCacheCounters c = SKPipelineCache_Counters();
     const jlong values[3] = { (jlong) c.loads, (jlong) c.hits, (jlong) c.stores };
     jlongArray array = env->NewLongArray(3);
@@ -155,15 +218,16 @@ Java_sun_java2d_skia_SKEnvironment_pipelineCacheCountersNative(JNIEnv *env, jcla
 
 } // extern "C"
 
-// EXPERIMENT (x64hw, 2026-10-23): the Graphite context of a configuration created
+// The Graphite context of a configuration created
 // on the flusher before the first draw needs it (SKEnvironment.prepareContext
-// through flushAndInvokeNow), so the precompile of stored pipeline keys starts
-// earlier (SKBackend_ContextFor, J2D_SKIA_PIPELINE_CACHE).
+// through flushAndInvokeNow), so its creation is not part of the first frame
+// (SKBackend_ContextFor).
 extern "C" {
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKEnvironment_prepareContext(JNIEnv *env, jclass clazz, jlong pConfig)
 {
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
     SKBackend_ContextFor((SKPlatformConfig *) jlong_to_ptr(pConfig));
     } // SKPlatformScope

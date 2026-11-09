@@ -120,12 +120,19 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
       # libawt_skia carries the static CRT too. Safe because its boundary with
       # the other JDK libraries is JNI and malloc'd blocks only, and both CRTs
       # allocate from the process heap since the UCRT.
-      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_DAWN -DNOMINMAX -EHsc -MT -std:c++20 \
+      # Graphite on native Vulkan as well (sun.java2d.skia.graphiteApi=vulkan):
+      # the release is built with it, and its headers find Vulkan's under
+      # include/third_party/vulkan; the loader is loaded at run time.
+      SKIA_CFLAGS="$SKIA_CFLAGS -DSK_DAWN -DSK_VULKAN -DNOMINMAX -EHsc -MT -std:c++20 \
           -I${SKIA_INCLUDE_DIR}/third_party/externals/dawn/include \
-          -I${SKIA_LIB_DIR}/gen/third_party/dawn/include"
+          -I${SKIA_LIB_DIR}/gen/third_party/dawn/include \
+          -I${SKIA_INCLUDE_DIR}/include/third_party/vulkan"
       # allocator_shim is left out: it replaces malloc/free process-wide
       # (Chromium's PartitionAlloc shim) and collides with the CRT's.
-      skia_libs="skia_graphite_dawn_ext $skia_libs dawn_combined d3d12allocator \
+      # skia_ganesh_ext: Ganesh's context and surface factories, for the diagnostics
+      # only (SKEnvironment.benchGanesh: Ganesh's per-draw floor on the same Vulkan
+      # device); nothing else references them, so the linker drops them otherwise.
+      skia_libs="skia_graphite_dawn_ext skia_ganesh_ext $skia_libs dawn_combined d3d12allocator \
           allocator_core allocator_base raw_ptr"
     else
       AC_MSG_ERROR([--with-skia: the Skia backend has no platform half for $OPENJDK_TARGET_OS])

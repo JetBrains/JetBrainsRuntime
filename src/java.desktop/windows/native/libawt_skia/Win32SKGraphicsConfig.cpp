@@ -23,10 +23,12 @@
  * questions.
  */
 
-// Native side of sun.java2d.skia.Win32SKGraphicsConfig: the Dawn device of a
-// configuration (DawnSKConfigInfo, the SKPlatformConfig of this platform).
+// Native side of sun.java2d.skia.Win32SKGraphicsConfig: the GPU device of a
+// configuration (Win32SKConfigInfo, the SKPlatformConfig of this platform), whichever
+// graphics API Graphite renders through (Win32SKPlatform.h).
 
-#include "DawnSKPlatform.h"
+#include "SKBackend.h"   // SK_ENTRY_LOCK
+#include "Win32SKPlatform.h"
 
 #include "jlong.h"
 #include "jni.h"
@@ -37,35 +39,40 @@ extern "C" {
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_Win32SKGraphicsConfig_getConfigInfo(JNIEnv *env, jclass clazz, jint screen)
 {
-    // Dawn enumerates adapters itself; the screen is not needed to pick one
-    // until multi-adapter setups are considered.
-    return ptr_to_jlong(DawnSK_CreateConfig());
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    // the API enumerates adapters itself; the screen is not needed to pick one
+    // until multi-adapter setups are considered
+    return ptr_to_jlong(Win32SK_CreateConfig());
 }
 
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_Win32SKGraphicsConfig_getAdapterDescription(JNIEnv *env, jclass clazz, jlong pConfigInfo)
 {
-    auto *config = (DawnSKConfigInfo *) jlong_to_ptr(pConfigInfo);
-    // adapter names are UTF-8 (Dawn's StringView), not the ANSI code page
-    return config != nullptr ? env->NewStringUTF(config->description.c_str()) : nullptr;
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    auto *config = (Win32SKConfigInfo *) jlong_to_ptr(pConfigInfo);
+    // adapter names are UTF-8, not the ANSI code page
+    return config != nullptr ? env->NewStringUTF(Win32SK_ConfigDescription(config).c_str()) : nullptr;
 }
 
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_skia_Win32SKGraphicsConfig_isDeviceLost(JNIEnv *env, jclass clazz, jlong pConfigInfo)
 {
-    return DawnSK_IsLost((DawnSKConfigInfo *) jlong_to_ptr(pConfigInfo)) ? JNI_TRUE : JNI_FALSE;
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    return Win32SK_IsLost((Win32SKConfigInfo *) jlong_to_ptr(pConfigInfo)) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_Win32SKGraphicsConfig_simulateDeviceLossNative(JNIEnv *env, jclass clazz, jboolean persistent)
 {
-    DawnSK_SimulateDeviceLoss(persistent == JNI_TRUE);
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    Win32SK_SimulateDeviceLoss(persistent == JNI_TRUE);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_Win32SKGraphicsConfig_disposeConfigInfo(JNIEnv *env, jclass clazz, jlong pConfigInfo)
 {
-    DawnSK_DisposeConfig((DawnSKConfigInfo *) jlong_to_ptr(pConfigInfo));
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    Win32SK_DisposeConfig((Win32SKConfigInfo *) jlong_to_ptr(pConfigInfo));
 }
 
 } // extern "C"

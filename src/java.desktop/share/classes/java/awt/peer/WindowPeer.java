@@ -115,6 +115,14 @@ public interface WindowPeer extends ContainerPeer {
     void updateWindow();
 
     /**
+     * Like {@link #updateWindow()} at the end of Swing's repaint cycle: the window's content may
+     * still be on its way to the screen when this returns. By default {@link #updateWindow()}.
+     */
+    default void updateWindowLater() {
+        updateWindow();
+    }
+
+    /**
      * Returns the system insets (in the scale of the Window device) when available.
      *
      * @return the system insets or null

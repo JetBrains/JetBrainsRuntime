@@ -33,7 +33,7 @@ import sun.java2d.skia.SKEnvironment;
 
 /**
  * @test
- * @summary With sun.java2d.skia.present=cycle a Skia window is presented when
+ * @summary With sun.java2d.skia.present=cycle (the default on Windows) a Skia window is presented when
  *          its paint cycle ends (Swing's updateWindows, Toolkit.sync, the
  *          flusher's timeout) rather than at the end of every queue flush, as
  *          the other pipelines do. What reaches the screen must not change:
@@ -59,7 +59,8 @@ public class SkiaPresentCycleTest {
             System.out.println("Skia backend unavailable: nothing to test");
             return;
         }
-        boolean cycleRequested = "cycle".equals(System.getProperty("sun.java2d.skia.present"));
+        String present = System.getProperty("sun.java2d.skia.present");
+        boolean cycleRequested = present == null || "cycle".equals(present);   // cycle is the default
         boolean windows = System.getProperty("os.name", "").startsWith("Windows");
         System.out.println("present=" + System.getProperty("sun.java2d.skia.present") + ", presentsPerCycle "
                 + SKEnvironment.presentsPerCycle());

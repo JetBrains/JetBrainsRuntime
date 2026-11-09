@@ -30,4 +30,13 @@ public interface BufferedSurfaceDataExt {
      * Applies any 'pending' paint commands to the surface.
      */
     void commit();
+
+    /**
+     * Like {@link #commit()}, but the commands may still be running when this returns: for
+     * callers that only need the content shown soon (Swing's repaint cycle) and leave it to the
+     * render queue's next synchronous flush to wait for them. By default {@link #commit()}.
+     */
+    default void commitLater() {
+        commit();
+    }
 }

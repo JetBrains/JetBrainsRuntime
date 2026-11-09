@@ -172,3 +172,4 @@ void SKMaskCache_Flush(SKMaskCache *mc) {
         mc->batch.flush();
     }
 }
+

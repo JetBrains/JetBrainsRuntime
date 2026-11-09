@@ -96,6 +96,35 @@ public final class SKRenderQueue extends RenderQueue {
         }
     }
 
+    /**
+     * EXPERIMENT (x64hw, 2026-11-04), {@code sun.java2d.skia.asyncPresent=true}: the flush that ends
+     * Swing's repaint cycle of a window ({@link SKSurfaceData#requestPresent} from
+     * {@code BufferedSurfaceDataExt.commitLater()}, most of a frame's work, since the buffer rarely
+     * fills) is handed to the flusher without waiting for it, so the EDT goes on with its
+     * events while the frame is encoded and presented. Every other flush ({@link #flushNow}, also
+     * {@code flushAndInvokeNow}, {@code sync}, read-backs, software sources, disposals) still waits,
+     * first for a hand-off in flight, so whatever relies on the queue having run still sees it run.
+     * The hand-off copies the buffer's content to a second one (callers keep a reference to
+     * {@link #getBuffer()} across {@code ensureCapacity}, so the buffer itself cannot change), and
+     * the references that keep the queued ops' objects alive go along with it. The flusher runs it
+     * without the AWT lock held by anyone; the native backend serializes its entry points instead
+     * (SKBackend_EntryMutex).
+     */
+    static final boolean ASYNC_PRESENT = Boolean.getBoolean("sun.java2d.skia.asyncPresent");
+
+    /** Ends a paint cycle's flush: handed to the flusher ({@link #ASYNC_PRESENT}) or run now. Queue lock held. */
+    void flushForPresent() {
+        if (!ASYNC_PRESENT) {
+            flushNow();
+            return;
+        }
+        try {
+            flusher.handOff();
+        } catch (Exception e) {
+            logger.severe("SKRenderQueue.flushForPresent: exception occurred: ", e);
+        }
+    }
+
     @Override
     public void flushAndInvokeNow(Runnable r) {
         try {
@@ -154,8 +183,21 @@ public final class SKRenderQueue extends RenderQueue {
                     logger.fine("QueueFlusher.flushNow: interrupted");
                 }
             }
+            throwHandOffError();
             if (error != null) {
                 throw error;
+            }
+        }
+
+        // A failed hand-off's error: thrown where a synchronous flush would have thrown it, at the next
+        // flush that waits or the next hand-off (ASYNC_PRESENT).
+        private Error handOffError;
+
+        private void throwHandOffError() {
+            Error e = handOffError;
+            if (e != null) {
+                handOffError = null;
+                throw e;
             }
         }
 
@@ -164,11 +206,84 @@ public final class SKRenderQueue extends RenderQueue {
             flushNow();
         }
 
+        // ASYNC_PRESENT: the content handed off and not run yet, the references it needs alive
+        private RenderBuffer handed;
+        private boolean handedPending;
+        private java.util.Set<Object> handedRefs = new java.util.HashSet<>();
+
+        /** Hands the queue's content to the flusher (ASYNC_PRESENT); waits only for an earlier hand-off. */
+        synchronized void handOff() {
+            // the flusher holds this monitor while it runs a hand-off, so being here means none is
+            // running; one handed and not taken yet is waited for (at most one in flight)
+            while (handedPending) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    logger.fine("QueueFlusher.handOff: interrupted");
+                }
+            }
+            throwHandOffError();
+            if (buf.position() == 0 && !pendingPresent) {
+                return;
+            }
+            if (handed == null) {
+                handed = RenderBuffer.allocate(buf.capacity());
+            }
+            buf.copyTo(handed);
+            buf.clear();
+            java.util.Set<Object> refs = handedRefs;
+            handedRefs = refSet;
+            refSet = refs;
+            handedPending = true;
+            notifyAll();
+        }
+
+        // Tests only: sun.java2d.skia.test.handOffDelay holds every hand-off that many milliseconds
+        // before it runs (in flight: the monitor stays held, so whatever waits for it waits), turning
+        // the races a hand-off allows into deterministic cases; sun.java2d.skia.test.handOffError=N
+        // makes the N-th hand-off fail with an injected error instead of running.
+        private static final int TEST_HANDOFF_DELAY = Integer.getInteger("sun.java2d.skia.test.handOffDelay", 0);
+        private static final int TEST_HANDOFF_ERROR = Integer.getInteger("sun.java2d.skia.test.handOffError", 0);
+        private int handOffs;
+
+        // Runs the handed-off content: in the order given, before any flush asked for later.
+        private void runHandOff() {
+            try {
+                if (TEST_HANDOFF_DELAY > 0) {
+                    try {
+                        Thread.sleep(TEST_HANDOFF_DELAY);
+                    } catch (InterruptedException e) {
+                        logger.fine("QueueFlusher.runHandOff: interrupted");
+                    }
+                }
+                if (++handOffs == TEST_HANDOFF_ERROR) {
+                    throw new InternalError("injected failure of hand-off " + handOffs + " (sun.java2d.skia.test.handOffError)");
+                }
+                if (handed.position() > 0 || pendingPresent) {
+                    pendingPresent = flushBuffer(handed.getAddress(), handed.position(), false);
+                }
+            } catch (Error e) {
+                logger.severe("QueueFlusher.runHandOff: error occurred", e);
+                handOffError = e;   // thrown by the next flushNow or hand-off (a synchronous flush resets `error`)
+            } catch (Exception x) {
+                logger.severe("QueueFlusher.runHandOff: exception occurred", x);
+            } finally {
+                handed.clear();
+                handedRefs.clear();
+                handedPending = false;
+                notifyAll();
+            }
+        }
+
         @Override
         public synchronized void run() {
             boolean timedOut = false;
             while (true) {
-                while (!needsFlush) {
+                if (handedPending) {
+                    runHandOff();
+                    continue;
+                }
+                while (!needsFlush && !handedPending) {
                     try {
                         timedOut = false;
                         // Wait for flushNow() or the 100 ms timeout, so that the
@@ -176,7 +291,9 @@ public final class SKRenderQueue extends RenderQueue {
                         wait(100);
                         // Flush on the timeout only when the queue can be locked
                         // without blocking and holds something; otherwise keep waiting.
-                        if (!needsFlush && (timedOut = tryLock())) {
+                        // A hand-off's notify is not a timeout: it runs first, and a timeout
+                        // flush here would present the windows before it (mid-cycle content).
+                        if (!needsFlush && !handedPending && (timedOut = tryLock())) {
                             if (buf.position() > 0 || pendingPresent) {
                                 needsFlush = true;
                             } else {
@@ -186,6 +303,9 @@ public final class SKRenderQueue extends RenderQueue {
                     } catch (InterruptedException e) {
                         logger.fine("QueueFlusher.run: interrupted");
                     }
+                }
+                if (!needsFlush) {
+                    continue;   // a hand-off arrived: run it first (the loop's top)
                 }
                 try {
                     error = null;

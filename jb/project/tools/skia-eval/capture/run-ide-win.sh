@@ -7,7 +7,7 @@
 #   run-ide.sh <arm> [--scale N] [--seed <dir>] [--wait S --shot <png>] [-- <idea args, e.g. a project path>]
 #     arms: A0 (software loops), A1 blend, A2 twopass, A3 accumulate, A4 accumulate + present=cycle,
 #           A5 accumulate + submit=present, A6 accumulate + present=cycle + submit=present,
-#           A7 twopass on Dawn's D3D12 backend, A8 twopass on native Vulkan,
+#           A7 twopass on Dawn's D3D12 backend, A8 twopass on native Vulkan (the image atlas on since 2026-11-06; A8o and A8t, ordered recordings and the in-order baseline, went with their switches), A8i A8 with the image atlas, A8k / A8s / A8f A8 with Skia's scaler, then its strike (A8b with the text blob cache), then its whole text stack,
 #           R1 Direct3D 9, R2 JBR's Vulkan pipeline, R0 BufferedImages (Swing's back buffer) drawn
 #           by Skia's raster backend (sun.java2d.skia.raster), R5 R0 with Skia's scaler and text route,
 #           the text arms T0 (Skia pipe, JDK scaler), T1 (Skia scaler coverage), T4 (platform masks, the
@@ -53,6 +53,12 @@ case "$ARM" in
   A6) NAME=A6-cycle-submit; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false -Dsun.java2d.skia.present=cycle -Dsun.java2d.skia.submit=present" ;;
   A7) NAME=A7-twopass-d3d12; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.dawn.backend=d3d12" ;;
   A8) NAME=A8-twopass-vulkan; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan" ;;
+  A8i) NAME=A8i-images; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.imageAtlas=true" ;;   # A8 with the image atlas (2026-11-04)
+  A8ia) NAME=A8ia-images-accumulate; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.imageAtlas=true" ;;   # A8i with LCD accumulated instead of two-pass (2026-11-06)
+  A8k) NAME=A8k-skia-scaler; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler" ;;   # A8 with Skia's scaler, Java2D's glyph images (2026-11-05)
+  A8s) NAME=A8s-skia-strike; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia" ;;   # A8k with Skia's strike, atlas and canvas, Java's layout
+  A8b) NAME=A8b-skia-strike-blobs; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.blobCache=16384" ;;   # A8s with the text blob cache (2026-11-06; its default since)
+  A8f) NAME=A8f-skia-text; PROPS="-Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.d3d=false -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.font.scaler=skia -Dsun.java2d.font.lcdGlyphs=scaler -Dsun.java2d.skia.text.strike=skia -Dsun.java2d.skia.text.shaping=skia -Dsun.java2d.skia.text.paragraphs=skia" ;;   # A8s with Skia's shaper and paragraphs
   # the text arms of the VM's rounds (2026-10-23 … 11-02), in the six-dimension spellings: the Skia pipe with the
   # JDK's scaler (T0), the Skia scaler's own coverage under the pipes' contrast curve (T1), the platform's masks and
   # blend — the default — (T4), with the LCD strikes keyed by colour at 2 or 3 bits (T5, T6), the hybrid on today's

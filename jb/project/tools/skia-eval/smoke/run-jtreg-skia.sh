@@ -23,7 +23,8 @@ for f in "$G"/*.java "$G"/TextRender/*.java; do
   "$JDK/bin/javac.exe" $X -sourcepath "$RW/test/jdk/jb/java/awt/Graphics2D;$RW/test/lib" -d "$OUT" "$f" 2> "$OUT/$name.javac.txt" || { echo "COMPILE FAIL $name"; sed -n 1,5p "$OUT/$name.javac.txt"; fail=$((fail+1)); continue; }
   pat="skia=true"; [ "${ALL_RUN_LINES:-0}" = 1 ] && pat=""
   grep -E "^\s*\*\s*@run main/othervm(/timeout=[0-9]+)? .*$pat" "$f" | sed -E 's/^\s*\*\s*@run main\/othervm(\/timeout=[0-9]+)? //' | while read -r line; do
-    log="$OUT/$name.$(echo "$line" | tr -c 'A-Za-z0-9=._-' '_' | cut -c1-120).log"
+    # the checksum: run lines with a long common prefix get a log each
+    log="$OUT/$name.$(echo "$line" | tr -c 'A-Za-z0-9=._-' '_' | cut -c1-100).$(echo "$line" | cksum | cut -d' ' -f1).log"
     if timeout 600 "$JDK/bin/java.exe" $XR -cp "$OUT" $line > "$log" 2>&1; then echo "PASS  $line"; else echo "FAIL  $line"; grep -m3 -E "Exception|beyond|ratio|times a frame" "$log" | cut -c1-200; fi
     grep -E "times a frame|ratio" "$log" | head -2 | sed 's/^/      /'
   done

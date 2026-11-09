@@ -41,6 +41,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstring>
+#include <memory>
 #include <vector>
 
 // Cell geometry as MTLTextRenderer's caches, per bucket (SK_GLYPH_BUCKET_CELLS); the
@@ -62,7 +63,7 @@ struct SKGlyphCache {
     sk_sp<SkSurface> atlas;
     sk_sp<SkImage> atlasImage;
 
-    SKQuadBatch batch;
+    std::unique_ptr<SKQuadBatch> batch = std::make_unique<SKQuadBatch>();   // the open batch (two passes: of the current colour)
     // The glyph list being drawn: a flush inside the list (an uncached glyph,
     // or an eviction with no cell free of this recording) closes the batch,
     // SKGlyphCache_Draw reopens it.
@@ -90,6 +91,28 @@ struct SKGlyphCache {
 };
 
 static void uploadDirtyRows(SKGlyphCache *gc);
+
+// Draws the cache's batch.
+static void drawBatches(SKGlyphCache *gc) {
+    gc->batch->flush();
+}
+
+// Two passes (LCD twopass): the colour is a uniform of the passes' shaders, so a batch holds one colour and a colour
+// change draws it (SKQuadBatch::begin). Before a sprite with this overlap extent joins the batch of `gc`, the open
+// batch of another colour in another size bucket of the context that it overlaps is drawn first, so the sprite
+// composes over it as it was given.
+static void drawOverlapped(SKGlyphCache *gc, const SkRect &extent) {
+    for (int b = 0; b < SK_GLYPH_BUCKETS; b++) {
+        SKGlyphCache *other = gc->lcd ? gc->cc->glyphCachesLCD[b] : gc->cc->glyphCachesAA[b];
+        if (other == nullptr || other == gc) {
+            continue;
+        }
+        if (other->batch->pending() && other->batch->overlaps(extent) && !other->batch->samePaint(gc->paint)) {
+            SKStats_Count(SK_COUNT_GLYPH_OVERLAP_DRAWS);
+            other->batch->flush();
+        }
+    }
+}
 
 static std::atomic<jlong> gStats[SK_GLYPH_STAT_COUNT];
 
@@ -140,7 +163,7 @@ static void flushForEviction() {
     if (gAdding == nullptr) {
         return;
     }
-    gAdding->batch.flush();
+    drawBatches(gAdding);
     SKBackend_FlushRecording(gAdding->cc);
 }
 
@@ -184,7 +207,8 @@ SKGlyphCache *SKGlyphCache_Create(SKConfigContext *cc, bool lcd, jint cellSize, 
     }
     gc->shadow.eraseColor(SK_ColorTRANSPARENT);
     gc->dirtyRows.resize((size_t) gc->cellsPerRow, SkIRect::MakeEmpty());
-    gc->batch.beforeUpload = [gc]() { uploadDirtyRows(gc); };
+    // runs whenever a batch holding quads draws, from whichever path: the batch draw statistic counts here
+    gc->batch->beforeUpload = [gc]() { SKGlyphCache_CountStat(SK_GLYPH_BATCH_DRAWS); uploadDirtyRows(gc); };
     return gc;
 }
 
@@ -206,7 +230,7 @@ void SKGlyphCache_Begin(SKGlyphCache *gc, SkCanvas *canvas, const SkPaint &paint
     gc->canvas = canvas;
     gc->paint = paint;
     gc->passes = passes;
-    gc->batch.begin(canvas, paint, gc->atlasImage, passes);
+    gc->batch->begin(canvas, paint, gc->atlasImage, passes);
 }
 
 // Uploads the rows of the shadow that changed since the last upload.
@@ -294,7 +318,7 @@ static CacheCellInfo *reusableCell(SKGlyphCache *gc, GlyphInfo *glyph) {
             }
         }
         // every cell was used in this recording: end it, then the walk finds one
-        gc->batch.flush();
+        drawBatches(gc);
         SKBackend_FlushRecording(gc->cc);
     }
     return nullptr;
@@ -325,19 +349,24 @@ bool SKGlyphCache_Draw(SKGlyphCache *gc, GlyphInfo *glyph, jint subimage, jboole
     SKGlyphCache_CountStat(SK_GLYPHS_CACHED);
     cell->timesRendered++;
     gc->lastUsed[cellIndex(gc, cell)] = gc->cc->recordingGeneration;
-    if (!gc->batch.active()) {
-        gc->batch.begin(gc->canvas, gc->paint, gc->atlasImage, gc->passes);
+    if (!gc->batch->active()) {
+        gc->batch->begin(gc->canvas, gc->paint, gc->atlasImage, gc->passes);
     }
-    gc->batch.addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(gc, cell)]);
+    if (gc->passes != nullptr) {
+        const SkIRect &ink = gc->ink[cellIndex(gc, cell)];
+        drawOverlapped(gc, SkRect::MakeLTRB(x + ink.fLeft, y + ink.fTop, x + ink.fRight, y + ink.fBottom));
+    }
+    gc->batch->addSprite(x, y, glyph->width, glyph->height, cell->x, cell->y, &gc->ink[cellIndex(gc, cell)]);
     return true;
 }
 
 void SKGlyphCache_Flush(SKGlyphCache *gc) {
     if (gc != nullptr) {
-        gc->batch.flush();
+        drawBatches(gc);
     }
 }
 
 SKQuadBatch &SKGlyphCache_Batch(SKGlyphCache *gc) {
-    return gc->batch;
+    return *gc->batch;
 }
+

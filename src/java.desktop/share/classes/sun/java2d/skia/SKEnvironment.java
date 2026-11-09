@@ -180,6 +180,20 @@ public final class SKEnvironment {
      */
     private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 64);
     /**
+     * {@code sun.java2d.skia.text.blobCache=<entries>} (default 16384 since 2026-11-06): Skia's text path keeps the
+     * text blobs of the last {@code entries} distinct glyph runs and draws a repeated run from the same blob, so
+     * Graphite's cache of prepared text, keyed by the blob's identity, can reuse it across frames. 0: off, every run
+     * drawn as a new glyph run. Only Skia's own text path (sun.java2d.skia.text.strike=skia) uses it.
+     */
+    private static final int TEXT_BLOB_CACHE = Integer.getInteger("sun.java2d.skia.text.blobCache", 16384);
+    /**
+     * EXPERIMENT (x64hw, 2026-11-06), diagnostics (Windows): {@code sun.java2d.skia.profileFlusher=<seconds>} samples
+     * the flusher thread in place for that long, starting {@code sun.java2d.skia.profileFlusherDelay} seconds after
+     * its first flush, and writes the report (as {@link #profileBench}'s) to {@code sun.java2d.skia.profileFlusherOut}
+     * (default: {@code skia-flusher-profile.txt} in {@code java.io.tmpdir}).
+     */
+    private static final int PROFILE_FLUSHER_SECONDS = Integer.getInteger("sun.java2d.skia.profileFlusher", 0);
+    /**
      * {@code sun.java2d.skia.glyphAtlas=<MB>}: the budget of Graphite's glyph atlas
      * ({@code ContextOptions::fGlyphCacheTextureMaximumBytes}, the GPU-side glyph
      * masks of Skia's text path); 0 keeps Skia's default of 8 MB.
@@ -204,17 +218,28 @@ public final class SKEnvironment {
     }
     /**
      * When a window is presented ({@code sun.java2d.skia.present}): {@code flush}
-     * (the default) presents every window a queue flush drew into at the end of
-     * that flush; {@code cycle} presents a window when its paint cycle ends
-     * (Swing's {@code updateWindows}, an AWT paint event, {@code Toolkit.sync})
+     * presents every window a queue flush drew into at the end of that flush;
+     * {@code cycle} (the default on Windows) presents a window when its paint cycle
+     * ends (Swing's {@code updateWindows}, an AWT paint event, {@code Toolkit.sync})
      * or at the flusher's timeout flush, as the other pipelines do: fewer presents
-     * per frame, and the EDT no longer waits behind a present at every flush.
-     * Windows only so far: the macOS window surface does not signal its paint
-     * cycle to the Skia queue yet.
+     * per frame, the EDT no longer waits behind a present at every flush, and a
+     * window is never presented half-painted, so Swing paints straight into it
+     * (see {@link #swingBackBuffer()}). Windows only so far: the macOS window surface
+     * does not signal its paint cycle to the Skia queue yet.
      */
     private static final boolean PRESENT_PER_CYCLE =
-            "cycle".equalsIgnoreCase(System.getProperty("sun.java2d.skia.present", "flush"))
+            "cycle".equalsIgnoreCase(System.getProperty("sun.java2d.skia.present", "cycle"))
             && System.getProperty("os.name", "").startsWith("Windows");
+    /**
+     * Whether Swing keeps its own back buffer for windows on this pipeline
+     * ({@code sun.java2d.skia.swingBackBuffer}). A window surface is already an
+     * off-screen texture that is presented when its paint cycle ends ({@code present=cycle}),
+     * so Swing's back buffer only adds a copy of every repainted region into it: by
+     * default ({@code false}) Swing paints straight into the window, as with native
+     * double buffering ({@code awt.nativeDoubleBuffering}, which wins when set). In
+     * the IDE, typing: Skia/Vulkan's flush wait −15 %, the EDT's paint −8 % (2026-11-03).
+     */
+    private static final boolean SWING_BACK_BUFFER = Boolean.getBoolean("sun.java2d.skia.swingBackBuffer");
     /**
      * When recorded work is submitted to the GPU ({@code sun.java2d.skia.submit}):
      * {@code flush} (the default) submits every context a queue flush drew into at
@@ -226,6 +251,34 @@ public final class SKEnvironment {
      */
     private static final boolean SUBMIT_PER_PRESENT =
             "present".equalsIgnoreCase(System.getProperty("sun.java2d.skia.submit", "flush"));
+    /**
+     * {@code sun.java2d.skia.imageAtlas} (default true since 2026-11-06; x64hw s25, s31: UI flush wait -3 %, typing level): blits of small Skia surfaces
+     * (the images of a UI, cached images), unscaled and pixel-aligned, are drawn as sprites of one mesh
+     * from an atlas of their copies (SKImageAtlas.h) instead of one Graphite draw each. false: one draw each.
+     */
+    private static final boolean IMAGE_ATLAS = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.imageAtlas"));
+    /**
+     * The graphics API Graphite renders through ({@code sun.java2d.skia.graphiteApi}),
+     * read by the native side before the first adapter request: {@code dawn} (the
+     * default on Windows, over Direct3D 11 or 12, see {@code sun.java2d.skia.dawn.backend})
+     * or {@code vulkan} (native Vulkan, an evaluation option) on Windows; {@code metal}
+     * (the only one) on macOS. A value the platform does not offer leaves its default.
+     */
+    private static final String GRAPHITE_API = System.getProperty("sun.java2d.skia.graphiteApi");
+
+    private static void checkGraphiteApi() {
+        if (GRAPHITE_API == null || !VERBOSE) {
+            return;
+        }
+        boolean windows = System.getProperty("os.name", "").startsWith("Windows");
+        String value = GRAPHITE_API.toLowerCase(Locale.ROOT);
+        boolean offered = windows ? value.equals("dawn") || value.equals("vulkan") : value.equals("metal");
+        if (!offered) {
+            System.err.println("sun.java2d.skia.graphiteApi=" + GRAPHITE_API + " is not "
+                    + (windows ? "dawn or vulkan" : "metal") + " on this platform; using "
+                    + (windows ? "dawn" : "metal"));
+        }
+    }
 
     private static boolean strokesProperty() {
         String strokes = System.getProperty("sun.java2d.skia.strokes", "skia");
@@ -418,6 +471,15 @@ public final class SKEnvironment {
         return PRESENT_PER_CYCLE && isSkiaEnabled();
     }
 
+    /**
+     * Whether Swing should keep its back buffer for windows ({@code sun.java2d.skia.swingBackBuffer});
+     * without one Swing paints straight into the window surface, which needs windows presented
+     * per paint cycle. True where the pipeline does not present per cycle.
+     */
+    public static boolean swingBackBuffer() {
+        return SWING_BACK_BUFFER || !presentsPerCycle();
+    }
+
     /** Whether every antialiased shape is rasterized by Skia rather than by Marlin. */
     public static boolean rasterizesShapes() {
         return "skia".equalsIgnoreCase(SHAPES);
@@ -535,6 +597,16 @@ public final class SKEnvironment {
         return isSkiaEnabled() ? flushesNative() : 0;
     }
 
+    /**
+     * How many Graphite recordings the backend has snapped so far: a flush that presents nothing
+     * and waits for nothing continues its recordings in the next one (diagnostics, tests).
+     */
+    public static long recordings() {
+        return isSkiaEnabled() ? recordingsNative() : 0;
+    }
+
+    private static native long recordingsNative();
+
     private static Boolean libraryLoaded;
 
     /**
@@ -589,6 +661,7 @@ public final class SKEnvironment {
             if (!loadLibrary()) {
                 return;
             }
+            checkGraphiteApi();
             description = initNative();
             if (description != null) {
                 configuration = Configuration.defaultsFor(framebufferFetchNative()).withProperties();
@@ -596,9 +669,24 @@ public final class SKEnvironment {
                                 configuration.lcdMode().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_ATLAS_MB * 1024L * 1024L, glyphCacheTexels(),
                                 FontUtilities.textLuminanceClasses, PRESENT_PER_CYCLE,
-                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal());
+                                SUBMIT_PER_PRESENT, configuration.lcdOrder().ordinal(), IMAGE_ATLAS);
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
+                }
+                if (TEXT_BLOB_CACHE > 0) {
+                    setTextBlobCacheNative(TEXT_BLOB_CACHE);
+                }
+                if (PROFILE_FLUSHER_SECONDS > 0) {
+                    String home = System.getProperty("java.home");
+                    String out = System.getProperty("sun.java2d.skia.profileFlusherOut",
+                            System.getProperty("java.io.tmpdir") + java.io.File.separator + "skia-flusher-profile.txt");
+                    try {
+                        profileFlusherNative(Integer.getInteger("sun.java2d.skia.profileFlusherDelay", 0), PROFILE_FLUSHER_SECONDS,
+                                             out, home + "\\bin;" + home + "\\..\\symbols\\bin",
+                                             System.getProperty("sun.java2d.skia.profileFlusherFocus"));
+                    } catch (UnsatisfiedLinkError e) {
+                        // only the Windows library has it
+                    }
                 }
                 pipelineCache = pipelineCacheDirectory();
                 setPipelineCacheNative(pipelineCache);
@@ -636,7 +724,8 @@ public final class SKEnvironment {
     /** Hands the architecture-dependent configuration to the native backend before any context exists. */
     private static native void configureNative(int msaaSamples, boolean edgeAAQuads, int lcdMode, boolean framebufferFetch,
                                                long glyphAtlasBytes, int glyphCacheTexels, int luminanceClasses,
-                                               boolean presentPerCycle, boolean submitPerPresent, int lcdOrder);
+                                               boolean presentPerCycle, boolean submitPerPresent, int lcdOrder,
+                                               boolean imageAtlas);
     private static native long glyphsDrawnBySkiaNative();
 
     private static native long glyphsShapedBySkiaNative();
@@ -646,6 +735,43 @@ public final class SKEnvironment {
     private static native long flushesNative();
 
     private static native void setStrikeCacheLimitNative(long bytes);
+
+    /**
+     * The text blob cache ({@code sun.java2d.skia.text.blobCache}) at run time (tests, diagnostics): its capacity
+     * in entries, 0 = off; the cache is emptied either way. No effect without the backend.
+     */
+    public static void setTextBlobCache(int entries) {
+        if (!isSkiaEnabled()) {
+            return;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();   // nothing queued is drawn under the old setting afterwards
+            setTextBlobCacheNative(entries);
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    /** The text blob cache's hits and misses since the start (tests, diagnostics); an empty array without the backend. */
+    public static long[] textBlobCacheStats() {
+        if (!isSkiaEnabled()) {
+            return new long[0];
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();
+            return textBlobCacheStatsNative();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native void setTextBlobCacheNative(int entries);
+    private static native void profileFlusherNative(int delaySeconds, int seconds, String out, String symbolPath, String focus);
+    private static native long[] textBlobCacheStatsNative();
 
     /** The budget of Skia's strike cache in bytes as the backend runs it (diagnostics, tests). */
     public static long strikeCacheLimit() {
@@ -678,8 +804,127 @@ public final class SKEnvironment {
     private static native boolean platformFontSmoothingNative();
 
     /**
+     * Diagnostics, tests: the device features Graphite's device was created with, where the
+     * platform chooses them (Dawn on Windows), as {@code name=o/g} entries separated by spaces,
+     * {@code o} 1 if the adapter offers the feature, {@code g} 1 if the device has it; empty
+     * elsewhere, without the backend, or before the first device.
+     */
+    public static String deviceFeatures() {
+        return isSkiaEnabled() ? deviceFeaturesNative() : "";
+    }
+
+    private static native String deviceFeaturesNative();
+
+    /**
+     * Diagnostics: the floor of Graphite's per-draw cost on this device, without the backend's
+     * translation in front of it — {@code draws} draws of one kind (0 a rect in one colour, 1 rects
+     * alternating colours, 2 a one-quad mesh, 3 a 32x32 image, 4 images of 16 textures in turn, 5 rect,
+     * mesh and image in turn, 6 rects switching between two surfaces; 7-10 12-glyph strings as a temporary glyph
+     * run, as a retained text blob, and the two in LCD) recorded into an off-screen surface,
+     * then snapped, inserted and submitted; the median over {@code frames} frames of each phase in
+     * nanoseconds per draw: record, snap, insert, submit. {@code null} without the backend.
+     */
+    public static double[] benchGraphite(int kind, int draws, int frames) {
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+            return benchGraphiteNative(kind, draws, frames);
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native double[] benchGraphiteNative(int kind, int draws, int frames);
+
+    /**
+     * EXPERIMENT (x64hw, 2026-11-04), diagnostics: the same floor for Ganesh, Skia's older GPU backend, on
+     * the Vulkan device of the backend's Graphite context (Windows, {@code sun.java2d.skia.graphiteApi=vulkan}):
+     * the kinds of {@link #benchGraphite}, recorded into a Ganesh surface, then flushed (ops prepared and
+     * executed into the command buffer) and submitted; the median over {@code frames} frames in nanoseconds
+     * per draw: record, flush, submit. {@code reduceOpsTaskSplitting}: Ganesh's option to keep one ops task
+     * per surface across surface switches. {@code null} without that device (or on other platforms).
+     */
+    public static double[] benchGanesh(int kind, int draws, int frames, boolean reduceOpsTaskSplitting) {
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();   // Graphite's work on the shared queue finished first
+            return benchGaneshNative(kind, draws, frames, reduceOpsTaskSplitting);
+        } catch (UnsatisfiedLinkError e) {
+            return null;   // only the Windows library has it
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native double[] benchGaneshNative(int kind, int draws, int frames, boolean reduceOpsTaskSplitting);
+
+    /**
+     * EXPERIMENT (x64hw, 2026-11-04), diagnostics (Windows): the kinds of {@link #benchGraphite} on a CPU canvas,
+     * {@code raster} false a canvas without pixels (its device ignores every draw: Skia's canvas front end alone),
+     * true a raster surface; the median over {@code frames} frames of the drawing in nanoseconds per draw, as
+     * a one-element array. {@code null} on other platforms.
+     */
+    public static double[] benchCanvas(int kind, int draws, int frames, boolean raster) {
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        try {
+            return benchCanvasNative(kind, draws, frames, raster);
+        } catch (UnsatisfiedLinkError e) {
+            return null;
+        }
+    }
+
+    private static native double[] benchCanvasNative(int kind, int draws, int frames, boolean raster);
+
+    /**
+     * EXPERIMENT (x64hw, 2026-11-04), diagnostics (Windows): a sampling profile of one of the benchmarks above
+     * ({@code backend} "graphite", "ganesh", "canvas" without pixels or "raster"): a native thread suspends the
+     * calling thread about every millisecond and unwinds its stack, and the frames are named with DbgHelp from
+     * {@code symbolPath} (the directories of the PDBs; {@code null}: the JDK's {@code bin} and the sibling
+     * {@code symbols/bin} of a build's images). Lines "module|inclusive|exclusive TAB share TAB samples TAB
+     * module!function". {@code null} without the backend or on other platforms.
+     */
+    public static String profileBench(String backend, int kind, int draws, int frames, String symbolPath) {
+        int b = switch (backend) {
+            case "graphite" -> 0;
+            case "ganesh" -> 1;
+            case "canvas" -> 2;
+            case "raster" -> 3;
+            default -> throw new IllegalArgumentException(backend);
+        };
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        if (symbolPath == null) {
+            String home = System.getProperty("java.home");
+            symbolPath = home + "\\bin;" + home + "\\..\\symbols\\bin";
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            SKRenderQueue.sync();
+            return profileBenchNative(b, kind, draws, frames, symbolPath);
+        } catch (UnsatisfiedLinkError e) {
+            return null;
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native String profileBenchNative(int backend, int kind, int draws, int frames, String symbolPath);
+
+    /**
      * The pipe's glyph caches' work so far (diagnostics, tests): glyphs drawn from a
-     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached
+     * cell, cells staged, cells evicted, atlas row uploads, glyphs drawn uncached, batch draws
      * (SKGlyphCache.h's SKGlyphCacheStat order); an empty array without the backend.
      */
     public static long[] glyphCacheStats() {
@@ -687,6 +932,17 @@ public final class SKEnvironment {
     }
 
     private static native long[] glyphCacheStatsNative();
+
+    /**
+     * The image atlas' work since the start (diagnostics, tests; {@code sun.java2d.skia.imageAtlas}): blits drawn
+     * from it, copies into it, refills, mesh draws of its batch (SKImageAtlas.h's SKImageAtlasStat order); an
+     * empty array without the backend.
+     */
+    public static long[] imageAtlasStats() {
+        return isSkiaEnabled() ? imageAtlasStatsNative() : new long[0];
+    }
+
+    private static native long[] imageAtlasStatsNative();
 
     /**
      * Where the GPU backends keep what they compiled, across sessions

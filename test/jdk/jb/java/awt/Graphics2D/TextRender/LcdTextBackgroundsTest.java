@@ -46,6 +46,18 @@
  * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest metal 48 64
  */
 
+/*
+ * @test id=vulkan
+ * @key headful
+ * @summary The two-pass mode on Graphite's native Vulkan backend (Windows), where a kPlus second
+ *          pass was blended in the shader from an input attachment.
+ * @requires (os.family == "windows")
+ * @modules java.desktop/sun.java2d
+ * @library ..
+ * @build PipelineComparison
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
+ */
+
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;

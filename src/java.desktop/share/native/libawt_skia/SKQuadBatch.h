@@ -143,6 +143,20 @@ public:
         twoPassKey = passes != nullptr ? passes->key : 0;
         meshPaint = p;
         if (atlas) {
+            // the atlas paints of the batch's last few (atlas, paint, passes), most recent first: a batch begun again
+            // for a colour it had (the LCD two-pass batches change colour with every token) reuses the shaders built
+            // for it instead of building the atlas shader and the two passes' runtime shaders again (x64hw, 2026-11-06)
+            const uint32_t atlasId = atlas->uniqueID();
+            const int passKey = passes != nullptr ? passes->key : 0;
+            for (size_t i = 0; i < paintCache.size(); i++) {
+                PaintCacheEntry &e = paintCache[i];
+                if (e.atlasId == atlasId && e.passes == passes && e.passKey == passKey && e.key == p) {
+                    meshPaint = e.meshPaint;
+                    secondPaint = e.secondPaint;
+                    std::rotate(paintCache.begin(), paintCache.begin() + (ptrdiff_t) i, paintCache.begin() + (ptrdiff_t) i + 1);
+                    return;
+                }
+            }
             sk_sp<SkShader> atlasShader = atlas->makeShader(SkTileMode::kClamp, SkTileMode::kClamp,
                                                             SkSamplingOptions(SkFilterMode::kNearest));
             if (passes != nullptr) {
@@ -154,10 +168,44 @@ public:
             } else {
                 meshPaint.setShader(std::move(atlasShader));
             }
+            if (paintCache.size() == kPaintCacheSize) {
+                paintCache.pop_back();
+            }
+            paintCache.insert(paintCache.begin(), PaintCacheEntry{atlasId, passes, passKey, p, meshPaint, secondPaint});
         }
     }
 
     bool active() const { return canvas != nullptr; }
+    // Begun and holding quads: flush() draws something.
+    bool pending() const { return canvas != nullptr && !base.indices.empty(); }
+
+    // Begun on this canvas, atlas and passes (begin() for another paint of them would draw the batch).
+    bool sameTarget(SkCanvas *c, const sk_sp<SkImage> &atlas, const SKQuadBatchTwoPass *passes) const {
+        return canvas == c && atlasImage.get() == atlas.get() && twoPass == passes
+               && twoPassKey == (passes != nullptr ? passes->key : 0);
+    }
+
+    // The batch's paint is p (for batches that do not merge colours: two passes, blenders).
+    bool samePaint(const SkPaint &p) const { return paint == p; }
+
+    // A pending quad's overlap extent intersects r (tracked under splitOnOverlap only).
+    bool overlaps(const SkRect &r) const {
+        if (canvas == nullptr || r.isEmpty()) {
+            return false;
+        }
+        if (!SkRect::Intersects(tracked, r)) {
+            return false;   // nowhere near the batch's quads
+        }
+        if (base.overlaps(r)) {
+            return true;
+        }
+        for (size_t i = 0; i < layerCount; i++) {
+            if (layers[i].overlaps(r)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     // Axis-aligned sprite from the atlas at (tx, ty). `ink`, if given, is the
     // part of the sprite that carries coverage, relative to its origin: the
@@ -279,6 +327,7 @@ private:
     static constexpr size_t kMaxOverlapTested = 1024;
 
     void push(const SkPoint pos[4], const SkPoint *tex, const SkRect *extent = nullptr) {
+        // (The quads draw under the canvas clip of the moment: a clip change draws the batches first.)
         Mesh *target = &base;
         if (splitOnOverlap) {
             // The inked extent suffices for two passes (a pixel without coverage
@@ -311,6 +360,7 @@ private:
                     target = &base;
                 }
                 target->addBounds(bounds);
+                tracked.join(bounds);
             }
         } else if (base.positions.size() + 4 > 0xffff) {
             drawPending();   // 16-bit indices
@@ -408,12 +458,23 @@ private:
         }
         layerCount = 0;
         colors.clear();
+        tracked.setEmpty();
     }
 
     SkCanvas *canvas = nullptr;
     SkPaint paint;          // the batch key: the paint, colour white if colours are merged
     SkPaint meshPaint;      // the first paint of the batch, with the atlas as its shader
     SkPaint secondPaint;    // the second pass (SKQuadBatchTwoPass)
+    struct PaintCacheEntry {
+        uint32_t atlasId;
+        const SKQuadBatchTwoPass *passes;
+        int passKey;
+        SkPaint key;        // the paint begin() was given
+        SkPaint meshPaint;
+        SkPaint secondPaint;
+    };
+    static constexpr size_t kPaintCacheSize = 16;
+    std::vector<PaintCacheEntry> paintCache;   // begin()'s atlas paints, most recent first
     const SKQuadBatchTwoPass *twoPass = nullptr;
     int twoPassKey = 0;
     bool colorPerVertex = false;     // a second colour arrived: `colors` is filled
@@ -424,6 +485,7 @@ private:
     std::vector<Mesh> layers;        // quads overlapping an earlier layer's, drawn after it
     size_t layerCount = 0;           // layers in use; the rest keep their vectors for reuse
     std::vector<SkColor> colors;     // per vertex of `base` when colorPerVertex
+    SkRect tracked = SkRect::MakeEmpty();   // the union of the tracked overlap extents (overlaps()'s quick test)
 };
 
 #endif /* SKQuadBatch_h_Included */

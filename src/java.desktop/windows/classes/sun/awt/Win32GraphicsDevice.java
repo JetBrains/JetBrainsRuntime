@@ -216,8 +216,11 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
     @Override
     public GraphicsConfiguration[] getConfigurations() {
         if (configs==null) {
-            if ((WindowsFlags.isOGLEnabled() || SKEnvironment.isSkiaEnabled()) && isDefaultDevice()) {
-                // one accelerated configuration, which is also the default one
+            if (((WindowsFlags.isOGLEnabled() || SKEnvironment.isSkiaEnabled()) && isDefaultDevice())
+                    || VKEnv.isPresentationEnabled()) {
+                // one accelerated configuration, which is also the default one (Vulkan's on every
+                // device, as getDefaultConfiguration creates it); the GDI pixel formats below would
+                // replace the default with a GDI configuration
                 defaultConfig = getDefaultConfiguration();
                 if (defaultConfig != null) {
                     configs = new GraphicsConfiguration[1];
