@@ -224,3 +224,77 @@ stack is a delta on the shipped renderer rather than the other way round.
 3. The kept switches (§2's list of five) — anything to add or drop.
 4. The pipeline cache's home and the GPU budget target (an IDE default).
 5. Whether the Metal fixes go as separate PRs first (recommended) or wait.
+
+## 6. Addendum 2026-11-09 (evening): the x64 machine's round (`…-x64hw4`, merged as `0ce1b1e5ea4f`) against this plan
+
+**Decisions taken by the user on §5:** the target is `main`, no backport; Windows is in the first package; the Metal
+fixes go as separate PRs, prepared after the renderer branch; the kept switches to be re-evaluated (below).
+
+**What the round adds (75 commits, 2026-10-28 … 11-09; ≈ 9,400 lines, half of them records and the IDE performance
+harness `bench/ide-perf`):**
+
+- *Graphite on native Vulkan on Windows* (`sun.java2d.skia.graphiteApi=vulkan|dawn`), behind a Windows platform layer
+  independent of the graphics API (`Win32SKPlatform`, `VKSKPlatform`, `DawnSKPlatform`, the DirectWrite text code in
+  `Win32SKText.cpp`); the Dawn device asks for the features Graphite uses; `dawnBackend` became `dawn.backend`.
+  Measured on an RTX 3080 Ti: Skia/Vulkan 10.06 s EDT paint typing against the loops' 12.17 s and JBR Vulkan's 9.79 s;
+  Skia/Dawn-D3D11 10.28 s; typing latency equal everywhere (p90 8–10 ms). Against JBR Vulkan Skia is behind in flush
+  time (1.53× typing, 1.20× UI; like for like on text 1.23×) because Graphite records per draw (0.5–0.8 µs before any
+  GPU command) and JBR Vulkan takes shortcuts (LCD drawn grayscale, AA outlines missing).
+- *Presentation and Swing's buffer:* windows presented once per paint cycle on Windows (`present=cycle` the default
+  there) and Swing painting straight into the window surface (`SunToolkit.isWindowSurfaceDoubleBuffered`,
+  `RepaintManager`; `sun.java2d.skia.swingBackBuffer=true` restores the buffer); held recordings (a flush that
+  presents nothing continues its recording). These touch `java.awt.Window`, `WindowPeer` (`updateWindowLater`),
+  `AWTAccessor`, `SunToolkit`, `RepaintManager`, `RenderBuffer`, `BufferedSurfaceDataExt` — shared AWT and Swing code
+  that the AWT owners must review; the asynchronous end-of-paint hand-off (`asyncPresent`, `commitLater`) stays off
+  and parked.
+- *Batching, after the user's cutoff of 2026-11-06:* only what any graphics developer expects of a Java2D backend on
+  Skia — the atlases (glyphs, Marlin tiles, images: `sun.java2d.skia.imageAtlas`, default on), quad batching per
+  kind with colours per vertex and a per-batch paint cache, the same-destination `SET_SURFACES` skip; every strategy
+  that reordered Java2D's drawing (the lazy clip, kinds side by side, blits and shapes past the batches, the LCD
+  colour batches) removed again — ≈ 780 lines out, the cutoff costing 15–17 % of the flush wait and no latency.
+- *Text:* a text blob cache for Skia's text path (`text.blobCache`, default 16384 — the text path only, out with it);
+  *diagnostics:* `profileFlusher*`, `benchGraphite`, `benchGanesh` (links `skia_ganesh_ext` on Windows for it),
+  `J2D_SKIA_DAWN_FEATURES/TOGGLES`, `J2D_SKIA_RECORDING_PER_FLUSH`, more `J2D_SKIA_STATS` attribution; *JBR Vulkan
+  fixes* found on the way (`WToolkit.sync()`, the default configuration), each its own PR like the Metal ones.
+- *The x64's own judgment and route:* a Skia-based renderer, Graphite on the GPU — Metal on macOS, native Vulkan first
+  on Windows with Dawn/D3D11 as the fallback — and gates before committing: seat telemetry, the all-arms series on an
+  integrated GPU, an Intel laptop and a Snapdragon machine, a fidelity-fair comparison with JBR Vulkan, a soak of
+  the new defaults in daily use, robustness (device loss, TDR, display and DPI changes, sleep, RDP).
+
+**What it resolves or improves among §3's gaps.** B7 partly (fewer draws and recordings: held recordings, the image
+atlas, one present per cycle); A1's neighbourhood (the platform layer now has a place for the fallback ladder
+Vulkan → Dawn/D3D11 → D3D, and the Dawn device requests its features); D15 (the IDE performance harness is the
+documented benchmark procedure beside RenderPerfTest); the Dawn-only question of §1 (native Vulkan measured on real
+hardware for the first time, a second Windows GPU vendor still missing). It does not touch A2–A6 (multi-monitor,
+device loss, the crash, the hang, the global state), C, D13–14, or E.
+
+**New gaps it adds.** (a) The shared AWT/Swing changes for the no-back-buffer path: a review by the AWT owners,
+the behaviour on every other pipeline unchanged by construction (`isWindowSurfaceDoubleBuffered` false elsewhere) but
+to be tested (`SkiaSwingBackBufferTest` covers Skia; a non-Skia run of the Swing suites is the check); flicker in
+daily use is the x64's own open soak item. (b) The Vulkan loader at run time: `graphiteApi=vulkan` needs the loader
+present and a driver; the fallback to Dawn when it is not, and to D3D when neither starts, is item A1 widened to a
+ladder. (c) `SkiaRobotHandOffTest` depends on what ran before it in the full set (constant failure in the run, passes
+alone) — a test to fix or drop before the package. (d) `skia_ganesh_ext` linked for a diagnostic: out of the package's
+link line. (e) The Vulkan platform half is a month old and VM-untested (the VM has no Vulkan); the Dawn half is the
+one both Windows machines ran.
+
+**The switches, re-evaluated.** Keep in the package: `sun.java2d.skia`, `verbose`, `pipelineCache`,
+`shapes=analytic|marlin` (triage), `graphiteApi=vulkan|dawn` (the Windows API choice and the fallback's first rung —
+replaces `dawn.backend` as the kept Windows switch; `dawn.backend=d3d12` stays only if D3D12 is to be a triage target),
+`imageAtlas=false` (an off switch for a report of an image rendering difference: cheap, conventional),
+`swingBackBuffer=true` (an off switch for the new Swing path: the one change that reaches Swing users). Out: everything
+under `text.*` including `blobCache`, `raster`, `strokes`, `msaa`, `blitQuads`, `submit`, `present` (one default per
+platform, the switch stays internal), `asyncPresent`, `profileFlusher*`, `benchGraphite`, `benchGanesh`, `strikeCache`
+/ `glyphAtlas` / `glyphCache` (fixed defaults), the `J2D_SKIA_*` variables, the retired spellings.
+
+**On §5's question 4 (the pipeline cache's home, the GPU budget).** The pipeline cache is Graphite's compiled shaders
+and pipelines persisted between runs so the first frames do not pay the compilation (≈ 0.6 s on Dawn measured on the
+VM): a directory of files keyed by the Skia tag and the driver, today `~/.java/skia/<version>` by default and
+`sun.java2d.skia.pipelineCache=<dir>|off`. A shipped runtime should put it where JBR keeps per-user caches (the IDE's
+`system/` directory when the IDE sets the property, else the user's cache directory per platform), bound its size,
+and invalidate it on a driver or Skia change — a small decision with a user-visible effect on first start. The GPU
+budget is Graphite's `fGpuBudgetInBytes` (256 MB default) plus the backend's own atlases: the measured footprint was
+≈ 280 MB above Metal on RenderPerfTest; the decision is the target for an IDE (for example 128 MB + atlases) and the
+measurement that it holds under the IDE scenes. Neither needs a product decision from you beyond "a cache directory
+under the IDE's system directory is acceptable" and "a budget of about N MB"; I will propose numbers with
+measurements in Phase 2.
