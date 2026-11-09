@@ -24,8 +24,9 @@
  */
 
 // Platform-independent part of sun.java2d.skia.SKEnvironment's native side: the configuration
-// (SKConfiguration.h) and the counters the tests read. The start (startNative),
-// framebufferFetchNative and deviceFeaturesNative live with the platform (Win32SKEnvironment.cpp).
+// (SKConfiguration.h) and the counters the tests read. framebufferFetchNative and
+// deviceFeaturesNative live with the platform (Win32SKEnvironment.cpp); the start is
+// SKGraphicsAPIFallback's (Win32SKGraphicsAPIFallback.cpp).
 
 #include "jni.h"
 #include "sun_java2d_skia_SKEnvironment.h"

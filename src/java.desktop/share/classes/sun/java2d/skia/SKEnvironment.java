@@ -48,7 +48,11 @@ import sun.util.logging.PlatformLogger;
  *     paths (default), or every shape through Marlin's masks as the other
  *     pipelines do (the fallback for a rendering difference).</li>
  * <li>{@code sun.java2d.skia.graphite.api=dawn|vulkan} (Windows): the graphics
- *     API Graphite renders through; Dawn over Direct3D 11 by default.</li>
+ *     API Graphite tries first; Dawn over Direct3D 11 by default, the other one
+ *     next (see {@link SKGraphicsAPIFallback}).</li>
+ * <li>{@code sun.java2d.skia.gpuBlocklist=<file>|ignore}: a GPU list replacing
+ *     the shipped one ({@link SKGPUList}), or none; {@code verbose} names the
+ *     entry that kept an API from being used.</li>
  * <li>{@code sun.java2d.skia.imageAtlas=false}: images small enough for the
  *     image atlas are drawn as single textures instead.</li>
  * <li>{@code sun.java2d.skia.text.lcdCompositing=blend|twoPass|accumulate}: how
@@ -56,7 +60,7 @@ import sun.util.logging.PlatformLogger;
  *     is the GPU's (see {@link Configuration}).</li>
  * <li>{@code sun.java2d.skia.dawn.api=d3d12|d3d11}: the Direct3D version Dawn
  *     tries first (Direct3D 11 by default), for the backend's tests and for triage
- *     (Win32SKEnvironment.cpp).</li>
+ *     (read by Win32SKGraphicsAPIFallback.cpp).</li>
  * </ul>
  * <p>
  * The backend starts on the first call of {@link #isSkiaEnabled} or {@link #runningOn},
@@ -75,7 +79,7 @@ public final class SKEnvironment {
 
     /** {@code analytic} (the default) or {@code marlin}: how antialiased shapes are rasterized. */
     private static final String SHAPES = shapesProperty();
-    /** {@code dawn}, {@code vulkan} or {@code null}: the graphics API asked for; the native side reads the property itself. */
+    /** {@code dawn}, {@code vulkan} or {@code null}: the graphics API Graphite tries first, if one was asked for. */
     private static final String GRAPHITE_API = graphiteAPIProperty();
     private static final boolean IMAGE_ATLAS = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.imageAtlas"));
 
@@ -235,7 +239,7 @@ public final class SKEnvironment {
 
     /**
      * Loads libawt_skia, hands it the configuration and the pipeline cache, and starts Graphite
-     * on the graphics API the platform chose ({@code graphite.api}).
+     * on the first usable graphics API.
      *
      * @return what the backend runs on ({@link #runningOn}), or {@code null} if it did not start
      */
@@ -243,13 +247,13 @@ public final class SKEnvironment {
         String startedOn = null;
         try {
             if (loadLibrary()) {
-                // before the start: the API creates its device as it starts, and the device takes
+                // before the start: an API creates its device as it starts, and the device takes
                 // the pipeline cache and the configuration then
                 configuration = Configuration.fromProperties(framebufferFetchNative());
                 configureNative(configuration.lcdCompositing().ordinal(), configuration.framebufferFetch(),
                                 GLYPH_CACHE_TEXELS, IMAGE_ATLAS);
                 SKPipelineCache.configure();
-                startedOn = startNative();
+                startedOn = SKGraphicsAPIFallback.startFirstUsableAPI(SKGPUList.load(), GRAPHITE_API);
                 if (startedOn != null) {
                     SKPipelineCache.addShutdownHook();
                 }
@@ -298,12 +302,6 @@ public final class SKEnvironment {
         }
         log.warning(message);
     }
-
-    /**
-     * Starts the graphics API the platform chose ({@code graphite.api}, read natively); what the
-     * backend runs on then ({@link #runningOn}), or {@code null} if the API finds no adapter.
-     */
-    private static native String startNative();
 
     /** Whether the GPU reads the framebuffer in the shader, so that a destination read costs nothing. */
     private static native boolean framebufferFetchNative();

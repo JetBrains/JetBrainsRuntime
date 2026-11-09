@@ -104,6 +104,7 @@ public:
     Win32SKAPI api() const override { return Win32SKAPI::Dawn; }
     // "<adapter> (D3D11)"; no device is created.
     std::string describeAdapter() override;
+    std::optional<Win32SKAdapterIDs> adapterIDs() override;
     // The preferred device features (PREFERRED_FEATURES) of the last device created, as "name=o/g ..." with
     // o whether the adapter offers it and g whether the device has it; empty before the first device.
     std::string deviceFeatures() override;
@@ -279,6 +280,22 @@ std::string DawnSKGraphicsAPI::describeAdapter() {
     wgpu::BackendType direct3DVersion;
     wgpu::Adapter adapter = instance != nullptr ? firstAdapter(instance, &direct3DVersion) : nullptr;
     return adapter != nullptr ? adapterDescription(adapter, direct3DVersion) : std::string();
+}
+
+std::optional<Win32SKAdapterIDs> DawnSKGraphicsAPI::adapterIDs() {
+    wgpu::Instance instance = dawnInstance();
+    wgpu::BackendType direct3DVersion;
+    wgpu::Adapter adapter = instance != nullptr ? firstAdapter(instance, &direct3DVersion) : nullptr;
+    if (adapter == nullptr) {
+        return std::nullopt;
+    }
+    wgpu::AdapterInfo info;
+    adapter.GetInfo(&info);
+    Win32SKAdapterIDs ids;
+    ids.vendorID = info.vendorID;
+    ids.deviceID = info.deviceID;
+    ids.name = toString(info.device);
+    return ids;
 }
 
 namespace {

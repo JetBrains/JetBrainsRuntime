@@ -28,20 +28,21 @@
 // The Windows platform half of the Skia backend (SKPlatform.h), independent of the
 // graphics API Graphite renders through. There is no host pipeline to wrap on
 // Windows: the backend owns device, textures and swap chains itself. The JNI code
-// (Win32SKGraphicsConfig.cpp, Win32SKSurfaceData.cpp, Win32SKEnvironment.cpp)
-// calls only this layer; each configuration and surface carries the graphics API
-// that made it (Win32SKGraphicsAPI), and SKPlatform.h's GPU side forwards to that
-// (Win32SKPlatform.cpp). Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11
-// or 12) or Vulkan (VKSKPlatform.cpp), one per process: Win32SKEnvironment selects
-// the one sun.java2d.skia.graphite.api names (Dawn by default), and the backend does
-// not start when it has no adapter. The APIs depend on this layer, not this layer on
-// them. Text is the same for every API (SKTextPipe.cpp, shared). SKPlatformConfig and
-// SKPlatformSurface alias Win32SKConfigInfo and Win32SKSurface: Win32SKPlatform.cpp
-// converts between them, the APIs see only the latter.
+// (Win32SKGraphicsConfig.cpp, Win32SKSurfaceData.cpp, Win32SKEnvironment.cpp,
+// Win32SKGraphicsAPIFallback.cpp) calls only this layer and the APIs' Win32SKGraphicsAPI;
+// each configuration and surface carries the graphics API that made it, and SKPlatform.h's
+// GPU side forwards to that (Win32SKPlatform.cpp). Graphite's API is Dawn (DawnSKPlatform.cpp,
+// over Direct3D 11 or 12) or Vulkan (VKSKPlatform.cpp), one per process: SKGraphicsAPIFallback
+// tries them in order (Dawn, then Vulkan; sun.java2d.skia.graphite.api=vulkan: the other way
+// round) and falls back to the next API when one has no adapter, is blocked by the GPU list or
+// does not start. The APIs depend on this layer, not this layer on them. Text is the same for
+// every API (SKTextPipe.cpp, shared). SKPlatformConfig and SKPlatformSurface alias
+// Win32SKConfigInfo and Win32SKSurface: Win32SKPlatform.cpp converts between them, the APIs
+// see only the latter.
 //
-// With no API selected (before Win32SKEnvironment's start) nothing can be observed:
-// createConfig makes no configuration, so there is no surface either, and what takes
-// neither (simulateDeviceLoss) does nothing.
+// With no API selected (before SKGraphicsAPIFallback's start, or when no API starts) nothing
+// can be observed: createConfig makes no configuration, so there is no surface either, and
+// what takes neither (simulateDeviceLoss) does nothing.
 
 #include "SKPlatform.h"
 
@@ -54,7 +55,8 @@
 
 class Win32SKGraphicsAPI;
 
-// The graphics APIs Graphite renders through (sun.java2d.skia.graphite.api).
+// The graphics APIs Graphite renders through. The order is SKGPUList.GraphiteAPI's (DAWN=0,
+// VULKAN=1): the JNI entries receive its ordinal.
 enum class Win32SKAPI { Dawn, Vulkan };
 
 // The first member of every API's configuration (one per Win32SKGraphicsConfig)
@@ -80,6 +82,14 @@ struct Win32SKClientArea {
     uint32_t clientHeight = 0;
 };
 
+// The adapter an API would use, as the API reports it: the PCI vendor and device IDs
+// and the adapter's name (UTF-8).
+struct Win32SKAdapterIDs {
+    uint32_t vendorID = 0;
+    uint32_t deviceID = 0;
+    std::string name;
+};
+
 // A graphics API Graphite renders through: its configurations and surfaces, and the GPU side of
 // SKPlatform.h for them (see there). Implemented by DawnSKGraphicsAPI (DawnSKPlatform.cpp) and
 // VKSKGraphicsAPI (VKSKPlatform.cpp), one instance each for the life of the process; a configuration
@@ -92,6 +102,9 @@ public:
     // Name of the adapter the API would use ("<adapter> (D3D11)", "<adapter> (Vulkan)"), empty if
     // none; no device is created.
     [[nodiscard]] virtual std::string describeAdapter() = 0;
+    // The PCI vendor and device IDs and the name of the adapter configurations will use, without a
+    // device (SKGraphicsAPIFallback's GPU list); empty if there is none.
+    [[nodiscard]] virtual std::optional<Win32SKAdapterIDs> adapterIDs() = 0;
     // The device's features as the API reports them (SKEnvironment.deviceFeatures); empty if it reports none.
     [[nodiscard]] virtual std::string deviceFeatures() = 0;
 
@@ -125,13 +138,18 @@ public:
 
 namespace Win32SKPlatform {
 
-// Before anything else (Win32SKEnvironment.startNative): the API of every later
+// Before anything else (startNative, Win32SKGraphicsAPIFallback.cpp): the API of every later
 // configuration; none before (no configuration can be made, see above).
 void selectGraphicsAPI(Win32SKGraphicsAPI *graphicsAPI);
 [[nodiscard]] Win32SKGraphicsAPI *selectedGraphicsAPI();
 
 // "Dawn", "Vulkan": the API's name in what SKEnvironment.runningOn reports.
 const char *apiName(Win32SKAPI api);
+
+// The adapter the API would use, described for the GPU list (sun.java2d.skia.SKGPUList.Adapter.parse):
+// "vendor=0x.. device=0x.. [driver=a.b.c.d] [os=major.minor.build] [fl=12.1] name=..."; empty if the API
+// has no adapter. Creates no device of the API.
+[[nodiscard]] std::string adapterForGPUList(Win32SKGraphicsAPI &graphicsAPI);
 
 // A configuration on the selected API's shared device; null if none can be made.
 [[nodiscard]] Win32SKConfigInfo *createConfig();

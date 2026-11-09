@@ -50,8 +50,8 @@ import javax.swing.WindowConstants;
 /**
  * Native Vulkan is an evaluation option; a value the platform does not offer (metal on Windows)
  * leaves the default. On either API a window shows what is painted, also after a resize (a new
- * swap chain). Where the API asked for does not start, neither does Skia: there is nothing to
- * test then; Skia running on another API than the one asked for fails.
+ * swap chain). Where the API asked for is not usable, SKGraphicsAPIFallback falls back to the
+ * other one and says why (verbose): there is nothing to test then; a fallback it does not explain fails.
  */
 public class SkiaGraphiteAPITest {
 

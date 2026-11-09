@@ -1,0 +1,5 @@
+# Not a GPU list (SkiaGPUListFallbackTest): the shipped list applies, with a warning.
+entry test/broken
+blocks dawn
+notACondition 1
+end

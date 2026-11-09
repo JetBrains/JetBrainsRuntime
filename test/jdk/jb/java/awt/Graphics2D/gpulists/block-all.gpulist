@@ -1,0 +1,5 @@
+# A replacement GPU list for SkiaGPUListFallbackTest: Dawn and Vulkan blocked on every adapter.
+entry test/everything
+description Dawn and Vulkan blocked everywhere
+blocks dawn vulkan
+end

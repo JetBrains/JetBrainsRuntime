@@ -44,9 +44,11 @@ import sun.java2d.skia.SKEnvironment;
 
 /**
  * Direct3D 12 is a triage option: Chrome ships WebGPU on Dawn's D3D12 backend, Skia tests
- * Graphite on D3D11 first. Without Dawn there is nothing to test (Skia does not start without an
- * adapter of the API asked for). Dawn falls back to the other Direct3D version where the one asked
- * for has no adapter; {@link SKEnvironment#runningOn} names
+ * Graphite on D3D11 first. Without Dawn there is nothing to test. Dawn falls back to the other
+ * Direct3D version where the one asked for has no adapter; with Dawn itself unavailable
+ * SKGraphicsAPIFallback must say why it went on to Vulkan (sun.java2d.skia.verbose,
+ * {@link PipelineComparison#requireAPI}), else the fallback would skip this test silently;
+ * {@link SKEnvironment#runningOn} names
  * the version that runs ("(D3D12)"), and the fallback is told apart from a defect by Dawn's own
  * report in the Java2D trace of a child JVM (J2D_TRACE_LEVEL, "DawnSK: no D3D12 adapter"): only
  * then is there nothing to test; Direct3D 12 with an adapter that did not run fails.
@@ -64,7 +66,7 @@ public class SkiaDawnBackendTest {
         switch (mode) {
             case "child" -> System.out.println("on " + SKEnvironment.runningOn());
             case "D3D11" -> {
-                // a run on another API than asked for, which the start would have to report, fails
+                // the verbose report tells a Dawn that fell back to Vulkan apart from one that never ran
                 String verbose = PipelineComparison.startCapturingVerbose();
                 PipelineComparison.requireAPI("Dawn", "D3D11", verbose);
                 System.out.println("PASSED");

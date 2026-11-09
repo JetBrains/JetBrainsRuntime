@@ -31,11 +31,18 @@
 
 #include "SKPlatform.h"
 
+#include <array>
 #include <atomic>
 #include <optional>
+#include <stdio.h>
 #include <string>
 
+#include <d3d11.h>
+#include <dxgi.h>
+#include <wrl/client.h>
+
 using namespace skgpu::graphite;
+using Microsoft::WRL::ComPtr;
 
 namespace {
 
@@ -204,4 +211,120 @@ bool SKPlatform::lcdOrderBGR() {
                && orientation == FE_FONTSMOOTHINGORIENTATIONBGR;
     }();
     return bgr;
+}
+
+// ---- the adapter as SKGraphicsAPIFallback's GPU list sees it (SKGPUList.Adapter) ----------------------
+// Chromium's lists compare the driver version DXGI reports (UMD version a.b.c.d, as Chromium's GPU
+// info collection reads it) and the highest Direct3D 11 feature level of the adapter, both read
+// here from the DXGI adapter with the PCI IDs the API's adapter has; Vulkan's packed driverVersion
+// is not that version. The feature level is probed (D3D11CreateDevice without an output creates no
+// device): Dawn's D3D11 device asks for 11.1 at most, Chromium's (ANGLE's) for 12.1.
+
+namespace {
+
+// The feature levels Chromium's GPU info collection probes, highest first.
+constexpr std::array<D3D_FEATURE_LEVEL, 9> PROBED_FEATURE_LEVELS = {
+    D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0, D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0,
+    D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_9_3, D3D_FEATURE_LEVEL_9_2,
+    D3D_FEATURE_LEVEL_9_1,
+};
+
+// D3D_FEATURE_LEVEL packs major.minor as 0xMm00 (D3D_FEATURE_LEVEL_12_1 = 0xc100): the major in
+// bits 12-15, the minor in bits 8-11.
+constexpr int FEATURE_LEVEL_MAJOR_SHIFT = 12;
+constexpr int FEATURE_LEVEL_MINOR_SHIFT = 8;
+constexpr unsigned FEATURE_LEVEL_DIGIT_MASK = 0xf;
+
+// The texts made here: "65535.65535.65535.65535" (a version's four 16-bit words), "15.15" (a feature
+// level's two hexadecimal digits) and "vendor=0x%04x device=0x%04x" (two 32-bit IDs), with room to spare.
+constexpr size_t VERSION_TEXT_SIZE = 64;
+constexpr size_t FEATURE_LEVEL_TEXT_SIZE = 16;
+constexpr size_t IDS_TEXT_SIZE = 64;
+
+// The UMD version DXGI reports packs a.b.c.d into the two words of each half of a LARGE_INTEGER
+// (IDXGIAdapter::CheckInterfaceSupport).
+std::string dottedVersion(LARGE_INTEGER umdVersion) {
+    char text[VERSION_TEXT_SIZE];
+    snprintf(text, sizeof(text), "%u.%u.%u.%u", (unsigned) HIWORD(umdVersion.HighPart),
+             (unsigned) LOWORD(umdVersion.HighPart), (unsigned) HIWORD(umdVersion.LowPart),
+             (unsigned) LOWORD(umdVersion.LowPart));
+    return text;
+}
+
+// The adapter's highest Direct3D 11 feature level as "major.minor"; empty if no device could be probed.
+std::string featureLevelOf(IDXGIAdapter1 *adapter) {
+    D3D_FEATURE_LEVEL level = (D3D_FEATURE_LEVEL) 0;
+    const HRESULT result = D3D11CreateDevice(adapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr, 0, PROBED_FEATURE_LEVELS.data(),
+                                             (UINT) PROBED_FEATURE_LEVELS.size(), D3D11_SDK_VERSION, nullptr, &level,
+                                             nullptr);
+    if (FAILED(result)) {
+        return std::string();
+    }
+    char text[FEATURE_LEVEL_TEXT_SIZE];
+    snprintf(text, sizeof(text), "%u.%u", (level >> FEATURE_LEVEL_MAJOR_SHIFT) & FEATURE_LEVEL_DIGIT_MASK,
+             (level >> FEATURE_LEVEL_MINOR_SHIFT) & FEATURE_LEVEL_DIGIT_MASK);
+    return text;
+}
+
+// major.minor.build, as Chromium compares os versions; GetVersionEx would report the manifest's.
+std::string windowsVersion() {
+    using RtlGetVersionFunction = LONG (WINAPI *)(OSVERSIONINFOW *);
+    auto rtlGetVersion = (RtlGetVersionFunction) GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
+    OSVERSIONINFOW versionInfo = {};
+    versionInfo.dwOSVersionInfoSize = sizeof(versionInfo);
+    if (rtlGetVersion == nullptr || rtlGetVersion(&versionInfo) != 0) {   // 0: STATUS_SUCCESS
+        return std::string();
+    }
+    return std::to_string(versionInfo.dwMajorVersion) + "." + std::to_string(versionInfo.dwMinorVersion) + "." +
+           std::to_string(versionInfo.dwBuildNumber);
+}
+
+// The DXGI adapter with these PCI IDs: its driver version and feature level, both empty if DXGI does
+// not list the adapter (or the factory cannot be made).
+void dxgiDriverAndFeatureLevel(uint32_t vendorID, uint32_t deviceID, std::string *driverVersion,
+                               std::string *featureLevel) {
+    ComPtr<IDXGIFactory1> factory;
+    if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory)))) {
+        return;
+    }
+    ComPtr<IDXGIAdapter1> adapter;
+    // SUCCEEDED, not "!= DXGI_ERROR_NOT_FOUND": any other failure (a broken or remote DXGI) ends the
+    // search without an adapter to dereference
+    for (UINT adapterIndex = 0; driverVersion->empty() && SUCCEEDED(factory->EnumAdapters1(adapterIndex, &adapter));
+         adapterIndex++) {
+        DXGI_ADAPTER_DESC1 adapterDescription;
+        LARGE_INTEGER umdVersion;
+        if (SUCCEEDED(adapter->GetDesc1(&adapterDescription)) && adapterDescription.VendorId == vendorID
+                && adapterDescription.DeviceId == deviceID
+                && SUCCEEDED(adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umdVersion))) {
+            *driverVersion = dottedVersion(umdVersion);
+            *featureLevel = featureLevelOf(adapter.Get());
+        }
+        adapter.Reset();
+    }
+}
+
+} // namespace
+
+std::string Win32SKPlatform::adapterForGPUList(Win32SKGraphicsAPI &graphicsAPI) {
+    const std::optional<Win32SKAdapterIDs> adapter = graphicsAPI.adapterIDs();
+    if (!adapter) {
+        return std::string();
+    }
+    std::string driverVersion, featureLevel;
+    dxgiDriverAndFeatureLevel(adapter->vendorID, adapter->deviceID, &driverVersion, &featureLevel);
+    char ids[IDS_TEXT_SIZE];
+    snprintf(ids, sizeof(ids), "vendor=0x%04x device=0x%04x", adapter->vendorID, adapter->deviceID);
+    std::string line = ids;
+    if (!driverVersion.empty()) {
+        line += " driver=" + driverVersion;
+    }
+    const std::string osVersion = windowsVersion();
+    if (!osVersion.empty()) {
+        line += " os=" + osVersion;
+    }
+    if (!featureLevel.empty()) {
+        line += " fl=" + featureLevel;
+    }
+    return line + " name=" + adapter->name;
 }

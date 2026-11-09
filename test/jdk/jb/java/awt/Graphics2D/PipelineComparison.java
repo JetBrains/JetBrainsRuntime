@@ -292,14 +292,15 @@ public final class PipelineComparison {
 
     /**
      * Skips the test unless Skia runs on the Graphite API ({@code Dawn}, {@code Vulkan}) and, on
-     * Dawn, on the Direct3D version ({@code D3D11}, {@code D3D12}, null: either). The backend
-     * runs on the API sun.java2d.skia.graphite.api names or does not start ("Skia is not enabled:
-     * nothing to test"); Dawn goes on to its other Direct3D version when the requested one has no
-     * adapter ("Dawn on &lt;version&gt; unavailable here: nothing to test").
+     * Dawn, on the Direct3D version ({@code D3D11}, {@code D3D12}, null: either).
+     * SKGraphicsAPIFallback goes on to the other API when the requested one has no adapter, is
+     * blocked by the GPU list or does not start, and Dawn to its other Direct3D version, so a run
+     * line for one API would test the other on a machine without it: "&lt;api&gt; unavailable
+     * here: nothing to test" then, and "Skia is not enabled: nothing to test" without Skia.
      *
      * @param startVerbose what sun.java2d.skia.verbose printed while Skia started
-     *                     ({@link #startCapturingVerbose}), or null; given, Skia on another API
-     *                     than the one asked for that the start did not report fails
+     *                     ({@link #startCapturingVerbose}), or null; given, a fallback to the
+     *                     other API that the start did not report (the API never tried) fails
      */
     public static void requireAPI(String api, String dawnAPI, String startVerbose) {
         requireSkia();

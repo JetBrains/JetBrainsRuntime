@@ -42,7 +42,7 @@
 
 namespace DawnSKPlatform {
 
-// Dawn as a Win32SKGraphicsAPI, for the selection (Win32SKEnvironment); the API of every Dawn
+// Dawn as a Win32SKGraphicsAPI, for the selection (Win32SKGraphicsAPIFallback.cpp); the API of every Dawn
 // configuration and surface. Lives for the process.
 [[nodiscard]] Win32SKGraphicsAPI &graphicsAPI();
 

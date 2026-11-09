@@ -98,6 +98,18 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
       AC_MSG_WARN([--with-skia: the prebuilt under '${with_skia}' is not the one pinned in skia_prebuilt.conf (${skia_pinned_sha256})])
     fi
 
+    # The backend's GPU list is generated for one Skia release from Chromium's lists at the matching
+    # revision (update_gpu_lists.sh); a bump of SKIA_TAG without regenerating it is noticed here.
+    AC_MSG_CHECKING([whether the Skia GPU list was generated for the pinned Skia])
+    skia_gpu_list_file="${TOPDIR}/src/java.desktop/share/classes/sun/java2d/skia/SKGPUListData.java"
+    skia_gpu_list_tag=`$GREP "String SKIA_TAG = " "${skia_gpu_list_file}" 2> /dev/null | $SED 's/.*"\(.*\)".*/\1/'`
+    if test "x${skia_gpu_list_tag}" = "x${skia_pinned_tag}"; then
+      AC_MSG_RESULT([yes])
+    else
+      AC_MSG_RESULT([no (${skia_gpu_list_tag})])
+      AC_MSG_WARN([--with-skia: SKGPUListData.java was generated for Skia ${skia_gpu_list_tag}, the pin is ${skia_pinned_tag}; run jb/project/tools/common/scripts/update_gpu_lists.sh])
+    fi
+
     # The release the backend reports (SKIA_RELEASE: its pipeline cache is keyed by it): the pin's tag when the
     # unpacked tree is the pinned one, "unpinned" otherwise (a hand-built Skia must not share a cache key with
     # the release); reduced to the characters a tag has, so it stays one preprocessor token.

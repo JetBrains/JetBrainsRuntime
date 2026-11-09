@@ -49,7 +49,8 @@ import sun.java2d.skia.SKEnvironment;
  * allocator are not destroyed during DLL detach, after the loader may be gone), and with
  * -Dsun.java2d.d3d=true as well, where the toolkit's shutdown must not start the Direct3D queue
  * (Skia owns the screen, no Direct3D device exists). The child must have rendered on the API of
- * its mode; where that API does not start (Skia does not start then) there is nothing to test.
+ * its mode; where that API is not usable (SKGraphicsAPIFallback falls back to the other one) there
+ * is nothing to test.
  */
 public class SkiaProcessExitTest {
 

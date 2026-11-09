@@ -1,0 +1,5 @@
+# A replacement GPU list for SkiaGPUListFallbackTest: Vulkan blocked on every adapter.
+entry test/vulkan
+description Vulkan blocked everywhere
+blocks vulkan
+end

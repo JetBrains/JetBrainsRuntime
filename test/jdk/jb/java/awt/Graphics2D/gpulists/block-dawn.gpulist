@@ -1,0 +1,5 @@
+# A replacement GPU list for SkiaGPUListFallbackTest: Dawn blocked on every adapter.
+entry test/dawn
+description Dawn blocked everywhere
+blocks dawn
+end
