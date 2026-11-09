@@ -62,12 +62,14 @@ public class ShapingContextTest {
                 continue;
             }
 
+            // Some fonts don't use context like AAT fonts with 'morx' on macOS or Arial on Windows
+            if (glyphsAfter(font, "\u0628", joiningLetters).equals(glyphsAfter(font, "", joiningLetters))) {
+                continue;
+            }
+
             String alone = glyphs(font, Arrays.copyOfRange(LONG_TEXT, START, LIMIT), 0, LIMIT - START, 0, LIMIT - START);
             // SHORT_TEXT is short enough to reach HarfBuzz uncut
             String expected = glyphs(font, SHORT_TEXT, CONTEXT, CONTEXT + LIMIT - START, 0, LIMIT - START);
-            if (expected.equals(alone)) {
-                continue; // HarfBuzz uses no context with this font, e.g. AAT fonts with 'morx' on macOS
-            }
 
             String actual = glyphs(font, LONG_TEXT, START, LIMIT, 0, LIMIT - START);
             if (!actual.equals(expected)) {
