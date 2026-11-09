@@ -37,7 +37,9 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Font;
+import java.awt.font.GlyphVector;
 import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
 import java.lang.annotation.Native;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedCharacterIterator.Attribute;
@@ -196,22 +198,94 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     @Override
     public void drawString(SunGraphics2D sg2d, String s, double x, double y) {
-        if (!drawShaped(sg2d, s, x, y)) {
+        if (drawShaped(sg2d, s, x, y)) {
+            return;
+        }
+        FontInfo info = sg2d.getFontInfo();
+        if (!largeBySkia(info)) {
             super.drawString(sg2d, s, x, y);
+            return;
+        }
+        float[] origin = glyphListOrigin(sg2d, x + info.originX, y + info.originY);
+        GlyphList gl = GlyphList.getInstance();
+        if (!gl.setFromString(info, s, origin[0], origin[1])) {
+            gl.dispose();
+            new TextLayout(s, sg2d.getFont(), sg2d.getFontRenderContext()).draw(sg2d, (float) x, (float) y);   // needs shaping
+            return;
+        }
+        boolean drawn = drawBySkia(sg2d, gl);
+        gl.dispose();
+        if (!drawn) {
+            SurfaceData.outlineTextRenderer.drawString(sg2d, s, x, y);
         }
     }
 
     @Override
     public void drawChars(SunGraphics2D sg2d, char[] data, int offset, int length, int x, int y) {
-        if (!drawShaped(sg2d, new String(data, offset, length), x, y)) {
+        if (drawShaped(sg2d, new String(data, offset, length), x, y)) {
+            return;
+        }
+        FontInfo info = sg2d.getFontInfo();
+        if (!largeBySkia(info)) {
             super.drawChars(sg2d, data, offset, length, x, y);
+            return;
+        }
+        float[] origin = glyphListOrigin(sg2d, x + info.originX, y + info.originY);
+        GlyphList gl = GlyphList.getInstance();
+        if (!gl.setFromChars(info, data, offset, length, origin[0], origin[1])) {
+            gl.dispose();
+            new TextLayout(new String(data, offset, length), sg2d.getFont(), sg2d.getFontRenderContext()).draw(sg2d, x, y);
+            return;
+        }
+        boolean drawn = drawBySkia(sg2d, gl);
+        gl.dispose();
+        if (!drawn) {
+            SurfaceData.outlineTextRenderer.drawChars(sg2d, data, offset, length, x, y);
+        }
+    }
+
+    @Override
+    public void drawGlyphVector(SunGraphics2D sg2d, GlyphVector gv, float x, float y) {
+        FontInfo info = sg2d.getGVFontInfo(gv.getFont(), gv.getFontRenderContext());
+        if (!largeBySkia(info)) {
+            super.drawGlyphVector(sg2d, gv, x, y);
+            return;
+        }
+        float[] origin = glyphListOrigin(sg2d, x, y);   // the glyph vector carries the font's origin itself
+        GlyphList gl = GlyphList.getInstance();
+        gl.setFromGlyphVector(info, gv, origin[0], origin[1]);
+        boolean drawn = drawBySkia(sg2d, gl);
+        gl.dispose();
+        if (!drawn) {
+            SurfaceData.outlineTextRenderer.drawGlyphVector(sg2d, gv, x, y);
         }
     }
 
     /**
+     * Text above the outline threshold that Skia's text path may draw: GlyphListPipe would fill Java's outlines of
+     * it; Skia draws large glyphs itself (as paths beyond its glyph atlas), as the shaper and the paragraph engine
+     * do, so every route renders such text alike. The strike's records then carry advances only (SKFontStrike);
+     * a list Skia cannot draw after all (a composite font's slot off the Skia scaler) goes to the outline renderer.
+     */
+    static boolean largeBySkia(FontInfo info) {
+        return info.pixelHeight > OutlineTextRenderer.THRESHHOLD && !info.nonInvertibleTx
+                && SKEnvironment.textBySkia() && SKGlyphContexts.mayDraw(info.fontStrike);
+    }
+
+    /** A glyph list's device origin from a user-space position, as GlyphListPipe computes it. */
+    static float[] glyphListOrigin(SunGraphics2D sg2d, double x, double y) {
+        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+            double[] origin = {x, y};
+            sg2d.transform.transform(origin, 0, origin, 0, 1);
+            return new float[] {(float) origin[0], (float) origin[1]};
+        }
+        return new float[] {(float) (x + sg2d.transX), (float) (y + sg2d.transY)};
+    }
+
+    /**
      * Shapes and draws the text through Skia's shaper when the strike is on the Skia
-     * scaler (any invertible glyph transform, drawn under its part beyond the size) and
-     * the text is below the outline threshold; false leaves it to Java's layout.
+     * scaler (any invertible glyph transform, drawn under its part beyond the size, at any
+     * size: Skia draws large glyphs itself); false leaves it to Java's layout.
      */
     private boolean drawShaped(SunGraphics2D sg2d, String s, double x, double y) {
         if (!SKEnvironment.textShapedBySkia() || s.isEmpty()) {
@@ -219,7 +293,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         }
         FontInfo info = sg2d.getFontInfo();
         SKDrawableStrike strike = skiaStrike(info.fontStrike);
-        if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null || !layoutLikeTextPath(sg2d, info)) {
+        if (info.nonInvertibleTx || strike == null || !layoutLikeTextPath(sg2d, info)) {
             return false;
         }
         // Whole-pixel positioning is the SkFont's: the shaper rounds the advances when
@@ -396,7 +470,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 trackings.add(Float.floatToRawIntBits(values.getTracking()));
                 FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
                 SKDrawableStrike strike = skiaStrike(info.fontStrike);
-                if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
+                if (info.nonInvertibleTx || strike == null) {
                     return false;
                 }
                 if (!layoutLikeTextPath(sg2d, info)) {
@@ -477,6 +551,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {
+        if (!drawBySkia(sg2d, gl)) {
+            super.drawGlyphList(sg2d, gl);
+        }
+    }
+
+    /** The list through Skia's text path; false when a strike of it is not Skia's (the glyph images' pipe then). */
+    private boolean drawBySkia(SunGraphics2D sg2d, GlyphList gl) {
         // a physical strike's context and codes, or a composite strike's contexts by slot with the codes re-encoded
         SKGlyphContexts.Runs runs = SKEnvironment.textBySkia() ? SKGlyphContexts.of(gl) : null;
         if (runs != null) {
@@ -515,9 +596,9 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             } finally {
                 rq.unlock();
             }
-            return;
+            return true;
         }
-        super.drawGlyphList(sg2d, gl);
+        return false;
     }
 
     /** Skia's text path: glyph codes (the slot in bits 24–31 selecting the context) with Java's positions (or the images' advances) through the strikes' SkFonts (oversized operations). */

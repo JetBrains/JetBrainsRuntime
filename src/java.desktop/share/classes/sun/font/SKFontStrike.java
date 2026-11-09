@@ -52,6 +52,13 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
     private final long[] glyphImages;
     private final FontStrikeDisposer disposer;
     private ConcurrentHashMap<Integer, Rectangle2D.Float> boundsMap;
+    /**
+     * Above the outline threshold (FontInfo's pixel height) a strike Skia's text path draws hands out records with
+     * the advance only: every pipe draws such text as outlines or through Skia's text path, which draws large glyphs
+     * itself, so their images are never drawn; pixel bounds come from the outlines (as FileFontStrike's above it).
+     */
+    private final boolean advancesOnly;
+    private static final int ADVANCES_ONLY_PAD = 2;
     /** Images of fallback characters (negative codes), freed with the strike. */
     private final ConcurrentHashMap<Integer, Long> fallbackImages = new ConcurrentHashMap<>();
 
@@ -74,6 +81,9 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
         desc.glyphTx.getMatrix(matrix);
         this.pScalerContext = scaler.createScalerContext(matrix, deviceScale, desc.aaHint, desc.fmHint, 1f, 0f, desc.luminance);
         this.glyphImages = new long[Math.max(1, mapper.getNumGlyphs())];
+        double pixelHeight = Math.hypot(matrix[2], matrix[3]);   // SunGraphics2D's FontInfo.pixelHeight: m01, m11 of the glyph transform
+        this.advancesOnly = (int) (pixelHeight + 0.5) > sun.java2d.pipe.OutlineTextRenderer.THRESHHOLD
+                && pScalerContext != 0 && scaler.contextIsInvertible(pScalerContext);
         this.disposer = new FontStrikeDisposer(font, desc, pScalerContext, glyphImages);
         Disposer.addObjectRecord(this, disposer);
         ConcurrentHashMap<Integer, Long> fallbacks = fallbackImages;
@@ -132,7 +142,7 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
         if (glyphCode < 0) {
             // CFont's mapper hands a character the font lacks to the platform's
             // fallback as -codePoint; the scaler resolves it the same way
-            return fallbackImages.computeIfAbsent(glyphCode, code -> scaler.getGlyphImage(pScalerContext, code));
+            return fallbackImages.computeIfAbsent(glyphCode, this::createGlyphRecord);
         }
         if (glyphCode >= glyphImages.length) {
             return StrikeCache.invisibleGlyphPtr;
@@ -141,7 +151,7 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
         if (ptr != 0L) {
             return ptr;
         }
-        ptr = scaler.getGlyphImage(pScalerContext, glyphCode);
+        ptr = createGlyphRecord(glyphCode);
         synchronized (this) {
             if (glyphImages[glyphCode] == 0L) {
                 glyphImages[glyphCode] = ptr;
@@ -160,8 +170,26 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
         }
     }
 
+    private long createGlyphRecord(int glyphCode) {
+        return advancesOnly ? scaler.getGlyphAdvanceRecord(pScalerContext, glyphCode) : scaler.getGlyphImage(pScalerContext, glyphCode);
+    }
+
     @Override
     void getGlyphImageBounds(int glyphCode, Point2D.Float pt, Rectangle result) {
+        if (advancesOnly) {
+            // the outline's bounds with the images' padding: the platform's masks below Skia's atlas limit spread
+            // up to two pixels beyond the outline (antialiasing and smoothing), as the images did
+            Rectangle2D.Float bounds = getGlyphOutlineBounds(glyphCode);
+            if (bounds.isEmpty()) {
+                result.setBounds((int) Math.floor(pt.x + 0.5f), (int) Math.floor(pt.y + 0.5f), 0, 0);
+                return;
+            }
+            result.x = (int) Math.floor(pt.x + bounds.x) - ADVANCES_ONLY_PAD;
+            result.y = (int) Math.floor(pt.y + bounds.y) - ADVANCES_ONLY_PAD;
+            result.width = (int) Math.ceil(pt.x + bounds.x + bounds.width) + ADVANCES_ONLY_PAD - result.x;
+            result.height = (int) Math.ceil(pt.y + bounds.y + bounds.height) + ADVANCES_ONLY_PAD - result.y;
+            return;
+        }
         long ptr = getGlyphImagePtr(glyphCode);
         if (ptr == 0L) {
             result.setBounds((int) Math.floor(pt.x + 0.5f), (int) Math.floor(pt.y + 0.5f), 0, 0);

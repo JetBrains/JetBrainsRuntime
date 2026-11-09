@@ -482,6 +482,21 @@ Java_sun_font_SKFontScaler_getGlyphBoundsNative(JNIEnv *env, jclass clazz, jlong
     return env->NewObject(rectClass, ctor, bounds.fLeft, bounds.fTop, bounds.width(), bounds.height());
 }
 
+// A glyph record with the advance and no image, for strikes above the outline threshold that Skia's text path
+// draws itself (large glyphs as paths): their images are never drawn, and would be up to 1024 x 1024 per
+// sub-pixel variant.
+JNIEXPORT jlong JNICALL
+Java_sun_font_SKFontScaler_getGlyphAdvanceRecordNative(JNIEnv *env, jclass clazz, jlong pContext, jint glyphCode)
+{
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    SkFont font;
+    SkGlyphID glyph;
+    if (!resolveGlyph(context, glyphCode, &font, &glyph)) {
+        return ptr_to_jlong(emptyGlyph({0, 0}));
+    }
+    return ptr_to_jlong(emptyGlyph(recordAdvance(context, font, glyph)));
+}
+
 // A StrikeCache GlyphInfo with the glyph drawn by the SkFont in device space:
 // A8 coverage for grayscale and aliased text, RGB coverage triplets for LCD
 // text (Skia's sub-pixel edging on an opaque RGB canvas, the ink's inverse).

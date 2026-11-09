@@ -149,6 +149,11 @@ public final class SKFontScaler extends FontScaler {
                                    FontUtilities.subpixelResolution.width, FontUtilities.subpixelResolution.height);
     }
 
+    /** A glyph record carrying the advance only (strikes above the outline threshold, drawn by Skia's text path). */
+    long getGlyphAdvanceRecord(long pScalerContext, int glyphCode) {
+        return getGlyphAdvanceRecordNative(pScalerContext, glyphCode);
+    }
+
     /** The glyph's bounds from the font host, so bitmap glyphs (colour emoji) have them too. */
     @Override
     Rectangle2D.Float getGlyphOutlineBounds(long pScalerContext, int glyphCode) {
@@ -285,4 +290,5 @@ public final class SKFontScaler extends FontScaler {
     private static native GeneralPath getGlyphOutlineNative(long pContext, int glyphCode, float x, float y);
     private static native Rectangle2D.Float getGlyphBoundsNative(long pContext, int glyphCode);
     private static native long getGlyphImageNative(long pContext, int glyphCode, int subpixelResolutionX, int subpixelResolutionY);
+    private static native long getGlyphAdvanceRecordNative(long pContext, int glyphCode);
 }

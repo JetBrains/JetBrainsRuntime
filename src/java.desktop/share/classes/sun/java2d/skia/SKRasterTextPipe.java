@@ -23,9 +23,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import sun.font.GlyphList;
+import sun.font.SKDrawableStrike;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.loops.FontInfo;
-import sun.java2d.SurfaceData;
 import sun.java2d.pipe.GlyphListPipe;
 import sun.java2d.pipe.OutlineTextRenderer;
 import sun.java2d.pipe.TextPipe;
@@ -38,7 +38,8 @@ import sun.java2d.pipe.TextPipe;
  * physical strike's SkFont. Text whose strikes are not on the Skia scaler (or
  * carry a rotated glyph transform) goes to the loops' pipe this one wraps,
  * decided after the glyph list is built and before the loops see the call, so
- * they see it whole. One instance per wrapped pipe.
+ * they see it whole. Text above the outline threshold is Skia's too (the loops would fill
+ * Java's outlines of it), as on the GPU pipe (SKTextRenderer.largeBySkia). One instance per wrapped pipe.
  */
 final class SKRasterTextPipe extends GlyphListPipe {
 
@@ -67,10 +68,6 @@ final class SKRasterTextPipe extends GlyphListPipe {
             return;
         }
         if (info.nonInvertibleTx) {
-            return;
-        }
-        if (info.pixelHeight > OutlineTextRenderer.THRESHHOLD) {
-            SurfaceData.outlineTextRenderer.drawString(sg2d, s, x, y);
             return;
         }
         float devX, devY;
@@ -109,10 +106,6 @@ final class SKRasterTextPipe extends GlyphListPipe {
         if (info.nonInvertibleTx) {
             return;
         }
-        if (info.pixelHeight > OutlineTextRenderer.THRESHHOLD) {
-            SurfaceData.outlineTextRenderer.drawChars(sg2d, data, offset, length, ix, iy);
-            return;
-        }
         float devX, devY;
         if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
             double[] origin = {ix + info.originX, iy + info.originY};
@@ -146,8 +139,8 @@ final class SKRasterTextPipe extends GlyphListPipe {
         if (info.nonInvertibleTx) {
             return;
         }
-        if (info.pixelHeight > OutlineTextRenderer.THRESHHOLD) {
-            SurfaceData.outlineTextRenderer.drawGlyphVector(sg2d, gv, x, y);
+        if (info.pixelHeight > OutlineTextRenderer.THRESHHOLD && !SKGlyphContexts.mayDraw(info.fontStrike)) {
+            loops.drawGlyphVector(sg2d, gv, x, y);   // the loops' outlines, without building the list's large images
             return;
         }
         float devX, devY;
@@ -198,7 +191,9 @@ final class SKRasterTextPipe extends GlyphListPipe {
         // INT_ARGB_PRE time (SkiaRasterTextCostTest).
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
         gl.startGlyphIteration();   // the list is fresh: the bounds of all its glyph images, as the loops take them
-        int[] bounds = gl.getBounds(n);   // x0, y0, x1, y1 in device pixels; all zero for a list without images
+        // records with advances only (text above the outline threshold, drawn by Skia at any size): the outlines' bounds
+        int[] bounds = SKDrawableStrike.imageless(gl, n) ? SKDrawableStrike.outlineBounds(gl, n)
+                : gl.getBounds(n);   // x0, y0, x1, y1 in device pixels; all zero for a list without images
         glyphsBySkia.addAndGet(n);
         if (bounds[2] <= bounds[0] && bounds[3] <= bounds[1]) {
             return;   // nothing visible (every glyph without an image)
