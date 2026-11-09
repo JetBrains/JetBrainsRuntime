@@ -32,7 +32,10 @@ import java.util.function.Consumer;
  *          interpolation, with a translucent source and a translucent
  *          composite, match the software loops' transform helper within
  *          its sampling tolerance (a few pixels on a sampling tie may pick the
- *          other source pixel), with edge pixels decided the same way;
+ *          other source pixel), with edge pixels decided the same way; draws
+ *          with a background colour (opaque and translucent, with a
+ *          translucent composite) match the loops' composite-then-transform
+ *          within 2 levels;
  *          the source's pixels are read in place, and the draws reach Skia
  *          (the counter). Plain copies and integer translations stay with the
  *          loops' blits, which are already copies.
@@ -51,6 +54,18 @@ public class SkiaRasterImageTest {
                 compare(name + ", scale 1.5 x 0.8", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.drawImage(src, AffineTransform.getScaleInstance(1.5, 0.8), null); }, tol);
                 compare(name + ", rotation", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.rotate(0.35, 80, 60); g.drawImage(src, 40, 30, null); }, tol);
                 compare(name + ", shear, translucent composite", g -> { g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f)); g.shear(0.3, 0.1); g.drawImage(src, 20, 20, null); }, tol);
+                // a background colour: the loops composite the source over it into a temporary image (INT_RGB for an
+                // opaque colour, INT_ARGB for a translucent one) and transform that; the Skia route samples the source
+                // over the colour, which filters alike (the composite is linear in premultiplied values)
+                bySkia(name + ", rotation, opaque background colour", () -> compare(name + ", rotation, opaque background colour", g -> {
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.rotate(0.35, 80, 60); g.drawImage(src, 40, 30, new Color(40, 160, 90), null); }, tol));
+                // (an opaque source under a scale hides the colour and stays the loops' scaled blit, as without one)
+                Runnable scaled = () -> compare(name + ", scale 1.25, translucent background colour", g -> {
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.scale(1.25, 1.25); g.drawImage(src, 20, 20, new Color(40, 160, 90, 110), null); }, Math.max(tol, 2));
+                if (srcType == BufferedImage.TYPE_INT_RGB) scaled.run(); else bySkia(name + ", scale 1.25, translucent background colour", scaled);
+                bySkia(name + ", rotation, background colour, translucent composite", () -> compare(name + ", rotation, background colour, translucent composite", g -> {
+                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp); g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f));
+                    g.rotate(-0.2, 80, 60); g.drawImage(src, 40, 30, new Color(200, 60, 160), null); }, Math.max(tol, 2)));
             }
         }
         long bySkia = imagesBySkia();
@@ -74,6 +89,15 @@ public class SkiaRasterImageTest {
             for (int y = 0; y < img.getHeight(); y++) for (int x = 0; x < img.getWidth(); x++) img.setRGB(x, y, img.getRGB(x, y));
         }
         return img;
+    }
+
+    /** The draws must reach Skia's raster path: the counter moves. */
+    static void bySkia(String what, Runnable comparison) {
+        long before = imagesBySkia();
+        comparison.run();
+        if (imagesBySkia() == before) {
+            throw new RuntimeException(what + ": the draw did not reach Skia's raster path (the counter did not move)");
+        }
     }
 
     static long imagesBySkia() {

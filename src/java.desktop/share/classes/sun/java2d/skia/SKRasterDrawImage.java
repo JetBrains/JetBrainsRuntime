@@ -39,8 +39,10 @@ import sun.java2d.pipe.Region;
  * unpremultiplied source through a premultiplied copy of the rectangle); the
  * destination pixels drawn and the samples a filter reads at the source's edge
  * follow Java's transform helper (centre inside the source; neighbours clamped).
- * Other sources, background-colour draws and custom composites stay with the
- * loops.
+ * A background colour is sampled under the source (the loops composite the
+ * source over it into a temporary image and transform that; source-over-colour
+ * is linear in premultiplied values, so filtering either alike). Other sources
+ * and custom composites stay with the loops.
  */
 final class SKRasterDrawImage extends DrawImage {
 
@@ -50,15 +52,15 @@ final class SKRasterDrawImage extends DrawImage {
     @Override
     protected void renderImageXform(SunGraphics2D sg, Image img, AffineTransform tx, int interpType,
                                     int sx1, int sy1, int sx2, int sy2, Color bgColor) {
-        if (bgColor == null && sg.compositeState <= SunGraphics2D.COMP_ALPHA && img instanceof BufferedImage bi
-                && sg.surfaceData instanceof SKRasterSurfaceData dst && transformBySkia(sg, bi, dst, tx, interpType, sx1, sy1, sx2, sy2)) {
+        if (sg.compositeState <= SunGraphics2D.COMP_ALPHA && img instanceof BufferedImage bi
+                && sg.surfaceData instanceof SKRasterSurfaceData dst && transformBySkia(sg, bi, dst, tx, interpType, sx1, sy1, sx2, sy2, bgColor)) {
             return;
         }
         super.renderImageXform(sg, img, tx, interpType, sx1, sy1, sx2, sy2, bgColor);
     }
 
     private static boolean transformBySkia(SunGraphics2D sg, BufferedImage src, SKRasterSurfaceData dst, AffineTransform tx, int interpType,
-                                           int sx1, int sy1, int sx2, int sy2) {
+                                           int sx1, int sy1, int sx2, int sy2, Color bgColor) {
         int srcPf;
         switch (src.getType()) {
             case BufferedImage.TYPE_INT_ARGB -> srcPf = SKSurfaceData.PF_INT_ARGB;
@@ -88,8 +90,11 @@ final class SKRasterDrawImage extends DrawImage {
         float extraAlpha = sg.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f;
         int rule = sg.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
         float[] m = {(float) tx.getScaleX(), (float) tx.getShearY(), (float) tx.getShearX(), (float) tx.getScaleY(), (float) tx.getTranslateX(), (float) tx.getTranslateY(), extraAlpha};
+        // an opaque source hides the colour (the loops' isBgOperation): drawn without it
+        boolean background = bgColor != null && srcPf != SKSurfaceData.PF_INT_RGB;
         imagesBySkia.incrementAndGet();
-        drawImage(dst, dst.pixelFormat(), srcData, srcPf, SKRasterShapePipe.packed(sx1, sy1), SKRasterShapePipe.packed(sx2, sy2), m, rule | interpType << 8 | (dst.untouchedByJava() ? 1 << 16 : 0),
+        drawImage(dst, dst.pixelFormat(), srcData, srcPf, SKRasterShapePipe.packed(sx1, sy1), SKRasterShapePipe.packed(sx2, sy2), m,
+                  rule | interpType << 8 | (dst.untouchedByJava() ? 1 << 16 : 0) | (background ? 1 << 17 : 0), background ? bgColor.getRGB() : 0,
                   SKRasterShapePipe.packed(dx1, dy1), SKRasterShapePipe.packed(dx2, dy2), SKRasterShapePipe.spansOf(clip, dx1, dy1, dx2, dy2));
         return true;
     }
@@ -98,9 +103,9 @@ final class SKRasterDrawImage extends DrawImage {
      * Draws the source rectangle under the transform (which maps the rectangle's origin to the
      * destination; the extra alpha rides in the array's seventh slot), sampling with the
      * interpolation type of AffineTransformOp (1 nearest, 2 bilinear, 3 bicubic, in bits 8–15 over
-     * the composite rule; bit 16: the mirror may be kept); the source is locked for reading while it is drawn. Points are packed
-     * as SKRasterShapePipe.packed.
+     * the composite rule; bit 16: the mirror may be kept; bit 17: the source is drawn over the background colour
+     * {@code bgArgb}); the source is locked for reading while it is drawn. Points are packed as SKRasterShapePipe.packed.
      */
     private static native void drawImage(SKRasterSurfaceData dst, int dstPixelFormat, SurfaceData src, int srcPixelFormat, int srcLeftTop, int srcRightBottom,
-                                         float[] xformAndAlpha, int ruleAndInterpolation, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                         float[] xformAndAlpha, int ruleAndInterpolation, int bgArgb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 }

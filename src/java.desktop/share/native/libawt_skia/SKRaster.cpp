@@ -82,6 +82,17 @@ inline uint32_t premultiplied(uint32_t p) {   // Java's unpremultiplied ARGB int
     uint32_t c0 = ((p & 0xff) * a + 127) / 255, c1 = (((p >> 8) & 0xff) * a + 127) / 255, c2 = (((p >> 16) & 0xff) * a + 127) / 255;
     return (a << 24) | (c2 << 16) | (c1 << 8) | c0;
 }
+// A premultiplied pixel over a premultiplied background pixel (Porter-Duff SrcOver, the loops' rounding)
+inline uint32_t overBackground(uint32_t p, uint32_t bg) {
+    const uint32_t inv = 255 - (p >> 24);
+    if (inv == 0) return p;
+    uint32_t out = 0;
+    for (int shift = 0; shift <= 24; shift += 8) {
+        const uint32_t c = ((p >> shift) & 0xff) + (((bg >> shift) & 0xff) * inv + 127) / 255;
+        out |= std::min<uint32_t>(c, 255) << shift;
+    }
+    return out;
+}
 // A device point packed by SKRasterShapePipe.packed: x in the high half, y in the low half.
 inline jint px(jint p) { return (jint) ((uint32_t) p >> 16); }
 inline jint py(jint p) { return p & 0xffff; }
@@ -637,9 +648,10 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat,
                                                  jobject srcData, jint srcPixelFormat, jint srcLeftTop, jint srcRightBottom,
-                                                 jfloatArray xformArray, jint ruleAndInterpolation, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
+                                                 jfloatArray xformArray, jint ruleAndInterpolation, jint bgArgb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
-    const jint compositeRule = ruleAndInterpolation & 0xff, interpType = (ruleAndInterpolation >> 8) & 0xff; const bool mirrorKept = (ruleAndInterpolation >> 16) & 1;
+    const jint compositeRule = ruleAndInterpolation & 0xff, interpType = (ruleAndInterpolation >> 8) & 0xff;
+    const bool mirrorKept = (ruleAndInterpolation >> 16) & 1, background = (ruleAndInterpolation >> 17) & 1;
     const jint sx1 = px(srcLeftTop), sy1 = py(srcLeftTop), sx2 = px(srcRightBottom), sy2 = py(srcRightBottom);
     const jint clipX1 = px(clipLeftTop), clipY1 = py(clipLeftTop), clipX2 = px(clipRightBottom), clipY2 = py(clipRightBottom);
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
@@ -660,8 +672,9 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
     if (srcOps->Lock(env, srcOps, &sr, SD_LOCK_READ) != SD_SUCCESS) return;
     srcOps->GetRasInfo(env, srcOps, &sr);
     const int sw = sx2 - sx1, sh = sy2 - sy1;
+    const uint32_t background0 = premultiplied((uint32_t) bgArgb);
     const bool unpremultiplied = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB, opaque = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_RGB;
-    Buffer<4096, uint32_t> converted(unpremultiplied || opaque ? (size_t) sw * sh : 0);
+    Buffer<4096, uint32_t> converted(unpremultiplied || opaque || background ? (size_t) sw * sh : 0);
     if (sr.rasBase != nullptr && sw > 0 && sh > 0) {
         // the source rectangle only (a filter's neighbours clamp to its edge, as in Java's transform helper).
         // An unpremultiplied source is premultiplied first, as the helper does: Skia would filter the stored
@@ -677,12 +690,16 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
                     // Java's INT_RGB pixels carry an alpha byte of 0 (the colour model stores only the colour):
                     // Skia takes an opaque image's alpha as it is stored, so it is made 255
                     for (int x = 0; x < sw; x++) out[x] = in[x] | 0xff000000u;
+                } else if (background) {
+                    // the source over the background colour before it is sampled, as the loops' temporary image holds
+                    // it: a filter that overshoots (bicubic) clamps the composite, not the source
+                    for (int x = 0; x < sw; x++) out[x] = overBackground(unpremultiplied ? premultiplied(in[x]) : in[x], background0);
                 } else {
                     for (int x = 0; x < sw; x++) out[x] = premultiplied(in[x]);
                 }
             }
             pixels = converted.data; rowBytes = (size_t) sw * 4;
-            if (unpremultiplied) info = info.makeAlphaType(kPremul_SkAlphaType);
+            if (unpremultiplied || background) info = info.makeAlphaType(kPremul_SkAlphaType);
         }
         sk_sp<SkImage> image = SkImages::RasterFromPixmap(SkPixmap(info, pixels, rowBytes), nullptr, nullptr);   // no copy: the pixels live until the unlock
         if (image) {

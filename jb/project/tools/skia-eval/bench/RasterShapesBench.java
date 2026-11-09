@@ -128,6 +128,17 @@ public class RasterShapesBench {
                 g.drawImage(picture, at, null);
             }
         });
+        Color background = new Color(40, 160, 90);
+        run(target, frames, "image 64x48 rotated bilinear on a background colour x500", false, g -> {
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            for (int i = 0; i < 500; i++) {
+                Graphics2D rotated = (Graphics2D) g.create();
+                rotated.translate(xs[i], ys[i]);
+                rotated.rotate(0.3);
+                rotated.drawImage(picture, 0, 0, background, null);
+                rotated.dispose();
+            }
+        });
         run(target, frames, "image 64x48 scaled 1.5 bicubic x500", false, g -> {
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
             for (int i = 0; i < 500; i++) g.drawImage(picture, (int) xs[i], (int) ys[i], 96, 72, null);
