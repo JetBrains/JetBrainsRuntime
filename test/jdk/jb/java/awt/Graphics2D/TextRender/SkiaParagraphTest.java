@@ -109,8 +109,10 @@ public class SkiaParagraphTest {
 
         // 3. an attribute the route does not handle goes to Java's layout, and still draws
         Consumer<Graphics2D> widened = g -> {
+            // FAMILY and SIZE: next to a FONT, TextLayout ignores WIDTH (the FONT outranks it), and so does the route
             AttributedString as = new AttributedString(TEXT);
-            as.addAttribute(TextAttribute.FONT, font);
+            as.addAttribute(TextAttribute.FAMILY, font.getFamily());
+            as.addAttribute(TextAttribute.SIZE, font.getSize2D());
             as.addAttribute(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED, 0, 3);
             g.drawString(as.getIterator(), 4, BASE);
         };

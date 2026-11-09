@@ -81,18 +81,19 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     /** The attributes a run's font is made of when there is no FONT attribute (TextLayout's Font.getFont). */
     private static final java.util.Set<Attribute> FONT_ATTRIBUTES = java.util.Set.of(TextAttribute.FAMILY, TextAttribute.SIZE,
             TextAttribute.WEIGHT, TextAttribute.POSTURE, TextAttribute.KERNING, TextAttribute.LIGATURES, TextAttribute.TRACKING,
-            TextAttribute.SUPERSCRIPT);
+            TextAttribute.SUPERSCRIPT, TextAttribute.WIDTH, TextAttribute.TRANSFORM);
 
     /**
      * Layout attributes a run's font may carry for Skia's paragraph engine: kerning, ligatures, tracking and
      * superscript, which it applies as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width (part
-     * of its extra transform), leave the paragraph to TextLayout.
+     * of its extra transform), leave the paragraph to TextLayout. Colours, background, underline, strikethrough and
+     * swapped colours a font carries are not refused: TextLayout takes them from the iterator's attributes only, never
+     * from a FONT attribute's font (measured), and so does the route.
      */
     private static final int UNSUPPORTED_FONT_ATTRIBUTES = sun.font.AttributeValues.getMask(
-            sun.font.EAttribute.ECHAR_REPLACEMENT, sun.font.EAttribute.EFOREGROUND, sun.font.EAttribute.EBACKGROUND,
-            sun.font.EAttribute.EUNDERLINE, sun.font.EAttribute.ESTRIKETHROUGH, sun.font.EAttribute.ERUN_DIRECTION,
+            sun.font.EAttribute.ECHAR_REPLACEMENT, sun.font.EAttribute.ERUN_DIRECTION,
             sun.font.EAttribute.EBIDI_EMBEDDING, sun.font.EAttribute.EJUSTIFICATION, sun.font.EAttribute.EINPUT_METHOD_HIGHLIGHT,
-            sun.font.EAttribute.EINPUT_METHOD_UNDERLINE, sun.font.EAttribute.ESWAP_COLORS, sun.font.EAttribute.ENUMERIC_SHAPING,
+            sun.font.EAttribute.EINPUT_METHOD_UNDERLINE, sun.font.EAttribute.ENUMERIC_SHAPING,
             sun.font.EAttribute.EWIDTH);
 
     /** Render-queue opcodes of the Skia text path: the backend's own range above {@code BufferedOpCodes}, after {@code SKShapePipe}'s. */
@@ -304,7 +305,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     font = f;
                 } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE
                         || a == TextAttribute.KERNING || a == TextAttribute.LIGATURES || a == TextAttribute.TRACKING
-                        || a == TextAttribute.SUPERSCRIPT) {
+                        || a == TextAttribute.SUPERSCRIPT || a == TextAttribute.WIDTH || a == TextAttribute.TRANSFORM) {
                     // the run's font (resolved below as TextLayout does: a FONT attribute outranks them)
                 } else if (a == TextAttribute.FOREGROUND) {
                     if (!(v instanceof Color c)) {

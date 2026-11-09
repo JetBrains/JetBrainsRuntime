@@ -51,7 +51,10 @@ import java.util.function.Consumer;
  *          FONT or FAMILY (no attributes at all, colours only, SIZE or WEIGHT alone, next to a FONT
  *          run, characters from several scripts) are the paragraph's with the fonts TextLayout
  *          resolves for them (FontResolver: Dialog 12 derived with the font attributes, else the
- *          first font that displays the character), pixel-identical.
+ *          first font that displays the character), pixel-identical. Plain drawString, drawChars
+ *          and drawBytes in a font with layout attributes (kerning, ligatures, tracking, underline,
+ *          strikethrough, a colour, a background, a superscript) are the paragraph's too, as
+ *          TextLayout(String, Font) draws them; a font with WIDTH stays TextLayout's.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest
@@ -143,8 +146,25 @@ public class SkiaParagraphAttributesTest {
         mixed.addAttribute(TextAttribute.FONT, font, 0, 7);
         expect("a FONT run next to a run without font attributes", mixed, true);
         expect("several scripts without font attributes", withAttribute(new AttributedString("Text \u6f22\u5b57 \u2211\u2202\u0394 \u2192 \u2260 \u05e9\u05dc"), TextAttribute.SIZE, 16f, 0, 5), true);
+        // plain drawString / drawChars / drawBytes in a font with layout attributes: SunGraphics2D hands the string to the
+        // paragraph route as TextLayout(String, Font) lays it out (the font's attributes on the string, and the font)
+        expectPlain("a font with KERNING_ON", font.deriveFont(Map.of(TextAttribute.KERNING, TextAttribute.KERNING_ON)), KERNED, true, 0);
+        expectPlain("a font with LIGATURES_ON", font.deriveFont(Map.of(TextAttribute.LIGATURES, TextAttribute.LIGATURES_ON)), LIGATED, true, 0);
+        expectPlain("a font with TRACKING", font.deriveFont(Map.of(TextAttribute.TRACKING, 0.1f)), KERNED, true, 0);
+        expectPlain("a font with UNDERLINE_ON", font.deriveFont(Map.of(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON)), KERNED, true, 0);
+        expectPlain("a font with STRIKETHROUGH_ON and KERNING_ON", font.deriveFont(Map.of(TextAttribute.STRIKETHROUGH, TextAttribute.STRIKETHROUGH_ON,
+                TextAttribute.KERNING, TextAttribute.KERNING_ON)), KERNED, true, 0);
+        expectPlain("a font with FOREGROUND", font.deriveFont(Map.of(TextAttribute.FOREGROUND, new Color(0x2050c0))), KERNED, true, 0);
+        expectPlain("a font with BACKGROUND and SWAP_COLORS", font.deriveFont(Map.of(TextAttribute.BACKGROUND, Color.YELLOW,
+                TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON)), KERNED, true, -1);
+        // a FONT attribute's own decorations and colours: TextLayout ignores them (it reads the iterator's), and so must the route
+        expect("a FONT carrying UNDERLINE and FOREGROUND (ignored, as by TextLayout)", runs(KERNED, font.deriveFont(Map.of(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON,
+                TextAttribute.FOREGROUND, Color.RED))), true);
+        expectPlain("a font with SUPERSCRIPT_SUB", font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUB)), KERNED, true, hidpi ? 2 : 1);
+        expectPlain("a font with WIDTH (TextLayout's)", font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED)), KERNED, false, 0);
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
         expect("a font carrying WIDTH", runs(KERNED, font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED))), false);
+        expect("WIDTH next to a FONT (ignored, as by TextLayout)", withAttribute(KERNED, font, TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED), true);
         System.out.println("PASSED");
     }
 
@@ -328,6 +348,67 @@ public class SkiaParagraphAttributesTest {
         if (unshiftedRuns && moved[maxRows] == 0) {
             throw new RuntimeException(what + ": no column on TextLayout's rows (the line's baseline moved)");
         }
+    }
+
+    /**
+     * The four plain entries in the font against TextLayout(String, Font).draw (the old hook's drawing): taken by
+     * the paragraph engine or not, identical pixels (maxRows 0) or each column within maxRows rows.
+     */
+    static void expectPlain(String what, Font f, String text, boolean byParagraph, int maxRows) throws Exception {
+        java.util.List<Map.Entry<String, Consumer<Graphics2D>>> entries = java.util.List.of(
+                Map.entry("drawString(float)", g -> { g.setFont(f); g.drawString(text, 10f, 30f); }),
+                Map.entry("drawString(int)", g -> { g.setFont(f); g.drawString(text, 10, 30); }),
+                Map.entry("drawChars", g -> { g.setFont(f); g.drawChars(("<" + text + ">").toCharArray(), 1, text.length(), 10, 30); }),
+                Map.entry("drawBytes", g -> { g.setFont(f); g.drawBytes(text.getBytes(java.nio.charset.StandardCharsets.ISO_8859_1), 0, text.length(), 10, 30); }));
+        BufferedImage reference = render(g -> new TextLayout(text, f, g.getFontRenderContext()).draw(g, 10, 30));
+        for (Map.Entry<String, Consumer<Graphics2D>> e : entries) {
+            long before = paragraphs();
+            BufferedImage route = render(e.getValue());
+            long taken = paragraphs() - before;
+            int n = differing(route, reference);
+            // maxRows -1: a background box, SkParagraph's (its edges within a pixel of TextLayout's, as expectBox)
+            int unmatched = maxRows < 0 ? (boxWithinPixel(route, reference) ? -1 : 0)
+                    : maxRows == 0 ? (n == 0 ? -1 : 0) : unmatchedColumn(route, reference, maxRows);
+            System.out.println(what + ", " + e.getKey() + ": " + taken + " paragraphs by Skia, " + n + " pixels apart from TextLayout");
+            if (taken != (byParagraph ? 1 : 0)) {
+                throw new RuntimeException(what + ", " + e.getKey() + ": " + taken + " paragraphs by Skia's paragraph engine (expected " + (byParagraph ? 1 : 0) + ")");
+            }
+            if (unmatched >= 0) {
+                throw new RuntimeException(what + ", " + e.getKey() + ": drawn " + n + " pixels apart from TextLayout"
+                        + (maxRows > 0 ? " (column " + unmatched + " beyond " + maxRows + " rows)" : ""));
+            }
+        }
+    }
+
+    /** The non-white pixels' bounds of a within a pixel of b's on every edge. */
+    static boolean boxWithinPixel(BufferedImage a, BufferedImage b) {
+        java.awt.Rectangle r = inked(a), l = inked(b);
+        return !l.isEmpty() && Math.abs(r.x - l.x) <= 1 && Math.abs(r.y - l.y) <= 1
+                && Math.abs(r.x + r.width - l.x - l.width) <= 1 && Math.abs(r.y + r.height - l.y - l.height) <= 1;
+    }
+
+    static java.awt.Rectangle inked(BufferedImage a) {
+        java.awt.Rectangle r = null;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            if (a.getRGB(x, y) != 0xffffffff) {
+                if (r == null) r = new java.awt.Rectangle(x, y, 1, 1); else r.add(new java.awt.Rectangle(x, y, 1, 1));
+            }
+        }
+        return r != null ? r : new java.awt.Rectangle();
+    }
+
+    /** The first column of a that is not b's moved by at most maxRows rows (2x: by its ink's centroid), or -1. */
+    static int unmatchedColumn(BufferedImage a, BufferedImage b, int maxRows) {
+        for (int x = 0; x < W; x++) {
+            boolean found = false;
+            for (int dy = -maxRows; dy <= maxRows && !found; dy++) {
+                found = columnMovedBy(a, b, x, dy);
+            }
+            if (!found && !(hidpi && inkMovedWithin(a, b, x, maxRows))) {
+                return x;
+            }
+        }
+        return -1;
     }
 
     /** Column x of a equals column x of b moved down by dy rows (rows moved in from outside are blank). */

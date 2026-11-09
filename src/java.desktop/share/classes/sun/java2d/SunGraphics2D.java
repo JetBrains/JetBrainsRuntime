@@ -48,6 +48,7 @@ import java.awt.TexturePaint;
 import java.awt.Transparency;
 import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
+import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
@@ -69,6 +70,7 @@ import java.awt.image.renderable.RenderContext;
 import java.awt.image.renderable.RenderableImage;
 import java.lang.annotation.Native;
 import java.text.AttributedCharacterIterator;
+import java.text.AttributedString;
 import java.util.Map;
 
 import com.jetbrains.desktop.image.TextureWrapperImage;
@@ -2873,7 +2875,9 @@ public final class SunGraphics2D
             if (str.length() == 0) {
                 return;
             }
-            new TextLayout(str, font, getFontRenderContext()).draw(this, x, y);
+            if (!drawStringWithLayoutAttributes(str, x, y)) {
+                new TextLayout(str, font, getFontRenderContext()).draw(this, x, y);
+            }
             return;
         }
 
@@ -2902,7 +2906,9 @@ public final class SunGraphics2D
             if (str.length() == 0) {
                 return;
             }
-            new TextLayout(str, font, getFontRenderContext()).draw(this, x, y);
+            if (!drawStringWithLayoutAttributes(str, x, y)) {
+                new TextLayout(str, font, getFontRenderContext()).draw(this, x, y);
+            }
             return;
         }
 
@@ -2952,6 +2958,19 @@ public final class SunGraphics2D
         tl.draw(this, x, y);
     }
 
+    /**
+     * A string in a font with layout attributes, offered to an attributed text pipe as TextLayout(String, Font, ...)
+     * lays it out (the font's attributes on the whole string, and the font); false leaves it to TextLayout.
+     */
+    private boolean drawStringWithLayoutAttributes(String str, float x, float y) {
+        if (!(textpipe instanceof AttributedTextPipe pipe)) {
+            return false;
+        }
+        AttributedString as = new AttributedString(str, font.getAttributes());
+        as.addAttribute(TextAttribute.FONT, font);
+        return pipe.drawString(this, as.getIterator(), x, y);
+    }
+
     public void drawGlyphVector(GlyphVector gv, float x, float y)
     {
         if (gv == null) {
@@ -2987,8 +3006,10 @@ public final class SunGraphics2D
             if (data.length == 0) {
                 return;
             }
-            new TextLayout(new String(data, offset, length),
-                           font, getFontRenderContext()).draw(this, x, y);
+            String str = new String(data, offset, length);
+            if (!drawStringWithLayoutAttributes(str, x, y)) {
+                new TextLayout(str, font, getFontRenderContext()).draw(this, x, y);
+            }
             return;
         }
 
@@ -3025,8 +3046,10 @@ public final class SunGraphics2D
             if (data.length == 0) {
                 return;
             }
-            new TextLayout(new String(chData),
-                           font, getFontRenderContext()).draw(this, x, y);
+            String str = new String(chData);
+            if (!drawStringWithLayoutAttributes(str, x, y)) {
+                new TextLayout(str, font, getFontRenderContext()).draw(this, x, y);
+            }
             return;
         }
 
