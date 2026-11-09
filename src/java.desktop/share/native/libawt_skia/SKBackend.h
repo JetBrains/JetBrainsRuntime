@@ -161,6 +161,11 @@ SkTileMode SKBackend_TileModeFor(jint cycleMethod);
 sk_sp<SkColorSpace> SKBackend_StopColorSpace(bool linear);
 /** The bias in t that makes a REPEAT cycle's boundary pixel wrap as Java's does. */
 float SKBackend_RepeatSeamBias();
+
+// TexturePaintContext's sampling rules on a texture paint's local matrix (image texels -> device pixels, sampled
+// at the pixel's corner): texel centres at integer coordinates when filtering; for nearest, exact ties resolved
+// the way the context's fixed-point steps resolve them (exactAxes: bit 0 x, bit 1 y stepped by whole texels).
+void SKBackend_TexturePaintSampling(SkMatrix *local, bool filter, int exactAxes);
 /** The Porter-Duff blend mode of a java.awt.AlphaComposite rule (SRC_OVER for an unknown rule). */
 SkBlendMode SKBackend_BlendModeForRule(jint rule);
 void SKBackend_SetAlphaComposite(jint rule, jfloat extraAlpha, jint flags);

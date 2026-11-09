@@ -905,9 +905,6 @@ static sk_sp<SkImage> imageFromSoftwareSurface(JNIEnv *env, SurfaceDataOps *ops,
     return image;
 }
 
-// Texture paint: Java encodes device -> image-normalized coordinates as
-// u = xp0*x + xp1*y + xp3, v = yp0*x + yp1*y + yp3; the shader's local matrix
-// maps device space to image pixels.
 // A Skia surface's image for sampling in the current recording (a blit's source, a texture paint's image):
 // a view linked to the surface's device when it has one on this context, so Graphite records the surface's
 // pending draws — a cached texture's upload among them — ahead of the reads, and a later draw into it after
@@ -919,6 +916,11 @@ static sk_sp<SkImage> sampledImage(SKSDOps *src, bool *linked) {
     return *linked ? SkSurfaces::AsImage(src->state->surface) : SKBackend_GetImage(src);
 }
 
+static bool wholeTextureStep(double increment, int size);
+
+// Texture paint: Java encodes device -> image-normalized coordinates as
+// u = xp0*x + xp1*y + xp3, v = yp0*x + yp1*y + yp3; the shader's local matrix
+// maps device space to image pixels.
 static void setTexturePaintShader(sk_sp<SkImage> image, jboolean filter,
                                   jdouble xp0, jdouble xp1, jdouble xp3, jdouble yp0, jdouble yp1, jdouble yp3) {
     // (u, v) = (xp0*x + xp1*y + xp3, yp0*x + yp1*y + yp3) in [0,1]: device -> image.
@@ -930,8 +932,39 @@ static void setTexturePaintShader(sk_sp<SkImage> image, jboolean filter,
         g.shader.reset();
         return;
     }
+    // the image steps per device pixel, in texels, as TexturePaintContext walks them
+    const int exactAxes = (wholeTextureStep(xp0 * image->width(), image->width()) && wholeTextureStep(xp1 * image->width(), image->width()) ? 1 : 0)
+                        | (wholeTextureStep(yp0 * image->height(), image->height()) && wholeTextureStep(yp1 * image->height(), image->height()) ? 2 : 0);
+    SKBackend_TexturePaintSampling(&local, filter, exactAxes);
     SkSamplingOptions sampling = filter ? SkSamplingOptions(SkFilterMode::kLinear) : SkSamplingOptions(SkFilterMode::kNearest);
     g.shader = atPixelOrigin(image->makeShader(SkTileMode::kRepeat, SkTileMode::kRepeat, sampling, &local));
+}
+
+// Whether TexturePaintContext steps an image axis by whole texels (its fractAsInt of the increment modulo the
+// image size is 0); the plane equation reaches here in another order of operations than the context's, so a
+// whole step may arrive a few ulps off one.
+static bool wholeTextureStep(double increment, int size) {
+    double mod = std::fmod(increment, (double) size);
+    if (mod < 0) mod += size;
+    const double fraction = mod - std::floor(mod);
+    return fraction < 1e-9 || fraction > 1 - 1e-9;
+}
+
+// TexturePaintContext's sampling (SKBackend.h), on a local matrix that maps image texels to device pixels for a
+// shader evaluated at the pixel's corner (the raster pipe's postTranslate, the GPU pipe's atPixelOrigin):
+// filtering, the context blends a texel with its right and lower neighbours by the point's fractions, so its
+// texel centres sit at integer coordinates, half a texel off Skia's; nearest, sampling the corner puts texel
+// boundaries exactly on sample points, where Skia takes the texel below and the context the one above along an
+// axis it steps exactly, the one below along an axis whose truncated 31-bit fixed-point steps run short. The
+// point moves a 1024th of a texel to the context's side (any bias from 1/10000 on decides a tie). Left over:
+// the first pixel of each of the loops' 32-pixel paint tiles, where the context starts exactly on an inexact axis.
+void SKBackend_TexturePaintSampling(SkMatrix *local, bool filter, int exactAxes) {
+    constexpr float kTieBias = 1.0f / 1024;
+    if (filter) {
+        local->preTranslate(-0.5f, -0.5f);
+    } else {
+        local->preTranslate((exactAxes & 1) ? -kTieBias : kTieBias, (exactAxes & 2) ? -kTieBias : kTieBias);
+    }
 }
 
 // A source on another adapter cannot be wrapped by this context (a window

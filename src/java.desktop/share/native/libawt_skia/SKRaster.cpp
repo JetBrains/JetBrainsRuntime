@@ -290,22 +290,10 @@ SkMatrix matrixOf(const jfloat *m) { return SkMatrix::MakeAll(m[0], m[2], m[4], 
 // its right and lower neighbours (wrapping) by the point's fractions — texel centres at integer
 // coordinates, where Skia's are at half-integers — and blends the stored values, so an unpremultiplied
 // image is sampled as one (Skia filters unpremultiplied pixels before premultiplying, as Java does here).
-// Sampling the corner puts texel boundaries exactly on sample points (every one of them under an integer
-// mapping), and there the two disagree: Skia's nearest sampling takes the texel below the boundary, Java's
-// the one above where it steps that axis exactly and the one below where its truncated fixed-point steps
-// run short (d[4], bit 0 for x, bit 1 for y: SKRasterShapePipe.exactTextureSteps). The point moves by a
-// 1024th of a texel to Java's side (measured: any bias from 1/10000 on decides a tie). Left over: the
-// first pixel of each of the loops' 32-pixel paint tiles, where Java starts exactly on an inexact axis.
-constexpr float kTextureTieBias = 1.0f / 1024;
-
 SkPaint texturePaint(SkPaint paint, const jfloat *d, SkImage *texture) {
     const bool filter = d[2] != 0;
     SkMatrix local = matrixOf(d + 5); local.preConcat(matrixOf(d + 11));
-    if (filter) local.preTranslate(-0.5f, -0.5f);   // Java's texel i is Skia's sample point i + 0.5
-    else {
-        const int exact = (int) d[4];
-        local.preTranslate((exact & 1) ? -kTextureTieBias : kTextureTieBias, (exact & 2) ? -kTextureTieBias : kTextureTieBias);
-    }
+    SKBackend_TexturePaintSampling(&local, filter, (int) d[4]);   // d[4]: the axes Java steps exactly (SKRasterShapePipe.exactTextureSteps)
     local.postTranslate(0.5f, 0.5f);                 // Skia samples the pixel centre, Java the pixel's corner
     const SkSamplingOptions sampling(filter ? SkFilterMode::kLinear : SkFilterMode::kNearest);
     paint.setShader(texture->makeShader(SkTileMode::kRepeat, SkTileMode::kRepeat, sampling, &local));
