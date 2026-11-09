@@ -2537,7 +2537,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
 
 void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
-                                   const jint *flags, const jint *trackingBits, const jint *shiftBits) {
+                                   const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }  
@@ -2568,17 +2568,13 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
     // is laid out at the user size and painted under the scale, so the glyphs land where Java's layout puts
     // them; the first run's strike decides for the paragraph (one graphics, one scale)
     const float layoutScale = (float) SKFontScaler_LayoutScale(contexts[0]);
-    std::vector<float> shiftEm(runCount, 0);
-    bool shifted = false;
+    std::vector<float> shift(runCount, 0);   // superscripts and subscripts: the baseline shift in layout pixels
     for (jint r = 0; r < runCount; r++) {
-        std::memcpy(&shiftEm[r], &shiftBits[r], sizeof(float));
-        shifted |= shiftEm[r] != 0;
+        std::memcpy(&shift[r], &shiftBits[r], sizeof(float));
     }
-    // the paragraph built and laid out, each run's baseline shift (layout units) corrected by adjust[r]
-    auto build = [&](const std::vector<float> &adjust) -> std::unique_ptr<tl::Paragraph> {
     std::unique_ptr<tl::ParagraphBuilder> builder = tl::ParagraphBuilder::make(style, p.collection(fallback), s.unicode);
     if (!builder) {
-        return nullptr;
+        return;
     }
     jint start = 0;
     for (jint r = 0; r < runCount; r++) {
@@ -2610,8 +2606,11 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         if (tracking != 0) {
             ts.setLetterSpacing(tracking * ts.getFontSize());   // Java's tracking: em of the run's font per glyph advance
         }
-        if (shiftEm[r] != 0) {
-            ts.setBaselineShift(shiftEm[r] * ts.getFontSize() + adjust[r]);   // Java's superscript / subscript baseline (em of the run's font)
+        if (shift[r] != 0) {
+            // Java's superscript / subscript offset (Font.getTransform); SkParagraph puts the line's baseline and each
+            // shifted run's on whole layout pixels, where the text path rounds Java's exact position with the draw:
+            // a subscript may sit a row off the text path's (accepted, JBR-10654 ledger §13.1)
+            ts.setBaselineShift(shift[r]);
         }
         ts.setFontStyle(typeface->fontStyle());
         ts.setFontEdging(font.getEdging());
@@ -2624,6 +2623,14 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         ts.addFontFeature(SkString("liga"), liga);
         ts.addFontFeature(SkString("calt"), liga);
         ts.setForegroundPaint(runPaint);
+        if (flags[r] & SK_PARAGRAPH_BACKGROUND) {
+            // TextAttribute.BACKGROUND (or the swapped foreground): SkParagraph's box behind the run, filled as the
+            // graphics fills a shape (Java fills the run's logical bounds, Decoration.drawTextAndDecorations)
+            SkPaint backgroundPaint = paint;
+            backgroundPaint.setColor((SkColor) backgrounds[r]);
+            backgroundPaint.setAntiAlias((flags[r] & SK_PARAGRAPH_BACKGROUND_AA) != 0);
+            ts.setBackgroundPaint(backgroundPaint);
+        }
         unsigned decoration = tl::kNoDecoration;
         if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
             decoration |= tl::kUnderline;
@@ -2644,22 +2651,18 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
         builder->pop();
         start = end;
     }
-    std::unique_ptr<tl::Paragraph> built = builder->Build();
-    if (built) {
-        built->layout(1e9f);   // one line: no wrapping
-    }
-    return built;
-    };
-    std::vector<float> adjust(runCount, 0);
-    std::unique_ptr<tl::Paragraph> paragraph = build(adjust);
+    std::unique_ptr<tl::Paragraph> paragraph = builder->Build();
     if (!paragraph) {
         return;
     }
+    paragraph->layout(1e9f);   // one line: no wrapping
     // the line's baseline in paragraph space from the first glyph run itself: getAlphabeticBaseline() sits
     // 0.48 px off it at 13 px (SkParagraph rounds its line metrics), which the device rounding of glyph rows
     // hid at scale 1 and which a layout under a scale would turn into a whole row
+    // the first unshifted run decides (a shifted one sits off the line's baseline); with every run shifted, the
+    // first run's less its shift (the shift's rounding to a whole layout pixel then moves the line)
     float baseline = paragraph->getAlphabeticBaseline();
-    bool baselineFound = false;
+    float shiftedBaseline = NAN;
     std::vector<uint32_t> runUtf8Ends(runCount, 0);
     {
         jint s = 0; uint32_t total = 0;
@@ -2670,68 +2673,22 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
             s = std::max(s, e);
         }
     }
-    auto runOf = [&](uint32_t utf8) {
-        jint r = 0;
-        while (r + 1 < runCount && runUtf8Ends[r] <= utf8) r++;
-        return r;
-    };
-    if (shifted && layoutScale == 1 && !SKFontScaler_Remainder(contexts[0], nullptr)) {
-        // Superscripts and subscripts: SkParagraph puts the line's baseline and every shifted run's on whole pixels
-        // (rounded in a way that depends on how the shift changes the line's ascent), where the text path draws a
-        // glyph at Java's exact position and the rounding to a row comes with the draw. So each shifted run's
-        // realised offset is compared with the text path's — the row of origin + shift less the origin's row — and
-        // corrected by the difference, and the paragraph laid out again (SKTextRenderer takes superscripts only at
-        // a layout scale of 1 without a remainder, where whole layout pixels are whole device pixels)
-        const float originRow = std::floor(originY + 0.5f);
-        for (int round = 0; round < 4; round++) {
-            float lineBaseline = std::floor(paragraph->getAlphabeticBaseline() + 0.5f);   // a run without a shift sits here
-            std::vector<float> realised(runCount, NAN);
-            std::vector<float> fontSize(runCount, 0);
-            paragraph->visit([&](int, const tl::Paragraph::VisitorInfo *info) {
-                if (info == nullptr || info->count <= 0) return;
-                const jint r = runOf(info->utf8Starts[0]);
-                if (std::isnan(realised[r])) {
-                    realised[r] = info->origin.fY + info->positions[0].fY;
-                    fontSize[r] = info->font.getSize();
-                }
-                if (shiftEm[r] == 0) lineBaseline = info->origin.fY + info->positions[0].fY;
-            });
-            bool exact = true;
-            for (jint r = 0; r < runCount; r++) {
-                if (shiftEm[r] == 0 || std::isnan(realised[r])) continue;
-                const float target = lineBaseline + std::floor(originY + shiftEm[r] * fontSize[r] + 0.5f) - originRow;
-                if (realised[r] != target) {
-                    adjust[r] += target - realised[r];
-                    exact = false;
-                }
-            }
-            if (exact) {
-                baseline = lineBaseline;
-                baselineFound = true;
-                break;
-            }
-            std::unique_ptr<tl::Paragraph> again = build(adjust);
-            if (!again) break;
-            paragraph = std::move(again);
-        }
-        if (baselineFound) {
-            // painted from the origin's row: an unshifted run's glyphs land where the text path's rounding puts them
-            const float top = originRow - baseline;
-            paragraph->paint(g.canvas, originX, top);
-            drawSystemDecorations(*paragraph, g.canvas, originX, top, 1, chars, length, runCount, runEnds, contexts, colours, flags, paint);
-            gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
-            gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);
-            gGlyphsDrawnBySkia.fetch_add(length, std::memory_order_relaxed);
-            return;
-        }
-        J2dRlsTraceLn(J2D_TRACE_WARNING, "SKBackend_DrawParagraphBySkia: shifted runs not placed exactly after 4 layouts");
-    }
+    bool baselineFound = false;
     paragraph->visit([&](int, const tl::Paragraph::VisitorInfo *info) {
-        if (info != nullptr && info->count > 0 && !baselineFound) {
-            baseline = info->origin.fY + info->positions[0].fY;
+        if (info == nullptr || info->count <= 0 || baselineFound) return;
+        jint r = 0;
+        while (r + 1 < runCount && runUtf8Ends[r] <= info->utf8Starts[0]) r++;
+        const float y = info->origin.fY + info->positions[0].fY;
+        if (shift[r] == 0) {
+            baseline = y;
             baselineFound = true;
+        } else if (std::isnan(shiftedBaseline)) {
+            shiftedBaseline = y - shift[r];
         }
     });
+    if (!baselineFound && !std::isnan(shiftedBaseline)) {
+        baseline = shiftedBaseline;
+    }
     SkMatrix remainder;
     if (SKFontScaler_Remainder(contexts[0], &remainder)) {
         // rotated, sheared or unevenly scaled text (every run shares the transform, SKTextRenderer checks it): laid

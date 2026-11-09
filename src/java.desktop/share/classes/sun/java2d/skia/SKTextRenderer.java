@@ -24,6 +24,7 @@
  */
 package sun.java2d.skia;
 
+import sun.awt.SunHints;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.FontInfo;
@@ -74,7 +75,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     /** Paragraph run flags, as SKBackend.h's SK_PARAGRAPH_*: the colour flag says colours[r] applies. */
     private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4,
             PARAGRAPH_SYSTEM_DECORATIONS = 8,   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
-            PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32;   // the run's font kerns / ligates: Java's kern, and liga with calt
+            PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32,   // the run's font kerns / ligates: Java's kern, and liga with calt
+            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128;   // a box behind the run, antialiased as the graphics fills shapes
 
     /** The attributes a run's font is made of when there is no FONT attribute (TextLayout's Font.getFont). */
     private static final java.util.Set<Attribute> FONT_ATTRIBUTES = java.util.Set.of(TextAttribute.FAMILY, TextAttribute.SIZE,
@@ -83,7 +85,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /**
      * Layout attributes a run's font may carry for Skia's paragraph engine: kerning, ligatures, tracking and
-     * superscript, which it applies as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width and superscript (part
+     * superscript, which it applies as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width (part
      * of its extra transform), leave the paragraph to TextLayout.
      */
     private static final int UNSUPPORTED_FONT_ATTRIBUTES = sun.font.AttributeValues.getMask(
@@ -144,6 +146,29 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         double[] m = info.glyphTx;
         double size = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2]));
         return new double[] {m[0] / size, m[1] / size, m[2] / size, m[3] / size};
+    }
+
+    /**
+     * A superscript's or subscript's baseline shift in the paragraph's layout space: Font.getTransform's translation
+     * (a user-space offset perpendicular to the user's baseline, outside any TRANSFORM of the font) mapped to the
+     * device and back through the paragraph's paint transform (the remainder and the layout scale). SkParagraph
+     * shifts along its own y axis only; under a rotating TRANSFORM of the font the offset's other component is lost.
+     */
+    private static float baselineShift(Font font, sun.font.AttributeValues values, FontInfo info, double[] remainder, double layoutScale) {
+        double shift = font.getTransform().getTranslateY();
+        if (values.isNonDefault(sun.font.EAttribute.ETRANSFORM)) {
+            shift -= values.getTransform().getTranslateY();
+        }
+        double[] d = info.devTx;   // AffineTransform order: m00 m10 m01 m11
+        double dx = d[2] * shift, dy = d[3] * shift;
+        double[] r = remainder;
+        double det = r[0] * r[3] - r[1] * r[2];
+        return (float) ((r[0] * dy - r[1] * dx) / det / layoutScale);
+    }
+
+    /** Decoration's brightness of a swapped background (30/59/11 weights, "tweaked a bit"). */
+    private static int brightness(Color c) {
+        return 33 * c.getRed() + 53 * c.getGreen() + 14 * c.getBlue();
     }
 
     /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */
@@ -254,16 +279,17 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         List<SKDrawableStrike> strikes = new ArrayList<>();
         List<Integer> trackings = new ArrayList<>();
         List<Integer> shifts = new ArrayList<>();
+        List<Integer> backgrounds = new ArrayList<>();
         double[] paragraphRemainder = null;
         boolean systemDecorations = false;
-        boolean superscripts = false, exactRows = true, decorations = false;
         for (int pos = begin; pos < end; ) {
             it.setIndex(pos);
             final int limit = it.getRunLimit();
             Map<Attribute, Object> attrs = it.getAttributes();
             Font font = null;
             boolean fontAttrs = false;
-            Color colour = null;
+            Color colour = null, background = null;
+            boolean swapColors = false;
             int runFlags = 0;
             for (Map.Entry<Attribute, Object> e : attrs.entrySet()) {
                 Attribute a = e.getKey();
@@ -285,6 +311,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                         return false;
                     }
                     colour = c;
+                } else if (a == TextAttribute.BACKGROUND) {
+                    if (!(v instanceof Color c)) {
+                        return false;
+                    }
+                    background = c;
+                } else if (a == TextAttribute.SWAP_COLORS) {
+                    swapColors = TextAttribute.SWAP_COLORS_ON.equals(v);
                 } else if (a == TextAttribute.UNDERLINE) {
                     if (!TextAttribute.UNDERLINE_ON.equals(v)) {
                         return false;
@@ -324,21 +357,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             runFlags |= (values.getKerning() != 0 ? PARAGRAPH_KERNING : 0) | (values.getLigatures() != 0 ? PARAGRAPH_LIGATURES : 0);
             // tracking: em of the run's font added to each glyph's advance (StandardGlyphVector: tracking x the font's size)
             trackings.add(Float.floatToRawIntBits(values.getTracking()));
-            // superscript / subscript: the strike carries the font's 2/3-per-level scale; the baseline shift (the
-            // transform's translation, Font.getTransform) goes in em of the scaled font, so it converts into the
-            // paragraph's layout space at any scale. With an explicit TRANSFORM as well the two compose: TextLayout's
-            float shift = 0;
-            if (values.getSuperscript() != 0) {
-                // SkParagraph places shifted runs on whole layout pixels, corrected natively to the text path's rows:
-                // exact only where layout pixels are device pixels (no transform beyond the size, a layout scale of 1)
-                if (values.isNonDefault(sun.font.EAttribute.ETRANSFORM)) {
-                    return false;
-                }
-                superscripts = true;
-                java.awt.geom.AffineTransform ft = font.getTransform();
-                shift = (float) (ft.getTranslateY() / (font.getSize2D() * ft.getScaleY()));
-            }
-            shifts.add(Float.floatToRawIntBits(shift));
             FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
             SKDrawableStrike strike = skiaStrike(info.fontStrike);
             if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
@@ -361,13 +379,22 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             if (systemDecorations && !strike.axisAligned()) {
                 return false;
             }
-            if (!strike.axisAligned() || strike.layoutScale() != 1) {
-                exactRows = false;
+            shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
+            // the run's colours as Decoration.drawTextAndDecorations resolves them: swapped, the foreground (the
+            // graphics' colour without one) is the background and the text is the background colour, or black or
+            // white by the foreground's brightness
+            if (swapColors) {
+                Color foreground = colour != null ? colour : sg2d.paint instanceof Color c ? c : null;
+                if (foreground == null) {
+                    return false;   // a gradient or texture paint behind the text: TextLayout's
+                }
+                colour = background != null ? background : brightness(foreground) > 18500 ? Color.BLACK : Color.WHITE;
+                background = foreground;
             }
-            decorations |= (runFlags & (PARAGRAPH_UNDERLINE | PARAGRAPH_STRIKETHROUGH)) != 0;
-            if (superscripts && (!exactRows || decorations)) {
-                return false;   // a decoration with shifted runs: TextLayout places it by its own rule (7 px apart measured)
+            if (background != null) {
+                runFlags |= PARAGRAPH_BACKGROUND | (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON ? PARAGRAPH_BACKGROUND_AA : 0);
             }
+            backgrounds.add(background != null ? background.getRGB() : 0);
             ends.add(limit - begin);
             contexts.add(strike.skiaScalerContext());
             colours.add(colour != null ? colour.getRGB() : 0);
@@ -383,6 +410,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         final int[] flagArray = flags.stream().mapToInt(Integer::intValue).toArray();
         final int[] trackingArray = trackings.stream().mapToInt(Integer::intValue).toArray();
         final int[] shiftArray = shifts.stream().mapToInt(Integer::intValue).toArray();
+        final int[] backgroundArray = backgrounds.stream().mapToInt(Integer::intValue).toArray();
         rq.lock();
         try {
             validateContext(sg2d, textComposite(sg2d));
@@ -391,7 +419,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             }
             final boolean smoothing = false   /* the strike's hinting carries the darkening (SKFontScaler) */;
             final int length = string.length(), runs = endArray.length;
-            final int total = 24 + runs * (8 + 5 * 4) + paddedChars(length);
+            final int total = 24 + runs * (8 + 6 * 4) + paddedChars(length);
             RenderBuffer buf = rq.getBuffer();
             if (total <= buf.capacity()) {
                 rq.ensureCapacityAndAlignment(total, 24);
@@ -407,9 +435,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 buf.put(flagArray, 0, runs);
                 buf.put(trackingArray, 0, runs);
                 buf.put(shiftArray, 0, runs);
+                buf.put(backgroundArray, 0, runs);
                 putChars(buf, string);
             } else {
-                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray));
+                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray));
             }
         } finally {
             rq.unlock();
@@ -419,7 +448,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /** Skia's paragraph engine: runs of (strike, colour, decorations) laid out on one line and painted at the baseline origin (oversized operations). */
     private static native void drawParagraphBySkia(boolean smoothing, float originX, float originY, String text,
-                                                   int[] runEnds, long[] contexts, int[] colours, int[] flags, int[] trackingBits, int[] shiftBits);
+                                                   int[] runEnds, long[] contexts, int[] colours, int[] flags, int[] trackingBits, int[] shiftBits,
+                                                   int[] backgrounds);
 
     @Override
     protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {

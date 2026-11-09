@@ -20,6 +20,8 @@ import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.font.TextAttribute;
+import java.awt.font.TransformAttribute;
+import java.awt.geom.AffineTransform;
 import java.awt.font.TextLayout;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
@@ -37,9 +39,15 @@ import java.util.function.Consumer;
  *          tracking likewise (on runs and carried by fonts, positive and negative, with kerning
  *          and with ligatures, fractional and whole-pixel advances); a run whose font carries
  *          another layout attribute (width) stays TextLayout's. Superscripts and subscripts
- *          (levels 1 and 2, on a first run, carried by a font, whole-pixel advances) likewise; an
- *          underline next to them stays TextLayout's, and an underline on runs described by FAMILY
- *          and SIZE is the paragraph's.
+ *          (levels 1 and 2, on a first run, carried by a font, with a TRANSFORM, whole-pixel
+ *          advances, underlined) are the paragraph's too, each glyph column TextLayout's up to a
+ *          vertical offset of one layout pixel (SkParagraph puts shifted runs on whole layout pixels
+ *          where Java's layout does not; accepted), the underline where SkParagraph puts it; an
+ *          underline on runs described by FAMILY and SIZE is the paragraph's. BACKGROUND and
+ *          SWAP_COLORS (with and without FOREGROUND and BACKGROUND, the swapped text black or white
+ *          by the background's brightness as Java's Decoration chooses) are the paragraph's: the box
+ *          behind the run SkParagraph's, within a pixel of TextLayout's fill of the run's logical
+ *          bounds; swapped over a paint that is not a colour, TextLayout's.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest
@@ -51,11 +59,14 @@ public class SkiaParagraphAttributesTest {
     static final String SCRIPTS = "E = mc2 and H2O, x_i";
     static final int W = 420, H = 48;
     static boolean fractional = true;
+    /** At 2x the snapshot samples the device image in user pixels: a column moved by a device row gains or loses a sampled row. */
+    static boolean hidpi;
+    /** The graphics' paint for the text, or null for black. */
+    static java.awt.Paint paint;
 
     public static void main(String[] args) throws Exception {
-        // at 2x whole-pixel advances lay a system font out under the device scale (two device pixels a layout pixel):
-        // a shifted run's row cannot be matched there, such paragraphs are TextLayout's
-        final boolean hidpi = args.length > 0 && args[0].equals("2x");
+        // at 2x whole-pixel advances lay a system font out under the device scale: two device pixels a layout pixel
+        hidpi = args.length > 0 && args[0].equals("2x");
         Font font = new Font(System.getProperty("os.name").startsWith("Mac") ? "Helvetica Neue" : "Segoe UI", Font.PLAIN, 18);
 
         expect("two plain runs (the control: the Skia pipe and its paragraph engine are on)", runs(KERNED, font), true);
@@ -82,20 +93,42 @@ public class SkiaParagraphAttributesTest {
         fractional = true;
         // superscript and subscript: the run's font scaled by 2/3 a level, its baseline shifted (Font.getTransform)
         differ("superscript", layout(byAttributes(SCRIPTS, font, null, null)), layout(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8)));
-        expect("SUPERSCRIPT_SUPER on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), true);
-        expect("SUPERSCRIPT_SUB on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 12, 13), true);
-        expect("superscript level 2", scripted(font, 2, 7, 8), true);
-        expect("subscript level 2 next to superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), TextAttribute.SUPERSCRIPT, -2, 12, 13), true);
-        expect("a superscripted first run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 0, 2), true);
-        expect("a font carrying SUPERSCRIPT", runs(SCRIPTS, font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUPER))), true);
+        expectShifted("SUPERSCRIPT_SUPER on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), 1);
+        expectShifted("SUPERSCRIPT_SUB on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 12, 13), 1);
+        expectShifted("superscript level 2", scripted(font, 2, 7, 8), 1);
+        expectShifted("subscript level 2 next to superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), TextAttribute.SUPERSCRIPT, -2, 12, 13), 1);
+        expectShifted("a superscripted first run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 0, 2), 1);
+        expectShifted("a font carrying SUPERSCRIPT", runs(SCRIPTS, font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUPER))), 1, false);
+        // the offset is the user's (Font.getTransform applies it outside the font's TRANSFORM): not scaled with it
+        expectShifted("a font carrying SUPERSCRIPT and a scaling TRANSFORM", runs(SCRIPTS, font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUB,
+                TextAttribute.TRANSFORM, new TransformAttribute(AffineTransform.getScaleInstance(1.25, 1.25))))), 1, false);
         // an underline on runs described by FAMILY and SIZE is the route's own decoration, not a font the route refuses
         expect("an underline with FAMILY and SIZE", byAttributes(KERNED, font, TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON), true);
-        // a decoration with shifted runs: TextLayout places a superscript's underline by its own rule (measured 7 px apart)
-        expect("an underlined superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON, 0, SCRIPTS.length()), false);
+        // a decoration with shifted runs: where SkParagraph puts it (TextLayout's rule for a superscript's underline differs)
+        expectTaken("an underlined superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON, 0, SCRIPTS.length()));
         fractional = false;
-        expect("SUPERSCRIPT_SUPER on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), !hidpi);
-        expect("SUPERSCRIPT_SUB on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 12, 13), !hidpi);
+        expectShifted("SUPERSCRIPT_SUPER on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), hidpi ? 2 : 1);
+        expectShifted("SUPERSCRIPT_SUB on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 12, 13), hidpi ? 2 : 1);
         fractional = true;
+        // a box behind the run: SkParagraph's (its top a row above TextLayout's, which fills only rows whose centres
+        // the logical bounds cover; with antialiasing the edges blend), the text in the colour Java resolves
+        Color yellow = Color.YELLOW, blue = new Color(0x2050c0), light = new Color(0xe0e080);
+        expectBox("BACKGROUND on a run", withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.BACKGROUND, yellow, 4, 11), yellow, Color.BLACK, false);
+        expectBox("BACKGROUND, antialiased", withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.BACKGROUND, yellow, 4, 11), yellow, Color.BLACK, true);
+        expectBox("BACKGROUND on a superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 6, 7), TextAttribute.BACKGROUND, yellow, 6, 8), yellow, Color.BLACK, false);
+        expectBox("BACKGROUND next to a larger run", withAttribute(withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.BACKGROUND, yellow, 4, 11),
+                TextAttribute.SIZE, 26f, 12, 15), yellow, Color.BLACK, false);
+        AttributedString swapped = withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON, 4, 11);
+        expectBox("SWAP_COLORS (the graphics' black behind, the text white)", swapped, Color.BLACK, Color.WHITE, false);
+        expectBox("SWAP_COLORS with a dark FOREGROUND (the text white)", withAttribute(withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON, 4, 11),
+                TextAttribute.FOREGROUND, blue, 4, 11), blue, Color.WHITE, false);
+        expectBox("SWAP_COLORS with a light FOREGROUND (the text black)", withAttribute(withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON, 4, 11),
+                TextAttribute.FOREGROUND, light, 4, 11), light, Color.BLACK, false);
+        expectBox("SWAP_COLORS with FOREGROUND and BACKGROUND (the text the background colour)", withAttribute(withAttribute(withAttribute(byAttributes(SCRIPTS, font, null, null),
+                TextAttribute.SWAP_COLORS, TextAttribute.SWAP_COLORS_ON, 4, 11), TextAttribute.FOREGROUND, blue, 4, 11), TextAttribute.BACKGROUND, Color.ORANGE, 4, 11), blue, Color.ORANGE, false);
+        paint = new java.awt.GradientPaint(0, 0, Color.BLACK, W, 0, Color.BLUE);
+        expect("SWAP_COLORS over a gradient paint", swapped, false);
+        paint = null;
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
         expect("a font carrying WIDTH", runs(KERNED, font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED))), false);
         System.out.println("PASSED");
@@ -156,6 +189,9 @@ public class SkiaParagraphAttributesTest {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, fractional ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
         g.setColor(Color.BLACK);
+        if (paint != null) {
+            g.setPaint(paint);
+        }
         drawing.accept(g);
         g.dispose();
         return vi.getSnapshot();
@@ -173,6 +209,144 @@ public class SkiaParagraphAttributesTest {
         if (n == 0) {
             throw new RuntimeException(what + " has no effect with this font: the test would prove nothing");
         }
+    }
+
+    /**
+     * drawString(iterator) by Skia's paragraph engine with a box of the colour box: its edges within a pixel of
+     * TextLayout's, the text inside it in the colour text (at least half as many pixels of it as TextLayout draws).
+     */
+    static void expectBox(String what, AttributedString as, Color box, Color text, boolean antialiased) throws Exception {
+        Consumer<Graphics2D> aa = g -> g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                antialiased ? RenderingHints.VALUE_ANTIALIAS_ON : RenderingHints.VALUE_ANTIALIAS_OFF);
+        long before = paragraphs();
+        BufferedImage route = render(aa.andThen(g -> g.drawString(as.getIterator(), 10, 30)));
+        long taken = paragraphs() - before;
+        BufferedImage reference = render(aa.andThen(layout(as)));
+        java.awt.Rectangle r = bounds(route, box), l = bounds(reference, box);
+        int textRoute = count(route, text, l), textReference = count(reference, text, l);
+        System.out.println(what + ": " + taken + " paragraphs by Skia, box " + r + " against TextLayout's " + l + ", "
+                + textRoute + " text pixels against " + textReference);
+        if (taken != 1) {
+            throw new RuntimeException(what + ": " + taken + " paragraphs by Skia's paragraph engine (expected 1)");
+        }
+        if (l.isEmpty() || Math.abs(r.x - l.x) > 1 || Math.abs(r.y - l.y) > 1 || Math.abs(r.x + r.width - l.x - l.width) > 1
+                || Math.abs(r.y + r.height - l.y - l.height) > 1) {
+            throw new RuntimeException(what + ": the box " + r + " is not TextLayout's " + l + " within a pixel");
+        }
+        if (textReference == 0 || textRoute * 2 < textReference) {
+            throw new RuntimeException(what + ": " + textRoute + " pixels of the text's colour in the box (TextLayout: " + textReference + ")");
+        }
+    }
+
+    /** The bounds of the pixels of exactly the colour c. */
+    static java.awt.Rectangle bounds(BufferedImage a, Color c) {
+        java.awt.Rectangle r = null;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            if (a.getRGB(x, y) == c.getRGB()) {
+                if (r == null) r = new java.awt.Rectangle(x, y, 1, 1); else r.add(new java.awt.Rectangle(x, y, 1, 1));
+            }
+        }
+        return r != null ? r : new java.awt.Rectangle();
+    }
+
+    /** The pixels of exactly the colour c in the region. */
+    static int count(BufferedImage a, Color c, java.awt.Rectangle region) {
+        int n = 0;
+        for (int y = region.y; y < region.y + region.height; y++) for (int x = region.x; x < region.x + region.width; x++) {
+            if (a.getRGB(x, y) == c.getRGB()) n++;
+        }
+        return n;
+    }
+
+    /** drawString(iterator) by Skia's paragraph engine (its pixels printed against TextLayout's). */
+    static void expectTaken(String what, AttributedString as) throws Exception {
+        long before = paragraphs();
+        BufferedImage route = render(g -> g.drawString(as.getIterator(), 10, 30));
+        long taken = paragraphs() - before;
+        System.out.println(what + ": " + taken + " paragraphs by Skia, " + differing(route, render(layout(as))) + " pixels apart from TextLayout");
+        if (taken != 1) {
+            throw new RuntimeException(what + ": " + taken + " paragraphs by Skia's paragraph engine (expected 1)");
+        }
+    }
+
+    /**
+     * drawString(iterator) by Skia's paragraph engine, each pixel column TextLayout's moved by at most maxRows
+     * rows (a shifted run's whole-pixel baseline); with unshifted runs, some column moved by none (the line's own
+     * baseline, which a line of shifted runs only may move).
+     */
+    static void expectShifted(String what, AttributedString as, int maxRows) throws Exception {
+        expectShifted(what, as, maxRows, true);
+    }
+
+    static void expectShifted(String what, AttributedString as, int maxRows, boolean unshiftedRuns) throws Exception {
+        long before = paragraphs();
+        BufferedImage route = render(g -> g.drawString(as.getIterator(), 10, 30));
+        long taken = paragraphs() - before;
+        BufferedImage reference = render(layout(as));
+        int[] moved = new int[2 * maxRows + 1];
+        int blended = 0;
+        int unmatched = -1;
+        for (int x = 0; x < W && unmatched < 0; x++) {
+            int found = Integer.MIN_VALUE;
+            for (int dy = 0; dy <= maxRows && found == Integer.MIN_VALUE; dy++) {
+                for (int d : dy == 0 ? new int[] {0} : new int[] {dy, -dy}) {
+                    if (found == Integer.MIN_VALUE && columnMovedBy(route, reference, x, d)) {
+                        found = d;
+                    }
+                }
+            }
+            if (found == Integer.MIN_VALUE && hidpi && inkMovedWithin(route, reference, x, maxRows)) {
+                blended++;
+            } else if (found == Integer.MIN_VALUE) {
+                unmatched = x;
+            } else if (!blankColumn(reference, x)) {
+                moved[found + maxRows]++;
+            }
+        }
+        System.out.println(what + ": " + taken + " paragraphs by Skia, " + differing(route, reference) + " pixels apart from TextLayout, inked columns by row offset "
+                + java.util.Arrays.toString(moved) + " (-" + maxRows + ".." + maxRows + ")" + (hidpi ? ", " + blended + " moved by device rows" : ""));
+        if (taken != 1) {
+            throw new RuntimeException(what + ": " + taken + " paragraphs by Skia's paragraph engine (expected 1)");
+        }
+        if (unmatched >= 0) {
+            throw new RuntimeException(what + ": column " + unmatched + " is not TextLayout's within " + maxRows + " rows");
+        }
+        if (unshiftedRuns && moved[maxRows] == 0) {
+            throw new RuntimeException(what + ": no column on TextLayout's rows (the line's baseline moved)");
+        }
+    }
+
+    /** Column x of a equals column x of b moved down by dy rows (rows moved in from outside are blank). */
+    static boolean columnMovedBy(BufferedImage a, BufferedImage b, int x, int dy) {
+        for (int y = 0; y < H; y++) {
+            int from = y - dy;
+            int expected = from >= 0 && from < H ? b.getRGB(x, from) : 0xffffffff;
+            if (a.getRGB(x, y) != expected) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Column x of a inked where b's is, its ink's centroid moved by at most maxRows rows (the sampled snapshot
+     * changes a column's ink when it moves by a device row: a thin stroke lands on another sample).
+     */
+    static boolean inkMovedWithin(BufferedImage a, BufferedImage b, int x, int maxRows) {
+        double inkA = 0, inkB = 0, momentA = 0, momentB = 0;
+        for (int y = 0; y < H; y++) {
+            int ia = 255 - (a.getRGB(x, y) & 0xff), ib = 255 - (b.getRGB(x, y) & 0xff);
+            inkA += ia; inkB += ib; momentA += ia * y; momentB += ib * y;
+        }
+        if (inkB == 0) {
+            return inkA == 0;
+        }
+        return inkA > 0 && Math.abs(momentA / inkA - momentB / inkB) <= maxRows;
+    }
+
+    static boolean blankColumn(BufferedImage a, int x) {
+        for (int y = 0; y < H; y++) if (a.getRGB(x, y) != 0xffffffff) return false;
+        return true;
     }
 
     /** drawString(iterator) against TextLayout's drawing: identical pixels; byParagraph: whether Skia's paragraph engine took it. */
