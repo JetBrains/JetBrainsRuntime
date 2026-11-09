@@ -361,6 +361,7 @@ toggles entry by entry (each a judgment), and the IDE's own telemetry feeding a 
 - **2026-11-09, Phase 1 (skeleton):** `manuel.unterhofer/JBR-10654-skia-renderer` on `origin` and the fork, from
   `origin/main` `dc4325491a09`, six commits (build, native core, Java pipeline, macOS, Windows, tests), building on
   macOS; `libawt_skia.dylib` 3.7 MB, 19 exports. Kept switches as §7 plus `dawn.backend=d3d12` as a Windows triage
-  switch (the order Dawn tries). Open for Phase 1's close: the package's tests on this build; the Windows half compiled
-  on the VM or the x64 machine (`Win32SKPlatform.cpp` gained `SKPlatform_LcdOrderBGR`, blind here); the link list
-  without the image codecs (B9).
+  switch (the order Dawn tries). Tests on this build: 22 passed, 7 Windows-only skipped; `sun.java2d.skia.lcd` kept as a test and triage switch
+  (seventh commit). Open for Phase 1's close: the Windows half compiled and its tests run on the VM or the x64
+  machine (`handovers/handover-win-renderer-2026-11-09.md`; `Win32SKPlatform.cpp` gained `SKPlatform_LcdOrderBGR`,
+  blind here); the link list without the image codecs (B9); the series folded (a history rewrite of the branch).
