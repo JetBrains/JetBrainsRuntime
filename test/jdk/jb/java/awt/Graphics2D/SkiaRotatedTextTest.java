@@ -46,10 +46,15 @@ import java.util.function.Consumer;
 
 /*
  * @test id=gpu
- * @summary Rotated, sheared and scaled text through Skia's text path on the Skia GPU pipe.
+ * @summary Rotated, sheared and scaled text through Skia's text path on the Skia GPU pipe, and through
+ *          Skia's shaper (strings) and paragraph engine (attributed strings) — shaped in the font's own
+ *          space and drawn under the strike's transform beyond its size, as the text path draws — against
+ *          the same reference with the same limits, the route's counter moving for every case.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaRotatedTextTest gpu
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaRotatedTextTest shaper
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaRotatedTextTest paragraph
  */
 public class SkiaRotatedTextTest {
     static final String TEXT = "Hamburgefonts Quick fox 1234";
@@ -62,7 +67,7 @@ public class SkiaRotatedTextTest {
 
     public static void main(String[] args) throws Exception {
         mode = args[0];
-        if (mode.equals("gpu") && !PipelineComparison.pipelineActive("skia", java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+        if ((mode.equals("gpu") || mode.equals("shaper") || mode.equals("paragraph")) && !PipelineComparison.pipelineActive("skia", java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice().getDefaultConfiguration())) {
             return;
         }
@@ -78,18 +83,114 @@ public class SkiaRotatedTextTest {
             new Case("rotation 0.5 at scale 1.25", scaledRotation, font, 30, 120, true),
         };
         for (Case c : cases) {
+            if (mode.equals("paragraph") || mode.equals("shaper")) {
+                // Skia's layout: an attributed string of two font runs (the same font) through the paragraph engine, a
+                // string through the shaper; each must render exactly as the text path draws the line (a glyph vector,
+                // never shaped). Whole-pixel advances along anything but a device axis at unit length round differently
+                // in the font's space and on the device, so such text is the text path's, not the layout's
+                boolean byLayout = c.fm || c.name.startsWith("quarter turn");
+                Consumer<Graphics2D> route = mode.equals("paragraph") ? g -> g.drawString(attributed(c.font), c.x, c.y) : g -> g.drawString(TEXT, c.x, c.y);
+                long shapedBefore = glyphsBySkia();
+                check(c.name + ", " + (mode.equals("paragraph") ? "attributed string" : "drawString"), c, route, false, byLayout);
+                if (!byLayout && glyphsBySkia() != shapedBefore) {
+                    throw new RuntimeException(c.name + ": Skia's layout took whole-pixel advances it would round apart from the text path");
+                }
+                identical(c, route, g -> g.drawGlyphVector(c.font.createGlyphVector(g.getFontRenderContext(), TEXT), c.x, c.y));
+                continue;
+            }
             check(c.name + ", drawString", c, g -> g.drawString(TEXT, c.x, c.y));
             check(c.name + ", drawChars", c, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), (int) c.x, (int) c.y));
             check(c.name + ", drawGlyphVector", c, g -> g.drawGlyphVector(c.font.createGlyphVector(g.getFontRenderContext(), TEXT), c.x, c.y));
         }
         // a font's own transform: the glyphs and the baseline turn with it; the reference turns the unrotated text about its origin
+        if (mode.equals("paragraph")) {
+            // runs under different transforms (one font with its own rotation): one paint cannot place them, TextLayout
+            java.text.AttributedString mixed = new java.text.AttributedString(TEXT);
+            mixed.addAttribute(java.awt.font.TextAttribute.FONT, font, 0, 10);
+            mixed.addAttribute(java.awt.font.TextAttribute.FONT, font.deriveFont(AffineTransform.getRotateInstance(0.3)), 10, TEXT.length());
+            expectParagraphs("two runs under one transform (the control)", g -> g.drawString(attributed(font), 40, 150), 1);
+            expectTextLayout("runs under different transforms", g -> g.drawString(mixed.getIterator(), 40, 150));
+            // the system decorations' device rows under a rotation: TextLayout
+            java.text.AttributedString underlined = new java.text.AttributedString(TEXT);
+            underlined.addAttribute(java.awt.font.TextAttribute.FONT, font);
+            underlined.addAttribute(java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON);
+            boolean systemDecorations = !"java2d".equals(System.getProperty("sun.java2d.skia.text.decorations"));
+            if (systemDecorations) {
+                expectParagraphs("the same underline, axis-aligned (the control)", g -> g.drawString(underlined.getIterator(), 40, 150), 1);
+                expectTextLayout("an underline under a rotation (system decorations)", g -> { g.rotate(0.5, 150, 150); g.drawString(underlined.getIterator(), 40, 150); });
+            }
+            check("a font with its own rotation, attributed string", new Case("font rotation", AffineTransform.getRotateInstance(0.6, 60, 60),
+                    font.deriveFont(AffineTransform.getRotateInstance(0.6)), 60, 60, true), g -> g.drawString(attributed(font.deriveFont(AffineTransform.getRotateInstance(0.6))), 60, 60), true);
+            System.out.println("PASSED");
+            return;
+        }
         check("a font with its own rotation", new Case("font rotation", AffineTransform.getRotateInstance(0.6, 60, 60),
                 font.deriveFont(AffineTransform.getRotateInstance(0.6)), 60, 60, true), g -> g.drawString(TEXT, 60, 60), true);
         System.out.println("PASSED");
     }
 
+    /** The drawing must not reach Skia's paragraph engine (the paragraph counter stays). */
+    static void expectTextLayout(String what, Consumer<Graphics2D> drawing) throws Exception {
+        expectParagraphs(what, drawing, 0);
+    }
+
+    static void expectParagraphs(String what, Consumer<Graphics2D> drawing, long expected) throws Exception {
+        java.lang.reflect.Method paragraphs = Class.forName("sun.java2d.skia.SKEnvironment").getMethod("paragraphsBySkia");
+        long before = (long) paragraphs.invoke(null);
+        java.awt.image.VolatileImage vi = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+                .getDefaultConfiguration().createCompatibleVolatileImage(W, H);
+        Graphics2D g = vi.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setColor(Color.BLACK);
+        drawing.accept(g);
+        g.dispose();
+        vi.getSnapshot();
+        long drawn = (long) paragraphs.invoke(null) - before;
+        System.out.println(what + ": " + drawn + " paragraphs by Skia");
+        if (drawn != expected) {
+            throw new RuntimeException(what + ": " + drawn + " paragraphs by Skia's paragraph engine (expected " + expected + ")");
+        }
+    }
+
+    /** The text as an attributed string of two runs in the same font (FONT attributes): what the paragraph route takes. */
+    static java.text.AttributedCharacterIterator attributed(Font font) {
+        java.text.AttributedString as = new java.text.AttributedString(TEXT);
+        int split = TEXT.indexOf(' ') + 1;
+        as.addAttribute(java.awt.font.TextAttribute.FONT, font, 0, split);
+        as.addAttribute(java.awt.font.TextAttribute.FONT, font, split, TEXT.length());
+        return as.getIterator();
+    }
+
     static void check(String what, Case c, Consumer<Graphics2D> drawing) {
         check(what, c, drawing, false);
+    }
+
+    static void check(String what, Case c, Consumer<Graphics2D> drawing, boolean fontTransform) {
+        check(what, c, drawing, fontTransform, true);
+    }
+
+    /** The case drawn two ways on the Skia GPU pipe: the pixels must be the same. */
+    static void identical(Case c, Consumer<Graphics2D> a, Consumer<Graphics2D> b) {
+        BufferedImage[] out = new BufferedImage[2];
+        int k = 0;
+        for (Consumer<Graphics2D> drawing : java.util.List.of(a, b)) {
+            java.awt.image.VolatileImage vi = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+                    .getDefaultConfiguration().createCompatibleVolatileImage(W, H);
+            Graphics2D g = vi.createGraphics();
+            g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, c.fm ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
+            g.setColor(Color.BLACK); g.setFont(c.font); g.transform(c.transform);
+            drawing.accept(g);
+            g.dispose();
+            out[k++] = vi.getSnapshot();
+        }
+        int differ = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (out[0].getRGB(x, y) != out[1].getRGB(x, y)) differ++;
+        System.out.println(c.name + ": " + mode + " route against the text path: " + differ + " pixels differ");
+        if (differ > 0) {
+            throw new RuntimeException(c.name + ": Skia's " + mode + " route renders apart from its text path (" + differ + " pixels)");
+        }
     }
 
     /**
@@ -97,10 +198,10 @@ public class SkiaRotatedTextTest {
      * transform taken out when the font carries it) by the loops on a 4-byte image, which no Skia surface replaces,
      * and that image drawn under the transform, bilinear.
      */
-    static void check(String what, Case c, Consumer<Graphics2D> drawing, boolean fontTransform) {
+    static void check(String what, Case c, Consumer<Graphics2D> drawing, boolean fontTransform, boolean bySkia) {
         long before = glyphsBySkia();
         // loops: the loops draw the Skia scaler's glyph images; raster: an INT_ARGB_PRE raster surface; gpu: a Skia volatile image
-        java.awt.image.VolatileImage volatileImage = mode.equals("gpu") ? java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
+        java.awt.image.VolatileImage volatileImage = !mode.equals("loops") && !mode.equals("raster") ? java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice().getDefaultConfiguration().createCompatibleVolatileImage(W, H) : null;
         BufferedImage actual = new BufferedImage(W, H, mode.equals("raster") ? BufferedImage.TYPE_INT_ARGB_PRE : BufferedImage.TYPE_3BYTE_BGR);
         Graphics2D g = volatileImage != null ? volatileImage.createGraphics() : actual.createGraphics();
@@ -135,7 +236,7 @@ public class SkiaRotatedTextTest {
         double ratio = a[0] / e[0], dx = a[1] - e[1], dy = a[2] - e[2];
         System.out.printf("%s: %d glyphs by Skia; ink bounds [%d,%d..%d,%d], reference [%d,%d..%d,%d]; centre off by (%.2f, %.2f); ink ratio %.3f%n",
                 what, drawn, ab[0], ab[1], ab[2], ab[3], eb[0], eb[1], eb[2], eb[3], dx, dy, ratio);
-        if (!mode.equals("loops") && drawn < TEXT.replace(" ", "").length()) {
+        if (bySkia && !mode.equals("loops") && drawn < TEXT.replace(" ", "").length()) {
             throw new RuntimeException(what + ": only " + drawn + " glyphs went through Skia's text path");
         }
         for (int i = 0; i < 4; i++) {
@@ -154,7 +255,12 @@ public class SkiaRotatedTextTest {
     }
 
     static long glyphsBySkia() {
-        String counter = switch (mode) { case "raster" -> "rasterGlyphsBySkia"; case "gpu" -> "glyphsDrawnBySkia"; default -> null; };
+        String counter = switch (mode) {
+            case "raster" -> "rasterGlyphsBySkia";
+            case "gpu" -> "glyphsDrawnBySkia";
+            case "shaper", "paragraph" -> "glyphsShapedBySkia";   // a paragraph counts its characters
+            default -> null;
+        };
         if (counter == null) return 0;
         try {
             return (long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(counter).invoke(null);

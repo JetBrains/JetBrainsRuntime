@@ -96,12 +96,36 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     }
 
     /**
-     * The strike when Skia's shaper or paragraph route can draw it (on the Skia scaler, an axis-aligned transform:
-     * they shape in the SkFont's space and draw at the device origin), else null; other text goes to Java's layout
-     * and Skia's text path, which draws any invertible transform.
+     * The strike when Skia's shaper or paragraph route can draw it (on the Skia scaler, any invertible glyph
+     * transform: the text is shaped in the SkFont's space and drawn under the transform beyond its size, as the text
+     * path draws), else null.
      */
     private static SKDrawableStrike skiaStrike(Object strike) {   // a FontStrike; GlyphList hands it out as Object
-        return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.axisAligned() ? s : null;
+        return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.drawsBySkia() ? s : null;
+    }
+
+    /**
+     * Whether Skia's layout of the text lands where the text path puts it: the layout rounds whole-pixel advances in
+     * the font's own space, the text path (the Skia scaler, FreeType's rule) rounds the device advance when it is
+     * horizontal or vertical and keeps an oblique one exact. The two agree with fractional metrics and when the
+     * transform beyond the size carries the baseline onto a device axis at unit length (axis-aligned text, quarter
+     * turns); otherwise — whole pixels along an oblique baseline or under an uneven scale (measured: up to whole glyph
+     * positions apart) — the text goes to Java's layout and the text path, so the routes render alike.
+     */
+    private static boolean layoutLikeTextPath(SunGraphics2D sg2d, FontInfo info) {
+        if (sg2d.getFontRenderContext().usesFractionalMetrics()) {
+            return true;
+        }
+        double[] r = remainder(info);   // AffineTransform order: m00 m10 m01 m11; the baseline's image is (m00, m10)
+        final double eps = 1e-9;
+        return (Math.abs(Math.abs(r[0]) - 1) < eps && Math.abs(r[1]) < eps) || (Math.abs(r[0]) < eps && Math.abs(Math.abs(r[1]) - 1) < eps);
+    }
+
+    /** A glyph transform without its size (the scaler context's remainder), to compare the runs of a paragraph. */
+    private static double[] remainder(FontInfo info) {
+        double[] m = info.glyphTx;
+        double size = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2]));
+        return new double[] {m[0] / size, m[1] / size, m[2] / size, m[3] / size};
     }
 
     /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */
@@ -142,8 +166,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
 
     /**
      * Shapes and draws the text through Skia's shaper when the strike is on the Skia
-     * scaler with an axis-aligned glyph transform and the text is below the outline
-     * threshold; false leaves it to Java's layout.
+     * scaler (any invertible glyph transform, drawn under its part beyond the size) and
+     * the text is below the outline threshold; false leaves it to Java's layout.
      */
     private boolean drawShaped(SunGraphics2D sg2d, String s, double x, double y) {
         if (!SKEnvironment.textShapedBySkia() || s.isEmpty()) {
@@ -151,7 +175,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         }
         FontInfo info = sg2d.getFontInfo();
         SKDrawableStrike strike = skiaStrike(info.fontStrike);
-        if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
+        if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null || !layoutLikeTextPath(sg2d, info)) {
             return false;
         }
         // Whole-pixel positioning is the SkFont's: the shaper rounds the advances when
@@ -189,8 +213,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     /**
      * Lays out and draws the attributed string with Skia's paragraph engine when
      * every run is a font (FONT, or FAMILY/SIZE/WEIGHT/POSTURE), a foreground colour,
-     * an underline or a strikethrough, and every run's strike is on the Skia scaler
-     * with an axis-aligned transform; false leaves it to Java's TextLayout.
+     * an underline or a strikethrough, and every run's strike is on the Skia scaler with
+     * one glyph transform beyond its size for the whole paragraph (laid out once, painted
+     * under it; the system decorations' device rows only when it is the identity); false
+     * leaves it to Java's TextLayout.
      */
     @Override
     public boolean drawString(SunGraphics2D sg2d, AttributedCharacterIterator it, float x, float y) {
@@ -207,6 +233,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         List<Integer> colours = new ArrayList<>();
         List<Integer> flags = new ArrayList<>();
         List<SKDrawableStrike> strikes = new ArrayList<>();
+        double[] paragraphRemainder = null;
+        boolean systemDecorations = false;
         for (int pos = begin; pos < end; ) {
             it.setIndex(pos);
             final int limit = it.getRunLimit();
@@ -262,6 +290,23 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
             SKDrawableStrike strike = skiaStrike(info.fontStrike);
             if (info.nonInvertibleTx || info.pixelHeight > OutlineTextRenderer.THRESHHOLD || strike == null) {
+                return false;
+            }
+            if (!layoutLikeTextPath(sg2d, info)) {
+                return false;
+            }
+            double[] r = remainder(info);
+            if (paragraphRemainder == null) {
+                paragraphRemainder = r;
+            } else {
+                for (int i = 0; i < 4; i++) {
+                    if (Math.abs(r[i] - paragraphRemainder[i]) > 1e-9) {
+                        return false;   // runs under different transforms (a font with its own): one paint cannot place them
+                    }
+                }
+            }
+            systemDecorations |= (runFlags & PARAGRAPH_SYSTEM_DECORATIONS) != 0;
+            if (systemDecorations && !strike.axisAligned()) {
                 return false;
             }
             ends.add(limit - begin);

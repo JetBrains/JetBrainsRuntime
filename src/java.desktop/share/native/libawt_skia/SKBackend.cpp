@@ -2272,7 +2272,16 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat
     if (!blob) {
         return;
     }
-    if (layoutScale != 1) {
+    SkMatrix remainder;
+    if (SKFontScaler_Remainder(pScalerContext, &remainder)) {
+        // rotated, sheared or unevenly scaled text: shaped in the font's own space, drawn under the strike's
+        // transform beyond its size from the device origin, as the text path draws such a run
+        SkAutoCanvasRestore restore(g.canvas, true);
+        g.canvas->translate(originX, originY);
+        g.canvas->concat(remainder);
+        g.canvas->scale(layoutScale, layoutScale);
+        g.canvas->drawTextBlob(blob, 0, 0, paint);
+    } else if (layoutScale != 1) {
         SkAutoCanvasRestore restore(g.canvas, true);
         g.canvas->scale(layoutScale, layoutScale);
         g.canvas->drawTextBlob(blob, originX / layoutScale, originY / layoutScale, paint);
@@ -2633,6 +2642,22 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat or
             baselineFound = true;
         }
     });
+    SkMatrix remainder;
+    if (SKFontScaler_Remainder(contexts[0], &remainder)) {
+        // rotated, sheared or unevenly scaled text (every run shares the transform, SKTextRenderer checks it): laid
+        // out in the font's own space, painted under the strike's transform beyond its size from the device origin,
+        // as the text path draws such a run; SkParagraph's decorations follow the canvas (the system decorations'
+        // device rows do not, SKTextRenderer leaves such a paragraph to TextLayout)
+        SkAutoCanvasRestore restore(g.canvas, true);
+        g.canvas->translate(originX, originY);
+        g.canvas->concat(remainder);
+        g.canvas->scale(layoutScale, layoutScale);
+        paragraph->paint(g.canvas, 0, -baseline);
+        gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
+        gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);
+        gGlyphsDrawnBySkia.fetch_add(length, std::memory_order_relaxed);
+        return;
+    }
     const float paragraphTop = originY / layoutScale - baseline;   // in layout space
     if (layoutScale != 1) {
         SkAutoCanvasRestore restore(g.canvas, true);
