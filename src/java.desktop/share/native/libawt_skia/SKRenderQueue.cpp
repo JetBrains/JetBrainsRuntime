@@ -66,6 +66,7 @@
 #define TEXT_OP(name) case sun_java2d_skia_SKTextRenderer_##name
 #define OFFSET_USE_POSITIONS sun_java2d_skia_SKTextRenderer_OFFSET_USE_POSITIONS
 #define OFFSET_SMOOTHING     sun_java2d_skia_SKTextRenderer_OFFSET_SMOOTHING
+#define OFFSET_RIGHT_TO_LEFT sun_java2d_skia_SKTextRenderer_OFFSET_RIGHT_TO_LEFT
 // a string's UTF-16 units on the queue, padded to keep the next operation 4-byte aligned
 #define PADDED_CHARS(length) ((((length) * (jint) sizeof(jchar)) + 3) & ~3)
 
@@ -199,7 +200,7 @@ static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool pre
             jint packedParams = NEXT_INT(b);
             jfloat origX = NEXT_FLOAT(b), origY = NEXT_FLOAT(b);
             jlong pScalerContext = NEXT_LONG(b);
-            SKBackend_DrawShapedBySkia(pScalerContext, EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), origX, origY,
+            SKBackend_DrawShapedBySkia(pScalerContext, EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), EXTRACT_BOOLEAN(packedParams, OFFSET_RIGHT_TO_LEFT), origX, origY,
                                        (const jchar *) b, length);
             SKIP_BYTES(b, PADDED_CHARS(length));
             break;
@@ -215,7 +216,7 @@ static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool pre
                        *backgrounds = shifts + runs;
             const jchar *chars = (const jchar *) (backgrounds + runs);
             if (runs > 0) {
-                SKBackend_DrawParagraphBySkia(EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), origX, origY, chars, length,
+                SKBackend_DrawParagraphBySkia(EXTRACT_BOOLEAN(packedParams, OFFSET_SMOOTHING), EXTRACT_BOOLEAN(packedParams, OFFSET_RIGHT_TO_LEFT), origX, origY, chars, length,
                                               runs, ends, contexts, colours, flags, trackings, shifts, backgrounds);
             }
             SKIP_BYTES(b, runs * (jint) (sizeof(jlong) + 6 * sizeof(jint)) + PADDED_CHARS(length));
@@ -614,7 +615,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawGlyphsBySkia(JNIEnv *env, jclass clazz, 
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, jlong pScalerContext,
-                                                       jboolean smoothing, jfloat originX, jfloat originY, jstring text)
+                                                       jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, jstring text)
 {
     SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
     { SKPlatformScope scope;
@@ -623,7 +624,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, 
     if (chars == nullptr) {
         return;
     }
-    SKBackend_DrawShapedBySkia(pScalerContext, smoothing, originX, originY, chars, length);
+    SKBackend_DrawShapedBySkia(pScalerContext, smoothing, rightToLeft, originX, originY, chars, length);
     env->ReleaseStringChars(text, chars);
     SKBackend_EndOfFlush(env);
     } // SKPlatformScope
@@ -631,7 +632,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawShapedBySkia(JNIEnv *env, jclass clazz, 
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass clazz, jboolean smoothing,
+Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass clazz, jboolean smoothing, jboolean rightToLeft,
                                                           jfloat originX, jfloat originY, jstring text,
                                                           jintArray endArray, jlongArray contextArray,
                                                           jintArray colourArray, jintArray flagArray, jintArray trackingArray, jintArray shiftArray,
@@ -659,7 +660,7 @@ Java_sun_java2d_skia_SKTextRenderer_drawParagraphBySkia(JNIEnv *env, jclass claz
     if (chars == nullptr) {
         return;
     }
-    SKBackend_DrawParagraphBySkia(smoothing, originX, originY, chars, length, runs, ends.data(), contexts.data(),
+    SKBackend_DrawParagraphBySkia(smoothing, rightToLeft, originX, originY, chars, length, runs, ends.data(), contexts.data(),
                                   colours.data(), flags.data(), trackings.data(), shifts.data(), backgrounds.data());
     env->ReleaseStringChars(text, chars);
     SKBackend_EndOfFlush(env);

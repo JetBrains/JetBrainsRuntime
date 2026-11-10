@@ -232,9 +232,9 @@ jlong SKBackend_GlyphsDrawnBySkia();
 // colours go onto a canvas over BGRA memory declared N32; return the glyphs drawn (the paragraph: its characters).
 typedef std::function<SkCanvas *(const SkIRect &deviceBounds)> SKCanvasForBounds;
 jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, jlong pScalerContext,
-                                   jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length);
+                                   jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length);
 jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, bool swizzled,
-                                      jboolean smoothing, jfloat originX, jfloat originY,
+                                      jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                       const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                       const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds);
 
@@ -263,7 +263,7 @@ void SKBackend_NoteFlusherThread();
 // HarfBuzz through SkShaper with Skia's Unicode module (bidi, script and language runs)
 // and the platform font manager's fallback, drawn as one text blob at the baseline
 // origin (device space) with the strike's SkFont; smoothing as for DrawGlyphsBySkia.
-void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat originX, jfloat originY,
+void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                 const jchar *chars, jint length);
 jlong SKBackend_GlyphsShapedBySkia();
 // Skia's paragraph engine (sun.java2d.skia.text=paragraph): an attributed string as runs of
@@ -277,7 +277,7 @@ jlong SKBackend_GlyphsShapedBySkia();
 enum { SK_PARAGRAPH_UNDERLINE = 1, SK_PARAGRAPH_STRIKETHROUGH = 2, SK_PARAGRAPH_COLOUR = 4, SK_PARAGRAPH_SYSTEM_DECORATIONS = 8,
        SK_PARAGRAPH_KERNING = 16, SK_PARAGRAPH_LIGATURES = 32, SK_PARAGRAPH_BACKGROUND = 64, SK_PARAGRAPH_BACKGROUND_AA = 128,
        SK_PARAGRAPH_SHAPES_AA = 256 };   // the graphics antialiases shapes: the system decorations under a transform
-void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
+void SKBackend_DrawParagraphBySkia(jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds);
 jlong SKBackend_ParagraphsBySkia();

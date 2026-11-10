@@ -2233,18 +2233,18 @@ static inline SkColor canvasColour(SkColor argb, bool swizzled) {
     return swizzled ? SkColorSetARGB(SkColorGetA(argb), SkColorGetB(argb), SkColorGetG(argb), SkColorGetR(argb)) : argb;
 }
 
-void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jfloat originX, jfloat originY,
+void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                 const jchar *chars, jint length) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this text stay in order
     const SkPaint paint = SKBackend_MakePaint(true);
     SKBackend_DrawShapedOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(),
-                                 pScalerContext, smoothing, originX, originY, chars, length);
+                                 pScalerContext, smoothing, rightToLeft, originX, originY, chars, length);
 }
 
 jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, jlong pScalerContext,
-                                   jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length) {
+                                   jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length) {
     std::lock_guard<std::mutex> lock(gTextLayoutMutex);
     SkFont font;
     if (length <= 0 || !SKFontScaler_Font(pScalerContext, &font)) {
@@ -2263,10 +2263,10 @@ jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkP
         font.setSize(font.getSize() / layoutScale);
     }
     const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
-    // Paragraph direction left to right (the shaper reorders right-to-left runs within it);
-    // Java's drawString takes it from the first strong character.
+    // the paragraph direction Java's layout takes (the first strong character, SKTextRenderer); the shaper's bidi
+    // reorders the runs within it and lays them out visually from the origin, as TextLayout does
     auto fonts = SkShaper::MakeFontMgrRunIterator(utf8.c_str(), utf8.size(), font, fallback);
-    auto bidi = SkShapers::unicode::BidiRunIterator(s.unicode, utf8.c_str(), utf8.size(), 0);
+    auto bidi = SkShapers::unicode::BidiRunIterator(s.unicode, utf8.c_str(), utf8.size(), rightToLeft ? 1 : 0);
     auto script = SkShapers::HB::ScriptRunIterator(utf8.c_str(), utf8.size());
     auto language = SkShaper::MakeStdLanguageRunIterator(utf8.c_str(), utf8.size());
     if (!fonts || !bidi || !script || !language) {
@@ -2630,19 +2630,19 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
     });
 }
 
-void SKBackend_DrawParagraphBySkia(jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length,
+void SKBackend_DrawParagraphBySkia(jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds) {
     REQUIRE_CANVAS_TEXT();
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }
     const SkPaint paint = SKBackend_MakePaint(true);
-    SKBackend_DrawParagraphOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(), false, smoothing, originX, originY,
+    SKBackend_DrawParagraphOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(), false, smoothing, rightToLeft, originX, originY,
                                     chars, length, runCount, runEnds, contexts, colours, flags, trackingBits, shiftBits, backgrounds);
 }
 
 jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, bool swizzled,
-                                      jboolean smoothing, jfloat originX, jfloat originY,
+                                      jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                       const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                       const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds) {
     std::lock_guard<std::mutex> lock(gTextLayoutMutex);
@@ -2653,7 +2653,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
     Paragraphs &p = paragraphs();
     tl::ParagraphStyle style;
     style.setTextAlign(tl::TextAlign::kLeft);
-    style.setTextDirection(tl::TextDirection::kLtr);
+    style.setTextDirection(rightToLeft ? tl::TextDirection::kRtl : tl::TextDirection::kLtr);   // Java's base direction (SKTextRenderer)
     style.setApplyRoundingHack(false);
     // the fallback manager of the first run decides for the paragraph (runs of other colours
     // get its luminance class for their fallback glyphs)

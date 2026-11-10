@@ -54,7 +54,12 @@ import java.util.function.Consumer;
  *          first font that displays the character), pixel-identical. Keys that are not
  *          TextAttributes (LANGUAGE, READING, INPUT_METHOD_SEGMENT, an application's own) and
  *          the off values of UNDERLINE (-1) and STRIKETHROUGH (false) are the paragraph's too;
- *          the dotted underline style stays TextLayout's. Plain drawString, drawChars
+ *          the dotted underline style stays TextLayout's. Bidi as TextLayout runs it: a right-to-left
+ *          base from the first strong character or RUN_DIRECTION, BIDI_EMBEDDING's explicit levels,
+ *          NUMERIC_SHAPING (Arabic, contextual), JUSTIFICATION, and a FONT's own RUN_DIRECTION ignored,
+ *          pixel-identical; overrides reverse the text alike but resolve the neutrals beside them by
+ *          Unicode's controls, not Java's explicit levels (accepted, printed). Plain Hebrew-first and
+ *          Arabic strings through the shaper in Java's base direction, pixel-identical. Plain drawString, drawChars
  *          and drawBytes in a font with layout attributes (kerning, ligatures, tracking, underline,
  *          strikethrough, a colour, a background, a superscript) are the paragraph's too, as
  *          TextLayout(String, Font) draws them; a font with WIDTH stays TextLayout's.
@@ -186,6 +191,28 @@ public class SkiaParagraphAttributesTest {
         expect("STRIKETHROUGH false", byAttributes(KERNED, font, TextAttribute.STRIKETHROUGH, Boolean.FALSE), true);
         expect("UNDERLINE -1 (none)", byAttributes(KERNED, font, TextAttribute.UNDERLINE, -1), true);
         expect("UNDERLINE_LOW_DOTTED (TextLayout's)", byAttributes(KERNED, font, TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_LOW_DOTTED), false);
+        // bidi as TextLayout runs it: the base direction from RUN_DIRECTION or the first strong character, BIDI_EMBEDDING's
+        // explicit levels (and overrides), NUMERIC_SHAPING from the first character; JUSTIFICATION changes nothing drawn
+        final String hebrewFirst = "\u05e9\u05dc\u05d5\u05dd world 123, \u05e2\u05d5\u05dc\u05dd!";
+        final String bidiMixed = "Hello \u05e9\u05dc\u05d5\u05dd world (1 2 3).";
+        expect("Hebrew first (a right-to-left base)", runs(hebrewFirst, font), true);
+        expect("RUN_DIRECTION_RTL on Latin-first text", withAttribute(runs(bidiMixed, font), TextAttribute.RUN_DIRECTION, TextAttribute.RUN_DIRECTION_RTL, 0, bidiMixed.length()), true);
+        expect("RUN_DIRECTION_LTR on Hebrew-first text", withAttribute(runs(hebrewFirst, font), TextAttribute.RUN_DIRECTION, TextAttribute.RUN_DIRECTION_LTR, 0, hebrewFirst.length()), true);
+        expect("BIDI_EMBEDDING 1 on a Latin word", withAttribute(runs(bidiMixed, font), TextAttribute.BIDI_EMBEDDING, 1, 0, 5), true);
+        expect("BIDI_EMBEDDING 2 on a Hebrew word", withAttribute(runs(bidiMixed, font), TextAttribute.BIDI_EMBEDDING, 2, 6, 10), true);
+        // overrides: the paragraph reaches them with Unicode's override controls (the standard algorithm, as AppKit's
+        // writing-direction attribute), Java hands java.text.Bidi explicit levels, which resolve the neutrals next to
+        // the override differently (measured: the parentheses after it): the overridden text alike, the rest accepted
+        expectTaken("BIDI_EMBEDDING -1 (an override) on a Latin word", withAttribute(runs(bidiMixed, font), TextAttribute.BIDI_EMBEDDING, -1, 11, 16));
+        expectTaken("BIDI_EMBEDDING -2 (an override) on a Hebrew word", withAttribute(runs(bidiMixed, font), TextAttribute.BIDI_EMBEDDING, -2, 6, 10));
+        final String digits = "Price 123 and 4567, \u0627\u0644\u0633\u0639\u0631 89";
+        expect("NUMERIC_SHAPING (Arabic digits)", withAttribute(runs(digits, font), TextAttribute.NUMERIC_SHAPING, java.awt.font.NumericShaper.getShaper(java.awt.font.NumericShaper.ARABIC), 0, digits.length()), true);
+        expect("NUMERIC_SHAPING (contextual)", withAttribute(runs(digits, font), TextAttribute.NUMERIC_SHAPING,
+                java.awt.font.NumericShaper.getContextualShaper(java.awt.font.NumericShaper.ARABIC | java.awt.font.NumericShaper.EASTERN_ARABIC), 0, digits.length()), true);
+        expect("JUSTIFICATION_FULL", withAttribute(runs(KERNED, font), TextAttribute.JUSTIFICATION, TextAttribute.JUSTIFICATION_FULL, 0, KERNED.length()), true);
+        expect("a FONT carrying RUN_DIRECTION_RTL (ignored, as by TextLayout)", runs(bidiMixed, font.deriveFont(Map.of(TextAttribute.RUN_DIRECTION, TextAttribute.RUN_DIRECTION_RTL))), true);
+        expectShaped("a Hebrew-first string (the shaper)", font, hebrewFirst);
+        expectShaped("an Arabic string with digits (the shaper)", font, "\u0627\u0644\u0633\u0639\u0631 89 Price");
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
         expect("a font carrying WIDTH", runs(KERNED, font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED))), false);
         expect("WIDTH next to a FONT (ignored, as by TextLayout)", withAttribute(KERNED, font, TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED), true);
@@ -315,6 +342,22 @@ public class SkiaParagraphAttributesTest {
             if (a.getRGB(x, y) == c.getRGB()) n++;
         }
         return n;
+    }
+
+    /** A plain string through Skia's shaper against TextLayout(String, Font): identical pixels. */
+    static void expectShaped(String what, Font f, String text) throws Exception {
+        java.lang.reflect.Method shaped = Class.forName("sun.java2d.skia.SKEnvironment").getMethod("glyphsShapedBySkia");
+        long before = (long) shaped.invoke(null);
+        BufferedImage route = render(g -> { g.setFont(f); g.drawString(text, 10, 30); });
+        long taken = (long) shaped.invoke(null) - before;
+        int n = differing(route, render(g -> new TextLayout(text, f, g.getFontRenderContext()).draw(g, 10, 30)));
+        System.out.println(what + ": " + taken + " glyphs shaped by Skia, " + n + " pixels apart from TextLayout");
+        if (taken == 0) {
+            throw new RuntimeException(what + ": not shaped by Skia");
+        }
+        if (n != 0) {
+            throw new RuntimeException(what + ": drawn " + n + " pixels apart from TextLayout");
+        }
     }
 
     /** drawString(iterator) by Skia's paragraph engine (its pixels printed against TextLayout's). */

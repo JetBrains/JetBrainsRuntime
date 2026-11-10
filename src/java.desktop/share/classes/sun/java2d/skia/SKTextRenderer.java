@@ -89,20 +89,19 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     /**
      * Layout attributes a run's font may carry for Skia's paragraph engine: kerning, ligatures, tracking and
      * superscript, which it applies as Java's layout does. Any other of Font's layout attributes (Font.LAYOUT_MASK), and width (part
-     * of its extra transform), leave the paragraph to TextLayout. Colours, background, underline, strikethrough and
-     * swapped colours a font carries are not refused: TextLayout takes them from the iterator's attributes only, never
-     * from a FONT attribute's font (measured), and so does the route.
+     * of its extra transform), leave the paragraph to TextLayout. Colours, background, underline, strikethrough,
+     * swapped colours and the bidi attributes (run direction, embedding, numeric shaping, justification) a font carries
+     * are not refused: TextLayout takes them from the iterator's attributes only, never from a FONT attribute's font
+     * (measured), and so does the route.
      */
     private static final int UNSUPPORTED_FONT_ATTRIBUTES = sun.font.AttributeValues.getMask(
-            sun.font.EAttribute.ECHAR_REPLACEMENT, sun.font.EAttribute.ERUN_DIRECTION,
-            sun.font.EAttribute.EBIDI_EMBEDDING, sun.font.EAttribute.EJUSTIFICATION, sun.font.EAttribute.EINPUT_METHOD_HIGHLIGHT,
-            sun.font.EAttribute.EINPUT_METHOD_UNDERLINE, sun.font.EAttribute.ENUMERIC_SHAPING,
-            sun.font.EAttribute.EWIDTH);
+            sun.font.EAttribute.ECHAR_REPLACEMENT, sun.font.EAttribute.EINPUT_METHOD_HIGHLIGHT,
+            sun.font.EAttribute.EINPUT_METHOD_UNDERLINE, sun.font.EAttribute.EWIDTH);
 
     /** Render-queue opcodes of the Skia text path: the backend's own range above {@code BufferedOpCodes}, after {@code SKShapePipe}'s. */
     @Native static final int DRAW_GLYPHS_BY_SKIA = 210, DRAW_SHAPED_BY_SKIA = 211, DRAW_PARAGRAPH_BY_SKIA = 212;
     /** Bits of the opcodes' packed parameters. */
-    @Native static final int OFFSET_USE_POSITIONS = 0, OFFSET_SMOOTHING = 1;
+    @Native static final int OFFSET_USE_POSITIONS = 0, OFFSET_SMOOTHING = 1, OFFSET_RIGHT_TO_LEFT = 2;
 
     /** Bytes a string's UTF-16 units take on the queue: padded so the next operation stays 4-byte aligned. */
     private static int paddedChars(int length) {
@@ -290,6 +289,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         // sub-pixel positioning is off, which lands the glyphs where Java's rounded advances do.
         final float[] origin = deviceOrigin(sg2d, x, y);
         final long context = strike.skiaScalerContext();
+        final boolean rightToLeft = rightToLeft(s);
         rq.lock();
         try {
             validateContext(sg2d, textComposite(sg2d));
@@ -301,13 +301,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 rq.ensureCapacityAndAlignment(total, 20);
                 buf.putInt(DRAW_SHAPED_BY_SKIA);
                 buf.putInt(length);
-                buf.putInt(smoothing ? 1 << OFFSET_SMOOTHING : 0);
+                buf.putInt((smoothing ? 1 << OFFSET_SMOOTHING : 0) | (rightToLeft ? 1 << OFFSET_RIGHT_TO_LEFT : 0));
                 buf.putFloat(origin[0]);
                 buf.putFloat(origin[1]);
                 buf.putLong(context);
                 putChars(buf, s);
             } else {
-                rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, origin[0], origin[1], s));
+                rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, rightToLeft, origin[0], origin[1], s));
             }
         } finally {
             rq.unlock();
@@ -316,7 +316,17 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     }
 
     /** Skia's shaper: the characters shaped by HarfBuzz with Skia's fallback and drawn as one text blob (oversized operations). */
-    private static native void drawShapedBySkia(long pScalerContext, boolean smoothing, float originX, float originY, String text);
+    private static native void drawShapedBySkia(long pScalerContext, boolean smoothing, boolean rightToLeft, float originX, float originY, String text);
+
+    /**
+     * A plain string's base direction as Java lays it out: TextLayout(String, Font) takes it from the first strong
+     * character (Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT); left to right for text that needs no bidi.
+     */
+    static boolean rightToLeft(String s) {
+        char[] chars = s.toCharArray();
+        return java.text.Bidi.requiresBidi(chars, 0, chars.length)
+                && !new java.text.Bidi(s, java.text.Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
+    }
 
     /** The attributed string as Skia's paragraph engine draws it, or null when it is TextLayout's (see drawString). */
     static Paragraph paragraphOf(SunGraphics2D sg2d, AttributedCharacterIterator it) {
@@ -337,6 +347,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         List<Integer> trackings = new ArrayList<>();
         List<Integer> shifts = new ArrayList<>();
         List<Integer> backgrounds = new ArrayList<>();
+        List<Integer> embeddings = new ArrayList<>();
         double[] paragraphRemainder = null;
         for (int pos = begin; pos < end; ) {
             it.setIndex(pos);
@@ -345,7 +356,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             Font font = null;
             Color colour = null, background = null;
             boolean swapColors = false;
-            int runFlags = 0;
+            int runFlags = 0, embedding = 0;
             for (Map.Entry<Attribute, Object> e : attrs.entrySet()) {
                 Attribute a = e.getKey();
                 Object v = e.getValue();
@@ -395,6 +406,14 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     if (SKEnvironment.decorationsSnapped()) {
                         runFlags |= PARAGRAPH_SYSTEM_DECORATIONS;
                     }
+                } else if (a == TextAttribute.BIDI_EMBEDDING) {
+                    if (!(v instanceof Integer level) || level < -61 || level > 61) {
+                        return null;
+                    }
+                    embedding = level;
+                } else if (a == TextAttribute.RUN_DIRECTION || a == TextAttribute.NUMERIC_SHAPING || a == TextAttribute.JUSTIFICATION) {
+                    // the paragraph's, from its first character (below), as TextLayout and java.text.Bidi read them;
+                    // justification only serves TextLayout.getJustifiedLayout
                 } else if (!(a instanceof TextAttribute)) {
                     // LANGUAGE, READING, INPUT_METHOD_SEGMENT and an application's own keys: TextLayout reads only
                     // TextAttributes (its fonts, decorations and bidi), so they change nothing it draws
@@ -478,6 +497,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
                 backgrounds.add(background != null ? background.getRGB() : 0);
                 ends.add(runLimits[k] - begin);
+                embeddings.add(embedding);
                 contexts.add(strike.skiaScalerContext());
                 colours.add(colour != null ? colour.getRGB() : 0);
                 flags.add(subFlags | (colour != null ? PARAGRAPH_COLOUR : 0));
@@ -485,20 +505,60 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             }
             pos = limit;
         }
-        final String string = text.toString();
-        final int[] endArray = ends.stream().mapToInt(Integer::intValue).toArray();
+        // bidi as TextLayout's TextLine runs it: java.text.Bidi over the iterator (RUN_DIRECTION at the first character,
+        // else the first strong one; BIDI_EMBEDDING's explicit levels), the paragraph laid out in its base direction
+        it.first();
+        boolean embedded = embeddings.stream().anyMatch(e -> e != 0);
+        boolean rightToLeft = false;
+        if (embedded || it.getAttribute(TextAttribute.RUN_DIRECTION) != null || java.text.Bidi.requiresBidi(text.toString().toCharArray(), 0, text.length())) {
+            rightToLeft = !new java.text.Bidi(it).baseIsLeftToRight();
+        }
+        // numeric shaping from the first character for the whole text, after the fonts were resolved (TextLayout's paragraphInit)
+        it.first();
+        if (it.getAttribute(TextAttribute.NUMERIC_SHAPING) instanceof java.awt.font.NumericShaper shaper) {
+            char[] shaped = text.toString().toCharArray();
+            shaper.shape(shaped, 0, shaped.length);
+            text = new StringBuilder().append(shaped);
+        }
+        int[] endArray = ends.stream().mapToInt(Integer::intValue).toArray();
+        String string = text.toString();
+        if (embedded) {
+            // explicit levels through the Unicode embedding controls, inside each run's own text: one push per level
+            // from the base level (RLE raises an even level by one, LRE an odd one; RLO / LRO for the last push of an
+            // override), closed with as many PDFs; the controls are default-ignorable and shape to nothing
+            StringBuilder controlled = new StringBuilder(string.length() + 8);
+            int start = 0, base = rightToLeft ? 1 : 0;
+            for (int r = 0; r < endArray.length; r++) {
+                int e = embeddings.get(r), level = Math.abs(e);
+                int pushes = level > base ? level - base : 0;
+                if (e < 0 && pushes == 0) {
+                    return null;   // an override at the base level: no control reaches it, TextLayout's
+                }
+                for (int l = base; l < level; l++) {
+                    boolean last = l == level - 1;
+                    controlled.append(l % 2 == 0 ? (last && e < 0 ? '\u202E' : '\u202B') : (last && e < 0 ? '\u202D' : '\u202A'));
+                }
+                controlled.append(string, start, endArray[r]);
+                for (int i = 0; i < pushes; i++) {
+                    controlled.append('\u202C');
+                }
+                start = endArray[r];
+                endArray[r] = controlled.length();
+            }
+            string = controlled.toString();
+        }
         final long[] contextArray = contexts.stream().mapToLong(Long::longValue).toArray();
         final int[] colourArray = colours.stream().mapToInt(Integer::intValue).toArray();
         final int[] flagArray = flags.stream().mapToInt(Integer::intValue).toArray();
         final int[] trackingArray = trackings.stream().mapToInt(Integer::intValue).toArray();
         final int[] shiftArray = shifts.stream().mapToInt(Integer::intValue).toArray();
         final int[] backgroundArray = backgrounds.stream().mapToInt(Integer::intValue).toArray();
-        return new Paragraph(string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray, strikes);
+        return new Paragraph(string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray, strikes, rightToLeft);
     }
 
     /** A paragraph's runs: their ends in the text, scaler contexts, colours, flags, trackings, baseline shifts, backgrounds. */
     record Paragraph(String string, int[] endArray, long[] contextArray, int[] colourArray, int[] flagArray, int[] trackingArray,
-                     int[] shiftArray, int[] backgroundArray, List<SKDrawableStrike> strikes) {}
+                     int[] shiftArray, int[] backgroundArray, List<SKDrawableStrike> strikes, boolean rightToLeft) {}
 
     /**
      * Lays out and draws the attributed string with Skia's paragraph engine when
@@ -517,6 +577,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         }
         final float[] origin = deviceOrigin(sg2d, x, y);
         final String string = paragraph.string();
+        final boolean rightToLeft = paragraph.rightToLeft();
         final int[] endArray = paragraph.endArray(), colourArray = paragraph.colourArray(), flagArray = paragraph.flagArray(),
                 trackingArray = paragraph.trackingArray(), shiftArray = paragraph.shiftArray(), backgroundArray = paragraph.backgroundArray();
         final long[] contextArray = paragraph.contextArray();
@@ -536,7 +597,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 buf.putInt(DRAW_PARAGRAPH_BY_SKIA);
                 buf.putInt(length);
                 buf.putInt(runs);
-                buf.putInt(smoothing ? 1 << OFFSET_SMOOTHING : 0);
+                buf.putInt((smoothing ? 1 << OFFSET_SMOOTHING : 0) | (rightToLeft ? 1 << OFFSET_RIGHT_TO_LEFT : 0));
                 buf.putFloat(origin[0]);
                 buf.putFloat(origin[1]);
                 buf.put(contextArray, 0, runs);
@@ -548,7 +609,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 buf.put(backgroundArray, 0, runs);
                 putChars(buf, string);
             } else {
-                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray));
+                rq.flushAndInvokeNow(() -> drawParagraphBySkia(smoothing, rightToLeft, origin[0], origin[1], string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray));
             }
         } finally {
             rq.unlock();
@@ -557,7 +618,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     }
 
     /** Skia's paragraph engine: runs of (strike, colour, decorations) laid out on one line and painted at the baseline origin (oversized operations). */
-    private static native void drawParagraphBySkia(boolean smoothing, float originX, float originY, String text,
+    private static native void drawParagraphBySkia(boolean smoothing, boolean rightToLeft, float originX, float originY, String text,
                                                    int[] runEnds, long[] contexts, int[] colours, int[] flags, int[] trackingBits, int[] shiftBits,
                                                    int[] backgrounds);
 

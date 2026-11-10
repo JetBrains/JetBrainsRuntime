@@ -208,7 +208,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         System.arraycopy(p.shiftArray(), 0, runInts, 3 * runs, runs);
         System.arraycopy(p.backgroundArray(), 0, runInts, 4 * runs, runs);
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
-        long drawn = drawParagraph(dst, dst.pixelFormat(), opFlags(sg2d, dst), origin[0], origin[1], p.string(), p.endArray(), p.contextArray(), runInts,
+        long drawn = drawParagraph(dst, dst.pixelFormat(), opFlags(sg2d, dst) | (p.rightToLeft() ? 1 << 9 : 0), origin[0], origin[1], p.string(), p.endArray(), p.contextArray(), runInts,
                 sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
         glyphsBySkia.addAndGet(drawn);
         java.lang.ref.Reference.reachabilityFence(p.strikes());
@@ -220,13 +220,13 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         float[] origin = SKTextRenderer.deviceOrigin(sg2d, x, y);
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
-        long drawn = drawShaped(dst, dst.pixelFormat(), strike.skiaScalerContext(), opFlags(sg2d, dst), origin[0], origin[1], s,
+        long drawn = drawShaped(dst, dst.pixelFormat(), strike.skiaScalerContext(), opFlags(sg2d, dst) | (SKTextRenderer.rightToLeft(s) ? 1 << 9 : 0), origin[0], origin[1], s,
                 sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
         glyphsBySkia.addAndGet(drawn);
         java.lang.ref.Reference.reachabilityFence(strike);
     }
 
-    /** The composite rule in bits 0-3 (Src with an opaque colour as SrcOver, as for glyphs) and the mirror flag at 8. */
+    /** The composite rule in bits 0-3 (Src with an opaque colour as SrcOver, as for glyphs) and the mirror flag at 8 (the base direction goes at 9). */
     private static int opFlags(SunGraphics2D sg2d, SKRasterSurfaceData dst) {
         int rule = sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
         if (rule == AlphaComposite.SRC && (sg2d.eargb >>> 24) == 0xff) {

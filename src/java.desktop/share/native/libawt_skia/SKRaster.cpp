@@ -839,7 +839,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
 
 // Skia's shaper and paragraph engine on the raster surface: the text is laid out first, then the operation locks the
 // clip box cut to the text's device bounds (SKBackend_DrawShapedOnCanvas / DrawParagraphOnCanvas). flags: the composite
-// rule in bits 0-3, the mirror flag at 8.
+// rule in bits 0-3, the mirror flag at 8, the right-to-left base direction at 9.
 namespace {
 struct TextOperation {
     JNIEnv *env; jobject dstData; jint pixelFormat; SkIRect clip; bool mirrorKept; const jint *spans; size_t spanCount;
@@ -877,7 +877,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobj
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
                        ((flags >> 8) & 1) != 0, spans.data, spans.size};
     return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, context, JNI_FALSE,
-                                        originX, originY, chars.data, length);
+                                        ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY, chars.data, length);
 }
 
 JNIEXPORT jlong JNICALL
@@ -900,7 +900,8 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawParagraph(JNIEnv *env, jclass clazz, j
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
                        ((flags >> 8) & 1) != 0, spans.data, spans.size};
     const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
-    return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, true, JNI_FALSE, originX, originY,
+    return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, true, JNI_FALSE,
+                                           ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY,
                                            chars.data, length, runs, ends.data, contexts.data, colours, runFlags, trackings, shifts, backgrounds);
 }
 
