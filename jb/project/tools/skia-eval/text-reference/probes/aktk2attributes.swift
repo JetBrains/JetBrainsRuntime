@@ -209,6 +209,67 @@ case "decoration":
         } } }
     }
 
+case "linemetrics":
+    // which runs a line's underline takes its band from, and how; and the background band beside a superscript.
+    // Runs "x     " each; per run: underlined or not, family, size, superscript level. Bands over each run's spaces.
+    print("case\trun bands (centre, thickness; '-' undecorated)\tbackground of run 1 (top..bottom)")
+    func face(_ fam: String, _ size: CGFloat) -> NSFont { NSFontManager.shared.font(withFamily: fam, traits: [], weight: 5, size: size)! }
+    let cases: [(String, [(Bool, String, CGFloat, Int)])] = [
+        ("24 ul + 48 plain + 24 ul", [(true, "Helvetica Neue", 24, 0), (false, "Helvetica Neue", 48, 0), (true, "Helvetica Neue", 24, 0)]),
+        ("48 ul + 24 plain + 24 ul", [(true, "Helvetica Neue", 48, 0), (false, "Helvetica Neue", 24, 0), (true, "Helvetica Neue", 24, 0)]),
+        ("24 ul + 24 sub plain + 24 ul", [(true, "Helvetica Neue", 24, 0), (false, "Helvetica Neue", 24, -1), (true, "Helvetica Neue", 24, 0)]),
+        ("24 ul + 48 ul + 24 ul", [(true, "Helvetica Neue", 24, 0), (true, "Helvetica Neue", 48, 0), (true, "Helvetica Neue", 24, 0)]),
+        ("HN 30 ul + Times 30 ul + HN 30 ul", [(true, "Helvetica Neue", 30, 0), (true, "Times New Roman", 30, 0), (true, "Helvetica Neue", 30, 0)]),
+        ("Menlo 30 ul + Courier New 30 ul + Menlo 30 ul", [(true, "Menlo", 30, 0), (true, "Courier New", 30, 0), (true, "Menlo", 30, 0)]),
+        ("HN 24 ul + Avenir 20 ul + HN 24 ul", [(true, "Helvetica Neue", 24, 0), (true, "Avenir Next", 20, 0), (true, "Helvetica Neue", 24, 0)]),
+        ("24 ul + 24 sub ul + 24 ul", [(true, "Helvetica Neue", 24, 0), (true, "Helvetica Neue", 24, -1), (true, "Helvetica Neue", 24, 0)]),
+        ("24 sub ul only", [(true, "Helvetica Neue", 24, -1), (true, "Helvetica Neue", 24, -1), (true, "Helvetica Neue", 24, -1)]),
+        ("24 plain + 24 super + 24 plain (bg)", [(false, "Helvetica Neue", 24, 0), (false, "Helvetica Neue", 24, 1), (false, "Helvetica Neue", 24, 0)]),
+        ("24 plain + 24 sub + 24 plain (bg)", [(false, "Helvetica Neue", 24, 0), (false, "Helvetica Neue", 24, -1), (false, "Helvetica Neue", 24, 0)]),
+    ]
+    for (name, runs) in cases { autoreleasepool {
+        func build(_ decorated: Bool, _ background: Bool) -> NSAttributedString {
+            let s = NSMutableAttributedString()
+            for (i, r) in runs.enumerated() {
+                var a: [NSAttributedString.Key: Any] = [.font: face(r.1, r.2), .foregroundColor: NSColor.black]
+                if r.3 != 0 { a[.superscript] = r.3 }
+                if decorated && r.0 { a[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+                if background && i == 0 { a[.backgroundColor] = NSColor(deviceRed: 1, green: 0, blue: 0, alpha: 1) }
+                s.append(NSAttributedString(string: i == runs.count - 1 ? "x     x" : "x     ", attributes: a))
+            }
+            return s
+        }
+        let (hd, line, _) = tk2(build(true, false)), (hp, _, _) = tk2(build(false, false)), (hb, _, _) = tk2(build(false, true))
+        let d = render(hd), p = render(hp), b = render(hb)
+        var cells: [String] = []
+        for r in 0..<runs.count {
+            guard let l = line else { break }
+            let x1 = Int((Double(l.locationForCharacter(at: r * 6 + 2).x) + 20) * 8), x2 = Int((Double(l.locationForCharacter(at: r * 6 + 5).x) + 20) * 8)
+            var sum = 0.0, moment = 0.0
+            for y in 0..<d.h {
+                var c = 0.0
+                for x in x1..<x2 { c += max(0, d.ink(x, y) - p.ink(x, y)) }
+                c /= Double(max(1, x2 - x1)); sum += c; moment += c * (Double(y) + 0.5)
+            }
+            cells.append(sum < 0.05 ? "-" : "\(f(moment / sum / 8 - 100))/\(f(sum / 8))")
+        }
+        var top = Int.max, bottom = -1
+        for y in 0..<b.h { for x in 0..<b.w where b.r[y * b.w + x] > 0.9 && b.g[y * b.w + x] < 0.1 && b.b[y * b.w + x] < 0.1 { top = min(top, y); bottom = max(bottom, y + 1) } }
+        print("\(name)\t" + cells.joined(separator: " | ") + "\t\(f(Double(top) / 8 - 100))..\(f(Double(bottom) / 8 - 100))")
+    } }
+    // the line fragment's baseline offset (glyphOrigin.y) against the ascent: is it the rounded ascent?
+    var same = 0, total = 0, shown = 0
+    for family in ["Helvetica Neue", "Times New Roman", "Menlo", "Avenir Next", "Georgia", "Lucida Grande", "Optima"] {
+        for size in stride(from: 8.0, through: 48.0, by: 1.0) {
+            let font = face(family, CGFloat(size))
+            let (_, l, _) = tk2(NSAttributedString(string: "x", attributes: [.font: font]))
+            guard let line = l else { continue }
+            total += 1
+            if abs(Double(line.glyphOrigin.y) - Double(font.ascender).rounded()) < 1e-6 { same += 1 } else if shown < 6 { shown += 1; print("  glyphOrigin \(line.glyphOrigin.y) vs ascender \(font.ascender) (\(family) \(Int(size)))") }
+        }
+    }
+    print("line baseline offset = rounded ascent: \(same) of \(total)")
+
 case "tracking":
     // "abcd" with the attribute on "bc": the carets (layout) and the glyphs' ink left edges, against the plain line
     print("attribute\tvalue\tstack\tcarets a b c d end\tink left edges a b c d")
