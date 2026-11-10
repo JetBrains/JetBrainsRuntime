@@ -1920,21 +1920,65 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowB
     }
 }
 
-// Colour glyphs (emoji) under Src or Clear: their alpha is the coverage and their own colours the source, as for
-// the outline glyphs (whose masks Skia already takes as coverage) — so Src is SrcOver of the glyph at the composite's
-// extra alpha (the text colour does not tint them) and Clear clears the glyph's shape (DstOut, opaque); drawn as an
-// image under Src or Clear, a colour glyph replaced or cleared its whole box. Other rules keep Skia's image blend.
+// Colour glyphs (emoji) under a rule other than SrcOver: their alpha is the coverage and their own colours, at the
+// composite's extra alpha, the source — as for the outline glyphs, whose masks Skia takes as coverage: the destination
+// lerped towards the rule's result, dst' = mix(dst, B(s, dst), a), MaskFill's meaning. Drawn as images under such a
+// rule, a colour glyph applied it to its whole box (Src replaced it, Clear cleared it, SrcIn cleared around the glyph).
+// A runtime blender recovers the coverage and the colour from what Skia hands it: the image's premultiplied colour
+// under the paint's alpha (the extra alpha), src = (c * a * ea, a * ea).
 static bool splitsColourGlyphs(const SkPaint &paint) {
     const std::optional<SkBlendMode> mode = paint.asBlendMode();
-    return mode.has_value() && (*mode == SkBlendMode::kSrc || *mode == SkBlendMode::kClear);
+    return mode.has_value() && *mode != SkBlendMode::kSrcOver && (int) *mode <= (int) SkBlendMode::kXor;   // the twelve AlphaComposite rules
+}
+
+static sk_sp<SkBlender> colourGlyphBlender(SkBlendMode mode, float extraAlpha) {
+    static const SkRuntimeEffect *effect = [] {
+        auto result = SkRuntimeEffect::MakeForBlender(SkString(R"(
+            uniform float ea;
+            uniform float rule;   // SkBlendMode's Porter-Duff modes, kClear (0) to kXor (11)
+            half4 main(half4 src, half4 dst) {
+                float4 d = float4(dst);
+                float a = ea > 0 ? float(src.a) / ea : 0;          // the glyph's coverage
+                if (a <= 0) {
+                    return dst;
+                }
+                float4 sc = float4(float3(src.rgb) / a, ea);       // its colour at the extra alpha, premultiplied
+                float4 b;
+                int r = int(rule + 0.5);
+                if      (r == 0)  b = float4(0);                                    // Clear
+                else if (r == 1)  b = sc;                                           // Src
+                else if (r == 2)  b = d;                                            // Dst
+                else if (r == 3)  b = sc + d * (1 - sc.a);                          // SrcOver
+                else if (r == 4)  b = d + sc * (1 - d.a);                           // DstOver
+                else if (r == 5)  b = sc * d.a;                                     // SrcIn
+                else if (r == 6)  b = d * sc.a;                                     // DstIn
+                else if (r == 7)  b = sc * (1 - d.a);                               // SrcOut
+                else if (r == 8)  b = d * (1 - sc.a);                               // DstOut
+                else if (r == 9)  b = sc * d.a + d * (1 - sc.a);                    // SrcATop
+                else if (r == 10) b = d * sc.a + sc * (1 - d.a);                    // DstATop
+                else              b = sc * (1 - d.a) + d * (1 - sc.a);              // Xor
+                return half4(mix(d, b, a));
+            }
+        )"));
+        if (!result.effect) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "SKBackend: colour-glyph blender does not compile: %s", result.errorText.c_str());
+        }
+        return result.effect.release();
+    }();
+    if (effect == nullptr) {
+        return nullptr;
+    }
+    const float uniforms[2] = {extraAlpha, (float) (int) mode};
+    return effect->makeBlender(SkData::MakeWithCopy(uniforms, sizeof(uniforms)));
 }
 
 static SkPaint colourGlyphPaint(const SkPaint &paint, float extraAlpha) {
     SkPaint p = paint;
     p.setShader(nullptr);
-    const bool clear = paint.asBlendMode() == SkBlendMode::kClear;
-    p.setBlendMode(clear ? SkBlendMode::kDstOut : SkBlendMode::kSrcOver);
-    p.setColor4f(SkColor4f{1, 1, 1, clear ? 1.0f : extraAlpha});
+    p.setColor4f(SkColor4f{1, 1, 1, extraAlpha});   // the glyph's own colours, at the extra alpha
+    if (sk_sp<SkBlender> blender = colourGlyphBlender(*paint.asBlendMode(), extraAlpha)) {
+        p.setBlender(std::move(blender));
+    }
     return p;
 }
 
