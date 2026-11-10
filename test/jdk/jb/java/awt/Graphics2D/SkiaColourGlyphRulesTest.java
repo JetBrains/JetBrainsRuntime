@@ -34,7 +34,9 @@ import java.text.AttributedString;
  *          theirs: dst' = mix(dst, B(s, dst), a) — the reference computed per pixel from the emoji as the software
  *          loops draw them (over SrcOver on a transparent image), a translucent background so that the rules reading
  *          the destination's alpha show. Drawn as images, a colour glyph applied the rule to its whole box (SrcIn,
- *          DstIn, SrcOut and DstAtop up to 128 levels off, Src under extra alpha 51).
+ *          DstIn, SrcOut and DstAtop up to 128 levels off, Src under extra alpha 51). The GPU pipe's own configuration
+ *          (Java's glyph images, "images") likewise: rules other than Src, Clear and SrcOver went to the loops'
+ *          MaskFill text pipe, which skips colour glyphs (DstOver, DstOut and DstAtop 128 levels off).
  * @requires os.family == "mac"
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaColourGlyphRulesTest glyphs
@@ -42,6 +44,7 @@ import java.text.AttributedString;
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaColourGlyphRulesTest paragraph
  * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaColourGlyphRulesTest raster-glyphs
  * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaColourGlyphRulesTest raster-paragraph
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaColourGlyphRulesTest images
  */
 public class SkiaColourGlyphRulesTest {
     static final int W = 200, H = 70;
@@ -83,7 +86,7 @@ public class SkiaColourGlyphRulesTest {
                     for (int i = 0; i < 4; i++) max = Math.max(max, Math.round(Math.abs(got[i] - e[i]) * 255));
                 }
                 System.out.println(mode + ", " + what + ": " + drawn + " by the route, at most " + max + " levels from the reference");
-                if (drawn == 0) {
+                if (drawn == 0 && !mode.equals("images")) {   // Java's glyph images: no Skia text route to count
                     failures.append(what).append(": not drawn by the route; ");
                 }
                 if (max > TOLERANCE) {
@@ -155,6 +158,9 @@ public class SkiaColourGlyphRulesTest {
     }
 
     static long counter() throws Exception {
+        if (mode.equals("images")) {
+            return 0;
+        }
         String name = mode.endsWith("paragraph") ? "paragraphsBySkia" : mode.equals("shaper") ? "glyphsShapedBySkia"
                 : mode.startsWith("raster") ? "rasterGlyphsBySkia" : "glyphsDrawnBySkia";
         return (long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(name).invoke(null);

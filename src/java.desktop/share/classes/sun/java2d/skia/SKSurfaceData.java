@@ -315,9 +315,11 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
         // composite modes as the Metal one.
         if ((sg2d.compositeState <= SunGraphics2D.COMP_ISCOPY &&
                 sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) ||
+            // any AlphaComposite rule with a colour: the glyph images are drawn as coverage under a rule other than
+            // SrcOver (SKBackend_DrawGlyphList), where the loops' MaskFill text pipe would turn the rule into SrcOver
+            // (BufferedMaskFill) and skip the colour glyphs (TextRenderer)
             (sg2d.compositeState == SunGraphics2D.COMP_ALPHA &&
-                sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR &&
-                ((AlphaComposite) sg2d.composite).getRule() == AlphaComposite.SRC_OVER) ||
+                sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) ||
             // XOR text: the software glyph loops cannot lock a Skia surface; draw it
             // through the Skia text pipe (XOR blender with the glyph coverage, see
             // SKBackend_SetXorComposite).
