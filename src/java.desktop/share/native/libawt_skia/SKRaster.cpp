@@ -883,7 +883,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobj
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKRasterTextPipe_drawParagraph(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint flags,
                                                     jfloat originX, jfloat originY, jstring text, jintArray endsArray, jlongArray contextsArray,
-                                                    jintArray runIntsArray, jint argb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
+                                                    jintArray runIntsArray, jint argb, jfloat extraAlpha, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
     const jint length = text != nullptr ? env->GetStringLength(text) : 0;
     const jint runs = endsArray != nullptr ? env->GetArrayLength(endsArray) : 0;
@@ -900,7 +900,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawParagraph(JNIEnv *env, jclass clazz, j
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
                        ((flags >> 8) & 1) != 0, spans.data, spans.size};
     const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
-    return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, true, JNI_FALSE,
+    return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, true, JNI_FALSE,
                                            ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY,
                                            chars.data, length, runs, ends.data, contexts.data, colours, runFlags, trackings, shifts, backgrounds);
 }

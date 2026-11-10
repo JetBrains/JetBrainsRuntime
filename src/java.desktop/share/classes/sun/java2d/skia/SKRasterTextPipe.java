@@ -209,7 +209,8 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         System.arraycopy(p.backgroundArray(), 0, runInts, 4 * runs, runs);
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
         long drawn = drawParagraph(dst, dst.pixelFormat(), opFlags(sg2d, dst) | (p.rightToLeft() ? 1 << 9 : 0), origin[0], origin[1], p.string(), p.endArray(), p.contextArray(), runInts,
-                sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
+                sg2d.eargb, sg2d.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f,
+                SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
         glyphsBySkia.addAndGet(drawn);
         java.lang.ref.Reference.reachabilityFence(p.strikes());
         return true;
@@ -239,7 +240,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
                                           String text, int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
     private static native long drawParagraph(SKRasterSurfaceData dst, int dstPixelFormat, int flags, float originX, float originY, String text,
-                                             int[] runEnds, long[] contexts, int[] runInts, int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                             int[] runEnds, long[] contexts, int[] runInts, int argb, float extraAlpha, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
     private static void draw(SunGraphics2D sg2d, GlyphList gl, SKGlyphContexts.Runs runs) {
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;

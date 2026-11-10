@@ -324,6 +324,13 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
             (sg2d.compositeState == SunGraphics2D.COMP_XOR &&
                 sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR)) {
             textpipe = skTextPipe;
+        } else if (SKEnvironment.textBySkia() && sg2d.compositeState <= SunGraphics2D.COMP_ALPHA
+                && (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKPaints.isValid(sg2d))) {
+            // a gradient or texture paint, or another AlphaComposite rule: Skia's text routes draw it with the native
+            // paint (its shader and blend) for strikes on the Skia scaler, the loops' text pipe the rest
+            super.validatePipe(sg2d);
+            textpipe = SKPaintTextPipe.of(skTextPipe, sg2d.textpipe);
+            validated = true;
         } else {
             super.validatePipe(sg2d);
             textpipe = sg2d.textpipe;

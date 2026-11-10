@@ -233,7 +233,7 @@ jlong SKBackend_GlyphsDrawnBySkia();
 typedef std::function<SkCanvas *(const SkIRect &deviceBounds)> SKCanvasForBounds;
 jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, jlong pScalerContext,
                                    jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length);
-jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, bool swizzled,
+jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, float extraAlpha, bool swizzled,
                                       jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                       const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                       const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds);

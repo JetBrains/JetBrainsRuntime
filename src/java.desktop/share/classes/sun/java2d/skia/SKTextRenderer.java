@@ -421,6 +421,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     return null;
                 }
             }
+            if (!(sg2d.paint instanceof Color) && colour == null && (runFlags & (PARAGRAPH_UNDERLINE | PARAGRAPH_STRIKETHROUGH)) != 0
+                    && (runFlags & PARAGRAPH_SYSTEM_DECORATIONS) == 0) {
+                return null;   // SkParagraph's own decorations take a colour, not the graphics' gradient or texture
+            }
             // the run's fonts as TextLayout's StyledParagraph resolves them: a FONT as it is; with a FAMILY, the font of the
             // font attributes; without either, FontResolver's per character (Dialog 12, else the first of all fonts that
             // displays it) derived with the font attributes. Underline, strikethrough and colours are the route's own

@@ -2233,6 +2233,25 @@ static inline SkColor canvasColour(SkColor argb, bool swizzled) {
     return swizzled ? SkColorSetARGB(SkColorGetA(argb), SkColorGetB(argb), SkColorGetG(argb), SkColorGetR(argb)) : argb;
 }
 
+// The paint for a colour of the paragraph's own (a run's FOREGROUND, a BACKGROUND, a swapped colour): the graphics'
+// paint without its gradient or texture, the colour with the composite's extra alpha (SunGraphics2D.validateColor's
+// Math.round). The GPU pipe's own colour arrives as the surface's IntArgbPre pixel (PixelConverter.ArgbPre, then
+// unpremul), so a translucent colour takes the same round trip there, or it lands a level off TextLayout's; the raster
+// surfaces take Java's straight colour (swizzled: no round trip).
+static inline SkPaint colouredPaint(const SkPaint &base, SkColor javaArgb, float extraAlpha, bool swizzled) {
+    SkPaint p = base;
+    p.setShader(nullptr);
+    const uint32_t a = (uint32_t) std::lround(SkColorGetA(javaArgb) * extraAlpha);
+    SkColor colour = SkColorSetA(javaArgb, (U8CPU) a);
+    if (!swizzled && a != 255) {
+        const uint32_t a2 = a + (a >> 7);
+        const uint32_t pre = a << 24 | ((SkColorGetR(javaArgb) * a2) >> 8) << 16 | ((SkColorGetG(javaArgb) * a2) >> 8) << 8 | ((SkColorGetB(javaArgb) * a2) >> 8);
+        colour = unpremul((jint) pre);
+    }
+    p.setColor(canvasColour(colour, swizzled));
+    return p;
+}
+
 void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                 const jchar *chars, jint length) {
     REQUIRE_CANVAS_TEXT();
@@ -2483,7 +2502,7 @@ DecorationMetrics decorationMetrics(const SkFont &font) {
 // originX and paragraphTop in the paragraph's layout space, layoutScale maps it to device space
 void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, float layoutScale, const jchar *chars, jint length,
                            jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags, const SkPaint &paint,
-                           bool swizzled) {
+                           float extraAlpha, bool swizzled) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
     if (!any) return;
@@ -2528,7 +2547,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
             while (j < info->count && runOf(info->utf8Starts[j]) == r) j++;
             if (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) {
                 SkPaint runPaint = paint;
-                if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint.setColor(canvasColour((SkColor) colours[r], swizzled));
+                if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint = colouredPaint(runPaint, (SkColor) colours[r], extraAlpha, swizzled);
                 float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
                 for (int k = i; k < j; k++) {
                     SkScalar advance = 0;
@@ -2582,7 +2601,8 @@ static void transformedBand(SkCanvas *canvas, const SkRect &band, const SkPaint 
 // fails) — a butt-capped stroke of the font's own thickness centred on its offset, over the run's advance, filled
 // as the graphics fills shapes. Here in the paragraph's layout space, the canvas carrying the transform.
 void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float paragraphTop, const jchar *chars, jint length,
-                                jint runCount, const jint *runEnds, const jint *colours, const jint *flags, const SkPaint &paint, bool swizzled) {
+                                jint runCount, const jint *runEnds, const jint *colours, const jint *flags, const SkPaint &paint,
+                                float extraAlpha, bool swizzled) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
     if (!any) return;
@@ -2609,7 +2629,7 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
             if (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) {
                 SkPaint runPaint = paint;
                 runPaint.setAntiAlias((flags[r] & SK_PARAGRAPH_SHAPES_AA) != 0);
-                if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint.setColor(canvasColour((SkColor) colours[r], swizzled));
+                if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint = colouredPaint(runPaint, (SkColor) colours[r], extraAlpha, swizzled);
                 float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
                 for (int k = i; k < j; k++) {
                     SkScalar advance = 0;
@@ -2637,11 +2657,11 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jboolean rightToLeft, jfl
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }
     const SkPaint paint = SKBackend_MakePaint(true);
-    SKBackend_DrawParagraphOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(), false, smoothing, rightToLeft, originX, originY,
+    SKBackend_DrawParagraphOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(), g.extraAlpha, false, smoothing, rightToLeft, originX, originY,
                                     chars, length, runCount, runEnds, contexts, colours, flags, trackingBits, shiftBits, backgrounds);
 }
 
-jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, bool swizzled,
+jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, float extraAlpha, bool swizzled,
                                       jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
                                       const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                       const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds) {
@@ -2693,7 +2713,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         runPaint.setAntiAlias(font.getEdging() != SkFont::Edging::kAlias);   // the decorations follow the text's edging
         const SkColor runColour = (flags[r] & SK_PARAGRAPH_COLOUR) ? (SkColor) colours[r] : textColour;   // Java's, for the luminance
         if (flags[r] & SK_PARAGRAPH_COLOUR) {
-            runPaint.setColor(canvasColour(runColour, swizzled));
+            runPaint = colouredPaint(runPaint, runColour, extraAlpha, swizzled);
         }
         applyGrayRoute(font, contexts[r], runColour);
         sk_sp<SkTypeface> typeface = font.refTypeface();
@@ -2728,8 +2748,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         if (flags[r] & SK_PARAGRAPH_BACKGROUND) {
             // TextAttribute.BACKGROUND (or the swapped foreground): SkParagraph's box behind the run, filled as the
             // graphics fills a shape (Java fills the run's logical bounds, Decoration.drawTextAndDecorations)
-            SkPaint backgroundPaint = paint;
-            backgroundPaint.setColor(canvasColour((SkColor) backgrounds[r], swizzled));
+            SkPaint backgroundPaint = colouredPaint(paint, (SkColor) backgrounds[r], extraAlpha, swizzled);
             backgroundPaint.setAntiAlias((flags[r] & SK_PARAGRAPH_BACKGROUND_AA) != 0);
             ts.setBackgroundPaint(backgroundPaint);
         }
@@ -2826,7 +2845,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         canvas->concat(remainder);
         canvas->scale(layoutScale, layoutScale);
         paragraph->paint(canvas, 0, -baseline);
-        drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, colours, flags, paint, swizzled);
+        drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, colours, flags, paint, extraAlpha, swizzled);
     } else {
         if (layoutScale != 1) {
             SkAutoCanvasRestore restore(canvas, true);
@@ -2835,7 +2854,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         } else {
             paragraph->paint(canvas, originX, paragraphTop);
         }
-        drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, paint, swizzled);
+        drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
     }
     gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
     gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);   // the character count stands in for the glyph count
