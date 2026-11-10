@@ -462,7 +462,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      */
     private boolean loadedXSettings;
 
-    private int cachedScreenResolution = 72;
+    private volatile int cachedScreenResolution = 72;
 
     private boolean dirtyDevices = false;
 
@@ -625,6 +625,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             }
             tryXKB();
             checkXInput();
+            cachedScreenResolution = queryScreenResolution();
 
             arrowCursor = XlibWrapper.XCreateFontCursor(XToolkit.getDisplay(),
                 XCursorFontConstants.XC_arrow);
@@ -1737,19 +1738,22 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public int getScreenResolution() {
-        long display = getDisplay();
         if (awtTryLock()) {
             try {
-                return cachedScreenResolution =
-                        (int) ((XlibWrapper.DisplayWidth(display,
-                                XlibWrapper.DefaultScreen(display)) * 25.4) /
-                                XlibWrapper.DisplayWidthMM(display,
-                                        XlibWrapper.DefaultScreen(display)));
+                return cachedScreenResolution = queryScreenResolution();
             } finally {
                 awtUnlock();
             }
         }
         return cachedScreenResolution;
+    }
+
+    private static int queryScreenResolution() {
+        long display = getDisplay();
+        return (int) ((XlibWrapper.DisplayWidth(display,
+                       XlibWrapper.DefaultScreen(display)) * 25.4) /
+                       XlibWrapper.DisplayWidthMM(display,
+                               XlibWrapper.DefaultScreen(display)));
     }
 
     static native long getDefaultXColormap();
