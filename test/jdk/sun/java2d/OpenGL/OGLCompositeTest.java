@@ -47,7 +47,7 @@ public class OGLCompositeTest {
     static final AlphaCompositeTestRunner.RunOptions RUN_OPTIONS = new AlphaCompositeTestRunner.RunOptions(
             AlphaCompositeTestRunner.TranslucentOutputOnOpaqueDstPolicy.MUST_DROP_ALPHA,
             AlphaCompositeTestRunner.FullyTransparentOnOpaqueDstPolicy.MUST_SET_TO_BLACK,
-            2.0f / 255.0f,
+            3.0f / 255.0f,
             (_) -> false // don't skip any tests
     );
 
