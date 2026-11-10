@@ -51,7 +51,10 @@ import java.util.function.Consumer;
  *          FONT or FAMILY (no attributes at all, colours only, SIZE or WEIGHT alone, next to a FONT
  *          run, characters from several scripts) are the paragraph's with the fonts TextLayout
  *          resolves for them (FontResolver: Dialog 12 derived with the font attributes, else the
- *          first font that displays the character), pixel-identical. Plain drawString, drawChars
+ *          first font that displays the character), pixel-identical. Keys that are not
+ *          TextAttributes (LANGUAGE, READING, INPUT_METHOD_SEGMENT, an application's own) and
+ *          the off values of UNDERLINE (-1) and STRIKETHROUGH (false) are the paragraph's too;
+ *          the dotted underline style stays TextLayout's. Plain drawString, drawChars
  *          and drawBytes in a font with layout attributes (kerning, ligatures, tracking, underline,
  *          strikethrough, a colour, a background, a superscript) are the paragraph's too, as
  *          TextLayout(String, Font) draws them; a font with WIDTH stays TextLayout's.
@@ -162,6 +165,15 @@ public class SkiaParagraphAttributesTest {
                 TextAttribute.FOREGROUND, Color.RED))), true);
         expectPlain("a font with SUPERSCRIPT_SUB", font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUB)), KERNED, true, hidpi ? 2 : 1);
         expectPlain("a font with WIDTH (TextLayout's)", font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED)), KERNED, false, 0);
+        // keys that are not TextAttributes (TextLayout reads none of them) and the off values of UNDERLINE and STRIKETHROUGH
+        expect("LANGUAGE, READING and INPUT_METHOD_SEGMENT", withAttribute(withAttribute(withAttribute(runs(KERNED, font),
+                java.text.AttributedCharacterIterator.Attribute.LANGUAGE, java.util.Locale.GERMAN, 0, 6),
+                java.text.AttributedCharacterIterator.Attribute.READING, new java.text.Annotation("r"), 3, 9),
+                java.text.AttributedCharacterIterator.Attribute.INPUT_METHOD_SEGMENT, new java.text.Annotation("s"), 7, 14), true);
+        expect("an application's own attribute key", withAttribute(byAttributes(KERNED, font, null, null), new java.text.AttributedCharacterIterator.Attribute("app.marker") {}, "x", 2, 12), true);
+        expect("STRIKETHROUGH false", byAttributes(KERNED, font, TextAttribute.STRIKETHROUGH, Boolean.FALSE), true);
+        expect("UNDERLINE -1 (none)", byAttributes(KERNED, font, TextAttribute.UNDERLINE, -1), true);
+        expect("UNDERLINE_LOW_DOTTED (TextLayout's)", byAttributes(KERNED, font, TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_LOW_DOTTED), false);
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
         expect("a font carrying WIDTH", runs(KERNED, font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED))), false);
         expect("WIDTH next to a FONT (ignored, as by TextLayout)", withAttribute(KERNED, font, TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED), true);
@@ -196,7 +208,7 @@ public class SkiaParagraphAttributesTest {
         return withAttribute(byAttributes(SCRIPTS, font, null, null), TextAttribute.SUPERSCRIPT, level, from, to);
     }
 
-    static AttributedString withAttribute(AttributedString as, TextAttribute key, Object value, int from, int to) {
+    static AttributedString withAttribute(AttributedString as, java.text.AttributedCharacterIterator.Attribute key, Object value, int from, int to) {
         as.addAttribute(key, value, from, to);
         return as;
     }

@@ -394,14 +394,20 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 } else if (a == TextAttribute.SWAP_COLORS) {
                     swapColors = TextAttribute.SWAP_COLORS_ON.equals(v);
                 } else if (a == TextAttribute.UNDERLINE) {
+                    if (Integer.valueOf(-1).equals(v)) {
+                        continue;   // AttributeValues' "no underline"
+                    }
                     if (!TextAttribute.UNDERLINE_ON.equals(v)) {
-                        return false;
+                        return false;   // the dotted, dashed and gray styles (UNDERLINE_LOW_*) are TextLayout's
                     }
                     runFlags |= PARAGRAPH_UNDERLINE;
                     if (SKEnvironment.decorationsSnapped()) {
                         runFlags |= PARAGRAPH_SYSTEM_DECORATIONS;
                     }
                 } else if (a == TextAttribute.STRIKETHROUGH) {
+                    if (Boolean.FALSE.equals(v)) {
+                        continue;
+                    }
                     if (!TextAttribute.STRIKETHROUGH_ON.equals(v)) {
                         return false;
                     }
@@ -409,6 +415,9 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     if (SKEnvironment.decorationsSnapped()) {
                         runFlags |= PARAGRAPH_SYSTEM_DECORATIONS;
                     }
+                } else if (!(a instanceof TextAttribute)) {
+                    // LANGUAGE, READING, INPUT_METHOD_SEGMENT and an application's own keys: TextLayout reads only
+                    // TextAttributes (its fonts, decorations and bidi), so they change nothing it draws
                 } else {
                     return false;
                 }
