@@ -1368,7 +1368,6 @@ const TypeFunc* OptoRuntime::kyberAddPoly_2_Type() {
     return TypeFunc::make(domain, range);
 }
 
-
 // Kyber add 3 polynomials function
 const TypeFunc* OptoRuntime::kyberAddPoly_3_Type() {
     int argcnt = 4;
@@ -1389,7 +1388,6 @@ const TypeFunc* OptoRuntime::kyberAddPoly_3_Type() {
     const TypeTuple* range = TypeTuple::make(TypeFunc::Parms + 1, fields);
     return TypeFunc::make(domain, range);
 }
-
 
 // Kyber XOF output parsing into polynomial coefficients candidates
 // or decompress(12,...) function
