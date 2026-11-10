@@ -77,8 +77,13 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
             }
         }
         this.invertDevTx = inverse;
-        double[] matrix = new double[4];
+        // the glyph transform, then the device transform: whole-pixel advances are rounded per component in user
+        // space (the font's own transform included, the graphics' not), CStrike's rule under any transform
+        double[] matrix = new double[8];
         desc.glyphTx.getMatrix(matrix);
+        double[] device = new double[4];
+        desc.devTx.getMatrix(device);
+        System.arraycopy(device, 0, matrix, 4, 4);
         this.pScalerContext = scaler.createScalerContext(matrix, deviceScale, desc.aaHint, desc.fmHint, 1f, 0f, desc.luminance);
         this.glyphImages = new long[Math.max(1, mapper.getNumGlyphs())];
         double pixelHeight = Math.hypot(matrix[2], matrix[3]);   // SunGraphics2D's FontInfo.pixelHeight: m01, m11 of the glyph transform

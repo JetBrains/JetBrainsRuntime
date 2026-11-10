@@ -27,8 +27,11 @@ import java.util.function.Consumer;
  * @summary Text under a rotation, a shear or a non-uniform scale — of the
  *          graphics or of the font — on the Skia scaler lies along its
  *          transformed baseline: the glyph records carry the transformed
- *          advance vector, as the JDK's FreeType scaler gives it (whole pixels
- *          when it is horizontal or vertical, the exact vector otherwise).
+ *          advance vector; with whole-pixel advances on macOS as the JDK's
+ *          CoreText strike rounds them, per component in user space and then
+ *          transformed (an oblique line had kept the exact vector, the JDK's
+ *          FreeType rule: a rotation by 0.5 drew the line shorter than the
+ *          axis-aligned reference).
  *          Reference: the same text drawn axis-aligned by the loops, then that
  *          image drawn under the transform with bilinear filtering (fractional
  *          metrics for an oblique baseline, so the advances agree exactly) — ink bounds
@@ -80,9 +83,11 @@ public class SkiaRotatedTextTest {
         scaledRotation.rotate(0.5, 120, 120);
         Case[] cases = {
             new Case("rotation 0.5", AffineTransform.getRotateInstance(0.5, 150, 150), font, 40, 150, true),
+            new Case("rotation 0.5, whole-pixel advances", AffineTransform.getRotateInstance(0.5, 150, 150), font, 40, 150, false),
             new Case("quarter turn", AffineTransform.getRotateInstance(Math.PI / 2, 150, 150), font, 40, 150, true),
             new Case("quarter turn, whole-pixel advances", AffineTransform.getRotateInstance(Math.PI / 2, 150, 150), font, 40, 150, false),
             new Case("shear 0.3", AffineTransform.getShearInstance(0.3, 0.1), font, 20, 150, true),
+            new Case("shear 0.3, whole-pixel advances", AffineTransform.getShearInstance(0.3, 0.1), font, 20, 150, false),
             new Case("scale 1.5 x 0.8, whole-pixel advances", AffineTransform.getScaleInstance(1.5, 0.8), font, 10, 150, false),
             new Case("rotation 0.5 at scale 1.25", scaledRotation, font, 30, 120, true),
         };
@@ -90,10 +95,14 @@ public class SkiaRotatedTextTest {
             if (mode.equals("paragraph") || mode.equals("shaper")) {
                 // Skia's layout: an attributed string of two font runs (the same font) through the paragraph engine, a
                 // string through the shaper, against the reference; and against the text path (a glyph vector, never
-                // shaped): identical, except that whole-pixel advances along anything but a device axis at unit length
-                // round in the font's space there and on the device on the text path (accepted, user 2026-11-10: the
-                // layout takes such text; measured and printed)
-                boolean likeTextPath = c.fm || c.name.startsWith("quarter turn");
+                // shaped): identical — whole-pixel advances round in user space on the paragraph route as in the glyph
+                // vector (CStrike's rule, the Skia scaler's since 2026-11-10) — but for whole-pixel advances under a
+                // transform beyond a quarter turn's on the shaper, which follows Java's own drawString, laying the line
+                // out apart from its glyph vectors on both scalers (§18a T21; measured and printed); and the paragraph
+                // under a shear or an uneven scale, whose positions are the glyph vector's but whose glyphs render apart
+                // from the text path's whole-pixel glyph images there (measured and printed)
+                boolean wholePixelTransformed = !c.fm && !c.name.startsWith("quarter turn");
+                boolean likeTextPath = !wholePixelTransformed || (mode.equals("paragraph") && c.name.startsWith("rotation"));
                 Consumer<Graphics2D> route = mode.equals("paragraph") ? g -> g.drawString(attributed(c.font), c.x, c.y) : g -> g.drawString(TEXT, c.x, c.y);
                 check(c.name + ", " + (mode.equals("paragraph") ? "attributed string" : "drawString"), c, route, false, true);
                 identical(c, route, g -> g.drawGlyphVector(c.font.createGlyphVector(g.getFontRenderContext(), TEXT), c.x, c.y), likeTextPath);

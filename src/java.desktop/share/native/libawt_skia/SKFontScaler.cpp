@@ -93,6 +93,11 @@ struct SKScalerContext {
     bool fractionalMetrics = false;
     bool identityRemainder = true;
     double deviceScale = 1.0;   // whole-pixel advances are rounded in user space when it is not 1
+    // CStrike's rule (SKFontStrike passes its device transform): whole-pixel advances rounded per component in user
+    // space — the font's own transform included, the graphics' not — then mapped back to the device
+    bool userSpaceAdvances = false;
+    double fontToUser[4] = {1, 0, 0, 1};   // the glyph transform beyond its size in user space: devTx^-1 * glyphTx / size
+    double userToDevice[4] = {1, 0, 0, 1}; // the device transform (m00 m10 m01 m11)
     double displayScale = 1.0;  // scale of the strike's device transform (2 on a 200 % display); the
                                 // platform's placement grid is per device-independent pixel
     jint blend = 0;             // SKFontScaler.BLEND_*: whose mask and for which colour
@@ -252,6 +257,12 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     }
     double m[4];
     env->GetDoubleArrayRegion(matrix, 0, 4, m);
+    // SKFontStrike appends its device transform (m00 m10 m01 m11): whole-pixel advances in user space (CStrike's rule)
+    double d[4] = {1, 0, 0, 1};
+    const bool deviceTransform = env->GetArrayLength(matrix) >= 8;
+    if (deviceTransform) {
+        env->GetDoubleArrayRegion(matrix, 4, 4, d);
+    }
     const double size = std::sqrt(std::fabs(m[0] * m[3] - m[1] * m[2]));
     if (!(size > 0)) {
         return 0;
@@ -266,6 +277,19 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
     context->identityRemainder = context->remainder.isIdentity();
     context->fractionalMetrics = fm == sun_awt_SunHints_INTVAL_FRACTIONALMETRICS_ON;
     context->deviceScale = deviceScale > 0 ? deviceScale : 1.0;
+    const double det = d[0] * d[3] - d[1] * d[2];
+    if (deviceTransform && det != 0) {
+        // in double: a float round trip through the device turns an advance of exactly 2.5 into 2.4999998, which
+        // rounds the other way than CStrike's user-space advance
+        const double inv[4] = {d[3] / det, -d[1] / det, -d[2] / det, d[0] / det};
+        const double g[4] = {m[0] / size, m[1] / size, m[2] / size, m[3] / size};
+        context->fontToUser[0] = inv[0] * g[0] + inv[2] * g[1];
+        context->fontToUser[1] = inv[1] * g[0] + inv[3] * g[1];
+        context->fontToUser[2] = inv[0] * g[2] + inv[2] * g[3];
+        context->fontToUser[3] = inv[1] * g[2] + inv[3] * g[3];
+        std::copy(d, d + 4, context->userToDevice);
+        context->userSpaceAdvances = true;
+    }
     context->displayScale = displayScale > 0 ? displayScale : 1.0;
     context->blend = blend;
     context->darkening = darkening == JNI_TRUE;
@@ -336,6 +360,27 @@ Java_sun_font_SKFontScaler_getFontMetricsNative(JNIEnv *env, jclass clazz, jlong
     return strikeMetrics(env, metrics.fAscent, metrics.fDescent, metrics.fLeading, metrics.fMaxCharWidth, &metrics);
 }
 
+// Whole pixels of an advance vector in device space (fractional metrics off): under CStrike's rule each component of
+// the user-space vector rounded, then mapped back to the device; else (the JDK's FreeType rule) whole pixels of the
+// device scale's grid when the vector is horizontal or vertical, the exact vector when it is oblique.
+static SkVector wholePixelAdvance(const SKScalerContext *context, SkVector advance, SkScalar width) {
+    if (context->userSpaceAdvances) {
+        // the font-space width through the font's own transform (user space), each component rounded — after
+        // clearing the products' rounding noise, so that a half lands as CStrike's exact one does —, then the device
+        const double *f = context->fontToUser, *d = context->userToDevice;
+        auto whole = [](double v) { return std::round(std::round(v * 1e6) / 1e6); };
+        const double ux = whole(f[0] * width), uy = whole(f[1] * width);
+        return {(SkScalar) (d[0] * ux + d[2] * uy), (SkScalar) (d[1] * ux + d[3] * uy)};
+    }
+    const double scale = context->deviceScale;
+    if (advance.fY == 0) {
+        advance.fX = (float) (std::round(advance.fX / scale) * scale);
+    } else if (advance.fX == 0) {
+        advance.fY = (float) (std::round(advance.fY / scale) * scale);
+    }
+    return advance;
+}
+
 // The advance in device space. Without fractional metrics it is a whole
 // number of pixels: of device pixels for the scaler contract (FreeType's rule
 // behind FileFontStrike), of user-space pixels for a strike that passed its
@@ -352,6 +397,11 @@ Java_sun_font_SKFontScaler_getGlyphAdvanceNative(JNIEnv *env, jclass clazz, jlon
     }
     SkScalar width = 0;
     font.getWidths({&glyph, 1}, {&width, 1});
+    if (context->userSpaceAdvances && !context->fractionalMetrics) {
+        // the x component of the rounded vector (CStrike's rule), as the record's
+        const SkVector advance = context->identityRemainder ? SkVector{width, 0} : context->remainder.mapVector({width, 0});
+        return wholePixelAdvance(context, advance, width).fX;
+    }
     if (!context->identityRemainder) {
         width = context->remainder.mapVector({width, 0}).fX;
     }
@@ -422,9 +472,9 @@ Java_sun_font_SKFontScaler_getGlyphOutlineNative(JNIEnv *env, jclass clazz, jlon
 
 namespace {
 
-// The strike's advance for the glyph record: the advance vector under the glyph transform, as the JDK's FreeType
-// scaler gives it — the exact vector with fractional metrics, else whole pixels (of the device scale's grid) when it
-// is horizontal or vertical and the exact vector when it is oblique. The record's vector is what the strike lays a
+// The strike's advance for the glyph record: the advance vector under the glyph transform — the exact vector with
+// fractional metrics, else whole pixels by wholePixelAdvance (CStrike's rule for SKFontStrike, the JDK's FreeType
+// rule for FileFontStrike). The record's vector is what the strike lays a
 // line out with under a device transform (FileFontStrike.getGlyphMetrics); an x component alone put every glyph of
 // a quarter-turned line on one spot.
 SkVector recordAdvance(const SKScalerContext *context, const SkFont &font, SkGlyphID glyph) {
@@ -434,16 +484,7 @@ SkVector recordAdvance(const SKScalerContext *context, const SkFont &font, SkGly
         width += font.getSize() * syntheticStyle().boldEmFraction;   // every glyph, spaces included, as DirectWrite's simulation
     }
     SkVector advance = context->identityRemainder ? SkVector{width, 0} : context->remainder.mapVector({width, 0});
-    if (context->fractionalMetrics) {
-        return advance;
-    }
-    const double scale = context->deviceScale;
-    if (advance.fY == 0) {
-        advance.fX = (float) (std::round(advance.fX / scale) * scale);
-    } else if (advance.fX == 0) {
-        advance.fY = (float) (std::round(advance.fY / scale) * scale);
-    }
-    return advance;
+    return context->fractionalMetrics ? advance : wholePixelAdvance(context, advance, width);
 }
 
 GlyphInfo *emptyGlyph(SkVector advance) {
