@@ -4,7 +4,7 @@
 // For each font of decofonts.txt and each scale: the plain line, underlined, struck through; gray PNGs, black on
 // white, the baseline at view y 100 (top-left origin), the line at x 20. Measured by DecoProbe.java ("akview").
 //
-//   swift akviewprobe.swift <probes dir> <out dir>
+//   swift akviewprobe.swift <probes dir> <out dir> [--whole-row-baseline]
 import AppKit
 
 let args = CommandLine.arguments
@@ -12,11 +12,25 @@ let probes = args[1], out = args[2]
 let TEXT = "x          x", W = 320.0, H = 160.0, BASELINE = 100.0, X = 20.0
 try! FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
 
+let WHOLE_ROW_BASELINE = CommandLine.arguments.count > 3 && CommandLine.arguments[3] == "--whole-row-baseline"
+
 final class LineView: NSView {
     var text = NSAttributedString()
     override var isFlipped: Bool { true }
     override func draw(_ dirtyRect: NSRect) {
         NSColor.white.setFill(); dirtyRect.fill()
+        if WHOLE_ROW_BASELINE {
+            // the layout manager's own baseline put exactly on BASELINE (a whole device row at 1x and 2x): the
+            // decorations' rows are then AppKit's from the baseline, readable directly
+            let storage = NSTextStorage(attributedString: text)
+            let layout = NSLayoutManager(), container = NSTextContainer(size: CGSize(width: 10000, height: 1000))
+            container.lineFragmentPadding = 0
+            layout.addTextContainer(container); storage.addLayoutManager(layout)
+            let range = layout.glyphRange(for: container)
+            let baseline = layout.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil).minY + layout.location(forGlyphAt: 0).y
+            layout.drawGlyphs(forGlyphRange: range, at: NSPoint(x: X, y: BASELINE - baseline))
+            return
+        }
         let font = text.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
         // draw(at:) puts the line fragment's top at the point: the baseline lies the font's ascender below it
         text.draw(at: NSPoint(x: X, y: BASELINE - font.ascender))
