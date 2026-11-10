@@ -143,6 +143,31 @@ public final class TextDecorations {
      * the centre; under Direct2D's the unsnapped rectangle of the thickness about the centre, from the rounded
      * baseline (the glyphs' row).
      */
+    /**
+     * The underline's band as the system rule draws it at the given device scale (the layout's render context's),
+     * in user space from the baseline y: the drawn underline lies inside it whenever the baseline falls on a device
+     * row. The gaps where the ink crosses are not cut out (the outline holds the glyphs there anyway).
+     */
+    public static Shape underlineShape(float x1, float x2, float y, float position, float thickness, double scale) {
+        double[] band = underlineBand(position * scale, thickness * scale);
+        return new Rectangle2D.Double(x1, y + band[0] / scale, x2 - x1, band[1] / scale);
+    }
+
+    /** The strikethrough's band as the system rule draws it at the given device scale (see underlineShape). */
+    public static Shape strikethroughShape(float x1, float x2, float y, float offset, float thickness, double scale) {
+        if (rule() == Rule.DIRECT_WRITE) {
+            return new Rectangle2D.Double(x1, y + offset - thickness / 2, x2 - x1, thickness);
+        }
+        long rows = Math.max(1, Math.round(thickness * scale));
+        return new Rectangle2D.Double(x1, y + Math.round(offset * scale - rows / 2.0) / scale, x2 - x1, rows / scale);
+    }
+
+    /** The device scale the system rule snaps at for a layout's render context: its uniform scale, else 1. */
+    public static double deviceScale(java.awt.font.FontRenderContext frc) {
+        AffineTransform at = frc != null ? frc.getTransform() : null;
+        return at != null && at.getShearX() == 0 && at.getShearY() == 0 && at.getScaleX() == at.getScaleY() && at.getScaleX() > 0 ? at.getScaleX() : 1;
+    }
+
     public static void drawStrikethrough(Graphics2D g2d, float x1, float x2, float y, float offset, float thickness) {
         AffineTransform at = g2d.getTransform();
         double scale = at.getScaleX();

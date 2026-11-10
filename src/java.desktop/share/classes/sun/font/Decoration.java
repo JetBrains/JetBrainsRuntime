@@ -380,20 +380,32 @@ public class Decoration {
             float x2 = x1 + (float)lb.getWidth();
 
             Area area = null;
+            // the system convention (sun.java2d.skia.text.decorations=system): the bands drawTextAndEmbellishments
+            // draws (TextDecorations, CoreText's rows or Direct2D's rule) at the layout's device scale, from the
+            // baseline — Java's nominal ones would leave the drawn underline outside the outline (UnderlinePositionTest)
+            boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped();
+            float[] fontDecorations = system ? TextDecorations.fontMetrics(cm) : null;
+            double deviceScale = system ? TextDecorations.deviceScale(label.getFRC()) : 1;
 
             if (stdUnderline != null) {
-                Shape ul = stdUnderline.getUnderlineShape(ulThickness,
-                                                          x1, x2, y+ulOffset);
+                Shape ul = system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)
+                        ? TextDecorations.underlineShape(x1, x2, y, fontDecorations[0], fontDecorations[1], deviceScale)
+                        : stdUnderline.getUnderlineShape(ulThickness, x1, x2, y+ulOffset);
                 area = new Area(ul);
             }
 
             if (strikethrough) {
-                Stroke stStroke = new BasicStroke(cm.strikethroughThickness,
-                                                  BasicStroke.CAP_BUTT,
-                                                  BasicStroke.JOIN_MITER);
-                float shiftY = y + cm.strikethroughOffset;
-                Line2D line = new Line2D.Float(x1, shiftY, x2, shiftY);
-                Area slArea = new Area(stStroke.createStrokedShape(line));
+                Shape strike;
+                if (system) {
+                    strike = TextDecorations.strikethroughShape(x1, x2, y, fontDecorations[2], fontDecorations[3], deviceScale);
+                } else {
+                    Stroke stStroke = new BasicStroke(cm.strikethroughThickness,
+                                                      BasicStroke.CAP_BUTT,
+                                                      BasicStroke.JOIN_MITER);
+                    float shiftY = y + cm.strikethroughOffset;
+                    strike = stStroke.createStrokedShape(new Line2D.Float(x1, shiftY, x2, shiftY));
+                }
+                Area slArea = new Area(strike);
                 if(area == null) {
                     area = slArea;
                 } else {
