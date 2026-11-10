@@ -14,3 +14,5 @@ javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 arch-gnome
+
+jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-10160 linux-all
