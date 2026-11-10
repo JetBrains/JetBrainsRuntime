@@ -2577,10 +2577,29 @@ namespace {
 constexpr float kDecorationClearance = 1.0f;   // in user-space pixels: CoreText clears one point beside the ink (two device pixels at 2x)
 
 // CoreText's line-end whitespace, undecorated at either end of a line: the space separators (Zs) and the line
-// terminators, not the tab (sun.font.TextDecorations.lineEndWhitespace, measured 2026-11-10)
+// terminators, not the tab (sun.font.TextDecorations.lineEndWhitespace, measured 2026-11-10); and U+200B, which
+// stands in for the line terminators here (SKTextRenderer.skiaText; the tab's stand-in, U+2060, is ink as the tab)
 bool lineEndWhitespace(jchar c) {
     return c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x202F || c == 0x205F || c == 0x3000
-           || c == 0x0A || c == 0x0D || c == 0x85 || c == 0x2028 || c == 0x2029;
+           || c == 0x0A || c == 0x0D || c == 0x85 || c == 0x2028 || c == 0x2029 || c == 0x200B;
+}
+
+// The UTF-8 offsets of the zero-width stand-ins for Java's ignorable whitespace (SKTextRenderer.skiaText: U+200B for
+// the line terminators, U+2060 for the tab): SkParagraph places them without advance but draws them as the font's
+// space glyph, whose own width must not count in a decoration's extent
+std::vector<uint32_t> zeroWidthUtf8(const jchar *chars, jint length) {
+    std::vector<uint32_t> offsets;
+    uint32_t utf8 = 0;
+    for (jint i = 0; i < length; i++) {
+        const jchar c = chars[i];
+        if (c == 0x200B || c == 0x2060) offsets.push_back(utf8);
+        utf8 += c < 0x80 ? 1 : c < 0x800 ? 2 : (c >= 0xD800 && c < 0xDC00) ? 4 : (c >= 0xDC00 && c < 0xE000) ? 0 : 3;
+    }
+    return offsets;
+}
+
+bool zeroWidthAt(const std::vector<uint32_t> &offsets, uint32_t utf8) {
+    return std::binary_search(offsets.begin(), offsets.end(), utf8);
 }
 
 // The UTF-8 range of the line's characters a decoration spans: under CoreText's rule from the first character that
@@ -2731,6 +2750,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
     }
     const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
     const std::pair<uint32_t, uint32_t> decorated = decoratedUtf8Range(chars, length);
+    const std::vector<uint32_t> zeroWidth = zeroWidthUtf8(chars, length);
     SkAutoCanvasRestore restore(canvas, true);
     canvas->resetMatrix();   // the bands are device rectangles (the text canvas carries no matrix; be sure)
     paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
@@ -2771,7 +2791,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                 for (int k = i; k < j; k++) {
                     if (info->utf8Starts[k] < decorated.first || info->utf8Starts[k] >= decorated.second) continue;   // line-end whitespace
                     SkScalar advance = 0;
-                    deviceFont.getWidths({&info->glyphs[k], 1}, {&advance, 1});
+                    if (!zeroWidthAt(zeroWidth, info->utf8Starts[k])) deviceFont.getWidths({&info->glyphs[k], 1}, {&advance, 1});
                     x1 = std::min(x1, runOrigin.fX + positions[k].fX);
                     x2 = std::max(x2, runOrigin.fX + positions[k].fX + advance);
                 }
@@ -2880,6 +2900,7 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
     }
     const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
     const std::pair<uint32_t, uint32_t> decorated = decoratedUtf8Range(chars, length);
+    const std::vector<uint32_t> zeroWidth = zeroWidthUtf8(chars, length);
     const bool directWrite = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
     paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
         if (info == nullptr || info->count <= 0) return;
@@ -2906,7 +2927,7 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
                 for (int k = i; k < j; k++) {
                     if (info->utf8Starts[k] < decorated.first || info->utf8Starts[k] >= decorated.second) continue;   // line-end whitespace
                     SkScalar advance = 0;
-                    info->font.getWidths({&info->glyphs[k], 1}, {&advance, 1});
+                    if (!zeroWidthAt(zeroWidth, info->utf8Starts[k])) info->font.getWidths({&info->glyphs[k], 1}, {&advance, 1});
                     x1 = std::min(x1, info->origin.fX + info->positions[k].fX);
                     x2 = std::max(x2, info->origin.fX + info->positions[k].fX + advance);
                 }

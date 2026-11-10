@@ -156,6 +156,26 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         return 33 * c.getRed() + 53 * c.getGreen() + 14 * c.getBlue();
     }
 
+    /**
+     * The text as Skia's shaper and paragraph engine are given it: Java's ignorable whitespace (the tab and the line
+     * terminators, FontUtilities.isIgnorableWhitespace), which Java's glyph mappers map to an invisible glyph without
+     * advance, as default-ignorable characters HarfBuzz and SkParagraph place without advance, where they took the
+     * font's tab glyph (a space wide) and broke the line at a terminator: the tab as U+2060 WORD JOINER (ink to the
+     * decorations' line-end trimming, as the tab), the terminators as U+200B ZERO WIDTH SPACE (trimmed, as they are).
+     * One character for one: the runs' offsets stay.
+     */
+    static String skiaText(String s) {
+        char[] chars = null;
+        for (int i = 0, n = s.length(); i < n; i++) {
+            char c = s.charAt(i);
+            if (sun.font.FontUtilities.isIgnorableWhitespace(c)) {
+                if (chars == null) chars = s.toCharArray();
+                chars[i] = c == '\t' ? '\u2060' : '\u200B';
+            }
+        }
+        return chars == null ? s : new String(chars);
+    }
+
     /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */
     static float[] deviceOrigin(SunGraphics2D sg2d, double x, double y) {
         if (sg2d.transformState >= SunGraphics2D.TRANSFORM_ANY_TRANSLATE) {
@@ -302,12 +322,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         final float[] origin = deviceOrigin(sg2d, x, y);
         final long context = strike.skiaScalerContext();
         final boolean rightToLeft = rightToLeft(s);
+        final String text = skiaText(s);   // Java's ignorable whitespace without advance, as TextLayout's
         rq.lock();
         try {
             validateContext(sg2d, textComposite(sg2d));
             rq.addReference(strike);
             final boolean smoothing = false   /* the strike's hinting carries the darkening (SKFontScaler) */;
-            final int length = s.length(), total = 28 + paddedChars(length);
+            final int length = text.length(), total = 28 + paddedChars(length);
             RenderBuffer buf = rq.getBuffer();
             if (total <= buf.capacity()) {
                 rq.ensureCapacityAndAlignment(total, 20);
@@ -317,9 +338,9 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 buf.putFloat(origin[0]);
                 buf.putFloat(origin[1]);
                 buf.putLong(context);
-                putChars(buf, s);
+                putChars(buf, text);
             } else {
-                rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, rightToLeft, origin[0], origin[1], s));
+                rq.flushAndInvokeNow(() -> drawShapedBySkia(context, smoothing, rightToLeft, origin[0], origin[1], text));
             }
         } finally {
             rq.unlock();
@@ -569,7 +590,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         final int[] trackingArray = trackings.stream().mapToInt(Integer::intValue).toArray();
         final int[] shiftArray = shifts.stream().mapToInt(Integer::intValue).toArray();
         final int[] backgroundArray = backgrounds.stream().mapToInt(Integer::intValue).toArray();
-        return new Paragraph(string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray, strikes, rightToLeft);
+        return new Paragraph(skiaText(string), endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray, strikes, rightToLeft);
     }
 
     /** A paragraph's runs: their ends in the text, scaler contexts, colours, flags, trackings, baseline shifts, backgrounds. */

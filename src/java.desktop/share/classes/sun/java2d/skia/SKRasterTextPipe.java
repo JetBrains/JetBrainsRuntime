@@ -228,6 +228,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
 
     /** The string through Skia's shaper on the raster surface (SKTextRenderer.shapedStrike decided). */
     private static void drawShaped(SunGraphics2D sg2d, SKDrawableStrike strike, String s, double x, double y) {
+        s = SKTextRenderer.skiaText(s);   // Java's ignorable whitespace without advance, as TextLayout's
         float[] origin = SKTextRenderer.deviceOrigin(sg2d, x, y);
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();

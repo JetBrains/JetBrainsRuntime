@@ -37,9 +37,8 @@ import java.util.Map;
  *          paragraph route the leading whitespace (SkParagraph's lines leave the trailing out) — the two routes
  *          differed. Each case: the decoration's columns (the decorated rendering against the plain one on the band's
  *          rows) must span the ink's characters, from the first non-whitespace character's caret to the last's, within
- *          a pixel; and TextLayout's outline must match. Several runs in one line (a coloured middle) too. The
- *          paragraph route leaves the texts with tabs out: SkParagraph lays a tab out wider than TextLayout and counts a
- *          final tab as trailing whitespace its visitor never hands on, so it stays undecorated (ledger §13.1).
+ *          a pixel; and TextLayout's outline must match. Several runs in one line (a coloured middle) too. A tab is
+ *          Java's on every route, an invisible glyph without advance (TextIgnorableWhitespaceTest).
  * @requires os.family == "mac"
  * @run main/othervm -Djava.awt.headless=true TextWhitespaceDecorationsTest layout
  * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia TextWhitespaceDecorationsTest paragraph
@@ -58,9 +57,6 @@ public class TextWhitespaceDecorationsTest {
         StringBuilder failures = new StringBuilder();
         for (TextAttribute decoration : new TextAttribute[] {TextAttribute.UNDERLINE, TextAttribute.STRIKETHROUGH}) {
             for (String text : TEXTS) {
-                if (paragraph && text.indexOf('\t') >= 0) {
-                    continue;
-                }
                 for (boolean runs : new boolean[] {false, true}) {
                     String what = (decoration == TextAttribute.UNDERLINE ? "underline" : "strikethrough") + " of \""
                             + text.replace("\t", "\\t").replace("\n", "\\n").replace("\u00a0", "\\u00a0").replace("\u2003", "\\u2003").replace("\u3000", "\\u3000") + "\"" + (runs ? " in three runs" : "");
