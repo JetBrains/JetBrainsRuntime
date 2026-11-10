@@ -2142,6 +2142,9 @@ static void drawGlyphsSplit(SkCanvas *canvas, const SkGlyphID *glyphs, const SkP
 // A text blob likewise (the shaper's, the paragraph's runs)
 static void drawTextBlobSplit(SkCanvas *canvas, const sk_sp<SkTextBlob> &blob, float x, float y, const SkPaint &paint, float extraAlpha,
                               bool swizzled) {
+    if (!blob) {
+        return;   // a line without glyphs (SkParagraph's after a line terminator): SkCanvas::drawTextBlob ignores it too
+    }
     if (!splitsColourGlyphs(paint) && !swizzled) {
         canvas->drawTextBlob(blob, x, y, paint);
         return;
