@@ -40,10 +40,10 @@
  * @modules java.desktop/sun.java2d
  * @library ..
  * @build PipelineComparison
- * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=blend -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 16 64
- * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
- * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
- * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.metal=true -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest metal 48 64
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=blend -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 16 64
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.lcd=accumulate -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
+ * @run main/othervm -Dsun.java2d.metal=true -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest metal 48 64
  */
 
 /*
@@ -55,7 +55,7 @@
  * @modules java.desktop/sun.java2d
  * @library ..
  * @build PipelineComparison
- * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.graphiteApi=vulkan -Dsun.java2d.skia.lcd=twopass -Dsun.java2d.uiScale=1 LcdTextBackgroundsTest skia 32 64
  */
 
 import java.awt.Color;

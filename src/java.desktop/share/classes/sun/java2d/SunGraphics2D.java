@@ -745,8 +745,7 @@ public final class SunGraphics2D
                  * so this is not likely to be a problem - but not
                  * guaranteed.
                  */
-                // on macOS grayscale, as the platform draws text (sun.java2d.skia.text.lcd=system)
-                if (sun.java2d.skia.SKEnvironment.lcdAsGrayscale() ||
+                if (
                     !surfaceData.canRenderLCDText(this)
 //                    loops.drawGlyphListLCDLoop == null ||
 //                    compositeState > COMP_ISCOPY ||

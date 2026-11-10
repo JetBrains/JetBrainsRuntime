@@ -49,8 +49,7 @@ public class LcdGlyphSlackTest {
         for (String scaler : new String[] {"jdk", "skia"}) {
             List<String> hashes = new ArrayList<>();
             for (int i = 0; i < 4; i++) {
-                // Java's LCD text (macOS draws LCD requests grayscale by default, sun.java2d.skia.text.lcd=system)
-                List<String> command = new ArrayList<>(List.of("-Djava.awt.headless=true", "-Dsun.java2d.skia.text.lcd=java2d"));
+                List<String> command = new ArrayList<>(List.of("-Djava.awt.headless=true"));
                 if (scaler.equals("skia")) command.add("-Dsun.java2d.font.scaler=skia");
                 command.addAll(List.of(LcdGlyphSlackTest.class.getName(), "child"));
                 OutputAnalyzer out = ProcessTools.executeTestJava(command.toArray(new String[0]));

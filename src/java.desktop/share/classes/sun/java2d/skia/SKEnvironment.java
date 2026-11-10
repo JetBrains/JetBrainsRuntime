@@ -122,13 +122,6 @@ public final class SKEnvironment {
      * unmeasured: Java's superscripts, the line's background.
      */
     public enum TextAttributes { SYSTEM, JAVA2D }
-    /**
-     * {@code lcd}: what an LCD text request draws. {@code system} = what the operating system draws: on macOS grayscale
-     * text (no colour sub-pixels since Mojave: CoreGraphics' sub-pixel masks have equal channels, and the colour the
-     * JDK drew under fractional metrics was its pipes shifting those masks by thirds of a pixel), elsewhere LCD text.
-     * {@code java2d} = Java's LCD text everywhere.
-     */
-    public enum TextLcd { SYSTEM, JAVA2D }
 
     private static final String TEXT_ROUTE = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);   // retired
     // layout: Skia's shaper for plain strings and its paragraph engine for attributed ones together, or Java's
@@ -146,8 +139,6 @@ public final class SKEnvironment {
     private static final TextBlend TEXT_BLEND;
     private static final TextDecorations TEXT_DECORATIONS = enumProperty("sun.java2d.skia.text.decorations", TextDecorations.class, TextDecorations.SYSTEM);
     private static final TextAttributes TEXT_ATTRIBUTES = enumProperty("sun.java2d.skia.text.attributes", TextAttributes.class, TextAttributes.SYSTEM);
-    private static final boolean LCD_AS_GRAYSCALE = enumProperty("sun.java2d.skia.text.lcd", TextLcd.class, TextLcd.SYSTEM) == TextLcd.SYSTEM
-            && System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac");
     static {
         String gray = System.getProperty("sun.java2d.skia.text.gray");   // retired
         TextBlend blend = TextBlend.SYSTEM;
@@ -572,11 +563,6 @@ public final class SKEnvironment {
     /** The decorations dimension as configured ({@code sun.java2d.skia.text.decorations}). */
     public static TextDecorations textDecorations() {
         return TEXT_DECORATIONS;
-    }
-
-    /** Whether an LCD text request draws grayscale text ({@code sun.java2d.skia.text.lcd=system} on macOS). */
-    public static boolean lcdAsGrayscale() {
-        return LCD_AS_GRAYSCALE;
     }
 
     /** The layout attributes dimension as configured ({@code sun.java2d.skia.text.attributes}). */
