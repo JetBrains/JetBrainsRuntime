@@ -261,6 +261,15 @@ public final class FontUtilities {
     }
 
     /**
+     * The Font2D a font's text is drawn and measured with: its composite where the font substitutes through it
+     * (FontSubstitution.substitutesWhenDrawn), else the font's own, as glyph vectors and layouts take it.
+     */
+    public static Font2D getRenderingFont2D(Font font) {
+        Font2D font2D = getFont2D(font);
+        return font2D instanceof FontSubstitution sub && sub.substitutesWhenDrawn() ? sub.getCompositeFont2D() : font2D;
+    }
+
+    /**
      * Return true if there any characters which would trigger layout.
      * This method considers supplementary characters to be simple,
      * since we do not presently invoke layout on any code points in

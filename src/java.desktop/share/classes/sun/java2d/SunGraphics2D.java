@@ -674,7 +674,7 @@ public final class SunGraphics2D
         info.nonInvertibleTx =
             (Math.abs(textAt.getDeterminant()) <= Double.MIN_VALUE);
 
-        info.font2D = FontUtilities.getFont2D(font);
+        info.font2D = FontUtilities.getRenderingFont2D(font);
 
         int fmhint = fractionalMetricsHint;
         if (fmhint == SunHints.INTVAL_FRACTIONALMETRICS_DEFAULT) {
@@ -813,7 +813,7 @@ public final class SunGraphics2D
                  font.isTransformed() ||
                  fontInfo == null || // Precaution, if true shouldn't get here
                  (fontInfo.aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_ON) !=
-                     FontUtilities.getFont2D(font).
+                     FontUtilities.getRenderingFont2D(font).
                          useAAForPtSize(font.getSize()))) {
                 textpipe = invalidpipe;
             }

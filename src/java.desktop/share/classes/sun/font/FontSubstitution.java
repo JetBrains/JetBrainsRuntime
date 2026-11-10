@@ -35,4 +35,13 @@ package sun.font;
  */
 public interface FontSubstitution {
     public CompositeFont getCompositeFont2D();
+
+    /**
+     * Whether the composite also draws and measures the font's plain strings (FontUtilities.getRenderingFont2D):
+     * true for a font whose own strikes do not substitute (a created font on macOS, CCascadeTrueTypeFont), false
+     * where the strike substitutes itself (CFont's, through CoreText).
+     */
+    default boolean substitutesWhenDrawn() {
+        return false;
+    }
 }

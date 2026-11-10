@@ -142,3 +142,75 @@ JNI_COCOA_ENTER(env);
     return glyph;
 JNI_COCOA_EXIT(env);
 }
+
+/*
+ * Class:     sun_font_CCascadeGlyphMapper
+ * Method:    nativeCascadeGlyph
+ * Signature: (Ljava/lang/String;II[Ljava/lang/String;)I
+ *
+ * CoreText's cascade from a created font (Font.createFont) for a code point the font lacks, as the platform's text
+ * falls back from a font: CTFontCreateForString with a CTFont of the font's file at the index (one per file and
+ * index, kept), the glyph in the font it picks and that font's PostScript and family names; 0 when it picks none.
+ */
+JNIEXPORT jint JNICALL
+Java_sun_font_CCascadeGlyphMapper_nativeCascadeGlyph
+(JNIEnv *env, jclass clazz, jstring path, jint index, jint codePoint, jobjectArray resultArray)
+{
+    jint result = 0;
+JNI_COCOA_ENTER(env);
+    static NSMutableDictionary *bases = nil;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ bases = [[NSMutableDictionary alloc] init]; });
+    NSString *file = JavaStringToNSString(env, path);
+    NSString *key = [NSString stringWithFormat:@"%d:%@", (int) index, file];
+    CTFontRef base = NULL;
+    @synchronized (bases) {
+        id known = bases[key];
+        if (known == nil) {
+            CFArrayRef descriptors = CTFontManagerCreateFontDescriptorsFromURL((CFURLRef) [NSURL fileURLWithPath:file]);
+            if (descriptors != NULL && index >= 0 && index < CFArrayGetCount(descriptors)) {
+                CTFontRef font = CTFontCreateWithFontDescriptor((CTFontDescriptorRef) CFArrayGetValueAtIndex(descriptors, index), 12.0, NULL);
+                if (font != NULL) {
+                    bases[key] = (id) font;
+                    CFRelease(font);
+                }
+            }
+            if (descriptors != NULL) CFRelease(descriptors);
+            if (bases[key] == nil) bases[key] = [NSNull null];
+            known = bases[key];
+        }
+        if (known != [NSNull null]) base = (CTFontRef) CFRetain((CFTypeRef) known);
+    }
+    if (base != NULL) {
+        UniChar chars[2];
+        CFIndex count = 1;
+        if (codePoint >= 0x10000) {
+            const int value = codePoint - 0x10000;
+            chars[0] = (UniChar) (0xD800 | (value >> 10));
+            chars[1] = (UniChar) (0xDC00 | (value & 0x3FF));
+            count = 2;
+        } else {
+            chars[0] = (UniChar) codePoint;
+        }
+        CFStringRef string = CFStringCreateWithCharacters(kCFAllocatorDefault, chars, count);
+        CTFontRef fallback = string != NULL ? CTFontCreateForString(base, string, CFRangeMake(0, count)) : NULL;
+        if (string != NULL) CFRelease(string);
+        if (fallback != NULL) {
+            CGGlyph glyphs[2] = { 0, 0 };
+            CFStringRef baseName = CTFontCopyPostScriptName(base), name = CTFontCopyPostScriptName(fallback);
+            if (!CFEqual(baseName, name) && CTFontGetGlyphsForCharacters(fallback, chars, glyphs, count) && glyphs[0] != 0) {
+                CFStringRef family = CTFontCopyFamilyName(fallback);
+                (*env)->SetObjectArrayElement(env, resultArray, 0, NSStringToJavaString(env, (NSString *) name));
+                (*env)->SetObjectArrayElement(env, resultArray, 1, NSStringToJavaString(env, (NSString *) family));
+                CFRelease(family);
+                result = glyphs[0];
+            }
+            CFRelease(baseName);
+            CFRelease(name);
+            CFRelease(fallback);
+        }
+        CFRelease(base);
+    }
+JNI_COCOA_EXIT(env);
+    return result;
+}

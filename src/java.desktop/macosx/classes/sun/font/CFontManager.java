@@ -68,6 +68,12 @@ public final class CFontManager extends SunFontManager {
     }
 
     // This is a way to register any kind of Font2D, not just files and composites.
+    /** A created TrueType font falls back by CoreText's cascade from it, as the platform's text (CCascadeTrueTypeFont). */
+    @Override
+    protected TrueTypeFont createdTrueTypeFont(String path, int index) throws java.awt.FontFormatException {
+        return new CCascadeTrueTypeFont(path, index);
+    }
+
     public static Font2D[] getGenericFonts() {
         return genericFonts.values().toArray(new Font2D[0]);
     }

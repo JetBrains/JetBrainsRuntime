@@ -18,7 +18,10 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.font.FontRenderContext;
 import java.awt.font.TextAttribute;
+import java.awt.font.TextLayout;
+import java.io.File;
 import java.awt.image.BufferedImage;
 import java.text.AttributedString;
 
@@ -29,7 +32,10 @@ import java.text.AttributedString;
  *          symbols: CTLine's run font = CTFontCreateForString = JRSFontCreateFallbackFontForCharacters in 120 of 120).
  *          The glyph-list routes resolved it so already; Skia's shaper and paragraph engine asked Skia's font manager
  *          without the font (Monaco's ⇒ ⌘ ✓ ★ λ ← ↑ ∀ ∈ and SF Mono's ⇒ ★ ∀ ∈ came out in another font than Menlo, 15 of
- *          140 cases). Each character, drawn in the base font, must render exactly as drawn in the cascade's font:
+ *          140 cases). A font of Font.createFont (the JBR's bundled JetBrains Mono, on FreeType or the Skia scaler)
+ *          had no fallback at all — ★ 中 😀 drew the missing glyph — and now falls back by CoreText's cascade from a
+ *          CTFont of its file (CCascadeTrueTypeFont), its string widths those of what it draws. Each character, drawn
+ *          in the base font, must render exactly as drawn in the cascade's font:
  *          drawString and an attributed string, on the loops with the JDK and the Skia scaler, the raster surface with
  *          Skia's text path and with its layout route (the shaper and the paragraph engine).
  * @requires os.family == "mac"
@@ -50,8 +56,32 @@ public class FallbackCascadeTest {
             {"Menlo-Regular", "中", "PingFangSC-Regular"}, {"Menlo-Regular", "⟶", "AppleSymbols"},
     };
 
-    public static void main(String[] args) {
+    /** The bundled font's characters it lacks, and CoreText's cascade font for them (from a CTFont of its file). */
+    static final String[][] BUNDLED = {{"★", "Menlo-Regular"}, {"中", "PingFangSC-Regular"}, {"😀", "AppleColorEmoji"}};
+
+    public static void main(String[] args) throws Exception {
         StringBuilder failures = new StringBuilder();
+        Font bundled = Font.createFont(Font.TRUETYPE_FONT, new File(System.getProperty("java.home"), "lib/fonts/JetBrainsMono-Regular.ttf")).deriveFont(14f);
+        FontRenderContext frc = new FontRenderContext(null, true, false);
+        for (String[] c : BUNDLED) {
+            Font cascade = new Font(c[1], Font.PLAIN, 14);
+            for (boolean attributed : new boolean[] {false, true}) {
+                boolean same = hash(bundled, c[0], attributed) == hash(cascade, c[0], attributed);
+                String what = "the bundled JetBrains Mono " + c[0] + (attributed ? " (attributed string)" : " (drawString)");
+                System.out.println(what + ": " + (same ? "drawn in " : "not drawn in ") + c[1]);
+                if (!same) failures.append(what).append(": not drawn in ").append(c[1]).append(", CoreText's cascade font; ");
+            }
+            BufferedImage scratch = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = scratch.createGraphics();
+            int width = g.getFontMetrics(bundled).stringWidth(c[0]), expected = g.getFontMetrics(cascade).stringWidth(c[0]);
+            float layout = new TextLayout(c[0], bundled, frc).getAdvance();
+            g.dispose();
+            System.out.println("the bundled JetBrains Mono " + c[0] + ": stringWidth " + width + ", the cascade font's " + expected + ", TextLayout " + layout);
+            if (width != expected || Math.abs(layout - expected) > 1) {
+                failures.append("the bundled JetBrains Mono ").append(c[0]).append(": stringWidth ").append(width).append(" and TextLayout ").append(layout)
+                        .append(", the cascade font's ").append(expected).append("; ");
+            }
+        }
         for (String[] c : CASCADE) {
             Font base = new Font(c[0], Font.PLAIN, 14), cascade = new Font(c[2], Font.PLAIN, 14);
             for (boolean attributed : new boolean[] {false, true}) {

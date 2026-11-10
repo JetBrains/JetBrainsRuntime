@@ -2179,6 +2179,11 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     private int createdFontCount = 0;
 
+    /** The TrueType font of a Font.createFont file at the index; a platform's own kind where it falls back (macOS). */
+    protected TrueTypeFont createdTrueTypeFont(String path, int index) throws FontFormatException {
+        return new TrueTypeFont(path, null, index, true);
+    }
+
     public Font2D[] createFont2D(File fontFile, int fontFormat, boolean all,
                                  boolean isCopy)
     throws FontFormatException {
@@ -2201,7 +2206,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         try {
             switch (fontFormat) {
             case Font.TRUETYPE_FONT:
-                font2D = new TrueTypeFont(fontFilePath, null, 0, true);
+                font2D = createdTrueTypeFont(fontFilePath, 0);
                 font2D.setUseWeakRefs(weakRefs, maxStrikes);
                 fList.add(font2D);
                 if (!all) {
@@ -2210,7 +2215,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 cnt = ((TrueTypeFont)font2D).getFontCount();
                 int index = 1;
                 while (index < cnt) {
-                    font2D = new TrueTypeFont(fontFilePath, null, index++, true);
+                    font2D = createdTrueTypeFont(fontFilePath, index++);
                     font2D.setUseWeakRefs(weakRefs, maxStrikes);
                     fList.add(font2D);
                 }

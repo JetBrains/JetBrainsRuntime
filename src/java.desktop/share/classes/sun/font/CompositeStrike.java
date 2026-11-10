@@ -65,7 +65,7 @@ public final class CompositeStrike extends FontStrike {
 
     /** The strikes behind a composite glyph list, for a pipe that draws it slot by slot (the Skia text path). */
     public int numSlots() {
-        return strikes.length;
+        return Math.max(strikes.length, compFont.getNumSlots());
     }
 
     public FontStrike strikeForSlot(int slot) {
@@ -86,15 +86,27 @@ public final class CompositeStrike extends FontStrike {
     }
 
     FontStrike getStrikeForSlot(int slot) {
-        if (slot >= strikes.length) {
-            slot = 0;
+        FontStrike[] slots = strikes;
+        if (slot >= slots.length) {
+            // a composite that grows its slots while text maps to them (CCompositeFont, CCascadeCompositeFont): a
+            // strike made before the slot was added takes it on, else the glyph went to slot 0's strike
+            if (slot >= compFont.getNumSlots()) {
+                slot = 0;
+            } else {
+                synchronized (this) {
+                    if (slot >= strikes.length) {
+                        strikes = java.util.Arrays.copyOf(strikes, compFont.getNumSlots());
+                    }
+                    slots = strikes;
+                }
+            }
         }
-        FontStrike strike = strikes[slot];
+        FontStrike strike = slots[slot];
         if (strike == null) {
             strike =
                 compFont.getSlotFont(slot).getStrike(desc);
 
-            strikes[slot] = strike;
+            slots[slot] = strike;
         }
         return strike;
     }
