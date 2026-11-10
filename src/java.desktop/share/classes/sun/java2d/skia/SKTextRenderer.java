@@ -174,6 +174,11 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
      * too; Skia's coverage gives Src its MaskFill meaning (dst lerped towards the colour by the glyph's coverage), as
      * the software loops, the raster surfaces and TextLayout's decorations (shape fills) have it.
      */
+    @Override
+    protected Composite glyphListComposite(SunGraphics2D sg2d) {
+        return textComposite(sg2d);   // the glyph images too: other rules are drawn as coverage (SKBackend_DrawGlyphList)
+    }
+
     private static Composite textComposite(SunGraphics2D sg2d) {
         boolean opaque = sg2d.paintState == SunGraphics2D.PAINT_OPAQUECOLOR
                 || (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR && sg2d.paint.getTransparency() == java.awt.Transparency.OPAQUE);

@@ -77,18 +77,7 @@ public abstract class BufferedTextPipe extends GlyphListPipe {
          *    - CompositeType.SrcOver (with any extra alpha), or
          *    - CompositeType.Xor
          */
-        Composite comp = sg2d.composite;
-        if (comp == AlphaComposite.Src) {
-            /*
-             * In addition to the composite types listed above, the logic
-             * in OGL/D3DSurfaceData.validatePipe() allows for
-             * CompositeType.SrcNoEa, but only in the presence of an opaque
-             * color.  If we reach this case, we know the color is opaque,
-             * and therefore SrcNoEa is the same as SrcOverNoEa, so we
-             * override the composite here.
-             */
-            comp = AlphaComposite.SrcOver;
-        }
+        Composite comp = glyphListComposite(sg2d);
 
         rq.lock();
         try {
@@ -97,6 +86,17 @@ public abstract class BufferedTextPipe extends GlyphListPipe {
         } finally {
             rq.unlock();
         }
+    }
+
+    /**
+     * The composite a glyph list is drawn with. In addition to the composite types listed in drawGlyphList, the logic
+     * in OGL/D3DSurfaceData.validatePipe() allows for CompositeType.SrcNoEa, but only in the presence of an opaque
+     * color; SrcNoEa is then the same as SrcOverNoEa, so the composite is overridden here. A pipe whose native side
+     * draws other rules (JBR: the Skia pipe, with the glyphs as coverage) answers its own.
+     */
+    protected Composite glyphListComposite(SunGraphics2D sg2d) {
+        Composite comp = sg2d.composite;
+        return comp == AlphaComposite.Src ? AlphaComposite.SrcOver : comp;
     }
 
     private void enqueueGlyphList(final SunGraphics2D sg2d,

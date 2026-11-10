@@ -51,6 +51,17 @@ import java.util.function.Consumer;
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPaintTest text
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaTextPaintTest layout
  */
+
+/*
+ * @test id=images
+ * @summary The Skia GPU pipe's own configuration (Java's glyph images, no Skia text route): text under Src with a
+ *          translucent colour and under Clear draws each glyph image as coverage, as the software loops do (the
+ *          glyph quads took the image's alpha as the colour's, so Src was drawn as SrcOver, and Clear cleared each
+ *          glyph's whole box: ink 0.569 and 2.3 against the loops).
+ * @requires (os.family == "mac" | os.family == "windows")
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaTextPaintTest images
+ */
 public class SkiaTextPaintTest {
     static final String TEXT = "Hamburgefonts 1234";
     static final int W = 420, H = 80;
@@ -84,6 +95,16 @@ public class SkiaTextPaintTest {
             BufferedImage reference = PipelineComparison.softwareReference(W, H, scene(sc, font, gv));
             // translucent Src is the loops' true Src (MaskFill's lerp), not SrcOver (BufferedTextPipe's assumption);
             // Clear stores transparent pixels, which the loops' opaque reference image keeps as black: routes only
+            if (mode.equals("images")) {
+                // Java's glyph images: no Skia text route to count; Clear within a band (it cleared whole glyph boxes)
+                double ratio = ink(glyphs, 0xf0e8d0) / Math.max(1, ink(reference, 0xf0e8d0));
+                boolean clear = ((AlphaComposite) sc.composite).getRule() == AlphaComposite.CLEAR;
+                System.out.printf("%s: the glyph images, ink ratio %.3f against the loops%n", sc.name, ratio);
+                if (clear ? Math.abs(ratio - 1) > 0.25 : Math.abs(ratio - 1) > 0.06) {
+                    failures.append(sc.name).append(String.format(": the glyph images' ink ratio %.3f; ", ratio));
+                }
+                continue;
+            }
             compare(failures, sc.name, glyphs, reference, drawn, ((AlphaComposite) sc.composite).getRule() != AlphaComposite.CLEAR);
             identical(failures, sc.name + ", drawString", glyphs, PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawString(TEXT, 10, 55))));
             identical(failures, sc.name + ", drawChars", glyphs, PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), 10, 55))));

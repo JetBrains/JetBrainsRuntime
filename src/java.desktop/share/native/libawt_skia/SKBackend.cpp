@@ -1870,6 +1870,27 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
     }
 }
 
+// A grayscale glyph under a blend other than SrcOver (translucent Src, Clear, ...): the glyph image is the coverage
+// (a clip shader), the glyph's box filled with the paint through it, so the destination is lerped towards the blend's
+// result by the glyph's coverage — MaskFill's meaning, as the software loops have it. The atlas batches draw the image's
+// alpha as the colour's, which under Src or Clear would replace or clear the whole box.
+static void drawGlyphAsCoverage(const GlyphInfo *ginfo, jint subimage, float x, float y, const SkPaint &paint) {
+    { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }
+    SKGlyphCache_CountStat(SK_GLYPHS_UNCACHED);
+    const unsigned char *data = ginfo->image + (size_t) ginfo->rowBytes * ginfo->height * subimage;
+    SkPixmap pm(SkImageInfo::MakeA8(ginfo->width, ginfo->height), data, ginfo->rowBytes);
+    sk_sp<SkImage> cov = uploadPixmap(pm);
+    if (!cov) {
+        return;
+    }
+    SkAutoCanvasRestore restore(g.canvas, true);
+    g.canvas->clipShader(cov->makeShader(SkTileMode::kDecal, SkTileMode::kDecal, SkSamplingOptions(SkFilterMode::kNearest),
+                                         SkMatrix::Translate(x, y)));
+    SkPaint box = paint;
+    box.setAntiAlias(false);
+    g.canvas->drawRect(SkRect::MakeXYWH(x, y, (float) ginfo->width, (float) ginfo->height), box);
+}
+
 static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowBytesOffset, jboolean rgbOrder,
                                 float x, float y, const SkPaint &paint) {
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
@@ -2868,6 +2889,9 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                              const jlong *images, const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
     SkPaint paint = SKBackend_MakePaint(false);
+    // a blend other than SrcOver (XOR is a blender, not a mode): the grayscale glyphs as coverage, one by one
+    const std::optional<SkBlendMode> blendMode = paint.asBlendMode();
+    const bool asCoverage = blendMode.has_value() && *blendMode != SkBlendMode::kSrcOver;
     // The buckets' caches begun for this list, grayscale and LCD. The buckets' batches
     // stay open side by side (glyphs of one paint commute under the blends used), but a
     // switch between grayscale and LCD glyphs draws the pending batches first.
@@ -2916,7 +2940,10 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             anyAA = false;
             anyLcd = false;
         };
-        if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
+        if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE && asCoverage) {
+            flushBatches();
+            drawGlyphAsCoverage(ginfo, subimage, fx, fy, paint);
+        } else if (ginfo->format == sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE) {
             if (anyLcd) {
                 flushBatches();
             }
