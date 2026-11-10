@@ -42,8 +42,8 @@
  *          platform's masks on that grid. LCD glyphs there keep the JDK's three
  *          positions (no colour sub-pixels from CoreGraphics).
  * @requires (os.family == "windows") | (os.family == "mac")
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system PlatformPlacementGridTest
- * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=plain -Dsun.java2d.skia.text.darkening=none PlatformPlacementGridTest
+ * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=system PlatformPlacementGridTest
+ * @run main/othervm -Dsun.java2d.skia.text.lcd=java2d -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.blend=plain -Dsun.java2d.skia.text.darkening=none PlatformPlacementGridTest
  */
 
 import java.awt.Color;
