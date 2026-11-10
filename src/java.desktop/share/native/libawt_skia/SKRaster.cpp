@@ -472,6 +472,44 @@ SurfaceDataOps *textureOps(JNIEnv *env, jobject texture) {
     return texture != nullptr ? SurfaceData_GetOps(env, texture) : nullptr;
 }
 
+// A texture paint's image owned by the operation, made before the destination's lock: the loops' conversion for a
+// type without one int per pixel, else a copy of its pixels (INT_RGB's alpha bytes made 255). Text needs the paint
+// before its box is known — the shaper and the paragraph engine lay the text out first — so the image cannot be the
+// in-place view of TextureSource, which lives only inside the destination's lock.
+struct OwnedTexture {
+    ConvertedTexture converted;
+    std::vector<uint32_t> pixels;
+    sk_sp<SkImage> image;
+    OwnedTexture(JNIEnv *env, SurfaceDataOps *ops, const PaintData &pd) : converted(env, ops, pd.textureConversion()) {
+        if (converted.active()) {
+            image = converted.image;
+            return;
+        }
+        const jint pixelFormat = pd.texturePixelFormat();
+        if (ops == nullptr || pixelFormat < 0) return;
+        const SurfaceDataBounds &bounds = ((BufImgSDOps *) ops)->rasbounds;
+        const int w = bounds.x2 - bounds.x1, h = bounds.y2 - bounds.y1;
+        if (w <= 0 || h <= 0) return;
+        SurfaceDataRasInfo ras{};
+        ras.bounds = bounds;
+        if (ops->Lock(env, ops, &ras, SD_LOCK_READ) != SD_SUCCESS) return;
+        ops->GetRasInfo(env, ops, &ras);
+        if (ras.rasBase != nullptr && ras.bounds.x1 == bounds.x1 && ras.bounds.y1 == bounds.y1 && ras.bounds.x2 == bounds.x2 && ras.bounds.y2 == bounds.y2) {
+            pixels.resize((size_t) w * h);
+            const bool opaque = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_RGB;
+            for (int y = 0; y < h; y++) {
+                const uint32_t *in = (const uint32_t *) ((const char *) ras.rasBase + (size_t) y * ras.scanStride);
+                for (int x = 0; x < w; x++) pixels[(size_t) y * w + x] = opaque ? in[x] | 0xff000000u : in[x];
+            }
+        }
+        SurfaceData_InvokeRelease(env, ops, &ras);
+        SurfaceData_InvokeUnlock(env, ops, &ras);
+        if (!pixels.empty()) {
+            image = SkImages::RasterFromPixmap(SkPixmap(infoFor(pixelFormat, w, h), pixels.data(), (size_t) w * 4), nullptr, nullptr);
+        }
+    }
+};
+
 
 } // namespace
 
@@ -902,6 +940,99 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawParagraph(JNIEnv *env, jclass clazz, j
     const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
     return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, true, JNI_FALSE,
                                            ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY,
+                                           chars.data, length, runs, ends.data, contexts.data, colours, runFlags, trackings, shifts, backgrounds);
+}
+
+// Text under a gradient or texture paint on the raster surface (SKRasterTextPipe): the paint's descriptor as the
+// shape natives take it (SKRasterShapePipe.paintOf), the texture owned; originAndAlpha {x, y, extra alpha}; clip
+// {left-top, right-bottom, spans...}. The colour natives above stay for colour paints (at the 14-slot limit).
+namespace {
+struct PaintedText {
+    PaintData pd;
+    OwnedTexture texture;
+    jfloat origin[3] = {0, 0, 1};
+    Buffer<64, jint> clip;
+    bool ok = false;
+    PaintedText(JNIEnv *env, jfloatArray originAndAlpha, jfloatArray paintArray, jintArray colorsArray, jobject textureData, jintArray clipArray)
+        : pd(env, paintArray, colorsArray), texture(env, textureOps(env, textureData), pd),
+          clip(clipArray != nullptr ? (size_t) env->GetArrayLength(clipArray) : 0) {
+        env->GetFloatArrayRegion(originAndAlpha, 0, 3, origin);
+        if (clip.size) env->GetIntArrayRegion(clipArray, 0, (jsize) clip.size, clip.data);
+        ok = clip.size >= 2 && (pd.texturePixelFormat() < 0 || texture.image);
+    }
+    SkIRect clipBox() const { return SkIRect::MakeLTRB(px(clip.data[0]), py(clip.data[0]), px(clip.data[1]), py(clip.data[1])); }
+    const jint *spans() const { return clip.size > 2 ? clip.data + 2 : nullptr; }
+    size_t spanCount() const { return clip.size > 2 ? clip.size - 2 : 0; }
+    SkPaint paint(jint rule) { return pd.paint(rule, true, texture.image.get()); }
+};
+} // namespace
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphsWithPaint(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlongArray contextsArray,
+                                                          jint countAndFlags, jintArray codesArray, jlongArray imagesArray, jfloatArray positionsArray,
+                                                          jfloatArray originAndAlpha, jfloatArray paintArray, jintArray colorsArray, jobject texture,
+                                                          jintArray clipArray)
+{
+    const jint numGlyphs = countAndFlags & 0xffffff; const jboolean usePositions = (countAndFlags >> 24) & 1, smoothing = (countAndFlags >> 25) & 1;
+    const jint compositeRule = (countAndFlags >> 26) & 0xf; const bool mirrorKept = (countAndFlags >> 30) & 1;
+    if (numGlyphs <= 0) return 0;
+    Buffer<8, jlong> contexts(contextsArray != nullptr ? (size_t) env->GetArrayLength(contextsArray) : 0);
+    if (!contexts.size) return 0;
+    env->GetLongArrayRegion(contextsArray, 0, (jsize) contexts.size, contexts.data);
+    Buffer<256, jint> codes((size_t) numGlyphs); env->GetIntArrayRegion(codesArray, 0, numGlyphs, codes.data);
+    Buffer<256, jlong> images(imagesArray != nullptr ? (size_t) numGlyphs : 0);
+    if (images.size) env->GetLongArrayRegion(imagesArray, 0, numGlyphs, images.data);
+    Buffer<512, jfloat> positions(usePositions && positionsArray != nullptr ? (size_t) 2 * numGlyphs : 0);
+    if (positions.size) env->GetFloatArrayRegion(positionsArray, 0, (jsize) positions.size, positions.data);
+    PaintedText text(env, originAndAlpha, paintArray, colorsArray, texture, clipArray);
+    if (!text.ok) return 0;
+    const SkIRect box = text.clipBox();
+    Operation op(env, dstData, dstPixelFormat, box.fLeft, box.fTop, box.fRight, box.fBottom, Operation::kClipped, mirrorKept);
+    if (!op.ok) return 0;
+    if (text.spanCount()) op.clipSpans(text.spans(), text.spanCount());
+    // the luminance class of a paint's text is white's, as the GPU pipe's (its paint colour under a shader)
+    return SKBackend_DrawGlyphsOnCanvas(op.canvas(), text.paint(compositeRule), SK_ColorWHITE, text.origin[2], contexts.data, (jint) contexts.size,
+                                        numGlyphs, usePositions, smoothing, text.origin[0], text.origin[1], codes.data,
+                                        images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKRasterTextPipe_drawShapedWithPaint(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlong context, jint flags,
+                                                          jstring string, jfloatArray originAndAlpha, jfloatArray paintArray, jintArray colorsArray,
+                                                          jobject texture, jintArray clipArray)
+{
+    const jint length = string != nullptr ? env->GetStringLength(string) : 0;
+    if (length <= 0) return 0;
+    Buffer<256, jchar> chars((size_t) length); env->GetStringRegion(string, 0, length, chars.data);
+    PaintedText text(env, originAndAlpha, paintArray, colorsArray, texture, clipArray);
+    if (!text.ok) return 0;
+    TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount()};
+    return SKBackend_DrawShapedOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], context, JNI_FALSE,
+                                        ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, text.origin[0], text.origin[1], chars.data, length);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKRasterTextPipe_drawParagraphWithPaint(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint flags,
+                                                             jstring string, jintArray endsArray, jlongArray contextsArray, jintArray runIntsArray,
+                                                             jfloatArray originAndAlpha, jfloatArray paintArray, jintArray colorsArray, jobject texture,
+                                                             jintArray clipArray)
+{
+    const jint length = string != nullptr ? env->GetStringLength(string) : 0;
+    const jint runs = endsArray != nullptr ? env->GetArrayLength(endsArray) : 0;
+    if (length <= 0 || runs <= 0 || contextsArray == nullptr || env->GetArrayLength(contextsArray) < runs
+        || runIntsArray == nullptr || env->GetArrayLength(runIntsArray) < 5 * runs) {
+        return 0;
+    }
+    Buffer<256, jchar> chars((size_t) length); env->GetStringRegion(string, 0, length, chars.data);
+    Buffer<16, jint> ends((size_t) runs); env->GetIntArrayRegion(endsArray, 0, runs, ends.data);
+    Buffer<16, jlong> contexts((size_t) runs); env->GetLongArrayRegion(contextsArray, 0, runs, contexts.data);
+    Buffer<80, jint> runInts((size_t) 5 * runs); env->GetIntArrayRegion(runIntsArray, 0, 5 * runs, runInts.data);
+    PaintedText text(env, originAndAlpha, paintArray, colorsArray, texture, clipArray);
+    if (!text.ok) return 0;
+    TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount()};
+    const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
+    return SKBackend_DrawParagraphOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], true, JNI_FALSE,
+                                           ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, text.origin[0], text.origin[1],
                                            chars.data, length, runs, ends.data, contexts.data, colours, runFlags, trackings, shifts, backgrounds);
 }
 

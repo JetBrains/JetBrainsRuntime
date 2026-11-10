@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import sun.font.GlyphList;
 import sun.font.SKDrawableStrike;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.SurfaceData;
 import sun.java2d.loops.FontInfo;
 import sun.java2d.pipe.GlyphListPipe;
 import sun.java2d.pipe.OutlineTextRenderer;
@@ -208,6 +209,15 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         System.arraycopy(p.shiftArray(), 0, runInts, 3 * runs, runs);
         System.arraycopy(p.backgroundArray(), 0, runInts, 4 * runs, runs);
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            int[] colors = SKRasterShapePipe.colorsFor(sg2d);
+            float[] paint = SKRasterShapePipe.paintOf(sg2d, colors);
+            glyphsBySkia.addAndGet(drawParagraphWithPaint(dst, dst.pixelFormat(), opFlags(sg2d, dst) | (p.rightToLeft() ? 1 << 9 : 0), p.string(), p.endArray(),
+                    p.contextArray(), runInts, new float[] {origin[0], origin[1], extraAlpha(sg2d)}, paint, colors, SKRasterShapePipe.textureOf(sg2d),
+                    clipOf(sg2d, cx1, cy1, cx2, cy2)));
+            java.lang.ref.Reference.reachabilityFence(p.strikes());
+            return true;
+        }
         long drawn = drawParagraph(dst, dst.pixelFormat(), opFlags(sg2d, dst) | (p.rightToLeft() ? 1 << 9 : 0), origin[0], origin[1], p.string(), p.endArray(), p.contextArray(), runInts,
                 sg2d.eargb, extraAlpha(sg2d),
                 SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
@@ -221,20 +231,60 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         float[] origin = SKTextRenderer.deviceOrigin(sg2d, x, y);
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            int[] colors = SKRasterShapePipe.colorsFor(sg2d);
+            float[] paint = SKRasterShapePipe.paintOf(sg2d, colors);
+            glyphsBySkia.addAndGet(drawShapedWithPaint(dst, dst.pixelFormat(), strike.skiaScalerContext(), opFlags(sg2d, dst) | (SKTextRenderer.rightToLeft(s) ? 1 << 9 : 0), s,
+                    new float[] {origin[0], origin[1], extraAlpha(sg2d)}, paint, colors, SKRasterShapePipe.textureOf(sg2d), clipOf(sg2d, cx1, cy1, cx2, cy2)));
+            java.lang.ref.Reference.reachabilityFence(strike);
+            return;
+        }
         long drawn = drawShaped(dst, dst.pixelFormat(), strike.skiaScalerContext(), opFlags(sg2d, dst) | (SKTextRenderer.rightToLeft(s) ? 1 << 9 : 0), origin[0], origin[1], s,
                 sg2d.eargb, extraAlpha(sg2d), SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
         glyphsBySkia.addAndGet(drawn);
         java.lang.ref.Reference.reachabilityFence(strike);
     }
 
-    /** The composite rule in bits 0-3 (Src with an opaque colour as SrcOver, as for glyphs) and the mirror flag at 8 (the base direction goes at 9). */
+    /** The composite rule in bits 0-3 and the mirror flag at 8 (the base direction goes at 9). */
     private static int opFlags(SunGraphics2D sg2d, SKRasterSurfaceData dst) {
-        int rule = sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
-        if (rule == AlphaComposite.SRC && (sg2d.eargb >>> 24) == 0xff) {
-            rule = AlphaComposite.SRC_OVER;
-        }
-        return rule | (dst.untouchedByJava() ? 1 << 8 : 0);
+        return ruleOf(sg2d) | (dst.untouchedByJava() ? 1 << 8 : 0);
     }
+
+    /** The composite's rule, Src as SrcOver under an opaque paint (where the two are equal, as BufferedTextPipe takes it). */
+    private static int ruleOf(SunGraphics2D sg2d) {
+        int rule = sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
+        boolean opaque = sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR ? (sg2d.eargb >>> 24) == 0xff
+                : sg2d.paint.getTransparency() == java.awt.Transparency.OPAQUE;
+        return rule == AlphaComposite.SRC && opaque ? AlphaComposite.SRC_OVER : rule;
+    }
+
+    /** The clip box packed (left-top, right-bottom) and its spans, one array for the paint natives. */
+    private static int[] clipOf(SunGraphics2D sg2d, int cx1, int cy1, int cx2, int cy2) {
+        int[] spans = SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2);
+        int[] clip = new int[2 + (spans != null ? spans.length : 0)];
+        clip[0] = SKRasterShapePipe.packed(cx1, cy1);
+        clip[1] = SKRasterShapePipe.packed(cx2, cy2);
+        if (spans != null) {
+            System.arraycopy(spans, 0, clip, 2, spans.length);
+        }
+        return clip;
+    }
+
+    /**
+     * Text under a gradient or texture paint (SKRasterShapePipe.paintOf's descriptor, the texture's surface): the
+     * colour natives' twins, with the origin and the extra alpha in one array and the clip box and its spans in another
+     * (the natives' 14 slots).
+     */
+    private static native long drawGlyphsWithPaint(SKRasterSurfaceData dst, int dstPixelFormat, long[] contexts, int countAndFlags, int[] codes,
+                                                   long[] images, float[] positions, float[] originAndAlpha, float[] paint, int[] colors,
+                                                   SurfaceData texture, int[] clip);
+
+    private static native long drawShapedWithPaint(SKRasterSurfaceData dst, int dstPixelFormat, long context, int flags, String text,
+                                                   float[] originAndAlpha, float[] paint, int[] colors, SurfaceData texture, int[] clip);
+
+    private static native long drawParagraphWithPaint(SKRasterSurfaceData dst, int dstPixelFormat, int flags, String text, int[] runEnds,
+                                                      long[] contexts, int[] runInts, float[] originAndAlpha, float[] paint, int[] colors,
+                                                      SurfaceData texture, int[] clip);
 
     private static native long drawShaped(SKRasterSurfaceData dst, int dstPixelFormat, long context, int flags, float originX, float originY,
                                           String text, int argb, float extraAlpha, int clipLeftTop, int clipRightBottom, int[] clipSpans);
@@ -251,11 +301,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
         final int n = gl.getNumGlyphs();
         final boolean usePositions = gl.usePositions();
-        // with an opaque colour Src equals SrcOver, as BufferedTextPipe takes it
-        int rule = sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
-        if (rule == AlphaComposite.SRC && (sg2d.eargb >>> 24) == 0xff) {
-            rule = AlphaComposite.SRC_OVER;
-        }
+        int rule = ruleOf(sg2d);
         // The lock box: the glyph images' bounds grown by two pixels (Skia renders the same glyphs,
         // and may differ from the strike's image by a pixel), within the clip — not the clip itself:
         // an INT_ARGB image's mirror is written back for the box after every operation, and a line
@@ -276,6 +322,13 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             return;   // no glyph pixel inside the clip
         }
         int flags = n | (usePositions ? 1 << 24 : 0) | 0 /* bit 25, once the smoothing request: the strike's hinting carries the darkening */ | rule << 26 | (dst.untouchedByJava() ? 1 << 30 : 0);
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            int[] colors = SKRasterShapePipe.colorsFor(sg2d);
+            float[] paint = SKRasterShapePipe.paintOf(sg2d, colors);
+            drawGlyphsWithPaint(dst, dst.pixelFormat(), runs.contexts(), flags, runs.codes(), gl.getImages(), usePositions ? gl.getPositions() : null,
+                                new float[] {gl.getX(), gl.getY(), extraAlpha(sg2d)}, paint, colors, SKRasterShapePipe.textureOf(sg2d), clipOf(sg2d, cx1, cy1, cx2, cy2));
+            return;
+        }
         drawGlyphs(dst, dst.pixelFormat(), runs.contexts(), flags, gl.getX(), gl.getY(), runs.codes(), gl.getImages(), usePositions ? gl.getPositions() : null,
                    sg2d.eargb, extraAlpha(sg2d), SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
     }

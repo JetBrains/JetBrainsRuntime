@@ -67,6 +67,17 @@ import java.util.function.Consumer;
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true SkiaTextPaintTest images
  */
+
+/*
+ * @test id=raster
+ * @summary The same on a Skia raster surface: Skia's text path and its layout under gradient and texture paints draw
+ *          with the paint's shader there too (the raster text pipe took colour paints only: the loops drew Java's
+ *          glyph images of the strike and skipped colour glyphs).
+ * @requires os.family == "mac"
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPaintTest raster-text
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaTextPaintTest raster-layout
+ */
 public class SkiaTextPaintTest {
     static final String TEXT = "Hamburgefonts 1234";
     static final int W = 420, H = 80;
@@ -76,8 +87,9 @@ public class SkiaTextPaintTest {
 
     public static void main(String[] args) throws Exception {
         mode = args[0];
-        GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-        if (!PipelineComparison.pipelineActive("skia", gc)) {
+        GraphicsConfiguration gc = mode.startsWith("raster") ? null   // headless: raster surfaces only
+                : GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+        if (!mode.startsWith("raster") && !PipelineComparison.pipelineActive("skia", gc)) {
             return;
         }
         Font font = new Font(Font.SANS_SERIF, Font.BOLD, 40);
@@ -95,9 +107,9 @@ public class SkiaTextPaintTest {
         for (Scene sc : scenes) {
             Consumer<Graphics2D> gv = g -> g.drawGlyphVector(g.getFont().createGlyphVector(g.getFontRenderContext(), TEXT), 10, 55);
             long before = counter("glyphsDrawnBySkia");
-            BufferedImage glyphs = PipelineComparison.rendered(gc, W, H, scene(sc, font, gv));
+            BufferedImage glyphs = drawn(gc, scene(sc, font, gv));
             long drawn = counter("glyphsDrawnBySkia") - before;
-            BufferedImage reference = PipelineComparison.softwareReference(W, H, scene(sc, font, gv));
+            BufferedImage reference = reference(scene(sc, font, gv));
             // translucent Src is the loops' true Src (MaskFill's lerp), not SrcOver (BufferedTextPipe's assumption);
             // Clear stores transparent pixels, which the loops' opaque reference image keeps as black: routes only
             if (mode.equals("images")) {
@@ -115,19 +127,22 @@ public class SkiaTextPaintTest {
                 }
                 continue;
             }
-            compare(failures, sc.name, glyphs, reference, drawn, ((AlphaComposite) sc.composite).getRule() != AlphaComposite.CLEAR);
-            identical(failures, sc.name + ", drawString", glyphs, PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawString(TEXT, 10, 55))));
-            identical(failures, sc.name + ", drawChars", glyphs, PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), 10, 55))));
-            if (mode.equals("layout")) {
+            // raster modes: translucent Src on the INT_RGB raster surface stores the premultiplied colour for every
+            // operation, shapes too (Java stores the colour: a raster-surface finding of 2026-11-10, ledger §13.8)
+            boolean rasterSrc = mode.startsWith("raster") && ((AlphaComposite) sc.composite).getRule() == AlphaComposite.SRC;
+            compare(failures, sc.name, glyphs, reference, drawn, ((AlphaComposite) sc.composite).getRule() != AlphaComposite.CLEAR && !rasterSrc);
+            identical(failures, sc.name + ", drawString", glyphs, drawn(gc, scene(sc, font, g -> g.drawString(TEXT, 10, 55))));
+            identical(failures, sc.name + ", drawChars", glyphs, drawn(gc, scene(sc, font, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), 10, 55))));
+            if (mode.endsWith("layout")) {
                 AttributedString as = new AttributedString(TEXT);
                 as.addAttribute(TextAttribute.FONT, font);
                 long paragraphs = counter("paragraphsBySkia");
-                BufferedImage paragraph = PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawString(as.getIterator(), 10, 55)));
+                BufferedImage paragraph = drawn(gc, scene(sc, font, g -> g.drawString(as.getIterator(), 10, 55)));
                 if (counter("paragraphsBySkia") == paragraphs) {
                     failures.append(sc.name).append(": the attributed string not by Skia's paragraph engine; ");
                 }
                 identical(failures, sc.name + ", the paragraph against TextLayout", paragraph,
-                        PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> new TextLayout(as.getIterator(), g.getFontRenderContext()).draw(g, 10, 55))));
+                        drawn(gc, scene(sc, font, g -> new TextLayout(as.getIterator(), g.getFontRenderContext()).draw(g, 10, 55))));
                 // a run's own colour is the run's, not the paint's, with the composite's extra alpha
                 AttributedString coloured = new AttributedString(TEXT);
                 coloured.addAttribute(TextAttribute.FONT, font);
@@ -136,8 +151,8 @@ public class SkiaTextPaintTest {
                 // the underline's antialiased gap edges beside a descender may flip; under Clear the run's colour is none
                 // (SunGraphics2D.validateColor), its glyphs black's luminance class
                 within(failures, sc.name + ", a FOREGROUND run and an underline, against TextLayout",
-                        PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawString(coloured.getIterator(), 10, 55))),
-                        PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> new TextLayout(coloured.getIterator(), g.getFontRenderContext()).draw(g, 10, 55))),
+                        drawn(gc, scene(sc, font, g -> g.drawString(coloured.getIterator(), 10, 55))),
+                        drawn(gc, scene(sc, font, g -> new TextLayout(coloured.getIterator(), g.getFontRenderContext()).draw(g, 10, 55))),
                         UNDERLINE_GAP_EDGES);
             }
         }
@@ -159,24 +174,24 @@ public class SkiaTextPaintTest {
         Scene clear = new Scene("emoji under Clear", Color.BLACK, AlphaComposite.Clear);
         Scene over = new Scene("emoji under SrcOver", Color.BLACK, AlphaComposite.SrcOver);
         Consumer<Graphics2D> gv = g -> g.drawGlyphVector(g.getFont().createGlyphVector(g.getFontRenderContext(), EMOJI), 10, 55);
-        BufferedImage srcImage = PipelineComparison.rendered(gc, W, H, scene(src, font, gv));
-        BufferedImage srcLoops = PipelineComparison.softwareReference(W, H, scene(src, font, gv));
+        BufferedImage srcImage = drawn(gc, scene(src, font, gv));
+        BufferedImage srcLoops = reference(scene(src, font, gv));
         double ratio = ink(srcImage, 0xf0e8d0) / Math.max(1, ink(srcLoops, 0xf0e8d0));
         System.out.printf("%s: ink ratio %.3f against the loops%n", src.name, ratio);
-        if (Math.abs(ratio - 1) > 0.06) {
+        if (Math.abs(ratio - 1) > 0.06 && !mode.startsWith("raster")) {   // raster: the INT_RGB Src finding above
             failures.append(src.name).append(String.format(": ink ratio %.3f against the loops; ", ratio));
         }
         if (!mode.equals("images")) {
-            identical(failures, src.name + ", drawString", srcImage, PipelineComparison.rendered(gc, W, H, scene(src, font, g -> g.drawString(EMOJI, 10, 55))));
+            identical(failures, src.name + ", drawString", srcImage, drawn(gc, scene(src, font, g -> g.drawString(EMOJI, 10, 55))));
         }
-        if (mode.equals("layout")) {
+        if (mode.endsWith("layout")) {
             AttributedString as = new AttributedString(EMOJI);
             as.addAttribute(TextAttribute.FONT, font);
-            identical(failures, src.name + ", the paragraph", srcImage, PipelineComparison.rendered(gc, W, H, scene(src, font, g -> g.drawString(as.getIterator(), 10, 55))));
+            identical(failures, src.name + ", the paragraph", srcImage, drawn(gc, scene(src, font, g -> g.drawString(as.getIterator(), 10, 55))));
         }
-        BufferedImage overImage = PipelineComparison.rendered(gc, W, H, scene(over, font, gv));
+        BufferedImage overImage = drawn(gc, scene(over, font, gv));
         // under a gradient a colour glyph keeps its own colours (the loops' MaskFill text pipe skipped it)
-        BufferedImage gradientImage = PipelineComparison.rendered(gc, W, H, scene(new Scene("emoji under a GradientPaint",
+        BufferedImage gradientImage = drawn(gc, scene(new Scene("emoji under a GradientPaint",
                 new java.awt.GradientPaint(0, 0, Color.BLACK, W, 0, new Color(0x2060ff)), AlphaComposite.SrcOver), font, gv));
         int lost = 0, cores = 0;
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
@@ -191,7 +206,7 @@ public class SkiaTextPaintTest {
         if (cores == 0 || lost > 0) {
             failures.append("emoji under a GradientPaint: ").append(lost).append(" of ").append(cores).append(" inner pixels off their own colours; ");
         }
-        BufferedImage clearImage = PipelineComparison.rendered(gc, W, H, scene(clear, font, gv));
+        BufferedImage clearImage = drawn(gc, scene(clear, font, gv));
         int boxCleared = 0, shapeKept = 0, inked = 0;
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
             int o = overImage.getRGB(x, y) & 0xffffff, c = clearImage.getRGB(x, y) & 0xffffff;
@@ -217,6 +232,30 @@ public class SkiaTextPaintTest {
             if (d < 200) return false;
         }
         return true;
+    }
+
+    /** The drawing on the Skia GPU pipe's opaque volatile image, or (raster modes) on a Skia raster surface. */
+    static BufferedImage drawn(GraphicsConfiguration gc, Consumer<Graphics2D> painter) {
+        if (!mode.startsWith("raster")) {
+            return PipelineComparison.rendered(gc, W, H, painter);
+        }
+        BufferedImage image = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);   // a raster surface's format
+        Graphics2D g = image.createGraphics();
+        painter.accept(g);
+        g.dispose();
+        return image;
+    }
+
+    /** The software loops' drawing (raster modes: on a type no Skia surface replaces). */
+    static BufferedImage reference(Consumer<Graphics2D> painter) {
+        if (!mode.startsWith("raster")) {
+            return PipelineComparison.softwareReference(W, H, painter);
+        }
+        BufferedImage image = new BufferedImage(W, H, BufferedImage.TYPE_3BYTE_BGR);
+        Graphics2D g = image.createGraphics();
+        painter.accept(g);
+        g.dispose();
+        return image;
     }
 
     static Consumer<Graphics2D> scene(Scene sc, Font font, Consumer<Graphics2D> text) {
@@ -316,6 +355,9 @@ public class SkiaTextPaintTest {
     }
 
     static long counter(String name) throws Exception {
+        if (mode.startsWith("raster") && name.equals("glyphsDrawnBySkia")) {
+            name = "rasterGlyphsBySkia";
+        }
         return (long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(name).invoke(null);
     }
 }

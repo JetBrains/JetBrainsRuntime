@@ -564,7 +564,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         return (int) ((mod % 1.0) * Integer.MAX_VALUE) == 0;
     }
 
-    private static SurfaceData textureOf(SunGraphics2D sg2d) {
+    static SurfaceData textureOf(SunGraphics2D sg2d) {
         return sg2d.paintState == SunGraphics2D.PAINT_TEXTURE ? textureSource(sg2d) : null;
     }
 
@@ -587,7 +587,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
      * native primitive converting it to IntArgb in the two colour slots. Colours are ARGB; the native side
      * swizzles them for the N32 destination.
      */
-    private static float[] paintOf(SunGraphics2D sg2d, int[] colorsOut) {
+    static float[] paintOf(SunGraphics2D sg2d, int[] colorsOut) {
         AffineTransform at = sg2d.transform;
         float extraAlpha = sg2d.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f;
         float[] m = {(float) at.getScaleX(), (float) at.getShearY(), (float) at.getShearX(), (float) at.getScaleY(), (float) at.getTranslateX(), (float) at.getTranslateY()};
@@ -652,7 +652,7 @@ final class SKRasterShapePipe implements ShapeDrawPipe, ParallelogramPipe {
         }
     }
 
-    private static int[] colorsFor(SunGraphics2D sg2d) {
+    static int[] colorsFor(SunGraphics2D sg2d) {
         return new int[sg2d.paint instanceof java.awt.MultipleGradientPaint mg ? mg.getColors().length : 2];
     }
 
