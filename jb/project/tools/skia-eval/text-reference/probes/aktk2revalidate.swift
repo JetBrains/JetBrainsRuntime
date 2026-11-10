@@ -178,7 +178,7 @@ case "glyphrow":
         override var isFlipped: Bool { true }
         override func draw(_ r: NSRect) {
             NSColor.white.setFill(); r.fill()
-            let font = NSFont(name: "HelveticaNeue", size: 13)!
+            let font = NSFont(name: "HelveticaNeue", size: CGFloat(Double(ProcessInfo.processInfo.environment["SIZE"] ?? "13")!))!   // SIZE=150: large glyphs
             let s = NSAttributedString(string: "xxxx", attributes: [.font: font, .foregroundColor: NSColor.black])
             if stack == "ct" {
                 let ctx = NSGraphicsContext.current!.cgContext
@@ -189,15 +189,18 @@ case "glyphrow":
             }
         }
     }
+    let font13x = 3.0 * Double(ProcessInfo.processInfo.environment["SIZE"] ?? "13")!   // the glyph run's width, roughly
     for scale in [1, 2] { for stack in ["ct", "string"] {
         var out: [String] = []
-        for k in 0..<8 { autoreleasepool {
-            let v = GlyphView(frame: NSRect(x: 0, y: 0, width: 100, height: 140)); v.f = CGFloat(k) / 8 / CGFloat(scale); v.stack = stack
+        // eighths, then small fractions (where the row starts to move), in device pixels
+        let fractions: [Double] = (0..<8).map { Double($0) / 8 } + [0.0005, 0.001, 0.002, 0.004, 0.008, 0.016, 0.031, 0.999]
+        for fraction in fractions { autoreleasepool {
+            let v = GlyphView(frame: NSRect(x: 0, y: 0, width: 400, height: 140)); v.f = CGFloat(fraction) / CGFloat(scale); v.stack = stack
             let img = Image(render(v, scale))
             var rows = [Double](repeating: 0, count: img.h)
-            for y in 0..<img.h { for x in (20 * scale)..<(60 * scale) { rows[y] += img[x: x, y: y] } }
+            for y in 0..<img.h { for x in (20 * scale)..<(min(380, 20 + Int(font13x)) * scale) { rows[y] += img[x: x, y: y] } }
             var last = 0; for y in 2..<img.h where rows[y] > 0.05 { last = y }
-            out.append(String(format: "%.3f→%.2f", Double(k) / 8, Double(last) + min(1, rows[last] / rows[last - 2]) - Double(100 * scale)))
+            out.append(String(format: "%.4f→%.2f", fraction, Double(last) + min(1, rows[last] / rows[last - 2]) - Double(100 * scale)))
         } }
         print("\(scale)x \(stack): " + out.joined(separator: " "))
     } }
