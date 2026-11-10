@@ -72,6 +72,7 @@ gtest/ObjArrayTests.java#with-coops-no-ccp JBR-4027 generic-all
 gtest/ObjArrayTests.java#with-coops-no-ccp-large-align JBR-4027 generic-all
 gtest/ObjArrayTests.java#with-coops-with-ccp JBR-4027 generic-all
 gtest/ObjArrayTests.java#with-coops-with-ccp-large-align JBR-4027 generic-all
+gtest/ShenandoahGtests.java JBR-4027 generic-all
 
 gtest/NativeHeapTrimmerGtest.java JBR-4027 generic-all
 gtest/NMTGtests.java#nmt-detail JBR-4027 generic-all
