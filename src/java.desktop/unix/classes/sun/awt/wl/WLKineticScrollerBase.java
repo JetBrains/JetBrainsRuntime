@@ -70,8 +70,6 @@ abstract class WLKineticScrollerBase {
         final int xAbsolute,
         final int yAbsolute
     ) {
-        // TODO: if axis_stop for one of the 2 axes is sent in a separate frame,
-        //       it will cause unintentional drop of the current scrolling session.
         final boolean hasScrollDelta =
             pointerEvent.xAxisHasVectorValue() || pointerEvent.xAxisHasSteps120Value() ||
             pointerEvent.yAxisHasVectorValue() || pointerEvent.yAxisHasSteps120Value();
@@ -105,6 +103,11 @@ abstract class WLKineticScrollerBase {
         if (!pointerEvent.xAxisHasStopEvent() && !pointerEvent.yAxisHasStopEvent()) {
             return false;
         }
+        if (this.currentScrollingSession.get() != null) {
+            // The axes have been stopped by separate frames, and the first of them has already launched the session
+            return false;
+        }
+
         final long flingTimestamp =
             pointerEvent.xAxisHasStopEvent() ? pointerEvent.getXAxisStopEventTimestamp() : pointerEvent.getYAxisStopEventTimestamp();
 
