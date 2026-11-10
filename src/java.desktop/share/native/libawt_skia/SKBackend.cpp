@@ -2667,18 +2667,6 @@ std::vector<std::pair<float, float>> inkCrossings(const SkFont &font, const SkGl
     return merged;
 }
 
-// the device band of an underline below the baseline row: sun.font.TextDecorations.underlineBand (CoreText's
-// whole rows, or Direct2D's rounded top with the fractional thickness; both measured)
-struct DecorationBand { float top; float height; };
-DecorationBand underlineBand(float position, float thickness) {
-    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite) {
-        return {(float) std::lround(position), thickness};
-    }
-    const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
-    const int top = std::max(rows, (int) std::floor(position + 0.5f - rows / 2.0f + 1e-3f));   // TextDecorations' tolerance
-    return {(float) top, (float) rows};
-}
-
 void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, float top, float height,
               const std::vector<std::pair<float, float>> *gaps, float clearance) {
     const int left = (int) std::lround(x1), right = (int) std::lround(x2);
@@ -2702,13 +2690,13 @@ void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, float 
 
 // the font's decoration metrics as sun.font.TextDecorations.fontMetrics resolves them: the font's own,
 // else Java's nominal ones (Font2D.getStyleMetrics) in the same convention
-struct DecorationMetrics { float underlinePosition, underlineThickness, strikethroughCentre, strikethroughThickness; };
+struct DecorationMetrics { float underlinePosition, underlineThickness, strikethroughCentre, strikethroughThickness, ascent, descent; };
 DecorationMetrics decorationMetrics(const SkFont &font) {
     SkFontMetrics metrics;
     font.getMetrics(&metrics);
     const float size = font.getSize();
     const float nominalThickness = size / 12;
-    DecorationMetrics m = {nominalThickness / 1.5f - nominalThickness / 2, nominalThickness, metrics.fAscent / 2.5f, nominalThickness};
+    DecorationMetrics m = {nominalThickness / 1.5f - nominalThickness / 2, nominalThickness, metrics.fAscent / 2.5f, nominalThickness, -metrics.fAscent, metrics.fDescent};
     float position, thickness;
     if (metrics.hasUnderlinePosition(&position) && metrics.hasUnderlineThickness(&thickness) && thickness > 0) {
         m.underlinePosition = position;
@@ -2731,6 +2719,30 @@ DecorationMetrics decorationMetrics(const SkFont &font) {
     }
 #endif
     return m;
+}
+
+// the device band of an underline below the baseline: sun.font.TextDecorations.underlineBand (CoreText's rows,
+// or Direct2D's rounded top with the fractional thickness; both measured), from the font's metrics times scale in
+// device pixels and pointScale device pixels per user-space unit (CoreText's 2-point descent threshold is in points)
+struct DecorationBand { float top; float height; };
+DecorationBand underlineBand(const DecorationMetrics &m, float scale, float pointScale) {
+    const float position = m.underlinePosition * scale, thickness = m.underlineThickness * scale;
+    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite) {
+        return {(float) std::lround(position), thickness};
+    }
+    if (thickness < 0.35f) {
+        return {std::max(1.0f, position - thickness / 2), thickness};
+    }
+    // TextDecorations' tolerance
+    int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
+    const float descent = m.descent * scale, points = pointScale > 0 ? descent / pointScale : descent;
+    const float room = points >= 2 ? descent : 0.3f * (m.ascent + m.descent) * scale;
+    int top = std::min((int) std::floor(position + 0.5f - rows / 2.0f + 1e-3f), (int) std::floor(room + 1e-3f) - rows);
+    top = std::max(top, rows == 1 && position > 1 && room > 4 ? 2 : rows);
+    if (rows >= 2 && (room > 4 ? room <= rows : room <= 2 * rows - 1.5f)) {
+        rows--;
+    }
+    return {(float) top, (float) rows};
 }
 
 // originX and paragraphTop in the paragraph's layout space, layoutScale maps it to device space
@@ -2774,7 +2786,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
         // fractional baseline itself, as AppKit and CTLineDraw leave it (TextDecorations.baselineSnap)
         const bool directWriteRule = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
         const float baselineRow = directWriteRule ? (float) std::lround(runOrigin.fY) : runOrigin.fY;
-        const DecorationBand band = underlineBand(m.underlinePosition, m.underlineThickness);
+        const DecorationBand band = underlineBand(m, 1, (float) SKFontScaler_DisplayScale(contexts[runOf(info->utf8Starts[0])]));
         const float underlineTop = baselineRow + band.top;
         std::vector<std::pair<float, float>> gaps;
         bool gapsReady = false;
@@ -2912,7 +2924,7 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
         const DecorationMetrics m = decorationMetrics(info->font);
         const float exact = paragraphTop + info->origin.fY;
         const float baseline = exact + baselineSnap(toDevice, exact);
-        const DecorationBand band = underlineBand(m.underlinePosition * scale, m.underlineThickness * scale);
+        const DecorationBand band = underlineBand(m, scale, (float) SKFontScaler_DisplayScale(contexts[runOf(info->utf8Starts[0])]));
         const float underlineTop = baseline + band.top / scale, underlineHeight = band.height / scale;
         std::vector<std::pair<float, float>> gaps;
         bool gapsReady = false;

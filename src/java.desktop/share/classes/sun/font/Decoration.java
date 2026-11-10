@@ -284,7 +284,7 @@ public class Decoration {
                 if (system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)) {
                     if (!none) {
                         Shape ink = sun.java2d.skia.SKEnvironment.decorationsSkipInk() ? label.handleGetOutline(x, y) : null;
-                        TextDecorations.drawUnderline(g2d, sx1, sx2, y, fontDecorations[0], fontDecorations[1], ink);
+                        TextDecorations.drawUnderline(g2d, sx1, sx2, y, fontDecorations, ink);
                     }
                 } else {
                     stdUnderline.drawUnderline(g2d, ulThickness, x1, x2, y + ulOffset);
@@ -407,7 +407,7 @@ public class Decoration {
             boolean systemUnderline = system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON);
             if (stdUnderline != null && !(systemUnderline && none)) {
                 Shape ul = systemUnderline
-                        ? TextDecorations.underlineShape(sx1, sx2, y, fontDecorations[0], fontDecorations[1], layoutTransform)
+                        ? TextDecorations.underlineShape(sx1, sx2, y, fontDecorations, layoutTransform)
                         : stdUnderline.getUnderlineShape(ulThickness, x1, x2, y+ulOffset);
                 area = new Area(ul);
             }

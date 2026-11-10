@@ -140,15 +140,16 @@ public final class TextDecorations {
     }
 
     /**
-     * The decoration metrics behind the core metrics, in user space: {underline position (baseline to the top
-     * of the stroke, positive below), underline thickness, strikethrough centre (negative above the baseline),
-     * strikethrough thickness}. Under the system convention the core metrics carry the font's own values
-     * (Font2D.getFontMetrics, from the scaler's StrikeMetrics), else Java's nominal ones; both as offsets to the
-     * stroke's centre. The paragraph route (SKBackend.cpp, drawSystemDecorations) resolves the same values from
-     * Skia's font metrics.
+     * The decoration metrics behind the core metrics, in user space: {underline position (CoreText's, the centre of
+     * the stroke below the baseline, positive below), underline thickness, strikethrough centre (negative above the
+     * baseline), strikethrough thickness, ascent, descent}. Under the system convention the core metrics carry the
+     * font's own values (Font2D.getFontMetrics, from the scaler's StrikeMetrics), else Java's nominal ones; both as
+     * offsets to the stroke's centre. The paragraph route (SKBackend.cpp, drawSystemDecorations) resolves the same
+     * values from Skia's font metrics.
      */
     public static float[] fontMetrics(CoreMetrics cm) {
-        return new float[] {cm.underlineOffset - cm.underlineThickness / 2, cm.underlineThickness, cm.strikethroughOffset, cm.strikethroughThickness};
+        return new float[] {cm.underlineOffset - cm.underlineThickness / 2, cm.underlineThickness, cm.strikethroughOffset, cm.strikethroughThickness,
+                            cm.ascent, cm.descent};
     }
 
     /**
@@ -163,27 +164,44 @@ public final class TextDecorations {
 
     /** The bottom of the underline's band in user space at scale 1, for bounds (the rows at other scales lie within it). */
     public static float underlineBottom(float[] fontMetrics) {
-        double[] band = underlineBand(fontMetrics[0], fontMetrics[1]);
+        double[] band = underlineBand(fontMetrics, 1);
         return (float) Math.ceil(band[0] + band[1] - 1e-3);
     }
 
     /**
-     * The device band of an underline whose metrics (device pixels) put the top of the stroke {@code position}
-     * below the baseline with {@code thickness}, as {offset of the band's top from the baseline y, height}; the
-     * baseline y is the glyphs' bottom edge, the row above it holds their bottoms. CoreText's placement, measured
-     * over 34 fonts and sizes at 1x (2026-11-02): whole rows, the thickness rounded up, the row holding the
-     * stroke's top for one row and the band growing upwards from there for more, never nearer the baseline than
-     * its own height (the row under the glyph bottoms stays clear). Direct2D's: the top rounded to a row, the
-     * height the thickness itself (Segoe UI 13 at 1x: the row under the baseline at 0.76 coverage).
+     * The device band of the underline of {@link #fontMetrics} (user space) at {@code scale} device pixels per unit,
+     * as {offset of the band's top from the baseline, height} in device pixels; the position is CoreText's underline
+     * position, the centre of the stroke.
+     * <p>
+     * CoreText's (string drawing and TextKit 2 alike; 893 of 893 cases over 30 fonts at 1x and 2x and 4730 of 4730
+     * on a font with patched metrics at 1x, 2x, 3x and 16x, 2026-11-10): whole rows, the thickness rounded up, the
+     * band rounded about the position, at least its own height below the baseline, a one-row line two rows below
+     * once the position is past the first row and the descent more than four rows; the band's bottom within the
+     * descent, which under 2 points is taken as 0.3 of the ascent and descent; a band that still cannot sit there
+     * loses its last row (more than four rows of descent: the descent no more than its height; fewer: the band
+     * reaching more than one and a half rows past it). A line under 0.35 device pixels stays unsnapped, about the
+     * position and at least a row below the baseline.
+     * <p>
+     * Direct2D's: the top rounded to a row, the height the thickness itself (Segoe UI 13 at 1x: the row under the
+     * baseline at 0.76 coverage); its position is the top of the stroke.
      */
-    public static double[] underlineBand(double position, double thickness) {
+    static double[] underlineBand(float[] fontMetrics, double scale) {
+        double position = fontMetrics[0] * scale, thickness = fontMetrics[1] * scale;
         if (rule() == Rule.DIRECT_WRITE) {
             return new double[] {Math.round(position), thickness};
         }
+        if (thickness < 0.35) {
+            return new double[] {Math.max(1, position - thickness / 2), thickness};
+        }
+        // the tolerance keeps a value landing on a row by a product of scales (6 as 5.9999999 under a rotation with
+        // a scale) on that row, alike on the paragraph route's float arithmetic
         int rows = Math.max(1, (int) Math.ceil(thickness - 1e-3));
-        // the tolerance keeps a position landing on a row by a product of scales (6 as 5.9999999 under a rotation
-        // with a scale) on that row, alike on the paragraph route's float arithmetic
-        int top = Math.max(rows, (int) Math.floor(position + 0.5 - rows / 2.0 + 1e-3));
+        double descent = fontMetrics[5], room = (descent >= 2 ? descent : 0.3 * (fontMetrics[4] + descent)) * scale;
+        int top = Math.min((int) Math.floor(position + 0.5 - rows / 2.0 + 1e-3), (int) Math.floor(room + 1e-3) - rows);
+        top = Math.max(top, rows == 1 && position > 1 && room > 4 ? 2 : rows);
+        if (rows >= 2 && (room > 4 ? room <= rows : room <= 2 * rows - 1.5)) {
+            rows--;
+        }
         return new double[] {top, rows};
     }
 
@@ -193,13 +211,13 @@ public final class TextDecorations {
      * space) the line leaves gaps where the ink crosses it, {@link #CLEARANCE} clear on each side, the gap's edges
      * antialiased at their fractional positions as CoreText's are (the rows stay whole on a baseline along them).
      */
-    public static void drawUnderline(Graphics2D g2d, float x1, float x2, float y, float position, float thickness, Shape outline) {
+    public static void drawUnderline(Graphics2D g2d, float x1, float x2, float y, float[] fontMetrics, Shape outline) {
         AffineTransform at = g2d.getTransform();
         double scale = scaleAcross(at);
         if (scale == 0) {
             return;
         }
-        double[] band = underlineBand(position * scale, thickness * scale);
+        double[] band = underlineBand(fontMetrics, scale);
         double top = y + baselineSnap(at, y) + band[0] / scale, height = band[1] / scale;
         List<double[]> gaps = outline != null ? inkCrossings(outline, null, top, top + height) : List.of();
         fillBand(g2d, roundedEnd(at, x1), roundedEnd(at, x2), top, height, gaps, CLEARANCE);
@@ -240,9 +258,9 @@ public final class TextDecorations {
      * without the gaps where ink crosses it (the outline holds the glyphs there anyway). Under Direct2D's rule a
      * baseline off the device rows draws the band on the glyphs' row, as the glyphs' images.
      */
-    public static Shape underlineShape(float x1, float x2, float y, float position, float thickness, AffineTransform at) {
+    public static Shape underlineShape(float x1, float x2, float y, float[] fontMetrics, AffineTransform at) {
         double scale = scaleOf(at);
-        double[] band = underlineBand(position * scale, thickness * scale);
+        double[] band = underlineBand(fontMetrics, scale);
         return new Rectangle2D.Double(x1, y + band[0] / scale, x2 - x1, band[1] / scale);
     }
 
