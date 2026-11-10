@@ -122,6 +122,11 @@ void VKSwapchain_Release(VKSwapchain* swapchain);
 void VKSD_ResetSurface(VKSDOps* vksdo);
 
 /**
+ * Like VKSD_ResetSurface, but called when the surface will never be used again.
+ */
+void VKSD_DisposeSurface(VKSDOps* vksdo);
+
+/**
  * Configure image surface. This [re]initializes the device and surface image.
  */
 VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo);

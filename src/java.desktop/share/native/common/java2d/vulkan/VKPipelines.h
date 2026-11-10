@@ -58,7 +58,6 @@ typedef enum {
     SHADER_GRADIENT_LINEAR_PUSH,
     SHADER_GRADIENT_RADIAL_PUSH,
     SHADER_TEXTURE,
-    SHADER_BLIT,
     SHADER_CLIP,
 
     // The sign bit (bit 31) is unused for portability reasons.
@@ -118,8 +117,7 @@ struct VKPipelineContext {
     VKDevice*                   device;
     VkPipelineLayout            commonPipelineLayout; // no descriptor sets
     VkDescriptorSetLayout       textureDescriptorSetLayout;
-    VkPipelineLayout            texturePipelineLayout; // descriptor sets: 0=texture, 1=sampler
-    VkPipelineLayout            texturePaintPipelineLayout; // descriptor sets: 0=mask, 1=texture, 2=sampler
+    VkPipelineLayout            texturePipelineLayout; // descriptor sets: 0=mask, 1=texture, 2=sampler
     VkDescriptorSetLayout       maskFillDescriptorSetLayout;
     VkPipelineLayout            maskFillPipelineLayout; // descriptor sets: 0=mask
 
@@ -210,11 +208,6 @@ typedef struct {
     float x, y;
     unsigned int data;
 } VKVertex;
-
-typedef struct {
-    float px, py;
-    float u, v;
-} VKTxVertex;
 
 typedef struct {
     int x, y, maskOffset, maskScanline;

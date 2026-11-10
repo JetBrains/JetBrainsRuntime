@@ -2,7 +2,7 @@
 #extension GL_GOOGLE_include_directive: require
 #include "common.glsl"
 
-// This is the transform gl_FragCoord -> uv (both in device space)
+// This is the transform gl_FragCoord -> textureSource
 PUSH_CONSTANTS(VKTransform);
 
 layout(set = 1, binding = 0) uniform texture2D u_Texture;

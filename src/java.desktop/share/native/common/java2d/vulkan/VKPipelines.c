@@ -248,7 +248,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     // Setup input states.
     MAKE_INPUT_STATE(PRIMITIVE, VK_VERTEX_INPUT_RATE_VERTEX, VKVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32_UINT);
     MAKE_INPUT_STATE(MASK_FILL, VK_VERTEX_INPUT_RATE_VERTEX, VKMaskFillVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32_UINT);
-    MAKE_INPUT_STATE(BLIT, VK_VERTEX_INPUT_RATE_VERTEX, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
     MAKE_INPUT_STATE(CLIP, VK_VERTEX_INPUT_RATE_VERTEX, VKIntVertex, VK_FORMAT_R32G32_SINT);
     MAKE_INPUT_STATE(AA_PARALLELOGRAM, VK_VERTEX_INPUT_RATE_INSTANCE, VKParallelogramRingInstance, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32_UINT);
 
@@ -256,16 +255,8 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
         // Setup shader-specific pipeline parameters.
         VKShaderCoverageSource coverageSource = VKShader_GetCoverageSource(descriptors[i].shader);
         VKShader baseShader = descriptors[i].shader & SHADER_ENUM_BASE_MASK;
-        switch ((int) baseShader) {
-        case SHADER_BLIT:
-            if (coverageSource != SHADER_COVERAGE_NONE) {
-                VK_FATAL_ERROR("Coverage not currently implemented for SHADER_BLIT");
-            }
-            createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
-            createInfos[i].layout = pipelineContext->texturePipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
-            break;
-        case SHADER_CLIP:
+
+        if (baseShader == SHADER_CLIP) {
             if (coverageSource != SHADER_COVERAGE_NONE) {
                 VK_FATAL_ERROR("Coverage not supported for SHADER_CLIP");
             }
@@ -285,12 +276,10 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
                 .back = CLIP_STENCIL_OP
             };
             createInfos[i].pDepthStencilState = &CLIP_STENCIL_STATE;
-            createInfos[i].layout = pipelineContext->texturePipelineLayout;
+            createInfos[i].layout = pipelineContext->commonPipelineLayout;
             createInfos[i].stageCount = 1;
             stages[i] = (ShaderStages) {{ shaders->clip_vert }};
-            break;
-
-        default: {
+        } else {
             VkPipelineShaderStageCreateInfo vertexShader;
             switch (coverageSource) {
             case SHADER_COVERAGE_NONE:
@@ -328,14 +317,14 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
                 break;
             case SHADER_TEXTURE:
                 fragmentShader = shaders->texture_frag;
-                createInfos[i].layout = pipelineContext->texturePaintPipelineLayout;
+                createInfos[i].layout = pipelineContext->texturePipelineLayout;
                 break;
             default:
                 VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
             }
             stages[i] = (ShaderStages) {{ vertexShader, fragmentShader }};
         }
-        }
+
         const VKCompositeState* compositeState =
             VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque);
         createInfos[i].pColorBlendState = &compositeState->blendState;
@@ -534,16 +523,6 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     result = device->vkCreateDescriptorSetLayout(device->handle, &textureDescriptorSetLayoutCreateInfo, NULL, &pipelines->textureDescriptorSetLayout);
     VK_IF_ERROR(result) return result;
 
-    VkDescriptorSetLayout textureDescriptorSetLayouts[] = {
-        pipelines->textureDescriptorSetLayout,
-        pipelines->samplers.descriptorSetLayout
-    };
-    createInfo.setLayoutCount = SARRAY_COUNT_OF(textureDescriptorSetLayouts);
-    createInfo.pSetLayouts = textureDescriptorSetLayouts;
-    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
-    VK_IF_ERROR(result) return result;
-
-    // Texture paint pipeline.
     VkDescriptorSetLayout texturePaintDescriptorSetLayouts[] = {
         pipelines->maskFillDescriptorSetLayout,
         pipelines->textureDescriptorSetLayout,
@@ -551,7 +530,7 @@ static VkResult VKPipelines_InitPipelineLayouts(VKDevice* device, VKPipelineCont
     };
     createInfo.setLayoutCount = SARRAY_COUNT_OF(texturePaintDescriptorSetLayouts);
     createInfo.pSetLayouts = texturePaintDescriptorSetLayouts;
-    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePaintPipelineLayout);
+    result = device->vkCreatePipelineLayout(device->handle, &createInfo, NULL, &pipelines->texturePipelineLayout);
     VK_IF_ERROR(result) return result;
 
     return VK_SUCCESS;
@@ -598,7 +577,6 @@ void VKPipelines_DestroyContext(VKPipelineContext* pipelineContext) {
 
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->commonPipelineLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePipelineLayout, NULL);
-    device->vkDestroyPipelineLayout(device->handle, pipelineContext->texturePaintPipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->textureDescriptorSetLayout, NULL);
     device->vkDestroyPipelineLayout(device->handle, pipelineContext->maskFillPipelineLayout, NULL);
     device->vkDestroyDescriptorSetLayout(device->handle, pipelineContext->maskFillDescriptorSetLayout, NULL);

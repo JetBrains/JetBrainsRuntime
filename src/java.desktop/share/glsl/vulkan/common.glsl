@@ -58,10 +58,7 @@ layout(location = 12) in flat vec4  in_GenericFlatVec4_2;
 layout(location = 11) in flat vec4  in_GenericFlatVec4_3;
 layout(location = 10) in flat ivec4 in_GenericFlatIvec4_1;
 
-// TODO: we should change this logic when adding support for masked blits
-#ifndef SHADER_NO_MASK_BUFFER
 layout(set = 0, binding = 0, r8) uniform readonly restrict imageBuffer u_Mask;
-#endif // SHADER_NO_MASK_BUFFER
 
 layout(location = 0, index = 0) out vec4 out_Color;
 
@@ -150,11 +147,9 @@ float getCoverage(vec2 fragCoord) {
             in_GenericFlatVec4_1.zw, in_GenericFlatVec4_3.xy, in_GenericFlatVec4_3.zw
         );
     }
-#ifndef SHADER_NO_MASK_BUFFER
     else if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_MASK) {
         return imageLoad(u_Mask, calculateMaskIndex(fragCoord, in_GenericFlatIvec4_1)).r;
     }
-#endif // SHADER_NO_MASK_BUFFER
     else {
         return 1.0f;
     }

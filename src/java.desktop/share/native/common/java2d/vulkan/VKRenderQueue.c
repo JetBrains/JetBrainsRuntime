@@ -547,7 +547,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 VKSDOps* surface = NEXT_VK_SURFACE(b);
                 J2dRlsTraceLn(J2D_TRACE_VERBOSE,
                     "VKRenderQueue_flushBuffer: DISPOSE_SURFACE");
-                VKSD_ResetSurface(surface);
+                VKSD_DisposeSurface(surface);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISPOSE_CONFIG:
