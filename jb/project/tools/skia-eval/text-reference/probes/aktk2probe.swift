@@ -1,17 +1,19 @@
 // The underline rows of AppKit's text stacks side by side (2026-11-10): TextKit 2 (an NSTextView with an
 // NSTextLayoutManager, what NSTextView and TextEdit use by default on current macOS), TextKit 1 (NSLayoutManager)
 // and NSAttributedString string drawing, each with the line's baseline on a whole device row at 1x and 2x backing
-// scale. TSV on stdout: the underline's device rows from the baseline row, per stack.
+// scale. TSV on stdout: the underline's device rows from the baseline row, per stack (with STYLE=strike the
+// strikethrough's, negative above the baseline row).
 //
-//   swift aktk2probe.swift <family> <size> [<family> <size> ...]
+//   [STYLE=strike] swift aktk2probe.swift <family> <size> [<family> <size> ...] | --all
 import AppKit
 
 let args = CommandLine.arguments
 let TEXT = "x          x"
+let STRIKE = ProcessInfo.processInfo.environment["STYLE"] == "strike"
 
 func attributes(_ font: NSFont, _ underline: Bool) -> [NSAttributedString.Key: Any] {
     var a: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.black]
-    if underline { a[.underlineStyle] = NSUnderlineStyle.single.rawValue }
+    if underline { a[STRIKE ? .strikethroughStyle : .underlineStyle] = NSUnderlineStyle.single.rawValue }
     return a
 }
 
