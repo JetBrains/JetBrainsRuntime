@@ -425,6 +425,30 @@ final class ExtendedTextSourceLabel implements TextLineComponent, Decoration.Lab
     return source.getFRC();
   }
 
+  @Override
+  public float[] getInkSpan() {
+    // the line's leading and trailing whitespace: the source's context is the line (TextLabelFactory)
+    char[] chars = source.getChars();
+    int first = source.getContextStart(), last = first + source.getContextLength();
+    while (first < last && TextDecorations.lineEndWhitespace(chars[first])) first++;
+    while (last > first && TextDecorations.lineEndWhitespace(chars[last - 1])) last--;
+    int start = source.getStart(), limit = start + source.getLength();
+    if (first <= start && last >= limit) {
+      return null;
+    }
+    int from = Math.max(start, first), to = Math.min(limit, last);
+    if (from >= to) {
+      return new float[0];
+    }
+    float x1 = Float.MAX_VALUE, x2 = -Float.MAX_VALUE;
+    for (int i = from; i < to; i++) {
+      float x = getCharX(i - start);
+      x1 = Math.min(x1, x);
+      x2 = Math.max(x2, x + getCharAdvance(i - start));
+    }
+    return new float[] {x1, x2};
+  }
+
   /**
    * Return the x location of the character at the given logical index.
    */

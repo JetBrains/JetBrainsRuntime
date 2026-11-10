@@ -74,6 +74,12 @@ public class Decoration {
         /** The label's font and its render context, for the font's own decoration metrics; null when it has none. */
         default Font getFont() { return null; }
         default FontRenderContext getFRC() { return null; }
+        /**
+         * The x range from the label's origin of its characters without the line's leading and trailing whitespace
+         * ({@link TextDecorations#lineEndWhitespace}): null when none of its characters is such, an empty array when
+         * all are.
+         */
+        default float[] getInkSpan() { return null; }
 
         void handleDraw(Graphics2D g2d, float x, float y);
         Rectangle2D handleGetCharVisualBounds(int index);
@@ -253,9 +259,13 @@ public class Decoration {
             // antialiased, as CoreText draws it; the same rule draws Skia's paragraphs' decorations (SKBackend.cpp)
             boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped();
             float[] fontDecorations = system ? TextDecorations.fontMetrics(cm) : null;
-            if (strikethrough) {
+            // under CoreText's rule the line's leading and trailing whitespace stays undecorated, as CoreText leaves it
+            float[] span = system ? TextDecorations.decorationSpan(label, x1, x2) : null;
+            boolean none = span != null && span.length == 0;
+            float sx1 = span != null && !none ? span[0] : x1, sx2 = span != null && !none ? span[1] : x2;
+            if (strikethrough && !(system && none)) {
                 if (system) {
-                    TextDecorations.drawStrikethrough(g2d, x1, x2, y, fontDecorations[2], fontDecorations[3]);
+                    TextDecorations.drawStrikethrough(g2d, sx1, sx2, y, fontDecorations[2], fontDecorations[3]);
                 } else {
                     Stroke savedStroke = g2d.getStroke();
                     g2d.setStroke(new BasicStroke(cm.strikethroughThickness,
@@ -272,8 +282,10 @@ public class Decoration {
 
             if (stdUnderline != null) {
                 if (system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)) {
-                    Shape ink = sun.java2d.skia.SKEnvironment.decorationsSkipInk() ? label.handleGetOutline(x, y) : null;
-                    TextDecorations.drawUnderline(g2d, x1, x2, y, fontDecorations[0], fontDecorations[1], ink);
+                    if (!none) {
+                        Shape ink = sun.java2d.skia.SKEnvironment.decorationsSkipInk() ? label.handleGetOutline(x, y) : null;
+                        TextDecorations.drawUnderline(g2d, sx1, sx2, y, fontDecorations[0], fontDecorations[1], ink);
+                    }
                 } else {
                     stdUnderline.drawUnderline(g2d, ulThickness, x1, x2, y + ulOffset);
                 }
@@ -388,18 +400,22 @@ public class Decoration {
             boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped();
             float[] fontDecorations = system ? TextDecorations.fontMetrics(cm) : null;
             AffineTransform layoutTransform = system && label.getFRC() != null ? label.getFRC().getTransform() : null;
+            float[] span = system ? TextDecorations.decorationSpan(label, x1, x2) : null;
+            boolean none = span != null && span.length == 0;
+            float sx1 = span != null && !none ? span[0] : x1, sx2 = span != null && !none ? span[1] : x2;
 
-            if (stdUnderline != null) {
-                Shape ul = system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)
-                        ? TextDecorations.underlineShape(x1, x2, y, fontDecorations[0], fontDecorations[1], layoutTransform)
+            boolean systemUnderline = system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON);
+            if (stdUnderline != null && !(systemUnderline && none)) {
+                Shape ul = systemUnderline
+                        ? TextDecorations.underlineShape(sx1, sx2, y, fontDecorations[0], fontDecorations[1], layoutTransform)
                         : stdUnderline.getUnderlineShape(ulThickness, x1, x2, y+ulOffset);
                 area = new Area(ul);
             }
 
-            if (strikethrough) {
+            if (strikethrough && !(system && none)) {
                 Shape strike;
                 if (system) {
-                    strike = TextDecorations.strikethroughShape(x1, x2, y, fontDecorations[2], fontDecorations[3], layoutTransform);
+                    strike = TextDecorations.strikethroughShape(sx1, sx2, y, fontDecorations[2], fontDecorations[3], layoutTransform);
                 } else {
                     Stroke stStroke = new BasicStroke(cm.strikethroughThickness,
                                                       BasicStroke.CAP_BUTT,
@@ -427,7 +443,10 @@ public class Decoration {
                 }
             }
 
-            // area won't be null here, since at least one underline exists.
+            // null when every decoration left the label out (all of it line-end whitespace under CoreText's rule)
+            if (area == null) {
+                return label.handleGetOutline(x, y);
+            }
             area.add(new Area(label.handleGetOutline(x, y)));
 
             return new GeneralPath(area);

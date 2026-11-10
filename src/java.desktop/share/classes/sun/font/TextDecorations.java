@@ -65,6 +65,29 @@ public final class TextDecorations {
         DIRECT_WRITE
     }
 
+    /**
+     * Whether a character is line-end whitespace CoreText leaves undecorated at either end of a line: the space
+     * separators (Unicode Zs: the no-break, em and ideographic spaces too) and the line terminators; a tab is ink
+     * (measured 2026-11-10 with CTLineDraw: "x   " underlined under the x alone, "\tx\t" over the tabs too).
+     * SKBackend.cpp's lineEndWhitespace is the same set.
+     */
+    public static boolean lineEndWhitespace(char c) {
+        return Character.getType(c) == Character.SPACE_SEPARATOR || c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029';
+    }
+
+    /**
+     * The x range a label's underline and strikethrough span, from {@code x1} (its origin) to {@code x2}: under
+     * CoreText's rule without the line's leading and trailing whitespace ({@link Decoration.Label#getInkSpan}),
+     * null for the whole range, an empty array for none.
+     */
+    static float[] decorationSpan(Decoration.Label label, float x1, float x2) {
+        if (rule() != Rule.CORE_TEXT) {
+            return null;
+        }
+        float[] ink = label.getInkSpan();
+        return ink == null || ink.length == 0 ? ink : new float[] {x1 + ink[0], x1 + ink[1]};
+    }
+
     /** The horizontal clearance around ink crossing an underline, in user-space pixels (CoreText's: one point, two device pixels at 2x). */
     static final double CLEARANCE = 1.0;
 

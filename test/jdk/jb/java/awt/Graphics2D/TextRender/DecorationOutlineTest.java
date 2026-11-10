@@ -40,7 +40,7 @@ import java.util.Map;
  *          Java's nominal band, a pixel above the outline's) and the paragraph route filled the font's own rectangle
  *          without antialiasing (Menlo 12's thin band under a shear drew nothing). Over the spaces between two glyphs every
  *          drawn pixel is the decoration's: mapped back to the text's frame each must lie in the band of the spaces'
- *          outline (TextLayout's outline of the spaces alone: nothing but the decoration), give or take the
+ *          outline over the spaces (nothing but the decoration there), give or take the
  *          antialiasing's reach; the drawn coverage must fill the band's area, and its centre be the band's within a
  *          tenth of a device pixel. Under CoreText's rule (macOS) the band stays at a fractional baseline, split over
  *          two rows, as AppKit and CTLineDraw draw it while the glyphs snap to the rows (the glyphs' row took it
@@ -152,9 +152,12 @@ public class DecorationOutlineTest {
         AffineTransform toDevice = g.getTransform();
         Font font = new Font(attributes);
         TextLayout tl = new TextLayout(TEXT, font, g.getFontRenderContext());
-        TextLayout spaces = new TextLayout(SPACES, font, g.getFontRenderContext());
-        Rectangle2D band = spaces.getOutline(null).getBounds2D();
         double glyph = new TextLayout("x", font, g.getFontRenderContext()).getAdvance();
+        // the outline's band over the spaces: nothing but the decoration there (a line of spaces alone is no longer
+        // decorated under CoreText's rule, which leaves line-end whitespace out)
+        java.awt.geom.Area over = new java.awt.geom.Area(tl.getOutline(null));
+        over.intersect(new java.awt.geom.Area(new Rectangle2D.Double(glyph + 1, -1000, tl.getAdvance() - 2 * glyph - 2, 2000)));
+        Rectangle2D band = over.getBounds2D();
         if (paragraph) {
             g.drawString(new AttributedString(TEXT, attributes).getIterator(), 0f, 0f);
         } else {

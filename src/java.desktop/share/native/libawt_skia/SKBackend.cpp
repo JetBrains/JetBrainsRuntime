@@ -2576,6 +2576,26 @@ SkString typefaceAlias(const SkTypeface *typeface) {
 namespace {
 constexpr float kDecorationClearance = 1.0f;   // in user-space pixels: CoreText clears one point beside the ink (two device pixels at 2x)
 
+// CoreText's line-end whitespace, undecorated at either end of a line: the space separators (Zs) and the line
+// terminators, not the tab (sun.font.TextDecorations.lineEndWhitespace, measured 2026-11-10)
+bool lineEndWhitespace(jchar c) {
+    return c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200A) || c == 0x202F || c == 0x205F || c == 0x3000
+           || c == 0x0A || c == 0x0D || c == 0x85 || c == 0x2028 || c == 0x2029;
+}
+
+// The UTF-8 range of the line's characters a decoration spans: under CoreText's rule from the first character that
+// is not line-end whitespace to the last, else the whole line (the paragraph is one line)
+std::pair<uint32_t, uint32_t> decoratedUtf8Range(const jchar *chars, jint length) {
+    if (SKPlatform_TextDefaults().decorationRule != SKDecorationRule::CoreText) {
+        return {0, std::numeric_limits<uint32_t>::max()};
+    }
+    jint first = 0, last = length;
+    while (first < last && lineEndWhitespace(chars[first])) first++;
+    while (last > first && lineEndWhitespace(chars[last - 1])) last--;
+    auto utf8 = [&](jint n) { return n > 0 ? (uint32_t) SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, n).size() : 0u; };
+    return {utf8(first), utf8(last)};
+}
+
 void addCrossing(std::vector<std::pair<float, float>> &ranges, SkPoint a, SkPoint b, float yTop, float yBottom) {
     const float lo = std::min(a.fY, b.fY), hi = std::max(a.fY, b.fY);
     if (hi <= yTop || lo >= yBottom) return;   // strictly inside the band: glyph bottoms resting on its edge do not cross
@@ -2710,6 +2730,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
         start = end;
     }
     const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
+    const std::pair<uint32_t, uint32_t> decorated = decoratedUtf8Range(chars, length);
     SkAutoCanvasRestore restore(canvas, true);
     canvas->resetMatrix();   // the bands are device rectangles (the text canvas carries no matrix; be sure)
     paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
@@ -2748,10 +2769,15 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                 if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint = colouredPaint(runPaint, (SkColor) colours[r], extraAlpha, swizzled);
                 float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
                 for (int k = i; k < j; k++) {
+                    if (info->utf8Starts[k] < decorated.first || info->utf8Starts[k] >= decorated.second) continue;   // line-end whitespace
                     SkScalar advance = 0;
                     deviceFont.getWidths({&info->glyphs[k], 1}, {&advance, 1});
                     x1 = std::min(x1, runOrigin.fX + positions[k].fX);
                     x2 = std::max(x2, runOrigin.fX + positions[k].fX + advance);
+                }
+                if (x1 > x2) {   // the group is all line-end whitespace
+                    i = j;
+                    continue;
                 }
                 if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
                     if (skipInk && !gapsReady) {   // the whole visitor run's ink: a neighbour's descender may cross this group's line
@@ -2853,6 +2879,7 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
         start = std::max(start, end);
     }
     const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
+    const std::pair<uint32_t, uint32_t> decorated = decoratedUtf8Range(chars, length);
     const bool directWrite = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
     paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
         if (info == nullptr || info->count <= 0) return;
@@ -2877,10 +2904,15 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
                 if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint = colouredPaint(runPaint, (SkColor) colours[r], extraAlpha, swizzled);
                 float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
                 for (int k = i; k < j; k++) {
+                    if (info->utf8Starts[k] < decorated.first || info->utf8Starts[k] >= decorated.second) continue;   // line-end whitespace
                     SkScalar advance = 0;
                     info->font.getWidths({&info->glyphs[k], 1}, {&advance, 1});
                     x1 = std::min(x1, info->origin.fX + info->positions[k].fX);
                     x2 = std::max(x2, info->origin.fX + info->positions[k].fX + advance);
+                }
+                if (x1 > x2) {   // the group is all line-end whitespace
+                    i = j;
+                    continue;
                 }
                 x1 = roundedEnd(toDevice, x1);
                 x2 = roundedEnd(toDevice, x2);
