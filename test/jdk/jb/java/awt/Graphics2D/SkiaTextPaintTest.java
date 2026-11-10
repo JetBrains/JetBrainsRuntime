@@ -127,10 +127,7 @@ public class SkiaTextPaintTest {
                 }
                 continue;
             }
-            // raster modes: translucent Src on the INT_RGB raster surface stores the premultiplied colour for every
-            // operation, shapes too (Java stores the colour: a raster-surface finding of 2026-11-10, ledger §13.8)
-            boolean rasterSrc = mode.startsWith("raster") && ((AlphaComposite) sc.composite).getRule() == AlphaComposite.SRC;
-            compare(failures, sc.name, glyphs, reference, drawn, ((AlphaComposite) sc.composite).getRule() != AlphaComposite.CLEAR && !rasterSrc);
+            compare(failures, sc.name, glyphs, reference, drawn, ((AlphaComposite) sc.composite).getRule() != AlphaComposite.CLEAR);
             identical(failures, sc.name + ", drawString", glyphs, drawn(gc, scene(sc, font, g -> g.drawString(TEXT, 10, 55))));
             identical(failures, sc.name + ", drawChars", glyphs, drawn(gc, scene(sc, font, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), 10, 55))));
             if (mode.endsWith("layout")) {
@@ -178,7 +175,7 @@ public class SkiaTextPaintTest {
         BufferedImage srcLoops = reference(scene(src, font, gv));
         double ratio = ink(srcImage, 0xf0e8d0) / Math.max(1, ink(srcLoops, 0xf0e8d0));
         System.out.printf("%s: ink ratio %.3f against the loops%n", src.name, ratio);
-        if (Math.abs(ratio - 1) > 0.06 && !mode.startsWith("raster")) {   // raster: the INT_RGB Src finding above
+        if (Math.abs(ratio - 1) > 0.06 && !mode.startsWith("raster")) {   // raster: colour glyphs red and blue swapped (§13.8)
             failures.append(src.name).append(String.format(": ink ratio %.3f against the loops; ", ratio));
         }
         if (!mode.equals("images")) {

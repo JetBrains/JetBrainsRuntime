@@ -240,8 +240,10 @@ struct Operation {
     // operation's cost); kDirect: the lock alone — the caller stores into the pixels, no canvas, no mirror
     enum Mode { kClipped, kBox, kDirect };
     JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; RasterTarget *target = nullptr; SkIRect box; Mode mode; bool ok = false;
+    jint pixelFormat = -1;
+    std::unique_ptr<SkCanvas> premultiplied;   // an INT_RGB destination under a rule that leaves alpha (forRule)
 
-    Operation(JNIEnv *e, jobject sData, jint pixelFormat, jint x1, jint y1, jint x2, jint y2, Mode m = kClipped, bool mirrorKept = false) : env(e), mode(m) {
+    Operation(JNIEnv *e, jobject sData, jint pf, jint x1, jint y1, jint x2, jint y2, Mode m = kClipped, bool mirrorKept = false) : env(e), mode(m), pixelFormat(pf) {
         ops = SurfaceData_GetOps(env, sData);
         if (ops == nullptr) return;
         // the image's size, from the buffered image's own ops (SKRasterSurfaceData is one)
@@ -273,14 +275,52 @@ struct Operation {
     }
     /** The row of the operation's pixels at y, from the box's left edge (Java's own pixel layout). */
     uint32_t *row(int y) { return (uint32_t *) ((char *) ras.rasBase + (size_t) y * ras.scanStride) + box.fLeft; }
-    SkCanvas *canvas() { return target->canvas.get(); }
+    SkCanvas *canvas() { return premultiplied ? premultiplied.get() : target->canvas.get(); }
     void clipSpans(const jint *spans, size_t count) {   // device coordinates: the mirror's origin is the image's
         SkRegion region;
         for (size_t i = 0; i + 3 < count; i += 4) region.op(SkIRect::MakeLTRB(spans[i], spans[i + 1], spans[i + 2], spans[i + 3]), SkRegion::kUnion_Op);
-        target->canvas->clipRegion(region);
+        canvas()->clipRegion(region);
+    }
+    /**
+     * Java stores a composite on a destination without alpha unpremultiplied and drops the alpha (the loops divide
+     * by the result's alpha, div8table; black where it is 0); Skia over the opaque declaration keeps the premultiplied
+     * colour and forces the alpha. Under a rule that can leave the result's alpha below 1 on an opaque destination —
+     * Clear, Src, SrcIn, DstIn, SrcOut, DstOut, DstAtop, Xor — an INT_RGB operation therefore draws through a
+     * premultiplied view of its pixels, the box's alpha bytes made opaque first (Java ignores them), and divides
+     * what it leaves below 255 on release. SrcOver and the rest keep the opaque canvas. Call before clipSpans.
+     */
+    void forRule(jint rule) {
+        if (!ok || target == nullptr || pixelFormat != sun_java2d_skia_SKSurfaceData_PF_INT_RGB) return;
+        switch (rule) {
+            case java_awt_AlphaComposite_CLEAR: case java_awt_AlphaComposite_SRC: case java_awt_AlphaComposite_SRC_IN:
+            case java_awt_AlphaComposite_DST_IN: case java_awt_AlphaComposite_SRC_OUT: case java_awt_AlphaComposite_DST_OUT:
+            case java_awt_AlphaComposite_DST_ATOP: case java_awt_AlphaComposite_XOR: break;
+            default: return;
+        }
+        for (int y = box.fTop; y < box.fBottom; y++) {
+            uint32_t *p = row(y);
+            for (int x = 0; x < box.width(); x++) p[x] |= 0xff000000u;
+        }
+        const SurfaceDataBounds &image = ((BufImgSDOps *) ops)->rasbounds;
+        premultiplied = SkCanvas::MakeRasterDirect(SkImageInfo::MakeN32(image.x2 - image.x1, image.y2 - image.y1, kPremul_SkAlphaType),
+                                                   ras.rasBase, (size_t) ras.scanStride);
+        if (premultiplied && mode == kClipped) premultiplied->clipIRect(box);
     }
     ~Operation() {
         if (ok && target != nullptr) {
+            if (premultiplied) {
+                premultiplied.reset();
+                for (int y = box.fTop; y < box.fBottom; y++) {
+                    uint32_t *p = row(y);
+                    for (int x = 0; x < box.width(); x++) {
+                        const uint32_t v = p[x], a = v >> 24;
+                        if (a == 0xff) continue;
+                        if (a == 0) { p[x] = 0xff000000u; continue; }
+                        auto div = [a](uint32_t c) { return std::min(255u, (c * 255 + a / 2) / a); };
+                        p[x] = 0xff000000u | div((v >> 16) & 0xff) << 16 | div((v >> 8) & 0xff) << 8 | div(v & 0xff);
+                    }
+                }
+            }
             if (mode == kClipped) target->canvas->restore();
             if (target->viaMirror()) { target->mirrorOut(box); target->epoch = tLastWriteLock; }
         }
@@ -529,6 +569,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRect(JNIEnv *env, jclass clazz, jobje
     ConvertedTexture converted(env, texOps, pd.textureConversion());
     Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
+    op.forRule(compositeRule);
     TextureSource tex(env, converted.active() ? nullptr : texOps, pd.texturePixelFormat());
     SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
     if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
@@ -549,6 +590,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRectColor(JNIEnv *env, jclass clazz, 
     const bool store = !antialias && (compositeRule == java_awt_AlphaComposite_SRC || (opaque && compositeRule == java_awt_AlphaComposite_SRC_OVER));
     Operation op(env, sData, pixelFormat, boxX1, boxY1, boxX2, boxY2, store ? Operation::kDirect : Operation::kBox, mirrorKept);
     if (!op.ok || probe < 2) return;   // 1: the lock alone
+    op.forRule(compositeRule);   // the direct store is Java's already (the colour's pixel)
     if (store) {
         const uint32_t pixel = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE ? premultiplied((uint32_t) argb) : (uint32_t) argb;
         const int count = op.box.width();
@@ -614,6 +656,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillParallelogramColor(JNIEnv *env, jclas
     if (antialias) {
         Operation op(env, sData, pixelFormat, boxX1, boxY1, boxX2, boxY2, Operation::kBox, mirrorKept);
         if (!op.ok) return JNI_TRUE;
+        op.forRule(compositeRule);
         SkPaint paint;
         paint.setAntiAlias(true);
         paint.setColor(swizzled(argb));
@@ -686,6 +729,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     ConvertedTexture converted(env, texOps, pd.textureConversion());
     Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
+    op.forRule(compositeRule);
     TextureSource tex(env, converted.active() ? nullptr : texOps, pd.texturePixelFormat());
     SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
     if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
@@ -719,6 +763,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     ConvertedTexture converted(env, texOps, pd.textureConversion());
     Operation op(env, sData, pixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
+    op.forRule(compositeRule);
     TextureSource tex(env, converted.active() ? nullptr : texOps, pd.texturePixelFormat());
     SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
     if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
@@ -778,6 +823,7 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
                                : interpType == 2 ? SkSamplingOptions(SkFilterMode::kLinear) : SkSamplingOptions(SkFilterMode::kNearest);
     Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
+    op.forRule(compositeRule);
     if (spans.size) op.clipSpans(spans.data, spans.size);
     const bool unpremultiplied = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB, opaque = srcPixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_RGB;
     Buffer<4096, uint32_t> converted(conversion == 0 && (unpremultiplied || opaque || background) ? (size_t) sw * sh : 0);
@@ -866,6 +912,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     Operation op(env, dstData, dstPixelFormat, clipX1, clipY1, clipX2, clipY2, Operation::kClipped, mirrorKept);
     if (!op.ok) return;
+    op.forRule(compositeRule);
     if (spans.size) op.clipSpans(spans.data, spans.size);
     SkPaint paint;
     paint.setAntiAlias(true);
@@ -880,13 +927,14 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
 // rule in bits 0-3, the mirror flag at 8, the right-to-left base direction at 9.
 namespace {
 struct TextOperation {
-    JNIEnv *env; jobject dstData; jint pixelFormat; SkIRect clip; bool mirrorKept; const jint *spans; size_t spanCount;
+    JNIEnv *env; jobject dstData; jint pixelFormat; SkIRect clip; bool mirrorKept; const jint *spans; size_t spanCount; jint compositeRule;
     std::optional<Operation> op;
     SkCanvas *operator()(const SkIRect &bounds) {
         SkIRect box = clip;
         if (!box.intersect(bounds)) return nullptr;
         op.emplace(env, dstData, pixelFormat, box.fLeft, box.fTop, box.fRight, box.fBottom, Operation::kClipped, mirrorKept);
         if (!op->ok) return nullptr;
+        op->forRule(compositeRule);
         if (spanCount) op->clipSpans(spans, spanCount);
         return op->canvas();
     }
@@ -913,7 +961,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobj
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
-                       ((flags >> 8) & 1) != 0, spans.data, spans.size};
+                       ((flags >> 8) & 1) != 0, spans.data, spans.size, flags & 0xf};
     return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, context, JNI_FALSE,
                                         ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY, chars.data, length);
 }
@@ -936,7 +984,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawParagraph(JNIEnv *env, jclass clazz, j
     Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
-                       ((flags >> 8) & 1) != 0, spans.data, spans.size};
+                       ((flags >> 8) & 1) != 0, spans.data, spans.size, flags & 0xf};
     const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
     return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, true, JNI_FALSE,
                                            ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY,
@@ -989,6 +1037,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphsWithPaint(JNIEnv *env, jclass cl
     const SkIRect box = text.clipBox();
     Operation op(env, dstData, dstPixelFormat, box.fLeft, box.fTop, box.fRight, box.fBottom, Operation::kClipped, mirrorKept);
     if (!op.ok) return 0;
+    op.forRule(compositeRule);
     if (text.spanCount()) op.clipSpans(text.spans(), text.spanCount());
     // the luminance class of a paint's text is white's, as the GPU pipe's (its paint colour under a shader)
     return SKBackend_DrawGlyphsOnCanvas(op.canvas(), text.paint(compositeRule), SK_ColorWHITE, text.origin[2], contexts.data, (jint) contexts.size,
@@ -1006,7 +1055,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShapedWithPaint(JNIEnv *env, jclass cl
     Buffer<256, jchar> chars((size_t) length); env->GetStringRegion(string, 0, length, chars.data);
     PaintedText text(env, originAndAlpha, paintArray, colorsArray, texture, clipArray);
     if (!text.ok) return 0;
-    TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount()};
+    TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount(), flags & 0xf};
     return SKBackend_DrawShapedOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], context, JNI_FALSE,
                                         ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, text.origin[0], text.origin[1], chars.data, length);
 }
@@ -1029,7 +1078,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawParagraphWithPaint(JNIEnv *env, jclass
     Buffer<80, jint> runInts((size_t) 5 * runs); env->GetIntArrayRegion(runIntsArray, 0, 5 * runs, runInts.data);
     PaintedText text(env, originAndAlpha, paintArray, colorsArray, texture, clipArray);
     if (!text.ok) return 0;
-    TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount()};
+    TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount(), flags & 0xf};
     const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
     return SKBackend_DrawParagraphOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], true, JNI_FALSE,
                                            ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, text.origin[0], text.origin[1],
