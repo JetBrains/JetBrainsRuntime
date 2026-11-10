@@ -625,7 +625,11 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     }
     const int bytesPerPixel = colorGlyph ? 4 : lcd && !colorGlyph ? 3 : 1;
     const size_t rowBytes = (size_t) width * bytesPerPixel, imageSize = rowBytes * height;
-    auto *info = (GlyphInfo *) calloc(sizeof(GlyphInfo) + imageSize * resX * resY, 1);
+    // an LCD glyph without variants is placed at a third of a pixel by reading its rows from one or two bytes in
+    // (DrawGlyphList.c, the loops and the GPU pipes alike): the last row reads two bytes past the image, which are
+    // zero here, as CGGlyphImages' three extra bytes and FreeType's row padding are
+    const size_t slack = lcd && !colorGlyph && resX == 1 ? 3 : 0;
+    auto *info = (GlyphInfo *) calloc(sizeof(GlyphInfo) + imageSize * resX * resY + slack, 1);
     if (info == nullptr) {
         return ptr_to_jlong(emptyGlyph(advance));
     }
