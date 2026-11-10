@@ -50,7 +50,9 @@ import java.util.function.Consumer;
  *          under translucent Src SrcOver of the glyph (the loops' rule too), under Clear their shape
  *          cleared and nothing else of their box (they replaced and cleared their whole box); under a
  *          gradient they keep their own colours (Java's glyph images under a paint took the loops' MaskFill
- *          text pipe, which skips colour glyphs).
+ *          text pipe, which skips colour glyphs); and in their own colours against the loops' (on the raster
+ *          surfaces red and blue were swapped: the raster swizzles its colours for the memory it declares N32,
+ *          a colour glyph's pixels came from the font host as they are).
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPaintTest text
@@ -175,7 +177,7 @@ public class SkiaTextPaintTest {
         BufferedImage srcLoops = reference(scene(src, font, gv));
         double ratio = ink(srcImage, 0xf0e8d0) / Math.max(1, ink(srcLoops, 0xf0e8d0));
         System.out.printf("%s: ink ratio %.3f against the loops%n", src.name, ratio);
-        if (Math.abs(ratio - 1) > 0.06 && !mode.startsWith("raster")) {   // raster: colour glyphs red and blue swapped (§13.8)
+        if (Math.abs(ratio - 1) > 0.06) {
             failures.append(src.name).append(String.format(": ink ratio %.3f against the loops; ", ratio));
         }
         if (!mode.equals("images")) {
@@ -187,6 +189,27 @@ public class SkiaTextPaintTest {
             identical(failures, src.name + ", the paragraph", srcImage, drawn(gc, scene(src, font, g -> g.drawString(as.getIterator(), 10, 55))));
         }
         BufferedImage overImage = drawn(gc, scene(over, font, gv));
+        // the emoji's own colours, against the loops (which draw colour glyphs under an opaque colour and SrcOver): the
+        // inner pixels' mean colour per channel (the rasterizations differ at the emoji's own edges; a red-blue swap,
+        // as on the raster surfaces, exchanges the red and blue means)
+        BufferedImage overLoops = reference(scene(over, font, gv));
+        long[] mean = new long[3], meanLoops = new long[3];
+        int inner = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            if (isEmojiCore(overLoops, x, y) && (overLoops.getRGB(x, y) & 0xffffff) != 0) {
+                inner++;
+                for (int k = 0; k < 3; k++) {
+                    mean[k] += (overImage.getRGB(x, y) >> (16 - 8 * k)) & 0xff;
+                    meanLoops[k] += (overLoops.getRGB(x, y) >> (16 - 8 * k)) & 0xff;
+                }
+            }
+        }
+        int off = 0;
+        for (int k = 0; k < 3 && inner > 0; k++) off = Math.max(off, (int) Math.abs(mean[k] / inner - meanLoops[k] / inner));
+        System.out.printf("emoji under SrcOver: the %d inner pixels' mean colour %d levels off the loops'%n", inner, off);
+        if (inner == 0 || off > 12) {
+            failures.append("emoji under SrcOver: the inner pixels' mean colour ").append(off).append(" levels off the loops'; ");
+        }
         // under a gradient a colour glyph keeps its own colours (the loops' MaskFill text pipe skipped it)
         BufferedImage gradientImage = drawn(gc, scene(new Scene("emoji under a GradientPaint",
                 new java.awt.GradientPaint(0, 0, Color.BLACK, W, 0, new Color(0x2060ff)), AlphaComposite.SrcOver), font, gv));

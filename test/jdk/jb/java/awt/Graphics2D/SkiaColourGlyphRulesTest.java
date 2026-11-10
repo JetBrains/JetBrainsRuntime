@@ -65,8 +65,9 @@ public class SkiaColourGlyphRulesTest {
             return;
         }
         Font font = new Font("Helvetica Neue", Font.PLAIN, 40);
-        // the emoji as the software loops draw them: premultiplied colour and coverage
-        BufferedImage glyphs = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE);
+        // the emoji as the software loops draw them: premultiplied colour and coverage (4BYTE_ABGR_PRE: no Skia raster
+        // surface takes it, so the raster modes compare against the loops too)
+        BufferedImage glyphs = new BufferedImage(W, H, BufferedImage.TYPE_4BYTE_ABGR_PRE);
         Graphics2D gg = glyphs.createGraphics();
         gg.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         gg.setFont(font);

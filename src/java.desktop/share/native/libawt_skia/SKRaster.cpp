@@ -918,7 +918,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     paint.setAntiAlias(true);
     paint.setColor(swizzled(argb));   // extra alpha already in the colour (SunGraphics2D.validateColor)
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
-    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, extraAlpha, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
+    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, extraAlpha, true, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
                                  originX, originY, codes.data, images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
 }
 
@@ -962,7 +962,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobj
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
                        ((flags >> 8) & 1) != 0, spans.data, spans.size, flags & 0xf};
-    return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, context, JNI_FALSE,
+    return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, true, context, JNI_FALSE,
                                         ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY, chars.data, length);
 }
 
@@ -1040,7 +1040,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphsWithPaint(JNIEnv *env, jclass cl
     op.forRule(compositeRule);
     if (text.spanCount()) op.clipSpans(text.spans(), text.spanCount());
     // the luminance class of a paint's text is white's, as the GPU pipe's (its paint colour under a shader)
-    return SKBackend_DrawGlyphsOnCanvas(op.canvas(), text.paint(compositeRule), SK_ColorWHITE, text.origin[2], contexts.data, (jint) contexts.size,
+    return SKBackend_DrawGlyphsOnCanvas(op.canvas(), text.paint(compositeRule), SK_ColorWHITE, text.origin[2], true, contexts.data, (jint) contexts.size,
                                         numGlyphs, usePositions, smoothing, text.origin[0], text.origin[1], codes.data,
                                         images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
 }
@@ -1056,7 +1056,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShapedWithPaint(JNIEnv *env, jclass cl
     PaintedText text(env, originAndAlpha, paintArray, colorsArray, texture, clipArray);
     if (!text.ok) return 0;
     TextOperation lock{env, dstData, dstPixelFormat, text.clipBox(), ((flags >> 8) & 1) != 0, text.spans(), text.spanCount(), flags & 0xf};
-    return SKBackend_DrawShapedOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], context, JNI_FALSE,
+    return SKBackend_DrawShapedOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], true, context, JNI_FALSE,
                                         ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, text.origin[0], text.origin[1], chars.data, length);
 }
 
