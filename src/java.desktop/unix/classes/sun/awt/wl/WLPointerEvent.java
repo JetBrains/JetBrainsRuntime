@@ -90,16 +90,6 @@ class WLPointerEvent {
         return new WLPointerEvent();
     }
 
-    static WLPointerEvent newSyntheticAxisEvent(double xAxisVector, double yAxisVector, boolean withStopEvents) {
-        final WLPointerEvent result = new WLPointerEvent();
-        result.xAxis_hasVectorValue = xAxisVector != 0;
-        result.xAxis_vectorValue = xAxisVector;
-        result.yAxis_hasVectorValue = yAxisVector != 0;
-        result.yAxis_vectorValue = yAxisVector;
-        result.xAxis_hasStopEvent = result.yAxis_hasStopEvent = withStopEvents;
-        return result;
-    }
-
     public enum PointerButtonCodes {
         // see <linux/input-event-codes.h>
         LEFT(0x110, MouseEvent.BUTTON1),

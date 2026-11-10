@@ -422,9 +422,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        if (kineticScroller != null) {
-            kineticScroller.stop();
-        }
+        stopKineticScrolling();
         pinchSurfacePtr = (fingers == PINCH_FINGERS) ? surfacePtr : 0;
         pinchPrevTotal = 0;
         pinchDispatchedRound = 0;
@@ -470,15 +468,21 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         pinchSurfacePtr = 0;
     }
 
-    private static final WLKineticScroller kineticScroller = ENABLE_KINETIC_SCROLLING ? new WLKineticScroller() : null;
+    static boolean isKineticScrollingEnabled() {
+        return ENABLE_KINETIC_SCROLLING;
+    }
+
+    private static void stopKineticScrolling() {
+        synchronized (wlSurfaceToPeerMap) {
+            wlSurfaceToPeerMap.values().forEach(WLWindowPeer::stopKineticScrolling);
+        }
+    }
 
     private static void dispatchHoldBeginEvent() {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        if (kineticScroller != null) {
-            kineticScroller.stop();
-        }
+        stopKineticScrolling();
     }
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
@@ -524,10 +528,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         } else {
             peer.dispatchPointerEventInContext(e, newInputState);
         }
-
-        if (kineticScroller != null) {
-            kineticScroller.processPointerEvent(e, newInputState, peer);
-        }
     }
 
     private static void dispatchKeyboardKeyEvent(long serial,
@@ -543,8 +543,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
         final long timestamp = System.currentTimeMillis();
 
-        if (kineticScroller != null && id == KeyEvent.KEY_PRESSED) {
-            kineticScroller.stop();
+        if (id == KeyEvent.KEY_PRESSED) {
+            stopKineticScrolling();
         }
 
         setInputState(inputState.updatedFromKeyEvent(serial));

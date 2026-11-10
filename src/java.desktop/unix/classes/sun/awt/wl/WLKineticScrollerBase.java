@@ -28,14 +28,13 @@ package sun.awt.wl;
 
 import sun.util.logging.PlatformLogger;
 
+import javax.swing.Timer;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicReference;
 
 
-// TODO: must be per-java.awt.Component for proper handling WLKineticScrollerBase#axisEvents,
-//       not per-Peer or per-Window or smth else.
 abstract class WLKineticScrollerBase {
     // TODO: if another fling happens while a kinetic scrolling session is executing,
     //       we may want to add the current session's rest of velocity to the new one.
@@ -73,254 +72,98 @@ abstract class WLKineticScrollerBase {
     ) {
         // TODO: if axis_stop for one of the 2 axes is sent in a separate frame,
         //       it will cause unintentional drop of the current scrolling session.
-        final boolean toStopCurrentScrollingSession =
-            pointerEvent.hasAnyAxisLikeEvents()
-            || (pointerEvent.hasButtonEvent() && pointerEvent.getIsButtonPressed());
+        final boolean hasScrollDelta =
+            pointerEvent.xAxisHasVectorValue() || pointerEvent.xAxisHasSteps120Value() ||
+            pointerEvent.yAxisHasVectorValue() || pointerEvent.yAxisHasSteps120Value();
 
-        if (toStopCurrentScrollingSession) {
+        if (hasScrollDelta || pointerEvent.hasButtonEvent() || pointerEvent.hasEnterEvent() || pointerEvent.hasLeaveEvent()) {
             this.stopCurrentScrollingSession();
         }
 
-        final WLPointerEvent.AxisSourceType axisSource =
-            pointerEvent.hasAxisSourceEvent()
-            ? WLPointerEvent.AxisSourceType.recognizedOrNull(pointerEvent.getAxisSource())
-            : null;
-
-        if (axisSource != WLPointerEvent.AxisSourceType.FINGER) {
-            if (pointerEvent.hasAnyAxisLikeEvents()) {
-                this.axisEvents.reset();
-            }
+        if (pointerEvent.hasAxisSourceEvent()) {
+            this.lastAxisSource = WLPointerEvent.AxisSourceType.recognizedOrNull(pointerEvent.getAxisSource());
+        }
+        if (!pointerEvent.hasAnyAxisLikeEvents()) {
+            return false;
+        }
+        if (this.lastAxisSource != WLPointerEvent.AxisSourceType.FINGER) {
+            this.physics.clearSamples();
             return false;
         }
 
-        final double xAxisVectorValue;
-        final long xAxisTimestamp;
+        final double xAxisVectorValue = pointerEvent.xAxisHasVectorValue() ? pointerEvent.getXAxisVectorValue() : 0;
+        final double yAxisVectorValue = pointerEvent.yAxisHasVectorValue() ? pointerEvent.getYAxisVectorValue() : 0;
 
-        final double yAxisVectorValue;
-        final long yAxisTimestamp;
-
-        boolean toRememberNewAxisEvent = false;
-
-        if (pointerEvent.xAxisHasVectorValue()) {
-            toRememberNewAxisEvent = true;
-            xAxisVectorValue = pointerEvent.getXAxisVectorValue();
-            // TODO: replace with the axis event timestamp
-            xAxisTimestamp = pointerEvent.getLatestTimestamp();
-        } else {
-            xAxisVectorValue = 0;
-            // TODO: take the y axis timestamp?
-            xAxisTimestamp = 0;
+        if (xAxisVectorValue != 0 || yAxisVectorValue != 0) {
+            this.physics.addSample(
+                pointerEvent.xAxisHasVectorValue() ? pointerEvent.getXAxisVectorTimestamp() : pointerEvent.getYAxisVectorTimestamp(),
+                xAxisVectorValue,
+                yAxisVectorValue
+            );
+            return false;
         }
-        if (pointerEvent.yAxisHasVectorValue()) {
-            toRememberNewAxisEvent = true;
-            yAxisVectorValue = pointerEvent.getYAxisVectorValue();
-            // TODO: replace with the axis event timestamp
-            yAxisTimestamp = pointerEvent.getLatestTimestamp();
-        } else {
-            yAxisVectorValue = 0;
-            // TODO: take the x axis timestamp?
-            yAxisTimestamp = 0;
+        if (!pointerEvent.xAxisHasStopEvent() && !pointerEvent.yAxisHasStopEvent()) {
+            return false;
         }
+        final long flingTimestamp =
+            pointerEvent.xAxisHasStopEvent() ? pointerEvent.getXAxisStopEventTimestamp() : pointerEvent.getYAxisStopEventTimestamp();
 
-        if (toRememberNewAxisEvent) {
-            this.axisEvents.putNewAxisFrame(xAxisVectorValue, yAxisVectorValue, xAxisTimestamp, yAxisTimestamp);
-        }
+        // Kinetic scrolling should only trigger if no mouse buttons and no key modifiers except Shift are pressed
+        final boolean toStartNewScrollingSession =
+            !WLPointerEvent.PointerButtonCodes.anyMatchMask(modifiers) &&
+            (modifiers & NON_SHIFT_KEY_MODIFIERS_MASK) == 0 &&
+            this.physics.startFling(flingTimestamp);
 
-        boolean toStartNewScrollingSession = false;
-        long flingTimestamp = 0;
-
-        final int keyModifiers = modifiers & (
-            KeyEvent.SHIFT_DOWN_MASK |
-            KeyEvent.CTRL_DOWN_MASK |
-            KeyEvent.ALT_DOWN_MASK |
-            KeyEvent.ALT_GRAPH_DOWN_MASK |
-            KeyEvent.META_DOWN_MASK
-        );
-
-        // Kinetic scrolling should only trigger if no other key modifiers except Shift are pressed
-        // TODO: should it trigger if a mouse button is pressed?
-        if ((keyModifiers | KeyEvent.SHIFT_DOWN_MASK) == KeyEvent.SHIFT_DOWN_MASK) {
-            if (pointerEvent.xAxisHasStopEvent()) {
-                toStartNewScrollingSession = true;
-                flingTimestamp = Math.max(flingTimestamp, pointerEvent.getXAxisStopEventTimestamp());
-            }
-            if (pointerEvent.yAxisHasStopEvent()) {
-                toStartNewScrollingSession = true;
-                flingTimestamp = Math.max(flingTimestamp, pointerEvent.getYAxisStopEventTimestamp());
-            }
-        }
+        this.physics.clearSamples();
 
         if (toStartNewScrollingSession) {
-            this.startNewScrollingSession(flingTimestamp, modifiers, x, y, xAbsolute, yAbsolute);
-            return true;
-        } else if (pointerEvent.xAxisHasStopEvent() || pointerEvent.yAxisHasStopEvent()) {
-            this.axisEvents.reset();
+            this.startNewScrollingSession(modifiers, x, y, xAbsolute, yAbsolute);
         }
-        return false;
+        return toStartNewScrollingSession;
     }
 
+    /**
+     * @apiNote this method can be called from any thread.
+     */
     void stopCurrentScrollingSession() {
-        // TODO: make sure the implementation is thread-safe
         replaceCurrentScrollingSession(null);
     }
 
 
-    private static class AxisEventsRingBuffer {
-        public static final int CAPACITY = 64;
-        /** (i - x axis vector, i+1 - y axis vector) */
-        public final double[] xyAxisVectors = new double[2 * CAPACITY];
-        /** (i - x axis vector, i+1 - y axis vector) */
-        public final long[] vectorTimestamps = new long[2 * CAPACITY];
+    private static final int TICK_MS = 8;
+    private static final int NON_SHIFT_KEY_MODIFIERS_MASK =
+        KeyEvent.CTRL_DOWN_MASK |
+        KeyEvent.ALT_DOWN_MASK |
+        KeyEvent.ALT_GRAPH_DOWN_MASK |
+        KeyEvent.META_DOWN_MASK;
 
-
-        /** [0; CAPACITY] */
-        public int getLength() {
-            return baseLength;
-        }
-
-        /**
-         * @return an opaque value to be used with {@link #getNextIdx(int)}.
-         */
-        public int getFirstIdx() {
-            if (getLength() < 1) {
-                return -1;
-            }
-
-            final int firstBaseIdx = (nextBaseIdx - getLength() + CAPACITY) % CAPACITY;
-            assert firstBaseIdx >= 0 : "firstBaseIdx < 0";
-            assert firstBaseIdx < CAPACITY : "firstBaseIdx >= CAPACITY";
-
-            final int result = 2 * firstBaseIdx;
-            assert result >= 0 : "result < 0";
-            assert result < xyAxisVectors.length : "result >= xyAxisVectors.length";
-            assert result < vectorTimestamps.length : "result >= vectorTimestamps.length";
-            assert (result % 2) == 0 : "result must not be odd";
-
-            return result;
-        }
-
-        /**
-         * @return an opaque value to be used with this method again.
-         */
-        public int getNextIdx(final int currentIdx) {
-            final var result = (currentIdx + 2) % (2 * CAPACITY);
-            assert result >= 0 : "result < 0";
-            assert result < xyAxisVectors.length : "result >= xyAxisVectors.length";
-            assert result < vectorTimestamps.length : "result >= vectorTimestamps.length";
-
-            return result;
-        }
-
-
-        public double getXAxisVectorValue(final int idx) { return xyAxisVectors[idx]; }
-        public long getXAxisVectorTimestamp(final int idx) { return vectorTimestamps[idx]; }
-
-        public double getYAxisVectorValue(final int idx) { return xyAxisVectors[idx + 1]; }
-        public long getYAxisVectorTimestamp(final int idx) { return vectorTimestamps[idx + 1]; }
-
-
-        public void putNewAxisFrame(double xAxisValue, double yAxisValue, long xAxisTimestamp, long yAxisTimestamp) {
-            final int realIdx = nextBaseIdx * 2;
-
-            xyAxisVectors[realIdx] = xAxisValue;
-            xyAxisVectors[realIdx + 1] = yAxisValue;
-            vectorTimestamps[realIdx] = xAxisTimestamp;
-            vectorTimestamps[realIdx + 1] = yAxisTimestamp;
-
-            nextBaseIdx = (nextBaseIdx + 1) % CAPACITY;
-            baseLength = Math.min(CAPACITY, baseLength + 1);
-        }
-
-        public void reset() {
-            baseLength = 0;
-            nextBaseIdx = 0;
-        }
-
-
-        /** [0; CAPACITY) */
-        private int nextBaseIdx = 0;
-        /** [0; CAPACITY] */
-        private int baseLength = 0;
-    }
-
-    private record Vector2D(double xAxis, double yAxis) {}
-
-
-    private final AxisEventsRingBuffer axisEvents = new AxisEventsRingBuffer();
-    // TODO: replace with Swing Timer?
-    private static volatile Timer scrollingTimer = null;
-    private final AtomicReference<TimerTask> currentScrollingSession = new AtomicReference<>(null);
+    private final WLKineticScrollPhysics physics = new WLKineticScrollPhysics();
+    // axis_source is not always sent in every frame, so keep last one
+    private WLPointerEvent.AxisSourceType lastAxisSource = null;
+    private final AtomicReference<Timer> currentScrollingSession = new AtomicReference<>(null);
 
     private void startNewScrollingSession(
-        final long flingTimestamp,
         final int modifiers,
         final int x,
         final int y,
         final int xAbsolute,
         final int yAbsolute
     ) {
-        final Vector2D scrollingInitialVelocity = computeScrollingInitialVelocity(flingTimestamp);
-
-        this.axisEvents.reset();
-
-        // temporary
-        System.err.printf("startNewScrollingSession: scrollingInitialVelocity=%s.%n", scrollingInitialVelocity);
-
-        if (scrollingInitialVelocity.xAxis == 0 && scrollingInitialVelocity.yAxis == 0) {
-            this.stopCurrentScrollingSession();
-            return;
-        }
-
-        // TODO: fixate the target component for kinetic scrolling for cases when the window resizes
-        //       (WLComponentPeer.notifyMouseWheelEvent reevaluates it each time)
-
-        this.replaceCurrentScrollingSession(new TimerTask() {
-            Vector2D previousVelocity = scrollingInitialVelocity;
+        final Timer newScrollingSession = new Timer(TICK_MS, null);
+        newScrollingSession.addActionListener(new ActionListener() {
             // NB: do not use System.currentTimeMillis - it is wall time, i.e. depends on NTP steps and manual clock changes
             long previousTriggerTimestampNanos = System.nanoTime();
 
-            static final double DECELERATION_CONSTANT = 0.01;
-
             @Override
-            public void run() {
-                // TODO: change the friction model
-
-                // TODO: do not recompute x and y parts independently, otherwise
-                //       deceleration may make diagonal flings curve toward the dominant axis
-                //       as the smaller component zeroes first
-
+            public void actionPerformed(final ActionEvent event) {
                 final long currentTriggerTimestampNanos = System.nanoTime();
-                final long msElapsed = (currentTriggerTimestampNanos - this.previousTriggerTimestampNanos) / 1_000_000;
+                final double msElapsed = (currentTriggerTimestampNanos - this.previousTriggerTimestampNanos) / 1_000_000.0;
 
-                double currentVelocityX =
-                    Math.signum(previousVelocity.xAxis) * (Math.abs(previousVelocity.xAxis) - DECELERATION_CONSTANT * msElapsed);
-                double passedDistanceX = 0;
-                if (Math.signum(currentVelocityX) != Math.signum(previousVelocity.xAxis)) {
-                    currentVelocityX = 0;
-                    passedDistanceX = (previousVelocity.xAxis * previousVelocity.xAxis) / (2 * DECELERATION_CONSTANT);
-                } else {
-                    passedDistanceX = Math.abs(previousVelocity.xAxis) * msElapsed - DECELERATION_CONSTANT * msElapsed * msElapsed / 2;
-                }
-                passedDistanceX *= Math.signum(previousVelocity.xAxis);
-
-                double currentVelocityY =
-                    Math.signum(previousVelocity.yAxis) * (Math.abs(previousVelocity.yAxis) - DECELERATION_CONSTANT * msElapsed);
-                double passedDistanceY = 0;
-                if (Math.signum(currentVelocityY) != Math.signum(previousVelocity.yAxis)) {
-                    currentVelocityY = 0;
-                    passedDistanceY = (previousVelocity.yAxis * previousVelocity.yAxis) / (2 * DECELERATION_CONSTANT);
-                } else {
-                    passedDistanceY = Math.abs(previousVelocity.yAxis) * msElapsed - DECELERATION_CONSTANT * msElapsed * msElapsed / 2;
-                }
-                passedDistanceY *= Math.signum(previousVelocity.yAxis);
-
-                if (currentVelocityX == 0 && currentVelocityY == 0) {
-                    this.cancel();
-                    WLKineticScrollerBase.this.currentScrollingSession.compareAndSet(this, null);
-                }
+                WLKineticScrollerBase.this.physics.advance(msElapsed);
+                final double passedDistanceX = WLKineticScrollerBase.this.physics.getDeltaX();
+                final double passedDistanceY = WLKineticScrollerBase.this.physics.getDeltaY();
 
                 if (passedDistanceX != 0 || passedDistanceY != 0) {
-                    // TODO: unsafe to call from a non-EDT thread
                     WLKineticScrollerBase.this.notifyKineticScrollingEvent(
                         System.currentTimeMillis(),
                         x,
@@ -335,131 +178,29 @@ abstract class WLKineticScrollerBase {
                     );
                 }
 
-                this.previousTriggerTimestampNanos = currentTriggerTimestampNanos;
-                this.previousVelocity = new Vector2D(currentVelocityX, currentVelocityY);
+                final boolean toContinue = WLKineticScrollerBase.this.physics.isFlinging();
+                if (!toContinue) {
+                    newScrollingSession.stop();
+                    WLKineticScrollerBase.this.currentScrollingSession.compareAndSet(newScrollingSession, null);
+                }
 
-                // temporary
-                //System.err.println("WLKineticScrollerBase: currentVelocityX=" + currentVelocityX);
-                //System.err.println("WLKineticScrollerBase: passedDistanceX=" + passedDistanceX);
-                System.err.println("WLKineticScrollerBase: currentVelocityY=" + currentVelocityY);
-                System.err.println("WLKineticScrollerBase: passedDistanceY=" + passedDistanceY);
+                this.previousTriggerTimestampNanos = currentTriggerTimestampNanos;
             }
         });
+        this.replaceCurrentScrollingSession(newScrollingSession);
     }
 
-    private Vector2D computeScrollingInitialVelocity(final long flingTimestamp) {
-        // For now, it's just distance over the last 150ms
-        // TODO: replace with the Least Squares method or a different model
-        // TODO: decrease the initial speed depending on the amount of time passed between
-        //       the last axis event and the axis_stop event
-        // TODO: take native uint32_t timestamps overflow into account? (happens each ~50 days of uptime)
-
-        final int AXIS_FRESH_EVENTS_TIMEOUT_MS = 150;
-
-        // NB: it may be wrong to subtract milliseconds from the timestamp of wl_pointer.axis_stop events
-        //     because the protocol does not guarantee them to be counted in milliseconds
-        //     (only millisecond granularity is guaranteed).
-        final long latestTimestampToBeExpired = flingTimestamp - AXIS_FRESH_EVENTS_TIMEOUT_MS;
-
-        double xAxisDistance = 0;
-        double yAxisDistance = 0;
-
-        boolean xAxisHasExpiredVectors = false;
-        long xAxisLatestExpiredVectorTimestamp = Long.MIN_VALUE;
-
-        boolean yAxisHasExpiredVectors = false;
-        long yAxisLatestExpiredVectorTimestamp = Long.MIN_VALUE;
-
-        boolean xAxisHasFreshVectors = false;
-        double xAxisOldestFreshVector = 0;
-        long xAxisOldestFreshVectorTimestamp = Long.MAX_VALUE;
-
-        boolean yAxisHasFreshVectors = false;
-        double yAxisOldestFreshVector = 0;
-        long yAxisOldestFreshVectorTimestamp = Long.MAX_VALUE;
-
-        for (int axisEventsCount = this.axisEvents.getLength(), currentIdx = this.axisEvents.getFirstIdx();
-             axisEventsCount > 0;
-             --axisEventsCount, currentIdx = this.axisEvents.getNextIdx(currentIdx))
-        {
-            final var xAxisVector = axisEvents.getXAxisVectorValue(currentIdx);
-            final var yAxisVector = axisEvents.getYAxisVectorValue(currentIdx);
-
-            final var xAxisVectorTimestamp = axisEvents.getXAxisVectorTimestamp(currentIdx);
-            final var yAxisVectorTimestamp = axisEvents.getYAxisVectorTimestamp(currentIdx);
-
-            if (xAxisVectorTimestamp <= latestTimestampToBeExpired) {
-                xAxisHasExpiredVectors = true;
-                if (xAxisVectorTimestamp >= xAxisLatestExpiredVectorTimestamp) {
-                    xAxisLatestExpiredVectorTimestamp = xAxisVectorTimestamp;
-                }
-            } else if (xAxisVectorTimestamp <= flingTimestamp) {
-                xAxisHasFreshVectors = true;
-                xAxisDistance += xAxisVector;
-                if (xAxisVectorTimestamp < xAxisOldestFreshVectorTimestamp) {
-                    xAxisOldestFreshVector = xAxisVector;
-                    xAxisOldestFreshVectorTimestamp = xAxisVectorTimestamp;
-                }
-            }
-
-            if (yAxisVectorTimestamp <= latestTimestampToBeExpired) {
-                yAxisHasExpiredVectors = true;
-                if (yAxisVectorTimestamp >= yAxisLatestExpiredVectorTimestamp) {
-                    yAxisLatestExpiredVectorTimestamp = yAxisVectorTimestamp;
-                }
-            } else if (yAxisVectorTimestamp <= flingTimestamp) {
-                yAxisHasFreshVectors = true;
-                yAxisDistance += yAxisVector;
-                if (yAxisVectorTimestamp < yAxisOldestFreshVectorTimestamp) {
-                    yAxisOldestFreshVector = yAxisVector;
-                    yAxisOldestFreshVectorTimestamp = yAxisVectorTimestamp;
-                }
-            }
-        }
-
-        if (xAxisHasExpiredVectors && xAxisHasFreshVectors) {
-            final double xAxisOldestFreshVectorInterpolationMultiplier =
-                (double)(xAxisOldestFreshVectorTimestamp - latestTimestampToBeExpired) /
-                (xAxisOldestFreshVectorTimestamp - xAxisLatestExpiredVectorTimestamp);
-
-            final double xAxisOldestFreshVectorInterpolated = xAxisOldestFreshVector * xAxisOldestFreshVectorInterpolationMultiplier;
-            xAxisDistance -= (xAxisOldestFreshVector - xAxisOldestFreshVectorInterpolated);
-        }
-        if (yAxisHasExpiredVectors && yAxisHasFreshVectors) {
-            final double yAxisOldestFreshVectorInterpolationMultiplier =
-                (double)(yAxisOldestFreshVectorTimestamp - latestTimestampToBeExpired) /
-                (yAxisOldestFreshVectorTimestamp - yAxisLatestExpiredVectorTimestamp);
-
-            final double yAxisOldestFreshVectorInterpolated = yAxisOldestFreshVector * yAxisOldestFreshVectorInterpolationMultiplier;
-            yAxisDistance -= (yAxisOldestFreshVector - yAxisOldestFreshVectorInterpolated);
-        }
-
-        return new Vector2D(xAxisDistance / AXIS_FRESH_EVENTS_TIMEOUT_MS, yAxisDistance / AXIS_FRESH_EVENTS_TIMEOUT_MS);
-    }
-
-    private static Timer getScrollingTimer() {
-        var result = scrollingTimer;
-        if (result == null) {
-            synchronized (WLKineticScrollerBase.class) {
-                if (scrollingTimer == null) {
-                    scrollingTimer = new Timer(WLKineticScrollerBase.class.getName(), true);
-                }
-                result = scrollingTimer;
-            }
-        }
-        return result;
-    }
-
-    private void replaceCurrentScrollingSession(final TimerTask newSession) {
+    private void replaceCurrentScrollingSession(final Timer newSession) {
         final var oldScrollingSession = this.currentScrollingSession.getAndSet(newSession);
         if (oldScrollingSession != null) {
-            oldScrollingSession.cancel();
+            oldScrollingSession.stop();
         }
 
         if (newSession != null) {
-            getScrollingTimer().scheduleAtFixedRate(newSession, 15, 15);
+            newSession.start();
+            // another thread may have replaced and stopped the session before it was started
             if (this.currentScrollingSession.get() != newSession) {
-                newSession.cancel();
+                newSession.stop();
             }
         }
     }

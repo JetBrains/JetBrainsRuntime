@@ -142,13 +142,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
         this.processPointerLeaveEventIfAny(e, newInputState, awtPeerX, awtPeerY, awtAbsX, awtAbsY, awtWhen);
     }
 
-    // When:
-    //   * TODO: a key pressed
-    //   * [DONE] a mouse button pressed
-    //   * TODO: the peer disposal
-    //   * TODO: the touchpad is just touched but not pressed (the "pointer-gestures" protocol is required)
-    //   * TODO: wl_pointer.leave ? <=== may also need resetting the axes buffer
-    //   * TODO: wl_keyboard.leave ? <=== may also need resetting the axes buffer
     public void stopCurrentKineticScrollingSession() {
         if (this.kineticScroller != null) {
             this.kineticScroller.stopCurrentScrollingSession();
@@ -212,8 +205,6 @@ abstract class WLPointerEventDefaultDispatcherBase {
         final double yAxisVector,
         final int    yAxisSteps120Value
     ) {
-        // TODO: if there are several kinetic scrolling sessions, they're sharing the same MouseWheelRoundRotationsAccumulators.
-
         // Current implementation is not thread-safe
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
@@ -422,8 +413,7 @@ abstract class WLPointerEventDefaultDispatcherBase {
 
     protected final MouseWheelRoundRotationsAccumulator xAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
     protected final MouseWheelRoundRotationsAccumulator yAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
-    // TODO: introduce a way to disable the scroller
-    protected final KineticScroller kineticScroller = new KineticScroller();
+    protected final KineticScroller kineticScroller = WLToolkit.isKineticScrollingEnabled() ? new KineticScroller() : null;
 
 
     private void processPointerEnterEventIfAny(
