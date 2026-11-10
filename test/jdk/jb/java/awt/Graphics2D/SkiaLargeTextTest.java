@@ -41,12 +41,14 @@ import java.util.function.Consumer;
  *          a rotation, and a scaled graphics.
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.raster=true -Dsun.java2d.skia.text.strike=skia SkiaLargeTextTest raster
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.raster=true -Dsun.java2d.skia.text.layout=skia SkiaLargeTextTest rasterlayout
  */
 
 /*
  * @test id=gpu
  * @summary The same on the Skia GPU pipe, and through Skia's shaper (strings) and paragraph engine
- *          (attributed strings), which now take large text too: pixel-identical to the text path.
+ *          (attributed strings), which now take large text too: pixel-identical to the text path; the
+ *          shaper and the paragraph engine likewise on the raster surface (rasterlayout).
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaLargeTextTest gpu
@@ -61,7 +63,7 @@ public class SkiaLargeTextTest {
 
     public static void main(String[] args) throws Exception {
         mode = args[0];
-        if (!mode.equals("raster") && !PipelineComparison.pipelineActive("skia", GraphicsEnvironment.getLocalGraphicsEnvironment()
+        if (!mode.startsWith("raster") && !PipelineComparison.pipelineActive("skia", GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice().getDefaultConfiguration())) {
             return;
         }
@@ -102,9 +104,13 @@ public class SkiaLargeTextTest {
             }
             // the routes alike: the strings' entries, and in the layout mode Skia's shaper and paragraph engine
             int sx = (int) c.x, sy = (int) c.y;
+            long shapedBefore = counter("glyphsShapedBySkia");
             identical(failures, c, "drawString", text, render(c, g -> g.drawString(TEXT, c.x, c.y), false));
+            if (mode.endsWith("layout") && counter("glyphsShapedBySkia") == shapedBefore) {
+                failures.append(c.name).append(": the string not by Skia's shaper; ");
+            }
             identical(failures, c, "drawChars", text, render(c, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), sx, sy), false));
-            if (mode.equals("layout")) {
+            if (mode.endsWith("layout")) {
                 AttributedString as = new AttributedString(TEXT);
                 as.addAttribute(TextAttribute.FONT, c.font, 0, 2);
                 as.addAttribute(TextAttribute.FONT, c.font, 2, TEXT.length());
@@ -150,7 +156,7 @@ public class SkiaLargeTextTest {
             g.setFont(c.font);
             drawing.accept(g);
         };
-        if (mode.equals("raster")) {
+        if (mode.startsWith("raster")) {
             BufferedImage image = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE);
             Graphics2D g = image.createGraphics();
             scene.accept(g);
@@ -195,8 +201,12 @@ public class SkiaLargeTextTest {
     }
 
     static long glyphsBySkia() throws Exception {
-        String counter = mode.equals("raster") ? "rasterGlyphsBySkia" : "glyphsDrawnBySkia";
+        String counter = mode.startsWith("raster") ? "rasterGlyphsBySkia" : "glyphsDrawnBySkia";
         return (long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(counter).invoke(null);
+    }
+
+    static long counter(String name) throws Exception {
+        return (long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(name).invoke(null);
     }
 
     static long paragraphsBySkia() throws Exception {

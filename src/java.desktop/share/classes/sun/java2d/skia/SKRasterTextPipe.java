@@ -28,7 +28,9 @@ import sun.java2d.SunGraphics2D;
 import sun.java2d.loops.FontInfo;
 import sun.java2d.pipe.GlyphListPipe;
 import sun.java2d.pipe.OutlineTextRenderer;
+import sun.java2d.pipe.AttributedTextPipe;
 import sun.java2d.pipe.TextPipe;
+import java.text.AttributedCharacterIterator;
 
 /**
  * Skia's text path on a {@link SKRasterSurfaceData}, the raster twin of
@@ -41,7 +43,7 @@ import sun.java2d.pipe.TextPipe;
  * they see it whole. Text above the outline threshold is Skia's too (the loops would fill
  * Java's outlines of it), as on the GPU pipe (SKTextRenderer.largeBySkia). One instance per wrapped pipe.
  */
-final class SKRasterTextPipe extends GlyphListPipe {
+final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe {
 
     /** Glyphs drawn through Skia's raster text path, for the test of the route. */
     static final AtomicLong glyphsBySkia = new AtomicLong();
@@ -62,6 +64,11 @@ final class SKRasterTextPipe extends GlyphListPipe {
     /** As GlyphListPipe.drawString, deciding on the built list: Skia's path, or the loops' pipe with the whole call. */
     @Override
     public void drawString(SunGraphics2D sg2d, String s, double x, double y) {
+        SKDrawableStrike shaped = SKTextRenderer.shapedStrike(sg2d, s);
+        if (shaped != null) {
+            drawShaped(sg2d, shaped, s, x, y);
+            return;
+        }
         FontInfo info = sg2d.getFontInfo();
         if (!SKGlyphContexts.mayDraw(info.fontStrike)) {
             loops.drawString(sg2d, s, x, y);
@@ -98,6 +105,12 @@ final class SKRasterTextPipe extends GlyphListPipe {
 
     @Override
     public void drawChars(SunGraphics2D sg2d, char[] data, int offset, int length, int ix, int iy) {
+        String chars = SKEnvironment.textShapedBySkia() ? new String(data, offset, length) : "";
+        SKDrawableStrike shaped = SKTextRenderer.shapedStrike(sg2d, chars);
+        if (shaped != null) {
+            drawShaped(sg2d, shaped, chars, ix, iy);
+            return;
+        }
         FontInfo info = sg2d.getFontInfo();
         if (!SKGlyphContexts.mayDraw(info.fontStrike)) {
             loops.drawChars(sg2d, data, offset, length, ix, iy);
@@ -174,6 +187,59 @@ final class SKRasterTextPipe extends GlyphListPipe {
         }
         draw(sg2d, gl, runs);
     }
+
+    /**
+     * The attributed string through Skia's paragraph engine on the raster surface, in the cases the GPU pipe's
+     * route takes (SKTextRenderer.paragraphOf); false leaves it to TextLayout.
+     */
+    @Override
+    public boolean drawString(SunGraphics2D sg2d, AttributedCharacterIterator it, float x, float y) {
+        SKTextRenderer.Paragraph p = SKTextRenderer.paragraphOf(sg2d, it);
+        if (p == null) {
+            return false;
+        }
+        float[] origin = SKTextRenderer.deviceOrigin(sg2d, x, y);
+        SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
+        int runs = p.endArray().length;
+        int[] runInts = new int[5 * runs];   // colours, flags, trackings, shifts, backgrounds: one array (the natives' 14 slots)
+        System.arraycopy(p.colourArray(), 0, runInts, 0, runs);
+        System.arraycopy(p.flagArray(), 0, runInts, runs, runs);
+        System.arraycopy(p.trackingArray(), 0, runInts, 2 * runs, runs);
+        System.arraycopy(p.shiftArray(), 0, runInts, 3 * runs, runs);
+        System.arraycopy(p.backgroundArray(), 0, runInts, 4 * runs, runs);
+        int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
+        long drawn = drawParagraph(dst, dst.pixelFormat(), opFlags(sg2d, dst), origin[0], origin[1], p.string(), p.endArray(), p.contextArray(), runInts,
+                sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
+        glyphsBySkia.addAndGet(drawn);
+        java.lang.ref.Reference.reachabilityFence(p.strikes());
+        return true;
+    }
+
+    /** The string through Skia's shaper on the raster surface (SKTextRenderer.shapedStrike decided). */
+    private static void drawShaped(SunGraphics2D sg2d, SKDrawableStrike strike, String s, double x, double y) {
+        float[] origin = SKTextRenderer.deviceOrigin(sg2d, x, y);
+        SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
+        int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
+        long drawn = drawShaped(dst, dst.pixelFormat(), strike.skiaScalerContext(), opFlags(sg2d, dst), origin[0], origin[1], s,
+                sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
+        glyphsBySkia.addAndGet(drawn);
+        java.lang.ref.Reference.reachabilityFence(strike);
+    }
+
+    /** The composite rule in bits 0-3 (Src with an opaque colour as SrcOver, as for glyphs) and the mirror flag at 8. */
+    private static int opFlags(SunGraphics2D sg2d, SKRasterSurfaceData dst) {
+        int rule = sg2d.composite instanceof AlphaComposite ac ? ac.getRule() : AlphaComposite.SRC_OVER;
+        if (rule == AlphaComposite.SRC && (sg2d.eargb >>> 24) == 0xff) {
+            rule = AlphaComposite.SRC_OVER;
+        }
+        return rule | (dst.untouchedByJava() ? 1 << 8 : 0);
+    }
+
+    private static native long drawShaped(SKRasterSurfaceData dst, int dstPixelFormat, long context, int flags, float originX, float originY,
+                                          String text, int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+
+    private static native long drawParagraph(SKRasterSurfaceData dst, int dstPixelFormat, int flags, float originX, float originY, String text,
+                                             int[] runEnds, long[] contexts, int[] runInts, int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 
     private static void draw(SunGraphics2D sg2d, GlyphList gl, SKGlyphContexts.Runs runs) {
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;

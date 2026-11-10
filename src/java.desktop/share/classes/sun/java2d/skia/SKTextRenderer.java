@@ -175,7 +175,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     }
 
     /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */
-    private static float[] deviceOrigin(SunGraphics2D sg2d, double x, double y) {
+    static float[] deviceOrigin(SunGraphics2D sg2d, double x, double y) {
         if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
             double[] origin = {x, y};
             sg2d.transform.transform(origin, 0, origin, 0, 1);
@@ -282,18 +282,24 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         return new float[] {(float) (x + sg2d.transX), (float) (y + sg2d.transY)};
     }
 
+    /** The strike Skia's shaper draws the string in, or null when the string is the text path's or TextLayout's (see drawShaped). */
+    static SKDrawableStrike shapedStrike(SunGraphics2D sg2d, String s) {
+        if (!SKEnvironment.textShapedBySkia() || s.isEmpty()) {
+            return null;
+        }
+        FontInfo info = sg2d.getFontInfo();
+        SKDrawableStrike strike = skiaStrike(info.fontStrike);
+        return info.nonInvertibleTx || strike == null || !layoutLikeTextPath(sg2d, info) ? null : strike;
+    }
+
     /**
      * Shapes and draws the text through Skia's shaper when the strike is on the Skia
      * scaler (any invertible glyph transform, drawn under its part beyond the size, at any
      * size: Skia draws large glyphs itself); false leaves it to Java's layout.
      */
     private boolean drawShaped(SunGraphics2D sg2d, String s, double x, double y) {
-        if (!SKEnvironment.textShapedBySkia() || s.isEmpty()) {
-            return false;
-        }
-        FontInfo info = sg2d.getFontInfo();
-        SKDrawableStrike strike = skiaStrike(info.fontStrike);
-        if (info.nonInvertibleTx || strike == null || !layoutLikeTextPath(sg2d, info)) {
+        SKDrawableStrike strike = shapedStrike(sg2d, s);
+        if (strike == null) {
             return false;
         }
         // Whole-pixel positioning is the SkFont's: the shaper rounds the advances when
@@ -328,19 +334,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     /** Skia's shaper: the characters shaped by HarfBuzz with Skia's fallback and drawn as one text blob (oversized operations). */
     private static native void drawShapedBySkia(long pScalerContext, boolean smoothing, float originX, float originY, String text);
 
-    /**
-     * Lays out and draws the attributed string with Skia's paragraph engine when
-     * every run is a font (FONT, or FAMILY/SIZE/WEIGHT/POSTURE with KERNING/LIGATURES; the
-     * font's own kerning and ligatures applied as Java's layout applies them), a foreground
-     * colour, an underline or a strikethrough, and every run's strike is on the Skia scaler with
-     * one glyph transform beyond its size for the whole paragraph (laid out once, painted
-     * under it; the system decorations' device rows only when it is the identity); false
-     * leaves it to Java's TextLayout.
-     */
-    @Override
-    public boolean drawString(SunGraphics2D sg2d, AttributedCharacterIterator it, float x, float y) {
+    /** The attributed string as Skia's paragraph engine draws it, or null when it is TextLayout's (see drawString). */
+    static Paragraph paragraphOf(SunGraphics2D sg2d, AttributedCharacterIterator it) {
         if (!SKEnvironment.textParagraphBySkia()) {
-            return false;
+            return null;
         }
         final int begin = it.getBeginIndex(), end = it.getEndIndex();
         StringBuilder text = new StringBuilder(end - begin);
@@ -374,7 +371,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 }
                 if (a == TextAttribute.FONT) {
                     if (!(v instanceof Font f)) {
-                        return false;
+                        return null;
                     }
                     font = f;
                 } else if (a == TextAttribute.FAMILY || a == TextAttribute.SIZE || a == TextAttribute.WEIGHT || a == TextAttribute.POSTURE
@@ -383,12 +380,12 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     // the run's font (resolved below as TextLayout does: a FONT attribute outranks them)
                 } else if (a == TextAttribute.FOREGROUND) {
                     if (!(v instanceof Color c)) {
-                        return false;
+                        return null;
                     }
                     colour = c;
                 } else if (a == TextAttribute.BACKGROUND) {
                     if (!(v instanceof Color c)) {
-                        return false;
+                        return null;
                     }
                     background = c;
                 } else if (a == TextAttribute.SWAP_COLORS) {
@@ -398,7 +395,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                         continue;   // AttributeValues' "no underline"
                     }
                     if (!TextAttribute.UNDERLINE_ON.equals(v)) {
-                        return false;   // the dotted, dashed and gray styles (UNDERLINE_LOW_*) are TextLayout's
+                        return null;   // the dotted, dashed and gray styles (UNDERLINE_LOW_*) are TextLayout's
                     }
                     runFlags |= PARAGRAPH_UNDERLINE;
                     if (SKEnvironment.decorationsSnapped()) {
@@ -409,7 +406,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                         continue;
                     }
                     if (!TextAttribute.STRIKETHROUGH_ON.equals(v)) {
-                        return false;
+                        return null;
                     }
                     runFlags |= PARAGRAPH_STRIKETHROUGH;
                     if (SKEnvironment.decorationsSnapped()) {
@@ -419,7 +416,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                     // LANGUAGE, READING, INPUT_METHOD_SEGMENT and an application's own keys: TextLayout reads only
                     // TextAttributes (its fonts, decorations and bidi), so they change nothing it draws
                 } else {
-                    return false;
+                    return null;
                 }
             }
             // the run's fonts as TextLayout's StyledParagraph resolves them: a FONT as it is; with a FAMILY, the font of the
@@ -457,7 +454,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             if (swapColors) {
                 Color foreground = colour != null ? colour : sg2d.paint instanceof Color c ? c : null;
                 if (foreground == null) {
-                    return false;   // a gradient or texture paint behind the text: TextLayout's
+                    return null;   // a gradient or texture paint behind the text: TextLayout's
                 }
                 colour = background != null ? background : brightness(foreground) > 18500 ? Color.BLACK : Color.WHITE;
                 background = foreground;
@@ -472,7 +469,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 // kern, and liga with calt), anything else that changes the layout is TextLayout's
                 sun.font.AttributeValues values = sun.font.AttributeValues.fromMap(font.getAttributes());
                 if (values.anyNonDefault(UNSUPPORTED_FONT_ATTRIBUTES) || sun.font.FontAccess.getFontAccess().getFeatures(font).length > 3) {
-                    return false;   // the font's own layout attributes or JBR font features
+                    return null;   // the font's own layout attributes or JBR font features
                 }
                 subFlags |= (values.getKerning() != 0 ? PARAGRAPH_KERNING : 0) | (values.getLigatures() != 0 ? PARAGRAPH_LIGATURES : 0);
                 // tracking: em of the run's font added to each glyph's advance (StandardGlyphVector: tracking x the font's size)
@@ -480,10 +477,10 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 FontInfo info = sg2d.checkFontInfo(null, font, sg2d.getFontRenderContext());
                 SKDrawableStrike strike = skiaStrike(info.fontStrike);
                 if (info.nonInvertibleTx || strike == null) {
-                    return false;
+                    return null;
                 }
                 if (!layoutLikeTextPath(sg2d, info)) {
-                    return false;
+                    return null;
                 }
                 double[] r = remainder(info);
                 if (paragraphRemainder == null) {
@@ -491,13 +488,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 } else {
                     for (int i = 0; i < 4; i++) {
                         if (Math.abs(r[i] - paragraphRemainder[i]) > 1e-9) {
-                            return false;   // runs under different transforms (a font with its own): one paint cannot place them
+                            return null;   // runs under different transforms (a font with its own): one paint cannot place them
                         }
                     }
                 }
                 systemDecorations |= (subFlags & PARAGRAPH_SYSTEM_DECORATIONS) != 0;
                 if (systemDecorations && !strike.axisAligned()) {
-                    return false;
+                    return null;
                 }
                 shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
                 backgrounds.add(background != null ? background.getRGB() : 0);
@@ -509,7 +506,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             }
             pos = limit;
         }
-        final float[] origin = deviceOrigin(sg2d, x, y);
         final String string = text.toString();
         final int[] endArray = ends.stream().mapToInt(Integer::intValue).toArray();
         final long[] contextArray = contexts.stream().mapToLong(Long::longValue).toArray();
@@ -518,6 +514,34 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         final int[] trackingArray = trackings.stream().mapToInt(Integer::intValue).toArray();
         final int[] shiftArray = shifts.stream().mapToInt(Integer::intValue).toArray();
         final int[] backgroundArray = backgrounds.stream().mapToInt(Integer::intValue).toArray();
+        return new Paragraph(string, endArray, contextArray, colourArray, flagArray, trackingArray, shiftArray, backgroundArray, strikes);
+    }
+
+    /** A paragraph's runs: their ends in the text, scaler contexts, colours, flags, trackings, baseline shifts, backgrounds. */
+    record Paragraph(String string, int[] endArray, long[] contextArray, int[] colourArray, int[] flagArray, int[] trackingArray,
+                     int[] shiftArray, int[] backgroundArray, List<SKDrawableStrike> strikes) {}
+
+    /**
+     * Lays out and draws the attributed string with Skia's paragraph engine when
+     * every run is a font (FONT, or FAMILY/SIZE/WEIGHT/POSTURE with KERNING/LIGATURES; the
+     * font's own kerning and ligatures applied as Java's layout applies them), a foreground
+     * colour, an underline or a strikethrough, and every run's strike is on the Skia scaler with
+     * one glyph transform beyond its size for the whole paragraph (laid out once, painted
+     * under it; the system decorations' device rows only when it is the identity); false
+     * leaves it to Java's TextLayout.
+     */
+    @Override
+    public boolean drawString(SunGraphics2D sg2d, AttributedCharacterIterator it, float x, float y) {
+        final Paragraph paragraph = paragraphOf(sg2d, it);
+        if (paragraph == null) {
+            return false;
+        }
+        final float[] origin = deviceOrigin(sg2d, x, y);
+        final String string = paragraph.string();
+        final int[] endArray = paragraph.endArray(), colourArray = paragraph.colourArray(), flagArray = paragraph.flagArray(),
+                trackingArray = paragraph.trackingArray(), shiftArray = paragraph.shiftArray(), backgroundArray = paragraph.backgroundArray();
+        final long[] contextArray = paragraph.contextArray();
+        final List<SKDrawableStrike> strikes = paragraph.strikes();
         rq.lock();
         try {
             validateContext(sg2d, textComposite(sg2d));

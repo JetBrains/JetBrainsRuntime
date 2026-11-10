@@ -30,6 +30,8 @@
 // device and queue, see SKPlatform.h), one SKSDOps per Java SKSurfaceData, and
 // a single render state owned by the flusher thread.
 
+#include <functional>
+
 #include "SKPlatform.h"
 #include "SKGlyphCache.h"
 
@@ -224,6 +226,18 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
                                 jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                 const jfloat *positions);
 jlong SKBackend_GlyphsDrawnBySkia();
+// Skia's shaper and paragraph engine on any canvas (the raster surface's): the text is laid out first, then
+// canvasFor is asked for a canvas covering its device bounds (the raster caller locks that box; null skips the
+// draw), the paint as the canvas wants it and textColour Java's (the luminance class); swizzled: the paragraph's run
+// colours go onto a canvas over BGRA memory declared N32; return the glyphs drawn (the paragraph: its characters).
+typedef std::function<SkCanvas *(const SkIRect &deviceBounds)> SKCanvasForBounds;
+jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, jlong pScalerContext,
+                                   jboolean smoothing, jfloat originX, jfloat originY, const jchar *chars, jint length);
+jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, bool swizzled,
+                                      jboolean smoothing, jfloat originX, jfloat originY,
+                                      const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
+                                      const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds);
+
 // The same glyph loop on any canvas (the raster surface's): the paint as the canvas wants
 // it, textColour the text's colour as Java sees it (the cg route's luminance class); returns
 // the glyphs drawn. cacheBlobs: the runs go through the text blob cache (SKBackend_SetTextBlobCache;

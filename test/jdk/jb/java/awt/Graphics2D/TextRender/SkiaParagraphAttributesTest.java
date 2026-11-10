@@ -63,6 +63,15 @@ import java.util.function.Consumer;
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest
  * @run main/othervm -Dsun.java2d.uiScale=2 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest 2x
  */
+
+/*
+ * @test id=raster
+ * @summary The same on a Skia raster surface (a BufferedImage drawn by Skia): the paragraph engine and the shaper
+ *          draw there too, on the surface's pixels locked for the text's device bounds.
+ * @requires (os.family == "mac" | os.family == "windows")
+ * @modules java.desktop/sun.java2d.skia
+ * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia SkiaParagraphAttributesTest raster
+ */
 public class SkiaParagraphAttributesTest {
     static final String KERNED = "AVATAR Wave To Tw Yo LT";
     static final String LIGATED = "office fluffy affine fjord";
@@ -71,12 +80,15 @@ public class SkiaParagraphAttributesTest {
     static boolean fractional = true;
     /** At 2x the snapshot samples the device image in user pixels: a column moved by a device row gains or loses a sampled row. */
     static boolean hidpi;
+    /** On a Skia raster surface (a BufferedImage) instead of the GPU pipe's volatile image. */
+    static boolean raster;
     /** The graphics' paint for the text, or null for black. */
     static java.awt.Paint paint;
 
     public static void main(String[] args) throws Exception {
         // at 2x whole-pixel advances lay a system font out under the device scale: two device pixels a layout pixel
         hidpi = args.length > 0 && args[0].equals("2x");
+        raster = args.length > 0 && args[0].equals("raster");
         Font font = new Font(System.getProperty("os.name").startsWith("Mac") ? "Helvetica Neue" : "Segoe UI", Font.PLAIN, 18);
 
         expect("two plain runs (the control: the Skia pipe and its paragraph engine are on)", runs(KERNED, font), true);
@@ -229,8 +241,9 @@ public class SkiaParagraphAttributesTest {
     }
 
     static BufferedImage render(Consumer<Graphics2D> drawing) {
-        VolatileImage vi = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().createCompatibleVolatileImage(W, H);
-        Graphics2D g = vi.createGraphics();
+        VolatileImage vi = raster ? null : GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().createCompatibleVolatileImage(W, H);
+        BufferedImage bi = raster ? new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB_PRE) : null;
+        Graphics2D g = raster ? bi.createGraphics() : vi.createGraphics();
         g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, fractional ? RenderingHints.VALUE_FRACTIONALMETRICS_ON : RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
@@ -240,7 +253,7 @@ public class SkiaParagraphAttributesTest {
         }
         drawing.accept(g);
         g.dispose();
-        return vi.getSnapshot();
+        return raster ? bi : vi.getSnapshot();
     }
 
     static int differing(BufferedImage a, BufferedImage b) {

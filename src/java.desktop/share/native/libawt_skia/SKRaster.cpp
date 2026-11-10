@@ -26,6 +26,7 @@
 // whole image — Skia's raster treats unpremultiplied as premultiplied — with only the touched
 // box converted in and out per operation.
 
+#include <optional>
 #include "SKBackend.h"
 
 #include "jni_util.h"
@@ -834,6 +835,73 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
     SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
                                  originX, originY, codes.data, images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
+}
+
+// Skia's shaper and paragraph engine on the raster surface: the text is laid out first, then the operation locks the
+// clip box cut to the text's device bounds (SKBackend_DrawShapedOnCanvas / DrawParagraphOnCanvas). flags: the composite
+// rule in bits 0-3, the mirror flag at 8.
+namespace {
+struct TextOperation {
+    JNIEnv *env; jobject dstData; jint pixelFormat; SkIRect clip; bool mirrorKept; const jint *spans; size_t spanCount;
+    std::optional<Operation> op;
+    SkCanvas *operator()(const SkIRect &bounds) {
+        SkIRect box = clip;
+        if (!box.intersect(bounds)) return nullptr;
+        op.emplace(env, dstData, pixelFormat, box.fLeft, box.fTop, box.fRight, box.fBottom, Operation::kClipped, mirrorKept);
+        if (!op->ok) return nullptr;
+        if (spanCount) op->clipSpans(spans, spanCount);
+        return op->canvas();
+    }
+};
+
+SkPaint textPaint(jint argb, jint rule) {
+    SkPaint paint;
+    paint.setAntiAlias(true);
+    paint.setColor(swizzled(argb));   // extra alpha already in the colour (SunGraphics2D.validateColor)
+    paint.setBlendMode(SKBackend_BlendModeForRule(rule));
+    return paint;
+}
+} // namespace
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlong context, jint flags,
+                                                 jfloat originX, jfloat originY, jstring text, jint argb, jint clipLeftTop, jint clipRightBottom,
+                                                 jintArray spansArray)
+{
+    const jint length = text != nullptr ? env->GetStringLength(text) : 0;
+    if (length <= 0) return 0;
+    // every Java array read before the pin
+    Buffer<256, jchar> chars((size_t) length); env->GetStringRegion(text, 0, length, chars.data);
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
+                       ((flags >> 8) & 1) != 0, spans.data, spans.size};
+    return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, context, JNI_FALSE,
+                                        originX, originY, chars.data, length);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKRasterTextPipe_drawParagraph(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jint flags,
+                                                    jfloat originX, jfloat originY, jstring text, jintArray endsArray, jlongArray contextsArray,
+                                                    jintArray runIntsArray, jint argb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
+{
+    const jint length = text != nullptr ? env->GetStringLength(text) : 0;
+    const jint runs = endsArray != nullptr ? env->GetArrayLength(endsArray) : 0;
+    if (length <= 0 || runs <= 0 || contextsArray == nullptr || env->GetArrayLength(contextsArray) < runs
+        || runIntsArray == nullptr || env->GetArrayLength(runIntsArray) < 5 * runs) {
+        return 0;
+    }
+    Buffer<256, jchar> chars((size_t) length); env->GetStringRegion(text, 0, length, chars.data);
+    Buffer<16, jint> ends((size_t) runs); env->GetIntArrayRegion(endsArray, 0, runs, ends.data);
+    Buffer<16, jlong> contexts((size_t) runs); env->GetLongArrayRegion(contextsArray, 0, runs, contexts.data);
+    Buffer<80, jint> runInts((size_t) 5 * runs); env->GetIntArrayRegion(runIntsArray, 0, 5 * runs, runInts.data);
+    Buffer<64, jint> spans(spansArray != nullptr ? env->GetArrayLength(spansArray) : 0);
+    if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
+    TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
+                       ((flags >> 8) & 1) != 0, spans.data, spans.size};
+    const jint *colours = runInts.data, *runFlags = colours + runs, *trackings = runFlags + runs, *shifts = trackings + runs, *backgrounds = shifts + runs;
+    return SKBackend_DrawParagraphOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, true, JNI_FALSE, originX, originY,
+                                           chars.data, length, runs, ends.data, contexts.data, colours, runFlags, trackings, shifts, backgrounds);
 }
 
 JNIEXPORT void JNICALL

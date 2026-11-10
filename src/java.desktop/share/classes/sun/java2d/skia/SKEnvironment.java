@@ -581,17 +581,17 @@ public final class SKEnvironment {
 
     /** How many glyphs the backend has drawn through Skia's text path so far (diagnostics, tests). */
     public static long glyphsDrawnBySkia() {
-        return isSkiaEnabled() ? glyphsDrawnBySkiaNative() : 0;
+        return isSkiaEnabled() || rasterSurfaces() ? glyphsDrawnBySkiaNative() : 0;   // the raster surfaces draw through the same natives
     }
 
     /** How many glyphs Skia's shaper has produced for the backend so far (diagnostics, tests). */
     public static long glyphsShapedBySkia() {
-        return isSkiaEnabled() ? glyphsShapedBySkiaNative() : 0;
+        return isSkiaEnabled() || rasterSurfaces() ? glyphsShapedBySkiaNative() : 0;   // the raster surfaces draw through the same natives
     }
 
     /** How many attributed strings Skia's paragraph engine has laid out so far (diagnostics, tests). */
     public static long paragraphsBySkia() {
-        return isSkiaEnabled() ? paragraphsBySkiaNative() : 0;
+        return isSkiaEnabled() || rasterSurfaces() ? paragraphsBySkiaNative() : 0;   // the raster surfaces draw through the same natives
     }
 
     /**
