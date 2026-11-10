@@ -79,7 +79,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             return;
         }
         float devX, devY;
-        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_ANY_TRANSLATE) {
             double[] origin = {x + info.originX, y + info.originY};
             sg2d.transform.transform(origin, 0, origin, 0, 1);
             devX = (float) origin[0];
@@ -121,7 +121,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             return;
         }
         float devX, devY;
-        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_ANY_TRANSLATE) {
             double[] origin = {ix + info.originX, iy + info.originY};
             sg2d.transform.transform(origin, 0, origin, 0, 1);
             devX = (float) origin[0];
@@ -158,7 +158,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             return;
         }
         float devX, devY;
-        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+        if (sg2d.transformState >= SunGraphics2D.TRANSFORM_ANY_TRANSLATE) {
             double[] origin = {x, y};
             sg2d.transform.transform(origin, 0, origin, 0, 1);
             devX = (float) origin[0];
