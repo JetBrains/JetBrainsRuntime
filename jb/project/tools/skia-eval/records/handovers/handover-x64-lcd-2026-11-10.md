@@ -10,6 +10,8 @@ and tell the Mac what to integrate. The usual rules apply:
 
 ## Why on Windows (user, 2026-11-10)
 
+**Correction (same night):** the paragraph below holds for CoreText-rasterized fonts only. A `Font.createFont` font on the JDK's FreeType scaler (the IDE's bundled JetBrains Mono) gets real sub-pixel rendering on macOS too (1 699 coloured pixels on a 13-pt line); macOS keeps Java's LCD behaviour, and real LCD on the Skia routes there is an open item of the Mac (ledger §13.1). The Windows task is unchanged.
+
 macOS has no LCD text of its own. CoreGraphics has produced no colour sub-pixels since Mojave: both scalers' LCD
 masks there have equal channels. The colour seen with fractional metrics is the JDK pipes' third-pixel channel shift
 (`DrawGlyphList.c`, `rowBytesOffset`) applied to gray masks. So on macOS, LCD correctness means matching a JDK
