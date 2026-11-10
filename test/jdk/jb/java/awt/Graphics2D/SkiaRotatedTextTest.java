@@ -49,7 +49,11 @@ import java.util.function.Consumer;
  * @summary Rotated, sheared and scaled text through Skia's text path on the Skia GPU pipe, and through
  *          Skia's shaper (strings) and paragraph engine (attributed strings) — shaped in the font's own
  *          space and drawn under the strike's transform beyond its size, as the text path draws — against
- *          the same reference with the same limits, the route's counter moving for every case.
+ *          the same reference with the same limits, the route's counter moving for every case. Whole-pixel
+ *          advances along an oblique baseline or under an uneven scale are Skia's layout's too: they round in
+ *          the font's space there, on the device on the text path (accepted, measured). Underline and
+ *          strikethrough under the system convention, rotated or unevenly scaled: Java2D's rule, as TextLayout
+ *          draws it there, within a quarter pixel across the baseline.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaRotatedTextTest gpu
@@ -85,17 +89,14 @@ public class SkiaRotatedTextTest {
         for (Case c : cases) {
             if (mode.equals("paragraph") || mode.equals("shaper")) {
                 // Skia's layout: an attributed string of two font runs (the same font) through the paragraph engine, a
-                // string through the shaper; each must render exactly as the text path draws the line (a glyph vector,
-                // never shaped). Whole-pixel advances along anything but a device axis at unit length round differently
-                // in the font's space and on the device, so such text is the text path's, not the layout's
-                boolean byLayout = c.fm || c.name.startsWith("quarter turn");
+                // string through the shaper, against the reference; and against the text path (a glyph vector, never
+                // shaped): identical, except that whole-pixel advances along anything but a device axis at unit length
+                // round in the font's space there and on the device on the text path (accepted, user 2026-11-10: the
+                // layout takes such text; measured and printed)
+                boolean likeTextPath = c.fm || c.name.startsWith("quarter turn");
                 Consumer<Graphics2D> route = mode.equals("paragraph") ? g -> g.drawString(attributed(c.font), c.x, c.y) : g -> g.drawString(TEXT, c.x, c.y);
-                long shapedBefore = glyphsBySkia();
-                check(c.name + ", " + (mode.equals("paragraph") ? "attributed string" : "drawString"), c, route, false, byLayout);
-                if (!byLayout && glyphsBySkia() != shapedBefore) {
-                    throw new RuntimeException(c.name + ": Skia's layout took whole-pixel advances it would round apart from the text path");
-                }
-                identical(c, route, g -> g.drawGlyphVector(c.font.createGlyphVector(g.getFontRenderContext(), TEXT), c.x, c.y));
+                check(c.name + ", " + (mode.equals("paragraph") ? "attributed string" : "drawString"), c, route, false, true);
+                identical(c, route, g -> g.drawGlyphVector(c.font.createGlyphVector(g.getFontRenderContext(), TEXT), c.x, c.y), likeTextPath);
                 continue;
             }
             check(c.name + ", drawString", c, g -> g.drawString(TEXT, c.x, c.y));
@@ -117,7 +118,16 @@ public class SkiaRotatedTextTest {
             boolean systemDecorations = !"java2d".equals(System.getProperty("sun.java2d.skia.text.decorations"));
             if (systemDecorations) {
                 expectParagraphs("the same underline, axis-aligned (the control)", g -> g.drawString(underlined.getIterator(), 40, 150), 1);
-                expectTextLayout("an underline under a rotation (system decorations)", g -> { g.rotate(0.5, 150, 150); g.drawString(underlined.getIterator(), 40, 150); });
+                // under a rotation the system decorations' device rows mean nothing: TextLayout draws Java2D's rule, and so does the paragraph
+                expectParagraphs("an underline under a rotation (system decorations)", g -> { g.rotate(0.5, 150, 150); g.drawString(underlined.getIterator(), 40, 150); }, 1);
+                java.text.AttributedString decorated = new java.text.AttributedString(TEXT);
+                decorated.addAttribute(java.awt.font.TextAttribute.FONT, font);
+                decorated.addAttribute(java.awt.font.TextAttribute.UNDERLINE, java.awt.font.TextAttribute.UNDERLINE_ON, 0, 13);
+                decorated.addAttribute(java.awt.font.TextAttribute.STRIKETHROUGH, java.awt.font.TextAttribute.STRIKETHROUGH_ON, 9, 20);
+                for (boolean aa : new boolean[] {false, true}) {
+                    decorationsLikeTextLayout("underline and strikethrough rotated 0.5" + (aa ? ", antialiased shapes" : ""), decorated, AffineTransform.getRotateInstance(0.5, 150, 150), aa);
+                    decorationsLikeTextLayout("underline and strikethrough at a 1.5 x 0.8 scale" + (aa ? ", antialiased shapes" : ""), decorated, AffineTransform.getScaleInstance(1.5, 0.8), aa);
+                }
             }
             check("a font with its own rotation, attributed string", new Case("font rotation", AffineTransform.getRotateInstance(0.6, 60, 60),
                     font.deriveFont(AffineTransform.getRotateInstance(0.6)), 60, 60, true), g -> g.drawString(attributed(font.deriveFont(AffineTransform.getRotateInstance(0.6))), 60, 60), true);
@@ -127,6 +137,50 @@ public class SkiaRotatedTextTest {
         check("a font with its own rotation", new Case("font rotation", AffineTransform.getRotateInstance(0.6, 60, 60),
                 font.deriveFont(AffineTransform.getRotateInstance(0.6)), 60, 60, true), g -> g.drawString(TEXT, 60, 60), true);
         System.out.println("PASSED");
+    }
+
+    /**
+     * Decorations under a transform beyond the size: the paragraph against TextLayout's own drawing (fractional metrics,
+     * so the glyphs agree), the decorations isolated by subtracting each route's undecorated drawing. TextLayout strokes
+     * Java2D's line (a thin one by the 1-pixel Bresenham, a wide one normalised), the paragraph fills the band (by pixel
+     * centres without antialiasing): within a quarter pixel across the baseline, the ink within 30 % (accepted).
+     */
+    static void decorationsLikeTextLayout(String what, java.text.AttributedString as, AffineTransform t, boolean shapeAA) {
+        java.text.AttributedString plain = new java.text.AttributedString(TEXT);
+        plain.addAttribute(java.awt.font.TextAttribute.FONT, as.getIterator().getAttribute(java.awt.font.TextAttribute.FONT));
+        double[] ink = new double[2], along = new double[2];
+        double ux = t.getScaleX(), uy = t.getShearY(), n = Math.hypot(ux, uy), px = -uy / n, py = ux / n;   // across the baseline
+        for (int k = 0; k < 2; k++) {
+            BufferedImage decorated = decorationScene(as, t, shapeAA, k == 1), undecorated = decorationScene(plain, t, shapeAA, k == 1);
+            for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+                int v = Math.max(0, (undecorated.getRGB(x, y) & 0xff) - (decorated.getRGB(x, y) & 0xff));
+                ink[k] += v;
+                along[k] += v * (x * px + y * py);
+            }
+        }
+        double offset = along[0] / ink[0] - along[1] / ink[1], ratio = ink[0] / ink[1];
+        System.out.printf("%s: the paragraph's decorations against TextLayout's: %.3f px across the baseline, ink ratio %.3f%n", what, offset, ratio);
+        if (Math.abs(offset) > 0.25 || Math.abs(ratio - 1) > 0.3) {
+            throw new RuntimeException(what + String.format(": the decorations %.3f px across the baseline from TextLayout's, ink ratio %.3f", offset, ratio));
+        }
+    }
+
+    static BufferedImage decorationScene(java.text.AttributedString as, AffineTransform t, boolean shapeAA, boolean textLayout) {
+        java.awt.image.VolatileImage vi = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+                .getDefaultConfiguration().createCompatibleVolatileImage(W, H);
+        Graphics2D g = vi.createGraphics();
+        g.setColor(Color.WHITE); g.fillRect(0, 0, W, H);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, shapeAA ? RenderingHints.VALUE_ANTIALIAS_ON : RenderingHints.VALUE_ANTIALIAS_OFF);
+        g.setColor(Color.BLACK); g.transform(t);
+        if (textLayout) {
+            new java.awt.font.TextLayout(as.getIterator(), g.getFontRenderContext()).draw(g, 40, 150);
+        } else {
+            g.drawString(as.getIterator(), 40, 150);
+        }
+        g.dispose();
+        return vi.getSnapshot();
     }
 
     /** The drawing must not reach Skia's paragraph engine (the paragraph counter stays). */
@@ -169,8 +223,8 @@ public class SkiaRotatedTextTest {
         check(what, c, drawing, fontTransform, true);
     }
 
-    /** The case drawn two ways on the Skia GPU pipe: the pixels must be the same. */
-    static void identical(Case c, Consumer<Graphics2D> a, Consumer<Graphics2D> b) {
+    /** The case drawn two ways on the Skia GPU pipe: the pixels must be the same (required), or are counted (not). */
+    static void identical(Case c, Consumer<Graphics2D> a, Consumer<Graphics2D> b, boolean required) {
         BufferedImage[] out = new BufferedImage[2];
         int k = 0;
         for (Consumer<Graphics2D> drawing : java.util.List.of(a, b)) {
@@ -187,8 +241,8 @@ public class SkiaRotatedTextTest {
         }
         int differ = 0;
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (out[0].getRGB(x, y) != out[1].getRGB(x, y)) differ++;
-        System.out.println(c.name + ": " + mode + " route against the text path: " + differ + " pixels differ");
-        if (differ > 0) {
+        System.out.println(c.name + ": " + mode + " route against the text path: " + differ + " pixels differ" + (required ? "" : " (accepted: the rounding's space)"));
+        if (required && differ > 0) {
             throw new RuntimeException(c.name + ": Skia's " + mode + " route renders apart from its text path (" + differ + " pixels)");
         }
     }

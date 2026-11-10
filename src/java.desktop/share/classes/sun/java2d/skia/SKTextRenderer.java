@@ -78,7 +78,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4,
             PARAGRAPH_SYSTEM_DECORATIONS = 8,   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
             PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32,   // the run's font kerns / ligates: Java's kern, and liga with calt
-            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128;   // a box behind the run, antialiased as the graphics fills shapes
+            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128,   // a box behind the run, antialiased as the graphics fills shapes
+            PARAGRAPH_SHAPES_AA = 256;   // the graphics antialiases shapes: the system decorations under a transform, Java2D's rule
 
     /** The attributes a run's font is made of when there is no FONT attribute (TextLayout's Font.getFont). */
     private static final java.util.Set<Attribute> FONT_ATTRIBUTES = java.util.Set.of(TextAttribute.FAMILY, TextAttribute.SIZE,
@@ -125,23 +126,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
      */
     private static SKDrawableStrike skiaStrike(Object strike) {   // a FontStrike; GlyphList hands it out as Object
         return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.drawsBySkia() ? s : null;
-    }
-
-    /**
-     * Whether Skia's layout of the text lands where the text path puts it: the layout rounds whole-pixel advances in
-     * the font's own space, the text path (the Skia scaler, FreeType's rule) rounds the device advance when it is
-     * horizontal or vertical and keeps an oblique one exact. The two agree with fractional metrics and when the
-     * transform beyond the size carries the baseline onto a device axis at unit length (axis-aligned text, quarter
-     * turns); otherwise — whole pixels along an oblique baseline or under an uneven scale (measured: up to whole glyph
-     * positions apart) — the text goes to Java's layout and the text path, so the routes render alike.
-     */
-    private static boolean layoutLikeTextPath(SunGraphics2D sg2d, FontInfo info) {
-        if (sg2d.getFontRenderContext().usesFractionalMetrics()) {
-            return true;
-        }
-        double[] r = remainder(info);   // AffineTransform order: m00 m10 m01 m11; the baseline's image is (m00, m10)
-        final double eps = 1e-9;
-        return (Math.abs(Math.abs(r[0]) - 1) < eps && Math.abs(r[1]) < eps) || (Math.abs(r[0]) < eps && Math.abs(Math.abs(r[1]) - 1) < eps);
     }
 
     /** A glyph transform without its size (the scaler context's remainder), to compare the runs of a paragraph. */
@@ -289,7 +273,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         }
         FontInfo info = sg2d.getFontInfo();
         SKDrawableStrike strike = skiaStrike(info.fontStrike);
-        return info.nonInvertibleTx || strike == null || !layoutLikeTextPath(sg2d, info) ? null : strike;
+        return info.nonInvertibleTx || strike == null ? null : strike;
     }
 
     /**
@@ -354,7 +338,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         List<Integer> shifts = new ArrayList<>();
         List<Integer> backgrounds = new ArrayList<>();
         double[] paragraphRemainder = null;
-        boolean systemDecorations = false;
         for (int pos = begin; pos < end; ) {
             it.setIndex(pos);
             final int limit = it.getRunLimit();
@@ -479,9 +462,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 if (info.nonInvertibleTx || strike == null) {
                     return null;
                 }
-                if (!layoutLikeTextPath(sg2d, info)) {
-                    return null;
-                }
                 double[] r = remainder(info);
                 if (paragraphRemainder == null) {
                     paragraphRemainder = r;
@@ -492,9 +472,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                         }
                     }
                 }
-                systemDecorations |= (subFlags & PARAGRAPH_SYSTEM_DECORATIONS) != 0;
-                if (systemDecorations && !strike.axisAligned()) {
-                    return null;
+                if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON) {
+                    subFlags |= PARAGRAPH_SHAPES_AA;
                 }
                 shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
                 backgrounds.add(background != null ? background.getRGB() : 0);
