@@ -682,6 +682,37 @@ JNI_COCOA_ENTER(env);
                            0.0, ay, 0.0, dy, 1.0,
                            0.0, 0.0, ly, mx, 0.0);
 
+    // The font's own underline, as CTLineDraw draws it (CTFontGetUnderlinePosition / Thickness, per point like
+    // the metrics above): StrikeMetrics' convention, the top of the stroke below the baseline positive, which
+    // the system text decorations (sun.font.TextDecorations) place by CoreText's rule; the Skia scaler's Mac
+    // host reports the same values.
+    CTFontRef ctFont = (CTFontRef) awtfont->fFont;
+    CGFloat size = CTFontGetSize(ctFont);
+    CGFloat underlineThickness = CTFontGetUnderlineThickness(ctFont);
+    if (metrics != NULL && size > 0 && underlineThickness > 0) {
+        DECLARE_FIELD_RETURN(sjf_underlineOffset, sjc_StrikeMetrics, "underlineOffset", "F", NULL);
+        DECLARE_FIELD_RETURN(sjf_underlineThickness, sjc_StrikeMetrics, "underlineThickness", "F", NULL);
+        (*env)->SetFloatField(env, metrics, sjf_underlineOffset, (jfloat) (-CTFontGetUnderlinePosition(ctFont) / size));
+        (*env)->SetFloatField(env, metrics, sjf_underlineThickness, (jfloat) (underlineThickness / size));
+    }
+    // The strikethrough from the OS/2 table (yStrikeoutSize, yStrikeoutPosition: the bottom of the stroke above
+    // the baseline), as the Skia scaler's Mac host reports it; NaN without the table.
+    CFDataRef os2 = CGFontCopyTableForTag(cgFont, 'OS/2');
+    if (os2 != NULL) {
+        if (metrics != NULL && CFDataGetLength(os2) >= 30 && unitsPerEm > 0) {
+            const UInt8 *table = CFDataGetBytePtr(os2);
+            jfloat strikeoutSize = (jfloat) (int16_t) ((table[26] << 8) | table[27]) * scaleY;
+            jfloat strikeoutPosition = (jfloat) (int16_t) ((table[28] << 8) | table[29]) * scaleY;
+            if (strikeoutSize > 0) {
+                DECLARE_FIELD_RETURN(sjf_strikethroughOffset, sjc_StrikeMetrics, "strikethroughOffset", "F", NULL);
+                DECLARE_FIELD_RETURN(sjf_strikethroughThickness, sjc_StrikeMetrics, "strikethroughThickness", "F", NULL);
+                (*env)->SetFloatField(env, metrics, sjf_strikethroughOffset, -strikeoutPosition);
+                (*env)->SetFloatField(env, metrics, sjf_strikethroughThickness, strikeoutSize);
+            }
+        }
+        CFRelease(os2);
+    }
+
 cleanup:
     AWT_FONT_CLEANUP_FINISH;
 JNI_COCOA_EXIT(env);

@@ -56,6 +56,18 @@ import sun.font.StrikeMetrics;
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia TextDecorationMetricsTest
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia TextDecorationMetricsTest
  */
+
+/*
+ * @test id=default
+ * @key headful
+ * @summary The same with the JDK's own CoreText scaler (the default configuration), which reported no decoration
+ *          metrics: the line metrics stayed Java's nominal ones; and its values are CoreText's own
+ *          (CTFontGetUnderlinePosition / Thickness: Helvetica Neue 13 at 1.3, 0.65).
+ * @requires os.family == "mac"
+ * @modules java.desktop/sun.font:+open
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true TextDecorationMetricsTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 TextDecorationMetricsTest
+ */
 public class TextDecorationMetricsTest {
     static final int W = 400, H = 60, BASELINE = 30;
     static final String TEXT = "jumpy gyp Quick";
@@ -75,7 +87,12 @@ public class TextDecorationMetricsTest {
         getFontMetrics.setAccessible(true);
         StrikeMetrics sm = (StrikeMetrics) getFontMetrics.invoke(strike);
         if (Float.isNaN(sm.underlineOffset) || !(sm.underlineThickness > 0)) {
-            throw new RuntimeException("the Skia scaler reports no underline metrics for " + font);
+            throw new RuntimeException("the scaler reports no underline metrics for " + font);
+        }
+        // CoreText's own values for the font, which CTLineDraw draws with (CTFontGetUnderlinePosition / Thickness,
+        // measured 2026-11-10): either scaler must report them
+        if (mac && (Math.abs(sm.underlineOffset - 1.3f) > 1e-3 || Math.abs(sm.underlineThickness - 0.65f) > 1e-3)) {
+            errors.add("the strike's underline is at " + sm.underlineOffset + ", " + sm.underlineThickness + " thick; CoreText's for Helvetica Neue 13 at 1.3, 0.65 thick");
         }
         LineMetrics lm = font.getLineMetrics(TEXT, frc);
         float expectedOffset = sm.underlineOffset + sm.underlineThickness / 2;   // Java's offset is the stroke's centre

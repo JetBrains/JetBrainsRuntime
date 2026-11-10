@@ -53,6 +53,17 @@ import java.util.List;
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia TextDecorationsTest java2d
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.paragraphs=skia TextDecorationsTest paragraphs
  */
+
+/*
+ * @test id=default
+ * @key headful
+ * @summary The same with the JDK's own scaler (the default configuration of the Skia pipe, and the platform's
+ *          pipeline): the JDK's CoreText strike reported no decoration metrics, so the rule ran on Java's nominal
+ *          ones (Helvetica Neue 13: 1.08 px at 0.72, rows +2 and +3 where CoreText draws row +1).
+ * @requires os.family == "mac"
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true TextDecorationsTest java2d
+ * @run main/othervm -Dsun.java2d.uiScale=1 TextDecorationsTest java2d
+ */
 public class TextDecorationsTest {
     static final int W = 400, H = 60, BASELINE = 30;
     static final String TEXT = "jumpy gyp Quick";

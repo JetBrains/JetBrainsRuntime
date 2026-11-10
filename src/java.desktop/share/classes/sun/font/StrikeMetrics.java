@@ -64,7 +64,8 @@ public final class StrikeMetrics {
     public float maxAdvanceY;
 
     /* The font's own decoration metrics when the scaler reports them (the Skia
-     * scaler does, from the font's post and OS/2 tables), NaN otherwise; Skia's
+     * scaler does, from the font's post and OS/2 tables; the JDK's CoreText
+     * strike too, CoreText's underline and the OS/2 strikeout), NaN otherwise; Skia's
      * convention: the underline offset is the distance from the baseline to the
      * top of the stroke (positive below), the strikethrough offset the distance
      * to the bottom of the stroke (negative above). Font.getLineMetrics keeps
@@ -208,6 +209,18 @@ public final class StrikeMetrics {
         pt2D.x = maxAdvanceX; pt2D.y = maxAdvanceY;
         invTx.deltaTransform(pt2D, pt2D);
         maxAdvanceX = pt2D.x; maxAdvanceY = pt2D.y;
+
+        // the decorations are distances across the baseline, as the ascent's y (NaN stays NaN)
+        underlineOffset = acrossToUserSpace(invTx, underlineOffset, pt2D);
+        underlineThickness = acrossToUserSpace(invTx, underlineThickness, pt2D);
+        strikethroughOffset = acrossToUserSpace(invTx, strikethroughOffset, pt2D);
+        strikethroughThickness = acrossToUserSpace(invTx, strikethroughThickness, pt2D);
+    }
+
+    private static float acrossToUserSpace(AffineTransform invTx, float distance, Point2D.Float pt2D) {
+        pt2D.x = 0; pt2D.y = distance;
+        invTx.deltaTransform(pt2D, pt2D);
+        return pt2D.y;
     }
 
     public String toString() {
