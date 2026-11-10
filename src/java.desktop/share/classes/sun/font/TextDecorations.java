@@ -41,8 +41,10 @@ import java.util.List;
  * same rule, in the same arithmetic, draws the decorations of Skia's paragraphs ({@code SKBackend.cpp}, the
  * paragraph visitor), so Java's TextLayout and SkParagraph render an underlined string alike. Under any transform
  * the band is the one the rule makes at the scale across the baseline, in the text's own frame, filled through the
- * transform with antialiasing; its rows are snapped to device rows (or columns) only when the baseline runs along
- * them — CoreText's own behaviour, measured under rotations, shears and scales (2026-11-10).
+ * transform with antialiasing, from the baseline itself — under CoreText's rule a fractional baseline splits the
+ * band over two rows, as AppKit and CTLineDraw draw it while the glyphs snap to the rows — or, under Direct2D's,
+ * from the glyphs' row. CoreText's behaviour, measured under rotations, shears, scales and fractional baselines
+ * (2026-11-10).
  */
 public final class TextDecorations {
     private TextDecorations() {}
@@ -82,10 +84,16 @@ public final class TextDecorations {
     }
 
     /**
-     * The user-space offset that moves the baseline {@code y} onto the nearest device row (a baseline along the
-     * rows) or column (along the columns), where the glyphs' images are placed; 0 for a baseline across them.
+     * The user-space offset from the baseline {@code y} to where the rule places a decoration's band: under
+     * Direct2D's rule the nearest device row (a baseline along the rows) or column (along the columns), where the
+     * glyphs' images are placed; 0 for a baseline across them, and always under CoreText's — AppKit and CTLineDraw
+     * leave the band at the line's fractional baseline while the glyphs snap to the rows (measured 2026-11-10: an
+     * NSView's decorations antialiased over two rows, CTLineDraw's band moving with the baseline by quarters).
      */
     static double baselineSnap(AffineTransform at, double y) {
+        if (rule() == Rule.CORE_TEXT) {
+            return 0;
+        }
         if (at.getShearY() == 0 && at.getScaleY() != 0) {
             double device = at.getScaleY() * y + at.getTranslateY();
             return (Math.round(device) - device) / at.getScaleY();
@@ -205,9 +213,9 @@ public final class TextDecorations {
 
     /**
      * The underline's band as {@link #drawUnderline} draws it under the transform {@code at} (a layout's render
-     * context's), in user space from the baseline {@code y} on a device row: the band at the transform's scale
-     * across the baseline, without the gaps where ink crosses it (the outline holds the glyphs there anyway).
-     * On a baseline off the device rows the drawn band moves to the glyphs' row, as the glyphs' images do.
+     * context's), in user space from the baseline {@code y}: the band at the transform's scale across the baseline,
+     * without the gaps where ink crosses it (the outline holds the glyphs there anyway). Under Direct2D's rule a
+     * baseline off the device rows draws the band on the glyphs' row, as the glyphs' images.
      */
     public static Shape underlineShape(float x1, float x2, float y, float position, float thickness, AffineTransform at) {
         double scale = scaleOf(at);

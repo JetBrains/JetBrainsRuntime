@@ -40,9 +40,11 @@ import java.util.Map;
  *          Java's nominal band, a pixel above the outline's) and the paragraph route filled the font's own rectangle
  *          without antialiasing (Menlo 12's thin band under a shear drew nothing). Over the spaces between two glyphs every
  *          drawn pixel is the decoration's: mapped back to the text's frame each must lie in the band of the spaces'
- *          outline (TextLayout's outline of the spaces alone: nothing but the decoration), placed on the drawn
- *          baseline's device row when the baseline runs along the rows (the glyphs' images go there too), give or take
- *          the antialiasing's reach; and the drawn coverage must fill the band's area. Underline and strikethrough,
+ *          outline (TextLayout's outline of the spaces alone: nothing but the decoration), give or take the
+ *          antialiasing's reach; the drawn coverage must fill the band's area, and its centre be the band's within a
+ *          tenth of a device pixel. Under CoreText's rule (macOS) the band stays at a fractional baseline, split over
+ *          two rows, as AppKit and CTLineDraw draw it while the glyphs snap to the rows (the glyphs' row took it
+ *          before: 0.3 px off at baseline +0.3); under Direct2D's it goes to the glyphs' row. Underline and strikethrough,
  *          three fonts, four sizes; TextLayout.draw on the software loops (both scalers) and the raster surface, and
  *          the paragraph route of an attributed string.
  * @modules java.desktop/sun.java2d.skia
@@ -161,9 +163,13 @@ public class DecorationOutlineTest {
         g.dispose();
         BufferedImage result = vi != null ? vi.getSnapshot() : image;
 
-        // the band where the glyphs' images go: on the drawn baseline's device row when the baseline runs along the rows
+        // the band's baseline: the baseline itself under CoreText's rule; under Direct2D's the glyphs' device row when
+        // the baseline runs along the rows
         double snap = 0;
-        if (toDevice.getShearY() == 0) {
+        boolean coreText = !System.getProperty("os.name").startsWith("Windows");
+        if (coreText) {
+            // stays 0
+        } else if (toDevice.getShearY() == 0) {
             double y = toDevice.getTranslateY();
             snap = (Math.round(y) - y) / toDevice.getScaleY();
         } else if (toDevice.getScaleX() == 0) {
@@ -178,7 +184,7 @@ public class DecorationOutlineTest {
         double left = glyph + 1.5, right = left + (tl.getAdvance() - 2 * glyph - 3) / 2;
         AffineTransform inverse = toDevice.createInverse();
         Point2D.Double p = new Point2D.Double();
-        double coverage = 0;
+        double coverage = 0, moment = 0;
         int outside = 0;
         double worst = 0;
         for (int y = 0; y < SIZE; y++) for (int x = 0; x < SIZE; x++) {
@@ -188,6 +194,7 @@ public class DecorationOutlineTest {
             inverse.transform(p, p);
             if (p.x < left || p.x > right) continue;
             coverage += c;
+            moment += c * p.y;
             if (p.y < top || p.y > bottom) {
                 outside++;
                 worst = Math.max(worst, Math.max(Math.max(top - p.y, p.y - bottom), 0) * across);
@@ -198,6 +205,10 @@ public class DecorationOutlineTest {
         }
         if (outside > 0) {
             return String.format("%d drawn pixels outside the outline's band [%.3f, %.3f] (up to %.2f device pixels)", outside, band.getMinY() + snap, band.getMaxY() + snap, worst);
+        }
+        double centre = moment / coverage, expected = band.getCenterY() + snap;
+        if (Math.abs(centre - expected) * across > 0.1) {
+            return String.format("the drawn band's centre is %.3f, the outline's band's %.3f (%.2f device pixels apart)", centre, expected, Math.abs(centre - expected) * across);
         }
         double ratio = coverage / Math.abs(toDevice.getDeterminant()) / ((right - left) * band.getHeight());
         if (ratio < 0.8 || ratio > 1.2) {

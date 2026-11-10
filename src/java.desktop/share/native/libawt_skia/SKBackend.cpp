@@ -2641,7 +2641,8 @@ void fillBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, float 
               const std::vector<std::pair<float, float>> *gaps, float clearance) {
     const int left = (int) std::lround(x1), right = (int) std::lround(x2);
     if (right <= left || height <= 0) return;
-    // the band's ends are whole, its rows whole under CoreText's rule and fractional under Direct2D's; a gap's
+    // the band's ends are whole, its height whole rows under CoreText's rule (from the fractional baseline: split
+    // over two rows when it falls between) and fractional under Direct2D's; a gap's
     // edges are fractional and antialiased, as CoreText's
     SkPaint solid = paint;
     solid.setAntiAlias(true);
@@ -2725,7 +2726,10 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
         std::vector<SkPoint> devicePositions(info->positions, info->positions + info->count);
         for (SkPoint &pt : devicePositions) pt.scale(layoutScale);
         const SkPoint *positions = devicePositions.data();
-        const int baselineRow = (int) std::lround(runOrigin.fY);
+        // the band's baseline: under Direct2D's rule the glyphs' row (the rounded baseline), under CoreText's the
+        // fractional baseline itself, as AppKit and CTLineDraw leave it (TextDecorations.baselineSnap)
+        const bool directWriteRule = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
+        const float baselineRow = directWriteRule ? (float) std::lround(runOrigin.fY) : runOrigin.fY;
         const DecorationBand band = underlineBand(m.underlinePosition, m.underlineThickness);
         const float underlineTop = baselineRow + band.top;
         std::vector<std::pair<float, float>> gaps;
@@ -2760,8 +2764,8 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                         fillBand(canvas, runPaint, x1, x2, baselineRow + m.strikethroughCentre - m.strikethroughThickness / 2, m.strikethroughThickness, nullptr, 0);
                     } else {
                         const int rows = std::max(1, (int) std::ceil(m.strikethroughThickness - 1e-3f));   // AppKit's: rounded up, as the underline's
-                        const int top = baselineRow + (int) std::floor(m.strikethroughCentre - rows / 2.0f + 0.5f);   // from the glyphs' row, as TextDecorations
-                        fillBand(canvas, runPaint, x1, x2, (float) top, (float) rows, nullptr, 0);
+                        const float top = baselineRow + std::floor(m.strikethroughCentre - rows / 2.0f + 0.5f);   // from the band's baseline, as TextDecorations
+                        fillBand(canvas, runPaint, x1, x2, top, (float) rows, nullptr, 0);
                     }
                 }
             }
@@ -2772,14 +2776,17 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
 }
 
 // The scale across the baseline of the layout-to-device matrix (device pixels per layout unit perpendicular to
-// the layout's x axis), and the layout-space offset that puts a baseline running along the device rows (or
-// columns) on the nearest one: sun.font.TextDecorations.scaleAcross and baselineSnap.
+// the layout's x axis), and the layout-space offset from the baseline to the band's (under Direct2D's rule the
+// nearest device row or column when the baseline runs along them, else 0): TextDecorations.scaleAcross and baselineSnap.
 static float scaleAcross(const SkMatrix &m) {
     const float length = std::hypot(m.getScaleX(), m.getSkewY());
     return length == 0 ? 0 : std::fabs(m.getScaleX() * m.getScaleY() - m.getSkewX() * m.getSkewY()) / length;
 }
 
 static float baselineSnap(const SkMatrix &m, float y) {
+    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::CoreText) {
+        return 0;   // AppKit's and CTLineDraw's band stays at the fractional baseline
+    }
     if (m.getSkewY() == 0 && m.getScaleY() != 0) {
         const float device = m.getScaleY() * y + m.getTranslateY();
         return (std::floor(device + 0.5f) - device) / m.getScaleY();

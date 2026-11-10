@@ -156,14 +156,21 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         return 33 * c.getRed() + 53 * c.getGreen() + 14 * c.getBlue();
     }
 
-    /** The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset). */
+    /**
+     * The baseline origin in device space, as GlyphListPipe computes it (without the strike's rounding offset) but
+     * for y under a fractional translation: GlyphListPipe adds the rounded translation (transX, transY), and so the
+     * x here; the y stays exact — the glyphs' rows round it alike (Skia places horizontal glyphs on rounded rows),
+     * while the paragraph's decorations and backgrounds need it, as TextLayout's shape fills take the exact
+     * transform (the decorations at the fractional baseline, as AppKit's).
+     */
     static float[] deviceOrigin(SunGraphics2D sg2d, double x, double y) {
         if (sg2d.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
             double[] origin = {x, y};
             sg2d.transform.transform(origin, 0, origin, 0, 1);
             return new float[] {(float) origin[0], (float) origin[1]};
         }
-        return new float[] {(float) (x + sg2d.transX), (float) (y + sg2d.transY)};
+        double ty = sg2d.transformState == SunGraphics2D.TRANSFORM_ANY_TRANSLATE ? sg2d.transform.getTranslateY() : sg2d.transY;
+        return new float[] {(float) (x + sg2d.transX), (float) (y + ty)};
     }
 
     /**
