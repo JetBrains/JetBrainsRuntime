@@ -46,6 +46,9 @@
 #include "utilities/powerOfTwo.hpp"
 #include "utilities/stringUtils.hpp"
 #include "runtime/stubRoutines.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif // INCLUDE_SHENANDOAHGC
 
 // Portions of code courtesy of Clifford Click
 
@@ -727,6 +730,11 @@ void Type::Initialize_shared(Compile* current) {
   mreg2type[Op_VecY] = TypeVect::VECTY;
   mreg2type[Op_VecZ] = TypeVect::VECTZ;
 
+#if INCLUDE_SHENANDOAHGC
+  ShenandoahBarrierSetC2::init();
+#endif //INCLUDE_SHENANDOAHGC
+
+  BarrierSetC2::make_clone_type();
   LockNode::initialize_lock_Type();
   ArrayCopyNode::initialize_arraycopy_Type();
   OptoRuntime::initialize_types();
