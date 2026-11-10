@@ -167,9 +167,17 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
         return new float[] {(float) (x + sg2d.transX), (float) (y + sg2d.transY)};
     }
 
-    /** As BufferedTextPipe: with an opaque colour, Src equals SrcOver. */
+    /**
+     * The composite Skia's text routes draw with: Src as SrcOver only under an opaque paint, where the two are equal.
+     * BufferedTextPipe turns every Src into SrcOver (its glyph quads cannot take another blend, and OGL/D3D admit Src
+     * only with an opaque colour), but Src is COMP_ISCOPY whatever the paint's alpha, so a translucent colour arrives
+     * too; Skia's coverage gives Src its MaskFill meaning (dst lerped towards the colour by the glyph's coverage), as
+     * the software loops, the raster surfaces and TextLayout's decorations (shape fills) have it.
+     */
     private static Composite textComposite(SunGraphics2D sg2d) {
-        return sg2d.composite == AlphaComposite.Src ? AlphaComposite.SrcOver : sg2d.composite;
+        boolean opaque = sg2d.paintState == SunGraphics2D.PAINT_OPAQUECOLOR
+                || (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR && sg2d.paint.getTransparency() == java.awt.Transparency.OPAQUE);
+        return sg2d.composite == AlphaComposite.Src && opaque ? AlphaComposite.SrcOver : sg2d.composite;
     }
 
     @Override
@@ -464,6 +472,9 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 }
                 colour = background != null ? background : brightness(foreground) > 18500 ? Color.BLACK : Color.WHITE;
                 background = foreground;
+            }
+            if (sg2d.imageComp == sun.java2d.loops.CompositeType.Clear) {
+                colour = null;   // SunGraphics2D.validateColor: no colour under Clear (the glyphs' luminance class is black's)
             }
             if (background != null) {
                 runFlags |= PARAGRAPH_BACKGROUND | (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON ? PARAGRAPH_BACKGROUND_AA : 0);

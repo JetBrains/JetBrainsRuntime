@@ -43,8 +43,9 @@ import java.util.function.Consumer;
  *          same Skia-scaler glyphs): ink within 6 %, ink bounds within a pixel, the inked pixels'
  *          mean colour in each half within 12 levels. A run's FOREGROUND under a gradient is the
  *          run's colour, with the composite's extra alpha (as the pipe's colour: premultiplied and
- *          back), within the system underline's gap edges of TextLayout's; under Src or Clear the
- *          underline differs (TextLayout fills it as a shape, the glyphs take Src as SrcOver; accepted).
+ *          back), within the system underline's gap edges of TextLayout's, under every rule. Src with
+ *          a translucent colour is true Src (the loops' MaskFill lerp), not SrcOver as BufferedTextPipe
+ *          assumes, for the glyphs and their decorations alike; under Clear a run has no colour.
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPaintTest text
@@ -81,9 +82,9 @@ public class SkiaTextPaintTest {
             BufferedImage glyphs = PipelineComparison.rendered(gc, W, H, scene(sc, font, gv));
             long drawn = counter("glyphsDrawnBySkia") - before;
             BufferedImage reference = PipelineComparison.softwareReference(W, H, scene(sc, font, gv));
-            // a rule other than SrcOver stores translucent results, which the loops' opaque reference image does not
-            // keep: there the drawing is the pipe's before (measured identical), and the routes must agree
-            compare(failures, sc.name, glyphs, reference, drawn, sc.composite == AlphaComposite.SrcOver || ((AlphaComposite) sc.composite).getRule() == AlphaComposite.SRC_OVER);
+            // translucent Src is the loops' true Src (MaskFill's lerp), not SrcOver (BufferedTextPipe's assumption);
+            // Clear stores transparent pixels, which the loops' opaque reference image keeps as black: routes only
+            compare(failures, sc.name, glyphs, reference, drawn, ((AlphaComposite) sc.composite).getRule() != AlphaComposite.CLEAR);
             identical(failures, sc.name + ", drawString", glyphs, PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawString(TEXT, 10, 55))));
             identical(failures, sc.name + ", drawChars", glyphs, PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawChars(TEXT.toCharArray(), 0, TEXT.length(), 10, 55))));
             if (mode.equals("layout")) {
@@ -101,14 +102,12 @@ public class SkiaTextPaintTest {
                 coloured.addAttribute(TextAttribute.FONT, font);
                 coloured.addAttribute(TextAttribute.FOREGROUND, new Color(0xd02020), 0, 6);
                 coloured.addAttribute(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON, 4, 12);
-                // the underline's antialiased gap edges beside a descender may flip; under Src or Clear TextLayout fills the
-                // underline as a shape (Src replaces) while the glyphs take Src as SrcOver (BufferedTextPipe), and the
-                // paragraph draws both with the text's composite (accepted, printed)
-                boolean srcOver = ((AlphaComposite) sc.composite).getRule() == AlphaComposite.SRC_OVER;
+                // the underline's antialiased gap edges beside a descender may flip; under Clear the run's colour is none
+                // (SunGraphics2D.validateColor), its glyphs black's luminance class
                 within(failures, sc.name + ", a FOREGROUND run and an underline, against TextLayout",
                         PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> g.drawString(coloured.getIterator(), 10, 55))),
                         PipelineComparison.rendered(gc, W, H, scene(sc, font, g -> new TextLayout(coloured.getIterator(), g.getFontRenderContext()).draw(g, 10, 55))),
-                        srcOver ? UNDERLINE_GAP_EDGES : Integer.MAX_VALUE);
+                        UNDERLINE_GAP_EDGES);
             }
         }
         if (failures.length() > 0) {
