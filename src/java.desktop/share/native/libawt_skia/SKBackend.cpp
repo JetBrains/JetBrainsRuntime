@@ -1872,7 +1872,7 @@ static void drawGlyphNoCache(const GlyphInfo *ginfo, jint subimage, float x, flo
     }
 }
 
-// A grayscale glyph under a blend other than SrcOver (translucent Src, Clear, ...): the glyph image is the coverage
+// A grayscale glyph under a blend other than SrcOver (translucent Src, Clear, ...) or a paint's shader: the glyph image is the coverage
 // (a clip shader), the glyph's box filled with the paint through it, so the destination is lerped towards the blend's
 // result by the glyph's coverage — MaskFill's meaning, as the software loops have it. The atlas batches draw the image's
 // alpha as the colour's, which under Src or Clear would replace or clear the whole box.
@@ -3040,9 +3040,10 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
                              const jlong *images, const jfloat *positions) {
     REQUIRE_CANVAS_TEXT();
     SkPaint paint = SKBackend_MakePaint(false);
-    // a blend other than SrcOver (XOR is a blender, not a mode): the grayscale glyphs as coverage, one by one
+    // a blend other than SrcOver (XOR is a blender, not a mode), or a gradient or texture paint (the atlas is the batch's
+    // shader, the colour the vertices'): the grayscale glyphs as coverage, one by one
     const std::optional<SkBlendMode> blendMode = paint.asBlendMode();
-    const bool asCoverage = blendMode.has_value() && *blendMode != SkBlendMode::kSrcOver;
+    const bool asCoverage = (blendMode.has_value() && *blendMode != SkBlendMode::kSrcOver) || paint.getShader() != nullptr;
     // The buckets' caches begun for this list, grayscale and LCD. The buckets' batches
     // stay open side by side (glyphs of one paint commute under the blends used), but a
     // switch between grayscale and LCD glyphs draws the pending batches first.

@@ -48,7 +48,9 @@ import java.util.function.Consumer;
  *          assumes, for the glyphs and their decorations alike; under Clear a run has no colour.
  *          Colour glyphs (emoji) take their alpha as coverage and their own colours as the source:
  *          under translucent Src SrcOver of the glyph (the loops' rule too), under Clear their shape
- *          cleared and nothing else of their box (they replaced and cleared their whole box).
+ *          cleared and nothing else of their box (they replaced and cleared their whole box); under a
+ *          gradient they keep their own colours (Java's glyph images under a paint took the loops' MaskFill
+ *          text pipe, which skips colour glyphs).
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPaintTest text
@@ -99,12 +101,17 @@ public class SkiaTextPaintTest {
             // translucent Src is the loops' true Src (MaskFill's lerp), not SrcOver (BufferedTextPipe's assumption);
             // Clear stores transparent pixels, which the loops' opaque reference image keeps as black: routes only
             if (mode.equals("images")) {
-                // Java's glyph images: no Skia text route to count; Clear within a band (it cleared whole glyph boxes)
-                double ratio = ink(glyphs, 0xf0e8d0) / Math.max(1, ink(reference, 0xf0e8d0));
+                // Java's glyph images: no Skia text route to count; Clear within a band (it cleared whole glyph boxes);
+                // the rest against the loops as below (the paint's colours too: drawn as coverage under it)
                 boolean clear = ((AlphaComposite) sc.composite).getRule() == AlphaComposite.CLEAR;
-                System.out.printf("%s: the glyph images, ink ratio %.3f against the loops%n", sc.name, ratio);
-                if (clear ? Math.abs(ratio - 1) > 0.25 : Math.abs(ratio - 1) > 0.06) {
-                    failures.append(sc.name).append(String.format(": the glyph images' ink ratio %.3f; ", ratio));
+                if (clear) {
+                    double ratio = ink(glyphs, 0xf0e8d0) / Math.max(1, ink(reference, 0xf0e8d0));
+                    System.out.printf("%s: the glyph images, ink ratio %.3f against the loops%n", sc.name, ratio);
+                    if (Math.abs(ratio - 1) > 0.25) {
+                        failures.append(sc.name).append(String.format(": the glyph images' ink ratio %.3f; ", ratio));
+                    }
+                } else {
+                    compare(failures, sc.name + ", the glyph images", glyphs, reference, TEXT.length(), true);
                 }
                 continue;
             }
@@ -168,6 +175,22 @@ public class SkiaTextPaintTest {
             identical(failures, src.name + ", the paragraph", srcImage, PipelineComparison.rendered(gc, W, H, scene(src, font, g -> g.drawString(as.getIterator(), 10, 55))));
         }
         BufferedImage overImage = PipelineComparison.rendered(gc, W, H, scene(over, font, gv));
+        // under a gradient a colour glyph keeps its own colours (the loops' MaskFill text pipe skipped it)
+        BufferedImage gradientImage = PipelineComparison.rendered(gc, W, H, scene(new Scene("emoji under a GradientPaint",
+                new java.awt.GradientPaint(0, 0, Color.BLACK, W, 0, new Color(0x2060ff)), AlphaComposite.SrcOver), font, gv));
+        int lost = 0, cores = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            if (isEmojiCore(overImage, x, y) && (overImage.getRGB(x, y) & 0xffffff) != 0) {
+                cores++;
+                int p = overImage.getRGB(x, y), q = gradientImage.getRGB(x, y), d = 0;
+                for (int k = 0; k < 24; k += 8) d = Math.max(d, Math.abs(((p >> k) & 0xff) - ((q >> k) & 0xff)));
+                if (d > 8) lost++;
+            }
+        }
+        System.out.printf("emoji under a GradientPaint: %d of %d inner pixels off their own colours%n", lost, cores);
+        if (cores == 0 || lost > 0) {
+            failures.append("emoji under a GradientPaint: ").append(lost).append(" of ").append(cores).append(" inner pixels off their own colours; ");
+        }
         BufferedImage clearImage = PipelineComparison.rendered(gc, W, H, scene(clear, font, gv));
         int boxCleared = 0, shapeKept = 0, inked = 0;
         for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
