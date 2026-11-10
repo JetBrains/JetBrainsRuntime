@@ -2745,6 +2745,16 @@ DecorationBand underlineBand(const DecorationMetrics &m, float scale, float poin
     return {(float) top, (float) rows};
 }
 
+// the device band of a strikethrough centred centre (device pixels, negative above the baseline):
+// sun.font.TextDecorations.strikethroughBand (CoreText's rows, or Direct2D's unsnapped rectangle)
+DecorationBand strikethroughBand(float centre, float thickness) {
+    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite || thickness < 0.35f) {
+        return {centre - thickness / 2, thickness};
+    }
+    const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
+    return {-std::floor(-centre + rows / 2.0f + 0.5f + 1e-3f), (float) rows};   // a tie away from the baseline
+}
+
 // originX and paragraphTop in the paragraph's layout space, layoutScale maps it to device space
 void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, float layoutScale, const jchar *chars, jint length,
                            jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags, const SkPaint &paint,
@@ -2820,14 +2830,8 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                              kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]));
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
-                    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite) {
-                        // Direct2D's unsnapped rectangle about the centre, from the glyphs' baseline row (TextDecorations.drawStrikethrough)
-                        fillBand(canvas, runPaint, x1, x2, baselineRow + m.strikethroughCentre - m.strikethroughThickness / 2, m.strikethroughThickness, nullptr, 0);
-                    } else {
-                        const int rows = std::max(1, (int) std::ceil(m.strikethroughThickness - 1e-3f));   // AppKit's: rounded up, as the underline's
-                        const float top = baselineRow + std::floor(m.strikethroughCentre - rows / 2.0f + 0.5f);   // from the band's baseline, as TextDecorations
-                        fillBand(canvas, runPaint, x1, x2, top, (float) rows, nullptr, 0);
-                    }
+                    const DecorationBand strike = strikethroughBand(m.strikethroughCentre, m.strikethroughThickness);
+                    fillBand(canvas, runPaint, x1, x2, baselineRow + strike.top, strike.height, nullptr, 0);
                 }
             }
             i = j;
@@ -2913,7 +2917,6 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
     const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
     const std::pair<uint32_t, uint32_t> decorated = decoratedUtf8Range(chars, length);
     const std::vector<uint32_t> zeroWidth = zeroWidthUtf8(chars, length);
-    const bool directWrite = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
     paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
         if (info == nullptr || info->count <= 0) return;
         auto runOf = [&](uint32_t utf8) {
@@ -2959,17 +2962,8 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
                                    kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]) / along);
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
-                    const float centre = m.strikethroughCentre * scale, thickness = m.strikethroughThickness * scale;
-                    float top, height;
-                    if (directWrite) {
-                        top = centre - thickness / 2;
-                        height = thickness;
-                    } else {
-                        const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
-                        top = (float) std::floor(centre - rows / 2.0f + 0.5f);
-                        height = (float) rows;
-                    }
-                    fillLayoutBand(canvas, runPaint, x1, x2, baseline + top / scale, height / scale, nullptr, 0);
+                    const DecorationBand strike = strikethroughBand(m.strikethroughCentre * scale, m.strikethroughThickness * scale);
+                    fillLayoutBand(canvas, runPaint, x1, x2, baseline + strike.top / scale, strike.height / scale, nullptr, 0);
                 }
             }
             i = j;

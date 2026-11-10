@@ -28,13 +28,15 @@ import java.util.Map;
 /**
  * @test
  * @summary Under the system decorations on macOS (sun.java2d.skia.text.decorations=system, the default) a strikethrough
- *          sits where AppKit draws it: centred half the x-height above the baseline, as many whole device rows as the
- *          font's underline thickness rounds up to, the top row the rounded top of that band. Measured 2026-11-10 with
- *          NSAttributedString in an NSView at 1x and 2x backing scale (akviewprobe.swift; 32 of 32 cases over 16 fonts
- *          follow the rule). The rows expected here are AppKit's. Both scalers took the OS/2 table's strikeout instead
- *          (Lucida Grande 13: rows -6 where AppKit's is -4; Helvetica Neue 40: -12 against -11) and rounded the thickness
- *          (Menlo 12 at 2x: one row where AppKit draws two). TextLayout on the loops with the JDK scaler and the Skia
- *          scaler, and the paragraph route on a raster surface.
+ *          sits where CoreText draws it (string drawing and TextKit 2 alike): centred half the x-height above the
+ *          baseline, as many whole device rows as the font's underline thickness rounds up to, the band rounded about
+ *          that centre with a tie away from the baseline. Measured 2026-11-10 in an NSView at 1x and 2x backing scale
+ *          (aktk2probe.swift, STYLE=strike: 893 of 893 cases over 30 fonts follow the rule; TextKit 2 equals string
+ *          drawing in 900 of 900). The rows expected here are CoreText's. Both scalers took the OS/2 table's strikeout
+ *          instead (Lucida Grande 13: rows -6 where CoreText's is -4; Helvetica Neue 40: -12 against -11) and rounded
+ *          the thickness (Menlo 12 at 2x: one row where CoreText draws two); a tie rounded toward the baseline put PT
+ *          Sans and PT Serif, whose x-height is half the em, a row low (PT Sans 20 at 1x: -5 against -6). TextLayout on
+ *          the loops with the JDK scaler and the Skia scaler, and the paragraph route on a raster surface.
  * @requires os.family == "mac"
  * @run main/othervm -Djava.awt.headless=true TextStrikethroughTest layout
  * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia TextStrikethroughTest layout
@@ -44,8 +46,8 @@ public class TextStrikethroughTest {
     static final String TEXT = "x          x";
     static final int BASELINE = 100;
 
-    /** family, size, then AppKit's top row (from the baseline, negative above) and row count at 1x and at 2x. */
-    static final Object[][] APPKIT = {
+    /** family, size, then CoreText's top row (from the baseline, negative above) and row count at 1x and at 2x. */
+    static final Object[][] CORE_TEXT = {
             {"Helvetica Neue", 13, -4, 1, -8, 2},
             {"Helvetica Neue", 26, -8, 2, -15, 3},
             {"Helvetica Neue", 40, -11, 2, -23, 4},
@@ -59,20 +61,25 @@ public class TextStrikethroughTest {
             {"Lucida Grande", 13, -4, 1, -8, 2},
             {"Monaco", 12, -4, 1, -8, 2},
             {"Arial", 13, -4, 1, -8, 2},
+            // half the x-height and half the band on a pixel boundary: CoreText rounds the tie away from the baseline
+            {"PT Sans", 20, -6, 1, -11, 2},
+            {"PT Serif", 12, -4, 1, -7, 2},
+            {"PT Sans", 22, -7, 2, -13, 3},
+            {"PT Serif", 48, -14, 3, -27, 5},
     };
 
     public static void main(String[] args) {
         boolean paragraph = args[0].equals("paragraph");
         StringBuilder failures = new StringBuilder();
-        for (Object[] c : APPKIT) {
+        for (Object[] c : CORE_TEXT) {
             for (int scale = 1; scale <= 2; scale++) {
                 int top = (int) c[2 * scale], rows = (int) c[2 * scale + 1];
                 String seen = rows((String) c[0], (int) c[1], scale, paragraph);
                 String expected = top + "," + rows;
-                System.out.println(c[0] + " " + c[1] + " at " + scale + "x: " + seen + " (AppKit " + expected + ")");
+                System.out.println(c[0] + " " + c[1] + " at " + scale + "x: " + seen + " (CoreText " + expected + ")");
                 if (!seen.equals(expected)) {
                     failures.append(c[0]).append(' ').append(c[1]).append(" at ").append(scale).append("x: rows ").append(seen)
-                            .append(", AppKit's ").append(expected).append("; ");
+                            .append(", CoreText's ").append(expected).append("; ");
                 }
             }
         }

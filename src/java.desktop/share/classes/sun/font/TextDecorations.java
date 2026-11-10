@@ -239,17 +239,19 @@ public final class TextDecorations {
 
     /**
      * The device band of a strikethrough centred {@code centre} (device pixels, negative above the baseline) with
-     * {@code thickness}, as {offset of the band's top from the baseline, height}: under CoreText's rule whole rows,
-     * the thickness rounded up as the underline's, the band rounded about the centre (AppKit's, with the scalers'
-     * metrics on macOS: half the x-height, the underline's thickness; 32 of 32 cases at 1x and 2x, 2026-11-10);
-     * under Direct2D's the unsnapped rectangle about the centre.
+     * {@code thickness}, as {offset of the band's top from the baseline, height}. CoreText's (string drawing and
+     * TextKit 2 alike, 900 of 900; with the scalers' metrics on macOS, half the x-height and the underline's
+     * thickness: 893 of 893 cases over 30 fonts at 1x and 2x, 2026-11-10): whole rows, the thickness rounded up as
+     * the underline's, the band rounded about the centre with a tie away from the baseline (PT Sans 20 at 1x: rows
+     * -6..-5); a line under 0.35 device pixels unsnapped about the centre, as the underline. Direct2D's: the unsnapped
+     * rectangle about the centre.
      */
     static double[] strikethroughBand(double centre, double thickness) {
-        if (rule() == Rule.DIRECT_WRITE) {
+        if (rule() == Rule.DIRECT_WRITE || thickness < 0.35) {
             return new double[] {centre - thickness / 2, thickness};
         }
         long rows = Math.max(1, (long) Math.ceil(thickness - 1e-3));
-        return new double[] {Math.round(centre - rows / 2.0), rows};
+        return new double[] {-Math.floor(-centre + rows / 2.0 + 0.5 + 1e-3), rows};
     }
 
     /**
