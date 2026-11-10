@@ -123,6 +123,7 @@ static SkSurfaceProps surfaceProps() {
 // out after every operation, so readers always see current pixels.
 static LockFunc *gOriginalLock = nullptr;
 static std::atomic<uint64_t> gWriteLocks{0};
+static std::atomic<jlong> gMirrorInvalidations{0};   // INT_ARGB mirrors thrown away by an operation (SKEnvironment, tests)
 static thread_local uint64_t tLastWriteLock = 0;   // the serial this thread's last write lock produced
 
 static jint TrackedLock(JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *rasInfo, jint lockflags) {
@@ -227,6 +228,20 @@ RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &in
     RasterTarget *victim = &targets[0];
     for (RasterTarget &t : targets) {
         if (t.matches(ops, pixels, info, rowBytes)) { t.stamp = ++targetStamp; return &t; }
+        if (t.ops == ops && t.canvas) {
+            // a target for this surface that does not match it is stale — a surface has one pixel format — and is
+            // the one to rebind: the garbage collector moved the image's pixel array (a buffered image's pixels are a
+            // Java array), or the surface's native ops were freed and handed to a new image (another type over the
+            // same memory). A second target for the surface left this one where peekTarget finds it first, so every
+            // later operation saw another target and threw the INT_ARGB mirror away (2.2-2.8 x the loops' time on
+            // small AA rectangles, SkiaRasterFixedCostTest, whenever either happened during the run). A mirror target
+            // whose layout is unchanged keeps its mirror (it draws there; a moved array leaves it current, and a new
+            // surface's first operation invalidates it anyway: SKRasterSurfaceData starts as written by Java) and
+            // only follows the address; any other is bound afresh.
+            t.stamp = ++targetStamp;
+            if (t.viaMirror() && t.matches(ops, t.pixels, info, rowBytes)) { t.pixels = pixels; return &t; }
+            return t.bind(ops, pixels, info, rowBytes) ? &t : nullptr;
+        }
         if (t.stamp < victim->stamp) victim = &t;
     }
     victim->stamp = ++targetStamp;
@@ -264,7 +279,10 @@ struct Operation {
         target = targetFor(ops, ras.rasBase, infoFor(pixelFormat, width, height), (size_t) ras.scanStride);
         if (target == nullptr) return;
         if (target->viaMirror()) {
-            if (!(keep && target == known)) target->invalidateMirror();
+            if (!(keep && target == known)) {
+                target->invalidateMirror();
+                gMirrorInvalidations.fetch_add(1, std::memory_order_relaxed);
+            }
             target->prepare(box);
         }
         if (mode == kClipped) {
@@ -1083,6 +1101,12 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawParagraphWithPaint(JNIEnv *env, jclass
     return SKBackend_DrawParagraphOnCanvas(std::ref(lock), text.paint(flags & 0xf), SK_ColorWHITE, text.origin[2], true, JNI_FALSE,
                                            ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, text.origin[0], text.origin[1],
                                            chars.data, length, runs, ends.data, contexts.data, colours, runFlags, trackings, shifts, backgrounds);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_rasterMirrorInvalidationsNative(JNIEnv *env, jclass clazz)
+{
+    return gMirrorInvalidations.load(std::memory_order_relaxed);
 }
 
 JNIEXPORT void JNICALL

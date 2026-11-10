@@ -446,6 +446,16 @@ public final class SKEnvironment {
         return SKRasterShapePipe.texturesBySkia.get();
     }
 
+    /**
+     * INT_ARGB raster surfaces' premultiplied mirrors an operation threw away (a Java-side or foreign write since the
+     * thread's last operation, or another target), for tests.
+     */
+    public static long rasterMirrorInvalidations() {
+        return rasterSurfaces() ? rasterMirrorInvalidationsNative() : 0;
+    }
+
+    private static native long rasterMirrorInvalidationsNative();
+
     /** Strokes on raster surfaces that Skia's stroker built (not Java's outline), for tests. */
     public static long rasterStrokesBySkia() {
         return SKRasterShapePipe.strokesBySkia.get();
