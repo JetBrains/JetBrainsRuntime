@@ -46,6 +46,9 @@ import java.util.function.Consumer;
  *          back), within the system underline's gap edges of TextLayout's, under every rule. Src with
  *          a translucent colour is true Src (the loops' MaskFill lerp), not SrcOver as BufferedTextPipe
  *          assumes, for the glyphs and their decorations alike; under Clear a run has no colour.
+ *          Colour glyphs (emoji) take their alpha as coverage and their own colours as the source:
+ *          under translucent Src SrcOver of the glyph (the loops' rule too), under Clear their shape
+ *          cleared and nothing else of their box (they replaced and cleared their whole box).
  * @requires (os.family == "mac" | os.family == "windows")
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia SkiaTextPaintTest text
@@ -131,10 +134,66 @@ public class SkiaTextPaintTest {
                         UNDERLINE_GAP_EDGES);
             }
         }
+        emoji(gc, font, failures);
         if (failures.length() > 0) {
             throw new RuntimeException(failures.toString());
         }
         System.out.println("PASSED");
+    }
+
+    static final String EMOJI = "A\uD83D\uDE00\uD83D\uDC4D B";
+
+    /**
+     * Colour glyphs take their alpha as coverage and their own colours as the source: under translucent Src they draw
+     * as SrcOver of the glyph (the loops' rule too), under Clear their shape is cleared and nothing else of their box.
+     */
+    static void emoji(GraphicsConfiguration gc, Font font, StringBuilder failures) {
+        Scene src = new Scene("emoji under Src, a translucent colour", new Color(0x80, 0x20, 0xa0, 0x90), AlphaComposite.Src);
+        Scene clear = new Scene("emoji under Clear", Color.BLACK, AlphaComposite.Clear);
+        Scene over = new Scene("emoji under SrcOver", Color.BLACK, AlphaComposite.SrcOver);
+        Consumer<Graphics2D> gv = g -> g.drawGlyphVector(g.getFont().createGlyphVector(g.getFontRenderContext(), EMOJI), 10, 55);
+        BufferedImage srcImage = PipelineComparison.rendered(gc, W, H, scene(src, font, gv));
+        BufferedImage srcLoops = PipelineComparison.softwareReference(W, H, scene(src, font, gv));
+        double ratio = ink(srcImage, 0xf0e8d0) / Math.max(1, ink(srcLoops, 0xf0e8d0));
+        System.out.printf("%s: ink ratio %.3f against the loops%n", src.name, ratio);
+        if (Math.abs(ratio - 1) > 0.06) {
+            failures.append(src.name).append(String.format(": ink ratio %.3f against the loops; ", ratio));
+        }
+        if (!mode.equals("images")) {
+            identical(failures, src.name + ", drawString", srcImage, PipelineComparison.rendered(gc, W, H, scene(src, font, g -> g.drawString(EMOJI, 10, 55))));
+        }
+        if (mode.equals("layout")) {
+            AttributedString as = new AttributedString(EMOJI);
+            as.addAttribute(TextAttribute.FONT, font);
+            identical(failures, src.name + ", the paragraph", srcImage, PipelineComparison.rendered(gc, W, H, scene(src, font, g -> g.drawString(as.getIterator(), 10, 55))));
+        }
+        BufferedImage overImage = PipelineComparison.rendered(gc, W, H, scene(over, font, gv));
+        BufferedImage clearImage = PipelineComparison.rendered(gc, W, H, scene(clear, font, gv));
+        int boxCleared = 0, shapeKept = 0, inked = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            int o = overImage.getRGB(x, y) & 0xffffff, c = clearImage.getRGB(x, y) & 0xffffff;
+            if (o == 0xf0e8d0 && c != 0xf0e8d0) boxCleared++;              // nothing drawn there, yet changed
+            if ((o == 0x000000 || isEmojiCore(overImage, x, y)) && c == 0xf0e8d0) shapeKept++;   // fully inked, yet untouched
+            if (o != 0xf0e8d0) inked++;
+        }
+        System.out.printf("%s: %d pixels changed outside the glyphs, %d inked pixels untouched (of %d inked)%n", clear.name, boxCleared, shapeKept, inked);
+        if (boxCleared > 0) {
+            failures.append(clear.name).append(": ").append(boxCleared).append(" pixels outside the glyphs cleared; ");
+        }
+        if (shapeKept > 0) {
+            failures.append(clear.name).append(": ").append(shapeKept).append(" inked pixels not cleared; ");
+        }
+    }
+
+    /** An emoji pixel well inside its ink: far from the background in colour, with its eight neighbours inked too. */
+    static boolean isEmojiCore(BufferedImage image, int x, int y) {
+        if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) return false;
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+            int p = image.getRGB(x + dx, y + dy) & 0xffffff, d = 0;
+            for (int s = 0; s < 24; s += 8) d += Math.abs(((p >> s) & 0xff) - ((0xf0e8d0 >> s) & 0xff));
+            if (d < 200) return false;
+        }
+        return true;
     }
 
     static Consumer<Graphics2D> scene(Scene sc, Font font, Consumer<Graphics2D> text) {

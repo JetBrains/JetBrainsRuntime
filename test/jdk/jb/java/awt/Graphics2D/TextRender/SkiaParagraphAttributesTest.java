@@ -59,7 +59,8 @@ import java.util.function.Consumer;
  *          NUMERIC_SHAPING (Arabic, contextual), JUSTIFICATION, and a FONT's own RUN_DIRECTION ignored,
  *          pixel-identical; overrides reverse the text alike but resolve the neutrals beside them by
  *          Unicode's controls, not Java's explicit levels (accepted, printed). Plain Hebrew-first and
- *          Arabic strings through the shaper in Java's base direction, pixel-identical. Plain drawString, drawChars
+ *          Arabic strings through the shaper in Java's base direction, pixel-identical. Emoji in a bold
+ *          run (a regular colour face falling back) drawn, pixel-identical. Plain drawString, drawChars
  *          and drawBytes in a font with layout attributes (kerning, ligatures, tracking, underline,
  *          strikethrough, a colour, a background, a superscript) are the paragraph's too, as
  *          TextLayout(String, Font) draws them; a font with WIDTH stays TextLayout's.
@@ -213,6 +214,9 @@ public class SkiaParagraphAttributesTest {
         expect("a FONT carrying RUN_DIRECTION_RTL (ignored, as by TextLayout)", runs(bidiMixed, font.deriveFont(Map.of(TextAttribute.RUN_DIRECTION, TextAttribute.RUN_DIRECTION_RTL))), true);
         expectShaped("a Hebrew-first string (the shaper)", font, hebrewFirst);
         expectShaped("an Arabic string with digits (the shaper)", font, "\u0627\u0644\u0633\u0639\u0631 89 Price");
+        // a bold run falling back to a regular colour face: drawn in that face's own style, as the text path draws it
+        // (SkParagraph emboldened it, and an emboldened bitmap glyph came out empty)
+        expect("emoji in a bold run", runs("Bold \uD83D\uDE00\uD83D\uDC4D text", font.deriveFont(Font.BOLD)), true);
         // another layout attribute on the run's font: not the paragraph's (yet), and still drawn as TextLayout draws it
         expect("a font carrying WIDTH", runs(KERNED, font.deriveFont(Map.of(TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED))), false);
         expect("WIDTH next to a FONT (ignored, as by TextLayout)", withAttribute(KERNED, font, TextAttribute.WIDTH, TextAttribute.WIDTH_EXTENDED), true);

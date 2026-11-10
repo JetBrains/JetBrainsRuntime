@@ -62,6 +62,8 @@
 #include "include/core/SkPathUtils.h"
 #include "include/core/SkSpan.h"
 #include "include/core/SkTextBlob.h"
+#include "include/core/SkMaskFilter.h"
+#include "include/core/SkBlurTypes.h"
 #include "modules/skshaper/include/SkShaper.h"
 #include "modules/skshaper/include/SkShaper_harfbuzz.h"
 #include "modules/skshaper/include/SkShaper_skunicode.h"
@@ -1918,6 +1920,24 @@ static void drawLcdGlyphNoCache(const GlyphInfo *ginfo, jint subimage, jint rowB
     }
 }
 
+// Colour glyphs (emoji) under Src or Clear: their alpha is the coverage and their own colours the source, as for
+// the outline glyphs (whose masks Skia already takes as coverage) — so Src is SrcOver of the glyph at the composite's
+// extra alpha (the text colour does not tint them) and Clear clears the glyph's shape (DstOut, opaque); drawn as an
+// image under Src or Clear, a colour glyph replaced or cleared its whole box. Other rules keep Skia's image blend.
+static bool splitsColourGlyphs(const SkPaint &paint) {
+    const std::optional<SkBlendMode> mode = paint.asBlendMode();
+    return mode.has_value() && (*mode == SkBlendMode::kSrc || *mode == SkBlendMode::kClear);
+}
+
+static SkPaint colourGlyphPaint(const SkPaint &paint, float extraAlpha) {
+    SkPaint p = paint;
+    p.setShader(nullptr);
+    const bool clear = paint.asBlendMode() == SkBlendMode::kClear;
+    p.setBlendMode(clear ? SkBlendMode::kDstOut : SkBlendMode::kSrcOver);
+    p.setColor4f(SkColor4f{1, 1, 1, clear ? 1.0f : extraAlpha});
+    return p;
+}
+
 static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }    // drawn through the canvas, not batched: every pending batch first, of any kind
     SkPixmap pm(SkImageInfo::Make(ginfo->width, ginfo->height, kBGRA_8888_SkColorType, kPremul_SkAlphaType),
@@ -1926,6 +1946,9 @@ static void drawColorGlyph(const GlyphInfo *ginfo, float x, float y) {
         SkPaint p;
         applyComposite(p, false);
         p.setAlphaf(g.extraAlpha);
+        if (splitsColourGlyphs(p)) {
+            p = colourGlyphPaint(p, g.extraAlpha);   // the glyph's alpha as coverage (see colourGlyphPaint)
+        }
         g.canvas->drawImage(img, x, y, SkSamplingOptions(SkFilterMode::kNearest), &p);
     }
 }
@@ -2040,7 +2063,87 @@ void SKBackend_TextBlobCacheStats(jlong *hits, jlong *misses) {
     *misses = gTextBlobs.misses;
 }
 
-jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
+// A run of glyphs under the paint, the colour glyphs (no outline: the scaler's rule) apart under Src or Clear
+static void drawGlyphsSplit(SkCanvas *canvas, const SkGlyphID *glyphs, const SkPoint *points, size_t count, SkPoint origin,
+                            const SkFont &font, const SkPaint &paint, float extraAlpha) {
+    if (!splitsColourGlyphs(paint)) {
+        canvas->drawGlyphs(SkSpan<const SkGlyphID>(glyphs, count), SkSpan<const SkPoint>(points, count), origin, font, paint);
+        return;
+    }
+    std::vector<SkGlyphID> outlineIds, colourIds;
+    std::vector<SkPoint> outlinePoints, colourPoints;
+    for (size_t i = 0; i < count; i++) {
+        const bool colour = !font.getPath(glyphs[i]).has_value();
+        (colour ? colourIds : outlineIds).push_back(glyphs[i]);
+        (colour ? colourPoints : outlinePoints).push_back(points[i]);
+    }
+    if (!outlineIds.empty()) {
+        canvas->drawGlyphs(SkSpan<const SkGlyphID>(outlineIds.data(), outlineIds.size()), SkSpan<const SkPoint>(outlinePoints.data(), outlinePoints.size()), origin, font, paint);
+    }
+    if (!colourIds.empty()) {
+        canvas->drawGlyphs(SkSpan<const SkGlyphID>(colourIds.data(), colourIds.size()), SkSpan<const SkPoint>(colourPoints.data(), colourPoints.size()), origin, font,
+                           colourGlyphPaint(paint, extraAlpha));
+    }
+}
+
+// A text blob likewise (the shaper's, the paragraph's runs)
+static void drawTextBlobSplit(SkCanvas *canvas, const sk_sp<SkTextBlob> &blob, float x, float y, const SkPaint &paint, float extraAlpha) {
+    if (!splitsColourGlyphs(paint)) {
+        canvas->drawTextBlob(blob, x, y, paint);
+        return;
+    }
+    SkTextBlob::Iter it(*blob);
+    SkTextBlob::Iter::ExperimentalRun run;
+    while (it.experimentalNext(&run)) {
+        if (run.positions == nullptr) {
+            canvas->drawTextBlob(blob, x, y, paint);   // a run without full positions (not built by the shaper or the paragraph)
+            return;
+        }
+    }
+    SkTextBlob::Iter again(*blob);
+    while (again.experimentalNext(&run)) {
+        drawGlyphsSplit(canvas, run.glyphs, run.positions, (size_t) run.count, {x, y}, run.font, paint, extraAlpha);
+    }
+}
+
+namespace {
+// The paragraph painted onto a canvas with its text blobs split as above (SkParagraph's own canvas painter otherwise)
+struct SplittingParagraphPainter final : skia::textlayout::ParagraphPainter {
+    SkCanvas *canvas;
+    float extraAlpha;
+    SplittingParagraphPainter(SkCanvas *c, float ea) : canvas(c), extraAlpha(ea) {}
+    static SkPaint paintOf(const SkPaintOrID &p) { const SkPaint *paint = std::get_if<SkPaint>(&p); return paint ? *paint : SkPaint(); }
+    void drawTextBlob(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, const SkPaintOrID &paint) override {
+        drawTextBlobSplit(canvas, blob, x, y, paintOf(paint), extraAlpha);
+    }
+    void drawTextShadow(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, SkColor color, SkScalar blurSigma) override {
+        SkPaint p;
+        p.setColor(color);
+        if (blurSigma > 0) p.setMaskFilter(SkMaskFilter::MakeBlur(kNormal_SkBlurStyle, blurSigma, false));
+        canvas->drawTextBlob(blob, x, y, p);
+    }
+    void drawRect(const SkRect &rect, const SkPaintOrID &paint) override { canvas->drawRect(rect, paintOf(paint)); }
+    void drawFilledRect(const SkRect &rect, const DecorationStyle &style) override { canvas->drawRect(rect, style.skPaint()); }
+    void drawPath(const SkPath &path, const DecorationStyle &style) override { canvas->drawPath(path, style.skPaint()); }
+    void drawLine(SkScalar x0, SkScalar y0, SkScalar x1, SkScalar y1, const DecorationStyle &style) override { canvas->drawLine(x0, y0, x1, y1, style.skPaint()); }
+    void clipRect(const SkRect &rect) override { canvas->clipRect(rect); }
+    void translate(SkScalar dx, SkScalar dy) override { canvas->translate(dx, dy); }
+    void save() override { canvas->save(); }
+    void restore() override { canvas->restore(); }
+};
+} // namespace
+
+// a paragraph onto the canvas: SkParagraph's own painter, or the splitting one under Src or Clear
+static void paintParagraph(skia::textlayout::Paragraph &paragraph, SkCanvas *canvas, float x, float y, const SkPaint &paint, float extraAlpha) {
+    if (!splitsColourGlyphs(paint)) {
+        paragraph.paint(canvas, x, y);
+        return;
+    }
+    SplittingParagraphPainter painter(canvas, extraAlpha);
+    paragraph.paint(&painter, x, y);
+}
+
+jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour, float extraAlpha,
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                    const jfloat *positions, bool cacheBlobs) {
@@ -2055,7 +2158,7 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
         SkMatrix unused;
         transformed = contexts[c] != 0 && SKFontScaler_Remainder(contexts[c], &unused);
     }
-    cacheBlobs = cacheBlobs && !transformed && gTextBlobs.capacity > 0;
+    cacheBlobs = cacheBlobs && !transformed && gTextBlobs.capacity > 0 && !splitsColourGlyphs(paint);
     // runs of glyphs sharing a font (the strike's own, or a platform fallback font) and a remainder
     std::vector<SkGlyphID> ids;
     std::vector<SkPoint> points;
@@ -2088,11 +2191,11 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
                 inverse.mapPoints(SkSpan<SkPoint>(points.data(), points.size()));
                 canvas->save();
                 canvas->concat(runRemainder);
-                canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+                drawGlyphsSplit(canvas, ids.data(), points.data(), ids.size(), {0, 0}, runFont, paint, extraAlpha);
                 canvas->restore();
             }
         } else {
-            canvas->drawGlyphs(SkSpan<const SkGlyphID>(ids.data(), ids.size()), SkSpan<const SkPoint>(points.data(), points.size()), {0, 0}, runFont, paint);
+            drawGlyphsSplit(canvas, ids.data(), points.data(), ids.size(), {0, 0}, runFont, paint, extraAlpha);
         }
         drawn += (jlong) ids.size();
         ids.clear();
@@ -2181,7 +2284,7 @@ void SKBackend_DrawGlyphsBySkia(const jlong *contexts, jint contextCount, jint n
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this list stay in order
     SkPaint paint = SKBackend_MakePaint(true);
-    jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), contexts, contextCount, numGlyphs, usePositions, smoothing,
+    jlong drawn = SKBackend_DrawGlyphsOnCanvas(g.canvas, paint, paint.getColor(), g.extraAlpha, contexts, contextCount, numGlyphs, usePositions, smoothing,
                                                originX, originY, codes, images, positions, true);
     gGlyphsDrawnBySkia.fetch_add(drawn, std::memory_order_relaxed);
 }
@@ -2279,11 +2382,11 @@ void SKBackend_DrawShapedBySkia(jlong pScalerContext, jboolean smoothing, jboole
     // drawn through the canvas: every pending batch first, of any kind
     { SKDrawCauseScope cause(SK_COUNT_MESH_DRAWS_AT_DIRECT); flushAllBatches(); }     // glyph-image draws queued before this text stay in order
     const SkPaint paint = SKBackend_MakePaint(true);
-    SKBackend_DrawShapedOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(),
+    SKBackend_DrawShapedOnCanvas([](const SkIRect &) { return g.canvas; }, paint, paint.getColor(), g.extraAlpha,
                                  pScalerContext, smoothing, rightToLeft, originX, originY, chars, length);
 }
 
-jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, jlong pScalerContext,
+jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, float extraAlpha, jlong pScalerContext,
                                    jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length) {
     std::lock_guard<std::mutex> lock(gTextLayoutMutex);
     SkFont font;
@@ -2344,13 +2447,13 @@ jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkP
         canvas->translate(originX, originY);
         canvas->concat(remainder);
         canvas->scale(layoutScale, layoutScale);
-        canvas->drawTextBlob(blob, 0, 0, paint);
+        drawTextBlobSplit(canvas, blob, 0, 0, paint, extraAlpha);
     } else if (layoutScale != 1) {
         SkAutoCanvasRestore restore(canvas, true);
         canvas->scale(layoutScale, layoutScale);
-        canvas->drawTextBlob(blob, originX / layoutScale, originY / layoutScale, paint);
+        drawTextBlobSplit(canvas, blob, originX / layoutScale, originY / layoutScale, paint, extraAlpha);
     } else {
-        canvas->drawTextBlob(blob, originX, originY, paint);
+        drawTextBlobSplit(canvas, blob, originX, originY, paint, extraAlpha);
     }
     gGlyphsShapedBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
     gGlyphsDrawnBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
@@ -2696,6 +2799,10 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
     style.setTextAlign(tl::TextAlign::kLeft);
     style.setTextDirection(rightToLeft ? tl::TextDirection::kRtl : tl::TextDirection::kLtr);   // Java's base direction (SKTextRenderer)
     style.setApplyRoundingHack(false);
+    // no synthetic bold or italic for a fallback face of another style: the text path draws a fallback font's glyphs
+    // in its own style (a regular Apple Color Emoji in a bold run), and an emboldened bitmap glyph came out empty
+    // through the luminance proxy (Skia renders an emboldened glyph from its outline, which an emoji does not have)
+    style.setFakeMissingFontStyles(false);
     // the fallback manager of the first run decides for the paragraph (runs of other colours
     // get its luminance class for their fallback glyphs)
     sk_sp<SkFontMgr> fallback = SKPlatform_FontManager();
@@ -2865,15 +2972,15 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         canvas->translate(originX, originY);
         canvas->concat(remainder);
         canvas->scale(layoutScale, layoutScale);
-        paragraph->paint(canvas, 0, -baseline);
+        paintParagraph(*paragraph, canvas, 0, -baseline, paint, extraAlpha);
         drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, colours, flags, paint, extraAlpha, swizzled);
     } else {
         if (layoutScale != 1) {
             SkAutoCanvasRestore restore(canvas, true);
             canvas->scale(layoutScale, layoutScale);
-            paragraph->paint(canvas, originX / layoutScale, paragraphTop);
+            paintParagraph(*paragraph, canvas, originX / layoutScale, paragraphTop, paint, extraAlpha);
         } else {
-            paragraph->paint(canvas, originX, paragraphTop);
+            paintParagraph(*paragraph, canvas, originX, paragraphTop, paint, extraAlpha);
         }
         drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
     }

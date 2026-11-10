@@ -209,7 +209,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         System.arraycopy(p.backgroundArray(), 0, runInts, 4 * runs, runs);
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
         long drawn = drawParagraph(dst, dst.pixelFormat(), opFlags(sg2d, dst) | (p.rightToLeft() ? 1 << 9 : 0), origin[0], origin[1], p.string(), p.endArray(), p.contextArray(), runInts,
-                sg2d.eargb, sg2d.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f,
+                sg2d.eargb, extraAlpha(sg2d),
                 SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
         glyphsBySkia.addAndGet(drawn);
         java.lang.ref.Reference.reachabilityFence(p.strikes());
@@ -222,7 +222,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         SKRasterSurfaceData dst = (SKRasterSurfaceData) sg2d.surfaceData;
         int cx1 = sg2d.getCompClip().getLoX(), cy1 = sg2d.getCompClip().getLoY(), cx2 = sg2d.getCompClip().getHiX(), cy2 = sg2d.getCompClip().getHiY();
         long drawn = drawShaped(dst, dst.pixelFormat(), strike.skiaScalerContext(), opFlags(sg2d, dst) | (SKTextRenderer.rightToLeft(s) ? 1 << 9 : 0), origin[0], origin[1], s,
-                sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
+                sg2d.eargb, extraAlpha(sg2d), SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
         glyphsBySkia.addAndGet(drawn);
         java.lang.ref.Reference.reachabilityFence(strike);
     }
@@ -237,7 +237,12 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
     }
 
     private static native long drawShaped(SKRasterSurfaceData dst, int dstPixelFormat, long context, int flags, float originX, float originY,
-                                          String text, int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                          String text, int argb, float extraAlpha, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+
+    /** The composite's extra alpha: colour glyphs take it under Src (their own colours, not the text colour's alpha). */
+    private static float extraAlpha(SunGraphics2D sg2d) {
+        return sg2d.composite instanceof AlphaComposite ac ? ac.getAlpha() : 1f;
+    }
 
     private static native long drawParagraph(SKRasterSurfaceData dst, int dstPixelFormat, int flags, float originX, float originY, String text,
                                              int[] runEnds, long[] contexts, int[] runInts, int argb, float extraAlpha, int clipLeftTop, int clipRightBottom, int[] clipSpans);
@@ -272,7 +277,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
         }
         int flags = n | (usePositions ? 1 << 24 : 0) | 0 /* bit 25, once the smoothing request: the strike's hinting carries the darkening */ | rule << 26 | (dst.untouchedByJava() ? 1 << 30 : 0);
         drawGlyphs(dst, dst.pixelFormat(), runs.contexts(), flags, gl.getX(), gl.getY(), runs.codes(), gl.getImages(), usePositions ? gl.getPositions() : null,
-                   sg2d.eargb, SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
+                   sg2d.eargb, extraAlpha(sg2d), SKRasterShapePipe.packed(cx1, cy1), SKRasterShapePipe.packed(cx2, cy2), SKRasterShapePipe.spansOf(sg2d.getCompClip(), cx1, cy1, cx2, cy2));
     }
 
     /**
@@ -285,5 +290,5 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
      */
     private static native void drawGlyphs(SKRasterSurfaceData dst, int dstPixelFormat, long[] contexts, int countAndFlags,
                                           float originX, float originY, int[] codes, long[] images, float[] positions,
-                                          int argb, int clipLeftTop, int clipRightBottom, int[] clipSpans);
+                                          int argb, float extraAlpha, int clipLeftTop, int clipRightBottom, int[] clipSpans);
 }

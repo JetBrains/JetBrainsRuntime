@@ -809,7 +809,7 @@ Java_sun_java2d_skia_SKRasterDrawImage_drawImage(JNIEnv *env, jclass clazz, jobj
 JNIEXPORT void JNICALL
 Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlongArray contextsArray, jint countAndFlags,
                                                  jfloat originX, jfloat originY, jintArray codesArray, jlongArray imagesArray, jfloatArray positionsArray,
-                                                 jint argb, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
+                                                 jint argb, jfloat extraAlpha, jint clipLeftTop, jint clipRightBottom, jintArray spansArray)
 {
     const jint numGlyphs = countAndFlags & 0xffffff; const jboolean usePositions = (countAndFlags >> 24) & 1, smoothing = (countAndFlags >> 25) & 1;
     const jint compositeRule = (countAndFlags >> 26) & 0xf; const bool mirrorKept = (countAndFlags >> 30) & 1;
@@ -833,7 +833,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawGlyphs(JNIEnv *env, jclass clazz, jobj
     paint.setAntiAlias(true);
     paint.setColor(swizzled(argb));   // extra alpha already in the colour (SunGraphics2D.validateColor)
     paint.setBlendMode(SKBackend_BlendModeForRule(compositeRule));
-    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
+    SKBackend_DrawGlyphsOnCanvas(op.canvas(), paint, (SkColor) argb, extraAlpha, contexts.data, (jint) contexts.size, numGlyphs, usePositions, smoothing,
                                  originX, originY, codes.data, images.size ? images.data : nullptr, positions.size ? positions.data : nullptr);
 }
 
@@ -865,8 +865,8 @@ SkPaint textPaint(jint argb, jint rule) {
 
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobject dstData, jint dstPixelFormat, jlong context, jint flags,
-                                                 jfloat originX, jfloat originY, jstring text, jint argb, jint clipLeftTop, jint clipRightBottom,
-                                                 jintArray spansArray)
+                                                 jfloat originX, jfloat originY, jstring text, jint argb, jfloat extraAlpha, jint clipLeftTop,
+                                                 jint clipRightBottom, jintArray spansArray)
 {
     const jint length = text != nullptr ? env->GetStringLength(text) : 0;
     if (length <= 0) return 0;
@@ -876,7 +876,7 @@ Java_sun_java2d_skia_SKRasterTextPipe_drawShaped(JNIEnv *env, jclass clazz, jobj
     if (spans.size) env->GetIntArrayRegion(spansArray, 0, (jsize) spans.size, spans.data);
     TextOperation lock{env, dstData, dstPixelFormat, SkIRect::MakeLTRB(px(clipLeftTop), py(clipLeftTop), px(clipRightBottom), py(clipRightBottom)),
                        ((flags >> 8) & 1) != 0, spans.data, spans.size};
-    return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, context, JNI_FALSE,
+    return SKBackend_DrawShapedOnCanvas(std::ref(lock), textPaint(argb, flags & 0xf), (SkColor) argb, extraAlpha, context, JNI_FALSE,
                                         ((flags >> 9) & 1) ? JNI_TRUE : JNI_FALSE, originX, originY, chars.data, length);
 }
 

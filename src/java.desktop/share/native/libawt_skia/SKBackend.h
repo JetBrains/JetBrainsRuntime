@@ -231,7 +231,7 @@ jlong SKBackend_GlyphsDrawnBySkia();
 // draw), the paint as the canvas wants it and textColour Java's (the luminance class); swizzled: the paragraph's run
 // colours go onto a canvas over BGRA memory declared N32; return the glyphs drawn (the paragraph: its characters).
 typedef std::function<SkCanvas *(const SkIRect &deviceBounds)> SKCanvasForBounds;
-jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, jlong pScalerContext,
+jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, float extraAlpha, jlong pScalerContext,
                                    jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length);
 jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const SkPaint &paint, SkColor textColour, float extraAlpha, bool swizzled,
                                       jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY,
@@ -242,7 +242,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
 // it, textColour the text's colour as Java sees it (the cg route's luminance class); returns
 // the glyphs drawn. cacheBlobs: the runs go through the text blob cache (SKBackend_SetTextBlobCache;
 // the flusher only, since the cache is not synchronised).
-jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour,
+jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkColor textColour, float extraAlpha,
                                    const jlong *contexts, jint contextCount, jint numGlyphs, jboolean usePositions, jboolean smoothing,
                                    jfloat originX, jfloat originY, const jint *codes, const jlong *images,
                                    const jfloat *positions, bool cacheBlobs = false);
