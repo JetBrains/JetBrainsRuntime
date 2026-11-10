@@ -44,6 +44,7 @@ import java.awt.Stroke;
 import java.awt.font.FontRenderContext;
 import java.awt.font.TextAttribute;
 
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Area;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
@@ -248,8 +249,9 @@ public class Decoration {
             CoreMetrics cm = label.getCoreMetrics();
             // the system convention (sun.java2d.skia.text.decorations=system): the font's own decoration
             // metrics on whole device rows, placed as CoreText places them, gaps where the ink crosses an
-            // underline on macOS; the same rule draws Skia's paragraphs' decorations (SKBackend.cpp)
-            boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped() && TextDecorations.snappable(g2d);
+            // underline on macOS; under a rotation or shear the same band at the scale across the baseline,
+            // antialiased, as CoreText draws it; the same rule draws Skia's paragraphs' decorations (SKBackend.cpp)
+            boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped();
             float[] fontDecorations = system ? TextDecorations.fontMetrics(cm) : null;
             if (strikethrough) {
                 if (system) {
@@ -381,15 +383,15 @@ public class Decoration {
 
             Area area = null;
             // the system convention (sun.java2d.skia.text.decorations=system): the bands drawTextAndEmbellishments
-            // draws (TextDecorations, CoreText's rows or Direct2D's rule) at the layout's device scale, from the
+            // draws (TextDecorations, CoreText's rows or Direct2D's rule) under the layout's transform, from the
             // baseline — Java's nominal ones would leave the drawn underline outside the outline (UnderlinePositionTest)
             boolean system = sun.java2d.skia.SKEnvironment.decorationsSnapped();
             float[] fontDecorations = system ? TextDecorations.fontMetrics(cm) : null;
-            double deviceScale = system ? TextDecorations.deviceScale(label.getFRC()) : 1;
+            AffineTransform layoutTransform = system && label.getFRC() != null ? label.getFRC().getTransform() : null;
 
             if (stdUnderline != null) {
                 Shape ul = system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)
-                        ? TextDecorations.underlineShape(x1, x2, y, fontDecorations[0], fontDecorations[1], deviceScale)
+                        ? TextDecorations.underlineShape(x1, x2, y, fontDecorations[0], fontDecorations[1], layoutTransform)
                         : stdUnderline.getUnderlineShape(ulThickness, x1, x2, y+ulOffset);
                 area = new Area(ul);
             }
@@ -397,7 +399,7 @@ public class Decoration {
             if (strikethrough) {
                 Shape strike;
                 if (system) {
-                    strike = TextDecorations.strikethroughShape(x1, x2, y, fontDecorations[2], fontDecorations[3], deviceScale);
+                    strike = TextDecorations.strikethroughShape(x1, x2, y, fontDecorations[2], fontDecorations[3], layoutTransform);
                 } else {
                     Stroke stStroke = new BasicStroke(cm.strikethroughThickness,
                                                       BasicStroke.CAP_BUTT,

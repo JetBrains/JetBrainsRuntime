@@ -276,8 +276,7 @@ jlong SKBackend_GlyphsShapedBySkia();
 // box behind the run when flags[r] has SK_PARAGRAPH_BACKGROUND (antialiased with SK_PARAGRAPH_BACKGROUND_AA, as the
 // graphics fills shapes).
 enum { SK_PARAGRAPH_UNDERLINE = 1, SK_PARAGRAPH_STRIKETHROUGH = 2, SK_PARAGRAPH_COLOUR = 4, SK_PARAGRAPH_SYSTEM_DECORATIONS = 8,
-       SK_PARAGRAPH_KERNING = 16, SK_PARAGRAPH_LIGATURES = 32, SK_PARAGRAPH_BACKGROUND = 64, SK_PARAGRAPH_BACKGROUND_AA = 128,
-       SK_PARAGRAPH_SHAPES_AA = 256 };   // the graphics antialiases shapes: the system decorations under a transform
+       SK_PARAGRAPH_KERNING = 16, SK_PARAGRAPH_LIGATURES = 32, SK_PARAGRAPH_BACKGROUND = 64, SK_PARAGRAPH_BACKGROUND_AA = 128 };
 void SKBackend_DrawParagraphBySkia(jboolean smoothing, jboolean rightToLeft, jfloat originX, jfloat originY, const jchar *chars, jint length,
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds);

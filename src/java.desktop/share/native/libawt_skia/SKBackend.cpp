@@ -2587,14 +2587,15 @@ void addCrossing(std::vector<std::pair<float, float>> &ranges, SkPoint a, SkPoin
 
 // the x ranges where the glyph outlines of a run cross the band, merged
 std::vector<std::pair<float, float>> inkCrossings(const SkFont &font, const SkGlyphID *glyphs, const SkPoint *positions, int count,
-                                                  SkPoint runOrigin, float yTop, float yBottom) {
+                                                  SkPoint runOrigin, float yTop, float yBottom, bool roundedY = true) {
     std::vector<std::pair<float, float>> ranges;
     for (int i = 0; i < count; i++) {
         const std::optional<SkPath> path = font.getPath(glyphs[i]);
         if (!path || path->isEmpty()) continue;
         // where the glyph is drawn: SkParagraph's line baseline is fractional (its line metrics are not
         // rounded) but horizontal glyphs render at the rounded y, as the decoration's rows are counted
-        const float x = runOrigin.fX + positions[i].fX, y = (float) std::lround(runOrigin.fY + positions[i].fY);
+        // (under a transform the run is in layout space, the glyphs where the layout puts them: roundedY false)
+        const float x = runOrigin.fX + positions[i].fX, y = roundedY ? (float) std::lround(runOrigin.fY + positions[i].fY) : runOrigin.fY + positions[i].fY;
         const SkRect bounds = path->getBounds().makeOffset(x, y);
         if (bounds.fBottom < yTop || bounds.fTop > yBottom) continue;
         const SkPath placed = path->makeOffset(x, y);
@@ -2632,7 +2633,7 @@ DecorationBand underlineBand(float position, float thickness) {
         return {(float) std::lround(position), thickness};
     }
     const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
-    const int top = std::max(rows, (int) std::floor(position + 0.5f - rows / 2.0f));
+    const int top = std::max(rows, (int) std::floor(position + 0.5f - rows / 2.0f + 1e-3f));   // TextDecorations' tolerance
     return {(float) top, (float) rows};
 }
 
@@ -2750,7 +2751,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                         fillBand(canvas, runPaint, x1, x2, baselineRow + m.strikethroughCentre - m.strikethroughThickness / 2, m.strikethroughThickness, nullptr, 0);
                     } else {
                         const int rows = std::max(1, (int) std::lround(m.strikethroughThickness));
-                        const int top = (int) std::lround(runOrigin.fY + m.strikethroughCentre - rows / 2.0f);
+                        const int top = baselineRow + (int) std::floor(m.strikethroughCentre - rows / 2.0f + 0.5f);   // from the glyphs' row, as TextDecorations
                         fillBand(canvas, runPaint, x1, x2, (float) top, (float) rows, nullptr, 0);
                     }
                 }
@@ -2761,32 +2762,70 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
 }
 }
 
-// A decoration's band in layout space under the canvas transform: antialiased as Skia fills it, or, not antialiased,
-// mapped to the device and filled by the pixel-centre rule (Java's non-AA fills; a rotated rectangle drawn without
-// antialiasing is not aliased on every Skia device). Java2D strokes the line instead (a thin one by its 1-pixel
-// Bresenham, a wide one normalised): within a pixel of it, not identical (accepted, 2026-11-10).
-static void transformedBand(SkCanvas *canvas, const SkRect &band, const SkPaint &paint) {
-    if (paint.isAntiAlias()) {
-        canvas->drawRect(band, paint);
-        return;
-    }
-    SkPoint pts[4] = {{band.fLeft, band.fTop}, {band.fRight, band.fTop}, {band.fRight, band.fBottom}, {band.fLeft, band.fBottom}};
-    canvas->getTotalMatrix().mapPoints(pts);
-    SkAutoCanvasRestore restore(canvas, true);
-    canvas->resetMatrix();
-    convexQuadSpans(pts, [&](jint y, jint l, jint r) { canvas->drawIRect(SkIRect::MakeLTRB(l, y, r, y + 1), paint); });
+// The scale across the baseline of the layout-to-device matrix (device pixels per layout unit perpendicular to
+// the layout's x axis), and the layout-space offset that puts a baseline running along the device rows (or
+// columns) on the nearest one: sun.font.TextDecorations.scaleAcross and baselineSnap.
+static float scaleAcross(const SkMatrix &m) {
+    const float length = std::hypot(m.getScaleX(), m.getSkewY());
+    return length == 0 ? 0 : std::fabs(m.getScaleX() * m.getScaleY() - m.getSkewX() * m.getSkewY()) / length;
 }
 
-// The system decorations of a paragraph under a transform beyond its size (rotated, sheared, unevenly scaled text):
-// device rows mean nothing there, and TextLayout draws Java2D's rule instead (Decoration: TextDecorations.snappable
-// fails) — a butt-capped stroke of the font's own thickness centred on its offset, over the run's advance, filled
-// as the graphics fills shapes. Here in the paragraph's layout space, the canvas carrying the transform.
+static float baselineSnap(const SkMatrix &m, float y) {
+    if (m.getSkewY() == 0 && m.getScaleY() != 0) {
+        const float device = m.getScaleY() * y + m.getTranslateY();
+        return (std::floor(device + 0.5f) - device) / m.getScaleY();
+    }
+    if (m.getScaleX() == 0 && m.getSkewX() != 0) {
+        const float device = m.getSkewX() * y + m.getTranslateX();
+        return (std::floor(device + 0.5f) - device) / m.getSkewX();
+    }
+    return 0;
+}
+
+// a band's end on a device pixel edge when the matrix keeps the axes (TextDecorations.roundedEnd)
+static float roundedEnd(const SkMatrix &m, float x) {
+    if (m.getSkewY() == 0 && m.getSkewX() == 0 && m.getScaleX() != 0) {
+        return (std::floor(m.getScaleX() * x + m.getTranslateX() + 0.5f) - m.getTranslateX()) / m.getScaleX();
+    }
+    if (m.getScaleX() == 0 && m.getScaleY() == 0 && m.getSkewY() != 0) {
+        return (std::floor(m.getSkewY() * x + m.getTranslateY() + 0.5f) - m.getTranslateY()) / m.getSkewY();
+    }
+    return x;
+}
+
+// the band [top, top + height) from x1 to x2 in the canvas's space, antialiased, around the gaps widened by clearance
+static void fillLayoutBand(SkCanvas *canvas, const SkPaint &paint, float x1, float x2, float top, float height,
+                           const std::vector<std::pair<float, float>> *gaps, float clearance) {
+    if (x2 <= x1 || height <= 0) return;
+    SkPaint solid = paint;
+    solid.setAntiAlias(true);
+    float start = x1;
+    if (gaps != nullptr) {
+        for (const auto &gap : *gaps) {
+            const float gx1 = gap.first - clearance, gx2 = gap.second + clearance;
+            if (gx2 <= start || gx1 >= x2) continue;
+            if (gx1 > start) canvas->drawRect(SkRect::MakeLTRB(start, top, gx1, top + height), solid);
+            start = std::max(start, gx2);
+        }
+    }
+    if (start < x2) canvas->drawRect(SkRect::MakeLTRB(start, top, x2, top + height), solid);
+}
+
+// The system decorations of a paragraph under a transform beyond its size (rotated, sheared, unevenly scaled text),
+// as TextDecorations draws TextLayout's there: the band the rule makes at the scale across the baseline, in the
+// paragraph's layout space (the canvas carries the transform), filled antialiased; its rows on device rows (or
+// columns) when the baseline runs along them. CoreText's own behaviour (measured 2026-11-10: rotated, sheared, and
+// rotated and scaled, its band is the axis-aligned one at that scale, antialiased).
 void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float paragraphTop, const jchar *chars, jint length,
-                                jint runCount, const jint *runEnds, const jint *colours, const jint *flags, const SkPaint &paint,
-                                float extraAlpha, bool swizzled) {
+                                jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags,
+                                const SkPaint &paint, float extraAlpha, bool swizzled) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
     if (!any) return;
+    const SkMatrix toDevice = canvas->getTotalMatrix();
+    const float scale = scaleAcross(toDevice);
+    const float along = std::hypot(toDevice.getScaleX(), toDevice.getSkewY());   // device pixels per layout unit along the baseline
+    if (scale == 0 || along == 0) return;
     std::vector<uint32_t> runUtf8Start(runCount + 1, 0);
     jint start = 0;
     for (jint r = 0; r < runCount; r++) {
@@ -2794,6 +2833,8 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
         runUtf8Start[r + 1] = runUtf8Start[r] + (end > start ? (uint32_t) SkUnicode::convertUtf16ToUtf8((const char16_t *) chars + start, end - start).size() : 0);
         start = std::max(start, end);
     }
+    const bool skipInk = SKPlatform_TextDefaults().decorationGaps;
+    const bool directWrite = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
     paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
         if (info == nullptr || info->count <= 0) return;
         auto runOf = [&](uint32_t utf8) {
@@ -2802,14 +2843,18 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
             return r;
         };
         const DecorationMetrics m = decorationMetrics(info->font);
-        const float baseline = paragraphTop + info->origin.fY;
+        const float exact = paragraphTop + info->origin.fY;
+        const float baseline = exact + baselineSnap(toDevice, exact);
+        const DecorationBand band = underlineBand(m.underlinePosition * scale, m.underlineThickness * scale);
+        const float underlineTop = baseline + band.top / scale, underlineHeight = band.height / scale;
+        std::vector<std::pair<float, float>> gaps;
+        bool gapsReady = false;
         for (int i = 0; i < info->count;) {
             const jint r = runOf(info->utf8Starts[i]);
             int j = i + 1;
             while (j < info->count && runOf(info->utf8Starts[j]) == r) j++;
             if (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) {
                 SkPaint runPaint = paint;
-                runPaint.setAntiAlias((flags[r] & SK_PARAGRAPH_SHAPES_AA) != 0);
                 if (flags[r] & SK_PARAGRAPH_COLOUR) runPaint = colouredPaint(runPaint, (SkColor) colours[r], extraAlpha, swizzled);
                 float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
                 for (int k = i; k < j; k++) {
@@ -2818,12 +2863,29 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
                     x1 = std::min(x1, info->origin.fX + info->positions[k].fX);
                     x2 = std::max(x2, info->origin.fX + info->positions[k].fX + advance);
                 }
+                x1 = roundedEnd(toDevice, x1);
+                x2 = roundedEnd(toDevice, x2);
                 if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
-                    transformedBand(canvas, SkRect::MakeLTRB(x1, baseline + m.underlinePosition, x2, baseline + m.underlinePosition + m.underlineThickness), runPaint);
+                    if (skipInk && !gapsReady) {
+                        gaps = inkCrossings(info->font, info->glyphs, info->positions, info->count, {info->origin.fX, exact},
+                                            underlineTop, underlineTop + underlineHeight, false);
+                        gapsReady = true;
+                    }
+                    fillLayoutBand(canvas, runPaint, x1, x2, underlineTop, underlineHeight, skipInk ? &gaps : nullptr,
+                                   kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]) / along);
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
-                    const float top = baseline + m.strikethroughCentre - m.strikethroughThickness / 2;
-                    transformedBand(canvas, SkRect::MakeLTRB(x1, top, x2, top + m.strikethroughThickness), runPaint);
+                    const float centre = m.strikethroughCentre * scale, thickness = m.strikethroughThickness * scale;
+                    float top, height;
+                    if (directWrite) {
+                        top = centre - thickness / 2;
+                        height = thickness;
+                    } else {
+                        const int rows = std::max(1, (int) std::lround(thickness));
+                        top = (float) std::floor(centre - rows / 2.0f + 0.5f);
+                        height = (float) rows;
+                    }
+                    fillLayoutBand(canvas, runPaint, x1, x2, baseline + top / scale, height / scale, nullptr, 0);
                 }
             }
             i = j;
@@ -3024,13 +3086,13 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         // rotated, sheared or unevenly scaled text (every run shares the transform, SKTextRenderer checks it): laid
         // out in the font's own space, painted under the strike's transform beyond its size from the device origin,
         // as the text path draws such a run; SkParagraph's decorations follow the canvas, and the system decorations
-        // are Java2D's rule there, as TextLayout's (drawTransformedDecorations)
+        // are the rule's band at the scale across the baseline, as TextLayout's (drawTransformedDecorations)
         SkAutoCanvasRestore restore(canvas, true);
         canvas->translate(originX, originY);
         canvas->concat(remainder);
         canvas->scale(layoutScale, layoutScale);
         paintParagraph(*paragraph, canvas, 0, -baseline, paint, extraAlpha, swizzled);
-        drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, colours, flags, paint, extraAlpha, swizzled);
+        drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
     } else {
         if (layoutScale != 1) {
             SkAutoCanvasRestore restore(canvas, true);

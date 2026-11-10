@@ -26,7 +26,6 @@ import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.PathIterator;
-import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,8 +39,10 @@ import java.util.List;
  * a row but its height is the font's thickness kept fractional and antialiased, the strikethrough is the
  * unsnapped rectangle of the font's metrics, and nothing is skipped (DirectWrite draws through the ink). The
  * same rule, in the same arithmetic, draws the decorations of Skia's paragraphs ({@code SKBackend.cpp}, the
- * paragraph visitor), so Java's TextLayout and SkParagraph render an underlined string alike. Only translations
- * and uniform scales are snapped; under a rotation or shear the stroked line is drawn as before.
+ * paragraph visitor), so Java's TextLayout and SkParagraph render an underlined string alike. Under any transform
+ * the band is the one the rule makes at the scale across the baseline, in the text's own frame, filled through the
+ * transform with antialiasing; its rows are snapped to device rows (or columns) only when the baseline runs along
+ * them — CoreText's own behaviour, measured under rotations, shears and scales (2026-11-10).
  */
 public final class TextDecorations {
     private TextDecorations() {}
@@ -69,10 +70,42 @@ public final class TextDecorations {
         return sun.java2d.skia.SKEnvironment.decorationRule();
     }
 
-    /** Whether the graphics' transform lets a device-aligned line be drawn: a translation and a uniform scale. */
-    public static boolean snappable(Graphics2D g2d) {
-        AffineTransform at = g2d.getTransform();
-        return at.getShearX() == 0 && at.getShearY() == 0 && at.getScaleX() == at.getScaleY() && at.getScaleX() > 0;
+    /**
+     * The transform's scale across the baseline: device pixels per user unit perpendicular to the user x axis
+     * (the determinant over the baseline's length), the scale the rule's rows are counted at. CoreText's band
+     * under a rotation, a shear or a rotation with a scale is the one it draws axis-aligned at that scale (rotated
+     * by 2 to 90 degrees, sheared by 0.25, at 1x to 2x: the same centre within 0.01 of a pixel), antialiased.
+     */
+    static double scaleAcross(AffineTransform at) {
+        double length = Math.hypot(at.getScaleX(), at.getShearY());
+        return length == 0 ? 0 : Math.abs(at.getDeterminant()) / length;
+    }
+
+    /**
+     * The user-space offset that moves the baseline {@code y} onto the nearest device row (a baseline along the
+     * rows) or column (along the columns), where the glyphs' images are placed; 0 for a baseline across them.
+     */
+    static double baselineSnap(AffineTransform at, double y) {
+        if (at.getShearY() == 0 && at.getScaleY() != 0) {
+            double device = at.getScaleY() * y + at.getTranslateY();
+            return (Math.round(device) - device) / at.getScaleY();
+        }
+        if (at.getScaleX() == 0 && at.getShearX() != 0) {
+            double device = at.getShearX() * y + at.getTranslateX();
+            return (Math.round(device) - device) / at.getShearX();
+        }
+        return 0;
+    }
+
+    /** The user x of a band's end at {@code x}, moved onto a device pixel edge when the transform keeps the axes. */
+    static double roundedEnd(AffineTransform at, double x) {
+        if (at.getShearY() == 0 && at.getShearX() == 0 && at.getScaleX() != 0) {
+            return (Math.round(at.getScaleX() * x + at.getTranslateX()) - at.getTranslateX()) / at.getScaleX();
+        }
+        if (at.getScaleX() == 0 && at.getScaleY() == 0 && at.getShearY() != 0) {
+            return (Math.round(at.getShearY() * x + at.getTranslateY()) - at.getTranslateY()) / at.getShearY();
+        }
+        return x;
     }
 
     /**
@@ -117,102 +150,109 @@ public final class TextDecorations {
             return new double[] {Math.round(position), thickness};
         }
         int rows = Math.max(1, (int) Math.ceil(thickness - 1e-3));
-        int top = Math.max(rows, (int) Math.floor(position + 0.5 - rows / 2.0));
+        // the tolerance keeps a position landing on a row by a product of scales (6 as 5.9999999 under a rotation
+        // with a scale) on that row, alike on the paragraph route's float arithmetic
+        int top = Math.max(rows, (int) Math.floor(position + 0.5 - rows / 2.0 + 1e-3));
         return new double[] {top, rows};
     }
 
     /**
      * Draws an underline from {@code x1} to {@code x2} under the baseline {@code y} (user space) by
-     * {@link #underlineBand}; with {@code outline} (the glyphs' outline in user space) the line leaves gaps
-     * where the ink crosses it, one device pixel clear on each side, the gap's edges antialiased at their
-     * fractional positions as CoreText's are (the rows stay whole).
+     * {@link #underlineBand} at the scale across the baseline; with {@code outline} (the glyphs' outline in user
+     * space) the line leaves gaps where the ink crosses it, {@link #CLEARANCE} clear on each side, the gap's edges
+     * antialiased at their fractional positions as CoreText's are (the rows stay whole on a baseline along them).
      */
     public static void drawUnderline(Graphics2D g2d, float x1, float x2, float y, float position, float thickness, Shape outline) {
         AffineTransform at = g2d.getTransform();
-        double scale = at.getScaleX();
-        Point2D a = at.transform(new Point2D.Double(x1, y), null), b = at.transform(new Point2D.Double(x2, y), null);
+        double scale = scaleAcross(at);
+        if (scale == 0) {
+            return;
+        }
         double[] band = underlineBand(position * scale, thickness * scale);
-        double top = Math.round(a.getY()) + band[0], height = band[1];
-        List<double[]> gaps = outline != null ? inkCrossings(outline, at, top, top + height) : List.of();
-        fillBand(g2d, a.getX(), b.getX(), top, height, gaps, CLEARANCE * scale);
+        double top = y + baselineSnap(at, y) + band[0] / scale, height = band[1] / scale;
+        List<double[]> gaps = outline != null ? inkCrossings(outline, null, top, top + height) : List.of();
+        fillBand(g2d, roundedEnd(at, x1), roundedEnd(at, x2), top, height, gaps, CLEARANCE);
     }
 
     /**
      * Draws a strikethrough from {@code x1} to {@code x2} centred {@code offset} (user space, negative above)
-     * from the baseline {@code y}: under CoreText's rule whole device rows, at least one, the band rounded about
-     * the centre; under Direct2D's the unsnapped rectangle of the thickness about the centre, from the rounded
-     * baseline (the glyphs' row).
+     * from the baseline {@code y}, by {@link #strikethroughBand} at the scale across the baseline.
      */
+    public static void drawStrikethrough(Graphics2D g2d, float x1, float x2, float y, float offset, float thickness) {
+        AffineTransform at = g2d.getTransform();
+        double scale = scaleAcross(at);
+        if (scale == 0) {
+            return;
+        }
+        double[] band = strikethroughBand(offset * scale, thickness * scale);
+        fillBand(g2d, roundedEnd(at, x1), roundedEnd(at, x2), y + baselineSnap(at, y) + band[0] / scale, band[1] / scale, List.of(), 0);
+    }
+
     /**
-     * The underline's band as the system rule draws it at the given device scale (the layout's render context's),
-     * in user space from the baseline y: the drawn underline lies inside it whenever the baseline falls on a device
-     * row. The gaps where the ink crosses are not cut out (the outline holds the glyphs there anyway).
+     * The device band of a strikethrough centred {@code centre} (device pixels, negative above the baseline) with
+     * {@code thickness}, as {offset of the band's top from the baseline, height}: under CoreText's rule whole rows,
+     * at least one, the band rounded about the centre; under Direct2D's the unsnapped rectangle about the centre.
      */
-    public static Shape underlineShape(float x1, float x2, float y, float position, float thickness, double scale) {
+    static double[] strikethroughBand(double centre, double thickness) {
+        if (rule() == Rule.DIRECT_WRITE) {
+            return new double[] {centre - thickness / 2, thickness};
+        }
+        long rows = Math.max(1, Math.round(thickness));
+        return new double[] {Math.round(centre - rows / 2.0), rows};
+    }
+
+    /**
+     * The underline's band as {@link #drawUnderline} draws it under the transform {@code at} (a layout's render
+     * context's), in user space from the baseline {@code y} on a device row: the band at the transform's scale
+     * across the baseline, without the gaps where ink crosses it (the outline holds the glyphs there anyway).
+     * On a baseline off the device rows the drawn band moves to the glyphs' row, as the glyphs' images do.
+     */
+    public static Shape underlineShape(float x1, float x2, float y, float position, float thickness, AffineTransform at) {
+        double scale = scaleOf(at);
         double[] band = underlineBand(position * scale, thickness * scale);
         return new Rectangle2D.Double(x1, y + band[0] / scale, x2 - x1, band[1] / scale);
     }
 
-    /** The strikethrough's band as the system rule draws it at the given device scale (see underlineShape). */
-    public static Shape strikethroughShape(float x1, float x2, float y, float offset, float thickness, double scale) {
-        if (rule() == Rule.DIRECT_WRITE) {
-            return new Rectangle2D.Double(x1, y + offset - thickness / 2, x2 - x1, thickness);
-        }
-        long rows = Math.max(1, Math.round(thickness * scale));
-        return new Rectangle2D.Double(x1, y + Math.round(offset * scale - rows / 2.0) / scale, x2 - x1, rows / scale);
+    /** The strikethrough's band as {@link #drawStrikethrough} draws it under the transform {@code at} (see underlineShape). */
+    public static Shape strikethroughShape(float x1, float x2, float y, float offset, float thickness, AffineTransform at) {
+        double scale = scaleOf(at);
+        double[] band = strikethroughBand(offset * scale, thickness * scale);
+        return new Rectangle2D.Double(x1, y + band[0] / scale, x2 - x1, band[1] / scale);
     }
 
-    /** The device scale the system rule snaps at for a layout's render context: its uniform scale, else 1. */
-    public static double deviceScale(java.awt.font.FontRenderContext frc) {
-        AffineTransform at = frc != null ? frc.getTransform() : null;
-        return at != null && at.getShearX() == 0 && at.getShearY() == 0 && at.getScaleX() == at.getScaleY() && at.getScaleX() > 0 ? at.getScaleX() : 1;
-    }
-
-    public static void drawStrikethrough(Graphics2D g2d, float x1, float x2, float y, float offset, float thickness) {
-        AffineTransform at = g2d.getTransform();
-        double scale = at.getScaleX();
-        Point2D a = at.transform(new Point2D.Double(x1, y), null), b = at.transform(new Point2D.Double(x2, y), null);
-        if (rule() == Rule.DIRECT_WRITE) {
-            double height = thickness * scale;
-            fillBand(g2d, a.getX(), b.getX(), Math.round(a.getY()) + offset * scale - height / 2, height, List.of(), 0);
-            return;
-        }
-        int rows = Math.max(1, (int) Math.round(thickness * scale));
-        int top = (int) Math.round(a.getY() + offset * scale - rows / 2.0);
-        fillBand(g2d, a.getX(), b.getX(), top, rows, List.of(), 0);
+    private static double scaleOf(AffineTransform at) {
+        double scale = at != null ? scaleAcross(at) : 1;
+        return scale > 0 ? scale : 1;
     }
 
     /**
-     * Fills the device band {@code [top, top + height)} from {@code x1} to {@code x2} (device), skipping the gaps
-     * widened by {@code clearance} device pixels; the gaps' edges are fractional and antialiased, the band's ends
-     * whole, its rows whole under CoreText's rule and fractional under Direct2D's.
+     * Fills the band {@code [top, top + height)} from {@code x1} to {@code x2} (user space, the band along the user x
+     * axis) through the graphics' transform, antialiased, skipping the gaps widened by {@code clearance} (user
+     * space); a gap's edges are fractional and antialiased, as CoreText's.
      */
     static void fillBand(Graphics2D g2d, double x1, double x2, double top, double height, List<double[]> gaps, double clearance) {
-        int left = (int) Math.round(x1), right = (int) Math.round(x2);
-        if (right <= left || height <= 0) {
+        if (x2 <= x1 || height <= 0) {
             return;
         }
-        AffineTransform saved = g2d.getTransform();
         Object savedAA = g2d.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
-        g2d.setTransform(new AffineTransform());
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         try {
-            double start = left;
+            double start = x1;
             for (double[] gap : gaps) {
                 double gx1 = gap[0] - clearance, gx2 = gap[1] + clearance;
-                if (gx2 <= start || gx1 >= right) continue;
+                if (gx2 <= start || gx1 >= x2) continue;
                 if (gx1 > start) g2d.fill(new Rectangle2D.Double(start, top, gx1 - start, height));
                 start = Math.max(start, gx2);
             }
-            if (start < right) g2d.fill(new Rectangle2D.Double(start, top, right - start, height));
+            if (start < x2) g2d.fill(new Rectangle2D.Double(start, top, x2 - start, height));
         } finally {
-            g2d.setTransform(saved);
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, savedAA == null ? RenderingHints.VALUE_ANTIALIAS_DEFAULT : savedAA);
         }
     }
 
     /**
-     * The device x ranges where the outline crosses the band {@code [yTop, yBottom)}: every segment of the
+     * The x ranges where the outline crosses the band {@code [yTop, yBottom)} (in the space {@code toDevice}, may
+     * be null, maps the outline to): every segment of the
      * flattened outline that enters the band contributes the x extent of its part inside it; the ranges are
      * sorted and merged.
      */

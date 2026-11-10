@@ -78,8 +78,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4,
             PARAGRAPH_SYSTEM_DECORATIONS = 8,   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
             PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32,   // the run's font kerns / ligates: Java's kern, and liga with calt
-            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128,   // a box behind the run, antialiased as the graphics fills shapes
-            PARAGRAPH_SHAPES_AA = 256;   // the graphics antialiases shapes: the system decorations under a transform, Java2D's rule
+            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128;   // a box behind the run, antialiased as the graphics fills shapes
 
     /** The attributes a run's font is made of when there is no FONT attribute (TextLayout's Font.getFont). */
     private static final java.util.Set<Attribute> FONT_ATTRIBUTES = java.util.Set.of(TextAttribute.FAMILY, TextAttribute.SIZE,
@@ -510,9 +509,6 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                             return null;   // runs under different transforms (a font with its own): one paint cannot place them
                         }
                     }
-                }
-                if (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON) {
-                    subFlags |= PARAGRAPH_SHAPES_AA;
                 }
                 shifts.add(Float.floatToRawIntBits(values.getSuperscript() != 0 ? baselineShift(font, values, info, r, strike.layoutScale()) : 0));
                 backgrounds.add(background != null ? background.getRGB() : 0);
