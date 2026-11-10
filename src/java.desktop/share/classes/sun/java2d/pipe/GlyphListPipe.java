@@ -31,6 +31,7 @@ import java.awt.font.TextLayout;
 
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.font.FontUtilities;
 import sun.font.GlyphList;
 import sun.java2d.loops.FontInfo;
 
@@ -68,6 +69,7 @@ public abstract class GlyphListPipe implements TextPipe {
          * off to a TextLayout. Such text may benefit slightly from a lower
          * overhead in this approach over the approach in previous releases.
          */
+        devy = glyphRow(sg2d, info, devy);
         GlyphList gl = GlyphList.getInstance();
         if (gl.setFromString(info, s, devx, devy)) {
             drawGlyphList(sg2d, gl);
@@ -103,6 +105,7 @@ public abstract class GlyphListPipe implements TextPipe {
             x = ix + info.originX + sg2d.transX;
             y = iy + info.originY + sg2d.transY;
         }
+        y = glyphRow(sg2d, info, y);
         GlyphList gl = GlyphList.getInstance();
         if (gl.setFromChars(info, data, offset, length, x, y)) {
             drawGlyphList(sg2d, gl);
@@ -139,10 +142,26 @@ public abstract class GlyphListPipe implements TextPipe {
             y += sg2d.transY;
         }
 
+        y = glyphRow(sg2d, info, y);
         GlyphList gl = GlyphList.getInstance();
         gl.setFromGlyphVector(info, gv, x, y);
         drawGlyphList(sg2d, gl, info.aaHint);
         gl.dispose();
+    }
+
+    /**
+     * The device baseline the glyphs of a run are placed from. On macOS a horizontal run's glyphs go to the row below a
+     * fractional baseline, as CoreText places them (CTLineDraw, string drawing and TextKit 2 alike at 1x and 2x,
+     * measured 2026-11-10: any fraction past 1/1024 of a point moves them, 0.0005 does not); the glyph lists' own
+     * rounding to the nearest row then keeps it. TextLayout's decorations stay at the exact baseline, as CoreText's.
+     * Elsewhere, and for rotated or sheared runs, the baseline as it is.
+     */
+    public static float glyphRow(SunGraphics2D sg2d, FontInfo info, float y) {
+        if (!FontUtilities.isMacOSX || sg2d.transform.getShearX() != 0 || sg2d.transform.getShearY() != 0 || sg2d.transform.getScaleY() <= 0
+                || info.glyphTx[1] != 0 || info.glyphTx[2] != 0 || info.glyphTx[3] <= 0) {
+            return y;
+        }
+        return (float) Math.ceil(y - sg2d.transform.getScaleY() / 1024);
     }
 
     protected abstract void drawGlyphList(SunGraphics2D sg2d, GlyphList gl);

@@ -2191,6 +2191,18 @@ struct SplittingParagraphPainter final : skia::textlayout::ParagraphPainter {
 };
 } // namespace
 
+// The device baseline a horizontal run's glyphs are painted from (sun.java2d.pipe.GlyphListPipe.glyphRow): on macOS the
+// row below a fractional baseline, as CoreText places glyphs (any fraction past 1/1024 of a point); elsewhere the
+// baseline itself. Decorations keep the exact baseline.
+static float glyphRow(float y, double displayScale) {
+#if defined(__APPLE__)
+    return (float) std::ceil(y - displayScale / 1024);
+#else
+    (void) displayScale;
+    return y;
+#endif
+}
+
 // a paragraph onto the canvas: SkParagraph's own painter, or the splitting one under another rule or on a raster canvas
 static void paintParagraph(skia::textlayout::Paragraph &paragraph, SkCanvas *canvas, float x, float y, const SkPaint &paint, float extraAlpha,
                            bool swizzled) {
@@ -2511,9 +2523,9 @@ jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkP
     } else if (layoutScale != 1) {
         SkAutoCanvasRestore restore(canvas, true);
         canvas->scale(layoutScale, layoutScale);
-        drawTextBlobSplit(canvas, blob, originX / layoutScale, originY / layoutScale, paint, extraAlpha, swizzled);
+        drawTextBlobSplit(canvas, blob, originX / layoutScale, glyphRow(originY, SKFontScaler_DisplayScale(pScalerContext)) / layoutScale, paint, extraAlpha, swizzled);
     } else {
-        drawTextBlobSplit(canvas, blob, originX, originY, paint, extraAlpha, swizzled);
+        drawTextBlobSplit(canvas, blob, originX, glyphRow(originY, SKFontScaler_DisplayScale(pScalerContext)), paint, extraAlpha, swizzled);
     }
     gGlyphsShapedBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
     gGlyphsDrawnBySkia.fetch_add((jlong) handler.glyphs, std::memory_order_relaxed);
@@ -3172,12 +3184,14 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         paintParagraph(*paragraph, canvas, 0, -baseline, paint, extraAlpha, swizzled);
         drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
     } else {
+        // the glyphs from CoreText's row on macOS (glyphRow), the system decorations from the exact baseline
+        const float glyphTop = glyphRow(originY, SKFontScaler_DisplayScale(contexts[0])) / layoutScale - baseline;
         if (layoutScale != 1) {
             SkAutoCanvasRestore restore(canvas, true);
             canvas->scale(layoutScale, layoutScale);
-            paintParagraph(*paragraph, canvas, originX / layoutScale, paragraphTop, paint, extraAlpha, swizzled);
+            paintParagraph(*paragraph, canvas, originX / layoutScale, glyphTop, paint, extraAlpha, swizzled);
         } else {
-            paintParagraph(*paragraph, canvas, originX, paragraphTop, paint, extraAlpha, swizzled);
+            paintParagraph(*paragraph, canvas, originX, glyphTop, paint, extraAlpha, swizzled);
         }
         drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
     }

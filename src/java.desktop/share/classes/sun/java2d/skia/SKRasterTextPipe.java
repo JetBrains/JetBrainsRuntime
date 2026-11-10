@@ -89,6 +89,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             devY = (float) (y + info.originY + sg2d.transY);
         }
         GlyphList gl = GlyphList.getInstance();
+        devY = glyphRow(sg2d, info, devY);   // CoreText's glyph row on macOS (GlyphListPipe)
         if (!gl.setFromString(info, s, devX, devY)) {
             gl.dispose();
             new TextLayout(s, sg2d.getFont(), sg2d.getFontRenderContext()).draw(sg2d, (float) x, (float) y);   // needs shaping
@@ -131,6 +132,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             devY = iy + info.originY + sg2d.transY;
         }
         GlyphList gl = GlyphList.getInstance();
+        devY = glyphRow(sg2d, info, devY);   // CoreText's glyph row on macOS (GlyphListPipe)
         if (!gl.setFromChars(info, data, offset, length, devX, devY)) {
             gl.dispose();
             new TextLayout(new String(data, offset, length), sg2d.getFont(), sg2d.getFontRenderContext()).draw(sg2d, ix, iy);
@@ -168,6 +170,7 @@ final class SKRasterTextPipe extends GlyphListPipe implements AttributedTextPipe
             devY = y + sg2d.transY;
         }
         GlyphList gl = GlyphList.getInstance();
+        devY = glyphRow(sg2d, info, devY);   // CoreText's glyph row on macOS (GlyphListPipe)
         gl.setFromGlyphVector(info, gv, devX, devY);
         SKGlyphContexts.Runs runs = SKGlyphContexts.of(gl);
         if (runs != null) {

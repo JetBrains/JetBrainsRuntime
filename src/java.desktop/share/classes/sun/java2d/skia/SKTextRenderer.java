@@ -222,6 +222,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             return;
         }
         float[] origin = glyphListOrigin(sg2d, x + info.originX, y + info.originY);
+        origin[1] = glyphRow(sg2d, info, origin[1]);   // CoreText's glyph row on macOS (GlyphListPipe)
         GlyphList gl = GlyphList.getInstance();
         if (!gl.setFromString(info, s, origin[0], origin[1])) {
             gl.dispose();
@@ -246,6 +247,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             return;
         }
         float[] origin = glyphListOrigin(sg2d, x + info.originX, y + info.originY);
+        origin[1] = glyphRow(sg2d, info, origin[1]);   // CoreText's glyph row on macOS (GlyphListPipe)
         GlyphList gl = GlyphList.getInstance();
         if (!gl.setFromChars(info, data, offset, length, origin[0], origin[1])) {
             gl.dispose();
@@ -267,6 +269,7 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
             return;
         }
         float[] origin = glyphListOrigin(sg2d, x, y);   // the glyph vector carries the font's origin itself
+        origin[1] = glyphRow(sg2d, info, origin[1]);   // CoreText's glyph row on macOS (GlyphListPipe)
         GlyphList gl = GlyphList.getInstance();
         gl.setFromGlyphVector(info, gv, origin[0], origin[1]);
         boolean drawn = drawBySkia(sg2d, gl);

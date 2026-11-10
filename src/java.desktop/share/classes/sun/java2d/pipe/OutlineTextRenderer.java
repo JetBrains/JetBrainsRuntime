@@ -87,6 +87,17 @@ public class OutlineTextRenderer implements TextPipe {
     public void drawGlyphVector(SunGraphics2D g2d, GlyphVector gv,
                                 float x, float y) {
 
+        // the glyph row of the glyph-list pipes (GlyphListPipe.glyphRow): on macOS a horizontal run's outlines from
+        // the row below a fractional device baseline, as CoreText places large glyphs too; y moved by the difference
+        if (sun.font.FontUtilities.isMacOSX) {
+            double[] device = {x, y};
+            g2d.transform.transform(device, 0, device, 0, 1);
+            float row = GlyphListPipe.glyphRow(g2d, g2d.getGVFontInfo(gv.getFont(), gv.getFontRenderContext()), (float) device[1]);
+            if (row != (float) device[1]) {
+                y += (float) ((row - device[1]) / g2d.transform.getScaleY());
+            }
+        }
+
         GlyphRenderData grd;
         if (gv instanceof StandardGlyphVector) {
             grd = ((StandardGlyphVector) gv).getGlyphRenderData(x, y);
