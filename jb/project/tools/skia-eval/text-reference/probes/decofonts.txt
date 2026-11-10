@@ -1,0 +1,17 @@
+# coretext-name  java-family  size
+HelveticaNeue Helvetica_Neue 13
+HelveticaNeue Helvetica_Neue 26
+Menlo-Regular Menlo 12
+Times-Roman Times 30
+Georgia Georgia 14
+ArialMT Arial 13
+Verdana Verdana 13
+CourierNewPSMT Courier_New 13
+AvenirNext-Regular Avenir_Next 13
+LucidaGrande Lucida_Grande 13
+Monaco Monaco 12
+HelveticaNeue Helvetica_Neue 40
+Times-Roman Times 13
+Menlo-Regular Menlo 20
+Georgia Georgia 28
+Verdana Verdana 22
