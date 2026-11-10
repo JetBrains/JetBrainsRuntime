@@ -695,22 +695,15 @@ JNI_COCOA_ENTER(env);
         (*env)->SetFloatField(env, metrics, sjf_underlineOffset, (jfloat) (-CTFontGetUnderlinePosition(ctFont) / size));
         (*env)->SetFloatField(env, metrics, sjf_underlineThickness, (jfloat) (underlineThickness / size));
     }
-    // The strikethrough from the OS/2 table (yStrikeoutSize, yStrikeoutPosition: the bottom of the stroke above
-    // the baseline), as the Skia scaler's Mac host reports it; NaN without the table.
-    CFDataRef os2 = CGFontCopyTableForTag(cgFont, 'OS/2');
-    if (os2 != NULL) {
-        if (metrics != NULL && CFDataGetLength(os2) >= 30 && unitsPerEm > 0) {
-            const UInt8 *table = CFDataGetBytePtr(os2);
-            jfloat strikeoutSize = (jfloat) (int16_t) ((table[26] << 8) | table[27]) * scaleY;
-            jfloat strikeoutPosition = (jfloat) (int16_t) ((table[28] << 8) | table[29]) * scaleY;
-            if (strikeoutSize > 0) {
-                DECLARE_FIELD_RETURN(sjf_strikethroughOffset, sjc_StrikeMetrics, "strikethroughOffset", "F", NULL);
-                DECLARE_FIELD_RETURN(sjf_strikethroughThickness, sjc_StrikeMetrics, "strikethroughThickness", "F", NULL);
-                (*env)->SetFloatField(env, metrics, sjf_strikethroughOffset, -strikeoutPosition);
-                (*env)->SetFloatField(env, metrics, sjf_strikethroughThickness, strikeoutSize);
-            }
-        }
-        CFRelease(os2);
+    // The strikethrough as AppKit draws it (NSAttributedString in a view at 1x and 2x, measured 2026-11-10):
+    // centred half the x-height above the baseline, the underline's thickness; in StrikeMetrics' convention the
+    // offset is the stroke's bottom. The Skia scaler reports the same on macOS (SKFontScaler.cpp).
+    CGFloat xHeight = CTFontGetXHeight(ctFont);
+    if (metrics != NULL && size > 0 && underlineThickness > 0 && xHeight > 0) {
+        DECLARE_FIELD_RETURN(sjf_strikethroughOffset, sjc_StrikeMetrics, "strikethroughOffset", "F", NULL);
+        DECLARE_FIELD_RETURN(sjf_strikethroughThickness, sjc_StrikeMetrics, "strikethroughThickness", "F", NULL);
+        (*env)->SetFloatField(env, metrics, sjf_strikethroughOffset, (jfloat) ((-xHeight / 2 + underlineThickness / 2) / size));
+        (*env)->SetFloatField(env, metrics, sjf_strikethroughThickness, (jfloat) (underlineThickness / size));
     }
 
 cleanup:

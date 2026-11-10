@@ -160,8 +160,9 @@ public class TextDecorationsTest {
                 errors.add(scale + "x: the underline's clearance beside the descenders is " + median + " device pixels, CoreText's is one user pixel (" + scale + ")");
             }
         }
-        // the strikethrough over "gyp" alone, beside a coloured "Quick": one solid row above the baseline over
-        // the struck characters' columns and nothing added elsewhere on that row (Skia's paragraph groups its
+        // the strikethrough over "gyp" alone, beside a coloured "Quick": AppKit's band above the baseline over the
+        // struck characters' columns (Helvetica Neue 13: one row at 1x, two at 2x, the underline's thickness
+        // rounded up; TextStrikethroughTest) and nothing added elsewhere on those rows (Skia's paragraph groups its
         // runs by font and colour, not by decoration: the decoration must follow the characters)
         FontRenderContext frc = new FontRenderContext(null, RenderingHints.VALUE_TEXT_ANTIALIAS_ON, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         int sx1 = (int) Math.ceil((10 + new TextLayout(TEXT.substring(0, 6), font, frc).getAdvance()) * scale) + 1;
@@ -178,13 +179,20 @@ public class TextDecorationsTest {
             if (stRow < 0 || addedStruck[y] > addedStruck[stRow]) stRow = y;
         }
         int struckColumns = sx2 - sx1 + 1, otherColumns = (textX2 - textX1 + 1) - (sx2 - sx1 + 5);
-        System.out.printf("%dx: strikethrough row %d (baseline %d): ink over the %d struck columns %.1f (added %.1f, the row above %.1f, below %.1f); added over the %d other columns %.1f%n",
-                          scale, stRow, BASELINE, struckColumns, inkStruck[stRow], addedStruck[stRow], addedStruck[stRow - 1], addedStruck[stRow + 1], otherColumns, addedElsewhere[stRow]);
+        // the band: the solid rows around the strongest one
+        int stTop = stRow, stBottom = stRow;
+        while (stTop - 1 >= 0 && inkStruck[stTop - 1] >= struckColumns * 0.95 && addedStruck[stTop - 1] >= struckColumns * 0.3) stTop--;
+        while (stBottom + 1 < BASELINE && inkStruck[stBottom + 1] >= struckColumns * 0.95 && addedStruck[stBottom + 1] >= struckColumns * 0.3) stBottom++;
+        System.out.printf("%dx: strikethrough rows %d..%d (baseline %d): ink over the %d struck columns %.1f (added %.1f, the row above %.1f, below %.1f); added over the %d other columns %.1f%n",
+                          scale, stTop, stBottom, BASELINE, struckColumns, inkStruck[stRow], addedStruck[stRow], addedStruck[stTop - 1], addedStruck[stBottom + 1], otherColumns, addedElsewhere[stRow]);
         if (mac && (inkStruck[stRow] < struckColumns * 0.95 || addedStruck[stRow] < struckColumns * 0.3)) {
             errors.add("the strikethrough is not one solid row over the struck characters: row " + stRow + " carries " + inkStruck[stRow] + " over " + struckColumns + " columns (" + addedStruck[stRow] + " added)");
         }
-        if (mac && (addedStruck[stRow - 1] > struckColumns * 0.15 || addedStruck[stRow + 1] > struckColumns * 0.15)) {
+        if (mac && (addedStruck[stTop - 1] > struckColumns * 0.15 || addedStruck[stBottom + 1] > struckColumns * 0.15)) {
             errors.add("the strikethrough spills over a neighbouring row");
+        }
+        if (mac && stBottom - stTop + 1 != scale) {
+            errors.add(scale + "x: the strikethrough is " + (stBottom - stTop + 1) + " rows thick; AppKit's for Helvetica Neue 13 is " + scale);
         }
         if (addedElsewhere[stRow] > otherColumns * 0.1) {
             errors.add("the strikethrough reaches characters that are not struck: " + addedElsewhere[stRow] + " added over the " + otherColumns + " other columns");

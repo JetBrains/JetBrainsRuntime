@@ -166,10 +166,20 @@ jobject strikeMetrics(JNIEnv *env, float ay, float dy, float ly, float mx, const
         env->SetFloatField(metrics, env->GetFieldID(cls, "underlineOffset", "F"), position);
         env->SetFloatField(metrics, env->GetFieldID(cls, "underlineThickness", "F"), thickness);
     }
+#if defined(__APPLE__)
+    // AppKit's strikethrough (measured 2026-11-10 in a view at 1x and 2x): centred half the x-height above the
+    // baseline, the underline's thickness, not the OS/2 strikeout the host reports; the JDK's CoreText strike
+    // reports the same (AWTStrike.m). The offset in Skia's convention, the stroke's bottom.
+    if (decorations->fXHeight > 0 && decorations->hasUnderlineThickness(&thickness) && thickness > 0) {
+        env->SetFloatField(metrics, env->GetFieldID(cls, "strikethroughOffset", "F"), -decorations->fXHeight / 2 + thickness / 2);
+        env->SetFloatField(metrics, env->GetFieldID(cls, "strikethroughThickness", "F"), thickness);
+    }
+#else
     if (decorations->hasStrikeoutPosition(&position) && decorations->hasStrikeoutThickness(&thickness) && thickness > 0) {
         env->SetFloatField(metrics, env->GetFieldID(cls, "strikethroughOffset", "F"), position);
         env->SetFloatField(metrics, env->GetFieldID(cls, "strikethroughThickness", "F"), thickness);
     }
+#endif
     return metrics;
 }
 

@@ -2671,13 +2671,22 @@ DecorationMetrics decorationMetrics(const SkFont &font) {
         m.underlinePosition = position;
         m.underlineThickness = thickness;
     }
+#if defined(__APPLE__)
+    // AppKit's strikethrough, as the scalers report it (SKFontScaler.cpp strikeMetrics): centred half the x-height
+    // above the baseline, the underline's thickness
+    if (metrics.fXHeight > 0 && metrics.hasUnderlineThickness(&thickness) && thickness > 0) {
+        m.strikethroughCentre = -metrics.fXHeight / 2;
+        m.strikethroughThickness = thickness;
+    }
+#else
     if (metrics.hasStrikeoutPosition(&position) && metrics.hasStrikeoutThickness(&thickness) && thickness > 0) {
-        // sun.font.TextDecorations.strikethroughCentre: Skia names the position the stroke's bottom and CoreText's
-        // placement was fitted on that; the DirectWrite host hands on the OS/2 table's top of the stroke
+        // sun.font.TextDecorations.strikethroughCentre: Skia names the position the stroke's bottom; the
+        // DirectWrite host hands on the OS/2 table's top of the stroke
         const bool directWrite = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
         m.strikethroughCentre = directWrite ? position + thickness / 2 : position - thickness / 2;
         m.strikethroughThickness = thickness;
     }
+#endif
     return m;
 }
 
@@ -2750,7 +2759,7 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                         // Direct2D's unsnapped rectangle about the centre, from the glyphs' baseline row (TextDecorations.drawStrikethrough)
                         fillBand(canvas, runPaint, x1, x2, baselineRow + m.strikethroughCentre - m.strikethroughThickness / 2, m.strikethroughThickness, nullptr, 0);
                     } else {
-                        const int rows = std::max(1, (int) std::lround(m.strikethroughThickness));
+                        const int rows = std::max(1, (int) std::ceil(m.strikethroughThickness - 1e-3f));   // AppKit's: rounded up, as the underline's
                         const int top = baselineRow + (int) std::floor(m.strikethroughCentre - rows / 2.0f + 0.5f);   // from the glyphs' row, as TextDecorations
                         fillBand(canvas, runPaint, x1, x2, (float) top, (float) rows, nullptr, 0);
                     }
@@ -2881,7 +2890,7 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
                         top = centre - thickness / 2;
                         height = thickness;
                     } else {
-                        const int rows = std::max(1, (int) std::lround(thickness));
+                        const int rows = std::max(1, (int) std::ceil(thickness - 1e-3f));
                         top = (float) std::floor(centre - rows / 2.0f + 0.5f);
                         height = (float) rows;
                     }
