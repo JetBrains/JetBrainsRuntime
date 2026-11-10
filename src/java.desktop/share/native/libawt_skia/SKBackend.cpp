@@ -2048,11 +2048,83 @@ static void applyGrayRoute(SkFont &font, jlong pScalerContext, SkColor textColou
     }
 }
 
-// The font manager for the fallback runs: the platform's, or its luminance proxy when the
-// strike takes the cg route, so the characters the strike's font lacks get the route too.
+// The typefaces behind the shaper's and the paragraph engine's family names ("jb-typeface-<id>", typefaceAlias), for
+// the cascade manager below: a run's characters its font lacks fall back from that font.
+namespace {
+std::mutex gAliasLock;
+std::unordered_map<uint32_t, sk_sp<SkTypeface>> gAliasTypefaces;
+constexpr char kAliasPrefix[] = "jb-typeface-";
+}
+
+SkString typefaceAlias(const SkTypeface *typeface) {
+    return SkStringPrintf("%s%u", kAliasPrefix, (unsigned) typeface->uniqueID());
+}
+
+// typefaceAlias, the typeface registered for the cascade manager
+static SkString registeredAlias(const sk_sp<SkTypeface> &typeface) {
+    {
+        std::lock_guard<std::mutex> guard(gAliasLock);
+        gAliasTypefaces.emplace(typeface->uniqueID(), typeface);
+    }
+    return typefaceAlias(typeface.get());
+}
+
+// The fallback for a character a run's font lacks, as the platform's text falls back (SKPlatform_CascadeTypeface:
+// macOS CTFontCreateForString from the run's own font, as CTLine and TextKit 2 draw, and as the glyph-list routes
+// resolve it, SKPlatform_FallbackTypeface): the run's font comes as its alias in the family name (the shaper's
+// request name, the paragraph's text-style family). Without a cascade, or for another name, the inner manager's.
+namespace {
+class CascadeFontMgr final : public SkFontMgr {
+public:
+    explicit CascadeFontMgr(sk_sp<SkFontMgr> inner) : fInner(std::move(inner)) {}
+
+protected:
+    int onCountFamilies() const override { return fInner->countFamilies(); }
+    void onGetFamilyName(int index, SkString *familyName) const override { fInner->getFamilyName(index, familyName); }
+    sk_sp<SkFontStyleSet> onCreateStyleSet(int index) const override { return fInner->createStyleSet(index); }
+    sk_sp<SkFontStyleSet> onMatchFamily(const char familyName[]) const override { return fInner->matchFamily(familyName); }
+    sk_sp<SkTypeface> onMatchFamilyStyle(const char familyName[], const SkFontStyle &style) const override {
+        return fInner->matchFamilyStyle(familyName, style);
+    }
+    sk_sp<SkTypeface> onMatchFamilyStyleCharacter(const char familyName[], const SkFontStyle &style, const char *bcp47[],
+                                                  int bcp47Count, SkUnichar character) const override {
+        if (familyName != nullptr && std::strncmp(familyName, kAliasPrefix, sizeof(kAliasPrefix) - 1) == 0) {
+            sk_sp<SkTypeface> base;
+            {
+                std::lock_guard<std::mutex> guard(gAliasLock);
+                auto it = gAliasTypefaces.find((uint32_t) std::strtoul(familyName + sizeof(kAliasPrefix) - 1, nullptr, 10));
+                if (it != gAliasTypefaces.end()) base = it->second;
+            }
+            if (base) {
+                if (sk_sp<SkTypeface> cascade = SKPlatform_CascadeTypeface(base.get(), character)) {
+                    return cascade;
+                }
+            }
+        }
+        return fInner->matchFamilyStyleCharacter(familyName, style, bcp47, bcp47Count, character);
+    }
+    sk_sp<SkTypeface> onMakeFromData(sk_sp<SkData> data, int ttcIndex) const override { return fInner->makeFromData(std::move(data), ttcIndex); }
+    sk_sp<SkTypeface> onMakeFromStreamIndex(std::unique_ptr<SkStreamAsset> stream, int ttcIndex) const override {
+        return fInner->makeFromStream(std::move(stream), ttcIndex);
+    }
+    sk_sp<SkTypeface> onMakeFromStreamArgs(std::unique_ptr<SkStreamAsset> stream, const SkFontArguments &args) const override {
+        return fInner->makeFromStream(std::move(stream), args);
+    }
+    sk_sp<SkTypeface> onMakeFromFile(const char path[], int ttcIndex) const override { return fInner->makeFromFile(path, ttcIndex); }
+    sk_sp<SkTypeface> onLegacyMakeTypeface(const char familyName[], SkFontStyle style) const override {
+        return fInner->legacyMakeTypeface(familyName, style);
+    }
+
+private:
+    sk_sp<SkFontMgr> fInner;
+};
+}
+
+// The font manager for the fallback runs: the platform's under the cascade (CascadeFontMgr), or its luminance proxy
+// when the strike takes the cg route, so the characters the strike's font lacks get the route too.
 static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, SkColor textColour) {
-    sk_sp<SkFontMgr> platform = SKPlatform_FontManager();
-    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(platform, luminanceClass(textColour, pScalerContext)) : platform;
+    static sk_sp<SkFontMgr> cascade = sk_make_sp<CascadeFontMgr>(SKPlatform_FontManager());
+    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(cascade, luminanceClass(textColour, pScalerContext)) : cascade;
 }
 
 // The text blob cache (SKBackend_SetTextBlobCache): least recently used first out. A key is the bytes of a
@@ -2480,10 +2552,13 @@ jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkP
     const SkString utf8 = SkUnicode::convertUtf16ToUtf8((const char16_t *) chars, length);
     // the paragraph direction Java's layout takes (the first strong character, SKTextRenderer); the shaper's bidi
     // reorders the runs within it and lays them out visually from the origin, as TextLayout does
-    auto fonts = SkShaper::MakeFontMgrRunIterator(utf8.c_str(), utf8.size(), font, fallback);
+    // the characters the font lacks from the platform's cascade from that font (CascadeFontMgr: the alias names it)
+    auto language = SkShaper::MakeStdLanguageRunIterator(utf8.c_str(), utf8.size());
+    const SkString alias = registeredAlias(font.refTypeface());
+    auto fonts = SkShaper::MakeFontMgrRunIterator(utf8.c_str(), utf8.size(), font, fallback, alias.c_str(), font.getTypeface()->fontStyle(),
+                                                  language.get());
     auto bidi = SkShapers::unicode::BidiRunIterator(s.unicode, utf8.c_str(), utf8.size(), rightToLeft ? 1 : 0);
     auto script = SkShapers::HB::ScriptRunIterator(utf8.c_str(), utf8.size());
-    auto language = SkShaper::MakeStdLanguageRunIterator(utf8.c_str(), utf8.size());
     if (!fonts || !bidi || !script || !language) {
         return 0;
     }
@@ -2570,9 +2645,6 @@ Paragraphs &paragraphs() {
     return instance;
 }
 
-SkString typefaceAlias(const SkTypeface *typeface) {
-    return SkStringPrintf("jb-typeface-%u", (unsigned) typeface->uniqueID());
-}
 
 } // namespace
 
@@ -3189,7 +3261,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         applyGrayRoute(font, contexts[r], runColour);
         sk_sp<SkTypeface> typeface = font.refTypeface();
         if (p.registered.insert(typeface->uniqueID()).second) {
-            p.provider->registerTypeface(typeface, typefaceAlias(typeface.get()));
+            p.provider->registerTypeface(typeface, registeredAlias(typeface));
         }
         tl::TextStyle ts;
         ts.setFontFamilies({typefaceAlias(typeface.get())});

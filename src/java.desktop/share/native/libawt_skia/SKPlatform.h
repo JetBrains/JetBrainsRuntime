@@ -139,6 +139,10 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
 // mapper hands such characters to CoreText as negative glyph codes): the
 // typeface that has it and the glyph in it; null if the platform has none.
 sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, uint16_t *glyph);
+// The platform's cascade from a typeface for a character it lacks, as the platform's own text draws such a run
+// (macOS: CTFontCreateForString with the typeface's CTFont as base, which CTLine and TextKit 2 follow); null where
+// the platform offers none (Skia's font manager then decides).
+sk_sp<SkTypeface> SKPlatform_CascadeTypeface(const SkTypeface *base, SkUnichar character);
 // The glyph rasterized by the platform's own text renderer (CoreGraphics on
 // macOS, DirectWrite on Windows). luminance 0..255: with the platform's font
 // smoothing on, as it draws text of that luminance (the native look, exact

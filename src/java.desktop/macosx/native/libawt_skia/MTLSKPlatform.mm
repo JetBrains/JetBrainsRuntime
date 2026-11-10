@@ -239,6 +239,37 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong nativeFont, int codePoint, u
     return typeface;
 }
 
+sk_sp<SkTypeface> SKPlatform_CascadeTypeface(const SkTypeface *base, SkUnichar character) {
+    CTFontRef font = base != nullptr ? (CTFontRef) SkTypeface_GetCTFontRef(base) : nullptr;
+    if (font == nullptr || character < 0 || character > 0x10FFFF) {
+        return nullptr;
+    }
+    UniChar chars[2];
+    CFIndex count = 1;
+    if (character >= 0x10000) {
+        const int value = character - 0x10000;
+        chars[0] = (UniChar) (0xD800 | (value >> 10));
+        chars[1] = (UniChar) (0xDC00 | (value & 0x3FF));
+        count = 2;
+    } else {
+        chars[0] = (UniChar) character;
+    }
+    CFStringRef string = CFStringCreateWithCharacters(kCFAllocatorDefault, chars, count);
+    if (string == nullptr) {
+        return nullptr;
+    }
+    CTFontRef fallback = CTFontCreateForString(font, string, CFRangeMake(0, count));
+    CFRelease(string);
+    if (fallback == nullptr) {
+        return nullptr;
+    }
+    CGGlyph glyphs[2] = { 0, 0 };
+    const bool covers = CTFontGetGlyphsForCharacters(fallback, chars, glyphs, count) && glyphs[0] != 0;
+    sk_sp<SkTypeface> typeface = covers ? typefaceForCTFont(fallback) : nullptr;
+    CFRelease(fallback);
+    return typeface;
+}
+
 // CoreGraphics draws the glyph with font smoothing on in the gray of the text's
 // luminance, on white for dark text and on black for light text, and the
 // coverage is what the paper lost: CoreGraphics' smoothing depends on the text

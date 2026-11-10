@@ -64,6 +64,10 @@ sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong, int, uint16_t *) {
     return nullptr;   // Windows resolves fallback through composite fonts, with non-negative codes
 }
 
+sk_sp<SkTypeface> SKPlatform_CascadeTypeface(const SkTypeface *, SkUnichar) {
+    return nullptr;   // unmeasured: Skia's DirectWrite font manager decides
+}
+
 // ---- DirectWrite glyph masks ------------------------------------------------
 //
 // The platform's own rasterizer for the Skia scaler's glyph images, in the two
