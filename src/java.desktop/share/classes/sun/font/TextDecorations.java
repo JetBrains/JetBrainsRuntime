@@ -153,6 +153,79 @@ public final class TextDecorations {
     }
 
     /**
+     * What a line gives its components' system decorations and backgrounds: {@code underline} the band metrics
+     * ({@link #fontMetrics} layout) of the stretch of underlined components this one belongs to, or null (the
+     * component's own); {@code backgroundTop} and {@code backgroundBottom} the line's background band from the
+     * baseline (user space), or NaN (the component's logical bounds).
+     */
+    public record LineContext(float[] underline, float backgroundTop, float backgroundBottom) {}
+
+    private static final ThreadLocal<LineContext> LINE = new ThreadLocal<>();
+
+    /** The context of the component being drawn or outlined by its line, or null outside a line. */
+    public static LineContext lineContext() {
+        return LINE.get();
+    }
+
+    /** Enters a component's context; returns the previous one for {@link #leaveLine}. */
+    public static LineContext enterLine(LineContext context) {
+        LineContext previous = LINE.get();
+        LINE.set(context);
+        return previous;
+    }
+
+    public static void leaveLine(LineContext previous) {
+        LINE.set(previous);
+    }
+
+    /**
+     * The line contexts of a line's components (logical order), as TextKit 2 lays a line's attributes out (measured
+     * 2026-11-10): a stretch of adjacent underlined components (visual order) shares one underline, at the deepest
+     * of their positions (each with its baseline offset: a subscript lowers the stretch's line, a superscript never
+     * raises it) and the thickest of their thicknesses, under CoreText's rule; every background fills the line's
+     * band, from its tallest component's ascent (no higher than the ascent rounded to a point, where TextKit 2 puts
+     * the line fragment's top) to its deepest component's descent, without leading
+     * ({@code sun.java2d.skia.text.attributes=system}). {@code underlined[i]}, {@code metrics[i]} per logical
+     * component; {@code visual} the visual-to-logical order or null; ascent and descent the line's.
+     */
+    public static LineContext[] lineContexts(boolean[] underlined, CoreMetrics[] metrics, int[] visual, float ascent, float descent) {
+        int n = metrics.length;
+        boolean lineUnderline = sun.java2d.skia.SKEnvironment.decorationsSnapped() && rule() == Rule.CORE_TEXT;
+        boolean band = sun.java2d.skia.SKEnvironment.textAttributesSystem();
+        float top = band ? -Math.min(ascent, Math.round(ascent)) : Float.NaN, bottom = band ? descent : Float.NaN;
+        float[][] underline = new float[n][];
+        if (lineUnderline) {
+            for (int v = 0; v < n; ) {
+                int li = visual == null ? v : visual[v];
+                if (!underlined[li]) {
+                    v++;
+                    continue;
+                }
+                int end = v;
+                float position = -Float.MAX_VALUE, thickness = 0, maxAscent = 0, maxDescent = 0;
+                for (; end < n && underlined[visual == null ? end : visual[end]]; end++) {
+                    CoreMetrics cm = metrics[visual == null ? end : visual[end]];
+                    // a shifted font's underline offset carries its baseline offset already (Font.getLineMetrics)
+                    position = Math.max(position, cm.underlineOffset - cm.underlineThickness / 2);
+                    thickness = Math.max(thickness, cm.underlineThickness);
+                    maxAscent = Math.max(maxAscent, cm.ascent);
+                    maxDescent = Math.max(maxDescent, cm.descent);
+                }
+                for (int k = v; k < end; k++) {
+                    CoreMetrics cm = metrics[visual == null ? k : visual[k]];
+                    underline[visual == null ? k : visual[k]] = new float[] {position, thickness, cm.strikethroughOffset, cm.strikethroughThickness, maxAscent, maxDescent};
+                }
+                v = end;
+            }
+        }
+        LineContext[] out = new LineContext[n];
+        for (int i = 0; i < n; i++) {
+            out[i] = underline[i] == null && !band ? null : new LineContext(underline[i], top, bottom);
+        }
+        return out;
+    }
+
+    /**
      * The strikethrough's centre (negative above the baseline) from the scaler's strikethrough offset and
      * thickness. Skia's font metrics name the offset the distance to the bottom of the stroke, and CoreText's
      * placement was fitted on that reading; Skia's DirectWrite host hands on DWRITE_FONT_METRICS.strikethroughPosition,

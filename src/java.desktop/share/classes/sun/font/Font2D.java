@@ -183,6 +183,16 @@ public abstract class Font2D {
         return FWIDTH_NORMAL;
     }
 
+    /**
+     * The platform's baseline offset (points, up positive) for a superscript or subscript of this font at
+     * {@code size} at {@code level} (TextAttribute.SUPERSCRIPT's value), the glyphs at their size; NaN where the
+     * platform has none, and Java's synthetic superscript applies (java.awt.Font.getTransform). macOS: TextKit 2's
+     * (CFont).
+     */
+    public float platformSuperscriptOffset(float size, int level) {
+        return Float.NaN;
+    }
+
     public int getWeight() {
         if ((style & Font.BOLD) !=0) {
             return FWEIGHT_BOLD;

@@ -42,12 +42,12 @@ import java.util.function.Consumer;
  *          (levels 1 and 2, on a first run, carried by a font, with a TRANSFORM, whole-pixel
  *          advances, underlined) are the paragraph's too, each glyph column TextLayout's up to a
  *          vertical offset of one layout pixel (SkParagraph puts shifted runs on whole layout pixels
- *          where Java's layout does not; accepted), the underline where SkParagraph puts it; an
- *          underline on runs described by FAMILY and SIZE is the paragraph's. BACKGROUND and
- *          SWAP_COLORS (with and without FOREGROUND and BACKGROUND, the swapped text black or white
- *          by the background's brightness as Java's Decoration chooses) are the paragraph's: the box
- *          behind the run SkParagraph's, within a pixel of TextLayout's fill of the run's logical
- *          bounds; swapped over a paint that is not a colour, TextLayout's. Iterators without a
+ *          where Java's layout does not; accepted; on macOS TextKit 2's whole-point offsets), the
+ *          underline the line's (TextDecorations.lineContexts); an underline on runs described by FAMILY
+ *          and SIZE is the paragraph's. BACKGROUND and SWAP_COLORS (with and without FOREGROUND and
+ *          BACKGROUND, the swapped text black or white by the background's brightness as Java's
+ *          Decoration chooses) are the paragraph's: the box behind the run the line's band, within a
+ *          pixel of TextLayout's; swapped over a paint that is not a colour, TextLayout's. Iterators without a
  *          FONT or FAMILY (no attributes at all, colours only, SIZE or WEIGHT alone, next to a FONT
  *          run, characters from several scripts) are the paragraph's with the fonts TextLayout
  *          resolves for them (FontResolver: Dialog 12 derived with the font attributes, else the
@@ -119,12 +119,14 @@ public class SkiaParagraphAttributesTest {
         expect("TRACKING 0.1, whole-pixel advances", byAttributes(KERNED, font, TextAttribute.TRACKING, 0.1f), true);
         expect("a font carrying TRACKING and KERNING_ON, whole-pixel advances", runs(KERNED, font.deriveFont(Map.of(TextAttribute.TRACKING, 0.08f, TextAttribute.KERNING, TextAttribute.KERNING_ON))), true);
         fractional = true;
-        // superscript and subscript: the run's font scaled by 2/3 a level, its baseline shifted (Font.getTransform)
-        differ("superscript", layout(byAttributes(SCRIPTS, font, null, null)), layout(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8)));
-        expectShifted("SUPERSCRIPT_SUPER on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), 1);
-        expectShifted("SUPERSCRIPT_SUB on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 12, 13), 1);
-        expectShifted("superscript level 2", scripted(font, 2, 7, 8), 1);
-        expectShifted("subscript level 2 next to superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), TextAttribute.SUPERSCRIPT, -2, 12, 13), 1);
+        // superscript and subscript: the run's baseline shifted (Font.getTransform; on macOS TextKit 2's offset, the
+        // glyphs at their size; elsewhere the font scaled by 2/3 a level) — on the digits of "mc2" and "H2O": a raised
+        // space would be invisible at its size
+        differ("superscript", layout(byAttributes(SCRIPTS, font, null, null)), layout(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 6, 7)));
+        expectShifted("SUPERSCRIPT_SUPER on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 6, 7), 1);
+        expectShifted("SUPERSCRIPT_SUB on a run", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 13, 14), 1);
+        expectShifted("superscript level 2", scripted(font, 2, 6, 7), 1);
+        expectShifted("subscript level 2 next to superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 6, 7), TextAttribute.SUPERSCRIPT, -2, 13, 14), 1);
         expectShifted("a superscripted first run", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 0, 2), 1);
         expectShifted("a font carrying SUPERSCRIPT", runs(SCRIPTS, font.deriveFont(Map.of(TextAttribute.SUPERSCRIPT, TextAttribute.SUPERSCRIPT_SUPER))), 1, false);
         // the offset is the user's (Font.getTransform applies it outside the font's TRANSFORM): not scaled with it
@@ -133,10 +135,10 @@ public class SkiaParagraphAttributesTest {
         // an underline on runs described by FAMILY and SIZE is the route's own decoration, not a font the route refuses
         expect("an underline with FAMILY and SIZE", byAttributes(KERNED, font, TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON), true);
         // a decoration with shifted runs: where SkParagraph puts it (TextLayout's rule for a superscript's underline differs)
-        expectTaken("an underlined superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON, 0, SCRIPTS.length()));
+        expectTaken("an underlined superscript", withAttribute(scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 6, 7), TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON, 0, SCRIPTS.length()));
         fractional = false;
-        expectShifted("SUPERSCRIPT_SUPER on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 7, 8), hidpi ? 2 : 1);
-        expectShifted("SUPERSCRIPT_SUB on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 12, 13), hidpi ? 2 : 1);
+        expectShifted("SUPERSCRIPT_SUPER on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUPER, 6, 7), hidpi ? 2 : 1);
+        expectShifted("SUPERSCRIPT_SUB on a run, whole-pixel advances", scripted(font, TextAttribute.SUPERSCRIPT_SUB, 13, 14), hidpi ? 2 : 1);
         fractional = true;
         // a box behind the run: SkParagraph's (its top a row above TextLayout's, which fills only rows whose centres
         // the logical bounds cover; with antialiasing the edges blend), the text in the colour Java resolves

@@ -129,6 +129,11 @@ public class Decoration {
         return getDecoration(AttributeValues.fromMap(attributes));
     }
 
+    /** Whether this decoration carries the system underline (TextAttribute.UNDERLINE_ON under decorations=system). */
+    boolean underlinesLine() {
+        return false;
+    }
+
     public void drawTextAndDecorations(Label label,
                                 Graphics2D g2d,
                                 float x,
@@ -157,6 +162,11 @@ public class Decoration {
     private static final Decoration PLAIN = new Decoration();
 
     private static final class DecorationImpl extends Decoration {
+
+        @Override
+        boolean underlinesLine() {
+            return sun.java2d.skia.SKEnvironment.decorationsSnapped() && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON);
+        }
 
         private Paint fgPaint = null;
         private Paint bgPaint = null;
@@ -223,7 +233,7 @@ public class Decoration {
                 ulBottom += stdUnderline.getLowerDrawLimit(cm.underlineThickness);
                 if (sun.java2d.skia.SKEnvironment.decorationsSnapped() && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)) {
                     // the system convention snaps the underline to device rows (TextDecorations): the bounds reach them
-                    ulBottom = Math.max(ulBottom, TextDecorations.underlineBottom(TextDecorations.fontMetrics(cm)));
+                    ulBottom = Math.max(ulBottom, TextDecorations.underlineBottom(lineUnderline(TextDecorations.fontMetrics(cm))));
                 }
                 maxY = Math.max(maxY, ulBottom);
             }
@@ -284,7 +294,7 @@ public class Decoration {
                 if (system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON)) {
                     if (!none) {
                         Shape ink = sun.java2d.skia.SKEnvironment.decorationsSkipInk() ? label.handleGetOutline(x, y) : null;
-                        TextDecorations.drawUnderline(g2d, sx1, sx2, y, fontDecorations, ink);
+                        TextDecorations.drawUnderline(g2d, sx1, sx2, y, lineUnderline(fontDecorations), ink);
                     }
                 } else {
                     stdUnderline.drawUnderline(g2d, ulThickness, x1, x2, y + ulOffset);
@@ -331,7 +341,7 @@ public class Decoration {
 
                 if (background != null) {
 
-                    Rectangle2D bgArea = label.getLogicalBounds();
+                    Rectangle2D bgArea = backgroundBounds(label);
                     bgArea = new Rectangle2D.Float(x + (float)bgArea.getX(),
                                                 y + (float)bgArea.getY(),
                                                 (float)bgArea.getWidth(),
@@ -345,6 +355,22 @@ public class Decoration {
                 drawTextAndEmbellishments(label, g2d, x, y);
                 g2d.setPaint(savedPaint);
             }
+        }
+
+        /** The underline's metrics: its line's stretch's (TextDecorations.lineContexts), else the component's own. */
+        private static float[] lineUnderline(float[] own) {
+            TextDecorations.LineContext lc = TextDecorations.lineContext();
+            return lc != null && lc.underline() != null ? lc.underline() : own;
+        }
+
+        /** The background's box: the label's logical bounds, vertically its line's band where the line gives one. */
+        private static Rectangle2D backgroundBounds(Label label) {
+            Rectangle2D lb = label.getLogicalBounds();
+            TextDecorations.LineContext lc = TextDecorations.lineContext();
+            if (lc == null || Float.isNaN(lc.backgroundTop())) {
+                return lb;
+            }
+            return new Rectangle2D.Float((float) lb.getX(), lc.backgroundTop(), (float) lb.getWidth(), lc.backgroundBottom() - lc.backgroundTop());
         }
 
         public Rectangle2D getVisualBounds(Label label) {
@@ -361,8 +387,9 @@ public class Decoration {
 
                 if (swapColors || bgPaint != null) {
 
-                    minY = (float)lb.getY();
-                    maxY = minY + (float)lb.getHeight();
+                    Rectangle2D bb = backgroundBounds(label);
+                    minY = (float)bb.getY();
+                    maxY = minY + (float)bb.getHeight();
                 }
 
                 maxY = Math.max(maxY, getUnderlineMaxY(label.getCoreMetrics()));
@@ -407,7 +434,7 @@ public class Decoration {
             boolean systemUnderline = system && stdUnderline == Underline.getUnderline(TextAttribute.UNDERLINE_ON);
             if (stdUnderline != null && !(systemUnderline && none)) {
                 Shape ul = systemUnderline
-                        ? TextDecorations.underlineShape(sx1, sx2, y, fontDecorations, layoutTransform)
+                        ? TextDecorations.underlineShape(sx1, sx2, y, lineUnderline(fontDecorations), layoutTransform)
                         : stdUnderline.getUnderlineShape(ulThickness, x1, x2, y+ulOffset);
                 area = new Area(ul);
             }

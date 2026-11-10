@@ -1228,7 +1228,13 @@ public class Font implements java.io.Serializable
                 ? new AffineTransform(values.getTransform())
                 : new AffineTransform();
 
-            if (values.getSuperscript() != 0) {
+            // the platform's superscript where it has one (sun.java2d.skia.text.attributes=system; macOS: TextKit 2's,
+            // the glyphs at their size, moved by its baseline offset for the level)
+            float platformOffset = values.getSuperscript() != 0 && sun.java2d.skia.SKEnvironment.textAttributesSystem()
+                    ? getFont2D().platformSuperscriptOffset(pointSize, values.getSuperscript()) : Float.NaN;
+            if (!Float.isNaN(platformOffset)) {
+                at.preConcatenate(AffineTransform.getTranslateInstance(0, -platformOffset));
+            } else if (values.getSuperscript() != 0) {
                 // can't get ascent and descent here, recursive call to this fn,
                 // so use pointsize
                 // let users combine super- and sub-scripting

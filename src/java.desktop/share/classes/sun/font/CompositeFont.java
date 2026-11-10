@@ -378,6 +378,12 @@ public class CompositeFont extends Font2D {
         return numSlots;
     }
 
+    /** The first slot's (the font the composite is named after). */
+    @Override
+    public float platformSuperscriptOffset(float size, int level) {
+        return getSlotFont(0).platformSuperscriptOffset(size, level);
+    }
+
     public Font2D getSlotFont(int slot) {
         /* This is essentially the runtime overhead for deferred font
          * initialisation: a boolean test on obtaining a slot font,

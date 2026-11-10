@@ -761,6 +761,34 @@ final class TextLine {
         throw new IllegalArgumentException("logicalIndex too large.");
     }
 
+    /** The line's context of each component for the system decorations and backgrounds (TextDecorations.lineContexts). */
+    private sun.font.TextDecorations.LineContext[] lineContexts;
+
+    /** The component's line context, or null (a line of plain components needs none). */
+    private sun.font.TextDecorations.LineContext lineContext(int logicalIndex) {
+        if (isSimple) {
+            return null;
+        }
+        if (lineContexts == null) {
+            int n = fComponents.length;
+            boolean[] underlined = new boolean[n];
+            CoreMetrics[] metrics = new CoreMetrics[n];
+            for (int i = 0; i < n; i++) {
+                underlined[i] = fComponents[i].isUnderlined();
+                metrics[i] = fComponents[i].getCoreMetrics();
+            }
+            int[] visual = null;
+            if (fComponentVisualOrder != null) {
+                visual = new int[n];
+                for (int v = 0; v < n; v++) {
+                    visual[v] = getComponentLogicalIndex(v);
+                }
+            }
+            lineContexts = sun.font.TextDecorations.lineContexts(underlined, metrics, visual, fMetrics.ascent, fMetrics.descent);
+        }
+        return lineContexts[logicalIndex];
+    }
+
     private float getComponentShift(int index) {
         CoreMetrics cm = fComponents[index].getCoreMetrics();
         return cm.effectiveBaselineOffset(fBaselineOffsets);
@@ -769,26 +797,38 @@ final class TextLine {
     public void draw(Graphics2D g2, float x, float y) {
         if (lp == null) {
             for (int i = 0, n = 0; i < fComponents.length; i++, n += 2) {
-                TextLineComponent tlc = fComponents[getComponentLogicalIndex(i)];
-                tlc.draw(g2, locs[n] + x, locs[n+1] + y);
+                int li = getComponentLogicalIndex(i);
+                TextLineComponent tlc = fComponents[li];
+                sun.font.TextDecorations.LineContext previous = sun.font.TextDecorations.enterLine(lineContext(li));
+                try {
+                    tlc.draw(g2, locs[n] + x, locs[n+1] + y);
+                } finally {
+                    sun.font.TextDecorations.leaveLine(previous);
+                }
             }
         } else {
             AffineTransform oldTx = g2.getTransform();
             Point2D.Float pt = new Point2D.Float();
             for (int i = 0, n = 0; i < fComponents.length; i++, n += 2) {
-                TextLineComponent tlc = fComponents[getComponentLogicalIndex(i)];
+                int li = getComponentLogicalIndex(i);
+                TextLineComponent tlc = fComponents[li];
                 lp.pathToPoint(locs[n], locs[n+1], false, pt);
                 pt.x += x;
                 pt.y += y;
                 AffineTransform at = tlc.getBaselineTransform();
 
-                if (at != null) {
-                    g2.translate(pt.x - at.getTranslateX(), pt.y - at.getTranslateY());
-                    g2.transform(at);
-                    tlc.draw(g2, 0, 0);
-                    g2.setTransform(oldTx);
-                } else {
-                    tlc.draw(g2, pt.x, pt.y);
+                sun.font.TextDecorations.LineContext previous = sun.font.TextDecorations.enterLine(lineContext(li));
+                try {
+                    if (at != null) {
+                        g2.translate(pt.x - at.getTranslateX(), pt.y - at.getTranslateY());
+                        g2.transform(at);
+                        tlc.draw(g2, 0, 0);
+                        g2.setTransform(oldTx);
+                    } else {
+                        tlc.draw(g2, pt.x, pt.y);
+                    }
+                } finally {
+                    sun.font.TextDecorations.leaveLine(previous);
                 }
             }
         }
@@ -803,8 +843,15 @@ final class TextLine {
         Rectangle2D result = null;
 
         for (int i = 0, n = 0; i < fComponents.length; i++, n += 2) {
-            TextLineComponent tlc = fComponents[getComponentLogicalIndex(i)];
-            Rectangle2D r = tlc.getVisualBounds();
+            int li = getComponentLogicalIndex(i);
+            TextLineComponent tlc = fComponents[li];
+            Rectangle2D r;
+            sun.font.TextDecorations.LineContext previous = sun.font.TextDecorations.enterLine(lineContext(li));
+            try {
+                r = tlc.getVisualBounds();
+            } finally {
+                sun.font.TextDecorations.leaveLine(previous);
+            }
 
             Point2D.Float pt = new Point2D.Float(locs[n], locs[n+1]);
             if (lp == null) {
@@ -870,8 +917,14 @@ final class TextLine {
         GeneralPath dstShape = new GeneralPath(GeneralPath.WIND_NON_ZERO);
 
         for (int i=0, n = 0; i < fComponents.length; i++, n += 2) {
-            TextLineComponent tlc = fComponents[getComponentLogicalIndex(i)];
-            dstShape.append(tlc.getOutline(locs[n], locs[n+1]), false);
+            int li = getComponentLogicalIndex(i);
+            TextLineComponent tlc = fComponents[li];
+            sun.font.TextDecorations.LineContext previous = sun.font.TextDecorations.enterLine(lineContext(li));
+            try {
+                dstShape.append(tlc.getOutline(locs[n], locs[n+1]), false);
+            } finally {
+                sun.font.TextDecorations.leaveLine(previous);
+            }
         }
 
         return dstShape;

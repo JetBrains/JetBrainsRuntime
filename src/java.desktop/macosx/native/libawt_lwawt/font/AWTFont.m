@@ -3372,6 +3372,56 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_font_CFont
+ * Method:    getSuperscriptOffsetNative
+ * Signature: (JFI)F
+ *
+ * The baseline offset (points, up positive) TextKit 2 gives a run of this font at the size with
+ * NSSuperscriptAttributeName at the level: what NSTextView and TextEdit draw a superscript or subscript with (the
+ * glyphs keep their size). A view-less TextKit 2 stack lays a one-character string out and the line fragment's
+ * attributed string carries the offset it turned the level into (measured 2026-11-10: equal to an NSTextView's in
+ * 3250 of 3250 cases over 10 families, 65 sizes and 5 levels, on a background thread too). NaN before macOS 12.
+ */
+JNIEXPORT jfloat JNICALL
+Java_sun_font_CFont_getSuperscriptOffsetNative
+    (JNIEnv *env, jobject cfont, jlong awtFontPtr, jfloat size, jint level)
+{
+    __block jfloat offset = NAN;
+JNI_COCOA_ENTER(env);
+    if (@available(macOS 12.0, *)) {
+        AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
+        NSFont *font = [NSFont fontWithDescriptor:awtFont->fFont.fontDescriptor size:size];
+        if (font != nil) {
+            NSTextContentStorage *storage = [[NSTextContentStorage alloc] init];
+            NSTextLayoutManager *layoutManager = [[NSTextLayoutManager alloc] init];
+            NSTextContainer *container = [[NSTextContainer alloc] initWithSize:CGSizeMake(10000, 10000)];
+            [storage addTextLayoutManager:layoutManager];
+            layoutManager.textContainer = container;
+            NSDictionary *attributes = @{NSFontAttributeName: font, NSSuperscriptAttributeName: @(level)};
+            storage.attributedString = [[[NSAttributedString alloc] initWithString:@"x" attributes:attributes] autorelease];
+            [layoutManager ensureLayoutForRange:layoutManager.documentRange];
+            offset = 0;
+            [layoutManager enumerateTextLayoutFragmentsFromLocation:layoutManager.documentRange.location
+                                                            options:NSTextLayoutFragmentEnumerationOptionsEnsuresLayout
+                                                         usingBlock:^BOOL(NSTextLayoutFragment *fragment) {
+                for (NSTextLineFragment *line in fragment.textLineFragments) {
+                    id value = [line.attributedString attribute:NSBaselineOffsetAttributeName atIndex:0 effectiveRange:NULL];
+                    if ([value isKindOfClass:[NSNumber class]]) {
+                        offset = [value floatValue];
+                    }
+                }
+                return NO;
+            }];
+            [container release];
+            [layoutManager release];
+            [storage release];
+        }
+    }
+JNI_COCOA_EXIT(env);
+    return offset;
+}
+
+/*
+ * Class:     sun_font_CFont
  * Method:    disposeNativeFont
  * Signature: (J)V
  */

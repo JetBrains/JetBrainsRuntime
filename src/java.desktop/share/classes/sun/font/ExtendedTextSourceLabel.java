@@ -78,6 +78,11 @@ final class ExtendedTextSourceLabel implements TextLineComponent, Decoration.Lab
   /**
    * Create from a TextSource.
    */
+  @Override
+  public boolean isUnderlined() {
+    return decorator.underlinesLine();
+  }
+
   public ExtendedTextSourceLabel(TextSource source, Decoration decorator) {
     this.source = source;
     this.decorator = decorator;

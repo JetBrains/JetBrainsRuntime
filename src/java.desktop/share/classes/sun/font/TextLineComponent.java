@@ -71,6 +71,11 @@ public interface TextLineComponent {
     // has no styles requiring complex pixel bounds calculations.
     public boolean isSimple();
 
+    /** Whether the component carries the system underline (Decoration.underlinesLine), for its line's stretch. */
+    default boolean isUnderlined() {
+        return false;
+    }
+
     // return the pixel bounds if we wrap a glyphvector, else throw an
     // internal error
     public Rectangle getPixelBounds(FontRenderContext frc, float x, float y);

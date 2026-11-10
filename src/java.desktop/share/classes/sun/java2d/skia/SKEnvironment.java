@@ -113,6 +113,15 @@ public final class SKEnvironment {
      * at its nominal offsets through the descenders.
      */
     public enum TextDecorations { SYSTEM, JAVA2D }
+    /**
+     * {@code attributes}: how the layout attributes with a platform equivalent are laid out. {@code system} = as the
+     * operating system's text lays them out (macOS, TextKit 2, measured 2026-11-10): a superscript or subscript keeps
+     * its glyphs' size and moves by TextKit 2's baseline offset for the level; a background fills the line's band, its
+     * tallest run's ascent to its deepest run's descent. {@code java2d} = Java's: the font scaled by (2/3)ⁿ and moved by
+     * a table, each run's background its own ascent to descent and leading. Elsewhere the platform's rule is
+     * unmeasured: Java's superscripts, the line's background.
+     */
+    public enum TextAttributes { SYSTEM, JAVA2D }
 
     private static final String TEXT_ROUTE = System.getProperty("sun.java2d.skia.text", "glyphs").toLowerCase(Locale.ROOT);   // retired
     // layout: Skia's shaper for plain strings and its paragraph engine for attributed ones together, or Java's
@@ -129,6 +138,7 @@ public final class SKEnvironment {
     private static final TextDarkening TEXT_DARKENING;
     private static final TextBlend TEXT_BLEND;
     private static final TextDecorations TEXT_DECORATIONS = enumProperty("sun.java2d.skia.text.decorations", TextDecorations.class, TextDecorations.SYSTEM);
+    private static final TextAttributes TEXT_ATTRIBUTES = enumProperty("sun.java2d.skia.text.attributes", TextAttributes.class, TextAttributes.SYSTEM);
     static {
         String gray = System.getProperty("sun.java2d.skia.text.gray");   // retired
         TextBlend blend = TextBlend.SYSTEM;
@@ -553,6 +563,11 @@ public final class SKEnvironment {
     /** The decorations dimension as configured ({@code sun.java2d.skia.text.decorations}). */
     public static TextDecorations textDecorations() {
         return TEXT_DECORATIONS;
+    }
+
+    /** The layout attributes dimension as configured ({@code sun.java2d.skia.text.attributes}). */
+    public static boolean textAttributesSystem() {
+        return TEXT_ATTRIBUTES == TextAttributes.SYSTEM;
     }
 
     /** Whether decorations snap to device pixels (the system convention everywhere). */

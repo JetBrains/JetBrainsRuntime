@@ -78,7 +78,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     private static final int PARAGRAPH_UNDERLINE = 1, PARAGRAPH_STRIKETHROUGH = 2, PARAGRAPH_COLOUR = 4,
             PARAGRAPH_SYSTEM_DECORATIONS = 8,   // decorations drawn by our rule after the paragraph, not by SkParagraph (SKEnvironment.decorationsSnapped)
             PARAGRAPH_KERNING = 16, PARAGRAPH_LIGATURES = 32,   // the run's font kerns / ligates: Java's kern, and liga with calt
-            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128;   // a box behind the run, antialiased as the graphics fills shapes
+            PARAGRAPH_BACKGROUND = 64, PARAGRAPH_BACKGROUND_AA = 128,   // a box behind the run, antialiased as the graphics fills shapes
+            PARAGRAPH_LINE_BACKGROUND = 256;   // the box the line's band (SKEnvironment.textAttributesSystem), as TextLayout's
 
     /** The attributes a run's font is made of when there is no FONT attribute (TextLayout's Font.getFont). */
     private static final java.util.Set<Attribute> FONT_ATTRIBUTES = java.util.Set.of(TextAttribute.FAMILY, TextAttribute.SIZE,
@@ -505,7 +506,8 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
                 colour = null;   // SunGraphics2D.validateColor: no colour under Clear (the glyphs' luminance class is black's)
             }
             if (background != null) {
-                runFlags |= PARAGRAPH_BACKGROUND | (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON ? PARAGRAPH_BACKGROUND_AA : 0);
+                runFlags |= PARAGRAPH_BACKGROUND | (sg2d.antialiasHint == SunHints.INTVAL_ANTIALIAS_ON ? PARAGRAPH_BACKGROUND_AA : 0)
+                        | (SKEnvironment.textAttributesSystem() ? PARAGRAPH_LINE_BACKGROUND : 0);
             }
             for (int k = 0; k < runFonts.length; k++) {
                 font = runFonts[k];

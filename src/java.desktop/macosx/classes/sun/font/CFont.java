@@ -97,6 +97,17 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     private native float getWidthNative(final long nativeFontPtr);
     private native float getWeightNative(final long nativeFontPtr);
+    private native float getSuperscriptOffsetNative(final long nativeFontPtr, float size, int level);
+
+    /** TextKit 2's offsets, by size and level. */
+    private final java.util.concurrent.ConcurrentHashMap<Long, Float> superscriptOffsets = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** TextKit 2's baseline offset for the level at the size (AWTFont.m getSuperscriptOffsetNative), cached. */
+    @Override
+    public float platformSuperscriptOffset(float size, int level) {
+        long key = ((long) Float.floatToIntBits(size) << 32) | (level & 0xffffffffL);
+        return superscriptOffsets.computeIfAbsent(key, k -> getSuperscriptOffsetNative(getNativeFontPtr(), size, level));
+    }
 
     private int fontWidth = -1;
     private int fontWeight = -1;

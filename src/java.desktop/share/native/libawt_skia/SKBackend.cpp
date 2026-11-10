@@ -2767,13 +2767,129 @@ DecorationBand strikethroughBand(float centre, float thickness) {
     return {-std::floor(-centre + rows / 2.0f + 0.5f + 1e-3f), (float) rows};   // a tie away from the baseline
 }
 
+// A run's font in the paragraph's layout units: its scaler context's at the size over the layout scale.
+static bool layoutFont(jlong context, float layoutScale, SkFont *font) {
+    if (!SKFontScaler_Font(context, font)) return false;
+    font->setSize(font->getSize() / layoutScale);
+    return true;
+}
+
+// The underline of each run as its line gives it (sun.font.TextDecorations.lineContexts, TextKit 2's): under
+// CoreText's rule a stretch of adjacent underlined runs takes the deepest position (with each run's baseline shift
+// from the line's baseline) and the thickest thickness; else, and for a run outside a stretch, its own at its shift.
+// Layout units, from the line's baseline; ascent and descent the stretch's, the shifts in.
+static std::vector<DecorationMetrics> lineUnderlines(jint runCount, const jlong *contexts, const jint *flags, const std::vector<float> &shift,
+                                                     float layoutScale) {
+    std::vector<DecorationMetrics> own(runCount);
+    for (jint r = 0; r < runCount; r++) {
+        SkFont font;
+        if (!layoutFont(contexts[r], layoutScale, &font)) continue;
+        own[r] = decorationMetrics(font);
+        own[r].underlinePosition += shift[r];
+        own[r].ascent -= shift[r];
+        own[r].descent += shift[r];
+    }
+    if (SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite) return own;
+    std::vector<DecorationMetrics> out = own;
+    for (jint r = 0; r < runCount;) {
+        if (!(flags[r] & SK_PARAGRAPH_UNDERLINE)) { r++; continue; }
+        jint end = r;
+        DecorationMetrics line = own[r];
+        for (; end < runCount && (flags[end] & SK_PARAGRAPH_UNDERLINE); end++) {
+            line.underlinePosition = std::max(line.underlinePosition, own[end].underlinePosition);
+            line.underlineThickness = std::max(line.underlineThickness, own[end].underlineThickness);
+            line.ascent = std::max(line.ascent, own[end].ascent);
+            line.descent = std::max(line.descent, own[end].descent);
+        }
+        for (jint k = r; k < end; k++) {
+            out[k].underlinePosition = line.underlinePosition;
+            out[k].underlineThickness = line.underlineThickness;
+            out[k].ascent = line.ascent;
+            out[k].descent = line.descent;
+        }
+        r = end;
+    }
+    return out;
+}
+
+// The metrics scaled (layout to device units).
+static DecorationMetrics scaledMetrics(DecorationMetrics m, float scale) {
+    m.underlinePosition *= scale; m.underlineThickness *= scale; m.strikethroughCentre *= scale; m.strikethroughThickness *= scale;
+    m.ascent *= scale; m.descent *= scale;
+    return m;
+}
+
+// The line's background band from its baseline, layout units (TextDecorations.lineContexts): the tallest run's ascent
+// (no higher than the ascent rounded to a user-space point, the top of TextKit 2's line fragment) to the deepest run's
+// descent, the shifts in, no leading. userPerLayout converts layout units to points.
+static std::pair<float, float> lineBackgroundBand(jint runCount, const jlong *contexts, const std::vector<float> &shift, float layoutScale,
+                                                   float userPerLayout) {
+    float ascent = 0, descent = 0;
+    for (jint r = 0; r < runCount; r++) {
+        SkFont font;
+        if (!layoutFont(contexts[r], layoutScale, &font)) continue;
+        SkFontMetrics metrics;
+        font.getMetrics(&metrics);
+        ascent = std::max(ascent, -metrics.fAscent - shift[r]);
+        descent = std::max(descent, metrics.fDescent + shift[r]);
+    }
+    const float rounded = userPerLayout > 0 ? std::round(ascent * userPerLayout) / userPerLayout : ascent;
+    return {-std::min(ascent, rounded), descent};
+}
+
 // originX and paragraphTop in the paragraph's layout space, layoutScale maps it to device space
-void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, float layoutScale, const jchar *chars, jint length,
-                           jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags, const SkPaint &paint,
-                           float extraAlpha, bool swizzled) {
+// The line's backgrounds (SK_PARAGRAPH_LINE_BACKGROUND, TextDecorations.lineContexts): behind each background run its
+// advances' extent over the line's band, in the paragraph's layout space through the canvas's matrix, before the
+// glyphs; x0 the paint origin's x, lineBaseline the line's baseline (layout space).
+void drawLineBackgrounds(tl::Paragraph &paragraph, SkCanvas *canvas, float x0, float lineBaseline, const jchar *chars, jint length, jint runCount,
+                         const jint *runEnds, const jint *flags, const jint *backgrounds, std::pair<float, float> band, const SkPaint &paint,
+                         float extraAlpha, bool swizzled) {
+    bool any = false;
+    for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_LINE_BACKGROUND) != 0;
+    if (!any) return;
+    std::vector<uint32_t> runUtf8Start(runCount + 1, 0);
+    jint start = 0;
+    for (jint r = 0; r < runCount; r++) {
+        const jint end = std::min(runEnds[r], length);
+        runUtf8Start[r + 1] = runUtf8Start[r] + (end > start ? (uint32_t) SkUnicode::convertUtf16ToUtf8((const char16_t *) chars + start, end - start).size() : 0);
+        start = std::max(start, end);
+    }
+    paragraph.visit([&](int, const tl::Paragraph::VisitorInfo *info) {
+        if (info == nullptr || info->count <= 0) return;
+        auto runOf = [&](uint32_t utf8) {
+            jint r = 0;
+            while (r + 1 < runCount && runUtf8Start[r + 1] <= utf8) r++;
+            return r;
+        };
+        for (int i = 0; i < info->count;) {
+            const jint r = runOf(info->utf8Starts[i]);
+            int j = i + 1;
+            while (j < info->count && runOf(info->utf8Starts[j]) == r) j++;
+            if (flags[r] & SK_PARAGRAPH_LINE_BACKGROUND) {
+                float x1 = std::numeric_limits<float>::max(), x2 = std::numeric_limits<float>::lowest();
+                for (int k = i; k < j; k++) {
+                    SkScalar advance = 0;
+                    info->font.getWidths({&info->glyphs[k], 1}, {&advance, 1});
+                    x1 = std::min(x1, x0 + info->origin.fX + info->positions[k].fX);
+                    x2 = std::max(x2, x0 + info->origin.fX + info->positions[k].fX + advance);
+                }
+                SkPaint fill = colouredPaint(paint, (SkColor) backgrounds[r], extraAlpha, swizzled);
+                fill.setAntiAlias((flags[r] & SK_PARAGRAPH_BACKGROUND_AA) != 0);
+                canvas->drawRect(SkRect::MakeLTRB(x1, lineBaseline + band.first, x2, lineBaseline + band.second), fill);
+            }
+            i = j;
+        }
+    });
+}
+
+// lineBaseline the line's baseline in layout space (the runs' shifts apart), shift each run's baseline shift
+void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float originX, float paragraphTop, float lineBaseline, float layoutScale,
+                           const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
+                           const jint *flags, const std::vector<float> &shift, const SkPaint &paint, float extraAlpha, bool swizzled) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
     if (!any) return;
+    const std::vector<DecorationMetrics> lineUnderline = lineUnderlines(runCount, contexts, flags, shift, layoutScale);
     // Java's runs in UTF-8 offsets (the paragraph was built from the runs' UTF-8)
     std::vector<uint32_t> runUtf8Start(runCount + 1, 0);
     jint start = 0;
@@ -2834,11 +2950,19 @@ void drawSystemDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float ori
                     continue;
                 }
                 if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
+                    // under CoreText's rule the band of the run's stretch (lineUnderlines) from the line's baseline
+                    float top = underlineTop, height = band.height;
+                    if (!directWriteRule) {
+                        const DecorationBand line = underlineBand(scaledMetrics(lineUnderline[r], layoutScale), 1, (float) SKFontScaler_DisplayScale(contexts[r]));
+                        top = lineBaseline * layoutScale + line.top;
+                        height = line.height;
+                        gapsReady = false;
+                    }
                     if (skipInk && !gapsReady) {   // the whole visitor run's ink: a neighbour's descender may cross this group's line
-                        gaps = inkCrossings(deviceFont, info->glyphs, positions, info->count, runOrigin, underlineTop, underlineTop + band.height);
+                        gaps = inkCrossings(deviceFont, info->glyphs, positions, info->count, runOrigin, top, top + height);
                         gapsReady = true;
                     }
-                    fillBand(canvas, runPaint, x1, x2, underlineTop, band.height, skipInk ? &gaps : nullptr,
+                    fillBand(canvas, runPaint, x1, x2, top, height, skipInk ? &gaps : nullptr,
                              kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]));
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
@@ -2909,12 +3033,14 @@ static void fillLayoutBand(SkCanvas *canvas, const SkPaint &paint, float x1, flo
 // paragraph's layout space (the canvas carries the transform), filled antialiased; its rows on device rows (or
 // columns) when the baseline runs along them. CoreText's own behaviour (measured 2026-11-10: rotated, sheared, and
 // rotated and scaled, its band is the axis-aligned one at that scale, antialiased).
-void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float paragraphTop, const jchar *chars, jint length,
-                                jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours, const jint *flags,
-                                const SkPaint &paint, float extraAlpha, bool swizzled) {
+void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, float paragraphTop, float lineBaseline, float layoutScale,
+                                const jchar *chars, jint length, jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
+                                const jint *flags, const std::vector<float> &shift, const SkPaint &paint, float extraAlpha, bool swizzled) {
     bool any = false;
     for (jint r = 0; r < runCount; r++) any |= (flags[r] & SK_PARAGRAPH_SYSTEM_DECORATIONS) != 0;
     if (!any) return;
+    const std::vector<DecorationMetrics> lineUnderline = lineUnderlines(runCount, contexts, flags, shift, layoutScale);
+    const bool directWriteRule = SKPlatform_TextDefaults().decorationRule == SKDecorationRule::DirectWrite;
     const SkMatrix toDevice = canvas->getTotalMatrix();
     const float scale = scaleAcross(toDevice);
     const float along = std::hypot(toDevice.getScaleX(), toDevice.getSkewY());   // device pixels per layout unit along the baseline
@@ -2965,12 +3091,20 @@ void drawTransformedDecorations(tl::Paragraph &paragraph, SkCanvas *canvas, floa
                 x1 = roundedEnd(toDevice, x1);
                 x2 = roundedEnd(toDevice, x2);
                 if (flags[r] & SK_PARAGRAPH_UNDERLINE) {
+                    // under CoreText's rule the band of the run's stretch (lineUnderlines) from the line's baseline
+                    float top = underlineTop, height = underlineHeight;
+                    if (!directWriteRule) {
+                        const DecorationBand line = underlineBand(lineUnderline[r], scale, (float) SKFontScaler_DisplayScale(contexts[r]));
+                        top = lineBaseline + line.top / scale;
+                        height = line.height / scale;
+                        gapsReady = false;
+                    }
                     if (skipInk && !gapsReady) {
                         gaps = inkCrossings(info->font, info->glyphs, info->positions, info->count, {info->origin.fX, exact},
-                                            underlineTop, underlineTop + underlineHeight, false);
+                                            top, top + height, false);
                         gapsReady = true;
                     }
-                    fillLayoutBand(canvas, runPaint, x1, x2, underlineTop, underlineHeight, skipInk ? &gaps : nullptr,
+                    fillLayoutBand(canvas, runPaint, x1, x2, top, height, skipInk ? &gaps : nullptr,
                                    kDecorationClearance * (float) SKFontScaler_DisplayScale(contexts[r]) / along);
                 }
                 if (flags[r] & SK_PARAGRAPH_STRIKETHROUGH) {
@@ -3082,9 +3216,10 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         ts.addFontFeature(SkString("liga"), liga);
         ts.addFontFeature(SkString("calt"), liga);
         ts.setForegroundPaint(runPaint);
-        if (flags[r] & SK_PARAGRAPH_BACKGROUND) {
+        if ((flags[r] & SK_PARAGRAPH_BACKGROUND) && !(flags[r] & SK_PARAGRAPH_LINE_BACKGROUND)) {
             // TextAttribute.BACKGROUND (or the swapped foreground): SkParagraph's box behind the run, filled as the
-            // graphics fills a shape (Java fills the run's logical bounds, Decoration.drawTextAndDecorations)
+            // graphics fills a shape (Java fills the run's logical bounds, Decoration.drawTextAndDecorations); the
+            // line's band is ours (drawLineBackgrounds)
             SkPaint backgroundPaint = colouredPaint(paint, (SkColor) backgrounds[r], extraAlpha, swizzled);
             backgroundPaint.setAntiAlias((flags[r] & SK_PARAGRAPH_BACKGROUND_AA) != 0);
             ts.setBackgroundPaint(backgroundPaint);
@@ -3172,6 +3307,8 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
     if (canvas == nullptr) {
         return 0;
     }
+    const std::pair<float, float> lineBand = lineBackgroundBand(runCount, contexts, shift, layoutScale,
+                                                                layoutScale / (float) SKFontScaler_DisplayScale(contexts[0]));
     if (transformed) {
         // rotated, sheared or unevenly scaled text (every run shares the transform, SKTextRenderer checks it): laid
         // out in the font's own space, painted under the strike's transform beyond its size from the device origin,
@@ -3181,19 +3318,28 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         canvas->translate(originX, originY);
         canvas->concat(remainder);
         canvas->scale(layoutScale, layoutScale);
+        // the line's baseline at y 0 of this space
+        drawLineBackgrounds(*paragraph, canvas, 0, 0, chars, length, runCount, runEnds, flags, backgrounds, lineBand, paint, extraAlpha, swizzled);
         paintParagraph(*paragraph, canvas, 0, -baseline, paint, extraAlpha, swizzled);
-        drawTransformedDecorations(*paragraph, canvas, -baseline, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
+        drawTransformedDecorations(*paragraph, canvas, -baseline, 0, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, shift,
+                                   paint, extraAlpha, swizzled);
     } else {
-        // the glyphs from CoreText's row on macOS (glyphRow), the system decorations from the exact baseline
+        // the glyphs from CoreText's row on macOS (glyphRow), the backgrounds and the system decorations from the exact
+        // baseline (originY, the line's: the runs' shifts apart)
         const float glyphTop = glyphRow(originY, SKFontScaler_DisplayScale(contexts[0])) / layoutScale - baseline;
         if (layoutScale != 1) {
             SkAutoCanvasRestore restore(canvas, true);
             canvas->scale(layoutScale, layoutScale);
+            drawLineBackgrounds(*paragraph, canvas, originX / layoutScale, originY / layoutScale, chars, length, runCount, runEnds, flags, backgrounds,
+                                lineBand, paint, extraAlpha, swizzled);
             paintParagraph(*paragraph, canvas, originX / layoutScale, glyphTop, paint, extraAlpha, swizzled);
         } else {
+            drawLineBackgrounds(*paragraph, canvas, originX, originY, chars, length, runCount, runEnds, flags, backgrounds, lineBand, paint, extraAlpha,
+                                swizzled);
             paintParagraph(*paragraph, canvas, originX, glyphTop, paint, extraAlpha, swizzled);
         }
-        drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, paint, extraAlpha, swizzled);
+        drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, originY / layoutScale, layoutScale, chars, length, runCount,
+                              runEnds, contexts, colours, flags, shift, paint, extraAlpha, swizzled);
     }
     gParagraphsBySkia.fetch_add(1, std::memory_order_relaxed);
     gGlyphsShapedBySkia.fetch_add(length, std::memory_order_relaxed);   // the character count stands in for the glyph count
