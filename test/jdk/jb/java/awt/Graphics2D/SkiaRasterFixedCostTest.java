@@ -27,8 +27,10 @@ import sun.java2d.SurfaceData;
 /**
  * @test
  * @summary The fixed cost of one operation on a Skia raster surface, measured on
- *          thousands of small rectangles against the software loops, median of
- *          interleaved frames. Antialiased fractional rectangles (the converter's
+ *          thousands of small rectangles against the software loops, the fastest of
+ *          interleaved frames (load only adds time: the median followed jtreg's parallel
+ *          load and the machine's, ROTATED_BOX 1.05–1.50 against its 1.25 over a day's
+ *          runs, the fastest frame 1.10–1.20). Antialiased fractional rectangles (the converter's
  *          parallelogram fills) may take 1.5 times the loops' time on INT_ARGB_PRE
  *          (3.9 when every operation created its canvas, copied its arrays and ran
  *          Skia's generic blitter) and 1.5 on INT_ARGB too, whose pixels go through a
@@ -55,7 +57,7 @@ public class SkiaRasterFixedCostTest {
                 for (int f = 0; f < FRAMES; f++) {   // interleaved: the same frame on both surfaces
                     a[f] = frame(skia, f, aa, Shape.RECT); b[f] = frame(loops, f, aa, Shape.RECT);
                 }
-                double ms = median(a), ml = median(b), ratio = ms / ml;
+                double ms = fastest(a), ml = fastest(b), ratio = ms / ml;
                 // AA: the rasterizer's work dominates; non-AA integer rectangles are the loops' cheapest
                 // operation (a memset-like loop under the same lock), so only the fixed cost shows
                 double limit = aa ? (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.5) : (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.25);
@@ -75,7 +77,7 @@ public class SkiaRasterFixedCostTest {
             for (int f = 0; f < FRAMES; f++) {
                 a[f] = frame(skia, f, aa, shape); b[f] = frame(loops, f, aa, shape);
             }
-            double ms = median(a), ml = median(b), ratio = ms / ml, limit = shape == Shape.LINE ? 1.2 : 1.25;
+            double ms = fastest(a), ml = fastest(b), ratio = ms / ml, limit = shape == Shape.LINE ? 1.2 : 1.25;
             System.out.printf("%d %s per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.2f)%n", N, shape, ms, ml, ratio, limit);
             if (ratio > limit) {
                 throw new RuntimeException("the raster surface takes " + ratio + " times the loops' time for " + shape + " (limit " + limit + ")");
@@ -120,5 +122,6 @@ public class SkiaRasterFixedCostTest {
         return ms;
     }
 
-    static double median(double[] v) { double[] t = Arrays.copyOfRange(v, 2, v.length); Arrays.sort(t); return t[t.length / 2]; }
+    /** The fastest frame after the first two (warm-up): the uncontended cost, which load can only lengthen. */
+    static double fastest(double[] v) { return Arrays.stream(v, 2, v.length).min().orElseThrow(); }
 }
