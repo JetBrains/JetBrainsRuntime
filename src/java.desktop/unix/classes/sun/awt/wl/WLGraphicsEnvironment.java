@@ -29,6 +29,7 @@ package sun.awt.wl;
 import java.awt.Dimension;
 import java.awt.GraphicsDevice;
 import java.awt.Rectangle;
+import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,25 +72,27 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return Holder.INSTANCE;
     }
 
-    private void updateConfigForPeer(WLComponentPeer peer) {
+    private boolean updateGraphicsConfigurationForPeer(WLComponentPeer peer) {
         WLGraphicsConfig oldGC = (WLGraphicsConfig) peer.getGraphicsConfiguration();
         WLGraphicsConfig newGC = computeConfigFor(peer);
         if (oldGC != newGC) {
             peer.notifyGraphicsConfigurationChanged(newGC);
+            return true;
         }
+        return false;
     }
 
-    private void updatePeerConfigurations() {
+    private void updateAllPeers() {
         List<WLWindowPeer> allPeers = WLToolkit.getLiveWindowPeers();
         List<WLWindowPeer> toplevels = allPeers.stream().filter(peer -> !peer.targetIsWlPopup()).toList();
         List<WLWindowPeer> popups = allPeers.stream().filter(peer -> peer.targetIsWlPopup()).toList();
 
         // First compute GC for toplevels, and only then for popups
         for (WLWindowPeer peer : toplevels) {
-            updateConfigForPeer(peer);
+            updateGraphicsConfigurationForPeer(peer);
         }
         for (WLWindowPeer peer : popups) {
-            updateConfigForPeer(peer);
+            updateGraphicsConfigurationForPeer(peer);
         }
 
         // Recompute positions of popups
@@ -98,8 +101,33 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         }
     }
 
+    private void updatePeer(WLWindowPeer peer) {
+        if (peer == null) {
+            return;
+        }
+
+        final boolean changed = updateGraphicsConfigurationForPeer(peer);
+        if (!changed) {
+            return;
+        }
+
+        if (peer.targetIsWlPopup()) {
+            peer.updatePopupLocationFromParent();
+        } else {
+            Window toplevel = peer.getTarget();
+            for (WLWindowPeer p : WLToolkit.getLiveWindowPeers()) {
+                if (!p.targetIsWlPopup()) {
+                    continue;
+                }
+                if (WLComponentPeer.getToplevelFor(p.getTarget().getParent()) == toplevel) {
+                    p.updatePopupLocationFromParent();
+                }
+            }
+        }
+    }
+
     private void updateOutputs() {
-        updatePeerConfigurations();
+        updateAllPeers();
         updateTotalDisplayBounds();
         if (WLToolkit.isInitialized()) {
             WLComponentPeer.performUnlocked(this::displayChanged);
@@ -263,14 +291,14 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     }
 
     public void notifySurfaceEntered(WLSurface surface, WLOutput output) {
-        if (surface instanceof WLMainSurface) {
-            updatePeerConfigurations();
+        if (surface instanceof WLMainSurface mainSurface) {
+            updatePeer(mainSurface.getPeer());
         }
     }
 
     public void notifySurfaceLeft(WLSurface surface, WLOutput output) {
-        if (surface instanceof WLMainSurface) {
-            updatePeerConfigurations();
+        if (surface instanceof WLMainSurface mainSurface) {
+            updatePeer(mainSurface.getPeer());
         }
     }
 
