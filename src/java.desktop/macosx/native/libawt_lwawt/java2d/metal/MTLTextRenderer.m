@@ -239,10 +239,16 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
     MTLVertexCache_FreeVertexCache();
 }
 
+/*
+ * The glyph image's coverage triplets into a BGRA texture, whose channels the LCD shader mixes as red, green and blue:
+ * the image's first sub-pixel is red's coverage for RGB order, so it goes into the texture's red byte (the third), and
+ * blue's for BGR order, as OpenGL uploads it with GL_RGB or GL_BGR.
+ */
 static void
 MTLTR_ConvertLCDDataToBGRA(GlyphInfo *ginfo, unsigned char *imageData,
-                           jint rowBytesOffset)
+                           jint rowBytesOffset, jboolean rgbOrder)
 {
+    const int first = rgbOrder ? 2 : 0, last = rgbOrder ? 0 : 2;
     for (int row = 0; row < ginfo->height; row++) {
         unsigned char *src =
             ginfo->image + (row * ginfo->rowBytes) + rowBytesOffset;
@@ -251,9 +257,9 @@ MTLTR_ConvertLCDDataToBGRA(GlyphInfo *ginfo, unsigned char *imageData,
         for (int col = 0; col < ginfo->width; col++) {
             int srcIndex = col * 3;
             int dstIndex = col * 4;
-            dst[dstIndex] = src[srcIndex];
+            dst[dstIndex + first] = src[srcIndex];
             dst[dstIndex + 1] = src[srcIndex + 1];
-            dst[dstIndex + 2] = src[srcIndex + 2];
+            dst[dstIndex + last] = src[srcIndex + 2];
             dst[dstIndex + 3] = 0xFF;
         }
     }
@@ -312,7 +318,7 @@ MTLTR_AddToGlyphCache(GlyphInfo *glyph, MTLContext *mtlc,
         } else {
             unsigned int imageBytes = w * h * 4;
             unsigned char imageData[imageBytes];
-            MTLTR_ConvertLCDDataToBGRA(glyph, imageData, 0);
+            MTLTR_ConvertLCDDataToBGRA(glyph, imageData, 0, lastRGBOrder);   // the caches are emptied when the order changes
 
             NSUInteger bytesPerRow = 4 * w;
             [gc.cacheInfo->texture replaceRegion:region
@@ -629,7 +635,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, BMTLSDOps *dstOps,
 
     unsigned int imageBytes = w * h * 4;
     unsigned char imageData[imageBytes];
-    MTLTR_ConvertLCDDataToBGRA(ginfo, imageData, rowBytesOffset);
+    MTLTR_ConvertLCDDataToBGRA(ginfo, imageData, rowBytesOffset, rgbOrder);
 
     // copy LCD mask into glyph texture tile
     MTLRegion region = MTLRegionMake2D(0, 0, w, h);
