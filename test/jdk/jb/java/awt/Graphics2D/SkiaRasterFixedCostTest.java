@@ -37,7 +37,7 @@ import sun.java2d.SurfaceData;
  *          premultiplied mirror the thread keeps while nothing else writes them (2.5
  *          when every operation converted its box in and out). Non-antialiased
  *          integer rectangles are the loops' cheapest call, a store under the same
- *          lock, so only the fixed cost shows: 1.25 and 1.5 times (3.5 before the
+ *          lock, so only the fixed cost shows: 1.4 and 1.5 times (3.5 before the
  *          colour-only rectangle entry that locks, stores and leaves).
  * @modules java.desktop/sun.java2d
  * @run main/othervm -Dsun.java2d.skia.raster=true -Djava.awt.headless=true SkiaRasterFixedCostTest
@@ -60,7 +60,8 @@ public class SkiaRasterFixedCostTest {
                 double ms = fastest(a), ml = fastest(b), ratio = ms / ml;
                 // AA: the rasterizer's work dominates; non-AA integer rectangles are the loops' cheapest
                 // operation (a memset-like loop under the same lock), so only the fixed cost shows
-                double limit = aa ? (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.5) : (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.25);
+                // 1.4 for non-AA INT_ARGB_PRE: the fastest frame reaches 1.3 under jtreg's parallel load (user, 2026-11-11: widen)
+                double limit = aa ? (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.5) : (type == BufferedImage.TYPE_INT_ARGB ? 1.5 : 1.4);
                 System.out.printf("type %d: %d %s rects per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.2f)%n", type, N, aa ? "AA" : "non-AA integer", ms, ml, ratio, limit);
                 if (ratio > limit) {
                     throw new RuntimeException("type " + type + ": the raster surface takes " + ratio + " times the loops' time for small " + (aa ? "AA" : "non-AA integer") + " rectangles (limit " + limit + ")");
@@ -77,7 +78,8 @@ public class SkiaRasterFixedCostTest {
             for (int f = 0; f < FRAMES; f++) {
                 a[f] = frame(skia, f, aa, shape); b[f] = frame(loops, f, aa, shape);
             }
-            double ms = fastest(a), ml = fastest(b), ratio = ms / ml, limit = shape == Shape.LINE ? 1.2 : 1.25;
+            // ROTATED_BOX 1.4: 1.10–1.20 standalone, 1.30 under jtreg's parallel load (user, 2026-11-11: widen)
+            double ms = fastest(a), ml = fastest(b), ratio = ms / ml, limit = shape == Shape.LINE ? 1.2 : 1.4;
             System.out.printf("%d %s per frame, Skia raster %.2f ms, loops %.2f ms, ratio %.2f (limit %.2f)%n", N, shape, ms, ml, ratio, limit);
             if (ratio > limit) {
                 throw new RuntimeException("the raster surface takes " + ratio + " times the loops' time for " + shape + " (limit " + limit + ")");
