@@ -1,10 +1,12 @@
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
+java/awt/Graphics2D/BufferedImageCompositeTest.java JBR-9321 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java.UpdateGCTest
 
 java/awt/image/DrawImage/BlitRotateClippedArea.java JBR-9026 linux-all
 java/awt/image/DrawImage/EABlitTest.java JBR-9027 linux-all
+
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 ubuntu-22.04-x64,ubuntu-22.04-aarch64,arch-gnome
@@ -14,3 +16,5 @@ javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 arch-gnome
+
+jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-10160 ubuntu-24.04-x64

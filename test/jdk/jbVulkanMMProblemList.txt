@@ -1,1 +1,2 @@
+java/awt/font/Emoji/ComplexEmoji.java JBR-8399,JBR-9115 fedora-kde,fedora-gnome
 java/awt/font/ComplexEmoji.java JBR-8399 linux-x64

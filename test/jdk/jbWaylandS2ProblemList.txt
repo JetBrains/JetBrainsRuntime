@@ -1,4 +1,8 @@
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-8345 linux-all
+javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-8345 linux-all
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
+javax/swing/JInternalFrame/6647340/bug6647340.java JBR-8323 ubuntu-24.04-x64
+javax/swing/JMenu/bug4146588.java JBR-10131 ubuntu-24.04-x64
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all

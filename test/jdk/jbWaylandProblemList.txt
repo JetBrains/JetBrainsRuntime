@@ -1,6 +1,8 @@
+java/awt/event/HierarchyEvent/SpecTest.java JBR-10130 fedora-kde,fedora-gnome
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
+java/awt/Paint/RepaintOnAWTShutdown.java JBR-9925 fedora-kde
 
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64

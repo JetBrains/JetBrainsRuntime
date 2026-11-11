@@ -205,6 +205,7 @@ runtime/cds/appcds/ArchiveRelocationTest.java JBR-9420 macosx-26.0
 runtime/cds/appcds/CommandLineFlagCombo.java JBR-6616 windows-aarch64
 runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
 runtime/cds/appcds/lambdaForm/DefaultClassListLFInvokers.java JBR-9079 windows-aarch64
+runtime/cds/appcds/customLoader/RegUnregSuperTest.java#unreg JBR-9068 generic-all
 runtime/cds/DeterministicDump.java JBR-9077,JBR-9421 windows-aarch64,macosx-26.0
 runtime/cds/appcds/LotsOfSyntheticClasses.java JBR-8823 windows-all
 runtime/cds/appcds/methodHandles/MethodHandlesInvokersTest.java initial_run generic-all

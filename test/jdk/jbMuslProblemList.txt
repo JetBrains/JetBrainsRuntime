@@ -30,6 +30,7 @@ java/awt/Graphics/XORPaint.java#id2 JBR-7373 linux-x64
 java/awt/image/DrawImage/SimpleManagedImage.java JBR-8769 linux-all
 java/awt/image/DrawImage/SimpleUnmanagedImage.java JBR-8769 linux-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java JBR-8748 linux-all
+java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java JBR-9138 linux-all
 java/awt/Mixing/AWT_Mixing/JListInGlassPaneOverlapping.java JBR-8770 linux-all
 java/awt/Mixing/AWT_Mixing/JListOverlapping.java JBR-8770 linux-all
 java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java JBR-8770 linux-all
@@ -76,6 +77,7 @@ javax/swing/JMenuBar/TestMenuMnemonicLinuxAndMac.java JBR-8748 linux-all
 javax/swing/JMenuItem/bug4327146.java JBR-9623 linux-all
 javax/swing/JPasswordField/TestDisabledPasswordFieldForegroundColor.java JBR-8748 linux-all
 javax/swing/JPopupMenu/bug4187004.java JBR-9625 linux-all
+javax/swing/JPopupMenu/bug4966109.java JBR-9133 linux-all
 javax/swing/JPopupMenu/MouseDragPopupTest.java JBR-9624 linux-all
 javax/swing/JRadioButton/4314194/bug4314194.java JBR-9626 linux-all
 javax/swing/JRadioButton/8033699/bug8033699.java JBR-8748 linux-all
@@ -132,6 +134,7 @@ javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-9670 lin
 javax/swing/UIDefaults/6302464/bug6302464.java JBR-9671 linux-all
 
 jb/build/ResolveSymbolsTest/ResolveSymbolsRealEnv.java JBR-8544 linux-all
+jb/java/awt/Focus/PopupIncomingFocusTest.java JBR-10064 linux-all
 jb/java/awt/Toolkit/DetectingOSThemeTest.java JBR-9088 linux-all
 jb/java/io/IoOverNio/ErrorMessageTest.java JBR-8865 linux-all
 jb/java/io/IoOverNio/FileTest.java JBR-8723 linux-all
@@ -165,3 +168,4 @@ sanity/client/SwingSet/src/WindowDemoTest.java JBR-8748 linux-all
 
 sun/awt/font/CacheFlushTest.java JBR-9085 linux-all
 sun/awt/font/TestArabicHebrew.java JBR-8826 linux-all
+sun/java2d/OpenGL/SrcMaskOps.java#id0 JBR-9723 linux-all
