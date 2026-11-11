@@ -181,6 +181,10 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont) {
     return font != nullptr ? SkMakeTypefaceFromCTFont(font) : nullptr;   // a new reference; the CTFont is retained
 }
 
+bool SKPlatform_LcdFromOutlines() {
+    return true;
+}
+
 // The AWTFont is a CoreFoundation-compatible object (CFont.disposeNativeFont releases it with CFRelease); retaining
 // it keeps its fFont and fFallbackBase too.
 void SKPlatform_RetainNativeFont(jlong nativeFont) {

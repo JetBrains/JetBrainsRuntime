@@ -63,6 +63,13 @@ public:
 protected:
     GlyphMetrics generateMetrics(const SkGlyph &glyph, SkArenaAlloc *alloc) override {
         const SkGlyph innerGlyph = fInner->makeGlyph(glyph.getPackedID(), alloc);
+        if (outlineLcd() && innerGlyph.maskFormat() != SkMask::kARGB32_Format) {
+            // bounds from the outline, grown for the LCD filter, as Skia's own path rendering takes them
+            GlyphMetrics metrics(SkMask::kLCD16_Format);
+            metrics.advance = innerGlyph.advanceVector();
+            metrics.computeFromPath = true;
+            return metrics;
+        }
         GlyphMetrics metrics(innerGlyph.maskFormat());
         metrics.advance = innerGlyph.advanceVector();
         metrics.bounds = innerGlyph.rect();
@@ -75,7 +82,11 @@ protected:
     }
 
     void generateImage(const SkGlyph &glyph, void *imageBuffer) override {
-        if (glyph.maskFormat() == SkMask::kA8_Format && smoothedMask(glyph, imageBuffer)) {
+        if (glyph.maskFormat() == SkMask::kLCD16_Format && outlineLcd() && glyph.path() != nullptr) {
+            generateImageFromPath(glyph, imageBuffer);   // Skia's rasterizer at three times the width, its LCD filter
+            return;
+        }
+        if (glyph.maskFormat() == SkMask::kA8_Format && fLuminance != SK_OUTLINE_LCD && smoothedMask(glyph, imageBuffer)) {
             return;
         }
         fInner->getImage(glyph);   // writes into glyph.fImage, which is imageBuffer
@@ -101,6 +112,10 @@ protected:
     }
 
 private:
+    bool outlineLcd() const {
+        return fLuminance == SK_OUTLINE_LCD && fRec.fMaskFormat == SkMask::kLCD16_Format;
+    }
+
     bool smoothedMask(const SkGlyph &glyph, void *imageBuffer) {
         const int width = glyph.width(), height = glyph.height();
         if (width <= 0 || height <= 0) {
@@ -141,7 +156,19 @@ protected:
                                                           fInner->createScalerContext(effects, desc), fLuminance);
     }
     void onFilterRec(SkScalerContextRec *rec) const override {
+        const bool lcd = rec->fMaskFormat == SkMask::kLCD16_Format;
+        const uint32_t lcdLayout = rec->fFlags & (SkScalerContext::kLCD_BGROrder_Flag | SkScalerContext::kLCD_Vertical_Flag);
         fInner->filterRec(rec);
+        if (fLuminance == SK_OUTLINE_LCD) {
+            if (lcd) {
+                // the host's downgrade to gray undone: this proxy renders the LCD mask itself, with Skia's gamma, in the
+                // surface's sub-pixel order and orientation (CoreText's host keeps neither)
+                rec->fMaskFormat = SkMask::kLCD16_Format;
+                rec->fFlags &= ~(SkScalerContext::kGenA8FromLCD_Flag | SkScalerContext::kLCD_BGROrder_Flag | SkScalerContext::kLCD_Vertical_Flag);
+                rec->fFlags |= lcdLayout;
+            }
+            return;
+        }
         rec->ignorePreBlend();   // the masks are final coverage: no gamma or contrast on top
     }
     sk_sp<SkTypeface> onMakeClone(const SkFontArguments &args) const override {

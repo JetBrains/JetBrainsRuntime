@@ -28,8 +28,9 @@ import java.lang.reflect.Method;
 /**
  * @test
  * @summary LCD-hinted text drawn through Skia's text path on the GPU pipe keeps its
- *          sub-pixel colour fringes, in the loops' order, where the platform renders
- *          sub-pixel masks (not macOS). Graphite renders LCD text from A565 masks, but
+ *          sub-pixel colour fringes, in the loops' order: the platform's sub-pixel masks
+ *          (DirectWrite), or on macOS, whose CoreGraphics renders none, Skia's own from the
+ *          outlines (Skia's CoreText host had turned every LCD request into gray). Graphite renders LCD text from A565 masks, but
  *          Skia only asks the scaler for them when the surface declares a pixel geometry:
  *          a window surface wrapped without surface properties (unknown geometry) had
  *          every LCD request downgraded to grayscale — the IDE's UI text under the full
@@ -49,7 +50,6 @@ import java.lang.reflect.Method;
 public class SkiaTextPathLcdTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
     static final int W = 400, H = 40;
-    static final boolean MAC = System.getProperty("os.name", "").startsWith("Mac");
     /** The LCD hint of the draw: HRGB, or HBGR when the surfaces are declared BGR (the argument names the order). */
     static Object hint = RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB;
 
@@ -57,12 +57,8 @@ public class SkiaTextPathLcdTest {
         if (args.length > 0 && args[0].equals("bgr")) {
             hint = RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HBGR;
         }
-        if (MAC) {
-            System.out.println("macOS renders no sub-pixel masks: nothing to test");
-            return;
-        }
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
-        if (!gc.getClass().getName().contains("SK")) {
+        if (!gc.getClass().getName().contains("SK") && !gc.getClass().getName().contains("MTL")) {   // macOS: the Metal configuration hosts the Skia pipe
             throw new RuntimeException("not a Skia configuration: " + gc.getClass().getName());
         }
         Font uiFont = new Font(Font.DIALOG, Font.PLAIN, 13);   // a composite strike, as every Swing UI font on Windows

@@ -139,6 +139,9 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
 // releases the object when the font is collected (macOS: CFont's AWTFont, retained and released).
 void SKPlatform_RetainNativeFont(jlong nativeFont);
 void SKPlatform_ReleaseNativeFont(jlong nativeFont);
+// Whether LCD text is rasterized by Skia from the glyph outlines, with its LCD filter (macOS: CoreGraphics renders
+// no colour sub-pixels, and Skia's CoreText host turns every LCD request into gray), not by the platform's engine.
+bool SKPlatform_LcdFromOutlines();
 // The platform's font fallback for a code point the font lacks (macOS: the
 // mapper hands such characters to CoreText as negative glyph codes): the
 // typeface that has it and the glyph in it; null if the platform has none.

@@ -30,6 +30,7 @@
 #include "SKPlatform.h"
 #include "SKFontScaler.h"
 #include "SKBackend.h"
+#include "SKLuminanceTypeface.h"
 
 #include <atomic>
 #include <cmath>
@@ -621,7 +622,13 @@ Java_sun_font_SKFontScaler_getGlyphImageNative(JNIEnv *env, jclass clazz, jlong 
     // for the platform mask, the host's hinting flag on CoreText. Synthetic bold strokes the
     // outline by SK_SYNTHETIC_BOLD_EM, as the JDK's FreeType scaler does.
     const bool colorGlyph = !font.getPath(glyph).has_value();
-    const bool platformMask = aa && !colorGlyph && context->blend != sun_font_SKFontScaler_BLEND_CORRECTED;
+    // LCD from the outlines (SKPlatform_LcdFromOutlines, macOS): Skia's rasterizer and LCD filter through the proxy,
+    // where the platform's engine and Skia's host render gray
+    const bool outlineLcd = lcd && !colorGlyph && SKPlatform_LcdFromOutlines();
+    if (outlineLcd) {
+        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), SK_OUTLINE_LCD));
+    }
+    const bool platformMask = aa && !colorGlyph && !outlineLcd && context->blend != sun_font_SKFontScaler_BLEND_CORRECTED;
     const int platformLuminance = context->blend == sun_font_SKFontScaler_BLEND_PLAIN ? -1 : context->grayLuminance;
     const float syntheticStroke = context->syntheticBold ? font.getSize() * syntheticStyle().boldEmFraction : 0;
     const float platformStroke = syntheticStroke;

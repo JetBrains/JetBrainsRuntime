@@ -60,6 +60,10 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong) {
     return nullptr;
 }
 
+bool SKPlatform_LcdFromOutlines() {
+    return false;   // DirectWrite renders ClearType
+}
+
 void SKPlatform_RetainNativeFont(jlong) {}   // no native font objects here
 
 void SKPlatform_ReleaseNativeFont(jlong) {}

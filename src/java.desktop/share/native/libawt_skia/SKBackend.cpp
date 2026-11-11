@@ -100,6 +100,7 @@
 #include <unordered_set>
 #include <array>
 #include <cfloat>
+#include <climits>
 #include <limits>
 #include <vector>
 
@@ -2037,14 +2038,26 @@ static int luminanceClass(SkColor c, jlong pScalerContext) {   // c: the text co
     return (cls * 255 + steps / 2) / steps;
 }
 
-static bool takesGrayRoute(const SkFont &font, jlong pScalerContext) {
-    return SKFontScaler_BlendMode(pScalerContext) == sun_font_SKFontScaler_BLEND_SYSTEM
-           && font.getEdging() == SkFont::Edging::kAntiAlias && font.getTypeface() != nullptr;
+// The proxy a font's typeface is drawn through on Skia's text path (SKLuminanceTypeface): the luminance class of the
+// colour under the gray route (blend system, antialiased), SK_OUTLINE_LCD for LCD text where Skia rasterizes it from
+// the outlines (SKPlatform_LcdFromOutlines), else NO_PROXY.
+constexpr int NO_PROXY = INT_MIN;
+
+static int proxyClass(const SkFont &font, jlong pScalerContext, SkColor textColour) {
+    if (font.getTypeface() == nullptr) {
+        return NO_PROXY;
+    }
+    if (font.getEdging() == SkFont::Edging::kSubpixelAntiAlias) {
+        return SKPlatform_LcdFromOutlines() ? SK_OUTLINE_LCD : NO_PROXY;
+    }
+    return SKFontScaler_BlendMode(pScalerContext) == sun_font_SKFontScaler_BLEND_SYSTEM && font.getEdging() == SkFont::Edging::kAntiAlias
+           ? luminanceClass(textColour, pScalerContext) : NO_PROXY;
 }
 
-static void applyGrayRoute(SkFont &font, jlong pScalerContext, SkColor textColour) {
-    if (takesGrayRoute(font, pScalerContext)) {
-        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminanceClass(textColour, pScalerContext)));
+static void applyProxy(SkFont &font, jlong pScalerContext, SkColor textColour) {
+    const int proxy = proxyClass(font, pScalerContext, textColour);
+    if (proxy != NO_PROXY) {
+        font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), proxy));
     }
 }
 
@@ -2120,16 +2133,16 @@ private:
 };
 }
 
-// The font manager for the fallback runs: the platform's under the cascade (CascadeFontMgr), or its luminance proxy
-// when the strike takes the cg route, so the characters the strike's font lacks get the route too.
+// The font manager for the fallback runs: the platform's under the cascade (CascadeFontMgr), or its proxy manager
+// when the strike's font takes a proxy (proxyClass), so the characters the strike's font lacks get the proxy too.
 static sk_sp<SkFontMgr> cascadeManager() {
     static sk_sp<SkFontMgr> cascade = sk_make_sp<CascadeFontMgr>(SKPlatform_FontManager());
     return cascade;
 }
 
 static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, SkColor textColour) {
-    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(cascadeManager(), luminanceClass(textColour, pScalerContext))
-                                                : cascadeManager();
+    const int proxy = proxyClass(font, pScalerContext, textColour);
+    return proxy != NO_PROXY ? SKLuminanceFontMgr_For(cascadeManager(), proxy) : cascadeManager();
 }
 
 // The text blob cache (SKBackend_SetTextBlobCache): least recently used first out. A key is the bytes of a
@@ -2241,13 +2254,13 @@ static void drawTextBlobSplit(SkCanvas *canvas, const sk_sp<SkTextBlob> &blob, f
 }
 
 namespace {
-// A paragraph's runs when their luminance classes differ: the paint of each and its class (-1: no gray route)
+// A paragraph's runs when their proxies differ: the paint of each and its proxy (proxyClass)
 struct ParagraphRuns {
     std::vector<SkPaint> paints;
     std::vector<int> classes;
 };
 
-// The blob with every typeface that is not yet a luminance proxy replaced by its proxy for the class
+// The blob with every typeface that is not yet a proxy replaced by its proxy for the class (proxyClass)
 sk_sp<SkTextBlob> withLuminanceProxies(const sk_sp<SkTextBlob> &blob, int luminance) {
     if (!blob) {
         return blob;
@@ -2281,7 +2294,7 @@ sk_sp<SkTextBlob> withLuminanceProxies(const sk_sp<SkTextBlob> &blob, int lumina
 // The paragraph painted onto a canvas with its text blobs split as above (SkParagraph's own canvas painter otherwise)
 // A paragraph whose runs differ in their luminance class (ParagraphRuns) names each run's paint by the run's index: the
 // fallback typefaces of a run (plain, from the cascade) become the luminance proxies of that run's class here, as the
-// run's own typeface is (applyGrayRoute) and as Skia's text path draws a run's fallback glyphs.
+// run's own typeface is (applyProxy) and as Skia's text path draws a run's fallback glyphs.
 struct SplittingParagraphPainter final : skia::textlayout::ParagraphPainter {
     SkCanvas *canvas;
     float extraAlpha;
@@ -2295,8 +2308,8 @@ struct SplittingParagraphPainter final : skia::textlayout::ParagraphPainter {
     }
     void drawTextBlob(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, const SkPaintOrID &paint) override {
         const PaintID *id = std::get_if<PaintID>(&paint);
-        const int luminance = id != nullptr && runs != nullptr && *id >= 0 && (size_t) *id < runs->classes.size() ? runs->classes[*id] : -1;
-        drawTextBlobSplit(canvas, luminance >= 0 ? withLuminanceProxies(blob, luminance) : blob, x, y, paintOf(paint), extraAlpha, swizzled);
+        const int proxy = id != nullptr && runs != nullptr && *id >= 0 && (size_t) *id < runs->classes.size() ? runs->classes[*id] : NO_PROXY;
+        drawTextBlobSplit(canvas, proxy != NO_PROXY ? withLuminanceProxies(blob, proxy) : blob, x, y, paintOf(paint), extraAlpha, swizzled);
     }
     void drawTextShadow(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, SkColor color, SkScalar blurSigma) override {
         SkPaint p;
@@ -2427,7 +2440,7 @@ jlong SKBackend_DrawGlyphsOnCanvas(SkCanvas *canvas, const SkPaint &paint, SkCol
         if (!SKFontScaler_ResolveGlyph(pScalerContext, code, &font, &glyph)) {
             continue;
         }
-        applyGrayRoute(font, pScalerContext, textColour);
+        applyProxy(font, pScalerContext, textColour);
         if (font.getTypeface() != runTypeface || (transformed && pScalerContext != runContext)) {
             flushRun();
             runFont = font;
@@ -2595,7 +2608,7 @@ jlong SKBackend_DrawShapedOnCanvas(const SKCanvasForBounds &canvasFor, const SkP
         return 0;
     }
     sk_sp<SkFontMgr> fallback = fallbackManager(font, pScalerContext, textColour);
-    applyGrayRoute(font, pScalerContext, textColour);
+    applyProxy(font, pScalerContext, textColour);
     // whole-pixel advances of a system font round in user space (SKFontScaler_LayoutScale): the shaping
     // runs at the user size and the blob is painted under the scale, so the glyphs land where Java's do
     const float layoutScale = (float) SKFontScaler_LayoutScale(pScalerContext);
@@ -3309,17 +3322,17 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
     // in its own style (a regular Apple Color Emoji in a bold run), and an emboldened bitmap glyph came out empty
     // through the luminance proxy (Skia renders an emboldened glyph from its outline, which an emoji does not have)
     style.setFakeMissingFontStyles(false);
-    // the fallback manager: the first run's when every run has its luminance class (or none takes the gray route);
+    // the fallback manager: the first run's when every run has its proxy (proxyClass), or none;
     // else the plain cascade, and the painter gives each run's fallback glyphs that run's class (ParagraphRuns)
     sk_sp<SkFontMgr> fallback = SKPlatform_FontManager();
     std::optional<ParagraphRuns> perRun;
     {
-        std::vector<int> classes(runCount, -1);
+        std::vector<int> classes(runCount, NO_PROXY);
         for (jint r = 0; r < runCount; r++) {
             SkFont font;
             const SkColor colour = (flags[r] & SK_PARAGRAPH_COLOUR) ? (SkColor) colours[r] : textColour;
-            if (SKFontScaler_Font(contexts[r], &font) && takesGrayRoute(font, contexts[r])) {
-                classes[r] = luminanceClass(colour, contexts[r]);
+            if (SKFontScaler_Font(contexts[r], &font)) {
+                classes[r] = proxyClass(font, contexts[r], colour);
             }
         }
         if (std::any_of(classes.begin(), classes.end(), [&](int c) { return c != classes[0]; })) {
@@ -3365,7 +3378,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         if (flags[r] & SK_PARAGRAPH_COLOUR) {
             runPaint = colouredPaint(runPaint, runColour, extraAlpha, swizzled);
         }
-        applyGrayRoute(font, contexts[r], runColour);
+        applyProxy(font, contexts[r], runColour);
         sk_sp<SkTypeface> typeface = font.refTypeface();
         if (p.registered.emplace(typeface->uniqueID(), typeface).second) {
             p.provider->registerTypeface(typeface, registeredAlias(typeface));

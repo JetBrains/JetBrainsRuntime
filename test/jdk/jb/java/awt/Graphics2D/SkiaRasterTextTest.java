@@ -36,7 +36,7 @@ import java.util.function.Consumer;
  *          grayscale and LCD antialiasing land where the loops put them with a
  *          comparable amount of ink (Skia's gamma model lightens plain coverage by
  *          up to a quarter), LCD text carries colour fringes in the loops' sub-pixel
- *          order where the platform renders sub-pixel masks (not macOS), and the
+ *          order (on macOS Skia's own from the outlines: CoreGraphics renders none), and the
  *          pipe counts the glyphs it drew. A composite strike — a glyph vector's on
  *          macOS, a logical or Swing UI font's elsewhere — is drawn slot by slot
  *          through each physical strike's SkFont, so every case counts its glyphs. The cg grayscale route
@@ -49,7 +49,6 @@ import java.util.function.Consumer;
 public class SkiaRasterTextTest {
     static final String TEXT = "Hamburgefonts Quick fox jumps 1234567890";
     static final int W = 420, H = 48;
-    static final boolean MAC = System.getProperty("os.name", "").startsWith("Mac");
 
     public static void main(String[] args) throws Exception {
         boolean cg = args.length > 0 && args[0].equals("cg");
@@ -64,14 +63,13 @@ public class SkiaRasterTextTest {
         check("drawGlyphVector, grayscale AA", g -> { GlyphVector gv = font.createGlyphVector(g.getFontRenderContext(), TEXT); g.drawGlyphVector(gv, 8, 30); }, font, RenderingHints.VALUE_TEXT_ANTIALIAS_ON, low, high);
         check("drawString, translucent colour", g -> { g.setColor(new Color(20, 40, 160, 128)); g.drawString(TEXT, 8, 30); }, font, RenderingHints.VALUE_TEXT_ANTIALIAS_ON, low, high);
         if (!cg) {
-            // macOS: CoreGraphics renders no sub-pixel masks since Mojave, so Skia's CoreText host draws
-            // LCD-hinted text as grayscale (the loops blend the JDK's neutral "LCD" masks with their
-            // gamma, darker); elsewhere Skia's LCD masks must come out in the loops' sub-pixel order.
+            // Skia's LCD masks must come out in the loops' sub-pixel order (macOS: CoreGraphics renders no
+            // sub-pixel masks since Mojave; Skia rasterizes them from the outlines with its LCD filter).
             // On an opaque image: the JDK renders LCD text onto opaque destinations only
             // (SurfaceData.canRenderLCDText), every pipe draws an LCD hint on INT_ARGB_PRE as grayscale
             // — and Swing's back buffer, the surface this is about, is opaque (measured on Windows
             // 2026-10-28: 0 fringe pixels on INT_ARGB_PRE under the loops and under Skia alike).
-            check("drawString, LCD HRGB", BufferedImage.TYPE_INT_RGB, g -> g.drawString(TEXT, 8, 30), font, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, MAC ? 0.55 : 0.6, MAC ? 1.05 : 1.2);
+            check("drawString, LCD HRGB", BufferedImage.TYPE_INT_RGB, g -> g.drawString(TEXT, 8, 30), font, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, 0.6, 1.2);
         }
         long bySkia = glyphsBySkia();
         if (bySkia == 0) {
@@ -127,12 +125,6 @@ public class SkiaRasterTextTest {
             throw new RuntimeException(what + ": ink ratio " + ratio + " outside [" + low + ", " + high + "]");
         }
         if (aa == RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB) {
-            if (MAC) {
-                if (fringes >= 100) {
-                    throw new RuntimeException(what + ": colour fringes on macOS, where CoreGraphics renders no sub-pixel masks (" + fringes + " pixels)");
-                }
-                return;
-            }
             if (fringes < 100) {
                 throw new RuntimeException(what + ": no LCD colour fringes (" + fringes + " pixels with R != B)");
             }

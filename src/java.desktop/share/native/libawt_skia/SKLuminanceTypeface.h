@@ -38,7 +38,10 @@
 // the wrapped typeface's. The proxy's own identity is the strike key, so Skia keeps one
 // strike per luminance class, as the Java side does with FontStrikeDesc.luminance.
 // luminance: the class representative (0..255). One proxy per (typeface, class).
+// luminance SK_OUTLINE_LCD: the proxy keeps the wrapped typeface's A8 masks and renders LCD masks from the glyph
+// outlines, by Skia's rasterizer and LCD filter (SKPlatform_LcdFromOutlines), where the wrapped host renders gray.
 sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance);
+constexpr int SK_OUTLINE_LCD = -1;
 
 // A font manager whose matches (fallback for a character, a family and style, the
 // legacy lookup) are the luminance proxies of the wrapped manager's typefaces, so the
