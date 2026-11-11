@@ -813,7 +813,11 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             jint rowBytesOffset = 0;
 
             if (subPixPos) {
-                jint frac = (jint)((glyphx - x) * 3);
+                // the nearest third of a pixel, as the software loops place it (DrawGlyphList.c): the position
+                // nudged by a sixth less a half, so a glyph at a whole position takes no shift
+                jfloat pos = glyphx + 0.1666667f - 0.5f;
+                x = (jint) floor(pos);
+                jint frac = (jint)((pos - x) * 3);
                 if (frac != 0) {
                     rowBytesOffset = 3 - frac;
                     x += 1;

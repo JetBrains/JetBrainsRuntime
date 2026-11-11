@@ -3658,7 +3658,11 @@ void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean sub
             // the JDK's channel shift by thirds
             jint rowBytesOffset = 0;
             if (subPixPos && rx <= 1) {
-                jint frac = (jint) ((gx - fx) * 3);
+                // the nearest third of a pixel, as the software loops place it (DrawGlyphList.c): the position
+                // nudged by a sixth less a half, so a glyph at a whole position takes no shift
+                const float pos = gx + 0.1666667f - 0.5f;
+                fx = std::floor(pos);
+                jint frac = (jint) ((pos - fx) * 3);
                 if (frac != 0) {
                     rowBytesOffset = 3 - frac;
                     fx += 1;
