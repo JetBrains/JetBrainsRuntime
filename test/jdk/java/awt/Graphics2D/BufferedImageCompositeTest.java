@@ -48,7 +48,7 @@ public class BufferedImageCompositeTest {
             new ColorModelWithDescription(BufferedImage.TYPE_INT_RGB, "TYPE_INT_RGB")
     };
 
-    static void main() {
+    static void main(String[] args) {
         boolean success = true;
         for (var colorModelWithDescription : COLOR_MODELS) {
             BufferedImage image = new BufferedImage(AlphaCompositeTestRunner.W, AlphaCompositeTestRunner.H, colorModelWithDescription.colorModel);
