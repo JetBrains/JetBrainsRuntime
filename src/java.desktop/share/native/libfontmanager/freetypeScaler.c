@@ -1849,8 +1849,12 @@ static jlong
 
 
     imageSize = rowBytes*height;
+    /* An LCD glyph is placed at a third of a pixel by reading its rows from one or two bytes in (DrawGlyphList.c,
+     * the loops and the GPU pipes alike); its width counts the pixel of padding on each side, so the last row reads
+     * up to two bytes past the image: zeroed slack there, as CGGlyphImages' three extra bytes. */
+    int slack = (ftglyph != NULL && ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD) ? 3 : 0;
     glyphInfo = (GlyphInfo*) calloc(sizeof(GlyphInfo) +
-            imageSize * subpixelResolutionX * subpixelResolutionY, 1);
+            imageSize * subpixelResolutionX * subpixelResolutionY + slack, 1);
     if (glyphInfo == NULL) {
         glyphInfo = getNullGlyphImage();
         return ptr_to_jlong(glyphInfo);
