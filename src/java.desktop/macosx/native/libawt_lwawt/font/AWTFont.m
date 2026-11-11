@@ -3299,6 +3299,68 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_font_CFont
+ * Method:    getFontFileNative
+ * Signature: (J)[Ljava/lang/String;
+ *
+ * The font's file and its PostScript name (the face within a collection), null when CoreText reports no file.
+ */
+JNIEXPORT jobjectArray JNICALL
+Java_sun_font_CFont_getFontFileNative
+    (JNIEnv *env, jclass clazz, jlong awtFontPtr)
+{
+    jobjectArray result = NULL;
+JNI_COCOA_ENTER(env);
+    AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
+    CTFontRef ctfont = (CTFontRef)awtFont->fFont;
+    CFURLRef url = (CFURLRef)CTFontCopyAttribute(ctfont, kCTFontURLAttribute);
+    CFStringRef postScriptName = CTFontCopyPostScriptName(ctfont);
+    NSString *path = url != NULL ? [(NSURL *)url path] : nil;
+    if (path != nil && postScriptName != NULL) {
+        jclass stringClass = (*env)->FindClass(env, "java/lang/String");
+        if (stringClass != NULL) {
+            result = (*env)->NewObjectArray(env, 2, stringClass, NULL);
+            if (result != NULL) {
+                (*env)->SetObjectArrayElement(env, result, 0, NSStringToJavaString(env, path));
+                (*env)->SetObjectArrayElement(env, result, 1, NSStringToJavaString(env, (NSString *)postScriptName));
+            }
+        }
+    }
+    if (url != NULL) CFRelease(url);
+    if (postScriptName != NULL) CFRelease(postScriptName);
+JNI_COCOA_EXIT(env);
+    return result;
+}
+
+/*
+ * Class:     sun_font_CFont
+ * Method:    getTableTagsNative
+ * Signature: (J)[I
+ */
+JNIEXPORT jintArray JNICALL
+Java_sun_font_CFont_getTableTagsNative
+    (JNIEnv *env, jclass clazz, jlong awtFontPtr)
+{
+    jintArray result = NULL;
+JNI_COCOA_ENTER(env);
+    AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
+    CFArrayRef tags = CTFontCopyAvailableTables((CTFontRef)awtFont->fFont, kCTFontTableOptionNoOptions);
+    if (tags != NULL) {
+        CFIndex count = CFArrayGetCount(tags);
+        result = (*env)->NewIntArray(env, (jsize)count);
+        if (result != NULL) {
+            for (CFIndex i = 0; i < count; i++) {
+                jint tag = (jint)(uintptr_t)CFArrayGetValueAtIndex(tags, i);
+                (*env)->SetIntArrayRegion(env, result, (jsize)i, 1, &tag);
+            }
+        }
+        CFRelease(tags);
+    }
+JNI_COCOA_EXIT(env);
+    return result;
+}
+
+/*
+ * Class:     sun_font_CFont
  * Method:    initNativeFont
  * Signature: (Ljava/lang/String;I)J
  */

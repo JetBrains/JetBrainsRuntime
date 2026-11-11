@@ -26,11 +26,13 @@
 package sun.font;
 
 import java.awt.Font;
+import java.awt.FontFormatException;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import sun.awt.SunHints;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
@@ -253,6 +255,14 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
 
     @Override
     protected FontStrike createStrike(FontStrikeDesc desc) {
+        // LCD text: CoreGraphics renders no colour sub-pixels, so the font's face in its file on the JDK's FreeType
+        // scaler, as a font of Font.createFont is drawn (the Skia scaler draws its own LCD from the outlines)
+        if (!FontUtilities.useSkiaScaler && isLcd(desc.aaHint)) {
+            TrueTypeFont face = freeTypeFace();
+            if (face != null) {
+                return new CFreeTypeStrike(this, desc, face);
+            }
+        }
         if (FontUtilities.useSkiaScaler && SKFontScaler.isAvailable()) {
             SKFontScaler scaler = skiaScaler();
             if (scaler != null) {
@@ -261,6 +271,11 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
                 return new SKFontStrike(this, desc, scaler);
             }
         }
+        return coreTextStrike(desc);
+    }
+
+    /** CoreText's strike (CStrike) for the descriptor. */
+    FontStrike coreTextStrike(FontStrikeDesc desc) {
         if (isFakeItalic) {
             // the JDK's own convention for the platform scaler: a 0.2 shear of the glyph transform
             desc = new FontStrikeDesc(desc);
@@ -268,6 +283,64 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
         }
         return new CStrike(this, desc);
     }
+
+    private static boolean isLcd(int aaHint) {
+        return aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HRGB || aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_LCD_HBGR
+               || aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VRGB || aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VBGR;
+    }
+
+    private TrueTypeFont freeTypeFace;
+    private boolean freeTypeFaceChecked;
+
+    /**
+     * This font's face in its file for the JDK's FreeType scaler, found by its PostScript name; null for a font without
+     * a file, a variable font (the scaler sets no variation: the file's default instance is not this font), or colour
+     * glyphs (sbix, COLR, SVG, CBDT: CoreText's).
+     */
+    synchronized TrueTypeFont freeTypeFace() {
+        if (!freeTypeFaceChecked) {
+            freeTypeFaceChecked = true;
+            freeTypeFace = findFreeTypeFace();
+        }
+        return freeTypeFace;
+    }
+
+    private static final int FVAR = 0x66766172, SBIX = 0x73626978, COLR = 0x434F4C52, SVG = 0x53564720, CBDT = 0x43424454;
+
+    private TrueTypeFont findFreeTypeFace() {
+        long ptr = getNativeFontPtr();
+        int[] tags = getTableTagsNative(ptr);
+        String[] file = getFontFileNative(ptr);
+        if (tags == null || file == null) {
+            return null;
+        }
+        for (int tag : tags) {
+            if (tag == FVAR || tag == SBIX || tag == COLR || tag == SVG || tag == CBDT) {
+                return null;
+            }
+        }
+        int count = 1;
+        for (int index = 0; index < count; index++) {
+            try {
+                TrueTypeFont face = new TrueTypeFont(file[0], null, index, true);
+                count = face.getFontCount();
+                if (file[1].equals(face.getPostscriptName())) {
+                    return face;
+                }
+            } catch (FontFormatException e) {
+                // a face the JDK cannot read (LucidaGrande.ttc's last two carry Unicode-platform names only): the next
+                if (FontUtilities.isLogging()) {
+                    FontUtilities.logInfo("face " + index + " of " + file[0] + " unreadable for " + this + ": " + e);
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The font's file and PostScript name (CoreText's kCTFontURLAttribute), null when it reports no file. */
+    private static native String[] getFontFileNative(long nativeFontPtr);
+
+    private static native int[] getTableTagsNative(long nativeFontPtr);
 
     private SKFontScaler skiaScaler;
     private boolean skiaScalerFailed;
