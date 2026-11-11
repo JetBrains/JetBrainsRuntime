@@ -70,7 +70,7 @@ struct Fallback {
 struct SKScaler {
     std::atomic<int> references{1};
     sk_sp<SkTypeface> typeface;
-    jlong nativeFont = 0;   // for the platform's fallback (0 for file fonts)
+    jlong nativeFont = 0;   // for the platform's fallback (0 for file fonts), retained: the font's Disposer releases its own
     std::mutex fallbackLock;
     std::unordered_map<int, Fallback> fallbacks;   // code point -> the platform's fallback glyph
 };
@@ -90,6 +90,7 @@ std::atomic<jlong> gScalers{0};   // alive, for SKEnvironment.typefacesHeld
 void releaseScaler(SKScaler *scaler) {
     if (scaler != nullptr && scaler->references.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         SKBackend_ForgetTypeface(scaler->typeface->uniqueID());
+        SKPlatform_ReleaseNativeFont(scaler->nativeFont);
         gScalers--;
         delete scaler;
     }
@@ -231,6 +232,7 @@ Java_sun_font_SKFontScaler_createNative(JNIEnv *env, jclass clazz, jlong nativeF
     auto *scaler = new SKScaler();
     scaler->typeface = std::move(typeface);
     scaler->nativeFont = nativeFont;
+    SKPlatform_RetainNativeFont(nativeFont);
     gScalers++;
     return ptr_to_jlong(scaler);
 }

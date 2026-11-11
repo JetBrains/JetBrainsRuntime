@@ -135,6 +135,10 @@ private:
 // the CTFontRef behind CFont). Null if the platform has no font host yet.
 sk_sp<SkFontMgr> SKPlatform_FontManager();
 sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont);
+// A reference to the native font object, so that a scaler over it can outlive the Font2D, whose own Disposer record
+// releases the object when the font is collected (macOS: CFont's AWTFont, retained and released).
+void SKPlatform_RetainNativeFont(jlong nativeFont);
+void SKPlatform_ReleaseNativeFont(jlong nativeFont);
 // The platform's font fallback for a code point the font lacks (macOS: the
 // mapper hands such characters to CoreText as negative glyph codes): the
 // typeface that has it and the glyph in it; null if the platform has none.

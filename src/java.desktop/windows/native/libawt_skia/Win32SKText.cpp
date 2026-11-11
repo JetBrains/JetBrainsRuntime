@@ -60,6 +60,10 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong) {
     return nullptr;
 }
 
+void SKPlatform_RetainNativeFont(jlong) {}   // no native font objects here
+
+void SKPlatform_ReleaseNativeFont(jlong) {}
+
 sk_sp<SkTypeface> SKPlatform_FallbackTypeface(jlong, int, uint16_t *) {
     return nullptr;   // Windows resolves fallback through composite fonts, with non-negative codes
 }

@@ -181,6 +181,20 @@ sk_sp<SkTypeface> SKPlatform_TypefaceFromNativeFont(jlong nativeFont) {
     return font != nullptr ? SkMakeTypefaceFromCTFont(font) : nullptr;   // a new reference; the CTFont is retained
 }
 
+// The AWTFont is a CoreFoundation-compatible object (CFont.disposeNativeFont releases it with CFRelease); retaining
+// it keeps its fFont and fFallbackBase too.
+void SKPlatform_RetainNativeFont(jlong nativeFont) {
+    if (nativeFont != 0) {
+        CFRetain(jlong_to_ptr(nativeFont));
+    }
+}
+
+void SKPlatform_ReleaseNativeFont(jlong nativeFont) {
+    if (nativeFont != 0) {
+        CFRelease(jlong_to_ptr(nativeFont));
+    }
+}
+
 // One SkTypeface per distinct fallback CTFont, so that the glyph caches key on
 // a stable typeface (CTFontCreateForString returns a new object every time).
 static sk_sp<SkTypeface> typefaceForCTFont(CTFontRef font) {
