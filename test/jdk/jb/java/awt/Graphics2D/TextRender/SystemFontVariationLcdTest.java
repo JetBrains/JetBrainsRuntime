@@ -31,8 +31,9 @@ import java.awt.image.BufferedImage;
  *          read (macOS 26's PingFang, macOS' CJK fallback: Apple's hvgl only) stays CoreText's and must draw: FreeType
  *          drew it empty. Each case must carry sub-pixel fringes at whole-pixel positions (with
  *          fractional metrics the pipes' third-pixel shift colours gray masks too), the advance CoreText's strike
- *          gives (fractional metrics, within 1 %), and the weight step CoreText draws (bold over regular ink within
- *          15 % of CoreText's ratio).
+ *          gives (fractional metrics, within 1 %), and a weight step (bold over regular ink) between half and twice
+ *          CoreText's: without the variation every weight draws alike (a step of 0); CoreText's own step is not the
+ *          measure, its font smoothing thickens a regular stroke more than a bold one.
  * @requires os.family == "mac"
  * @run main/othervm -Djava.awt.headless=true SystemFontVariationLcdTest
  */
@@ -71,7 +72,9 @@ public class SystemFontVariationLcdTest {
         double lcd = (double) ink(paint(heavier, text, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, true)) / ink(paint(regular, text, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, true));
         double coreText = (double) ink(paint(heavier, text, RenderingHints.VALUE_TEXT_ANTIALIAS_ON, true)) / ink(paint(regular, text, RenderingHints.VALUE_TEXT_ANTIALIAS_ON, true));
         System.out.printf("%s: ink ratio under LCD %.3f, CoreText's %.3f%n", what, lcd, coreText);
-        if (Math.abs(lcd / coreText - 1) > 0.15) failures.append(what).append(": ink ratio ").append(lcd).append(" against CoreText's ").append(coreText).append("; ");
+        if (lcd - 1 < 0.5 * (coreText - 1) || lcd - 1 > 2 * (coreText - 1)) {
+            failures.append(what).append(": ink ratio ").append(lcd).append(" against CoreText's ").append(coreText).append("; ");
+        }
     }
 
     static BufferedImage paint(Font font, String text, Object aa, boolean fractional) {

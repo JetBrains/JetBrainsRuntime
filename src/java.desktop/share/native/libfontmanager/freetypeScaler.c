@@ -1731,8 +1731,12 @@ static jlong
      * are constant as size increases. This is good for animation as well
      * as being compatible with what happened in earlier JDK versions
      * which did not use freetype.
+     * LCD text likewise (JBR-10654): unhinted as grayscale is, so switching
+     * between the two does not move the text (LCD's vertical hinting snapped
+     * its edges to rows where grayscale's are not).
      */
-    if (context->aaType == TEXT_AA_ON && context->fmType == TEXT_FM_ON) {
+    if ((context->aaType == TEXT_AA_ON || context->aaType == TEXT_AA_LCD_HRGB || context->aaType == TEXT_AA_LCD_HBGR ||
+         context->aaType == TEXT_AA_LCD_VRGB || context->aaType == TEXT_AA_LCD_VBGR) && context->fmType == TEXT_FM_ON) {
         context->loadFlags |= FT_LOAD_NO_HINTING;
     }
 
