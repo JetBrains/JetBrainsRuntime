@@ -136,6 +136,9 @@ HDC AwtWin32GraphicsDevice::MakeDCFromMonitor(HMONITOR hmMonitor) {
 
         if (TRUE == ::GetMonitorInfo(hmMonitor, (LPMONITORINFOEX)(&mieInfo))) {
             HDC hDC = CreateDC(mieInfo.szDevice, NULL, NULL, NULL);
+            if (NULL == hDC) {
+                hDC = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+            }
             if (NULL != hDC) {
                 retCode = hDC;
             }

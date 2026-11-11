@@ -107,6 +107,9 @@ static BOOL IsValidMonitor(HMONITOR hMon)
 
     HDC hDC = CreateDC(mieInfo.szDevice, NULL, NULL, NULL);
     if (NULL == hDC) {
+        hDC = CreateDC(TEXT("DISPLAY"), NULL, NULL, NULL);
+    }
+    if (NULL == hDC) {
         J2dTraceLn(J2D_TRACE_INFO,
                    "Devices::IsValidMonitor: CreateDC failed for monitor with handle %p, device: %S",
                    hMon, mieInfo.szDevice);
