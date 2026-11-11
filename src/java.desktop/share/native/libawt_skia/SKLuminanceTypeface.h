@@ -46,6 +46,9 @@ sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int lumina
 // (manager, class).
 sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance);
 
+// Whether the typeface is one of these proxies (a paragraph's run font is; its fallback fonts may be the plain ones)
+bool SKLuminanceTypeface_IsProxy(const SkTypeface *typeface);
+
 // The proxies of the typeface are released (its font scaler is gone: SKBackend_ForgetTypeface); their ids
 std::vector<SkTypefaceID> SKLuminanceTypeface_Forget(SkTypefaceID typeface);
 

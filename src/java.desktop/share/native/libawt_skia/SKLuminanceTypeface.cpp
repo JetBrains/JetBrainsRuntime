@@ -34,6 +34,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -279,6 +280,15 @@ sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance)
 // (SKLuminanceTypeface_Forget); the flusher makes them, the Disposer's thread forgets them
 static std::mutex gProxiesLock;
 static std::map<std::pair<SkTypefaceID, int>, sk_sp<SkTypeface>> gProxies;
+static std::unordered_set<SkTypefaceID> gProxyIds;   // the proxies' own ids
+
+bool SKLuminanceTypeface_IsProxy(const SkTypeface *typeface) {
+    if (typeface == nullptr) {
+        return false;
+    }
+    std::lock_guard<std::mutex> guard(gProxiesLock);
+    return gProxyIds.count(typeface->uniqueID()) != 0;
+}
 
 size_t SKLuminanceTypeface_Held() {
     std::lock_guard<std::mutex> guard(gProxiesLock);
@@ -292,6 +302,7 @@ std::vector<SkTypefaceID> SKLuminanceTypeface_Forget(SkTypefaceID typeface) {
     auto it = gProxies.lower_bound({typeface, INT_MIN});
     while (it != gProxies.end() && it->first.first == typeface) {
         ids.push_back(it->second->uniqueID());
+        gProxyIds.erase(it->second->uniqueID());
         released.push_back(std::move(it->second));
         it = gProxies.erase(it);
     }
@@ -306,6 +317,7 @@ sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int lumina
     sk_sp<SkTypeface> &proxy = gProxies[{typeface->uniqueID(), luminance}];
     if (!proxy) {
         proxy = sk_make_sp<SKLuminanceTypeface>(std::move(typeface), luminance);
+        gProxyIds.insert(proxy->uniqueID());
     }
     return proxy;
 }

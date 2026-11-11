@@ -2122,9 +2122,14 @@ private:
 
 // The font manager for the fallback runs: the platform's under the cascade (CascadeFontMgr), or its luminance proxy
 // when the strike takes the cg route, so the characters the strike's font lacks get the route too.
-static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, SkColor textColour) {
+static sk_sp<SkFontMgr> cascadeManager() {
     static sk_sp<SkFontMgr> cascade = sk_make_sp<CascadeFontMgr>(SKPlatform_FontManager());
-    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(cascade, luminanceClass(textColour, pScalerContext)) : cascade;
+    return cascade;
+}
+
+static sk_sp<SkFontMgr> fallbackManager(const SkFont &font, jlong pScalerContext, SkColor textColour) {
+    return takesGrayRoute(font, pScalerContext) ? SKLuminanceFontMgr_For(cascadeManager(), luminanceClass(textColour, pScalerContext))
+                                                : cascadeManager();
 }
 
 // The text blob cache (SKBackend_SetTextBlobCache): least recently used first out. A key is the bytes of a
@@ -2236,15 +2241,62 @@ static void drawTextBlobSplit(SkCanvas *canvas, const sk_sp<SkTextBlob> &blob, f
 }
 
 namespace {
+// A paragraph's runs when their luminance classes differ: the paint of each and its class (-1: no gray route)
+struct ParagraphRuns {
+    std::vector<SkPaint> paints;
+    std::vector<int> classes;
+};
+
+// The blob with every typeface that is not yet a luminance proxy replaced by its proxy for the class
+sk_sp<SkTextBlob> withLuminanceProxies(const sk_sp<SkTextBlob> &blob, int luminance) {
+    if (!blob) {
+        return blob;
+    }
+    SkTextBlob::Iter it(*blob);
+    SkTextBlob::Iter::ExperimentalRun run;
+    bool plain = false;
+    while (it.experimentalNext(&run)) {
+        if (run.positions == nullptr) {
+            return blob;   // not the paragraph's (its runs carry full positions)
+        }
+        plain = plain || (run.font.getTypeface() != nullptr && !SKLuminanceTypeface_IsProxy(run.font.getTypeface()));
+    }
+    if (!plain) {
+        return blob;
+    }
+    SkTextBlobBuilder builder;
+    SkTextBlob::Iter again(*blob);
+    while (again.experimentalNext(&run)) {
+        SkFont font = run.font;
+        if (font.getTypeface() != nullptr && !SKLuminanceTypeface_IsProxy(font.getTypeface())) {
+            font.setTypeface(SKLuminanceTypeface_For(font.refTypeface(), luminance));
+        }
+        const SkTextBlobBuilder::RunBuffer &buffer = builder.allocRunPos(font, run.count);
+        std::memcpy(buffer.glyphs, run.glyphs, sizeof(SkGlyphID) * (size_t) run.count);
+        std::memcpy(buffer.points(), run.positions, sizeof(SkPoint) * (size_t) run.count);
+    }
+    return builder.make();
+}
+
 // The paragraph painted onto a canvas with its text blobs split as above (SkParagraph's own canvas painter otherwise)
+// A paragraph whose runs differ in their luminance class (ParagraphRuns) names each run's paint by the run's index: the
+// fallback typefaces of a run (plain, from the cascade) become the luminance proxies of that run's class here, as the
+// run's own typeface is (applyGrayRoute) and as Skia's text path draws a run's fallback glyphs.
 struct SplittingParagraphPainter final : skia::textlayout::ParagraphPainter {
     SkCanvas *canvas;
     float extraAlpha;
     bool swizzled;
-    SplittingParagraphPainter(SkCanvas *c, float ea, bool sw) : canvas(c), extraAlpha(ea), swizzled(sw) {}
-    static SkPaint paintOf(const SkPaintOrID &p) { const SkPaint *paint = std::get_if<SkPaint>(&p); return paint ? *paint : SkPaint(); }
+    const ParagraphRuns *runs;
+    SplittingParagraphPainter(SkCanvas *c, float ea, bool sw, const ParagraphRuns *r) : canvas(c), extraAlpha(ea), swizzled(sw), runs(r) {}
+    SkPaint paintOf(const SkPaintOrID &p) const {
+        if (const SkPaint *paint = std::get_if<SkPaint>(&p)) return *paint;
+        const PaintID id = std::get<PaintID>(p);
+        return runs != nullptr && id >= 0 && (size_t) id < runs->paints.size() ? runs->paints[id] : SkPaint();
+    }
     void drawTextBlob(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, const SkPaintOrID &paint) override {
-        drawTextBlobSplit(canvas, blob, x, y, paintOf(paint), extraAlpha, swizzled);
+        const PaintID *id = std::get_if<PaintID>(&paint);
+        const int luminance = id != nullptr && runs != nullptr && *id >= 0 && (size_t) *id < runs->classes.size() ? runs->classes[*id] : -1;
+        drawTextBlobSplit(canvas, luminance >= 0 ? withLuminanceProxies(blob, luminance) : blob, x, y, paintOf(paint), extraAlpha, swizzled);
     }
     void drawTextShadow(const sk_sp<SkTextBlob> &blob, SkScalar x, SkScalar y, SkColor color, SkScalar blurSigma) override {
         SkPaint p;
@@ -2275,14 +2327,15 @@ static float glyphRow(float y, double displayScale) {
 #endif
 }
 
-// a paragraph onto the canvas: SkParagraph's own painter, or the splitting one under another rule or on a raster canvas
+// a paragraph onto the canvas: SkParagraph's own painter, or ours under another rule, on a raster canvas, or for runs
+// of several luminance classes (runs: their paints, named by index)
 static void paintParagraph(skia::textlayout::Paragraph &paragraph, SkCanvas *canvas, float x, float y, const SkPaint &paint, float extraAlpha,
-                           bool swizzled) {
-    if (!splitsColourGlyphs(paint) && !swizzled) {
+                           bool swizzled, const ParagraphRuns *runs) {
+    if (!splitsColourGlyphs(paint) && !swizzled && runs == nullptr) {
         paragraph.paint(canvas, x, y);
         return;
     }
-    SplittingParagraphPainter painter(canvas, extraAlpha, swizzled);
+    SplittingParagraphPainter painter(canvas, extraAlpha, swizzled, runs);
     paragraph.paint(&painter, x, y);
 }
 
@@ -3256,14 +3309,30 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
     // in its own style (a regular Apple Color Emoji in a bold run), and an emboldened bitmap glyph came out empty
     // through the luminance proxy (Skia renders an emboldened glyph from its outline, which an emoji does not have)
     style.setFakeMissingFontStyles(false);
-    // the fallback manager of the first run decides for the paragraph (runs of other colours
-    // get its luminance class for their fallback glyphs)
+    // the fallback manager: the first run's when every run has its luminance class (or none takes the gray route);
+    // else the plain cascade, and the painter gives each run's fallback glyphs that run's class (ParagraphRuns)
     sk_sp<SkFontMgr> fallback = SKPlatform_FontManager();
+    std::optional<ParagraphRuns> perRun;
     {
-        SkFont first;
-        const SkColor firstColour = (flags[0] & SK_PARAGRAPH_COLOUR) ? (SkColor) colours[0] : textColour;
-        if (SKFontScaler_Font(contexts[0], &first)) {
-            fallback = fallbackManager(first, contexts[0], firstColour);
+        std::vector<int> classes(runCount, -1);
+        for (jint r = 0; r < runCount; r++) {
+            SkFont font;
+            const SkColor colour = (flags[r] & SK_PARAGRAPH_COLOUR) ? (SkColor) colours[r] : textColour;
+            if (SKFontScaler_Font(contexts[r], &font) && takesGrayRoute(font, contexts[r])) {
+                classes[r] = luminanceClass(colour, contexts[r]);
+            }
+        }
+        if (std::any_of(classes.begin(), classes.end(), [&](int c) { return c != classes[0]; })) {
+            perRun.emplace();
+            perRun->classes = std::move(classes);
+            perRun->paints.resize(runCount);
+            fallback = cascadeManager();
+        } else {
+            SkFont first;
+            const SkColor firstColour = (flags[0] & SK_PARAGRAPH_COLOUR) ? (SkColor) colours[0] : textColour;
+            if (SKFontScaler_Font(contexts[0], &first)) {
+                fallback = fallbackManager(first, contexts[0], firstColour);
+            }
         }
     }
     // whole-pixel advances of a system font round in user space (SKFontScaler_LayoutScale): the paragraph
@@ -3325,7 +3394,12 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         ts.addFontFeature(SkString("kern"), kern);
         ts.addFontFeature(SkString("liga"), liga);
         ts.addFontFeature(SkString("calt"), liga);
-        ts.setForegroundPaint(runPaint);
+        if (perRun) {
+            perRun->paints[r] = runPaint;
+            ts.setForegroundPaintID(r);
+        } else {
+            ts.setForegroundPaint(runPaint);
+        }
         if ((flags[r] & SK_PARAGRAPH_BACKGROUND) && !(flags[r] & SK_PARAGRAPH_LINE_BACKGROUND)) {
             // TextAttribute.BACKGROUND (or the swapped foreground): SkParagraph's box behind the run, filled as the
             // graphics fills a shape (Java fills the run's logical bounds, Decoration.drawTextAndDecorations); the
@@ -3430,7 +3504,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         canvas->scale(layoutScale, layoutScale);
         // the line's baseline at y 0 of this space
         drawLineBackgrounds(*paragraph, canvas, 0, 0, chars, length, runCount, runEnds, flags, backgrounds, lineBand, paint, extraAlpha, swizzled);
-        paintParagraph(*paragraph, canvas, 0, -baseline, paint, extraAlpha, swizzled);
+        paintParagraph(*paragraph, canvas, 0, -baseline, paint, extraAlpha, swizzled, perRun ? &*perRun : nullptr);
         drawTransformedDecorations(*paragraph, canvas, -baseline, 0, layoutScale, chars, length, runCount, runEnds, contexts, colours, flags, shift,
                                    paint, extraAlpha, swizzled);
     } else {
@@ -3442,11 +3516,11 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
             canvas->scale(layoutScale, layoutScale);
             drawLineBackgrounds(*paragraph, canvas, originX / layoutScale, originY / layoutScale, chars, length, runCount, runEnds, flags, backgrounds,
                                 lineBand, paint, extraAlpha, swizzled);
-            paintParagraph(*paragraph, canvas, originX / layoutScale, glyphTop, paint, extraAlpha, swizzled);
+            paintParagraph(*paragraph, canvas, originX / layoutScale, glyphTop, paint, extraAlpha, swizzled, perRun ? &*perRun : nullptr);
         } else {
             drawLineBackgrounds(*paragraph, canvas, originX, originY, chars, length, runCount, runEnds, flags, backgrounds, lineBand, paint, extraAlpha,
                                 swizzled);
-            paintParagraph(*paragraph, canvas, originX, glyphTop, paint, extraAlpha, swizzled);
+            paintParagraph(*paragraph, canvas, originX, glyphTop, paint, extraAlpha, swizzled, perRun ? &*perRun : nullptr);
         }
         drawSystemDecorations(*paragraph, canvas, originX / layoutScale, paragraphTop, originY / layoutScale, layoutScale, chars, length, runCount,
                               runEnds, contexts, colours, flags, shift, paint, extraAlpha, swizzled);
