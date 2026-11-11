@@ -58,7 +58,7 @@ public class OGLCompositeTest {
             new TransparencyWithDescription(Transparency.OPAQUE, "OPAQUE")
     };
 
-    static void main() {
+    static void main(String[] args) {
         GraphicsConfiguration gc = GraphicsEnvironment.getLocalGraphicsEnvironment()
                 .getDefaultScreenDevice().getDefaultConfiguration();
 
