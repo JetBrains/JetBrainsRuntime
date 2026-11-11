@@ -59,6 +59,7 @@
 
 #if defined(_WIN32) || defined(MACOSX)
 #include FT_COLOR_H
+#include FT_MULTIPLE_MASTERS_H
 #define COLOR_OUTLINES_AVAILABLE (1)
 #else
 // Linux is built with system Freetype by default,
@@ -2009,6 +2010,56 @@ static jlong
     }
 
     return ptr_to_jlong(glyphInfo);
+}
+
+/*
+ * Class:     sun_font_FreetypeFontScaler
+ * Method:    setVariationNative
+ * Signature: (Lsun/font/Font2D;J[I[F)Z
+ *
+ * The face's variation (FT_Set_Var_Design_Coordinates): each axis at its default but those the tags name, at their
+ * values in design units; false when the face has no variation axes or FreeType refuses the coordinates.
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_font_FreetypeFontScaler_setVariationNative(
+        JNIEnv *env, jobject scaler, jobject font2D, jlong pScaler, jintArray tags, jfloatArray values) {
+    FTScalerInfo* scalerInfo = (FTScalerInfo *) jlong_to_ptr(pScaler);
+    if (scalerInfo == NULL || scalerInfo->face == NULL || tags == NULL || values == NULL) {
+        return JNI_FALSE;
+    }
+    if (setupFTContext(env, font2D, scalerInfo, NULL, FALSE)) {
+        return JNI_FALSE;
+    }
+    FT_MM_Var *mm = NULL;
+    if (!FT_HAS_MULTIPLE_MASTERS(scalerInfo->face) || FT_Get_MM_Var(scalerInfo->face, &mm) || mm == NULL) {
+        return JNI_FALSE;
+    }
+    jsize count = (*env)->GetArrayLength(env, tags);
+    if ((*env)->GetArrayLength(env, values) < count) {
+        count = (*env)->GetArrayLength(env, values);
+    }
+    jint *axisTags = (*env)->GetIntArrayElements(env, tags, NULL);
+    jfloat *axisValues = (*env)->GetFloatArrayElements(env, values, NULL);
+    FT_Fixed *coords = (FT_Fixed *) calloc(mm->num_axis > 0 ? mm->num_axis : 1, sizeof(FT_Fixed));
+    jboolean result = JNI_FALSE;
+    if (axisTags != NULL && axisValues != NULL && coords != NULL) {
+        for (FT_UInt axis = 0; axis < mm->num_axis; axis++) {
+            coords[axis] = mm->axis[axis].def;
+            for (jsize i = 0; i < count; i++) {
+                if ((FT_ULong) (unsigned int) axisTags[i] == mm->axis[axis].tag) {
+                    FT_Fixed value = (FT_Fixed) (axisValues[i] * 65536.0f);
+                    coords[axis] = value < mm->axis[axis].minimum ? mm->axis[axis].minimum
+                                 : value > mm->axis[axis].maximum ? mm->axis[axis].maximum : value;
+                }
+            }
+        }
+        result = FT_Set_Var_Design_Coordinates(scalerInfo->face, mm->num_axis, coords) == 0 ? JNI_TRUE : JNI_FALSE;
+    }
+    free(coords);
+    if (axisTags != NULL) (*env)->ReleaseIntArrayElements(env, tags, axisTags, JNI_ABORT);
+    if (axisValues != NULL) (*env)->ReleaseFloatArrayElements(env, values, axisValues, JNI_ABORT);
+    FT_Done_MM_Var(scalerInfo->library, mm);
+    return result;
 }
 
 /*

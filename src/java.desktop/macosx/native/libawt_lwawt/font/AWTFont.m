@@ -3302,7 +3302,8 @@ JNI_COCOA_EXIT(env);
  * Method:    getFontFileNative
  * Signature: (J)[Ljava/lang/String;
  *
- * The font's file and its PostScript name (the face within a collection), null when CoreText reports no file.
+ * The font's file, its PostScript name (the face within a collection) and its family name, null when CoreText reports
+ * no file.
  */
 JNIEXPORT jobjectArray JNICALL
 Java_sun_font_CFont_getFontFileNative
@@ -3314,19 +3315,71 @@ JNI_COCOA_ENTER(env);
     CTFontRef ctfont = (CTFontRef)awtFont->fFont;
     CFURLRef url = (CFURLRef)CTFontCopyAttribute(ctfont, kCTFontURLAttribute);
     CFStringRef postScriptName = CTFontCopyPostScriptName(ctfont);
+    CFStringRef familyName = CTFontCopyFamilyName(ctfont);
     NSString *path = url != NULL ? [(NSURL *)url path] : nil;
     if (path != nil && postScriptName != NULL) {
         jclass stringClass = (*env)->FindClass(env, "java/lang/String");
         if (stringClass != NULL) {
-            result = (*env)->NewObjectArray(env, 2, stringClass, NULL);
+            result = (*env)->NewObjectArray(env, 3, stringClass, NULL);
             if (result != NULL) {
                 (*env)->SetObjectArrayElement(env, result, 0, NSStringToJavaString(env, path));
                 (*env)->SetObjectArrayElement(env, result, 1, NSStringToJavaString(env, (NSString *)postScriptName));
+                if (familyName != NULL) {
+                    (*env)->SetObjectArrayElement(env, result, 2, NSStringToJavaString(env, (NSString *)familyName));
+                }
             }
         }
     }
     if (url != NULL) CFRelease(url);
     if (postScriptName != NULL) CFRelease(postScriptName);
+    if (familyName != NULL) CFRelease(familyName);
+JNI_COCOA_EXIT(env);
+    return result;
+}
+
+/*
+ * Class:     sun_font_CFont
+ * Method:    getVariationNative
+ * Signature: (JF)[D
+ *
+ * CoreText's variation of the font at the point size (axis tag, value, ...: its optical size follows the size), null
+ * for a font without variation axes.
+ */
+JNIEXPORT jdoubleArray JNICALL
+Java_sun_font_CFont_getVariationNative
+    (JNIEnv *env, jclass clazz, jlong awtFontPtr, jfloat size)
+{
+    jdoubleArray result = NULL;
+JNI_COCOA_ENTER(env);
+    AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
+    CTFontRef sized = CTFontCreateCopyWithAttributes((CTFontRef)awtFont->fFont, size, NULL, NULL);
+    if (sized != NULL) {
+        CFArrayRef axes = CTFontCopyVariationAxes(sized);
+        CFDictionaryRef variation = CTFontCopyVariation(sized);
+        if (axes != NULL && CFArrayGetCount(axes) > 0) {
+            CFIndex count = variation != NULL ? CFDictionaryGetCount(variation) : 0;
+            result = (*env)->NewDoubleArray(env, (jsize)(2 * count));
+            if (result != NULL && count > 0) {
+                const void **keys = malloc(sizeof(void *) * count), **values = malloc(sizeof(void *) * count);
+                if (keys != NULL && values != NULL) {
+                    CFDictionaryGetKeysAndValues(variation, keys, values);
+                    for (CFIndex i = 0; i < count; i++) {
+                        long long tag = 0;
+                        double value = 0;
+                        CFNumberGetValue((CFNumberRef)keys[i], kCFNumberLongLongType, &tag);
+                        CFNumberGetValue((CFNumberRef)values[i], kCFNumberDoubleType, &value);
+                        jdouble pair[2] = { (jdouble)tag, value };
+                        (*env)->SetDoubleArrayRegion(env, result, (jsize)(2 * i), 2, pair);
+                    }
+                }
+                free(keys);
+                free(values);
+            }
+        }
+        if (axes != NULL) CFRelease(axes);
+        if (variation != NULL) CFRelease(variation);
+        CFRelease(sized);
+    }
 JNI_COCOA_EXIT(env);
     return result;
 }

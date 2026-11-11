@@ -94,7 +94,15 @@ class FreetypeFontScaler extends FontScaler {
                                         supportsCJK,
                                         filesize);
         this.font = new WeakReference<>(font);
+        if (nativeScaler != 0L && font instanceof TrueTypeFont ttf && ttf.variationTags != null) {
+            // a face at a variation of its font (a macOS system font's, CFont.freeTypeFace): set once, on the face
+            if (!setVariationNative(font, nativeScaler, ttf.variationTags, ttf.variationValues) && FontUtilities.isLogging()) {
+                FontUtilities.logWarning("FreeType took no variation for " + font);
+            }
+        }
     }
+
+    private native boolean setVariationNative(Font2D font, long pScaler, int[] tags, float[] values);
 
     synchronized StrikeMetrics getFontMetrics(long pScalerContext)
                      throws FontScalerException {

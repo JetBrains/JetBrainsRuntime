@@ -55,6 +55,19 @@ final class CFreeTypeStrike extends FontStrike {
         face = file.getStrike(new FontStrikeDesc(desc.devTx, glyphTx, file.getStyle(), desc.aaHint, desc.fmHint, desc.luminance));
     }
 
+    /** The strike's size in points: its glyph transform without the device transform. */
+    static float pointSize(FontStrikeDesc desc) {
+        AffineTransform user = new AffineTransform(desc.glyphTx);
+        try {
+            if (desc.devTx != null && !desc.devTx.isIdentity()) {
+                user.preConcatenate(desc.devTx.createInverse());
+            }
+        } catch (java.awt.geom.NoninvertibleTransformException e) {
+            user = desc.glyphTx;
+        }
+        return (float) Math.hypot(user.getShearX(), user.getScaleY());
+    }
+
     private synchronized FontStrike coreText() {
         if (coreText == null) {
             coreText = font.coreTextStrike(desc);

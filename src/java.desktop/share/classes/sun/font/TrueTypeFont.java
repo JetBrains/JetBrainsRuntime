@@ -199,6 +199,14 @@ public class TrueTypeFont extends FileFont {
      */
     int fontDataSize;
 
+    /**
+     * The face's variation, axis tags and values in design units, or null for the font's default instance: set
+     * before the font's scaler is made (CFont.freeTypeFace, a macOS system font drawn through FreeType), which
+     * applies it to its face.
+     */
+    int[] variationTags;
+    float[] variationValues;
+
     public TrueTypeFont(String platname, Object nativeNames, int fIndex,
                  boolean javaRasterizer)
         throws FontFormatException

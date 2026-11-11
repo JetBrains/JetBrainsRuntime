@@ -258,7 +258,7 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
         // LCD text: CoreGraphics renders no colour sub-pixels, so the font's face in its file on the JDK's FreeType
         // scaler, as a font of Font.createFont is drawn (the Skia scaler draws its own LCD from the outlines)
         if (!FontUtilities.useSkiaScaler && isLcd(desc.aaHint)) {
-            TrueTypeFont face = freeTypeFace();
+            TrueTypeFont face = freeTypeFace(CFreeTypeStrike.pointSize(desc));
             if (face != null) {
                 return new CFreeTypeStrike(this, desc, face);
             }
@@ -289,43 +289,88 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
                || aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VRGB || aaHint == SunHints.INTVAL_TEXT_ANTIALIAS_LCD_VBGR;
     }
 
-    private TrueTypeFont freeTypeFace;
     private boolean freeTypeFaceChecked;
+    private int freeTypeFaceIndex = -1;   // the face in the file, -1: none for FreeType
+    private String freeTypeFile;
+    private boolean variable;
+    private final java.util.Map<String, TrueTypeFont> freeTypeFaces = new java.util.HashMap<>();
 
     /**
-     * This font's face in its file for the JDK's FreeType scaler, found by its PostScript name; null for a font without
-     * a file, a variable font (the scaler sets no variation: the file's default instance is not this font), or colour
-     * glyphs (sbix, COLR, SVG, CBDT: CoreText's).
+     * This font's face in its file for the JDK's FreeType scaler at the point size, null for a font without a file,
+     * with colour glyphs (sbix, COLR, SVG, CBDT: CoreText's), or without outlines FreeType reads (glyf, CFF, CFF2:
+     * macOS 26's PingFang has only Apple's hvgl, and FreeType drew it empty). A variable font's face carries CoreText's variation at
+     * that size (SF's optical size follows the point size, its weights are instances; PingFang's regular is not its
+     * default instance): one TrueTypeFont per distinct variation, each with its FreeType face set to it.
      */
-    synchronized TrueTypeFont freeTypeFace() {
+    synchronized TrueTypeFont freeTypeFace(float pointSize) {
         if (!freeTypeFaceChecked) {
             freeTypeFaceChecked = true;
-            freeTypeFace = findFreeTypeFace();
+            findFreeTypeFace();
         }
-        return freeTypeFace;
+        if (freeTypeFaceIndex < 0) {
+            return null;
+        }
+        double[] variation = variable ? getVariationNative(getNativeFontPtr(), pointSize) : null;
+        String key = java.util.Arrays.toString(variation);
+        TrueTypeFont face = freeTypeFaces.get(key);
+        if (face == null && !freeTypeFaces.containsKey(key)) {
+            try {
+                face = new TrueTypeFont(freeTypeFile, null, freeTypeFaceIndex, true);
+                if (variation != null && variation.length > 0) {
+                    int[] tags = new int[variation.length / 2];
+                    float[] values = new float[tags.length];
+                    for (int i = 0; i < tags.length; i++) {
+                        tags[i] = (int) (long) variation[2 * i];
+                        values[i] = (float) variation[2 * i + 1];
+                    }
+                    face.variationTags = tags;
+                    face.variationValues = values;
+                }
+            } catch (FontFormatException e) {
+                face = null;
+            }
+            freeTypeFaces.put(key, face);
+        }
+        return face;
     }
 
-    private static final int FVAR = 0x66766172, SBIX = 0x73626978, COLR = 0x434F4C52, SVG = 0x53564720, CBDT = 0x43424454;
+    private static final int FVAR = 0x66766172, SBIX = 0x73626978, COLR = 0x434F4C52, SVG = 0x53564720, CBDT = 0x43424454,
+                             GLYF = 0x676C7966, CFF = 0x43464620, CFF2 = 0x43464632;
 
-    private TrueTypeFont findFreeTypeFace() {
+    /**
+     * The face of this font in its file: by PostScript name, or for a variable font, whose instances other than the
+     * default carry names the file does not (CoreText's ".SFNS-Bold"), by family name.
+     */
+    private void findFreeTypeFace() {
         long ptr = getNativeFontPtr();
         int[] tags = getTableTagsNative(ptr);
         String[] file = getFontFileNative(ptr);
         if (tags == null || file == null) {
-            return null;
+            return;
         }
+        boolean outlines = false;
         for (int tag : tags) {
-            if (tag == FVAR || tag == SBIX || tag == COLR || tag == SVG || tag == CBDT) {
-                return null;
+            if (tag == SBIX || tag == COLR || tag == SVG || tag == CBDT) {
+                return;
             }
+            variable |= tag == FVAR;
+            outlines |= tag == GLYF || tag == CFF || tag == CFF2;
         }
-        int count = 1;
+        if (!outlines) {
+            return;
+        }
+        int count = 1, familyMatch = -1;
         for (int index = 0; index < count; index++) {
             try {
                 TrueTypeFont face = new TrueTypeFont(file[0], null, index, true);
                 count = face.getFontCount();
                 if (file[1].equals(face.getPostscriptName())) {
-                    return face;
+                    familyMatch = index;
+                    break;
+                }
+                if (variable && familyMatch < 0 && file[2] != null
+                        && (file[2].equals(face.getFamilyName(null)) || file[2].equals(face.getTypographicFamilyName()))) {
+                    familyMatch = index;
                 }
             } catch (FontFormatException e) {
                 // a face the JDK cannot read (LucidaGrande.ttc's last two carry Unicode-platform names only): the next
@@ -334,10 +379,19 @@ public final class CFont extends PhysicalFont implements FontSubstitution, FontW
                 }
             }
         }
-        return null;
+        if (familyMatch < 0 && variable && count == 1) {
+            familyMatch = 0;   // a variable font alone in its file (SFNS.ttf: CoreText's family is ".AppleSystemUIFont")
+        }
+        if (familyMatch >= 0) {
+            freeTypeFile = file[0];
+            freeTypeFaceIndex = familyMatch;
+        }
     }
 
-    /** The font's file and PostScript name (CoreText's kCTFontURLAttribute), null when it reports no file. */
+    /** CoreText's variation of the font at the point size (axis tag, value, ...), null without variation axes. */
+    private static native double[] getVariationNative(long nativeFontPtr, float size);
+
+    /** The font's file, PostScript and family names (CoreText's kCTFontURLAttribute), null when it reports no file. */
     private static native String[] getFontFileNative(long nativeFontPtr);
 
     private static native int[] getTableTagsNative(long nativeFontPtr);
