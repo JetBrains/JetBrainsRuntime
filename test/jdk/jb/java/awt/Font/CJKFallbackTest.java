@@ -26,27 +26,26 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.GlyphVector;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.lang.reflect.Method;
 import javax.imageio.ImageIO;
 
 /*
  * @test
  * @summary JBR-10245 CJK font fallback regression on macOS — after registerFont
  *          of a Latin-only font (JetBrains Mono), resolving the same font by
- *          name creates a composite font with CJK cascade. When
- *          createGlyphVector is called for a CJK character, the returned glyph
- *          code must encode the composite slot in the high byte (SLOTMASK
- *          0xff000000) so the IDE can detect that the glyph comes from a
- *          cascaded font, not the base font. If the slot is zero, the IDE
- *          incorrectly thinks the base font can display CJK and skips fallback.
+ *          name creates a composite font with CJK cascade. The IDE asks
+ *          FontExtensions.canDisplayWithoutFallback (FontUtilities) whether the
+ *          base font itself has a character: for a CJK character it must answer
+ *          false, so the IDE applies the user's fallback font; and a glyph
+ *          vector's CJK glyph must come from a slot other than the base font's
+ *          (the macOS composites keep the slot in the glyph code's low byte,
+ *          slotShift 8: CompositeFont.decodeSlot). Were the base font taken to
+ *          display CJK, the IDE would skip its fallback.
  * @requires os.family == "mac"
+ * @modules java.desktop/sun.font:+open
  * @run main/othervm CJKFallbackTest
  */
 public class CJKFallbackTest {
-
-    // Masks used by the IDE (FontInfo.canDisplay) to distinguish base-font
-    // glyphs (slot 0) from composite/cascaded glyphs (slot > 0).
-    private static final int SLOTMASK  = 0xff000000;
-    private static final int GLYPHMASK = 0x00ffffff;
 
     private static final int CJK_CP = 0x4F60; // 你
 
@@ -76,8 +75,8 @@ public class CJKFallbackTest {
         String s = new String(new int[]{CJK_CP}, 0, 1);
         GlyphVector gv = resolved.createGlyphVector(frc, s);
         int glyphCode = gv.getGlyphCode(0);
-        int slot  = (glyphCode & SLOTMASK) >>> 24;
-        int glyph = glyphCode & GLYPHMASK;
+        int slot  = glyphCode & 0xff;   // the macOS composites' encoding (slotShift 8)
+        int glyph = glyphCode >>> 8;
 
         System.out.printf("U+%04X glyphCode=0x%08x slot=0x%02x glyph=0x%06x%n",
                           CJK_CP, glyphCode, slot, glyph);
@@ -86,16 +85,24 @@ public class CJKFallbackTest {
         saveGlyphImage(resolved, frc, s, glyphCode, slot);
 
         // The glyph for CJK must come from a non-zero slot (cascaded font).
-        // If slot=0 and glyph!=0, the IDE's disableFontFallback check
-        // (FontInfo.canDisplay) will incorrectly conclude the base font can
-        // display CJK, preventing font fallback.
         if (glyph != 0 && slot == 0) {
             throw new RuntimeException(
                 "FAILED: createGlyphVector for U+4F60 on composite JetBrains " +
                 "Mono returned glyphCode=0x" + Integer.toHexString(glyphCode) +
-                " with slot=0. The CJK glyph comes from a cascaded font but " +
-                "is not marked with a non-zero slot. This breaks the IDE's " +
-                "font fallback detection (SLOTMASK=0xff000000 check).");
+                " with slot=0: the CJK glyph is taken for the base font's.");
+        }
+        // What the IDE asks (FontExtensions.canDisplayWithoutFallback): the base
+        // font itself must not display CJK, or the IDE skips its fallback font.
+        Method withoutFallback = Class.forName("sun.font.FontUtilities")
+                .getDeclaredMethod("canDisplayWithoutFallback", Font.class, int.class);
+        withoutFallback.setAccessible(true);
+        if ((Boolean) withoutFallback.invoke(null, resolved, CJK_CP)) {
+            throw new RuntimeException("FAILED: canDisplayWithoutFallback(U+4F60) " +
+                "is true for JetBrains Mono: the IDE would skip its fallback font");
+        }
+        if (!(Boolean) withoutFallback.invoke(null, resolved, (int) 'A')) {
+            throw new RuntimeException("FAILED: canDisplayWithoutFallback('A') is " +
+                "false for JetBrains Mono");
         }
 
         if (glyph == 0) {
