@@ -238,7 +238,8 @@ jint _color;
         }
         if (renderOptions->isLCD) {
             vertShader = @"vert_txt_lcd";
-            fragShader = @"lcd_color";
+            // the destination by framebuffer fetch where the GPU has it (every Apple GPU), else read as a texture
+            fragShader = [mtlc.device supportsFamily:MTLGPUFamilyApple1] ? @"lcd_color_fetch" : @"lcd_color";
             rpDesc = templateLCDPipelineDesc;
             colorBuffer = NO;
         }

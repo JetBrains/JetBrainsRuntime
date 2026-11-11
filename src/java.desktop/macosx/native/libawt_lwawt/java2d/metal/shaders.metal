@@ -679,6 +679,27 @@ fragment float4 lcd_color(
     return float4(pow(result.rgb, invgamma), 1.0);
 
 }
+
+// lcd_color with the destination read by framebuffer fetch (Apple GPUs, MTLPaints picks it): within one render pass
+// the render target bound as a texture does not hold what the pass drew, so an LCD glyph overlapping the glyph drawn
+// before it (the LCD filter's spill between neighbours) blended over the background instead of over its neighbour
+fragment float4 lcd_color_fetch(
+        LCDShaderInOut vert [[stage_in]],
+        float4 dst_clr [[color(0)]],
+        texture2d<float, access::sample> glyphTexture [[texture(0)]],
+        constant LCDFrameUniforms& uniforms [[buffer(1)]])
+{
+    constexpr sampler glyphTextureSampler (address::repeat,
+                                      mag_filter::nearest,
+                                      min_filter::nearest);
+    float3 glyph_clr = float3(glyphTexture.sample(glyphTextureSampler, vert.texCoords));
+    if (glyph_clr.r == 0.0f && glyph_clr.g == 0.0f && glyph_clr.b == 0.0f) {
+        discard_fragment();
+    }
+    float3 dst_adj = pow(dst_clr.rgb, uniforms.gamma);
+    float3 result = mix(dst_adj, uniforms.src_adj, glyph_clr);
+    return float4(pow(result.rgb, uniforms.invgamma), 1.0);
+}
 // Compute shader to transfer clipping data to the texture used for manual clipping in
 // aa_frag_txt shader
 kernel void stencil2tex(const device uchar *imageBuffer [[buffer(0)]],
