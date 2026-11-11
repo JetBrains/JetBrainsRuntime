@@ -21,6 +21,8 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.RenderingHints;
 import java.awt.Transparency;
+import java.awt.font.GlyphVector;
+import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 
@@ -33,6 +35,8 @@ import java.awt.image.VolatileImage;
  *          where grayscale text's does. Metal (as OpenGL and D3D) split the raw position instead: a third of a pixel
  *          right at whole positions, half a pixel at a half. The ink centroid of an "l" (JetBrains Mono, FreeType's
  *          real sub-pixel masks) at seven positions across a pixel must agree with the loops' within 0.1 px.
+ *          Vertically an LCD glyph takes the row grayscale text takes (rounded to the nearest, at a glyph vector's
+ *          fractional y too), on the loops and on the pipe: an "H"'s stems span the same rows in both modes.
  * @requires os.family == "mac"
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.metal=true LcdSubpixelPlacementTest
  * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true LcdSubpixelPlacementTest
@@ -59,7 +63,57 @@ public class LcdSubpixelPlacementTest {
             System.out.printf("x 20 + %.3f: ink centroid loops %.3f, pipe %.3f%n", dx, l, p);
             if (Math.abs(p - l) > 0.1) failures.append(String.format("at +%.3f the pipe's ink is %.3f px off the loops'; ", dx, p - l));
         }
+        for (float dy : new float[] {0f, 0.3f, 0.45f, 0.55f, 0.7f, 0.9f}) {
+            for (boolean onPipe : new boolean[] {false, true}) {
+                int[] lcd = stemRows(render(gc, onPipe, font, dy, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB));
+                int[] gray = stemRows(render(gc, onPipe, font, dy, RenderingHints.VALUE_TEXT_ANTIALIAS_ON));
+                String where = onPipe ? "pipe" : "loops";
+                System.out.printf("%s, glyph y 30 + %.2f: H stems rows LCD %d..%d, grayscale %d..%d%n", where, dy, lcd[0], lcd[1], gray[0], gray[1]);
+                if (lcd[1] != gray[1]) failures.append(String.format("%s at y +%.2f: LCD's stems end on row %d, grayscale's on %d; ", where, dy, lcd[1], gray[1]));
+            }
+        }
         if (failures.length() > 0) throw new RuntimeException(failures.toString());
+    }
+
+    /** An "H" placed by a glyph vector at a fractional y, which reaches the pipes as is. */
+    static BufferedImage render(GraphicsConfiguration gc, boolean onPipe, Font font, float dy, Object aa) {
+        BufferedImage out;
+        if (!onPipe) {
+            out = new BufferedImage(W, H, BufferedImage.TYPE_INT_RGB);
+            drawH(out.createGraphics(), font, dy, aa);
+            return out;
+        }
+        VolatileImage image = gc.createCompatibleVolatileImage(W, H, Transparency.OPAQUE);
+        do {
+            image.validate(gc);
+            drawH(image.createGraphics(), font, dy, aa);
+            out = image.getSnapshot();
+        } while (image.contentsLost());
+        return out;
+    }
+
+    static void drawH(Graphics2D g, Font font, float dy, Object aa) {
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, W, H);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, aa);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        g.setColor(Color.BLACK);
+        GlyphVector gv = font.createGlyphVector(g.getFontRenderContext(), "H");
+        gv.setGlyphPosition(0, new Point2D.Float(0, dy));
+        g.drawGlyphVector(gv, 10, 30);
+        g.dispose();
+    }
+
+    /** The first and last rows darker than half (the stems; the top edge is hinted in one mode only). */
+    static int[] stemRows(BufferedImage image) {
+        int top = -1, bottom = -1;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) {
+            if (((image.getRGB(x, y) >> 8) & 255) < 128) {
+                if (top < 0) top = y;
+                bottom = y;
+            }
+        }
+        return new int[] {top, bottom};
     }
 
     static void paint(Graphics2D g, Font font, float x) {
