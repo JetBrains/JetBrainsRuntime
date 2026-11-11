@@ -47,7 +47,7 @@ public class WLOutput {
     private final int xdgOutputVersion;
 
     private boolean commitPending = false;
-    private boolean disconnected = false;
+    private volatile boolean disconnected = false;
     private boolean xdgDataReceived = false;
     private volatile WLOutputState currentState = null;
     private final PendingState pendingState = new PendingState();
@@ -154,6 +154,10 @@ public class WLOutput {
 
     public boolean isConfigured() {
         return currentState != null;
+    }
+
+    public boolean isDisconnected() {
+        return disconnected;
     }
 
     public void destroy() {

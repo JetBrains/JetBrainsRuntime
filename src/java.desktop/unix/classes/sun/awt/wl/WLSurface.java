@@ -149,6 +149,7 @@ public class WLSurface {
     // Called from native code whenever the corresponding wl_surface enters an output (monitor)
     void notifyEnteredOutput(WLOutput output) {
         synchronized (outputs) {
+            outputs.removeIf(WLOutput::isDisconnected);
             if (!outputs.contains(output)) {
                 outputs.add(output);
             }
@@ -159,6 +160,7 @@ public class WLSurface {
     // Called from native code whenever the corresponding wl_surface leaves an output (monitor)
     void notifyLeftOutput(WLOutput output) {
         synchronized (outputs) {
+            outputs.removeIf(WLOutput::isDisconnected);
             outputs.remove(output);
         }
         WLGraphicsEnvironment.getSingleInstance().notifySurfaceLeft(this, output);
@@ -166,6 +168,7 @@ public class WLSurface {
 
     List<WLOutput> getOutputs() {
         synchronized (outputs) {
+            outputs.removeIf(WLOutput::isDisconnected);
             return new ArrayList<>(outputs);
         }
     }
