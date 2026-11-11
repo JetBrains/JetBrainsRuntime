@@ -71,58 +71,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return Holder.INSTANCE;
     }
 
-    private sealed interface OutputEvent permits
-            OutputEvent.OutputConfigured,
-            OutputEvent.OutputDisconnected,
-            OutputEvent.SurfaceEntered,
-            OutputEvent.SurfaceLeft {
-        record SurfaceEntered (WLMainSurface surface, WLOutput output) implements OutputEvent {}
-        record SurfaceLeft (WLMainSurface surface, WLOutput output) implements OutputEvent {}
-        record OutputConfigured(WLOutput output, WLOutputState state, WLOutputState prevState) implements OutputEvent {}
-        record OutputDisconnected (WLOutput output) implements OutputEvent {}
-    }
-
-    // these fields are only accessed on Wayland dispatch thread (main thread during init, EDT later)
-    private final List<OutputEvent> outputEvents = new ArrayList<>();
-    private boolean outputEventsFlushPending = false;
-
-    public void notifyOutputConfigured(WLOutput output, WLOutputState state, WLOutputState prevState) {
-        postOutputEvent(new OutputEvent.OutputConfigured(output, state, prevState));
-    }
-
-    public void notifyOutputDisconnected(WLOutput output) {
-        postOutputEvent(new OutputEvent.OutputDisconnected(output));
-    }
-
-    public void notifySurfaceEntered(WLSurface surface, WLOutput output) {
-        if (surface instanceof WLMainSurface mainSurface) {
-            postOutputEvent(new OutputEvent.SurfaceEntered(mainSurface, output));
-        }
-    }
-
-    public void notifySurfaceLeft(WLSurface surface, WLOutput output) {
-        if (surface instanceof WLMainSurface mainSurface) {
-            postOutputEvent(new OutputEvent.SurfaceLeft(mainSurface, output));
-        }
-    }
-
-    private void postOutputEvent(OutputEvent event) {
-        if (log.isLoggable(Level.FINE)) {
-            log.fine("Adding pending configuration event: " + event);
-        }
-        outputEvents.add(event);
-
-        if (!outputEventsFlushPending) {
-            outputEventsFlushPending = true;
-            WLToolkit.syncCallback(() -> {
-                List<OutputEvent> events = new ArrayList<>(outputEvents);
-                outputEvents.clear();
-                outputEventsFlushPending = false;
-                flushOutputEvents(events);
-            });
-        }
-    }
-
     private void updateConfigForPeer(WLComponentPeer peer) {
         WLGraphicsConfig oldGC = (WLGraphicsConfig) peer.getGraphicsConfiguration();
         WLGraphicsConfig newGC = computeConfigFor(peer);
@@ -131,21 +79,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         }
     }
 
-    private void flushOutputEvents(List<OutputEvent> events) {
-        List<OutputEvent> configureEvents = events.stream().filter(e ->
-                e instanceof OutputEvent.OutputConfigured ||
-                e instanceof OutputEvent.OutputDisconnected).toList();
-
-        boolean outputsChanged = !configureEvents.isEmpty();
-
-        for (OutputEvent event : configureEvents) {
-            switch (event) {
-                case OutputEvent.OutputConfigured e -> processOutputConfigured(e.output(), e.state(), e.prevState());
-                case OutputEvent.OutputDisconnected e -> processOutputDisconnected(e.output());
-                default -> {}
-            }
-        }
-
+    private void updatePeerConfigurations() {
         List<WLWindowPeer> allPeers = WLToolkit.getLiveWindowPeers();
         List<WLWindowPeer> toplevels = allPeers.stream().filter(peer -> !peer.targetIsWlPopup()).toList();
         List<WLWindowPeer> popups = allPeers.stream().filter(peer -> peer.targetIsWlPopup()).toList();
@@ -162,12 +96,13 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         for (WLWindowPeer peer : popups) {
             peer.updatePopupLocationFromParent();
         }
+    }
 
-        if (outputsChanged) {
-            updateTotalDisplayBounds();
-            if (WLToolkit.isInitialized()) {
-                WLComponentPeer.performUnlocked(this::displayChanged);
-            }
+    private void updateOutputs() {
+        updatePeerConfigurations();
+        updateTotalDisplayBounds();
+        if (WLToolkit.isInitialized()) {
+            WLComponentPeer.performUnlocked(this::displayChanged);
         }
     }
 
@@ -277,7 +212,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return true;
     }
 
-    private void processOutputConfigured(WLOutput output, WLOutputState state, WLOutputState prevState) {
+    public void notifyOutputConfigured(WLOutput output, WLOutputState state, WLOutputState prevState) {
         if (log.isLoggable(Level.FINE)) {
             log.fine(String.format("Output configured: %s with %s, previous state was %s", output, state, prevState));
         }
@@ -297,9 +232,10 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
                 lastDeviceStanding = null;
             }
         }
+        updateOutputs();
     }
 
-    private void processOutputDisconnected(WLOutput output) {
+    public void notifyOutputDisconnected(WLOutput output) {
         if (log.isLoggable(Level.FINE)) {
             log.fine(String.format("Output disconnected: %s, state was %s", output, output.getState()));
         }
@@ -319,9 +255,22 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
                 if (similarDevice != null) {
                     gd.invalidate(similarDevice);
                 }
+                updateOutputs();
             }
         } finally {
             output.destroy();
+        }
+    }
+
+    public void notifySurfaceEntered(WLSurface surface, WLOutput output) {
+        if (surface instanceof WLMainSurface) {
+            updatePeerConfigurations();
+        }
+    }
+
+    public void notifySurfaceLeft(WLSurface surface, WLOutput output) {
+        if (surface instanceof WLMainSurface) {
+            updatePeerConfigurations();
         }
     }
 
