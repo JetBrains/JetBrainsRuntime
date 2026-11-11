@@ -283,6 +283,9 @@ void SKBackend_DrawParagraphBySkia(jboolean smoothing, jboolean rightToLeft, jfl
                                    jint runCount, const jint *runEnds, const jlong *contexts, const jint *colours,
                                    const jint *flags, const jint *trackingBits, const jint *shiftBits, const jint *backgrounds);
 jlong SKBackend_ParagraphsBySkia();
+// The typefaces the backend holds for later calls (SKEnvironment.typefacesHeld): out[0] the font scalers alive, out[1]
+// the luminance proxies, out[2] the cascade manager's aliases, out[3] the paragraph engine's registrations
+void SKBackend_TypefacesHeld(jlong out[4]);
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
                              jboolean rgbOrder, jint lcdContrast,
                              jfloat glyphListOrigX, jfloat glyphListOrigY,

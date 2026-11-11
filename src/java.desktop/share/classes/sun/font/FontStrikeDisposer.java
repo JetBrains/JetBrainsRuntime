@@ -27,6 +27,7 @@ package sun.font;
 
 import java.lang.ref.Reference;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.LongConsumer;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 
@@ -62,6 +63,8 @@ class FontStrikeDisposer
     int [][] segIntGlyphImages;
     long[][] segLongGlyphImages;
     long pScalerContext = 0L;
+    /** How the scaler context is freed when it is not a plain native allocation (the Skia scaler's); null: free(). */
+    LongConsumer contextDisposal;
     boolean disposed = false;
     boolean comp = false;
 

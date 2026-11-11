@@ -273,12 +273,14 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
          * We pass in the null scaler as the singleton null context
          * requires it. However
          */
+        FontScaler contextScaler = null;
         if (Double.isNaN(matrix[0]) || Double.isNaN(matrix[1]) ||
             Double.isNaN(matrix[2]) || Double.isNaN(matrix[3]) ||
             fileFont.getScaler() == null) {
             pScalerContext = NullFontScaler.getNullScalerContext();
         } else {
-            pScalerContext = fileFont.getScaler().createScalerContext(matrix,
+            contextScaler = fileFont.getScaler();
+            pScalerContext = contextScaler.createScalerContext(matrix,
                                     desc.aaHint, desc.fmHint,
                                     boldness, italic, desc.luminance, displayScale);
         }
@@ -369,6 +371,9 @@ public class FileFontStrike extends PhysicalStrike implements SKDrawableStrike {
                  useEmbeddedBitmapsForSize(intPtSize));
         }
         this.disposer = new FontStrikeDisposer(fileFont, desc, pScalerContext);
+        if (contextScaler instanceof SKFontScaler) {
+            disposer.contextDisposal = SKFontScaler::disposeContext;   // a C++ object, not free()'s
+        }
 
         /* Some applications request advance frequently during layout.
          * If we are not getting and caching the image with the advance,

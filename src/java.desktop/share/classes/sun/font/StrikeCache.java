@@ -347,6 +347,19 @@ public final class StrikeCache {
     }
 
     private static void doDispose(FontStrikeDisposer disposer) {
+        // a context of its own kind is freed by its scaler, after the glyph images (which then free none)
+        long ownContext = 0L;
+        if (disposer.contextDisposal != null) {
+            ownContext = disposer.pScalerContext;
+            disposer.pScalerContext = 0L;
+        }
+        doDisposeImages(disposer);
+        if (ownContext != 0L) {
+            disposer.contextDisposal.accept(ownContext);
+        }
+    }
+
+    private static void doDisposeImages(FontStrikeDisposer disposer) {
         if (disposer.intGlyphImages != null) {
             freeCachedIntMemory(disposer.intGlyphImages,
                     disposer.pScalerContext);

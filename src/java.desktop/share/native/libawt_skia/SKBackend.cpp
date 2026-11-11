@@ -2645,8 +2645,18 @@ Paragraphs &paragraphs() {
     return instance;
 }
 
-
 } // namespace
+
+void SKBackend_TypefacesHeld(jlong out[4]) {
+    out[0] = SKFontScaler_Scalers();
+    out[1] = (jlong) SKLuminanceTypeface_Held();
+    {
+        std::lock_guard<std::mutex> guard(gAliasLock);
+        out[2] = (jlong) gAliasTypefaces.size();
+    }
+    std::lock_guard<std::mutex> lock(gTextLayoutMutex);
+    out[3] = (jlong) paragraphs().registered.size();
+}
 
 // Text decorations as the operating system's text draws them, for the paragraph's runs that asked
 // for them (SK_PARAGRAPH_SYSTEM_DECORATIONS; SkParagraph painted none): the same rule and arithmetic

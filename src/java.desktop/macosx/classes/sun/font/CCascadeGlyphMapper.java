@@ -56,7 +56,8 @@ final class CCascadeGlyphMapper extends CompositeGlyphMapper {
             result = font.compositeGlyphCode(0, own);
         } else {
             String[] fallback = new String[2];
-            int glyph = nativeCascadeGlyph(base.filePath(), base.indexInFile(), unicode, fallback);
+            long cascadeBase = base.cascadeBase();
+            int glyph = cascadeBase != 0 ? nativeCascadeGlyph(cascadeBase, unicode, fallback) : 0;
             if (glyph <= 0 || fallback[0] == null || fallback[1] == null) {
                 result = font.compositeGlyphCode(0, own);
             } else {
@@ -74,9 +75,21 @@ final class CCascadeGlyphMapper extends CompositeGlyphMapper {
         return result;
     }
 
+    /** The cascade bases alive (diagnostics, tests). */
+    static int basesHeld() {
+        return nativeBasesHeld();
+    }
+
+    /** A CTFont of the file's font at the index, the cascade's base; 0 when CoreText cannot read the file. */
+    static native long nativeCreateBase(String path, int index);
+
+    static native void nativeReleaseBase(long base);
+
+    private static native int nativeBasesHeld();
+
     /**
-     * CoreText's cascade from a CTFont of the file's font at the index for the code point: the glyph in the font it
-     * picks, its PostScript and family names in result; 0 when it picks none.
+     * CoreText's cascade from the base for the code point: the glyph in the font it picks, its PostScript and family
+     * names in result; 0 when it picks none.
      */
-    private static native int nativeCascadeGlyph(String path, int index, int codePoint, String[] result);
+    private static native int nativeCascadeGlyph(long base, int codePoint, String[] result);
 }

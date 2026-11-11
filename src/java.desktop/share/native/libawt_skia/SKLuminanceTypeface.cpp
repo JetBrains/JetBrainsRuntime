@@ -28,10 +28,12 @@
 #include "SKFontScaler.h"
 
 #include <algorithm>
+#include <climits>
 #include <cmath>
 #include <cstring>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -273,12 +275,32 @@ sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance)
     return proxy;
 }
 
+// One proxy per (wrapped typeface, class), the strike key of Skia's caches, until the typeface's scaler is gone
+// (SKLuminanceTypeface_Forget); the flusher makes them, the Disposer's thread forgets them
+static std::mutex gProxiesLock;
+static std::map<std::pair<SkTypefaceID, int>, sk_sp<SkTypeface>> gProxies;
+
+size_t SKLuminanceTypeface_Held() {
+    std::lock_guard<std::mutex> guard(gProxiesLock);
+    return gProxies.size();
+}
+
+void SKLuminanceTypeface_Forget(SkTypefaceID typeface) {
+    std::vector<sk_sp<SkTypeface>> released;   // destroyed outside the lock
+    std::lock_guard<std::mutex> guard(gProxiesLock);
+    auto it = gProxies.lower_bound({typeface, INT_MIN});
+    while (it != gProxies.end() && it->first.first == typeface) {
+        released.push_back(std::move(it->second));
+        it = gProxies.erase(it);
+    }
+}
+
 sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance) {
-    static std::map<std::pair<SkTypefaceID, int>, sk_sp<SkTypeface>> proxies;   // render thread only
     if (!typeface) {
         return nullptr;
     }
-    sk_sp<SkTypeface> &proxy = proxies[{typeface->uniqueID(), luminance}];
+    std::lock_guard<std::mutex> guard(gProxiesLock);
+    sk_sp<SkTypeface> &proxy = gProxies[{typeface->uniqueID(), luminance}];
     if (!proxy) {
         proxy = sk_make_sp<SKLuminanceTypeface>(std::move(typeface), luminance);
     }

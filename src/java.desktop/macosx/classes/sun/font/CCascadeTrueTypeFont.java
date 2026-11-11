@@ -27,6 +27,9 @@ package sun.font;
 
 import java.awt.FontFormatException;
 
+import sun.java2d.Disposer;
+import sun.java2d.DisposerRecord;
+
 /**
  * A TrueType font of Font.createFont on macOS: characters it lacks fall back by CoreText's cascade from the font, as
  * the platform's text falls back from a font (CTFontCreateForString with a CTFont of the same file; CTLine and
@@ -35,6 +38,8 @@ import java.awt.FontFormatException;
  */
 public final class CCascadeTrueTypeFont extends TrueTypeFont implements FontSubstitution {
     private CompositeFont composite;
+    private long cascadeBase;
+    private boolean cascadeBaseMade;
 
     public CCascadeTrueTypeFont(String path, int index) throws FontFormatException {
         super(path, null, index, true);
@@ -53,12 +58,25 @@ public final class CCascadeTrueTypeFont extends TrueTypeFont implements FontSubs
         return true;
     }
 
-    /** The file and the index within it, for the native cascade. */
-    String filePath() {
-        return platName;
+    /**
+     * The CTFont of this font's file and index that CoreText's cascade starts from, made on first use and released
+     * when the font is collected; 0 when CoreText cannot read the file.
+     */
+    synchronized long cascadeBase() {
+        if (!cascadeBaseMade) {
+            cascadeBaseMade = true;
+            cascadeBase = CCascadeGlyphMapper.nativeCreateBase(platName, fontIndex);
+            if (cascadeBase != 0) {
+                Disposer.addObjectRecord(this, new BaseDisposer(cascadeBase));
+            }
+        }
+        return cascadeBase;
     }
 
-    int indexInFile() {
-        return fontIndex;
+    private record BaseDisposer(long base) implements DisposerRecord {
+        @Override
+        public void dispose() {
+            CCascadeGlyphMapper.nativeReleaseBase(base);
+        }
     }
 }

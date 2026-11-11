@@ -52,4 +52,6 @@ double SKFontScaler_DisplayScale(jlong pContext);
 // is painted under the scale, and lands where Java's layout does
 double SKFontScaler_LayoutScale(jlong pContext);   // the scale of the strike's device transform (2 on a 200 % display), 1 without a context   // the luminance the context's cg masks are rasterized for (SKFontScaler.GRAY_LUMINANCE when the strike has no class)
 
+jlong SKFontScaler_Scalers();   // the scalers alive (diagnostics, tests: SKEnvironment.typefacesHeld)
+
 #endif /* SKFontScaler_h_Included */

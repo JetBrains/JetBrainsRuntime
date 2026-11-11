@@ -88,17 +88,21 @@ public final class SKFontScaler extends FontScaler {
     /** The hinting request for the native context (the hinting dimension; −1 is the platform's own decision). */
     private static final int HINTING = sun.java2d.skia.SKEnvironment.textHintingRequest();
 
-    private final Font2D font;
     private final long unitsPerEm;
     private final int numGlyphs;
 
-    /** Over the platform's native font object (macOS: the CTFontRef behind a CFont). */
+    /**
+     * Over the platform's native font object (macOS: the CTFontRef behind a CFont), disposed when the font is
+     * collected (the scaler is the font's DisposerRecord, as FontScaler.getScaler registers a file font's).
+     */
     public static SKFontScaler forNativeFont(Font2D font, long nativeFont) {
         requireAvailable();
-        return new SKFontScaler(font, createNative(nativeFont, null, 0));
+        SKFontScaler scaler = new SKFontScaler(font, createNative(nativeFont, null, 0));
+        Disposer.addObjectRecord(font, scaler);
+        return scaler;
     }
 
-    /** Over a font file (TrueType / OpenType, {@code index} within a collection). */
+    /** Over a font file (TrueType / OpenType, {@code index} within a collection); FontScaler.getScaler registers it. */
     public static SKFontScaler forFile(Font2D font, String path, int index) {
         requireAvailable();
         return new SKFontScaler(font, createNative(0, path, index));
@@ -115,11 +119,9 @@ public final class SKFontScaler extends FontScaler {
         if (pScaler == 0) {
             throw new IllegalArgumentException("no Skia typeface for " + font);
         }
-        this.font = font;
         this.nativeScaler = pScaler;
         this.unitsPerEm = getUnitsPerEmNative(pScaler);
         this.numGlyphs = getNumGlyphsNative(pScaler);
-        Disposer.addObjectRecord(this, this);
     }
 
     /** Whether a scaler can be made at all here (the platform has a font host). */
@@ -239,8 +241,12 @@ public final class SKFontScaler extends FontScaler {
                                    luminance >= 0 ? luminance : GRAY_LUMINANCE);
     }
 
+    /** The strike's disposer owns the context (FontStrikeDisposer.contextDisposal), as FreeType's does its own. */
     @Override
-    void invalidateScalerContext(long pScalerContext) {
+    void invalidateScalerContext(long pScalerContext) {}
+
+    /** Frees a context of this scaler (FontStrikeDisposer.contextDisposal); the native scaler lives as long as one does. */
+    static void disposeContext(long pScalerContext) {
         disposeContextNative(pScalerContext);
     }
 

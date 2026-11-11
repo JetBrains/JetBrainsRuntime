@@ -29,7 +29,9 @@
 
 #include "SKPlatform.h"
 #include "SKFontScaler.h"
+#include "SKLuminanceTypeface.h"
 
+#include <atomic>
 #include <cmath>
 #include <mutex>
 #include <unordered_map>
@@ -62,7 +64,11 @@ struct Fallback {
     SkGlyphID glyph = 0;
 };
 
+// Alive while the Java scaler or a context of it is: the Disposer may dispose the scaler (its font collected) before
+// the strikes, whose contexts are disposed after the render queue is flushed (StrikeCache.disposeStrike) and may still
+// be drawn with until then. The last reference releases what the text routes made for the typeface.
 struct SKScaler {
+    std::atomic<int> references{1};
     sk_sp<SkTypeface> typeface;
     jlong nativeFont = 0;   // for the platform's fallback (0 for file fonts)
     std::mutex fallbackLock;
@@ -79,6 +85,16 @@ struct SyntheticStyle {
     float boldEmFraction = 1.0f / 32;
     SyntheticStyle() { SKPlatform_SyntheticStyle(&obliqueShear, &boldEmFraction); }
 };
+std::atomic<jlong> gScalers{0};   // alive, for SKEnvironment.typefacesHeld
+
+void releaseScaler(SKScaler *scaler) {
+    if (scaler != nullptr && scaler->references.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        SKLuminanceTypeface_Forget(scaler->typeface->uniqueID());
+        gScalers--;
+        delete scaler;
+    }
+}
+
 bool gTextDarkening = true;   // the darkening dimension, as the last context resolved it (one value per process)
 
 const SyntheticStyle &syntheticStyle() {
@@ -215,13 +231,14 @@ Java_sun_font_SKFontScaler_createNative(JNIEnv *env, jclass clazz, jlong nativeF
     auto *scaler = new SKScaler();
     scaler->typeface = std::move(typeface);
     scaler->nativeFont = nativeFont;
+    gScalers++;
     return ptr_to_jlong(scaler);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_font_SKFontScaler_disposeNative(JNIEnv *env, jclass clazz, jlong pScaler)
 {
-    delete (SKScaler *) jlong_to_ptr(pScaler);
+    releaseScaler((SKScaler *) jlong_to_ptr(pScaler));
 }
 
 JNIEXPORT jint JNICALL
@@ -268,6 +285,7 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
         return 0;
     }
     auto *context = new SKScalerContext();
+    scaler->references.fetch_add(1, std::memory_order_relaxed);
     context->scaler = scaler;
     context->font = SkFont(scaler->typeface, (SkScalar) size);
     // AffineTransform order: m00 m10 m01 m11
@@ -326,7 +344,11 @@ Java_sun_font_SKFontScaler_createContextNative(JNIEnv *env, jclass clazz, jlong 
 JNIEXPORT void JNICALL
 Java_sun_font_SKFontScaler_disposeContextNative(JNIEnv *env, jclass clazz, jlong pContext)
 {
-    delete (SKScalerContext *) jlong_to_ptr(pContext);
+    auto *context = (SKScalerContext *) jlong_to_ptr(pContext);
+    if (context != nullptr) {
+        releaseScaler(context->scaler);
+        delete context;
+    }
 }
 
 JNIEXPORT jobject JNICALL
@@ -786,6 +808,11 @@ bool SKFontScaler_Font(jlong pContext, SkFont *font)
     *font = context->font;
     textPathFont(context, font);
     return true;
+}
+
+jlong SKFontScaler_Scalers()
+{
+    return gScalers.load();
 }
 
 bool SKFontScaler_TextDarkening()

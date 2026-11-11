@@ -90,6 +90,7 @@ public final class SKFontStrike extends PhysicalStrike implements SKDrawableStri
         this.advancesOnly = (int) (pixelHeight + 0.5) > sun.java2d.pipe.OutlineTextRenderer.THRESHHOLD
                 && pScalerContext != 0 && scaler.contextIsInvertible(pScalerContext);
         this.disposer = new FontStrikeDisposer(font, desc, pScalerContext, glyphImages);
+        disposer.contextDisposal = SKFontScaler::disposeContext;   // a C++ object, not free()'s
         Disposer.addObjectRecord(this, disposer);
         ConcurrentHashMap<Integer, Long> fallbacks = fallbackImages;
         Disposer.addObjectRecord(this, () -> {

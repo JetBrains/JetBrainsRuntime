@@ -58,6 +58,18 @@ Java_sun_java2d_skia_SKEnvironment_paragraphsBySkiaNative(JNIEnv *env, jclass cl
     return SKBackend_ParagraphsBySkia();
 }
 
+JNIEXPORT jlongArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_typefacesHeldNative(JNIEnv *env, jclass clazz)
+{
+    jlong held[4];
+    SKBackend_TypefacesHeld(held);
+    jlongArray result = env->NewLongArray(4);
+    if (result != nullptr) {
+        env->SetLongArrayRegion(result, 0, 4, held);
+    }
+    return result;
+}
+
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKEnvironment_recordingsNative(JNIEnv *env, jclass clazz)
 {

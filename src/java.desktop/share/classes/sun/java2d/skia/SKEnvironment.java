@@ -620,6 +620,14 @@ public final class SKEnvironment {
     }
 
     /**
+     * The typefaces the backend holds for later calls (diagnostics, tests): the font scalers alive, the luminance
+     * proxies, the cascade manager's aliases and the paragraph engine's registrations; zeros without the library.
+     */
+    public static long[] typefacesHeld() {
+        return loadLibrary() ? typefacesHeldNative() : new long[4];
+    }
+
+    /**
      * How many times the native backend has finished a flush (a render-queue buffer
      * or a direct entry) and submitted the GPU work so far (diagnostics, tests).
      */
@@ -761,6 +769,8 @@ public final class SKEnvironment {
     private static native long glyphsShapedBySkiaNative();
 
     private static native long paragraphsBySkiaNative();
+
+    private static native long[] typefacesHeldNative();
 
     private static native long flushesNative();
 

@@ -44,4 +44,10 @@ sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int lumina
 // (manager, class).
 sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance);
 
+// The proxies of the typeface are released (its font scaler is gone; SKFontScaler.cpp)
+void SKLuminanceTypeface_Forget(SkTypefaceID typeface);
+
+// The proxies held for later calls (diagnostics, tests: SKEnvironment.typefacesHeld)
+size_t SKLuminanceTypeface_Held();
+
 #endif /* SKLuminanceTypeface_h_Included */
