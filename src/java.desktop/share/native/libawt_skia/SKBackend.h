@@ -41,6 +41,7 @@
 
 #include "include/core/SkCanvas.h"
 #include "include/core/SkSurfaceProps.h"
+#include "include/core/SkTypeface.h"
 #include "include/core/SkImage.h"
 #include "include/core/SkPaint.h"
 #include "include/core/SkPath.h"
@@ -286,6 +287,9 @@ jlong SKBackend_ParagraphsBySkia();
 // The typefaces the backend holds for later calls (SKEnvironment.typefacesHeld): out[0] the font scalers alive, out[1]
 // the luminance proxies, out[2] the cascade manager's aliases, out[3] the paragraph engine's registrations
 void SKBackend_TypefacesHeld(jlong out[4]);
+// What the text routes made for a typeface whose font scaler is gone is released: its luminance proxies and, for it and
+// them, the cascade manager's aliases and the paragraph engine's registrations
+void SKBackend_ForgetTypeface(SkTypefaceID typeface);
 void SKBackend_DrawGlyphList(jint numGlyphs, jboolean usePositions, jboolean subPixPos,
                              jboolean rgbOrder, jint lcdContrast,
                              jfloat glyphListOrigX, jfloat glyphListOrigY,

@@ -37,8 +37,11 @@ import java.text.AttributedString;
  *          CTFont of its file (CCascadeTrueTypeFont), its string widths those of what it draws. Each character, drawn
  *          in the base font, must render exactly as drawn in the cascade's font:
  *          drawString and an attributed string, on the loops with the JDK and the Skia scaler, the raster surface with
- *          Skia's text path and with its layout route (the shaper and the paragraph engine).
+ *          Skia's text path and with its layout route (the shaper and the paragraph engine). On the layout route the
+ *          bundled font is Skia's shaper's and paragraph engine's too: its drawn strike is its composite's
+ *          (CompositeStrike), which the route took for one it cannot draw and left the font to the glyph lists.
  * @requires os.family == "mac"
+ * @modules java.desktop/sun.java2d.skia
  * @run main/othervm -Djava.awt.headless=true FallbackCascadeTest
  * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia FallbackCascadeTest
  * @run main/othervm -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia FallbackCascadeTest
@@ -66,10 +69,16 @@ public class FallbackCascadeTest {
         for (String[] c : BUNDLED) {
             Font cascade = new Font(c[1], Font.PLAIN, 14);
             for (boolean attributed : new boolean[] {false, true}) {
-                boolean same = hash(bundled, c[0], attributed) == hash(cascade, c[0], attributed);
+                long routed = layoutCounter(attributed);
+                long seen = hash(bundled, c[0], attributed);
+                routed = layoutCounter(attributed) - routed;
+                boolean same = seen == hash(cascade, c[0], attributed);
                 String what = "the bundled JetBrains Mono " + c[0] + (attributed ? " (attributed string)" : " (drawString)");
-                System.out.println(what + ": " + (same ? "drawn in " : "not drawn in ") + c[1]);
+                System.out.println(what + ": " + (same ? "drawn in " : "not drawn in ") + c[1] + (LAYOUT_ROUTE ? ", by Skia's layout " + routed : ""));
                 if (!same) failures.append(what).append(": not drawn in ").append(c[1]).append(", CoreText's cascade font; ");
+                if (LAYOUT_ROUTE && routed <= 0) {
+                    failures.append(what).append(": not drawn by Skia's ").append(attributed ? "paragraph engine" : "shaper").append(" on the layout route; ");
+                }
             }
             BufferedImage scratch = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = scratch.createGraphics();
@@ -97,6 +106,14 @@ public class FallbackCascadeTest {
             throw new RuntimeException(failures.toString());
         }
         System.out.println("PASSED");
+    }
+
+    static final boolean LAYOUT_ROUTE = "skia".equals(System.getProperty("sun.java2d.skia.text.layout"));
+
+    /** On the layout route: the paragraphs Skia's paragraph engine laid out, or the glyphs its shaper shaped. */
+    static long layoutCounter(boolean paragraphs) throws Exception {
+        if (!LAYOUT_ROUTE) return 0;
+        return (Long) Class.forName("sun.java2d.skia.SKEnvironment").getMethod(paragraphs ? "paragraphsBySkia" : "glyphsShapedBySkia").invoke(null);
     }
 
     static long hash(Font font, String s, boolean attributed) {

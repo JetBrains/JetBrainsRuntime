@@ -2622,7 +2622,17 @@ namespace tl = skia::textlayout;
 struct Paragraphs {
     sk_sp<tl::TypefaceFontProvider> provider;
     std::map<const SkFontMgr *, sk_sp<tl::FontCollection>> collections;   // by fallback manager
-    std::unordered_set<SkTypefaceID> registered;
+    std::unordered_map<SkTypefaceID, sk_sp<SkTypeface>> registered;   // the provider's, under their aliases
+
+    // The provider has no unregistering: it is made again without the typefaces, and the collections over it
+    void forget(const std::vector<SkTypefaceID> &ids) {
+        bool changed = false;
+        for (SkTypefaceID id : ids) changed |= registered.erase(id) > 0;
+        if (!changed) return;
+        provider = sk_make_sp<tl::TypefaceFontProvider>();
+        for (const auto &[id, typeface] : registered) provider->registerTypeface(typeface, typefaceAlias(typeface.get()));
+        collections.clear();
+    }
 
     const sk_sp<tl::FontCollection> &collection(const sk_sp<SkFontMgr> &fallback) {
         sk_sp<tl::FontCollection> &c = collections[fallback.get()];
@@ -2656,6 +2666,24 @@ void SKBackend_TypefacesHeld(jlong out[4]) {
     }
     std::lock_guard<std::mutex> lock(gTextLayoutMutex);
     out[3] = (jlong) paragraphs().registered.size();
+}
+
+void SKBackend_ForgetTypeface(SkTypefaceID typeface) {
+    std::vector<SkTypefaceID> ids = SKLuminanceTypeface_Forget(typeface);
+    ids.push_back(typeface);
+    std::vector<sk_sp<SkTypeface>> released;   // destroyed outside the locks
+    {
+        std::lock_guard<std::mutex> lock(gTextLayoutMutex);
+        paragraphs().forget(ids);
+    }
+    std::lock_guard<std::mutex> guard(gAliasLock);
+    for (SkTypefaceID id : ids) {
+        auto it = gAliasTypefaces.find(id);
+        if (it != gAliasTypefaces.end()) {
+            released.push_back(std::move(it->second));
+            gAliasTypefaces.erase(it);
+        }
+    }
 }
 
 // Text decorations as the operating system's text draws them, for the paragraph's runs that asked
@@ -3270,7 +3298,7 @@ jlong SKBackend_DrawParagraphOnCanvas(const SKCanvasForBounds &canvasFor, const 
         }
         applyGrayRoute(font, contexts[r], runColour);
         sk_sp<SkTypeface> typeface = font.refTypeface();
-        if (p.registered.insert(typeface->uniqueID()).second) {
+        if (p.registered.emplace(typeface->uniqueID(), typeface).second) {
             p.provider->registerTypeface(typeface, registeredAlias(typeface));
         }
         tl::TextStyle ts;

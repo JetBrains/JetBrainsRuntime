@@ -29,7 +29,7 @@
 
 #include "SKPlatform.h"
 #include "SKFontScaler.h"
-#include "SKLuminanceTypeface.h"
+#include "SKBackend.h"
 
 #include <atomic>
 #include <cmath>
@@ -89,7 +89,7 @@ std::atomic<jlong> gScalers{0};   // alive, for SKEnvironment.typefacesHeld
 
 void releaseScaler(SKScaler *scaler) {
     if (scaler != nullptr && scaler->references.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-        SKLuminanceTypeface_Forget(scaler->typeface->uniqueID());
+        SKBackend_ForgetTypeface(scaler->typeface->uniqueID());
         gScalers--;
         delete scaler;
     }

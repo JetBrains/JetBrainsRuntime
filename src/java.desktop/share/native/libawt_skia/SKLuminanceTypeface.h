@@ -27,6 +27,8 @@
 #define SKLuminanceTypeface_h_Included
 
 #include "include/core/SkRefCnt.h"
+#include <vector>
+
 #include "include/core/SkFontMgr.h"
 #include "include/core/SkTypeface.h"
 
@@ -44,8 +46,8 @@ sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int lumina
 // (manager, class).
 sk_sp<SkFontMgr> SKLuminanceFontMgr_For(sk_sp<SkFontMgr> manager, int luminance);
 
-// The proxies of the typeface are released (its font scaler is gone; SKFontScaler.cpp)
-void SKLuminanceTypeface_Forget(SkTypefaceID typeface);
+// The proxies of the typeface are released (its font scaler is gone: SKBackend_ForgetTypeface); their ids
+std::vector<SkTypefaceID> SKLuminanceTypeface_Forget(SkTypefaceID typeface);
 
 // The proxies held for later calls (diagnostics, tests: SKEnvironment.typefacesHeld)
 size_t SKLuminanceTypeface_Held();

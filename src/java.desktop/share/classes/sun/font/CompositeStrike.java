@@ -85,6 +85,17 @@ public final class CompositeStrike extends FontStrike {
         return getStrikeForSlot(compFont.decodeSlot(glyphCode));
     }
 
+    /**
+     * Slot 0's strike when this is the composite a font substitutes through when drawn (FontSubstitution
+     * .substitutesWhenDrawn: a created font on macOS, whose other slots are CoreText's cascade from it), else null:
+     * a route that falls back by the platform's cascade from a font itself (Skia's shaper and paragraph engine) draws
+     * that font's strike.
+     */
+    public FontStrike substitutingStrike() {
+        return compFont.getSlotFont(0) instanceof FontSubstitution s && s.substitutesWhenDrawn() && s.getCompositeFont2D() == compFont
+                ? getStrikeForSlot(0) : null;
+    }
+
     FontStrike getStrikeForSlot(int slot) {
         FontStrike[] slots = strikes;
         if (slot >= slots.length) {

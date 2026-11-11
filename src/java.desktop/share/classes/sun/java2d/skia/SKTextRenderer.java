@@ -121,9 +121,13 @@ final class SKTextRenderer extends BufferedTextPipe implements AttributedTextPip
     /**
      * The strike when Skia's shaper or paragraph route can draw it (on the Skia scaler, any invertible glyph
      * transform: the text is shaped in the SkFont's space and drawn under the transform beyond its size, as the text
-     * path draws), else null.
+     * path draws), else null. A created font's composite on macOS is its own strike: its other slots are CoreText's
+     * cascade from it, which the route's font manager takes from the font itself (CascadeFontMgr).
      */
     private static SKDrawableStrike skiaStrike(Object strike) {   // a FontStrike; GlyphList hands it out as Object
+        if (strike instanceof sun.font.CompositeStrike composite) {
+            strike = composite.substitutingStrike();
+        }
         return strike instanceof SKDrawableStrike s && s.skiaScalerContext() != 0 && s.drawsBySkia() ? s : null;
     }
 

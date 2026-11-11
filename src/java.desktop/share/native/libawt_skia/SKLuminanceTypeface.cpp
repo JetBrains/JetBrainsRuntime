@@ -285,14 +285,17 @@ size_t SKLuminanceTypeface_Held() {
     return gProxies.size();
 }
 
-void SKLuminanceTypeface_Forget(SkTypefaceID typeface) {
+std::vector<SkTypefaceID> SKLuminanceTypeface_Forget(SkTypefaceID typeface) {
     std::vector<sk_sp<SkTypeface>> released;   // destroyed outside the lock
+    std::vector<SkTypefaceID> ids;
     std::lock_guard<std::mutex> guard(gProxiesLock);
     auto it = gProxies.lower_bound({typeface, INT_MIN});
     while (it != gProxies.end() && it->first.first == typeface) {
+        ids.push_back(it->second->uniqueID());
         released.push_back(std::move(it->second));
         it = gProxies.erase(it);
     }
+    return ids;
 }
 
 sk_sp<SkTypeface> SKLuminanceTypeface_For(sk_sp<SkTypeface> typeface, int luminance) {

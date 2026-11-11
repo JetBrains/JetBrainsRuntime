@@ -32,8 +32,9 @@ import java.util.Arrays;
  * @summary A font of Font.createFont that is no longer referenced releases what the text routes made for it: its Skia
  *          font scaler (which registered itself as its own Disposer record and so was never collected, its native
  *          typeface with it; and a strike's scaler context was free()d, its typeface reference never released), the
- *          luminance proxies of Skia's text path for its typeface, and the CTFont macOS' cascade made from its file
- *          (kept per file path, and every Font.createFont of a stream has a new file).
+ *          luminance proxies of Skia's text path for its typeface, the aliases and the paragraph engine's registrations
+ *          its layout route made for it, and the CTFont macOS' cascade made from its file (kept per file path, and
+ *          every Font.createFont of a stream has a new file).
  *          Rounds of fonts created from the same bytes, drawn, and dropped: what the routes hold after the last round
  *          must not have grown over what they held after the first (soft references cleared at every collection, so
  *          that the strikes the JDK keeps softly do not count).
@@ -42,6 +43,7 @@ import java.util.Arrays;
  * @run main/othervm -XX:SoftRefLRUPolicyMSPerMB=0 -Djava.awt.headless=true TypefaceLifetimeTest
  * @run main/othervm -XX:SoftRefLRUPolicyMSPerMB=0 -Djava.awt.headless=true -Dsun.java2d.font.scaler=skia TypefaceLifetimeTest
  * @run main/othervm -XX:SoftRefLRUPolicyMSPerMB=0 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.strike=skia TypefaceLifetimeTest
+ * @run main/othervm -XX:SoftRefLRUPolicyMSPerMB=0 -Djava.awt.headless=true -Dsun.java2d.skia.raster=true -Dsun.java2d.font.scaler=skia -Dsun.java2d.skia.text.layout=skia TypefaceLifetimeTest
  */
 public class TypefaceLifetimeTest {
     static final int ROUNDS = 4, FONTS_PER_ROUND = 20, ALLOWED_GROWTH = 5;
@@ -77,7 +79,8 @@ public class TypefaceLifetimeTest {
             if (first == null) first = last;
             System.out.println("after round " + round + ": " + describe(last));
         }
-        if (peak[2] == 0) throw new RuntimeException("the cascade made no CTFont: the test does not reach it");
+        // the layout route falls back in Skia's font manager (CascadeFontMgr), not through the created font's composite
+        if (!layout && peak[2] == 0) throw new RuntimeException("the cascade made no CTFont: the test does not reach it");
         if (skiaScaler && peak[0] == 0) throw new RuntimeException("no Skia font scaler was made: the test does not reach it");
         if (textPath && peak[1] == 0) throw new RuntimeException("Skia's text path made no luminance proxy: the test does not reach it");
         if (layout && (peak[3] == 0 || peak[4] == 0)) throw new RuntimeException("Skia's layout route registered no alias or paragraph font: the test does not reach it");
