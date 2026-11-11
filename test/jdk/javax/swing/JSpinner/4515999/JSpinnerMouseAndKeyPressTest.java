@@ -47,10 +47,15 @@ import static javax.swing.UIManager.getInstalledLookAndFeels;
  * @bug 4515999
  * @summary Check whether incrementing dates via the keyboard (up/down) gives
  * the same results as using mouse press on the arrow buttons in a JSpinner.
- * @run main JSpinnerMouseAndKeyPressTest
+ * @run main/othervm -Duser.timezone=UTC JSpinnerMouseAndKeyPressTest
  */
 public class JSpinnerMouseAndKeyPressTest {
-    // 2 days in milliseconds
+    // 2 days in milliseconds.
+    // The spinner's arrow actions commit the editor text ("dd/MM/yy") before
+    // incrementing, which truncates the value to local midnight of the current
+    // date. Adding two calendar days from there is 48 hours only if no DST
+    // transition falls inside that window, so the test runs with
+    // -Duser.timezone=UTC (see @run) where this constant is always correct.
     private static final int EXPECTED_VALUE_2_DAYS = 2 * 24 * 60 * 60 * 1000;
 
     private static JFrame frame;
