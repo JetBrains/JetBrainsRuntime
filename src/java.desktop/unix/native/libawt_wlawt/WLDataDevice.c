@@ -1149,15 +1149,16 @@ Java_sun_awt_wl_WLDataDevice_isProtocolSupportedImpl(JNIEnv *env, jclass clazz, 
     return false;
 }
 
-JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLDataDevice_dispatchDataSourceQueueImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_wl_WLDataDevice_dispatchDataSourceQueueOnceImpl(JNIEnv *env, jclass clazz, jlong nativePtr)
 {
     struct DataDevice *dataDevice = jlong_to_ptr(nativePtr);
     assert(dataDevice != NULL);
 
-    while (wl_display_dispatch_queue(wl_display, dataDevice->dataSourceQueue) != -1) {
-        DataDevice_drainSourceDeletionQueue(dataDevice, env);
-    }
+    bool ok = wl_display_dispatch_queue(wl_display, dataDevice->dataSourceQueue) != -1;
+    DataDevice_drainSourceDeletionQueue(dataDevice, env);
+    wlRethrowPendingListenerException(env);
+    return ok;
 }
 
 JNIEXPORT void JNICALL

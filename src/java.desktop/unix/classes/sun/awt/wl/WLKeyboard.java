@@ -25,10 +25,8 @@
 
 package sun.awt.wl;
 
-import java.awt.*;
-import java.lang.reflect.InvocationTargetException;
+import java.awt.EventQueue;
 import java.util.Timer;
-import java.awt.event.InputEvent;
 import java.util.TimerTask;
 
 class WLKeyboard {
@@ -95,16 +93,11 @@ class WLKeyboard {
             currentRepeatTask = new TimerTask() {
                 @Override
                 public void run() {
-                    try {
-                        EventQueue.invokeAndWait(() -> {
-                            if (this == currentRepeatTask) {
-                                handleKeyRepeat(serial, delta + System.currentTimeMillis(), keycode);
-                            }
-                        });
-                    } catch (InterruptedException ignored) {
-                    } catch (InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
+                    EventQueue.invokeLater(() -> {
+                        if (this == currentRepeatTask) {
+                            handleKeyRepeat(serial, delta + System.currentTimeMillis(), keycode);
+                        }
+                    });
                 }
             };
 

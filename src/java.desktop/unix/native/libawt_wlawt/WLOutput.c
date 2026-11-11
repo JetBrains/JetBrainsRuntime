@@ -368,6 +368,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLOutput_nativeInitialize
     if (wl_display_roundtrip(wl_display) < 0) {
         JNU_ThrowByName(env, "java/awt/AWTError", "wl_display_roundtrip() failed");
     }
+    wlRethrowPendingListenerException(env);
 }
 
 /*

@@ -249,11 +249,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         throw new AWTError("Wayland protocol error, interface = " + interfaceName + ", error code = " + code + ", object ID = " + objectId);
     }
 
-    // called from native
-    private static void handleExceptionFromEventHandler(Throwable exc) {
-        log.severe("Unexpected exception in Wayland event handler on thread " + Thread.currentThread().getName() + ": " + exc.getMessage(), exc);
-    }
-
     public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
         if (sunAwtDisableGtkFileDialogs == null) {
             sunAwtDisableGtkFileDialogs = Boolean.getBoolean("sun.awt.disableGtkFileDialogs");
@@ -360,9 +355,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
                     try {
                         WLToolkit.awtLock();
                         try {
-                            dispatchEventsOnEDT();
-                            if (dataDevice != null) {
-                                dataDevice.performDeletionsOnEDT();
+                            try {
+                                dispatchEventsOnEDT();
+                            } finally {
+                                if (dataDevice != null) {
+                                    dataDevice.performDeletionsOnEDT();
+                                }
                             }
                         } finally {
                             WLToolkit.awtUnlock();

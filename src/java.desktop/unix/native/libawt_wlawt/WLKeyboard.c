@@ -983,11 +983,11 @@ handleKey(long serial, long timestamp, uint32_t keycode, bool isPressed, bool is
 
         if (!isRepeat && keyRepeats) {
             (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, startRepeatMID, serial, timestamp, keycode);
-            JNU_CHECK_EXCEPTION(env);
+            wlListenerCheckException(env);
         }
     } else if (keyRepeats) {
         (*env)->CallVoidMethod(env, keyboard.keyRepeatManager, stopRepeatMID, keycode);
-        JNU_CHECK_EXCEPTION(env);
+        wlListenerCheckException(env);
     }
 }
 
@@ -1096,6 +1096,7 @@ Java_sun_awt_wl_WLKeyboard_initialize(JNIEnv *env, jobject instance, jobject key
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLKeyboard_handleKeyRepeat(JNIEnv *env, jobject instance, jlong serial, jlong timestamp, jint keycode) {
     handleKey(serial, timestamp, keycode, true, true);
+    wlRethrowPendingListenerException(env);
 }
 
 JNIEXPORT void JNICALL

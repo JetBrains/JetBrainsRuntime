@@ -65,12 +65,7 @@ public class WLDataDevice {
     WLDataDevice(long wlSeatNativePtr) {
         nativePtr = initNative(wlSeatNativePtr);
 
-        var queueThread = InnocuousThread.newThread("AWT-Wayland-data-source-queue-dispatcher", () -> {
-            dispatchDataSourceQueueImpl(nativePtr);
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("data transfer dispatcher exited");
-            }
-        });
+        var queueThread = InnocuousThread.newThread("AWT-Wayland-data-source-queue-dispatcher", this::dispatchDataSourceQueue);
         queueThread.setDaemon(true);
         queueThread.start();
 
@@ -87,9 +82,24 @@ public class WLDataDevice {
         initIDs();
     }
 
+    private void dispatchDataSourceQueue() {
+        Thread thread = Thread.currentThread();
+        boolean running = true;
+        while (running) {
+            try {
+                running = dispatchDataSourceQueueOnceImpl(nativePtr);
+            } catch (Throwable exc) {
+                thread.getUncaughtExceptionHandler().uncaughtException(thread, exc);
+            }
+        }
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("data source dispatcher exited");
+        }
+    }
+
     private native long initNative(long wlSeatNativePtr);
     private static native boolean isProtocolSupportedImpl(long nativePtr, int protocol);
-    private static native void dispatchDataSourceQueueImpl(long nativePtr);
+    private static native boolean dispatchDataSourceQueueOnceImpl(long nativePtr);
     private static native void setSelectionImpl(long nativePtr, int protocol, int selectionType, long dataOfferNativePtr, long serial);
     private static native void startDragImpl(long nativePtr, long dataOfferNativePtr,
                                              long originSurfaceNativePtr, long serial);
