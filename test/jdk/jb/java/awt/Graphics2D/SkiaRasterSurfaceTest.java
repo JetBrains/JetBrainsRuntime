@@ -64,9 +64,7 @@ public class SkiaRasterSurfaceTest {
 
         // the loops' rendering of the same drawing, on a type the raster surface does not take
         for (int type : new int[] {BufferedImage.TYPE_INT_ARGB_PRE, BufferedImage.TYPE_INT_RGB, BufferedImage.TYPE_INT_ARGB}) {
-            // 52: 49 measured since the raster surface flattens curves for Skia's scan converter (2026-11-11): closer to the
-            // exact geometry on average (StrokeInkTest), a single edge pixel a level further from the loops' approximation
-            compare("AA oval, opaque", type, Color.WHITE, g -> { g.setColor(new Color(200, 30, 40)); g.fill(new Ellipse2D.Double(10.5, 8.25, 70, 60)); }, 52, 2.0);
+            compare("AA oval, opaque", type, Color.WHITE, g -> { g.setColor(new Color(200, 30, 40)); g.fill(new Ellipse2D.Double(10.5, 8.25, 70, 60)); }, 48, 2.0);
             compare("AA path, translucent SrcOver", type, Color.WHITE, g -> {
                 g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
                 g.setColor(new Color(20, 80, 200));

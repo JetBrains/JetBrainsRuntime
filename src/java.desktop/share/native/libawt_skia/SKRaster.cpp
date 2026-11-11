@@ -38,8 +38,6 @@
 #include "include/core/SkCanvas.h"
 #include "include/core/SkPath.h"
 #include "include/core/SkPathBuilder.h"
-#include "include/core/SkPathUtils.h"
-#include "include/core/SkPathBuilder.h"
 #include "include/core/SkRegion.h"
 #include "include/effects/SkGradient.h"
 #include "include/core/SkShader.h"
@@ -440,57 +438,6 @@ SkPath pathOf(const jbyte *types, jint typeCount, const jfloat *c, jint windingR
     return builder.detach();
 }
 
-// An antialiased path with its curves cut into lines at a tolerance (device pixels, divided by the transform's
-// scale for a path drawn under it): Skia's CPU scan converter flattens curves coarsely itself, which moved a curved
-// edge towards its centre of curvature by up to a quarter of a pixel and gave a curved stroke up to 5 % more ink
-// than its geometry has (StrokeInkTest; Marlin and the GPU pipe within half a percent). Segments per curve by
-// Wang's formula.
-constexpr float kAACurveTolerance = 0.05f;
-
-static void flattenQuad(SkPathBuilder &b, SkPoint p0, SkPoint p1, SkPoint p2, float tolerance) {
-    const float m = (p0 - p1 - p1 + p2).length();
-    const int n = std::clamp((int) std::ceil(std::sqrt(m / (4 * tolerance))), 1, 1024);
-    for (int i = 1; i <= n; i++) {
-        const float t = (float) i / n, u = 1 - t;
-        b.lineTo(p0.fX * u * u + 2 * p1.fX * u * t + p2.fX * t * t, p0.fY * u * u + 2 * p1.fY * u * t + p2.fY * t * t);
-    }
-}
-
-static void flattenCubic(SkPathBuilder &b, SkPoint p0, SkPoint p1, SkPoint p2, SkPoint p3, float tolerance) {
-    const float m = std::max((p0 - p1 - p1 + p2).length(), (p1 - p2 - p2 + p3).length());
-    const int n = std::clamp((int) std::ceil(std::sqrt(0.75f * m / tolerance)), 1, 1024);
-    for (int i = 1; i <= n; i++) {
-        const float t = (float) i / n, u = 1 - t;
-        const float a = u * u * u, c1 = 3 * u * u * t, c2 = 3 * u * t * t, d = t * t * t;
-        b.lineTo(p0.fX * a + p1.fX * c1 + p2.fX * c2 + p3.fX * d, p0.fY * a + p1.fY * c1 + p2.fY * c2 + p3.fY * d);
-    }
-}
-
-static SkPath flattenedCurves(const SkPath &path, float tolerance) {
-    if ((path.getSegmentMasks() & (SkPath::kQuad_SegmentMask | SkPath::kConic_SegmentMask | SkPath::kCubic_SegmentMask)) == 0) {
-        return path;
-    }
-    SkPathBuilder b(path.getFillType());
-    SkPathIter it = path.iter();
-    while (auto rec = it.next()) {
-        const SkPoint *p = rec->fPoints.data();
-        switch (rec->fVerb) {
-            case SkPathVerb::kMove:  b.moveTo(p[0]); break;
-            case SkPathVerb::kLine:  b.lineTo(p[1]); break;
-            case SkPathVerb::kQuad:  flattenQuad(b, p[0], p[1], p[2], tolerance); break;
-            case SkPathVerb::kConic: {
-                SkPoint quads[1 + 2 * 16];
-                const int count = SkPath::ConvertConicToQuads(p[0], p[1], p[2], rec->conicWeight(), quads, 4);
-                for (int q = 0; q < count; q++) flattenQuad(b, quads[2 * q], quads[2 * q + 1], quads[2 * q + 2], tolerance);
-                break;
-            }
-            case SkPathVerb::kCubic: flattenCubic(b, p[0], p[1], p[2], p[3], tolerance); break;
-            case SkPathVerb::kClose: b.close(); break;
-        }
-    }
-    return b.detach();
-}
-
 // Java arrays into stack buffers (the heap for the rare long path); read before the lock pins the image
 template <size_t N, typename T> struct Buffer {
     std::array<T, N> small; std::vector<T> large; T *data; size_t size;
@@ -811,20 +758,9 @@ Java_sun_java2d_skia_SKRasterShapePipe_strokePath(JNIEnv *env, jclass clazz, job
     paint.setStrokeJoin(joins[std::clamp((int) join, 0, 2)]);
     paint.setStrokeMiter(miterLimit);
     if (spans.size) op.clipSpans(spans.data, spans.size);
-    // the geometry is stroked in user space and drawn under the transform (Java's stroke semantics); the stroke's
-    // outline is filled, as Marlin does and the GPU pipe does (SKBackend): Skia's rasterizer would draw a stroke of a
-    // device pixel or less as a hairline, with its own coverage rule (12 % short of the stroke's ink at width 1)
-    const SkMatrix transform = SkMatrix::MakeAll(xf[0], xf[2], xf[4], xf[1], xf[3], xf[5], 0, 0, 1);
-    op.canvas()->concat(transform);
-    SkPathBuilder outline;
-    skpathutils::FillPathWithPaint(path, paint, &outline, nullptr, transform);   // the outline's precision at the device scale
-    paint.setStyle(SkPaint::kFill_Style);
-    SkPath fill = outline.detach();
-    if (antialias) {
-        const float scale = transform.getMaxScale();
-        fill = flattenedCurves(fill, scale > 0 ? kAACurveTolerance / scale : kAACurveTolerance);
-    }
-    op.canvas()->drawPath(fill, paint);
+    // the geometry is stroked in user space and drawn under the transform (Java's stroke semantics)
+    op.canvas()->concat(SkMatrix::MakeAll(xf[0], xf[2], xf[4], xf[1], xf[3], xf[5], 0, 0, 1));
+    op.canvas()->drawPath(path, paint);
 }
 
 JNIEXPORT void JNICALL
@@ -850,7 +786,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillPath(JNIEnv *env, jclass clazz, jobje
     SkImage *texImage = converted.active() ? converted.image.get() : tex.image.get();
     if (pd.texturePixelFormat() >= 0 && texImage == nullptr) return;
     if (spans.size) op.clipSpans(spans.data, spans.size);
-    op.canvas()->drawPath(antialias ? flattenedCurves(path, kAACurveTolerance) : path, pd.paint(compositeRule, antialias, texImage));
+    op.canvas()->drawPath(path, pd.paint(compositeRule, antialias, texImage));
 }
 
 JNIEXPORT void JNICALL

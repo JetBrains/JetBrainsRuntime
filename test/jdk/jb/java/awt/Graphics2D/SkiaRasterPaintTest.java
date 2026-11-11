@@ -86,9 +86,7 @@ public class SkiaRasterPaintTest {
             g.dispose();
         }
         // interior pixels — no unpainted (white) pixel within two pixels, so both sides are fully covered — test the
-        // gradient itself: ≤ 12 levels (measured 2); the shape's edge pixels add the curve coverage model: ≤ 60 (57;
-        // 51 before the raster surface flattened curves for Skia's scan converter, 2026-11-11 — closer to the exact
-        // geometry on average, StrokeInkTest, but a single edge pixel further from the loops' own approximation)
+        // gradient itself: ≤ 12 levels (measured 2); the shape's edge pixels add the curve coverage model: ≤ 56 (51)
         int maxInterior = 0, maxEdge = 0; int xi = 0, yi = 0;
         for (int y = 2; y < H - 2; y++) for (int x = 2; x < W - 2; x++) {
             int a = skia.getRGB(x, y), b = loops.getRGB(x, y);
@@ -99,8 +97,8 @@ public class SkiaRasterPaintTest {
             if (interior) { if (d > maxInterior) { maxInterior = d; xi = x; yi = y; } } else maxEdge = Math.max(maxEdge, d);
         }
         System.out.printf("%s: interior max %d levels at (%d,%d), edge max %d%n", what, maxInterior, xi, yi, maxEdge);
-        if (maxInterior > 12 || maxEdge > 60) {
-            throw new RuntimeException(what + ": interior max " + maxInterior + " (limit 12), edge max " + maxEdge + " (limit 60)");
+        if (maxInterior > 12 || maxEdge > 56) {
+            throw new RuntimeException(what + ": interior max " + maxInterior + " (limit 12), edge max " + maxEdge + " (limit 56)");
         }
     }
 }
