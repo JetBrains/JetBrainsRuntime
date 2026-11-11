@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -996,6 +996,9 @@ public class KDC {
                     body.addresses != null ? body.addresses
                             : etp.caddr,
                     null);
+
+            enc = modifyEncTicketPart(1, enc);
+
             EncryptionKey skey = keyForUser(service, e3, true);
             if (skey == null) {
                 throw new KrbException(Krb5.KDC_ERR_SUMTYPE_NOSUPP); // TODO
@@ -1054,6 +1057,12 @@ public class KDC {
             }
             return kerr.asn1Encode();
         }
+    }
+
+    // Overridable by subclass to modify a ticket before encryption.
+    // type is 0 for AS-REQ and 1 for TGS-REQ.
+    protected EncTicketPart modifyEncTicketPart(int type, EncTicketPart enc) {
+        return enc;
     }
 
     /**
@@ -1341,6 +1350,9 @@ public class KDC {
                     till, rtime,
                     body.addresses,
                     null);
+
+            enc = modifyEncTicketPart(0, enc);
+
             Ticket t = new Ticket(
                     service,
                     new EncryptedData(skey, enc.asn1Encode(), KeyUsage.KU_TICKET)
