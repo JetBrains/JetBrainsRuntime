@@ -74,7 +74,7 @@ abstract class WLKineticScrollerBase {
             pointerEvent.xAxisHasVectorValue() || pointerEvent.xAxisHasSteps120Value() ||
             pointerEvent.yAxisHasVectorValue() || pointerEvent.yAxisHasSteps120Value();
 
-        if (hasScrollDelta || pointerEvent.hasButtonEvent() || pointerEvent.hasEnterEvent() || pointerEvent.hasLeaveEvent()) {
+        if (hasScrollDelta || pointerEvent.hasButtonEvent()) {
             this.stopCurrentScrollingSession();
         }
 
