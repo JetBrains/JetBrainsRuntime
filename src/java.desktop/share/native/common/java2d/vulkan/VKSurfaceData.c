@@ -441,7 +441,7 @@ JNIEXPORT jboolean JNICALL Java_sun_java2d_vulkan_VKSurfaceData_configureNow(JNI
     VKDevice* device = jlong_to_ptr(pDevice);
     J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSurfaceData_configureNow (%p) %dx%d", surface, width, height);
     VKRenderer_ConfigureSurface(surface, (VkExtent2D) { width, height }, device);
-    // Return true iff image is immediately ready at the requested dimensions.
+    // Return whether image is immediately ready at the requested dimensions.
     // For any surface, this can be false in case of an allocation failure.
     // For a window surface, this can also be false when reallocation is deferred until the end of the frame.
     return surface->image != NULL && surface->device == device &&

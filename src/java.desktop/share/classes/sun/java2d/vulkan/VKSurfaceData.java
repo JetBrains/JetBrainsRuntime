@@ -351,7 +351,7 @@ public abstract class VKSurfaceData extends SurfaceData
     /**
      * For any surface, this can return false in case of an allocation failure.
      * For a window surface, this can also return false when reallocation is deferred until the end of the frame.
-     * @return true iff image is immediately ready at the requested dimensions.
+     * @return whether image is immediately ready at the requested dimensions.
      */
     protected boolean configure() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
