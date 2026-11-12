@@ -44,6 +44,9 @@
 #
 # javadoc
 
+jdk/javadoc/doclet/testModules/TestModules.java                                 10739      generic-all
+jdk/javadoc/doclet/testModules/TestIndirectExportsOpens.java                    10739      generic-all
+
 ###########################################################################
 #
 # jshell
