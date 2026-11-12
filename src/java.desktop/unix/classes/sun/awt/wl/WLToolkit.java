@@ -478,11 +478,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         }
     }
 
-    private static void dispatchHoldBeginEvent() {
+    // A single finger is most likely going to move the pointer, which must not stop kinetic scrolling
+    private static final int MIN_HOLD_FINGERS_TO_STOP_KINETIC_SCROLLING = 2;
+
+    private static void dispatchHoldBeginEvent(int fingers) {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        stopKineticScrolling();
+        if (fingers >= MIN_HOLD_FINGERS_TO_STOP_KINETIC_SCROLLING) {
+            stopKineticScrolling();
+        }
     }
 
     private static void dispatchPointerEvent(WLPointerEvent e) {

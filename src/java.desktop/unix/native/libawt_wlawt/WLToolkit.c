@@ -593,7 +593,7 @@ hold_gesture_begin(void *data, struct zwp_pointer_gesture_hold_v1 *hold,
                    uint32_t serial, uint32_t time, struct wl_surface *surface, uint32_t fingers)
 {
     JNIEnv* env = getEnv();
-    (*env)->CallStaticVoidMethod(env, tkClass, dispatchHoldBeginEventMID);
+    (*env)->CallStaticVoidMethod(env, tkClass, dispatchHoldBeginEventMID, (jint)fingers);
     wlListenerCheckException(env);
 }
 
@@ -980,7 +980,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(dispatchPinchBeginEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchBeginEvent", "(JI)V"), JNI_FALSE);
     CHECK_NULL_RETURN(dispatchPinchUpdateEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchUpdateEvent", "(D)V"), JNI_FALSE);
     CHECK_NULL_RETURN(dispatchPinchEndEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchPinchEndEvent", "()V"), JNI_FALSE);
-    CHECK_NULL_RETURN(dispatchHoldBeginEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchHoldBeginEvent", "()V"), JNI_FALSE);
+    CHECK_NULL_RETURN(dispatchHoldBeginEventMID = (*env)->GetStaticMethodID(env, tkClass, "dispatchHoldBeginEvent", "(I)V"), JNI_FALSE);
     CHECK_NULL_RETURN(enablePinchAsCtrlWheelFID = (*env)->GetStaticFieldID(env, tkClass, "ENABLE_PINCH_AS_CTRL_WHEEL", "Z"), JNI_FALSE);
     CHECK_NULL_RETURN(enableKineticScrollingFID = (*env)->GetStaticFieldID(env, tkClass, "ENABLE_KINETIC_SCROLLING", "Z"), JNI_FALSE);
 
