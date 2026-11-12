@@ -352,15 +352,12 @@ public abstract class VKSurfaceData extends SurfaceData
     protected boolean configure() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
-        boolean[] imageReady = {false};
         try {
-            rq.flushAndInvokeNow(() -> {
-                imageReady[0] = configureNow(getNativeOps(), gc.getGPU().getNativeHandle(), width, height);
-            });
+            rq.flushNow();
+            return configureNow(getNativeOps(), gc.getGPU().getNativeHandle(), width, height);
         } finally {
             rq.unlock();
         }
-        return imageReady[0];
     }
 
     @Override
