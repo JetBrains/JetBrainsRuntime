@@ -136,7 +136,7 @@ final class VKBlitLoops {
                      int sx2, int sy2,
                      double dx1, double dy1,
                      double dx2, double dy2,
-                     int srctype, boolean texture)
+                     int srctype)
     {
         int ctxflags = 0;
         if (srcData.getTransparency() == Transparency.OPAQUE) {
@@ -152,16 +152,9 @@ final class VKBlitLoops {
             rq.addReference(srcData);
 
             VKSurfaceData vkDst = (VKSurfaceData)dstData;
-            if (texture) {
-                // make sure we have a current context before uploading
-                // the sysmem data to the texture object
-                VKGraphicsConfig gc = (VKGraphicsConfig) vkDst.getDeviceConfiguration();
-                VKContext.setScratchSurface(gc);
-            } else {
-                VKContext.validateContext(vkDst, vkDst,
-                        clip, comp, xform, null, null,
-                        ctxflags);
-            }
+            VKContext.validateContext(vkDst, vkDst,
+                    clip, comp, xform, null, null,
+                    ctxflags);
 
             int packedParams = createPackedParams(false, xform != null, hint, srctype);
             enqueueBlit(rq, srcData, dstData,
@@ -647,6 +640,6 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
                          comp, clip, xform, hint,
                          sx1, sy1, sx2, sy2,
                          dx1, dy1, dx2, dy2,
-                         srcType, false);
+                         srcType);
     }
 }
