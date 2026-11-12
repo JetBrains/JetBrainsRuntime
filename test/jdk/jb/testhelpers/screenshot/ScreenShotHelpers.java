@@ -150,7 +150,11 @@ public class ScreenShotHelpers {
 
         final Color centerColor = adjustColor(new Color(image.getRGB(centerX, centerY)));
 
-        int startY = centerY;
+        // When no color change is found in some direction, the title bar extends to the image edge
+        // in that direction (e.g. macOS 27 draws no distinguishable line at the top edge of the window).
+        // Falling back to the center instead would move the horizontal scan below to the middle row,
+        // which crosses the native controls and cuts them off from the detected rectangle.
+        int startY = 0;
         for (int y = centerY; y >= 0; y--) {
             Color adjustedColor = adjustColor(new Color(image.getRGB(centerX, y)));
             if (!adjustedColor.equals(centerColor)) {
@@ -159,8 +163,8 @@ public class ScreenShotHelpers {
             }
         }
 
-        int endY = centerY;
-        for (int y = centerY; y <= (int) TestUtils.TITLE_BAR_HEIGHT; y++) {
+        int endY = Math.min((int) TestUtils.TITLE_BAR_HEIGHT, image.getHeight() - 1);
+        for (int y = centerY; y <= endY; y++) {
             Color adjustedColor = adjustColor(new Color(image.getRGB(centerX, y)));
             if (!adjustedColor.equals(centerColor)) {
                 endY = y - 1;
@@ -168,7 +172,7 @@ public class ScreenShotHelpers {
             }
         }
 
-        int startX = centerX;
+        int startX = 0;
         for (int x = centerX; x >= 0; x--) {
             Color adjustedColor = adjustColor(new Color(image.getRGB(x, startY)));
             if (!adjustedColor.equals(centerColor)) {
@@ -177,7 +181,7 @@ public class ScreenShotHelpers {
             }
         }
 
-        int endX = centerX;
+        int endX = image.getWidth() - 1;
         for (int x = centerX; x < image.getWidth(); x++) {
             Color adjustedColor = adjustColor(new Color(image.getRGB(x, startY)));
             if (!adjustedColor.equals(centerColor)) {
