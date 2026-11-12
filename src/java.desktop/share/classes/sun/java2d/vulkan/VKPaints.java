@@ -173,7 +173,7 @@ abstract class VKPaints {
             }
 
             VKSurfaceData dstData = (VKSurfaceData)sg2d.surfaceData;
-            VKGraphicsConfig gc = dstData.getGraphicsConfig();
+            VKGraphicsConfig gc = (VKGraphicsConfig) dstData.getDeviceConfiguration();
             if (!gc.isCapPresent(CAPS_EXT_GRAD_SHADER)) {
                 return false;
             }

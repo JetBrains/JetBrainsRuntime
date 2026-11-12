@@ -251,7 +251,7 @@ public abstract class VKSurfaceData extends SurfaceData
             }
         } else {
             if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) {
-                if (getGraphicsConfig().isCapPresent(CAPS_PS30) &&
+                if (((VKGraphicsConfig) getDeviceConfiguration()).isCapPresent(CAPS_PS30) &&
                         (sg2d.imageComp == CompositeType.SrcOverNoEa ||
                                 sg2d.imageComp == CompositeType.SrcOver))
                 {
@@ -328,13 +328,9 @@ public abstract class VKSurfaceData extends SurfaceData
 
     }
 
-    public VKGraphicsConfig getGraphicsConfig() {
-        return (VKGraphicsConfig) getDeviceConfiguration();
-    }
-
     @Override
     public SurfaceDataProxy makeProxyFor(SurfaceData srcData) {
-        return VKSurfaceDataProxy.createProxy(srcData, getGraphicsConfig());
+        return VKSurfaceDataProxy.createProxy(srcData, (VKGraphicsConfig) getDeviceConfiguration());
     }
 
     protected int revalidate(VKGraphicsConfig gc) {

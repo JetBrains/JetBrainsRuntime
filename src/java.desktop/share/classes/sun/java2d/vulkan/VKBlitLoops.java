@@ -155,7 +155,7 @@ final class VKBlitLoops {
             if (texture) {
                 // make sure we have a current context before uploading
                 // the sysmem data to the texture object
-                VKGraphicsConfig gc = vkDst.getGraphicsConfig();
+                VKGraphicsConfig gc = (VKGraphicsConfig) vkDst.getDeviceConfiguration();
                 VKContext.setScratchSurface(gc);
             } else {
                 VKContext.validateContext(vkDst, vkDst,
@@ -361,7 +361,7 @@ final class VKSurfaceToSurfaceBlit extends VKMultiplexedBlit {
 
     private VKStageSurface getStage(VKSurfaceData src) {
         // If accelerated surface data is disabled, create the compatible buffered stage image instead.
-        return stageCache.computeIfAbsent(src.getGraphicsConfig().getOffscreenConfig(),
+        return stageCache.computeIfAbsent(((VKGraphicsConfig) src.getDeviceConfiguration()).getOffscreenConfig(),
                 gc -> new VKStageSurface(!VKEnv.isSurfaceDataAccelerated() ? gc::createCompatibleImage :
                         (w, h) -> gc.createCompatibleVolatileImage(
                                 w, h, gc.isTranslucencyCapable() ? TRANSLUCENT : OPAQUE, AccelSurface.RT_TEXTURE)));
@@ -535,7 +535,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     }
 
     private static boolean hasCap(VKSurfaceData dst, int cap) {
-        return dst.getGraphicsConfig().getGPU().hasCap(cap);
+        return ((VKGraphicsConfig) dst.getDeviceConfiguration()).getGPU().hasCap(cap);
     }
 
     /**
