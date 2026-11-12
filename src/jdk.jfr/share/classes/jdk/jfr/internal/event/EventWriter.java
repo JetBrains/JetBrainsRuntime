@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -158,7 +158,12 @@ public final class EventWriter {
 
     private void putStringValue(String s) {
         int length = s.length();
-        if (isValidForSize(1 + 5 + 3 * length)) {
+        long size = 1L + 5L + 3L * length;
+        if (size > Integer.MAX_VALUE) {
+            valid = false;
+            return;
+        }
+        if (isValidForSize((int)size)) {
             putUncheckedByte(StringParser.Encoding.CHAR_ARRAY.byteValue()); // 1 byte
             putUncheckedInt(length); // max 5 bytes
             for (int i = 0; i < length; i++) {
