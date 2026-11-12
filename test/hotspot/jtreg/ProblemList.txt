@@ -76,6 +76,8 @@ compiler/codecache/CodeCacheFullCountTest.java 8332954 generic-all
 
 compiler/interpreter/Test6833129.java 8335266 generic-i586
 
+compiler/intrinsics/TestBitShuffleOpers.java 8350896 generic-all
+
 compiler/ciReplay/TestInliningProtectionDomain.java 8349191 generic-all
 compiler/ciReplay/TestIncrementalInlining.java 8349191 generic-all
 
