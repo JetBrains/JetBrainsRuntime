@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -236,6 +236,9 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
      * overflow, this method throws {@code OutOfMemoryError}.
      */
     private void ensureCapacityInternal(int minimumCapacity) {
+        if ((minimumCapacity & (Integer.MIN_VALUE >> coder)) != 0) {
+            throwExcessiveLengthError();
+        }
         // overflow-conscious code
         int oldCapacity = value.length >> coder;
         if (minimumCapacity - oldCapacity > 0) {
@@ -1866,15 +1869,18 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
     }
 
     private AbstractStringBuilder repeat(char c, int count) {
-        int limit = this.count + count;
-        ensureCapacityInternal(limit);
+        final int limit;
         boolean isLatin1 = isLatin1();
         if (isLatin1 && StringLatin1.canEncode(c)) {
+            limit = repeatLimit(LATIN1, this.count, 1, count);
+            ensureCapacityInternal(limit);
             Arrays.fill(value, this.count, limit, (byte)c);
         } else {
             if (isLatin1) {
                 inflate();
             }
+            limit = repeatLimit(UTF16, this.count, 1, count);
+            ensureCapacityInternal(limit);
             for (int index = this.count; index < limit; index++) {
                 StringUTF16.putCharSB(value, index, c);
             }
@@ -1961,22 +1967,48 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
             return repeat(cs.charAt(0), count);
         }
         int offset = this.count;
-        int valueLength = length << coder;
-        if ((Integer.MAX_VALUE - offset) / count < valueLength) {
-            throw new OutOfMemoryError("Required length exceeds implementation limit");
-        }
-        int total = count * length;
-        int limit = offset + total;
-        ensureCapacityInternal(limit);
         if (cs instanceof String str) {
+            ensureCapacityInternal(offset + length);
             putStringAt(offset, str);
         } else if (cs instanceof AbstractStringBuilder asb) {
             append(asb);
         } else {
+            ensureCapacityInternal(offset + length);
             appendChars(cs, 0, length);
         }
-        String.repeatCopyRest(value, offset << coder, total << coder, length << coder);
+        int limit = repeatLimit(coder, offset, length, count);
+        ensureCapacityInternal(limit);
+        String.repeatCopyRest(value, offset << coder, (count * length) << coder, length << coder);
         this.count = limit;
         return this;
     }
+
+    /**
+     * {@return the new {@linkplain #count length} (in {@code char}s) after
+     * appending the given sequence with specified repetitions}
+     *
+     * @param coder the {@linkplain #coder coder} that will be used for encoding
+     * @param offset the {@linkplain #count offset} (in {@code char}s) to start appending at
+     * @param seqLength the length in {@code char}s of the sequence to be repeated
+     * @param seqRepetition the repetition count
+     *
+     * @throws OutOfMemoryError If the resultant length is out of bounds
+     */
+    private static int repeatLimit(int coder, int offset, int seqLength, int seqRepetition) {
+        assert offset >= 0 : "Invalid offset: " + offset;
+        assert seqLength >= 0 : "Invalid sequence length: " + seqLength;
+        assert seqRepetition >= 0 : "Invalid sequence repetition count: " + seqRepetition;
+        long repeatedSeqLength = (long) seqLength * seqRepetition;
+        long limit = (long) offset + repeatedSeqLength;
+        long encodedLimit = limit << coder;
+        if (limit < 0 || encodedLimit < 0 || encodedLimit >= Integer.MAX_VALUE) {
+            throwExcessiveLengthError();
+        }
+        return (int) limit;
+    }
+
+    private static void throwExcessiveLengthError() {
+        throw new OutOfMemoryError("Required length exceeds implementation limit");
+    }
+
 }
