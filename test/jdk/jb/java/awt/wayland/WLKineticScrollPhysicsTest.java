@@ -95,6 +95,23 @@ public class WLKineticScrollPhysicsTest {
         p.advance(1);
         check(equals(p.getDeltaX(), 250 * (1 - Math.exp(-4 * 0.001))));
 
+        // like in GTK4, a fling in the direction of the previous one that is still going on gets a part of its velocity
+        p = new WLKineticScrollPhysics();
+        addSamples(p, 0, 10, 0);
+        check(p.startFling(100));
+        addSamples(p, 300, 10, 0);
+        check(p.startFling(400));
+        final double lastVelocity = 1000 * Math.exp(-FRICTION * 0.3);
+        final double accumulatedVelocity = 1000 + lastVelocity * (1000 - 0.33 * lastVelocity) / (lastVelocity - 0.33 * lastVelocity);
+        p.advance(1);
+        check(equals(p.getDeltaX(), accumulatedVelocity / FRICTION * (1 - Math.exp(-FRICTION * 0.001))));
+
+        // a fling in the opposite direction does not
+        addSamples(p, 600, -10, 0);
+        check(p.startFling(700));
+        p.advance(1);
+        check(equals(p.getDeltaX(), -250 * (1 - Math.exp(-4 * 0.001))));
+
         p = new WLKineticScrollPhysics();
         addSamples(p, 0, 10, 0);
         check(p.startFling(100) && p.advance(0) && p.getDeltaX() == 0);

@@ -422,7 +422,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         // Invoked from the native code
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        stopKineticScrolling();
+        stopKineticScrolling(true);
         pinchSurfacePtr = (fingers == PINCH_FINGERS) ? surfacePtr : 0;
         pinchPrevTotal = 0;
         pinchDispatchedRound = 0;
@@ -472,9 +472,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return ENABLE_KINETIC_SCROLLING;
     }
 
-    private static void stopKineticScrolling() {
+    private static void stopKineticScrolling(boolean finalStop) {
         synchronized (wlSurfaceToPeerMap) {
-            wlSurfaceToPeerMap.values().forEach(WLWindowPeer::stopKineticScrolling);
+            wlSurfaceToPeerMap.values().forEach(peer -> peer.stopKineticScrolling(finalStop));
         }
     }
 
@@ -486,7 +486,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (fingers >= MIN_HOLD_FINGERS_TO_STOP_KINETIC_SCROLLING) {
-            stopKineticScrolling();
+            // Not a final stop: the hold may be the beginning of the next scroll gesture
+            stopKineticScrolling(false);
         }
     }
 
@@ -549,7 +550,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         final long timestamp = System.currentTimeMillis();
 
         if (id == KeyEvent.KEY_PRESSED) {
-            stopKineticScrolling();
+            stopKineticScrolling(true);
         }
 
         setInputState(inputState.updatedFromKeyEvent(serial));

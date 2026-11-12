@@ -831,7 +831,7 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
         this.pointerEventDispatcher.dispatchPointerEventInContext(e, newInputState, x, y, xAbsolute, yAbsolute);
     }
 
-    final void stopKineticScrolling() {
-        this.pointerEventDispatcher.stopCurrentKineticScrollingSession();
+    final void stopKineticScrolling(final boolean finalStop) {
+        this.pointerEventDispatcher.stopCurrentKineticScrollingSession(finalStop);
     }
 }

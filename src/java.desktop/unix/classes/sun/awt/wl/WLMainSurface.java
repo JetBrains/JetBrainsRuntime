@@ -112,7 +112,7 @@ public class WLMainSurface extends WLSurface {
     @Override
     public void dispose() {
         if (isValid) {
-            peer.stopKineticScrolling();
+            peer.stopKineticScrolling(true);
             WLToolkit.unregisterWLSurface(getWlSurfacePtr());
             super.dispose();
         }

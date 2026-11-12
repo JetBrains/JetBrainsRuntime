@@ -38,6 +38,10 @@ public final class WLKineticScrollPhysics {
     private static final double MIN_START_VELOCITY = 50;
     private static final double MAX_VELOCITY = 8000;
     private static final double STOP_VELOCITY = 10;
+    // like in GTK4
+    private static final double VELOCITY_ACCUMULATION_FLOOR = 0.33;
+    private static final double VELOCITY_ACCUMULATION_CEIL = 1.0;
+    private static final double VELOCITY_ACCUMULATION_MAX = 6.0;
 
     private record Sample(long timeMs, double dx, double dy) {}
 
@@ -45,6 +49,7 @@ public final class WLKineticScrollPhysics {
 
     private double velocityX;
     private double velocityY;
+    private long startTimeMs;
     private double elapsedSeconds;
     private double positionX;
     private double positionY;
@@ -61,6 +66,10 @@ public final class WLKineticScrollPhysics {
     }
 
     public boolean startFling(long stopTimeMs) {
+        // the velocity the previous fling would have by now, zero if it has finished
+        final double lastDecay = Math.exp(-FRICTION * ((stopTimeMs - startTimeMs) & UINT32_MASK) / 1000);
+        final double lastVelocityX = velocityX * lastDecay;
+        final double lastVelocityY = velocityY * lastDecay;
         stop();
         dropSamplesOlderThanWindow(stopTimeMs);
         if (samples.size() < 2) {
@@ -79,8 +88,8 @@ public final class WLKineticScrollPhysics {
             distanceX += sample.dx;
             distanceY += sample.dy;
         }
-        final double vx = distanceX * 1000 / intervalMs;
-        final double vy = distanceY * 1000 / intervalMs;
+        final double vx = accumulateVelocity(distanceX * 1000 / intervalMs, lastVelocityX);
+        final double vy = accumulateVelocity(distanceY * 1000 / intervalMs, lastVelocityY);
         final double v = Math.hypot(vx, vy);
         if (v < MIN_START_VELOCITY) {
             return false;
@@ -88,7 +97,20 @@ public final class WLKineticScrollPhysics {
         final double clamp = Math.min(1, MAX_VELOCITY / v);
         velocityX = vx * clamp;
         velocityY = vy * clamp;
+        startTimeMs = stopTimeMs;
         return true;
+    }
+
+    // like GTK4, add a part of the velocity of the previous fling if the new one goes in the same direction
+    private static double accumulateVelocity(double velocity, double lastVelocity) {
+        if (lastVelocity == 0 || (velocity >= 0) != (lastVelocity >= 0) ||
+                Math.abs(velocity) < Math.abs(lastVelocity) * VELOCITY_ACCUMULATION_FLOOR) {
+            return velocity;
+        }
+        final double minVelocity = lastVelocity * VELOCITY_ACCUMULATION_FLOOR;
+        final double maxVelocity = lastVelocity * VELOCITY_ACCUMULATION_CEIL;
+        final double multiplier = (velocity - minVelocity) / (maxVelocity - minVelocity);
+        return velocity + lastVelocity * Math.min(multiplier, VELOCITY_ACCUMULATION_MAX);
     }
 
     public boolean advance(double elapsedMs) {

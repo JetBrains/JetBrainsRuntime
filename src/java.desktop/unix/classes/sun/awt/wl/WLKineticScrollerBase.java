@@ -29,6 +29,7 @@ package sun.awt.wl;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.Timer;
+import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
@@ -36,9 +37,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 
 abstract class WLKineticScrollerBase {
-    // TODO: if another fling happens while a kinetic scrolling session is executing,
-    //       we may want to add the current session's rest of velocity to the new one.
-
     protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLKineticScrollerBase");
 
     /**
@@ -60,6 +58,14 @@ abstract class WLKineticScrollerBase {
 
 
     /**
+     * The kinetic scrolling session is over: it has finished by itself or by a final external stop.
+     *
+     * @apiNote this method is guaranteed to be called from EDT only.
+     */
+    protected abstract void notifyKineticScrollingSessionFinished();
+
+
+    /**
      * @return true if a new kinetic scrolling session has been launched as the result of processing the event.
      */
     boolean processPointerEvent(
@@ -75,7 +81,7 @@ abstract class WLKineticScrollerBase {
             pointerEvent.yAxisHasVectorValue() || pointerEvent.yAxisHasSteps120Value();
 
         if (hasScrollDelta || pointerEvent.hasButtonEvent()) {
-            this.stopCurrentScrollingSession();
+            this.stopCurrentScrollingSession(pointerEvent.hasButtonEvent());
         }
 
         if (pointerEvent.hasAxisSourceEvent()) {
@@ -126,10 +132,29 @@ abstract class WLKineticScrollerBase {
     }
 
     /**
+     * @param finalStop false if the fling is interrupted by what may be the beginning of the next scroll gesture:
+     *                  only the ticks stop then, and the physics keeps the velocity of the fling
+     *                  so that {@link WLKineticScrollPhysics#startFling} can add its rest to the next one.
+     *
      * @apiNote this method can be called from any thread.
      */
-    void stopCurrentScrollingSession() {
+    void stopCurrentScrollingSession(final boolean finalStop) {
         replaceCurrentScrollingSession(null);
+        if (finalStop) {
+            // The physics and the notification are for EDT only
+            if (EventQueue.isDispatchThread()) {
+                this.finishStoppedScrollingSession();
+            } else {
+                EventQueue.invokeLater(this::finishStoppedScrollingSession);
+            }
+        }
+    }
+
+    private void finishStoppedScrollingSession() {
+        if (this.physics.isFlinging()) {
+            this.physics.stop();
+            this.notifyKineticScrollingSessionFinished();
+        }
     }
 
 

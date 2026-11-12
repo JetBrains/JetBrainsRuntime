@@ -122,6 +122,13 @@ abstract class WLPointerEventDefaultDispatcherBase {
                 yAxisSteps120Value
             );
         }
+
+        @Override
+        protected void notifyKineticScrollingSessionFinished() {
+            // The same as an axis_stop event does unless it launches a kinetic scrolling session
+            WLPointerEventDefaultDispatcherBase.this.xAxisWheelRoundRotationsAccumulator.reset();
+            WLPointerEventDefaultDispatcherBase.this.yAxisWheelRoundRotationsAccumulator.reset();
+        }
     }
 
 
@@ -142,9 +149,9 @@ abstract class WLPointerEventDefaultDispatcherBase {
         this.processPointerLeaveEventIfAny(e, newInputState, awtPeerX, awtPeerY, awtAbsX, awtAbsY, awtWhen);
     }
 
-    public void stopCurrentKineticScrollingSession() {
+    public void stopCurrentKineticScrollingSession(final boolean finalStop) {
         if (this.kineticScroller != null) {
-            this.kineticScroller.stopCurrentScrollingSession();
+            this.kineticScroller.stopCurrentScrollingSession(finalStop);
         }
     }
 
