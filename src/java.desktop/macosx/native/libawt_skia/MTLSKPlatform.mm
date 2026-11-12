@@ -94,6 +94,11 @@ static id<MTLDevice> deviceOf(SKPlatformConfig *config) {
     return [(id<MTLSKContextLike>) (id) info->context device];
 }
 
+int64_t SKPlatform_DeviceAllocatedBytes(SKPlatformConfig *config) {
+    id<MTLDevice> device = deviceOf(config);
+    return device != nil ? (int64_t) [device currentAllocatedSize] : -1;
+}
+
 bool SKPlatform_SameDevice(SKPlatformConfig *a, SKPlatformConfig *b) {
     id<MTLDevice> da = deviceOf(a);
     return da != nil && da == deviceOf(b);

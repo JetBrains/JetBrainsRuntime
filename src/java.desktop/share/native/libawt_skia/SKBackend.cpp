@@ -56,6 +56,7 @@
 #include "include/core/SkPathBuilder.h"
 #include "include/gpu/graphite/ContextOptions.h"
 #include "include/core/SkTraceMemoryDump.h"
+#include "include/core/SkGraphics.h"
 #include <map>
 #include <chrono>
 #include <string>
@@ -4240,12 +4241,20 @@ std::string SKBackend_GpuMemoryReport() {
                  cc->recorder->currentPurgeableBytes() / 1048576.0, cc->context->currentBudgetedBytes() / 1048576.0,
                  cc->context->maxBudgetedBytes() / 1048576.0, cc->context->currentPurgeableBytes() / 1048576.0);
         out += line;
+#ifdef __APPLE__
+        snprintf(line, sizeof line, "  Metal device allocated for the process: %.2f MB\n", SKPlatform_DeviceAllocatedBytes(cc->config) / 1048576.0);
+        out += line;
+#endif
         MemoryTally recorder, context;
         cc->recorder->dumpMemoryStatistics(&recorder);
         cc->context->dumpMemoryStatistics(&context);
         recorder.report(out, "recorder");
         context.report(out, "context ");
     }
+    snprintf(line, sizeof line, "process: Graphite pipelines built %llu; Skia strike cache %.2f MB in %d strikes (limit %.2f MB); Skia resource cache %.2f MB\n",
+             (unsigned long long) gPipelinesBuilt, SkGraphics::GetFontCacheUsed() / 1048576.0, SkGraphics::GetFontCacheCountUsed(),
+             SkGraphics::GetFontCacheLimit() / 1048576.0, SkGraphics::GetResourceCacheTotalBytesUsed() / 1048576.0);
+    out += line;
     return out;
 }
 

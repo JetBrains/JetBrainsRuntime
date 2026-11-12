@@ -69,6 +69,11 @@ SKPlatformConfig *SKPlatform_ConfigOf(SKPlatformSurface *surface);
 // of one can be sampled by a context of the other (the contexts of two displays
 // on one adapter share textures; two adapters do not).
 bool SKPlatform_SameDevice(SKPlatformConfig *a, SKPlatformConfig *b);
+#ifdef __APPLE__
+// Diagnostics (SKEnvironment.gpuMemoryReport): what the config's Metal device has allocated for the process in all
+// (MTLDevice.currentAllocatedSize: Graphite's resources and the Metal pipe's own alike); -1 without a device.
+int64_t SKPlatform_DeviceAllocatedBytes(SKPlatformConfig *config);
+#endif
 
 // The surface's current GPU texture as an opaque identity (it changes when the
 // platform replaces the texture, e.g. on resize); null if there is none yet.
