@@ -336,6 +336,9 @@ static jboolean flushEntries(JNIEnv *env, unsigned char *b, jint limit, bool pre
             }
             bool dispose = opcode == sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE;
             SKBackend_ReleaseSurface(ops, dispose);
+            if (dispose) {
+                SKSurfaceData_ForgetWrapper(ops);
+            }
             // A flushed window surface is being replaced (AWT never draws to it
             // again): its platform side goes too, so the window's swap chain is
             // free for the successor without waiting for the Disposer.

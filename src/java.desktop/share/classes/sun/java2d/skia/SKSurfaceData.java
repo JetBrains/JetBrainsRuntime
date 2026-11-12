@@ -48,7 +48,6 @@ import java.awt.Window;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
@@ -112,14 +111,6 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
     private final SKContext context;
     private final int type;
 
-    /**
-     * Keeps a platform object reachable until the Skia side has released its
-     * wrapper (see {@link #dispose(long)}): on macOS the wrapped Metal surface,
-     * which has its own Disposer record and could otherwise free the native
-     * ops while Skia ops referencing them are still queued.
-     */
-    private static final ConcurrentHashMap<Long, Object> retainedByOps = new ConcurrentHashMap<>();
-
     private native void initOps(long platformOps, int type, boolean isOpaque);
 
     private static SurfaceType getCustomSurfaceType(int type) {
@@ -144,10 +135,6 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
         initOps(platformOps, type, cm.getTransparency() == OPAQUE);
     }
 
-    /** Keeps {@code platformOwner} reachable until this surface's native ops are disposed. */
-    protected final void retainUntilDisposed(Object platformOwner) {
-        retainedByOps.put(getNativeOps(), platformOwner);
-    }
 
     /** Whether this is a window surface the platform presents. */
     public abstract boolean isOnScreen();
@@ -428,7 +415,25 @@ public abstract class SKSurfaceData extends SurfaceData implements AccelSurface 
         } finally {
             rq.unlock();
         }
-        // queued Skia ops have run; the platform surface may now be disposed
-        retainedByOps.remove(pData);
     }
+
+    /**
+     * Called from the native Dispose() of a platform surface a Skia surface wraps (macOS: the Metal delegate), on the
+     * Disposer thread, before the platform frees its native ops: the queued Skia ops run, then the Skia side lets go
+     * of the platform surface. The two surfaces have separate Disposer records that run in either order once both are
+     * unreachable; the Skia one used to keep the delegate in a static map until it ran, but the delegate reaches the
+     * Skia surface back (through its VolatileImage, or its layer's peer and window), so neither was ever collected.
+     */
+    static void disposePlatform(long platformOps) {
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+            forgetPlatform(platformOps);
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native void forgetPlatform(long platformOps);
 }

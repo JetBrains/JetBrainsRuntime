@@ -110,6 +110,8 @@ typedef struct {
 bool SKSurfaceData_IsSkiaOps(SurfaceDataOps *ops);
 // The platform surface behind a Skia surface's ops (null if not Skia's or already disposed).
 SKPlatformSurface *SKSurfaceData_PlatformOf(SurfaceDataOps *ops);
+// The Skia surface is disposed: its platform surface's hooked Dispose has nothing left to release (macOS)
+void SKSurfaceData_ForgetWrapper(SKSDOps *ops);
 
 // Configuration
 // Architecture-dependent values (SKEnvironment decides them by whether the GPU

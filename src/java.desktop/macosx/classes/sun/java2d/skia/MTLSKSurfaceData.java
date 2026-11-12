@@ -56,9 +56,8 @@ public final class MTLSKSurfaceData extends SKSurfaceData {
         this.graphicsConfig = gc;
         this.layer = layer;
         this.offscreenImage = offscreenImage;
-        // the two surfaces have separate Disposer records; the Metal one must
-        // not free the native ops while Skia ops referencing them are queued
-        retainUntilDisposed(delegate);
+        // the two surfaces have separate Disposer records: the Metal one lets the Skia side finish with its native
+        // ops before it frees them (SKSurfaceData.disposePlatform, hooked into the delegate's native Dispose)
     }
 
     /** Window surface: wraps the Metal layer surface created for {@code layer}. */
