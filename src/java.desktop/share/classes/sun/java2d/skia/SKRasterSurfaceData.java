@@ -71,6 +71,9 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
                       raster.getPixelStride() * 4, raster.getScanlineStride() * 4, null);
         sd.initSolidLoops();
         sd.trackWrites();
+        if (pf == SKSurfaceData.PF_INT_ARGB && !sd.initMirror(MIRROR_BUDGET)) {
+            return null;
+        }
         return sd;
     }
 
@@ -107,6 +110,19 @@ public final class SKRasterSurfaceData extends BufImgSurfaceData {
 
     /** Wraps the surface's native lock so every write lock, by any pipe on any thread, is counted. */
     private native void trackWrites();
+
+    /**
+     * The bytes the INT_ARGB surfaces' premultiplied mirrors may hold together: the least recently drawn beyond it
+     * give their pixels up (imported again when drawn next). A mirror is as large as its image.
+     */
+    private static final long MIRROR_BUDGET = Math.max(0, Integer.getInteger("sun.java2d.skia.raster.mirrorBudget", 128)) * (1L << 20);
+
+    /** INT_ARGB: the native premultiplied mirror the natives draw through, released with the surface. */
+    @SuppressWarnings("unused")
+    private long mirror;
+
+    /** Creates the surface's mirror (its pixels come with the first operation) and registers its release. */
+    private native boolean initMirror(long budget);
 
     private SKRasterSurfaceData(BufferedImage img, SurfaceType type, int pixelFormat, double scaleX, double scaleY) {
         super(img.getRaster().getDataBuffer(), img, type, scaleX, scaleY);

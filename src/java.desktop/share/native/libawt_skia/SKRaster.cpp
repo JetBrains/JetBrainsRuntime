@@ -23,8 +23,8 @@
 // drew into (a canvas is bound to the pixel pointer the lock returned; it is rebuilt only when
 // the pointer, size or stride change), the path and clip data come through stack buffers, and
 // an unpremultiplied INT_ARGB image is drawn through a persistent premultiplied mirror of the
-// whole image — Skia's raster treats unpremultiplied as premultiplied — with only the touched
-// box converted in and out per operation.
+// whole image that the surface owns (Mirror) — Skia's raster treats unpremultiplied as
+// premultiplied — with only the touched box converted in and out per operation.
 
 #include <optional>
 #include "SKBackend.h"
@@ -47,6 +47,7 @@
 #include "BufImgSurfaceData.h"
 #include "GraphicsPrimitiveMgr.h"
 #include "jlong.h"
+#include "Disposer.h"
 #include "include/core/SkFont.h"
 #include "include/core/SkSamplingOptions.h"
 
@@ -55,6 +56,15 @@
 #include <cstdlib>
 #include <vector>
 #include <atomic>
+#include <mutex>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#endif
 
 namespace {
 
@@ -117,14 +127,15 @@ static SkSurfaceProps surfaceProps() {
 }
 
 // Write locks on buffered images, counted: SKRasterSurfaceData.trackWrites wraps the surface's
-// Lock so every SD_LOCK_WRITE by any pipe on any thread bumps the serial; a thread's mirror remembers
-// the serial of its own last lock and stays valid while nobody else locked for writing since (and
+// Lock so every SD_LOCK_WRITE by any pipe on any thread bumps the serial; a mirror remembers the
+// serial of its last operation's lock and stays valid while nobody else locked for writing since (and
 // Java wrote nothing, which the Java side tracks). Read locks leave it alone: the mirror is written
 // out after every operation, so readers always see current pixels.
 static LockFunc *gOriginalLock = nullptr;
 static std::atomic<uint64_t> gWriteLocks{0};
 static std::atomic<jlong> gMirrorInvalidations{0};   // INT_ARGB mirrors thrown away by an operation (SKEnvironment, tests)
 static thread_local uint64_t tLastWriteLock = 0;   // the serial this thread's last write lock produced
+static std::atomic<jlong> gMirrorBytes{0};   // the pixel memory INT_ARGB mirrors hold (SKEnvironment, tests)
 
 static jint TrackedLock(JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *rasInfo, jint lockflags) {
     if (lockflags & SD_LOCK_WRITE) tLastWriteLock = gWriteLocks.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -133,22 +144,34 @@ static jint TrackedLock(JNIEnv *env, SurfaceDataOps *ops, SurfaceDataRasInfo *ra
 
 constexpr int kTile = 16;   // the mirror's import granularity: a small operation after an invalidation imports little more than its box
 
-struct RasterTarget {
-    SurfaceDataOps *ops = nullptr;
-    void *pixels = nullptr;          // what the lock returned last time; the canvas draws there
-    SkImageInfo info;
-    size_t rowBytes = 0;
+// An INT_ARGB surface's premultiplied mirror: Skia's raster treats unpremultiplied pixels as premultiplied, so the
+// canvas draws into a premultiplied copy of the whole image, imported tile by tile as operations touch it and
+// written back box by box after each. It belongs to the surface (SKRasterSurfaceData.mirror, released by its
+// Disposer record), not to the drawing thread: a thread's canvas cache kept up to four whole-image mirrors until it
+// drew into other surfaces or ended, so idle threads held the mirrors of images long collected (eight threads drawing
+// into four 2400 × 1600 images each, 370 MB after the images were gone), and a thread drawing after another found
+// the other's lock in between and imported the pixels again. The mirrors with pixels share a budget
+// (sun.java2d.skia.raster.mirrorBudget): the least recently drawn beyond it give their pixels up and import them
+// again when drawn next; a live mirror costs as much as its image. One operation at a time draws through a mirror.
+struct Mirror {
+    std::mutex lock;                 // held for an operation: the canvas, the tiles and the pixels are the operation's
+    SkBitmap bitmap;                 // empty until the first operation, and again after an eviction
     std::unique_ptr<SkCanvas> canvas;
-    SkBitmap mirror;                 // INT_ARGB: the premultiplied copy of the whole image the canvas draws into
-    uint32_t stamp = 0;              // for the least-recently-used replacement
-    std::vector<uint8_t> tiles;      // INT_ARGB: which kTile × kTile tiles of the mirror hold the image's pixels
+    void *pixels = nullptr;          // the image's pixels as the current operation's lock returned them (the array moves)
+    size_t rowBytes = 0;
+    std::vector<uint8_t> tiles;      // which kTile × kTile tiles hold the image's pixels
     int tilesAcross = 0, tilesDown = 0;
-    uint64_t epoch = 0;              // the write-lock serial the tiles are valid for (this thread's own last lock)
+    uint64_t epoch = 0;              // the write-lock serial the tiles are valid for (the last operation's own lock)
+    std::atomic<uint64_t> used{0};   // for the least-recently-used eviction
+    size_t index = SIZE_MAX;         // in gMirrors while it has pixels
 
-    void invalidateMirror() { std::fill(tiles.begin(), tiles.end(), 0); }
-    bool mirrorCurrent(bool mirrorKept) const {
-        return mirrorKept && ops != nullptr && ops->Lock == TrackedLock && epoch != 0 && gWriteLocks.load(std::memory_order_relaxed) == epoch;
+    bool allocated() const { return canvas != nullptr; }
+    void invalidate() { std::fill(tiles.begin(), tiles.end(), 0); }
+    bool current(bool mirrorKept, const SurfaceDataOps *ops) const {
+        return mirrorKept && allocated() && ops->Lock == TrackedLock && epoch != 0 && gWriteLocks.load(std::memory_order_relaxed) == epoch;
     }
+    bool allocate(const SkImageInfo &image);
+    void release();
     // the box's tiles not yet current are imported; afterwards the box is current in the mirror
     void prepare(const SkIRect &box) {
         for (int ty = box.fTop / kTile; ty <= (box.fBottom - 1) / kTile; ty++) {
@@ -156,49 +179,24 @@ struct RasterTarget {
                 uint8_t &t = tiles[(size_t) ty * tilesAcross + tx];
                 if (t) continue;
                 SkIRect tile = SkIRect::MakeXYWH(tx * kTile, ty * kTile, kTile, kTile);
-                if (tile.intersect(SkIRect::MakeWH(info.width(), info.height()))) mirrorIn(tile);
+                if (tile.intersect(SkIRect::MakeWH(bitmap.width(), bitmap.height()))) mirrorIn(tile);
                 t = 1;
             }
         }
     }
-
-    bool matches(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) const {
-        return ops == o && pixels == p && rowBytes == rb && info.width() == i.width() && info.height() == i.height()
-               && info.alphaType() == i.alphaType();
-    }
-    bool bind(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) {
-        ops = o; pixels = p; info = i; rowBytes = rb; canvas.reset();
-        if (i.alphaType() == kUnpremul_SkAlphaType) {
-            if (mirror.width() != i.width() || mirror.height() != i.height()) {
-                mirror.reset();
-                if (!mirror.tryAllocPixels(SkImageInfo::Make(i.width(), i.height(), i.colorType(), kPremul_SkAlphaType))) return false;
-            }
-            tilesAcross = (i.width() + kTile - 1) / kTile; tilesDown = (i.height() + kTile - 1) / kTile;
-            tiles.assign((size_t) tilesAcross * tilesDown, 0);
-            epoch = 0;
-            const SkSurfaceProps props = surfaceProps();
-            canvas = SkCanvas::MakeRasterDirect(mirror.info(), mirror.getPixels(), mirror.rowBytes(), &props);
-        } else {
-            mirror.reset();
-            const SkSurfaceProps props = surfaceProps();
-            canvas = SkCanvas::MakeRasterDirect(i, p, rb, &props);
-        }
-        return canvas != nullptr;
-    }
-    bool viaMirror() const { return info.alphaType() == kUnpremul_SkAlphaType; }
     // The touched box into the mirror (unpremultiplied → premultiplied) and back out. Plain
     // loops: Skia's conversion goes through its raster pipeline at ≈ 10 ns per pixel, which
     // made a 30 × 20 fill cost 14 µs; opaque pixels, the common case, are a copy.
     void mirrorIn(const SkIRect &box) {
         for (int y = box.fTop; y < box.fBottom; y++) {
             const uint32_t *src = (const uint32_t *) ((const char *) pixels + y * rowBytes) + box.fLeft;
-            uint32_t *dst = mirror.getAddr32(box.fLeft, y);
+            uint32_t *dst = bitmap.getAddr32(box.fLeft, y);
             for (int x = box.fLeft; x < box.fRight; x++, src++, dst++) *dst = premultiplied(*src);
         }
     }
     void mirrorOut(const SkIRect &box) {
         for (int y = box.fTop; y < box.fBottom; y++) {
-            const uint32_t *src = mirror.getAddr32(box.fLeft, y);
+            const uint32_t *src = bitmap.getAddr32(box.fLeft, y);
             uint32_t *dst = (uint32_t *) ((char *) pixels + y * rowBytes) + box.fLeft;
             for (int x = box.fLeft; x < box.fRight; x++, src++, dst++) {
                 uint32_t p = *src, a = p >> 24;
@@ -212,17 +210,109 @@ struct RasterTarget {
     }
 };
 
+// The mirrors with pixels, for the budget; guarded by gMirrorsLock, which is taken with at most one mirror's own lock
+// held (the allocating one's), and takes others' only by trying
+static std::mutex gMirrorsLock;
+static std::vector<Mirror *> gMirrors;
+static std::atomic<uint64_t> gMirrorUse{0};
+static std::atomic<size_t> gMirrorBudget{128u << 20};
+static jfieldID gMirrorField = nullptr;
+
+// A mirror's pixels straight from the system, not through malloc: the allocators keep large freed blocks for reuse
+// (macOS' large cache held eight dropped 15 MB mirrors, 117 MB of the process' footprint; glibc's mmap threshold rises
+// past a freed block's size), so a mirror released with its image or for the budget stayed resident.
+void *mapPixels(size_t bytes) {
+#ifdef _WIN32
+    return VirtualAlloc(nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#else
+    void *p = mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    return p == MAP_FAILED ? nullptr : p;
+#endif
+}
+
+void unmapPixels(void *pixels, void *bytes) {
+#ifdef _WIN32
+    VirtualFree(pixels, 0, MEM_RELEASE);
+#else
+    munmap(pixels, (size_t) (uintptr_t) bytes);
+#endif
+}
+
+void Mirror::release() {   // gMirrorsLock held, and this mirror's own lock (or the surface gone)
+    if (!allocated()) return;
+    gMirrorBytes -= (jlong) bitmap.computeByteSize();
+    canvas.reset(); bitmap.reset(); tiles.clear(); tiles.shrink_to_fit(); epoch = 0;
+    gMirrors.back()->index = index; gMirrors[index] = gMirrors.back(); gMirrors.pop_back(); index = SIZE_MAX;
+}
+
+bool Mirror::allocate(const SkImageInfo &image) {   // this mirror's own lock held
+    const SkImageInfo info = image.makeAlphaType(kPremul_SkAlphaType);
+    std::lock_guard<std::mutex> registry(gMirrorsLock);
+    // the least recently drawn others give their pixels up until this one fits; one being drawn is skipped
+    const size_t budget = gMirrorBudget.load(std::memory_order_relaxed);
+    while ((size_t) gMirrorBytes.load() + info.computeMinByteSize() > budget) {
+        Mirror *oldest = nullptr;
+        for (Mirror *m : gMirrors) {
+            if (m == this) continue;
+            if (oldest == nullptr || m->used.load(std::memory_order_relaxed) < oldest->used.load(std::memory_order_relaxed)) {
+                if (m->lock.try_lock()) { if (oldest != nullptr) oldest->lock.unlock(); oldest = m; }
+            }
+        }
+        if (oldest == nullptr) break;
+        oldest->release();
+        oldest->lock.unlock();
+    }
+    const size_t bytes = info.computeMinByteSize();
+    void *pixels = SkImageInfo::ByteSizeOverflowed(bytes) ? nullptr : mapPixels(bytes);
+    if (pixels == nullptr) return false;
+    if (!bitmap.installPixels(info, pixels, info.minRowBytes(), unmapPixels, (void *) (uintptr_t) bytes)) return false;
+    const SkSurfaceProps props = surfaceProps();
+    canvas = SkCanvas::MakeRasterDirect(bitmap.info(), bitmap.getPixels(), bitmap.rowBytes(), &props);
+    if (canvas == nullptr) { bitmap.reset(); return false; }
+    tilesAcross = (info.width() + kTile - 1) / kTile; tilesDown = (info.height() + kTile - 1) / kTile;
+    tiles.assign((size_t) tilesAcross * tilesDown, 0);
+    epoch = 0;
+    gMirrorBytes += (jlong) bitmap.computeByteSize();
+    index = gMirrors.size();
+    gMirrors.push_back(this);
+    return true;
+}
+
+void disposeMirror(JNIEnv *env, jlong data) {   // the surface's Disposer record: no operation can be drawing through it
+    Mirror *mirror = (Mirror *) jlong_to_ptr(data);
+    { std::lock_guard<std::mutex> registry(gMirrorsLock); mirror->release(); }
+    delete mirror;
+}
+
+// One surface's canvas over the image's own pixels (INT_ARGB_PRE, INT_RGB), kept by the drawing thread between
+// operations. The pixel geometry Skia's LCD text needs to render sub-pixel masks at all (unknown geometry
+// downgrades sub-pixel edging to grayscale): see surfaceProps.
+struct RasterTarget {
+    SurfaceDataOps *ops = nullptr;
+    void *pixels = nullptr;          // what the lock returned last time; the canvas draws there
+    SkImageInfo info;
+    size_t rowBytes = 0;
+    std::unique_ptr<SkCanvas> canvas;
+    uint32_t stamp = 0;              // for the least-recently-used replacement
+
+    bool matches(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) const {
+        return ops == o && pixels == p && rowBytes == rb && info.width() == i.width() && info.height() == i.height()
+               && info.alphaType() == i.alphaType();
+    }
+    bool bind(SurfaceDataOps *o, void *p, const SkImageInfo &i, size_t rb) {
+        ops = o; pixels = p; info = i; rowBytes = rb;
+        const SkSurfaceProps props = surfaceProps();
+        canvas = SkCanvas::MakeRasterDirect(i, p, rb, &props);
+        return canvas != nullptr;
+    }
+};
+
 // J2D_SKIA_RASTER_PROBE (measurement only): 1 = lock and unlock, nothing else; 2 = + the canvas clip; 3 = everything
 static const int probe = getenv("J2D_SKIA_RASTER_PROBE") ? atoi(getenv("J2D_SKIA_RASTER_PROBE")) : 3;
 
 constexpr int kTargets = 4;
 thread_local std::array<RasterTarget, kTargets> targets;
 thread_local uint32_t targetStamp = 0;
-
-RasterTarget *peekTarget(SurfaceDataOps *ops) {
-    for (RasterTarget &t : targets) if (t.ops == ops && t.canvas) return &t;
-    return nullptr;
-}
 
 RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &info, size_t rowBytes) {
     RasterTarget *victim = &targets[0];
@@ -231,15 +321,9 @@ RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &in
         if (t.ops == ops && t.canvas) {
             // a target for this surface that does not match it is stale — a surface has one pixel format — and is
             // the one to rebind: the garbage collector moved the image's pixel array (a buffered image's pixels are a
-            // Java array), or the surface's native ops were freed and handed to a new image (another type over the
-            // same memory). A second target for the surface left this one where peekTarget finds it first, so every
-            // later operation saw another target and threw the INT_ARGB mirror away (2.2-2.8 x the loops' time on
-            // small AA rectangles, SkiaRasterFixedCostTest, whenever either happened during the run). A mirror target
-            // whose layout is unchanged keeps its mirror (it draws there; a moved array leaves it current, and a new
-            // surface's first operation invalidates it anyway: SKRasterSurfaceData starts as written by Java) and
-            // only follows the address; any other is bound afresh.
+            // Java array), or the surface's native ops were freed and handed to a new image. A second target for the
+            // surface would leave this one where the lookup finds it first.
             t.stamp = ++targetStamp;
-            if (t.viaMirror() && t.matches(ops, t.pixels, info, rowBytes)) { t.pixels = pixels; return &t; }
             return t.bind(ops, pixels, info, rowBytes) ? &t : nullptr;
         }
         if (t.stamp < victim->stamp) victim = &t;
@@ -248,52 +332,73 @@ RasterTarget *targetFor(SurfaceDataOps *ops, void *pixels, const SkImageInfo &in
     return victim->bind(ops, pixels, info, rowBytes) ? victim : nullptr;
 }
 
-// The locked destination for one operation: lock, draw through the thread's canvas, unlock.
+// The locked destination for one operation: lock, draw through the surface's mirror or the thread's canvas, unlock.
 struct Operation {
     // kClipped: the canvas clipped to the box (a shape may reach outside it); kBox: the canvas unclipped,
     // the caller draws the box and nothing else (save, clip and restore are a third of a small
-    // operation's cost); kDirect: the lock alone — the caller stores into the pixels, no canvas, no mirror
+    // operation's cost); kDirect: the lock alone — the caller stores into the pixels (and storeMirror), no canvas
     enum Mode { kClipped, kBox, kDirect };
-    JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; RasterTarget *target = nullptr; SkIRect box; Mode mode; bool ok = false;
+    JNIEnv *env; SurfaceDataOps *ops = nullptr; SurfaceDataRasInfo ras{}; SkIRect box; Mode mode; bool ok = false;
     jint pixelFormat = -1;
+    SkCanvas *base = nullptr;                  // the mirror's canvas or the thread's target's
+    Mirror *mirror = nullptr;                  // INT_ARGB: the surface's
+    std::unique_lock<std::mutex> mirrorLock;
+    bool keep = false;                         // the mirror's tiles were current when the operation began
     std::unique_ptr<SkCanvas> premultiplied;   // an INT_RGB destination under a rule that leaves alpha (forRule)
 
     Operation(JNIEnv *e, jobject sData, jint pf, jint x1, jint y1, jint x2, jint y2, Mode m = kClipped, bool mirrorKept = false) : env(e), mode(m), pixelFormat(pf) {
         ops = SurfaceData_GetOps(env, sData);
         if (ops == nullptr) return;
+        if (pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB) {
+            mirror = (Mirror *) jlong_to_ptr(env->GetLongField(sData, gMirrorField));
+            if (mirror == nullptr) { ops = nullptr; return; }
+            mirrorLock = std::unique_lock<std::mutex>(mirror->lock);
+            mirror->used.store(gMirrorUse.fetch_add(1, std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+            // before this operation's own lock bumps the serial: is the mirror still current?
+            keep = mirror->current(mirrorKept, ops);
+        }
         // the image's size, from the buffered image's own ops (SKRasterSurfaceData is one)
         const SurfaceDataBounds &image = ((BufImgSDOps *) ops)->rasbounds;
         const jint width = image.x2 - image.x1, height = image.y2 - image.y1;
         ras.bounds.x1 = x1; ras.bounds.y1 = y1; ras.bounds.x2 = x2; ras.bounds.y2 = y2;
-        // before this thread's own lock bumps the serial: is the thread's mirror of this surface still current?
-        RasterTarget *known = mode == kDirect ? nullptr : peekTarget(ops);
-        const bool keep = known != nullptr && known->mirrorCurrent(mirrorKept);
         if (ops->Lock(env, ops, &ras, SD_LOCK_WRITE) != SD_SUCCESS) { ops = nullptr; return; }
         ops->GetRasInfo(env, ops, &ras);
         if (ras.rasBase == nullptr || ras.bounds.x1 >= ras.bounds.x2 || ras.bounds.y1 >= ras.bounds.y2) return;
         box = SkIRect::MakeLTRB(ras.bounds.x1, ras.bounds.y1, ras.bounds.x2, ras.bounds.y2);
-        if (mode == kDirect) { ok = true; return; }
+        if (mode == kDirect) {
+            if (mirror != nullptr && mirror->allocated() && !keep) mirror->invalidate();
+            ok = true;
+            return;
+        }
         if (probe < 2) return;
         // rasBase points at pixel (0, 0); the info describes the whole image, so the canvas (and the
         // mirror) outlive the operation — a box-sized info rebuilt them for every call
-        target = targetFor(ops, ras.rasBase, infoFor(pixelFormat, width, height), (size_t) ras.scanStride);
-        if (target == nullptr) return;
-        if (target->viaMirror()) {
-            if (!(keep && target == known)) {
-                target->invalidateMirror();
+        const SkImageInfo info = infoFor(pixelFormat, width, height);
+        if (mirror != nullptr) {
+            if (!mirror->allocated() && !mirror->allocate(info)) return;
+            mirror->pixels = ras.rasBase; mirror->rowBytes = (size_t) ras.scanStride;
+            if (!keep) {
+                mirror->invalidate();
                 gMirrorInvalidations.fetch_add(1, std::memory_order_relaxed);
             }
-            target->prepare(box);
+            mirror->prepare(box);
+            base = mirror->canvas.get();
+        } else {
+            RasterTarget *target = targetFor(ops, ras.rasBase, info, (size_t) ras.scanStride);
+            if (target == nullptr) return;
+            base = target->canvas.get();
         }
         if (mode == kClipped) {
-            target->canvas->save();
-            target->canvas->clipIRect(box);
+            base->save();
+            base->clipIRect(box);
         }
         ok = true;
     }
     /** The row of the operation's pixels at y, from the box's left edge (Java's own pixel layout). */
     uint32_t *row(int y) { return (uint32_t *) ((char *) ras.rasBase + (size_t) y * ras.scanStride) + box.fLeft; }
-    SkCanvas *canvas() { return premultiplied ? premultiplied.get() : target->canvas.get(); }
+    /** A direct store's mirror, to store the premultiplied pixels into as well; null when it has none current. */
+    Mirror *storeMirror() { return mirror != nullptr && mirror->allocated() && keep ? mirror : nullptr; }
+    SkCanvas *canvas() { return premultiplied ? premultiplied.get() : base; }
     void clipSpans(const jint *spans, size_t count) {   // device coordinates: the mirror's origin is the image's
         SkRegion region;
         for (size_t i = 0; i + 3 < count; i += 4) region.op(SkIRect::MakeLTRB(spans[i], spans[i + 1], spans[i + 2], spans[i + 3]), SkRegion::kUnion_Op);
@@ -308,7 +413,7 @@ struct Operation {
      * what it leaves below 255 on release. SrcOver and the rest keep the opaque canvas. Call before clipSpans.
      */
     void forRule(jint rule) {
-        if (!ok || target == nullptr || pixelFormat != sun_java2d_skia_SKSurfaceData_PF_INT_RGB) return;
+        if (!ok || base == nullptr || pixelFormat != sun_java2d_skia_SKSurfaceData_PF_INT_RGB) return;
         switch (rule) {
             case java_awt_AlphaComposite_CLEAR: case java_awt_AlphaComposite_SRC: case java_awt_AlphaComposite_SRC_IN:
             case java_awt_AlphaComposite_DST_IN: case java_awt_AlphaComposite_SRC_OUT: case java_awt_AlphaComposite_DST_OUT:
@@ -325,7 +430,7 @@ struct Operation {
         if (premultiplied && mode == kClipped) premultiplied->clipIRect(box);
     }
     ~Operation() {
-        if (ok && target != nullptr) {
+        if (ok && base != nullptr) {
             if (premultiplied) {
                 premultiplied.reset();
                 for (int y = box.fTop; y < box.fBottom; y++) {
@@ -339,9 +444,11 @@ struct Operation {
                     }
                 }
             }
-            if (mode == kClipped) target->canvas->restore();
-            if (target->viaMirror()) { target->mirrorOut(box); target->epoch = tLastWriteLock; }
+            if (mode == kClipped) base->restore();
+            if (mirror != nullptr) mirror->mirrorOut(box);
         }
+        // the tiles are current as of this operation's own lock (a direct store invalidated or stored them)
+        if (ok && mirror != nullptr && mirror->allocated()) mirror->epoch = tLastWriteLock;
         if (ops != nullptr) { SurfaceData_InvokeRelease(env, ops, &ras); SurfaceData_InvokeUnlock(env, ops, &ras); }
     }
 };
@@ -613,11 +720,10 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillRectColor(JNIEnv *env, jclass clazz, 
         const uint32_t pixel = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE ? premultiplied((uint32_t) argb) : (uint32_t) argb;
         const int count = op.box.width();
         for (int y = op.box.fTop; y < op.box.fBottom; y++) std::fill_n(op.row(y), count, pixel);
-        // this thread's mirror of the surface, if it has one, gets the same pixels and stays current
-        if (RasterTarget *t = peekTarget(op.ops); t != nullptr && t->viaMirror()) {
-            if (!t->mirrorCurrent(mirrorKept)) t->invalidateMirror();
-            else { const uint32_t mp = premultiplied((uint32_t) argb); for (int y = op.box.fTop; y < op.box.fBottom; y++) std::fill_n(t->mirror.getAddr32(op.box.fLeft, y), count, mp); }
-            t->epoch = tLastWriteLock;
+        // the surface's mirror, if current, gets the same pixels and stays current
+        if (Mirror *m = op.storeMirror()) {
+            const uint32_t mp = premultiplied((uint32_t) argb);
+            for (int y = op.box.fTop; y < op.box.fBottom; y++) std::fill_n(m->bitmap.getAddr32(op.box.fLeft, y), count, mp);
         }
         return;
     }
@@ -645,13 +751,13 @@ const jlong kLongOneHalf = ((jlong) 1) << 31;
 inline jlong pgramInitX(jint starty, double x, double y, double slope) { return dblToLong(x + slope * (starty + 0.5 - y)) + kLongOneHalf - 1; }
 
 struct PgramStore {
-    Operation &op; uint32_t pixel; RasterTarget *target; uint32_t mirrorPixel;
+    Operation &op; uint32_t pixel; Mirror *mirror; uint32_t mirrorPixel;
     void spans(jint lox, jint loy, jint hix, jint hiy, jlong leftx, jlong dleftx, jlong rightx, jlong drightx) {
         for (jint y = loy; y < hiy; y++) {
             jint lx = std::max(lox, wholeOfLong(leftx)), rx = std::min(hix, wholeOfLong(rightx));
             if (lx < rx) {
                 std::fill_n(op.row(y) + (lx - op.box.fLeft), rx - lx, pixel);
-                if (target != nullptr) std::fill_n(target->mirror.getAddr32(lx, y), rx - lx, mirrorPixel);
+                if (mirror != nullptr) std::fill_n(mirror->bitmap.getAddr32(lx, y), rx - lx, mirrorPixel);
             }
             leftx += dleftx; rightx += drightx;
         }
@@ -695,13 +801,7 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillParallelogramColor(JNIEnv *env, jclas
     Operation op(env, sData, pixelFormat, ix1, iy1, ix2, iy2, Operation::kDirect, mirrorKept);
     if (!op.ok) return JNI_TRUE;
     const uint32_t pixel = pixelFormat == sun_java2d_skia_SKSurfaceData_PF_INT_ARGB_PRE ? premultiplied((uint32_t) argb) : (uint32_t) argb;
-    RasterTarget *target = peekTarget(op.ops);
-    if (target != nullptr && target->viaMirror()) {
-        if (!target->mirrorCurrent(mirrorKept)) { target->invalidateMirror(); target = nullptr; }
-    } else {
-        target = nullptr;
-    }
-    PgramStore st{op, pixel, target, premultiplied((uint32_t) argb)};
+    PgramStore st{op, pixel, op.storeMirror(), premultiplied((uint32_t) argb)};
     const double lslope = dy1 == 0 ? 0 : dx1 / dy1, rslope = dy2 == 0 ? 0 : dx2 / dy2;
     const jlong ldx = dblToLong(lslope), rdx = dblToLong(rslope);
     const double ex1 = x0 + dx1, ey1 = y0 + dy1, ex2 = x0 + dx2, ey2 = y0 + dy2;   // the legs' corners
@@ -720,7 +820,6 @@ Java_sun_java2d_skia_SKRasterShapePipe_fillParallelogramColor(JNIEnv *env, jclas
     // bottom triangle
     { jint loy = std::max(std::max(cy1, cy2), iy1), hiy = iy2;
       if (loy < hiy) st.spans(ix1, loy, ix2, hiy, pgramInitX(loy, ex1, ey1, rslope), rdx, pgramInitX(loy, ex2, ey2, lslope), ldx); }
-    if (target != nullptr) target->epoch = tLastWriteLock;
     return JNI_TRUE;
 }
 
@@ -1107,6 +1206,28 @@ JNIEXPORT jlong JNICALL
 Java_sun_java2d_skia_SKEnvironment_rasterMirrorInvalidationsNative(JNIEnv *env, jclass clazz)
 {
     return gMirrorInvalidations.load(std::memory_order_relaxed);
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_rasterMirrorBytesNative(JNIEnv *env, jclass clazz)
+{
+    return gMirrorBytes.load(std::memory_order_relaxed);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_java2d_skia_SKRasterSurfaceData_initMirror(JNIEnv *env, jobject self, jlong budget)
+{
+    if (gMirrorField == nullptr) {
+        jclass clazz = env->GetObjectClass(self);
+        gMirrorField = env->GetFieldID(clazz, "mirror", "J");
+        if (gMirrorField == nullptr) return JNI_FALSE;
+    }
+    gMirrorBudget.store((size_t) std::max<jlong>(0, budget), std::memory_order_relaxed);
+    Mirror *mirror = new (std::nothrow) Mirror();
+    if (mirror == nullptr) return JNI_FALSE;
+    env->SetLongField(self, gMirrorField, ptr_to_jlong(mirror));
+    Disposer_AddRecord(env, self, disposeMirror, ptr_to_jlong(mirror));
+    return env->ExceptionCheck() ? JNI_FALSE : JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL

@@ -466,6 +466,13 @@ public final class SKEnvironment {
 
     private static native long rasterMirrorInvalidationsNative();
 
+    /** The pixel memory, in bytes, that INT_ARGB raster surfaces' premultiplied mirrors hold, for tests. */
+    public static long rasterMirrorBytes() {
+        return rasterSurfaces() ? rasterMirrorBytesNative() : 0;
+    }
+
+    private static native long rasterMirrorBytesNative();
+
     /** Strokes on raster surfaces that Skia's stroker built (not Java's outline), for tests. */
     public static long rasterStrokesBySkia() {
         return SKRasterShapePipe.strokesBySkia.get();
