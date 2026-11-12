@@ -101,7 +101,7 @@ public final class WLKineticScrollPhysics {
         elapsedSeconds += Math.max(0, elapsedMs) / 1000;
         final double decay = Math.exp(-FRICTION * elapsedSeconds);
         final boolean finished = Math.hypot(velocityX, velocityY) * decay < STOP_VELOCITY;
-        final double travelled = finished ? 1 : 1 - decay;
+        final double travelled = 1 - decay;
         deltaX = velocityX / FRICTION * travelled - positionX;
         deltaY = velocityY / FRICTION * travelled - positionY;
         positionX += deltaX;

@@ -31,22 +31,28 @@ import sun.awt.wl.WLKineticScrollPhysics;
  * @run main WLKineticScrollPhysicsTest
  */
 public class WLKineticScrollPhysicsTest {
+    private static final double FRICTION = 4;
+    private static final double STOP_VELOCITY = 10;
+
     public static void main(String[] args) {
         // 10 units per 10 ms = 1000 units/s, with friction 4 total distance is 1000 / 4 = 250
         var p = new WLKineticScrollPhysics();
         addSamples(p, 0, 10, -10);
         check(p.startFling(100));
-        double sumX = 0, sumY = 0;
+        double sumX = 0, sumY = 0, previousDeltaX = Double.MAX_VALUE;
         int ticks = 0;
         while (p.advance(8)) {
             check(p.getDeltaX() >= 0 && p.getDeltaY() <= 0);
             sumX += p.getDeltaX();
             sumY += p.getDeltaY();
             check(++ticks < 10_000);
+            previousDeltaX = p.getDeltaX();
         }
+        // the fling does not jump at its end
+        check(p.getDeltaX() < previousDeltaX);
         sumX += p.getDeltaX();
         sumY += p.getDeltaY();
-        check(Math.abs(sumX - 250) < 1e-6 && Math.abs(sumY + 250) < 1e-6);
+        check(equalsFlingDistance(sumX, 250) && equalsFlingDistance(sumY, -250));
         check(!p.isFlinging());
 
         // pause > 150 ms before stop
@@ -63,7 +69,7 @@ public class WLKineticScrollPhysicsTest {
             sumX += p.getDeltaX();
         }
         sumX += p.getDeltaX();
-        check(Math.abs(sumX - 50 * 1000 / 150.0 / 4) < 1e-6);
+        check(equalsFlingDistance(sumX, 50 * 1000 / 150.0 / 4));
 
         // too slow
         p = new WLKineticScrollPhysics();
@@ -80,14 +86,14 @@ public class WLKineticScrollPhysicsTest {
             sumX += p.getDeltaX();
         }
         sumX += p.getDeltaX();
-        check(Math.abs(sumX - 8000 / 4.0) < 1e-6);
+        check(equalsFlingDistance(sumX, 8000 / 4.0));
 
         // uint32 timestamp overflow
         p = new WLKineticScrollPhysics();
         addSamples(p, 0xFFFFFFF0L, 10, 0);
         check(p.startFling(0xFFFFFFF0L + 100));
         p.advance(1);
-        check(Math.abs(p.getDeltaX() - 250 * (1 - Math.exp(-4 * 0.001))) < 1e-6);
+        check(equals(p.getDeltaX(), 250 * (1 - Math.exp(-4 * 0.001))));
 
         p = new WLKineticScrollPhysics();
         addSamples(p, 0, 10, 0);
@@ -106,5 +112,14 @@ public class WLKineticScrollPhysicsTest {
         if (!condition) {
             throw new RuntimeException();
         }
+    }
+
+    private static boolean equals(double a, double b) {
+        return Math.abs(a - b) < 1e-6;
+    }
+
+    // a fling is over once it is slower than STOP_VELOCITY, i.e. up to STOP_VELOCITY / FRICTION before the full distance
+    private static boolean equalsFlingDistance(double distance, double fullDistance) {
+        return Math.abs(fullDistance - distance) < STOP_VELOCITY / FRICTION;
     }
 }
