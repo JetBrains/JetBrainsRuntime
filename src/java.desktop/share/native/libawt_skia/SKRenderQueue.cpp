@@ -504,6 +504,15 @@ Java_sun_java2d_skia_SKRenderQueue_flushBuffer(JNIEnv *env, jobject rq, jlong bu
     return flushEntries(env, b, limit, presentAll == JNI_TRUE);
 }
 
+// the flusher's timeout with nothing queued: what Graphite's caches stopped using goes even while nothing is drawn
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKRenderQueue_purgeIdleResources(JNIEnv *env, jobject rq)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    SKPlatformScope scope;
+    SKBackend_PurgeIdleResources();
+}
+
 // ---- direct entry points (flushAndInvokeNow: operations larger than the render buffer) ----
 
 JNIEXPORT void JNICALL

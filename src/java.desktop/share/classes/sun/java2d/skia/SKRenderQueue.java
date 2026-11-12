@@ -142,6 +142,9 @@ public final class SKRenderQueue extends RenderQueue {
      */
     private native boolean flushBuffer(long buf, int limit, boolean presentAll);
 
+    /** What Graphite's caches have not used for {@code sun.java2d.skia.gpuCachePurgeSeconds}, at most once a second. Queue lock held. */
+    private native void purgeIdleResources();
+
     /** Windows drawn into but not presented yet, or work not submitted; the flusher's timeout flush sends them. */
     private volatile boolean pendingPresent;
 
@@ -297,7 +300,11 @@ public final class SKRenderQueue extends RenderQueue {
                             if (buf.position() > 0 || pendingPresent) {
                                 needsFlush = true;
                             } else {
-                                unlock();
+                                try {
+                                    purgeIdleResources();
+                                } finally {
+                                    unlock();
+                                }
                             }
                         }
                     } catch (InterruptedException e) {

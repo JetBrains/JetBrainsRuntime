@@ -55,6 +55,11 @@
 #include "include/core/SkMatrix.h"
 #include "include/core/SkPathBuilder.h"
 #include "include/gpu/graphite/ContextOptions.h"
+#include "include/core/SkTraceMemoryDump.h"
+#include <map>
+#include <chrono>
+#include <string>
+#include <cstring>
 #include "include/core/SkPixmap.h"
 #include "include/core/SkRect.h"
 #include "include/core/SkSamplingOptions.h"
@@ -4118,10 +4123,38 @@ void SKBackend_FlushRecording(SKConfigContext *cc) {
     }
 }
 
+// Graphite purges a purgeable resource (one no recording uses any more) only when a budget forces it out, 256 MB the
+// recorder's and 256 MB the context's, unless its client asks: the client is to purge what it has not used for a while
+// (performDeferredCleanup). The backend never asked, so over RenderPerfTest the recorder kept 194 MB of upload and
+// vertex buffers it had finished with (queued frames each take fresh ones; read back by SKEnvironment.gpuMemoryReport)
+// and the process ran 260 MB above Metal's. Now, at most once a second, after a submit and on the idle flusher's
+// timeout, what was not used for sun.java2d.skia.gpuCachePurgeSeconds goes (0: never, Graphite's budgets alone).
+static std::chrono::milliseconds gPurgeAge{5000};
+static std::chrono::steady_clock::time_point gLastPurge;
+
+void SKBackend_SetGpuCachePurgeAge(jint seconds) {
+    gPurgeAge = std::chrono::milliseconds((jlong) std::max(0, seconds) * 1000);
+}
+
+void SKBackend_PurgeIdleResources() {
+    if (gPurgeAge.count() <= 0) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (now - gLastPurge < std::chrono::seconds(1)) return;
+    gLastPurge = now;
+    for (auto &[config, cc] : gContexts) {
+        if (!cc->recorder || !cc->context) continue;
+        cc->recorder->performDeferredCleanup(gPurgeAge);
+        cc->context->performDeferredCleanup(gPurgeAge);
+    }
+}
+
 static void submitOne(SKConfigContext *cc, bool syncToCpu) {
     SKBackend_FlushRecording(cc);
-    SKStatsScope submitStats(syncToCpu ? SK_SPAN_SUBMIT_WAIT : SK_SPAN_SUBMIT);
-    cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
+    {
+        SKStatsScope submitStats(syncToCpu ? SK_SPAN_SUBMIT_WAIT : SK_SPAN_SUBMIT);
+        cc->context->submit(syncToCpu ? SyncToCpu::kYes : SyncToCpu::kNo);
+    }
+    SKBackend_PurgeIdleResources();
 }
 
 // Submits the pending contexts in their order, except `except` (which its caller submits next).
@@ -4149,6 +4182,71 @@ void SKBackend_Submit(SKConfigContext *cc, bool syncToCpu) {
     }
     submitPending(cc, false);
     submitOne(cc, syncToCpu);
+}
+
+// Diagnostics (SKEnvironment.gpuMemoryReport): what Graphite's resource caches hold, per context — the
+// budgets and their use, then every resource the recorder's and the context's caches enumerate, by type and label
+// (count, bytes, purgeable bytes; budgeted or not). Called with the render queue locked.
+namespace {
+struct MemoryTally : SkTraceMemoryDump {
+    struct Row { int count = 0; uint64_t bytes = 0, purgeable = 0; };
+    struct Entry { std::string type, label; uint64_t bytes = 0, purgeable = 0; bool budgeted = true, wrapped = false; };
+    std::map<std::string, Entry> entries;
+    void dumpNumericValue(const char *name, const char *valueName, const char *, uint64_t value) override {
+        if (!strcmp(valueName, "size")) entries[name].bytes = value;
+        else if (!strcmp(valueName, "purgeable_size")) entries[name].purgeable = value;
+    }
+    void dumpStringValue(const char *name, const char *valueName, const char *value) override {
+        if (!strcmp(valueName, "type")) entries[name].type = value;
+        else if (!strcmp(valueName, "label")) entries[name].label = value;
+    }
+    void setMemoryBacking(const char *, const char *, const char *) override {}
+    void setDiscardableMemoryBacking(const char *, const SkDiscardableMemory &) override {}
+    LevelOfDetail getRequestedDetails() const override { return LevelOfDetail::kObjectsBreakdowns_LevelOfDetail; }
+    void dumpWrappedState(const char *name, bool wrapped) override { entries[name].wrapped = wrapped; }
+    void dumpBudgetedState(const char *name, bool budgeted) override { entries[name].budgeted = budgeted; }
+    void report(std::string &out, const char *owner) {
+        std::map<std::string, Row> rows;
+        for (auto &[name, e] : entries) {
+            std::string key = std::string(owner) + " " + e.type + " [" + e.label + "]" + (e.wrapped ? " wrapped" : "") + (e.budgeted ? "" : " unbudgeted");
+            Row &r = rows[key]; r.count++; r.bytes += e.bytes; r.purgeable += e.purgeable;
+        }
+        char line[512];
+        for (auto &[key, r] : rows) {
+            snprintf(line, sizeof line, "  %-90s %5d  %9.2f MB  purgeable %9.2f MB\n", key.c_str(), r.count, r.bytes / 1048576.0, r.purgeable / 1048576.0);
+            out += line;
+        }
+    }
+};
+}
+
+jlong SKBackend_GpuCacheBytes() {
+    jlong bytes = 0;
+    for (auto &[config, cc] : gContexts) {
+        if (cc->recorder && cc->context) bytes += (jlong) (cc->recorder->currentBudgetedBytes() + cc->context->currentBudgetedBytes());
+    }
+    return bytes;
+}
+
+std::string SKBackend_GpuMemoryReport() {
+    std::string out;
+    char line[512];
+    for (auto &[config, cc] : gContexts) {
+        if (!cc->recorder || !cc->context) continue;
+        submitPending(cc, false);
+        submitOne(cc, true);
+        snprintf(line, sizeof line, "context %p: recorder %.2f of %.2f MB budgeted (%.2f MB purgeable), context %.2f of %.2f MB (%.2f MB purgeable)\n",
+                 (void *) config, cc->recorder->currentBudgetedBytes() / 1048576.0, cc->recorder->maxBudgetedBytes() / 1048576.0,
+                 cc->recorder->currentPurgeableBytes() / 1048576.0, cc->context->currentBudgetedBytes() / 1048576.0,
+                 cc->context->maxBudgetedBytes() / 1048576.0, cc->context->currentPurgeableBytes() / 1048576.0);
+        out += line;
+        MemoryTally recorder, context;
+        cc->recorder->dumpMemoryStatistics(&recorder);
+        cc->context->dumpMemoryStatistics(&context);
+        recorder.report(out, "recorder");
+        context.report(out, "context ");
+    }
+    return out;
 }
 
 static std::atomic<jlong> gFlushes{0};   // written by the flusher, read by any Java thread

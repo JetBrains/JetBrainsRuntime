@@ -82,6 +82,20 @@ Java_sun_java2d_skia_SKEnvironment_flushesNative(JNIEnv *env, jclass clazz)
     return SKBackend_Flushes();
 }
 
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_skia_SKEnvironment_gpuCacheBytesNative(JNIEnv *env, jclass clazz)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    return SKBackend_GpuCacheBytes();
+}
+
+JNIEXPORT jstring JNICALL
+Java_sun_java2d_skia_SKEnvironment_gpuMemoryReportNative(JNIEnv *env, jclass clazz)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    return env->NewStringUTF(SKBackend_GpuMemoryReport().c_str());
+}
+
 JNIEXPORT jdoubleArray JNICALL
 Java_sun_java2d_skia_SKEnvironment_benchGraphiteNative(JNIEnv *env, jclass clazz, jint kind, jint draws, jint frames)
 {
@@ -95,6 +109,13 @@ Java_sun_java2d_skia_SKEnvironment_benchGraphiteNative(JNIEnv *env, jclass clazz
         env->SetDoubleArrayRegion(result, 0, 4, out);
     }
     return result;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_setGpuCachePurgeNative(JNIEnv *env, jclass clazz, jint seconds)
+{
+    SK_ENTRY_LOCK;   // the flusher may be running a handed-off flush (SKBackend_EntryMutex)
+    SKBackend_SetGpuCachePurgeAge(seconds);
 }
 
 JNIEXPORT void JNICALL

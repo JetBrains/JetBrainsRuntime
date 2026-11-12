@@ -190,6 +190,13 @@ public final class SKEnvironment {
      */
     private static final int STRIKE_CACHE_MB = Integer.getInteger("sun.java2d.skia.strikeCache", 64);
     /**
+     * {@code sun.java2d.skia.gpuCachePurgeSeconds=<seconds>} (default 5): Graphite's resource caches give back what no
+     * drawing has used for that long, checked once a second (also while nothing is drawn). Graphite itself purges only
+     * at its budgets (256 MB the recorder's, as much the context's), which queued frames' fresh upload and vertex
+     * buffers fill and then keep (194 MB over RenderPerfTest). 0: never, the budgets alone.
+     */
+    private static final int GPU_CACHE_PURGE_SECONDS = Integer.getInteger("sun.java2d.skia.gpuCachePurgeSeconds", 5);
+    /**
      * {@code sun.java2d.skia.text.blobCache=<entries>} (default 16384 since 2026-11-06): Skia's text path keeps the
      * text blobs of the last {@code entries} distinct glyph runs and draws a repeated run from the same blob, so
      * Graphite's cache of prepared text, keyed by the blob's identity, can reuse it across frames. 0: off, every run
@@ -718,6 +725,7 @@ public final class SKEnvironment {
                 if (STRIKE_CACHE_MB > 0) {
                     setStrikeCacheLimitNative(STRIKE_CACHE_MB * 1024L * 1024L);
                 }
+                setGpuCachePurgeNative(GPU_CACHE_PURGE_SECONDS);
                 if (TEXT_BLOB_CACHE > 0) {
                     setTextBlobCacheNative(TEXT_BLOB_CACHE);
                 }
@@ -782,6 +790,8 @@ public final class SKEnvironment {
     private static native long flushesNative();
 
     private static native void setStrikeCacheLimitNative(long bytes);
+
+    private static native void setGpuCachePurgeNative(int seconds);
 
     /**
      * The text blob cache ({@code sun.java2d.skia.text.blobCache}) at run time (tests, diagnostics): its capacity
@@ -886,6 +896,43 @@ public final class SKEnvironment {
     }
 
     private static native double[] benchGraphiteNative(int kind, int draws, int frames);
+
+    /**
+     * Diagnostics: what Graphite's resource caches hold, per context (the budgets and their use, then the resources
+     * by type and label), after the pending work is submitted and finished. {@code null} without the Skia pipe.
+     */
+    public static String gpuMemoryReport() {
+        if (!isSkiaEnabled()) {
+            return null;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+            return gpuMemoryReportNative();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native String gpuMemoryReportNative();
+
+    /** The bytes Graphite's resource caches hold within their budgets (purgeable or not), for tests; -1 without the Skia pipe. */
+    public static long gpuCacheBytes() {
+        if (!isSkiaEnabled()) {
+            return -1;
+        }
+        SKRenderQueue rq = SKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+            return gpuCacheBytesNative();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    private static native long gpuCacheBytesNative();
 
     /**
      * EXPERIMENT (x64hw, 2026-11-04), diagnostics: the same floor for Ganesh, Skia's older GPU backend, on

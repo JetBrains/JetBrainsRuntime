@@ -31,6 +31,7 @@
 // a single render state owned by the flusher thread.
 
 #include <functional>
+#include <string>
 
 #include "SKPlatform.h"
 #include "SKGlyphCache.h"
@@ -320,6 +321,10 @@ jlong SKBackend_Recordings();                                  // how many recor
 // state holds this (recursive: a flush calls back into Java, which may call an entry point).
 std::recursive_mutex &SKBackend_EntryMutex();
 #define SK_ENTRY_LOCK std::lock_guard<std::recursive_mutex> skEntryLock(SKBackend_EntryMutex())
-bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]);   // Graphite's per-draw floor (SKEnvironment.benchGraphite)
+bool SKBackend_BenchGraphite(int kind, int draws, int frames, double out[4]);
+std::string SKBackend_GpuMemoryReport();
+jlong SKBackend_GpuCacheBytes();
+void SKBackend_SetGpuCachePurgeAge(jint seconds);   // sun.java2d.skia.gpuCachePurgeSeconds, 0 = never
+void SKBackend_PurgeIdleResources();   // what Graphite's caches have not used for that long, at most once a second   // what Graphite's resource caches hold within their budgets (SKEnvironment.gpuCacheBytes)   // Graphite's caches by resource type (SKEnvironment.gpuMemoryReport)   // Graphite's per-draw floor (SKEnvironment.benchGraphite)
 
 #endif /* SKBackend_h_Included */
