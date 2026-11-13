@@ -43,10 +43,9 @@ public class CGLLayer extends CFLayer {
     private int scale = 1;
 
     public CGLLayer(LWWindowPeer peer) {
-        super(0, true);
+        super(0, true, peer);
 
         setPtr(nativeCreateLayer());
-        this.peer = peer;
 
         CGraphicsConfig gc = (CGraphicsConfig)getGraphicsConfiguration();
         if (logger.isLoggable(PlatformLogger.Level.FINE)) {
@@ -58,7 +57,7 @@ public class CGLLayer extends CFLayer {
     }
 
     public SurfaceData replaceSurfaceData(int scale) {
-        if (getBounds().isEmpty()) {
+        if (getBounds().isEmpty() || isWindowSurfaceDisabled()) {
             surfaceData = NullSurfaceData.theInstance;
             return surfaceData;
         }
