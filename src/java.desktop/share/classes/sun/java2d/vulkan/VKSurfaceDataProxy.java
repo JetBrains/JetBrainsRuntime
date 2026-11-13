@@ -54,9 +54,9 @@ public class VKSurfaceDataProxy extends SurfaceDataProxy {
         if (!VKEnv.isSurfaceDataAccelerated()) {
             return false; // no need to create proxies
         }
-        // Exclude CUSTOM composites
+        // Exclude CUSTOM composites, also XOR composite with non-opaque sources (it gives different results because of pre-multiplication)
         // Exclude textures with bgColor (except when it's provably unused)
-        return (comp.isDerivedFrom(CompositeType.AnyAlpha) || comp.isDerivedFrom(CompositeType.Xor)) &&
+        return (comp.isDerivedFrom(CompositeType.AnyAlpha) || (comp.isDerivedFrom(CompositeType.Xor) && transparency == Transparency.OPAQUE)) &&
                 (bgColor == null || transparency == Transparency.OPAQUE);
     }
 
