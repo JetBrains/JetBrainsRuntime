@@ -29,12 +29,18 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.pipe.hw.AccelSurface;
+import sun.util.logging.PlatformLogger;
 
 import java.awt.GraphicsConfiguration;
 import java.awt.Transparency;
 import java.awt.image.VolatileImage;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKVolatileSurfaceManager");
+    private static final AtomicInteger oomCaught = new AtomicInteger(0);
+    private static final int OOM_MAX_LOG_LINES = 10;
 
     private final boolean accelerationEnabled;
 
@@ -70,7 +76,12 @@ public class VKVolatileSurfaceManager extends VolatileSurfaceManager {
                 type = AccelSurface.RT_TEXTURE;
             }
             return new VKOffScreenSurfaceData(gc, vImg.getWidth(), vImg.getHeight(), vImg, vImg.getTransparency(), type);
-        } catch (NullPointerException | OutOfMemoryError ignored) {
+        } catch (NullPointerException | OutOfMemoryError e) {
+            if (oomCaught.getAndIncrement() < OOM_MAX_LOG_LINES) {
+                if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                    log.info("Failed to initAcceleratedSurface (size: " + vImg.getWidth() + "x" + vImg.getHeight() + ")", e);
+                }
+            }
             return null;
         }
     }

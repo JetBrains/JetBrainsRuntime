@@ -28,11 +28,17 @@ package sun.java2d.vulkan;
 import sun.java2d.SurfaceData;
 import sun.java2d.SurfaceDataProxy;
 import sun.java2d.loops.CompositeType;
+import sun.util.logging.PlatformLogger;
 
 import java.awt.Color;
 import java.awt.Transparency;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class VKSurfaceDataProxy extends SurfaceDataProxy {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.vulkan.VKSurfaceDataProxy");
+    private static final AtomicInteger oomCaught = new AtomicInteger(0);
+    private static final int OOM_MAX_LOG_LINES = 10;
 
     public static SurfaceDataProxy createProxy(SurfaceData srcData, VKGraphicsConfig dstConfig) {
         if (srcData instanceof VKSurfaceData) {
@@ -67,7 +73,12 @@ public class VKSurfaceDataProxy extends SurfaceDataProxy {
         if (cachedData == null) {
             try {
                 cachedData = vkgc.createManagedSurface(w, h, transparency);
-            } catch (OutOfMemoryError ignored) {
+            } catch (OutOfMemoryError e) {
+                if (oomCaught.getAndIncrement() < OOM_MAX_LOG_LINES) {
+                    if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                        log.info("Failed to create a proxy (size: " + w + "x" + h + ")", e);
+                    }
+                }
                 return null;
             }
         }
