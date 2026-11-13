@@ -108,14 +108,14 @@ static VKShaders* VKPipelines_CreateShaders(VKDevice* device) {
     return shaders;
 }
 
-#define MAKE_INPUT_STATE(NAME, TYPE, ...)                                                  \
+#define MAKE_INPUT_STATE(NAME, INPUT_RATE, TYPE, ...)                                      \
 const VkFormat INPUT_STATE_ATTRIBUTE_FORMATS_##NAME[] = { __VA_ARGS__ };                   \
 VkVertexInputAttributeDescription                                                          \
     INPUT_STATE_ATTRIBUTES_##NAME[SARRAY_COUNT_OF(INPUT_STATE_ATTRIBUTE_FORMATS_##NAME)];  \
 const VkVertexInputBindingDescription INPUT_STATE_BINDING_##NAME = {                       \
         .binding = 0,                                                                      \
         .stride = sizeof(TYPE),                                                            \
-        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX                                           \
+        .inputRate = INPUT_RATE                                                            \
 };                                                                                         \
 const VkPipelineVertexInputStateCreateInfo INPUT_STATE_##NAME = {                          \
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,                \
@@ -149,13 +149,12 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     } ShaderStages;
     DECL_ARRAY(ShaderStages, stages, count);
     typedef struct {
-        uint32_t inAlphaType, outAlphaType, shaderVariant, shaderModifier;
+        uint32_t shaderVariant;
+        uint32_t shaderModifier;
     } SpecializationData;
     const VkSpecializationMapEntry SPECIALIZATION_ENTRIES[] = {
-        { 0,  0, 4 },
-        { 1,  4, 4 },
-        { 2,  8, 4 },
-        { 3, 12, 4 }
+        { .constantID = 0,  .offset = 0, .size = 4 },
+        { .constantID = 1,  .offset = 4, .size = 4 },
     };
     typedef struct {
         VkSpecializationInfo info;
@@ -187,26 +186,10 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     };
 
     for (uint32_t i = 0; i < count; i++) {
-        const VKCompositeState* compositeState =
-            VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque);
-        pipelineInfos[i].outAlphaType = compositeState->outAlphaType;
         // Init default pipeline state. Some members are left uninitialized:
         // - pStages (but stageCount is set to 2)
         // - pVertexInputState
         // - createInfo.layout
-        specializations[i] = (Specialization) {
-            .info = {
-                .mapEntryCount = SARRAY_COUNT_OF(SPECIALIZATION_ENTRIES),
-                .pMapEntries = SPECIALIZATION_ENTRIES,
-                .dataSize = sizeof(SpecializationData),
-                .pData = &specializations[i].data
-            },
-            .data = {
-                descriptors[i].inAlphaType, pipelineInfos[i].outAlphaType, (uint32_t) descriptors[i].shaderVariant,
-                (descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) |
-                (descriptors[i].shader & SHADER_MASK ? 2 : 0)
-            }
-        };
         inputAssemblyStates[i] = (VkPipelineInputAssemblyStateCreateInfo) {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = descriptors[i].topology
@@ -254,7 +237,6 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             .pRasterizationState = &rasterizationState,
             .pMultisampleState = &multisampleState,
             .pDepthStencilState = &depthStencilStates[i],
-            .pColorBlendState = &compositeState->blendState,
             .pDynamicState = &dynamicStates[i],
             .renderPass = renderPassContext->renderPass[descriptors[i].stencilMode != STENCIL_MODE_NONE],
             .subpass = 0,
@@ -264,60 +246,38 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     }
 
     // Setup input states.
-    MAKE_INPUT_STATE(PRIMITIVE, VKVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32_UINT);
-    MAKE_INPUT_STATE(MASK_FILL, VKMaskFillVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32_UINT);
-    MAKE_INPUT_STATE(BLIT, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
-    MAKE_INPUT_STATE(CLIP, VKIntVertex, VK_FORMAT_R32G32_SINT);
+    MAKE_INPUT_STATE(PRIMITIVE, VK_VERTEX_INPUT_RATE_VERTEX, VKVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32_UINT);
+    MAKE_INPUT_STATE(MASK_FILL, VK_VERTEX_INPUT_RATE_VERTEX, VKMaskFillVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32_UINT);
+    MAKE_INPUT_STATE(BLIT, VK_VERTEX_INPUT_RATE_VERTEX, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
+    MAKE_INPUT_STATE(CLIP, VK_VERTEX_INPUT_RATE_VERTEX, VKIntVertex, VK_FORMAT_R32G32_SINT);
+
+    typedef struct {
+        const VkPipelineVertexInputStateCreateInfo* vertexInputState;
+        VkPipelineShaderStageCreateInfo vertexShader;
+    } VKPipelineVertexSetupInfo;
+
+    const VKPipelineVertexSetupInfo VERTEX_SETUP_INFOS[] = {
+        [SHADER_COVERAGE_NONE] = { .vertexInputState = &INPUT_STATE_PRIMITIVE, .vertexShader = shaders->primitive_vert },
+        [SHADER_COVERAGE_MASK] = { .vertexInputState = &INPUT_STATE_MASK_FILL, .vertexShader = shaders->mask_fill_vert },
+    };
 
     for (uint32_t i = 0; i < count; i++) {
         // Setup shader-specific pipeline parameters.
-        switch ((int) descriptors[i].shader) {
-        case SHADER_COLOR:
-            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
-            createInfos[i].layout = pipelineContext->commonPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->color_vert, shaders->color_frag }};
-            break;
-        case SHADER_COLOR | SHADER_MASK:
-            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_color_vert, shaders->mask_fill_color_frag }};
-            break;
-        case SHADER_GRADIENT:
-            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_frag }};
-            break;
-        case SHADER_GRADIENT | SHADER_MASK:
-            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_frag }};
-            break;
-        case SHADER_GRADIENT_LINEAR_PUSH:
-            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_linear_push_frag }};
-            break;
-        case SHADER_GRADIENT_LINEAR_PUSH | SHADER_MASK:
-            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_linear_push_frag }};
-            break;
-        case SHADER_GRADIENT_RADIAL_PUSH:
-            createInfos[i].pVertexInputState = &INPUT_STATE_PRIMITIVE;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->primitive_vert, shaders->gradient_radial_push_frag }};
-            break;
-        case SHADER_GRADIENT_RADIAL_PUSH | SHADER_MASK:
-            createInfos[i].pVertexInputState = &INPUT_STATE_MASK_FILL;
-            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
-            stages[i] = (ShaderStages) {{ shaders->mask_fill_vert, shaders->gradient_radial_push_frag }};
-            break;
+        VKShaderCoverageSource coverageSource = VKShader_GetCoverageSource(descriptors[i].shader);
+        VKShader baseShader = descriptors[i].shader & SHADER_ENUM_BASE_MASK;
+        switch ((int) baseShader) {
         case SHADER_BLIT:
+            if (coverageSource != SHADER_COVERAGE_NONE) {
+                VK_FATAL_ERROR("Coverage not currently implemented for SHADER_BLIT");
+            }
             createInfos[i].pVertexInputState = &INPUT_STATE_BLIT;
             createInfos[i].layout = pipelineContext->texturePipelineLayout;
             stages[i] = (ShaderStages) {{ shaders->blit_vert, shaders->blit_frag }};
             break;
         case SHADER_CLIP:
+            if (coverageSource != SHADER_COVERAGE_NONE) {
+                VK_FATAL_ERROR("Coverage not supported for SHADER_CLIP");
+            }
             createInfos[i].pVertexInputState = &INPUT_STATE_CLIP;
             #define CLIP_STENCIL_OP { \
                 .failOp = VK_STENCIL_OP_REPLACE,\
@@ -338,9 +298,54 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
             createInfos[i].stageCount = 1;
             stages[i] = (ShaderStages) {{ shaders->clip_vert }};
             break;
-        default:
-            VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
+
+        default: {
+            VkPipelineShaderStageCreateInfo fragmentShader;
+            switch ((int) baseShader) {
+            case SHADER_COLOR:
+                fragmentShader = shaders->color_frag;
+                break;
+            case SHADER_GRADIENT:
+                fragmentShader = shaders->gradient_frag;
+                break;
+            case SHADER_GRADIENT_LINEAR_PUSH:
+                fragmentShader = shaders->gradient_linear_push_frag;
+                break;
+            case SHADER_GRADIENT_RADIAL_PUSH:
+                fragmentShader = shaders->gradient_radial_push_frag;
+                break;
+            default:
+                VK_FATAL_ERROR("Cannot create pipeline, unknown shader requested!");
+            }
+            const VKPipelineVertexSetupInfo* vertexSetupInfo = &VERTEX_SETUP_INFOS[coverageSource];
+            createInfos[i].pVertexInputState = vertexSetupInfo->vertexInputState;
+            createInfos[i].layout = pipelineContext->maskFillPipelineLayout;
+            stages[i] = (ShaderStages) {{ vertexSetupInfo->vertexShader, fragmentShader }};
         }
+        }
+        const VKCompositeState* compositeState =
+            VKComposites_GetState(composites, descriptors[i].composite, descriptors[i].dstOpaque);
+        createInfos[i].pColorBlendState = &compositeState->blendState;
+        pipelineInfos[i].outAlphaType = compositeState->outAlphaType;
+
+        specializations[i] = (Specialization) {
+            .info = {
+                .mapEntryCount = SARRAY_COUNT_OF(SPECIALIZATION_ENTRIES),
+                .pMapEntries = SPECIALIZATION_ENTRIES,
+                .dataSize = sizeof(SpecializationData),
+                .pData = &specializations[i].data
+            },
+            .data = {
+                .shaderVariant = (uint32_t)descriptors[i].shaderVariant,
+                .shaderModifier =
+                    (descriptors[i].inAlphaType << 0) |
+                    (pipelineInfos[i].outAlphaType << 1) |
+                    ((baseShader == SHADER_COLOR ? 1 : 0) << 2) |
+                    ((descriptors[i].composite == LOGIC_COMPOSITE_XOR ? 1 : 0) << 3) |
+                    ((uint32_t) coverageSource << 30)
+            }
+        };
+
         for (uint32_t j = 0; j < createInfos[i].stageCount; j++) {
             stages[i].createInfos[j].pSpecializationInfo = &specializations[i].info;
         }
