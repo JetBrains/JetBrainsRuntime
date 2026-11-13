@@ -799,7 +799,7 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                                                "()V"),
                       JNI_FALSE);
 
-    CHECK_NULL_RETURN(awtNotifyMID = (*env)->GetStaticMethodID(env, tkClass,
+    CHECK_NULL_RETURN(awtNotifyAllMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                "awtLockNotifyAll",
                                                                "()V"),
                       JNI_FALSE);
@@ -1028,15 +1028,18 @@ Java_sun_awt_wl_WLToolkit_initLibwaylandLogging(JNIEnv *env, jclass clazz)
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz, jlong displayPtr)
+Java_sun_awt_wl_WLToolkit_initIDs(JNIEnv *env, jclass clazz)
+{
+    if (!initJavaRefs(env, clazz)) {
+        JNU_ThrowInternalError(env, "Failed to find Wayland toolkit internal classes");
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_wl_WLToolkit_initDisplay(JNIEnv *env, jclass clazz, jlong displayPtr)
 {
     assert (displayPtr != 0);
     wl_display = jlong_to_ptr(displayPtr);
-
-    if (!initJavaRefs(env, clazz)) {
-        JNU_ThrowInternalError(env, "Failed to find Wayland toolkit internal classes");
-        return;
-    }
 
     struct wl_registry *wl_registry = wl_display_get_registry(wl_display);
     if (wl_registry == NULL) {
