@@ -29,6 +29,7 @@
 #include "sun_java2d_pipe_BufferedOpCodes.h"
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_vulkan_VKBlitLoops.h"
+#include "sun_java2d_vulkan_VKRichBufferedOpCodes.h"
 #include "fontscalerdefs.h"
 #include "Trace.h"
 #include "jlong.h"
@@ -199,6 +200,22 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             }
             break;
 
+        case sun_java2d_vulkan_VKRichBufferedOpCodes_DRAW_AARRECT:
+            {
+                jfloat xMin = NEXT_FLOAT(b);
+                jfloat yMin = NEXT_FLOAT(b);
+                jfloat xMax = NEXT_FLOAT(b);
+                jfloat yMax = NEXT_FLOAT(b);
+                jfloat cornerDiameter = NEXT_FLOAT(b);
+                jfloat innerInset = NEXT_FLOAT(b);
+                jfloat innerCornerDiameter = NEXT_FLOAT(b);
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: DRAW_AARRECT(%f, %f, %f, %f, %f, %f, %f)",
+                    xMin, yMin, xMax, yMax, cornerDiameter, innerInset, innerCornerDiameter);
+                VKRenderer_FillAARRectOuterInner(xMin, yMin, xMax, yMax, cornerDiameter, VK_TRUE, innerInset, innerCornerDiameter);
+            }
+            break;
+
         // fill ops
         case sun_java2d_pipe_BufferedOpCodes_FILL_RECT:
             {
@@ -249,6 +266,20 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                 // TODO this is not AA!
                 VKRenderer_RenderParallelogram(VK_TRUE, x11, y11, dx21, dy21,
                                                dx12, dy12);
+            }
+            break;
+
+        case sun_java2d_vulkan_VKRichBufferedOpCodes_FILL_AARRECT:
+            {
+                jfloat xMin = NEXT_FLOAT(b);
+                jfloat yMin = NEXT_FLOAT(b);
+                jfloat xMax = NEXT_FLOAT(b);
+                jfloat yMax = NEXT_FLOAT(b);
+                jfloat cornerDiameter = NEXT_FLOAT(b);
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                    "VKRenderQueue_flushBuffer: FILL_AARRECT(%f, %f, %f, %f, %f)",
+                    xMin, yMin, xMax, yMax, cornerDiameter);
+                VKRenderer_FillAARRectOuterInner(xMin, yMin, xMax, yMax, cornerDiameter, VK_FALSE, 0.0f, 0.0f);
             }
             break;
 

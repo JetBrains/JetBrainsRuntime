@@ -250,6 +250,7 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     MAKE_INPUT_STATE(MASK_FILL, VK_VERTEX_INPUT_RATE_VERTEX, VKMaskFillVertex, VK_FORMAT_R32G32B32A32_SINT, VK_FORMAT_R32_UINT);
     MAKE_INPUT_STATE(BLIT, VK_VERTEX_INPUT_RATE_VERTEX, VKTxVertex, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
     MAKE_INPUT_STATE(CLIP, VK_VERTEX_INPUT_RATE_VERTEX, VKIntVertex, VK_FORMAT_R32G32_SINT);
+    MAKE_INPUT_STATE(AA_RRECT, VK_VERTEX_INPUT_RATE_INSTANCE, VKAARRectInstance, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32_UINT);
 
     typedef struct {
         const VkPipelineVertexInputStateCreateInfo* vertexInputState;
@@ -259,6 +260,7 @@ static VKPipelineInfo VKPipelines_CreatePipelines(VKRenderPassContext* renderPas
     const VKPipelineVertexSetupInfo VERTEX_SETUP_INFOS[] = {
         [SHADER_COVERAGE_NONE] = { .vertexInputState = &INPUT_STATE_PRIMITIVE, .vertexShader = shaders->primitive_vert },
         [SHADER_COVERAGE_MASK] = { .vertexInputState = &INPUT_STATE_MASK_FILL, .vertexShader = shaders->mask_fill_vert },
+        [SHADER_COVERAGE_AA_RRECT] = { .vertexInputState = &INPUT_STATE_AA_RRECT, .vertexShader = shaders->aa_rect_vert },
     };
 
     for (uint32_t i = 0; i < count; i++) {

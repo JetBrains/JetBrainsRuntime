@@ -1932,6 +1932,31 @@ void VKRenderer_AddSurfaceDependency(VKSDOps* src, VKSDOps* dst) {
     }
 }
 
+void VKRenderer_FillAARRectOuterInner(jfloat xMin, jfloat yMin, jfloat xMax, jfloat yMax, jfloat cornerDiameter,
+                                      VkBool32 hasInner, jfloat innerInset, jfloat innerCornerDiameter) {
+    if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_AA_RRECT, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return;
+
+    VKAARRectInstance inst = {
+        .outerX1 = xMin,
+        .outerY1 = yMin,
+        .outerX2 = xMax,
+        .outerY2 = yMax,
+        .outerCornerRadius = 0.5f * cornerDiameter,
+        .data = context.vertexData
+    };
+    if (hasInner) {
+        inst.innerX1 = inst.outerX1 + innerInset;
+        inst.innerY1 = inst.outerY1 + innerInset;
+        inst.innerX2 = inst.outerX2 - innerInset;
+        inst.innerY2 = inst.outerY2 - innerInset;
+        inst.innerCornerRadius = 0.5f * innerCornerDiameter;
+    } // otherwise, leave inner params zero-filled
+
+    VKAARRectInstance* pInst;
+    VK_DRAW_INSTANCES(pInst, 1, 10);
+    *pInst = inst;
+}
+
 void VKRenderer_DrawGlyphList(jint numGlyphs,
     jfloat glyphListOrigX, jfloat glyphListOrigY,
     jboolean usePositions, unsigned char* images, unsigned char* positions) {

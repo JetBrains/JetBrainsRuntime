@@ -17,6 +17,7 @@ layout (constant_id = 1) const uint const_ShaderModifier = 0;
 #define SHADER_MOD_COVERAGE_SOURCE ((const_ShaderModifier >> 30) & 3) // bits 30-31 - coverage source
 #define SHADER_COVERAGE_NONE 0
 #define SHADER_COVERAGE_MASK 1
+#define SHADER_COVERAGE_AA_RRECT 2
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Vertex shader common outputs and transform push constants /////////////////
@@ -134,9 +135,15 @@ int calculateMaskIndex(vec2 localCoord, ivec4 originOffsetAndScanline) {
     return offset + scanline * maskPos.y + min(scanline, maskPos.x);
 }
 
+#include "aa_rrect_coverage.glsl"
+
 float getCoverage(vec2 fragCoord) {
-    if (false) {
-        return 1.0f;
+    if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_AA_RRECT) {
+        return rrectOuterInnerBoxCoverageDifference(
+            fragCoord,
+            in_GenericFlatVec4_1.xy, in_GenericFlatVec4_1.zw, in_GenericFlatVec4_3.x,
+            in_GenericFlatVec4_2.xy, in_GenericFlatVec4_2.zw, in_GenericFlatVec4_3.y
+        );
     }
 #ifndef SHADER_NO_MASK_BUFFER
     else if (SHADER_MOD_COVERAGE_SOURCE == SHADER_COVERAGE_MASK) {

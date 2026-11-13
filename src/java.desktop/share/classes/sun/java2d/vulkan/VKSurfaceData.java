@@ -300,6 +300,13 @@ public abstract class VKSurfaceData extends SurfaceData
 
         // always override the image pipe with the specialized VK pipe
         sg2d.imagepipe = vkImagePipe;
+
+        if (VKRichRendererProxy.shouldBeInstalled(sg2d)) {
+            VKRichRendererProxy proxy = new VKRichRendererProxy(VKRenderQueue.getInstance(), sg2d.drawpipe, sg2d.fillpipe, sg2d.shapepipe);
+            sg2d.drawpipe = proxy;
+            sg2d.fillpipe = proxy;
+            sg2d.shapepipe = proxy;
+        }
     }
 
     @Override

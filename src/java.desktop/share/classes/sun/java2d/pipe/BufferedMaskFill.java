@@ -69,6 +69,15 @@ public abstract class BufferedMaskFill extends MaskFill {
         this.rq = rq;
     }
 
+    // Apply a composite override used for GPU-accelerated MaskFills
+    public Composite getMaskFillComposite(Composite originalComp) {
+        AlphaComposite acomp = (AlphaComposite)originalComp;
+        if (acomp.getRule() != AlphaComposite.SRC_OVER) {
+            return AlphaComposite.SrcOver;
+        }
+        return acomp;
+    }
+
     @Override
     public void MaskFill(SunGraphics2D sg2d, SurfaceData sData,
                          Composite comp,
@@ -76,10 +85,7 @@ public abstract class BufferedMaskFill extends MaskFill {
                          final byte[] mask,
                          final int maskoff, final int maskscan)
     {
-        AlphaComposite acomp = (AlphaComposite)comp;
-        if (acomp.getRule() != AlphaComposite.SRC_OVER) {
-            comp = AlphaComposite.SrcOver;
-        }
+        comp = getMaskFillComposite(comp);
 
         rq.lock();
         try {

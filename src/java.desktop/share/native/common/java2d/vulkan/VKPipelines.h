@@ -40,6 +40,7 @@
 typedef enum {
     SHADER_COVERAGE_NONE     = 0, // no coverage (non-AA drawing)
     SHADER_COVERAGE_MASK     = 1, // MASK_FILL / MASK_BLIT opcodes
+    SHADER_COVERAGE_AA_RRECT = 2, // AA_RRECT opcode
 
     // Number of bits required to store this value
     SHADER_COVERAGE_ENUM_BITS     = 2,
@@ -214,6 +215,13 @@ typedef struct {
     int x, y, maskOffset, maskScanline;
     unsigned int data;
 } VKMaskFillVertex;
+
+typedef struct {
+    float outerX1, outerY1, outerX2, outerY2;
+    float innerX1, innerY1, innerX2, innerY2;
+    float outerCornerRadius, innerCornerRadius;
+    unsigned int data;
+} VKAARRectInstance;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
