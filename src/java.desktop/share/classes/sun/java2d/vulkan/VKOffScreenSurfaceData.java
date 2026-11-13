@@ -50,7 +50,8 @@ public class VKOffScreenSurfaceData extends VKSurfaceData {
         this.userWidth = width;
         this.userHeight = height;
         offscreenImage = image;
-        revalidate(gc);
+        int revalidateResult = revalidate(gc);
+        assert(revalidateResult == VolatileImage.IMAGE_RESTORED);
         initOps(format.getValue(transparency));
         if (!configure()) {
             throw new OutOfMemoryError("Failed to allocate VKOffScreenSurfaceData");
