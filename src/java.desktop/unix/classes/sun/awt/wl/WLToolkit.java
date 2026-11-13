@@ -161,7 +161,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private static final List<Integer> preferredIconSizes = new ArrayList<>();
 
     private static native void initLibwaylandLogging();
-    private static native void initIDs(long displayPtr);
+    private static native void initIDs();
+    private static native void initDisplay(long displayPtr);
     private static native void waitForSyncDuringInit();
 
     private static int numCallbacksBeforeEndOfInit = 0;
@@ -181,11 +182,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         ENABLE_PINCH_AS_CTRL_WHEEL = Boolean.getBoolean("sun.awt.wl.PinchAsCtrlWheel");
 
         if (!GraphicsEnvironment.isHeadless()) {
+            initIDs();
             initLibwaylandLogging();
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
             VKEnv.init(() -> VKEnv.initPlatformWayland(display));
-            initIDs(display);
+            initDisplay(display);
             WLOutput.initialize();
             while (numCallbacksBeforeEndOfInit > 0) {
                 waitForSyncDuringInit();
