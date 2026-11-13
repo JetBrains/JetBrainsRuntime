@@ -56,7 +56,9 @@ public class VKSurfaceDataProxy extends SurfaceDataProxy {
         }
         // Exclude CUSTOM composites, also XOR composite with non-opaque sources (it gives different results because of pre-multiplication)
         // Exclude textures with bgColor (except when it's provably unused)
-        return (comp.isDerivedFrom(CompositeType.AnyAlpha) || (comp.isDerivedFrom(CompositeType.Xor) && transparency == Transparency.OPAQUE)) &&
+        return (comp.isDerivedFrom(CompositeType.AnyAlpha) || (
+                    comp.isDerivedFrom(CompositeType.Xor) && transparency == Transparency.OPAQUE && vkgc.getGPU().hasCap(VKGPU.CAP_LOGIC_OP_BIT)
+                )) &&
                 (bgColor == null || transparency == Transparency.OPAQUE);
     }
 
