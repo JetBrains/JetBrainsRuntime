@@ -26,6 +26,7 @@
 package sun.awt.wl;
 
 
+import sun.awt.KineticScrollPhysics;
 import sun.util.logging.PlatformLogger;
 
 import javax.swing.Timer;
@@ -134,7 +135,7 @@ abstract class WLKineticScrollerBase {
     /**
      * @param finalStop false if the fling is interrupted by what may be the beginning of the next scroll gesture:
      *                  only the ticks stop then, and the physics keeps the velocity of the fling
-     *                  so that {@link WLKineticScrollPhysics#startFling} can add its rest to the next one.
+     *                  so that {@link KineticScrollPhysics#startFling} can add its rest to the next one.
      *
      * @apiNote this method can be called from any thread.
      */
@@ -165,7 +166,7 @@ abstract class WLKineticScrollerBase {
         KeyEvent.ALT_GRAPH_DOWN_MASK |
         KeyEvent.META_DOWN_MASK;
 
-    private final WLKineticScrollPhysics physics = new WLKineticScrollPhysics();
+    private final KineticScrollPhysics physics = new KineticScrollPhysics();
     // axis_source is not always sent in every frame, so keep last one
     private WLPointerEvent.AxisSourceType lastAxisSource = null;
     private final AtomicReference<Timer> currentScrollingSession = new AtomicReference<>(null);

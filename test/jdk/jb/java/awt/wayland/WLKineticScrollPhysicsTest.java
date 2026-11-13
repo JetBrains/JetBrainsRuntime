@@ -22,12 +22,11 @@
  * questions.
  */
 
-import sun.awt.wl.WLKineticScrollPhysics;
+import sun.awt.KineticScrollPhysics;
 
 /*
  * @test
- * @requires os.family == "linux"
- * @modules java.desktop/sun.awt.wl
+ * @modules java.desktop/sun.awt
  * @run main WLKineticScrollPhysicsTest
  */
 public class WLKineticScrollPhysicsTest {
@@ -36,7 +35,7 @@ public class WLKineticScrollPhysicsTest {
 
     public static void main(String[] args) {
         // 10 units per 10 ms = 1000 units/s, with friction 4 total distance is 1000 / 4 = 250
-        var p = new WLKineticScrollPhysics();
+        var p = new KineticScrollPhysics();
         addSamples(p, 0, 10, -10);
         check(p.startFling(100));
         double sumX = 0, sumY = 0, previousDeltaX = Double.MAX_VALUE;
@@ -56,12 +55,12 @@ public class WLKineticScrollPhysicsTest {
         check(!p.isFlinging());
 
         // pause > 150 ms before stop
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         addSamples(p, 0, 10, 0);
         check(!p.startFling(100 + 151));
 
         // pause of 100 ms before stop: samples at 50..100 remain, 50 units over 150 ms
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         addSamples(p, 0, 10, 0);
         check(p.startFling(200));
         sumX = 0;
@@ -72,13 +71,13 @@ public class WLKineticScrollPhysicsTest {
         check(equalsFlingDistance(sumX, 50 * 1000 / 150.0 / 4));
 
         // too slow
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         p.addSample(0, 1, 0);
         p.addSample(100, 1, 0);
         check(!p.startFling(100));
 
         // clamp to max velocity (8000)
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         addSamples(p, 0, 1000, 0);
         check(p.startFling(100));
         sumX = 0;
@@ -89,14 +88,14 @@ public class WLKineticScrollPhysicsTest {
         check(equalsFlingDistance(sumX, 8000 / 4.0));
 
         // uint32 timestamp overflow
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         addSamples(p, 0xFFFFFFF0L, 10, 0);
         check(p.startFling(0xFFFFFFF0L + 100));
         p.advance(1);
         check(equals(p.getDeltaX(), 250 * (1 - Math.exp(-4 * 0.001))));
 
         // like in GTK4, a fling in the direction of the previous one that is still going on gets a part of its velocity
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         addSamples(p, 0, 10, 0);
         check(p.startFling(100));
         addSamples(p, 300, 10, 0);
@@ -112,14 +111,14 @@ public class WLKineticScrollPhysicsTest {
         p.advance(1);
         check(equals(p.getDeltaX(), -250 * (1 - Math.exp(-4 * 0.001))));
 
-        p = new WLKineticScrollPhysics();
+        p = new KineticScrollPhysics();
         addSamples(p, 0, 10, 0);
         check(p.startFling(100) && p.advance(0) && p.getDeltaX() == 0);
         p.stop();
         check(!p.isFlinging() && !p.advance(8));
     }
 
-    private static void addSamples(WLKineticScrollPhysics p, long startTime, double dx, double dy) {
+    private static void addSamples(KineticScrollPhysics p, long startTime, double dx, double dy) {
         for (int i = 0; i <= 10; i++) {
             p.addSample(startTime + i * 10, dx, dy);
         }

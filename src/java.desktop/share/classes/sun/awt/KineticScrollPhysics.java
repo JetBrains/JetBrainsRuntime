@@ -24,13 +24,13 @@
  * questions.
  */
 
-package sun.awt.wl;
+package sun.awt;
 
 import java.util.ArrayDeque;
 
 // Same exponential decay model like in GTK4: v(t) = v0 * exp(-f * t),
 // so position is v0 / f * (1 - exp(-f * t)) and total distance is v0 / f.
-public final class WLKineticScrollPhysics {
+public final class KineticScrollPhysics {
     private static final long UINT32_MASK = 0xFFFFFFFFL;
     private static final long VELOCITY_WINDOW_MS = 150;
     // velocities are in wl_pointer::axis units (surface-local coordinates) per second
