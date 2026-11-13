@@ -5,6 +5,7 @@ java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 wind
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/dnd/CustomDragCursorTest.java 8242805,JBR-8932 macosx-all,windows-10.0
 java/awt/dnd/DnDAWTLockTest.java JBR-8745 linux-all
+java/awt/dnd/DragExitBeforeDropTest.java JBR-10264 windows-10.0
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-8745 linux-all
@@ -29,7 +30,7 @@ java/awt/Frame/MaximizeUndecoratedTest.java JBR-8064,JBR-8820 linux-all,windows-
 java/awt/Frame/MinimizeUndecoratedTest.java 8330731,JBR-8821 linux-all,windows-x64
 java/awt/Frame/MinimumSizeTest.java JBR-8298,JBR-9062 linux-all,windows-10.0
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java JBR-6090 windows-all
-java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090 windows-all
+java/awt/Frame/WindowDragTest/WindowDragTest.java JBR-6090,JBR-10253 windows-all,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275,JBR-5799 macosx-all,windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java JBR-7299,JBR-8728 linux-all,windows-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184,JBR-8725 macosx-all,windows-all,ubuntu-22.04-x64,ubuntu-22.04-aarch64
