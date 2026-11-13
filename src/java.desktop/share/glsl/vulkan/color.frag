@@ -1,8 +1,7 @@
 #version 450
-
-layout(location = 0) in flat vec4 in_Color;
-layout(location = 0) out vec4 out_Color;
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
 
 void main() {
-    out_Color = in_Color;
+    outputColorWithCompositePreApplied(in_Color);
 }
