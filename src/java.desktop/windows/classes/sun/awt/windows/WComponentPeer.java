@@ -102,6 +102,9 @@ public abstract class WComponentPeer extends WObjectPeer
     private VolatileImage backBuffer = null;
     private BufferCapabilities backBufferCaps = null;
 
+    // null unless DirectManipulation (precision touchpad scrolling) is enabled
+    private final WKineticScroller kineticScroller = WKineticScroller.createIfEnabled(this);
+
     // foreground, background and color are cached to avoid calling back
     // into the Component.
     private Color foreground;
@@ -359,6 +362,10 @@ public abstract class WComponentPeer extends WObjectPeer
                     return;
                 }
             }
+        }
+
+        if (kineticScroller != null && kineticScroller.handleEvent(e)) {
+            return;
         }
 
         switch(id) {
@@ -670,6 +677,9 @@ public abstract class WComponentPeer extends WObjectPeer
     private synchronized native void _dispose();
     @Override
     protected void disposeImpl() {
+        if (kineticScroller != null) {
+            kineticScroller.stop();
+        }
         SurfaceData oldData = surfaceData;
         surfaceData = null;
         ScreenUpdateManager.getInstance().dropScreenSurface(oldData);
@@ -915,8 +925,23 @@ public abstract class WComponentPeer extends WObjectPeer
      * Post an event. Queue it for execution by the callback thread.
      */
     void postEvent(AWTEvent event) {
+        if (kineticScroller != null) {
+            kineticScroller.onPostEvent(event);
+        }
+        postEventImpl(event);
+    }
+
+    void postEventImpl(AWTEvent event) {
         preprocessPostEvent(event);
         WToolkit.postEvent(WToolkit.targetToAppContext(target), event);
+    }
+
+    // Called from the native code (AwtDirectManipulation) on the toolkit thread.
+    void handleDirectScroll(double dx, double dy, int phase,
+                            int x, int y, int xAbs, int yAbs, int modifiers) {
+        if (kineticScroller != null) {
+            kineticScroller.handleDirectScroll(dx, dy, phase, x, y, xAbs, yAbs, modifiers);
+        }
     }
 
     void preprocessPostEvent(AWTEvent event) {}

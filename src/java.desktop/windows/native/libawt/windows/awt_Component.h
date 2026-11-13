@@ -842,6 +842,8 @@ private:
     int m_wheelRotationAmountX;
     int m_wheelRotationAmountY;
 
+    class AwtDirectManipulation* m_directManipulation;
+
     BOOL deadKeyActive;
 
     /*
