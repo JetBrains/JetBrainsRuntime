@@ -28,6 +28,7 @@ package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
+import sun.awt.MouseWheelRoundRotationsAccumulator;
 import sun.awt.PaintEventDispatcher;
 import sun.awt.SunToolkit;
 import sun.awt.event.IgnorePaintEvent;
@@ -1534,62 +1535,6 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    /**
-     * Accumulates fractional parts of wheel rotation steps until their absolute sum represents one or more full step(s).
-     * This allows implementing smoother scrolling, e.g., the sequence of wl_pointer::axis events with values
-     *   [0.2, 0.1, 0.4, 0.4] can be accumulated into 1.1=0.2+0.1+0.4+0.4, making it possible to
-     *   generate a MouseWheelEvent with wheelRotation=1
-     *   (instead of 4 tries to generate a MouseWheelEvent with wheelRotation=0 due to double->int conversion)
-     */
-    private static final class MouseWheelRoundRotationsAccumulator {
-        /**
-         * This method is intended to accumulate fractional numbers of wheel rotations.
-         *
-         * @param fractionalRotations - fractional number of wheel rotations (usually got from a {@code wl_pointer::axis} event)
-         * @return The number of wheel round rotations accumulated
-         * @see #accumulateSteps120Rotations
-         */
-        public int accumulateFractionalRotations(double fractionalRotations) {
-            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
-            // If it did, all the accumulating fields would have to be reset each time the target changed.
-
-            accumulatedFractionalRotations += fractionalRotations;
-            final int result = (int)accumulatedFractionalRotations;
-            accumulatedFractionalRotations -= result;
-            return result;
-        }
-
-        /**
-         * This method is intended to accumulate 1/120 fractions of a rotation step.
-         *
-         * @param steps120Rotations - a number of 1/120 parts of a wheel step (so that, e.g.,
-         *                            30 means one quarter of a step,
-         *                            240 means two steps,
-         *                            -240 means two steps in the negative direction,
-         *                            540 means 4.5 steps).
-         *                            Usually got from a {@code wl_pointer::axis_discrete}/{@code axis_value120} event.
-         * @return The number of wheel round rotations accumulated
-         * @see #accumulateFractionalRotations
-         */
-        public int accumulateSteps120Rotations(int steps120Rotations) {
-            // The code assumes that the target component ({@link WLComponentPeer#target}) never changes.
-            // If it did, all the accumulating fields would have to be reset each time the target changed.
-
-            accumulatedSteps120Rotations += steps120Rotations;
-            final int result = accumulatedSteps120Rotations / 120;
-            accumulatedSteps120Rotations %= 120;
-            return result;
-        }
-
-        public void reset() {
-            accumulatedFractionalRotations = 0;
-            accumulatedSteps120Rotations = 0;
-        }
-
-
-        private double accumulatedFractionalRotations = 0;
-        private int accumulatedSteps120Rotations = 0;
-    }
     private final MouseWheelRoundRotationsAccumulator xAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
     private final MouseWheelRoundRotationsAccumulator yAxisWheelRoundRotationsAccumulator = new MouseWheelRoundRotationsAccumulator();
 
@@ -1643,13 +1588,9 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         // Please keep in mind that they're all related, so that changing one may require adjusting the others
         //   (or altering this conversion routine).
 
-        // XToolkit uses 3 units per a wheel step, so do we here to preserve the user experience
-        final int  STEPS120_MWE_SCROLL_AMOUNT = 3;
-        // For touchpad scrolling, it's worth being able to scroll the minimum possible number of units (i.e. 1)
-        final int    VECTOR_MWE_SCROLL_AMOUNT = 1;
-        // 0.28 has experimentally been found as providing a good balance between
-        //   wheel scrolling sensitivity and touchpad scrolling sensitivity
-        final double VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR = 0.28;
+        final int  STEPS120_MWE_SCROLL_AMOUNT = MouseWheelRoundRotationsAccumulator.STEPS120_MWE_SCROLL_AMOUNT;
+        final int    VECTOR_MWE_SCROLL_AMOUNT = MouseWheelRoundRotationsAccumulator.VECTOR_MWE_SCROLL_AMOUNT;
+        final double VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR = MouseWheelRoundRotationsAccumulator.VECTOR_LENGTH_TO_MWE_ROTATIONS_FACTOR;
 
         mweConversionInfo.xAxisVector   = dispatchingEvent.xAxisHasVectorValue()   ? dispatchingEvent.getXAxisVectorValue() : 0;
         mweConversionInfo.xAxisSteps120 = dispatchingEvent.xAxisHasSteps120Value() ? dispatchingEvent.getXAxisSteps120Value() : 0;
