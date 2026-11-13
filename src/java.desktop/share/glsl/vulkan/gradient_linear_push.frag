@@ -10,9 +10,7 @@ struct VKLinearGradientPaintConstants {
 };
 PUSH_CONSTANTS(VKLinearGradientPaintConstants);
 
-GENERIC_INOUT();
-
 void main() {
-    float t = dot(vec3(in_Position, 1.0), push.p);
-    OUTPUT(convertAlpha(interpolateMultiGradient(t, push.stops)));
+    float t = dot(vec3(gl_FragCoord.xy, 1.0), push.p);
+    outputColor(convertAlpha(interpolateMultiGradient(t, push.stops)));
 }
