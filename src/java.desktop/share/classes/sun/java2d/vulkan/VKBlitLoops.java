@@ -46,6 +46,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
+import java.awt.image.ColorModel;
 import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
@@ -475,19 +476,15 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
 
     // Don't use pre-multiplied alpha to preserve color values whenever possible.
     private final VKStageSurface stage4Byte = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB));
+    private final VKStageSurface stage4BytePre = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE));
 
     private VKSwToSurfaceBlit() {
         // Any src type: we either blit directly, if we can sample a given source format (see encodeSrcType),
-        // or via a stage Sw surface, taking the closest format to represent source colors (see getStage).
+        // or via a stage Sw surface, taking the closest format to represent source colors.
         // Any Vulkan dst type: we don't care about dst format as long as we can render into it.
         // Any alpha/xor composite is supported.
         registerBlits(SurfaceType.Any, CompositeType.AnyAlpha, VKSurfaceData.VKSurface);
         registerBlits(SurfaceType.Any, CompositeType.Xor,      VKSurfaceData.VKSurface);
-    }
-
-    private VKStageSurface getStage(SurfaceData src, VKSurfaceData dst) {
-        // We assume that 4 byte sampled format is always supported.
-        return stage4Byte;
     }
 
     @Native private static final int SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT = 1 << 15;
@@ -534,7 +531,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     /**
      * Encode src surface type for native blit.
      * Return -1 if the surface type is not supported.
-     * All stage surfaces from getStage() must always be supported.
+     * All stage surfaces must always be supported.
      * See decodeSrcType() in VKBlitLoops.c
      */
     private int encodeSrcType(SurfaceData src, VKSurfaceData dst) {
@@ -624,9 +621,16 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
             if (w <= 0 || h <= 0) return;
         }
 
+        // Filtering expects premultiplied data to work correctly.
+        // This also matches the VKSurfaceDataProxy cached path and other pipelines' behavior.
+        ColorModel colorModel = src.getColorModel();
+        boolean shouldPremultiplyBeforeUpload = hint != AffineTransformOp.TYPE_NEAREST_NEIGHBOR &&
+                colorModel.hasAlpha() && !colorModel.isAlphaPremultiplied();
+
         int srcType = encodeSrcType(src, (VKSurfaceData) dst);
-        if (srcType == -1) {
-            try (VKStageSurface stageSurface = getStage(src, (VKSurfaceData) dst)) {
+        if (srcType == -1 || shouldPremultiplyBeforeUpload) {
+            // We assume that 4 byte sampled format is always supported.
+            try (VKStageSurface stageSurface = shouldPremultiplyBeforeUpload ? stage4BytePre : stage4Byte) {
                 SurfaceData stage = stageSurface.acquire(w, h);
                 // Blit from src to intermediate SW image.
                 Blit op = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
