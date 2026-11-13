@@ -1189,7 +1189,7 @@ void VKRenderer_ConfigureSurface(VKSDOps* surface, VkExtent2D extent, VKDevice* 
     // and then silently discard them when recreating the image later.
     // This would lead to presenting unpainted regions of the new surface - see JBR-10486, JBR-10448.
     // Simply preserving the contents of the old image between resizes
-    // is not enough, because Java might expect to have a LARGER image right after issuing CONFIGURE_SURFACE.
+    // is not enough, because Java might expect to have a LARGER image right after configure.
     VKRenderer_FlushRenderPass(surface);
 
     // We must only do pending flush between frames.

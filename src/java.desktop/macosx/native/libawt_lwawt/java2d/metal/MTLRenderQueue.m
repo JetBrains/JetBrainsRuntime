@@ -1053,7 +1053,6 @@ static const char* mtlOpCodeToStr(uint opcode) {
         CASE_BUF_OP(SYNC)
         CASE_BUF_OP(RESTORE_DEVICES)
 
-        CASE_BUF_OP(CONFIGURE_SURFACE)   /* unsupported */
         CASE_BUF_OP(SWAP_BUFFERS)        /* unsupported */
         CASE_BUF_OP(FLUSH_BUFFER)
 

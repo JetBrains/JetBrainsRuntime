@@ -418,7 +418,7 @@ JNIEXPORT void VKSD_InitWindowSurface(JNIEnv* env, jobject vksd, VKWinSD_Surface
     if (sd->surface != VK_NULL_HANDLE) {
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p): surface created", vksd);
     }
-    // Swapchain will be created later after CONFIGURE_SURFACE.
+    // Swapchain will be created later after configure.
 }
 
 /*
