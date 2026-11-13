@@ -10,12 +10,11 @@ struct VKGradientPaintConstants {
     vec3 p;
 };
 PUSH_CONSTANTS(VKGradientPaintConstants);
-GENERIC_INOUT();
 
 void main() {
-    float t = dot(vec3(in_Position, 1.0), push.p);
+    float t = dot(vec3(gl_FragCoord.xy, 1.0), push.p);
     t = const_ShaderVariant == SHADER_VARIANT_GRADIENT_CYCLE ?
         abs(mod(t + 1.0, 2.0) - 1.0) : // Cycle
         clamp(t, 0.0, 1.0);            // Clamp
-    OUTPUT(convertAlpha(mix(push.c0, push.c1, t)));
+    outputColor(convertAlpha(mix(push.c0, push.c1, t)));
 }
