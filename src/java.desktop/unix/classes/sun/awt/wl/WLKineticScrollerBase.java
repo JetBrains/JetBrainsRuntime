@@ -210,6 +210,7 @@ abstract class WLKineticScrollerBase {
                 if (!toContinue) {
                     newScrollingSession.stop();
                     WLKineticScrollerBase.this.currentScrollingSession.compareAndSet(newScrollingSession, null);
+                    WLKineticScrollerBase.this.notifyKineticScrollingSessionFinished();
                 }
 
                 this.previousTriggerTimestampNanos = currentTriggerTimestampNanos;
