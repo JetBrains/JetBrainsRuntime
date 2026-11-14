@@ -8,3 +8,10 @@ jb/java/awt/wayland/vulkan/ImageTransformTest.java JBR-8434 linux-all
 jb/java/awt/wayland/vulkan/RobotGetPixelsTest.java JBR-8434 linux-all
 jb/java/awt/wayland/vulkan/RobotGetPixelTest.java JBR-8434 linux-all
 jb/java/awt/wayland/vulkan/VulkanMaskFillTest.java JBR-8434 linux-all
+
+#
+# the below tests are not intended to be executed in S2 configurations because
+# the tests contains tags to be launched for various scales including S2
+#
+
+java/awt/Paint/RepaintOnAWTShutdown.java nobug generic-all

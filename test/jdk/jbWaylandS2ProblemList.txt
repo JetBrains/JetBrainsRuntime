@@ -1,5 +1,14 @@
 javax/swing/JFileChooser/6520101/bug6520101.java JBR-7140 linux-all
+javax/swing/JInternalFrame/6647340/bug6647340.java JBR-8323 linux-all
+javax/swing/JMenu/bug4146588.java JBR-10131 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 javax/swing/JMenu/bug4342646.java JBR-8727 linux-all
 javax/swing/JTable/JTableRightOrientationTest.java JBR-8102 linux-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java JBR-8357 linux-all
 javax/swing/text/ParagraphView/6364882/bug6364882.java JBR-8324 linux-all
+
+#
+# the below tests are not intended to be executed in S2 configurations because
+# the tests contains tags to be launched for various scales including S2
+#
+
+java/awt/Paint/RepaintOnAWTShutdown.java nobug generic-all
