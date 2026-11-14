@@ -5,7 +5,7 @@ java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-6027 wind
 java/awt/Dialog/DialogLocationTest.java JBR-6090 windows-all
 java/awt/dnd/CustomDragCursorTest.java 8242805,JBR-8932 macosx-all,windows-10.0
 java/awt/dnd/DnDAWTLockTest.java JBR-8745 linux-all
-java/awt/dnd/DragExitBeforeDropTest.java JBR-10264 windows-10.0
+java/awt/dnd/DragExitBeforeDropTest.java 8242805,JBR-10045,JBR-10264 macosx-all,windows-10.0
 java/awt/dnd/DragOverDropTargetPerformanceTest.java JBR-5799 windows-all
 java/awt/dnd/DragSourceGCrashTest.java JBR-8745 linux-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.java JBR-8745 linux-all
@@ -45,14 +45,14 @@ java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711,JBR-6234 linux-all,windo
 java/awt/List/TriggerActionEventTest.java JBR-6234 windows-all
 java/awt/MenuItem/SetLabelTest.java JBR-8731 windows-all
 java/awt/MenuShortcut/ActionCommandTest.java JBR-8822 windows-10.0
-java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732,JBR-9207 windows-all,fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
+java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-8732,JBR-9207 windows-all,fedora-kde
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java 8049405,JBR-6134 macosx-all,windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneInternalFrameOverlapping.java JBR-6234 windows-all
 java/awt/Mixing/AWT_Mixing/JGlassPaneMoveOverlapping.java JBR-6134 windows-all
 java/awt/Mixing/MixingOnDialog.java JBR-6134 windows-all
 java/awt/Modal/BlockedMouseInputTest2.java JBR-6090 windows-all
 java/awt/Mouse/MouseEnterExitTest.java JBR-8096 linux-all,windows-all
-java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java JBR-7309 fedora-42-gnome,fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
+java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.java JBR-7309 fedora-gnome,fedora-kde
 java/awt/MouseInfo/ContainerResizeMousePositionTest.java JBR-7881,JBR-7915,JBR-8746 macosx-all,linux-all
 java/awt/PopupMenu/PopupMenuLocation.java 8238720,JBR-7035,JBR-8726 windows-all,macosx-all,linux-all
 java/awt/Robot/ScreenCaptureRobotTest.java#id0 JBR-8784 macosx-all
@@ -65,9 +65,11 @@ java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
+javax/swing/GroupLayout/8079640/bug8079640.java JBR-10052 fedora-kde,fedora-gnome
 javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
 javax/swing/JButton/bug4323121.java JBR-8924 windows-all
 javax/swing/JButton/bug4490179.java JBR-8925 windows-all
+javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java JBR-9732 windows-all
 javax/swing/JFileChooser/JFileChooserSetLocationTest.java JBR-8098 linux-all,windows-all
 javax/swing/JInternalFrame/4202966/IntFrameCoord.java JBR-9006 window-all
 javax/swing/JInternalFrame/bug4215380.java JBR-9006 windows-all
@@ -94,6 +96,12 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285 generic-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java JBR-6685 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
+sun/java2d/OpenGL/DrawImageBg.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/DrawImageBg.java#id1 JBR-9847 macosx-all
+sun/java2d/OpenGL/SrcMaskOps.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/SrcMaskOps.java#id1 JBR-9847 macosx-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id1 JBR-9847 macosx-all
 
 #
 # the below tests are not intended to be executed in S2 configurations because
