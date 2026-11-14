@@ -43,6 +43,8 @@ class PreservedMark {
   PreservedMark(oop obj, markWord m) : _o(obj), _m(m) { }
 
   oop get_oop() { return _o; }
+  markWord get_mark() const { return _m; }
+  void set_mark_word(markWord m) { _m = m; }
   inline void set_mark() const;
   void set_oop(oop obj) { _o = obj; }
 };
@@ -66,6 +68,9 @@ public:
   // Adjust the preserved mark according to its
   // forwarding location stored in the mark.
   static void adjust_preserved_mark(PreservedMark* elem);
+  // (DCEVM) As adjust_preserved_mark, and redirect the narrow klass to the new class version.
+  static void adjust_preserved_mark_dcevm(PreservedMark* elem);
+  static bool needs_dcevm_klass_update();
 
   // Iterate over the stack, adjust all preserved marks according
   // to their forwarding location stored in the mark.

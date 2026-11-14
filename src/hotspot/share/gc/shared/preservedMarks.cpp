@@ -28,6 +28,8 @@
 #include "gc/shared/workerUtils.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
+#include "oops/markWord.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
 #include "utilities/macros.hpp"
@@ -47,8 +49,28 @@ void PreservedMarks::adjust_preserved_mark(PreservedMark* elem) {
   }
 }
 
+// (DCEVM) Point the preserved mark's narrow klass to the new class version.
+void PreservedMarks::adjust_preserved_mark_dcevm(PreservedMark* elem) {
+  adjust_preserved_mark(elem);
+  markWord m = elem->get_mark();
+  Klass* new_version = m.klass()->new_version();
+  if (new_version != nullptr) {
+    elem->set_mark_word(m.set_narrow_klass(CompressedKlassPointers::encode_not_null(new_version)));
+  }
+}
+
+bool PreservedMarks::needs_dcevm_klass_update() {
+  return AllowEnhancedClassRedefinition && UseCompactObjectHeaders && Universe::is_redefining_gc_run();
+}
+
 void PreservedMarks::adjust_during_full_gc() {
   StackIterator<PreservedMark, mtGC> iter(_stack);
+  if (needs_dcevm_klass_update()) {
+    while (!iter.is_empty()) {
+      adjust_preserved_mark_dcevm(iter.next_addr());
+    }
+    return;
+  }
   while (!iter.is_empty()) {
     PreservedMark* elem = iter.next_addr();
     adjust_preserved_mark(elem);
