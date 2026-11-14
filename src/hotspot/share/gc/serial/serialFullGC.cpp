@@ -795,8 +795,14 @@ AdjustPointerClosure SerialFullGC::adjust_pointer_closure;
 
 void SerialFullGC::adjust_marks() {
   // adjust the oops we saved earlier
-  for (size_t i = 0; i < _preserved_count; i++) {
-    PreservedMarks::adjust_preserved_mark(_preserved_marks + i);
+  if (PreservedMarks::needs_dcevm_klass_update()) {
+    for (size_t i = 0; i < _preserved_count; i++) {
+      PreservedMarks::adjust_preserved_mark_dcevm(_preserved_marks + i);
+    }
+  } else {
+    for (size_t i = 0; i < _preserved_count; i++) {
+      PreservedMarks::adjust_preserved_mark(_preserved_marks + i);
+    }
   }
 
   // deal with the overflow stack
