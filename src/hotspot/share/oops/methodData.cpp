@@ -341,15 +341,21 @@ static bool is_excluded(Klass* k) {
   return false;
 }
 
+// (DCEVM) Old Klass versions have no instances after enhanced redefinition,
+// so profile entries referring to them are stale and must be cleared.
+static bool is_redefined_klass(Klass* k) {
+  return AllowEnhancedClassRedefinition && k->new_version() != nullptr;
+}
+
 void TypeStackSlotEntries::clean_weak_klass_links(bool always_clean) {
   for (int i = 0; i < _number_of_entries; i++) {
     intptr_t p = type(i);
     Klass* k = (Klass*)klass_part(p);
     if (k != nullptr) {
-      if (!always_clean && k->is_instance_klass() && InstanceKlass::cast(k)->is_not_initialized()) {
+      if (!always_clean && k->is_instance_klass() && InstanceKlass::cast(k)->is_not_initialized() && !is_redefined_klass(k)) {
         continue; // skip not-yet-initialized classes // TODO: maybe clear the slot instead?
       }
-      if (always_clean || !k->is_loader_present_and_alive() || is_excluded(k)) {
+      if (always_clean || !k->is_loader_present_and_alive() || is_excluded(k) || is_redefined_klass(k)) {
         set_type(i, with_status((Klass*)nullptr, p));
       }
     }
@@ -367,10 +373,10 @@ void ReturnTypeEntry::clean_weak_klass_links(bool always_clean) {
   intptr_t p = type();
   Klass* k = (Klass*)klass_part(p);
   if (k != nullptr) {
-    if (!always_clean && k->is_instance_klass() && InstanceKlass::cast(k)->is_not_initialized()) {
+    if (!always_clean && k->is_instance_klass() && InstanceKlass::cast(k)->is_not_initialized() && !is_redefined_klass(k)) {
       return; // skip not-yet-initialized classes // TODO: maybe clear the slot instead?
     }
-    if (always_clean || !k->is_loader_present_and_alive() || is_excluded(k)) {
+    if (always_clean || !k->is_loader_present_and_alive() || is_excluded(k) || is_redefined_klass(k)) {
       set_type(with_status((Klass*)nullptr, p));
     }
   }
@@ -457,10 +463,10 @@ void ReceiverTypeData::clean_weak_klass_links(bool always_clean) {
     for (uint row = 0; row < row_limit(); row++) {
     Klass* p = receiver(row);
     if (p != nullptr) {
-      if (!always_clean && p->is_instance_klass() && InstanceKlass::cast(p)->is_not_initialized()) {
+      if (!always_clean && p->is_instance_klass() && InstanceKlass::cast(p)->is_not_initialized() && !is_redefined_klass(p)) {
         continue; // skip not-yet-initialized classes // TODO: maybe clear the slot instead?
       }
-      if (always_clean || !p->is_loader_present_and_alive() || is_excluded(p)) {
+      if (always_clean || !p->is_loader_present_and_alive() || is_excluded(p) || is_redefined_klass(p)) {
         clear_row(row);
       }
     }

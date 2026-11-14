@@ -664,6 +664,29 @@ public:
   }
 };
 
+// Clean method data of all methods of this class, so that the profiles
+// do not refer to old (redefined) methods or old Klass versions.
+class MethodDataCleaner : public KlassClosure {
+public:
+  MethodDataCleaner() {}
+  void do_klass(Klass* k) {
+    if (k->is_instance_klass()) {
+      InstanceKlass *ik = InstanceKlass::cast(k);
+      Array<Method*>* methods = ik->methods();
+      int num_methods = methods->length();
+      for (int index = 0; index < num_methods; ++index) {
+        MethodData* mdo = methods->at(index)->method_data();
+        if (mdo != nullptr) {
+          // clears entries referring to Klasses with a new version
+          mdo->clean_method_data(false);
+          // clears speculative traps referring to old methods
+          mdo->clean_weak_method_links();
+        }
+      }
+    }
+  }
+};
+
 // Main transformation method - runs in VM thread.
 //  - for each scratch class call redefine_single_class
 //  - clear code cache (flush_dependent_code)
@@ -918,9 +941,10 @@ void VM_EnhancedRedefineClasses::doit() {
   ciObjectFactory::resort_shared_ci_metadata();
 #endif
 
-  // FIXME - check if it was in JDK8. Copied from standard JDK9 hotswap.
-  //MethodDataCleaner clean_weak_method_links;
-  //ClassLoaderDataGraph::classes_do(&clean_weak_method_links);
+  // Clean profiles referring to old methods and old Klass versions.
+  // Must run after new versions are set (new_version() != nullptr).
+  MethodDataCleaner clean_method_data;
+  ClassLoaderDataGraph::classes_do(&clean_method_data);
 
   JvmtiExport::increment_redefinition_count();
 
@@ -1988,26 +2012,6 @@ u8 VM_EnhancedRedefineClasses::next_id() {
     }
   }
 }
-
-// Clean method data for this class
-class MethodDataCleaner : public KlassClosure {
-public:
-  MethodDataCleaner() {}
-  void do_klass(Klass* k) {
-    if (k->is_instance_klass()) {
-      InstanceKlass *ik = InstanceKlass::cast(k);
-      // Clean MethodData of this class's methods so they don't refer to
-      // old methods that are no longer running.
-      Array<Method*>* methods = ik->methods();
-      int num_methods = methods->length();
-      for (int index = 0; index < num_methods; ++index) {
-        if (methods->at(index)->method_data() != nullptr) {
-          methods->at(index)->method_data()->clean_weak_method_links();
-        }
-      }
-    }
-  }
-};
 
 void VM_EnhancedRedefineClasses::update_jmethod_ids(Thread *current) {
   for (int j = 0; j < _matching_methods_length; ++j) {
