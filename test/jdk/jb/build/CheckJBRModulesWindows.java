@@ -26,7 +26,6 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 /**
  * @test
- * @requires !vm.graal.enabled
  * @requires (os.family == "windows")
  * @summary Verifies the list of available modules specific to Windows
  * @library /test/lib
