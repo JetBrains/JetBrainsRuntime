@@ -26,7 +26,6 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 /**
  * @test
- * @requires !vm.graal.enabled
  * @summary Verifies the list of available modules
  * @library /test/lib
  * @run main CheckJBRModules
