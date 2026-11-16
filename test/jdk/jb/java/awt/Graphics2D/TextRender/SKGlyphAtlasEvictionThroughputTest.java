@@ -40,8 +40,8 @@ import java.util.Arrays;
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @library ../ /test/lib
  * @build PipelineComparison
- * @run main/othervm/timeout=120 -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SKGlyphAtlasEvictionThroughputTest gray
- * @run main/othervm/timeout=120 -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SKGlyphAtlasEvictionThroughputTest lcd
+ * @run main/othervm/timeout=120 -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 SKGlyphAtlasEvictionThroughputTest gray
+ * @run main/othervm/timeout=120 -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 SKGlyphAtlasEvictionThroughputTest lcd
  */
 
 /*

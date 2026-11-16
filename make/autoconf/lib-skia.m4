@@ -60,6 +60,7 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
     skia_pin_file="${TOPDIR}/jb/project/tools/common/skia_prebuilt.conf"
     skia_build_type=`$GREP "^SKIA_BUILD_TYPE=" "${skia_pin_file}" 2> /dev/null | $CUT -d= -f2`
     skia_pinned_sha256=`$GREP "^SKIA_SHA256_windows_x64=" "${skia_pin_file}" 2> /dev/null | $CUT -d= -f2`
+    skia_pinned_tag=`$GREP "^SKIA_TAG=" "${skia_pin_file}" 2> /dev/null | $CUT -d= -f2`
 
     # fixed up first, so that a Windows-style path works as everywhere else in configure
     SKIA_INCLUDE_DIR="${with_skia}"
@@ -87,13 +88,23 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
     # noticed at configure time (a warning: hand-built Skias are legitimate).
     AC_MSG_CHECKING([whether the Skia prebuilt matches skia_prebuilt.conf])
     skia_marker="${SKIA_INCLUDE_DIR}/.fetch_skia.complete"
+    skia_is_pinned=false
     if test ! -f "${skia_marker}"; then
       AC_MSG_RESULT([unknown (no .fetch_skia.complete marker, not produced by fetch_skia.sh)])
     elif test "x`$CAT "${skia_marker}"`" = "x${skia_pinned_sha256}"; then
       AC_MSG_RESULT([yes])
+      skia_is_pinned=true
     else
       AC_MSG_RESULT([no])
       AC_MSG_WARN([--with-skia: the prebuilt under '${with_skia}' is not the one pinned in skia_prebuilt.conf (${skia_pinned_sha256})])
+    fi
+
+    # The release the backend reports (SKIA_RELEASE: its pipeline cache is keyed by it): the pin's tag when the
+    # unpacked tree is the pinned one, "unpinned" otherwise (a hand-built Skia must not share a cache key with
+    # the release); reduced to the characters a tag has, so it stays one preprocessor token.
+    skia_release=unpinned
+    if test "x${skia_is_pinned}" = xtrue; then
+      skia_release=`$ECHO "${skia_pinned_tag}" | $TR -cd 'A-Za-z0-9._-'`
     fi
 
     # Graphite on Dawn (Direct3D 11, Direct3D 12) and on native Vulkan.
@@ -126,7 +137,7 @@ AC_DEFUN_ONCE([LIB_SETUP_SKIA],
       AC_MSG_ERROR([--with-skia: the release under '${with_skia}' has no generated Dawn headers (gen/third_party/dawn/include)])
     fi
     SKIA_CRT_FLAGS="-MT"
-    SKIA_CFLAGS="-I${SKIA_INCLUDE_DIR} -DSK_GRAPHITE -DSK_RELEASE -DSK_DAWN -DSK_VULKAN \
+    SKIA_CFLAGS="-I${SKIA_INCLUDE_DIR} -DSK_GRAPHITE -DSK_RELEASE -DSK_DAWN -DSK_VULKAN -DSKIA_RELEASE=${skia_release:-unknown} \
         -DNOMINMAX -EHsc ${SKIA_CRT_FLAGS} -std:c++20 -pathmap:${SKIA_INCLUDE_DIR}=skia \
         -I${SKIA_INCLUDE_DIR}/third_party/externals/dawn/include \
         -I${SKIA_LIB_DIR}/gen/third_party/dawn/include \

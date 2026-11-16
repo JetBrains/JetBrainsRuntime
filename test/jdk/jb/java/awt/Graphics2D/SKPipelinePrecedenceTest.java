@@ -36,9 +36,9 @@ import sun.java2d.vulkan.VKEnv;
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.awt java.desktop/sun.awt.windows java.desktop/sun.java2d.skia
  *          java.desktop/sun.java2d.vulkan
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.d3d=true SKPipelinePrecedenceTest skia
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.opengl=true SKPipelinePrecedenceTest skia
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.vulkan=Force SKPipelinePrecedenceTest skia
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.d3d=true SKPipelinePrecedenceTest skia
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.opengl=true SKPipelinePrecedenceTest skia
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.vulkan=Force SKPipelinePrecedenceTest skia
  * @run main/othervm -Dsun.java2d.d3d=true SKPipelinePrecedenceTest d3d
  */
 

@@ -41,7 +41,7 @@ import java.awt.image.VolatileImage;
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @library ../ /test/lib
  * @build PipelineComparison
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SKBlitBatchTest
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKBlitBatchTest
  */
 
 /*

@@ -70,7 +70,7 @@ void main(String[] args) throws Exception {
 
 private void check(String mode, boolean startExpected, List<String> failures) throws Exception {
     ProcessBuilder processBuilder = ProcessTools.createTestJavaProcessBuilder(
-            "-Dsun.java2d.skia=true", "-Dsun.java2d.skia.verbose=true",
+            "-Dsun.java2d.skia=true", "-Dsun.java2d.skia.verbose=true", "-Dsun.java2d.skia.pipelineCache=off",
             "-Dsun.java2d.d3d=true", getClass().getName(), "child", mode);
     OutputAnalyzer output = ProcessTools.executeProcess(processBuilder);
     System.out.println("child " + mode + " stdout:\n" + output.getStdout());

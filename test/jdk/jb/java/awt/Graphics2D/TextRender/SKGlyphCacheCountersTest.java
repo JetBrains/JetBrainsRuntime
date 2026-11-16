@@ -41,8 +41,8 @@ import sun.java2d.skia.SKEnvironment;
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @library ../ /test/lib
  * @build PipelineComparison
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SKGlyphCacheCountersTest 1
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SKGlyphCacheCountersTest 2
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKGlyphCacheCountersTest 1
+ * @run main/othervm -Dsun.java2d.uiScale=1 -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKGlyphCacheCountersTest 2
  */
 
 /*

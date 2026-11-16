@@ -30,12 +30,17 @@ import java.awt.Transparency;
 import java.awt.image.BufferedImage;
 import java.awt.image.VolatileImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import jdk.test.lib.Utils;
 import jdk.test.lib.process.OutputAnalyzer;
@@ -43,6 +48,7 @@ import jdk.test.lib.process.ProcessTools;
 import jtreg.SkippedException;
 import sun.java2d.SurfaceData;
 import sun.java2d.skia.SKEnvironment;
+import sun.java2d.skia.SKPipelineCache;
 
 /**
  * The shared part of the Skia backend's tests: whether the run line's pipeline and
@@ -96,6 +102,22 @@ public final class PipelineComparison {
         public static final int BATCH_DRAWS = 5;
 
         private GlyphCacheCounter() {
+        }
+    }
+
+    /**
+     * Indices into {@link SKPipelineCache#counters}, in the order of SKPipelineCache.cpp's
+     * {@code SKPipelineCacheCounters}.
+     */
+    public static final class PipelineCacheCounter {
+        /** Lookups. */
+        public static final int LOADS = 0;
+        /** Lookups that found data. */
+        public static final int HITS = 1;
+        /** Blobs handed over for storing. */
+        public static final int STORES = 2;
+
+        private PipelineCacheCounter() {
         }
     }
 
@@ -285,7 +307,7 @@ public final class PipelineComparison {
 
     /**
      * The command of a child JVM that runs a test class with the Skia backend requested and its
-     * package exported to the test: the options given,
+     * package exported to the test: the options given (the pipeline cache, the Graphite API, ...),
      * then the class and its arguments; for jdk.test.lib.process.ProcessTools, which adds the
      * launcher and the class path.
      */
@@ -297,6 +319,14 @@ public final class PipelineComparison {
         command.add(mainClass.getName());
         command.addAll(List.of(arguments));
         return command;
+    }
+
+    /** Deletes the directory with everything in it, for the scratch directories of child JVMs. */
+    public static void deleteRecursively(Path directory) throws IOException {
+        try (Stream<Path> entries = Files.walk(directory)) {
+            //noinspection ResultOfMethodCallIgnored (best effort in finally blocks: a file that stays must not mask the result)
+            entries.sorted(Comparator.reverseOrder()).forEach(entry -> entry.toFile().delete());
+        }
     }
 
     /** One attempt at rendering into volatile images. */

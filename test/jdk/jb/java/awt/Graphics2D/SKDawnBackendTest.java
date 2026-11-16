@@ -29,7 +29,7 @@ import sun.java2d.skia.SKEnvironment;
  * @requires os.family == "windows"
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
- * @run main/othervm -Dsun.java2d.skia=true SKDawnBackendTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKDawnBackendTest
  */
 
 /*

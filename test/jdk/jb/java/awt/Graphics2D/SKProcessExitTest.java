@@ -79,8 +79,8 @@ void main(String[] args) throws Exception {
     }
     String mode = args[0];
     List<String> options = switch (mode) {
-        case "d3d" -> List.of("-Dsun.java2d.d3d=true");
-        default -> List.of();
+        case "d3d" -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.d3d=true");
+        default -> List.of("-Dsun.java2d.skia.pipelineCache=off");
     };
     List<String> command = PipelineComparison.skiaChildCommand(options, getClass(), "child", mode);
     Process child = ProcessTools.createTestJavaProcessBuilder(command).start();

@@ -37,7 +37,7 @@ import java.awt.image.BufferedImage;
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @library ../ /test/lib
  * @build PipelineComparison
- * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.uiScale=1 SKLCDTextBackgroundsTest 32 64
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 SKLCDTextBackgroundsTest 32 64
  */
 
 /*

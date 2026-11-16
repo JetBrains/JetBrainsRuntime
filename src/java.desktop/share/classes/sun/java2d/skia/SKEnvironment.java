@@ -39,6 +39,9 @@ import sun.util.logging.PlatformLogger;
  * <li>{@code sun.java2d.skia=true|false}: the backend on or off (default off).</li>
  * <li>{@code sun.java2d.skia.verbose=true}: what was chosen and why, on stderr
  *     (as {@code sun.java2d.vulkan=True} and {@code sun.java2d.d3d=True} report).</li>
+ * <li>{@code sun.java2d.skia.pipelineCache=<directory>|off}: where Graphite's
+ *     compiled pipelines persist between runs (default Windows' per-user cache
+ *     location, keyed by the Skia release; see {@link SKPipelineCache}).</li>
  * <li>{@code sun.java2d.skia.shapes=analytic|marlin}: antialiased shapes drawn
  *     by Skia's analytic rasterizer with Marlin's coverage masks for general
  *     paths (default), or every shape through Marlin's masks as the other
@@ -140,7 +143,7 @@ public final class SKEnvironment {
     }
 
     /**
-     * Loads libawt_skia, hands it the configuration, and starts Graphite
+     * Loads libawt_skia, hands it the configuration and the pipeline cache, and starts Graphite
      * on the platform's graphics API.
      *
      * @return what the backend runs on ({@link #runningOn()}), or {@code null} if it did not start
@@ -150,8 +153,9 @@ public final class SKEnvironment {
         try {
             if (loadLibrary()) {
                 // before the start: the API creates its device as it starts, and the device takes
-                // the configuration then
+                // the pipeline cache and the configuration then
                 configureNative(GLYPH_CACHE_TEXELS);
+                SKPipelineCache.configure();
                 startedOn = startNative();
             }
         } catch (RuntimeException | LinkageError failure) {
@@ -161,7 +165,8 @@ public final class SKEnvironment {
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
             report("Skia rendering enabled: " + (startedOn != null
-                    ? "YES (" + startedOn + ", shapes: " + SHAPES + ")"
+                    ? "YES (" + startedOn + ", shapes: " + SHAPES
+                      + ", pipelineCache: " + (SKPipelineCache.directory() != null ? SKPipelineCache.directory() : "off") + ")"
                     : "NO"));
         }
         return startedOn;

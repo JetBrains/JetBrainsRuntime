@@ -111,7 +111,7 @@ void main(String[] args) throws Exception {
     }
     String mode = args[0];
     List<String> options = switch (mode) {
-        default -> List.of();
+        default -> List.of("-Dsun.java2d.skia.pipelineCache=off");
     };
     String api = "Dawn";
     String direct3D = mode.equals("d3d11") ? "(D3D11)" : null;

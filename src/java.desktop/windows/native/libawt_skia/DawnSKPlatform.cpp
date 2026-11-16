@@ -30,6 +30,7 @@
 #include "DawnSKPlatform.h"
 #include "SKNeverDestroyed.h"
 #include "SKPlatform.h"
+#include "SKPipelineCache.h"
 
 #include "Trace.h"
 #include "include/core/SkColorType.h"
@@ -295,7 +296,7 @@ std::string DawnSKGraphicsAPI::deviceFeatures() {
 namespace {
 
 wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Adapter &adapter,
-                           const std::shared_ptr<std::atomic<bool>> &lost) {
+                           const std::shared_ptr<std::atomic<bool>> &lost, const std::string &description) {
     wgpu::DeviceDescriptor descriptor;
     // Off-screen surfaces are created on the EDT while the flusher records and
     // submits on the same device; Dawn serializes device access with this.
@@ -318,6 +319,23 @@ wgpu::Device requestDevice(const wgpu::Instance &instance, const wgpu::Adapter &
     wgpu::Limits limits;
     if (adapter.GetLimits(&limits) == wgpu::Status::Success) {
         descriptor.requiredLimits = &limits;
+    }
+    // sun.java2d.skia.pipelineCache: Dawn asks for the shaders and pipelines it compiled in
+    // earlier sessions by its own key (adapter, driver, toggles and Dawn version are part of
+    // it) and hands over new ones; the store lives as long as the process (SKPipelineCache).
+    wgpu::DawnCacheDeviceDescriptor cache;
+    if (SKBlobStore *store = SKPipelineCache::blobStore("dawn-" + description)) {
+        cache.isolationKey = "jbr-skia";
+        cache.SetDawnLoadCacheDataCallback(
+                [](const std::span<const std::byte> key, std::span<std::byte> value, SKBlobStore *blobStore) {
+                    return blobStore->load(key.data(), key.size(), value.data(), value.size());
+                }, store);
+        cache.SetDawnStoreCacheDataCallback(
+                [](const std::span<const std::byte> key, const std::span<const std::byte> value,
+                   SKBlobStore *blobStore) {
+                    blobStore->store(key.data(), key.size(), value.data(), value.size());
+                }, store);
+        descriptor.nextInChain = &cache;
     }
     descriptor.SetUncapturedErrorCallback(
             [](const wgpu::Device &, const wgpu::ErrorType type, const wgpu::StringView message) {
@@ -394,7 +412,7 @@ Win32SKConfigInfo *DawnSKGraphicsAPI::createConfig() {
         }
         gpu = std::make_shared<DawnSKDevice>();
         gpu->instance = instance;
-        gpu->device = requestDevice(instance, adapter, gpu->lost);
+        gpu->device = requestDevice(instance, adapter, gpu->lost, adapterDescription(adapter));
         if (gpu->device == nullptr) {
             J2dRlsTraceLn(J2D_TRACE_ERROR,
                           "DawnSKGraphicsAPI::createConfig: the Direct3D 11 adapter yields no Dawn device");
