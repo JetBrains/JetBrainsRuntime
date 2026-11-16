@@ -84,14 +84,11 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetPredefinedCurso
     if (!cursor_theme)
         return 0;
 
-    jboolean isCopy = JNI_FALSE;
-    const char *name_c_str = JNU_GetStringPlatformChars(env, name, &isCopy);
+    char *name_c_str = wlJavaStringToUtf8(env, name);
     if (!name_c_str)
         return 0;
     struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(cursor_theme, name_c_str);
-    if (isCopy) {
-        JNU_ReleaseStringPlatformChars(env, name, name_c_str);
-    }
+    free(name_c_str);
 
     if (!wl_cursor || !wl_cursor->image_count || !wl_cursor->images[0])
         return 0;
