@@ -643,19 +643,16 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
     jint pixel_width = ceil(width * scale);
     jint pixel_height = ceil(height * scale);
 
-    jboolean is_copy = JNI_FALSE;
-    const char *title_c_str = "";
+    char *title_c_str = NULL;
     if (title) {
-        title_c_str = JNU_GetStringPlatformChars(env, title, &is_copy);
+        title_c_str = wlJavaStringToUtf8(env, title);
         if (!title_c_str)
             return;
     }
 
     unsigned char *buffer = (*env)->GetPrimitiveArrayCritical(env, dest, 0);
     if (!buffer) {
-        if (is_copy) {
-            JNU_ReleaseStringPlatformChars(env, title, title_c_str);
-        }
+        free(title_c_str);
         JNU_ThrowOutOfMemoryError(env, "Could not get image buffer");
         return;
     }
@@ -671,7 +668,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
 
     cairo_t *cr = p_cairo_create(surface);
 
-    draw_title_bar(decor, surface, cr, width, height, scale, title_c_str, buttonsState);
+    draw_title_bar(decor, surface, cr, width, height, scale, title_c_str ? title_c_str : "", buttonsState);
 
     // Make sure pixels have been flush into the underlying buffer
     p_cairo_surface_flush(surface);
@@ -680,9 +677,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativePaintTitleBar
 
     (*env)->ReleasePrimitiveArrayCritical(env, dest, buffer, 0);
 
-    if (is_copy) {
-        JNU_ReleaseStringPlatformChars(env, title, title_c_str);
-    }
+    free(title_c_str);
 
     p_cairo_destroy(cr);
     p_cairo_surface_destroy(surface);
@@ -767,8 +762,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
     assert (ptr != 0);
     GtkFrameDecorationDescr* decor = jlong_to_ptr(ptr);
 
-    jboolean is_copy = JNI_FALSE;
-    const char *name_c_str = JNU_GetStringPlatformChars(env, name, &is_copy);
+    char *name_c_str = wlJavaStringToUtf8(env, name);
     if (!name_c_str)
         return 0;
 
@@ -778,9 +772,7 @@ JNIEXPORT jint JNICALL Java_sun_awt_wl_GtkFrameDecoration_nativeGetIntProperty
     p_g_object_get(p_gtk_widget_get_settings(decor->window), name_c_str, &result, NULL);
 
     p_gdk_threads_leave();
-    if (is_copy) {
-        JNU_ReleaseStringPlatformChars(env, name, name_c_str);
-    }
+    free(name_c_str);
 
     return result;
 }
