@@ -32,6 +32,7 @@
 #include "SKConfiguration.h"
 #include "SKEntryLock.h"
 #include "SKGlyphCache.h"
+#include "SKImageAtlas.h"
 
 #include <array>
 
@@ -63,11 +64,23 @@ Java_sun_java2d_skia_SKEnvironment_glyphCacheCountersNative(JNIEnv *env, jclass)
     return toLongArray(env, values);
 }
 
-JNIEXPORT void JNICALL
-Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *, jclass, const jint glyphCacheTexels)
+JNIEXPORT jlongArray JNICALL
+Java_sun_java2d_skia_SKEnvironment_imageAtlasCountersNative(JNIEnv *env, jclass)
 {
     SK_ENTRY_LOCK;
-    SKConfiguration::configure(glyphCacheTexels);
+    std::array<jlong, SK_IMAGE_ATLAS_COUNTERS> values{};
+    for (int counter = 0; counter < SK_IMAGE_ATLAS_COUNTERS; counter++) {
+        values[counter] = SKImageAtlas::counter(static_cast<SKImageAtlasCounter>(counter));
+    }
+    return toLongArray(env, values);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKEnvironment_configureNative(JNIEnv *, jclass, const jint glyphCacheTexels,
+                                                   const jboolean imageAtlas)
+{
+    SK_ENTRY_LOCK;
+    SKConfiguration::configure(glyphCacheTexels, imageAtlas == JNI_TRUE);
 }
 
 } // extern "C"

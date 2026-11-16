@@ -32,6 +32,7 @@
 // Flusher thread only.
 
 #include "SKGlyphCache.h"
+#include "SKImageAtlas.h"
 #include "SKMaskCache.h"
 #include "SKPlatform.h"
 #include "SKRecordingOwner.h"
@@ -89,12 +90,16 @@ public:
     [[nodiscard]] SKGlyphCache *glyphCache(bool lcd, int bucket);
     // Marlin's coverage tiles (SKMaskCache.h), created on first use; null if its creation failed.
     [[nodiscard]] SKMaskCache *maskCache();
+    // Small image sources as atlas sprites (SKImageAtlas.h), created on first use; null if its creation failed.
+    [[nodiscard]] SKImageAtlas *imageAtlas();
 
-    // The pending batches of the caches made so far (none is created): all of them (the glyph caches', then the
-    // mask cache's); every bucket's batch of the glyph caches, grayscale and LCD; the mask cache's.
+    // The pending batches of the caches made so far (none is created): all of them (the glyph caches', the mask
+    // cache's, the image atlas', in this order); every bucket's batch of the glyph caches, grayscale and LCD;
+    // the mask cache's; the image atlas'.
     void flushCaches();
     void flushGlyphCaches();
     void flushMaskCache();
+    void flushImageAtlas();
 
     // LCD text without a destination read (SKTextPipe): the coverage correction table of an LCD contrast,
     // now the most recently used; null if none is stored.
@@ -136,6 +141,8 @@ private:
     SKGlyphCacheSet m_lcdGlyphCaches;
     std::unique_ptr<SKMaskCache> m_maskCache;
     bool m_maskCacheFailed = false;
+    std::unique_ptr<SKImageAtlas> m_imageAtlas;
+    bool m_imageAtlasFailed = false;
     std::unordered_set<SKSurfaceState *> m_surfaces;
     struct LCDTable {
         jint contrast;

@@ -26,7 +26,7 @@
 #define SKBlitLoops_h_Included
 
 // The native side of sun.java2d.skia.SKBlitLoops: blits from Skia and software surfaces (transformed,
-// tiled), copyArea and readbacks into software surfaces.
+// tiled, through the image atlas), copyArea and readbacks into software surfaces.
 // All functions run on the Skia queue flusher thread.
 
 #include "jni.h"

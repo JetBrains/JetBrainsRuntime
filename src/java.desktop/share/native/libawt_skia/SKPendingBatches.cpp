@@ -48,4 +48,7 @@ void SKPendingBatches::drawOtherKinds(SKGraphicsConfig *graphicsConfig, const SK
     if (kind != SKBatchKind::MaskTiles && graphicsConfig != nullptr) {
         graphicsConfig->flushMaskCache();
     }
+    if (kind != SKBatchKind::ImageSprites && graphicsConfig != nullptr) {
+        graphicsConfig->flushImageAtlas();
+    }
 }

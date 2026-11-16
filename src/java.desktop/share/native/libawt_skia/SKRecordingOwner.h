@@ -25,7 +25,7 @@
 #ifndef SKRecordingOwner_h_Included
 #define SKRecordingOwner_h_Included
 
-// What the caches of a context (SKGlyphCache, SKMaskCache) need of the context that owns
+// What the caches of a context (SKGlyphCache, SKMaskCache, SKImageAtlas) need of the context that owns
 // them: the Graphite recorder they record their atlases with, and the recordings it makes. A cache
 // overwrites an atlas cell that a draw of the current recording samples only after ending the recording
 // (Graphite orders an upload ahead of the recording's draws). The glyph caches date their cells by the

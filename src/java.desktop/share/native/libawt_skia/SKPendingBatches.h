@@ -26,10 +26,10 @@
 #define SKPendingBatches_h_Included
 
 // The order of the pending batches: the rect batch (SKRectBatch.h) and the caches' batches of a
-// context (glyph sprites, Marlin's tiles; SKGlyphCache.h, SKMaskCache.h). Pending batches are drawn
-// before anything else touches the canvas, so draw order is preserved; a batched primitive draws the
-// other kinds only (drawOtherKinds), so that the batches pending at any time are of one kind and draw
-// in Java's order.
+// context (glyph sprites, Marlin's tiles, image atlas sprites; SKGlyphCache.h, SKMaskCache.h,
+// SKImageAtlas.h). Pending batches are drawn before anything else touches the canvas, so draw order
+// is preserved; a batched primitive draws the other kinds only (drawOtherKinds), so that the batches
+// pending at any time are of one kind and draw in Java's order.
 // All functions run on the Skia queue flusher thread.
 
 class SKGraphicsConfig;
@@ -39,12 +39,13 @@ class SKGraphicsConfig;
 enum class SKBatchKind {
     Rects,          // rects, lines, spans, non-AA parallelograms (SKRectBatch)
     Glyphs,         // the glyph caches' sprites
-    MaskTiles       // Marlin's coverage tiles (SKMaskCache)
+    MaskTiles,      // Marlin's coverage tiles (SKMaskCache)
+    ImageSprites    // small image sources (SKImageAtlas)
 };
 
 namespace SKPendingBatches {
 
-// The glyph and Marlin tile batches of a context (null: none), then the rect batch.
+// The glyph, Marlin tile and image atlas batches of a context (null: none), then the rect batch.
 void flushOf(SKGraphicsConfig *graphicsConfig);
 
 // Before a batched op of one kind: the other kinds' pending batches (of the context, null: none) are drawn first.

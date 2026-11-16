@@ -97,6 +97,11 @@ Java_sun_java2d_skia_SKSurfaceData_setCountFrames(JNIEnv *env, const jobject sur
 
 } // extern "C"
 
+SKSurfaceState::SKSurfaceState() {
+    static uint64_t surfaceUIDs = 0;   // under the entry mutex (SKEntryLock)
+    m_uid = ++surfaceUIDs;
+}
+
 void SKSurfaceState::wrap(sk_sp<SkSurface> surface, void *texture, SKGraphicsConfig *graphicsConfig) {
     if (m_graphicsConfig != nullptr && m_graphicsConfig != graphicsConfig) {
         // never: a surface is wrapped with its own configuration's context, and leaves a context only by unwrap

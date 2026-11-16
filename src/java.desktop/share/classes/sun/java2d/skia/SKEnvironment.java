@@ -46,6 +46,8 @@ import sun.util.logging.PlatformLogger;
  *     by Skia's analytic rasterizer with Marlin's coverage masks for general
  *     paths (default), or every shape through Marlin's masks as the other
  *     pipelines do (the fallback for a rendering difference).</li>
+ * <li>{@code sun.java2d.skia.imageAtlas=false}: images small enough for the
+ *     image atlas are drawn as single textures instead.</li>
  * </ul>
  * <p>
  * The backend starts on the first call of {@link #isSkiaEnabled} or {@link #runningOn()},
@@ -65,6 +67,7 @@ public final class SKEnvironment {
 
     /** {@code analytic} (the default) or {@code marlin}: how antialiased shapes are rasterized. */
     private static final String SHAPES = shapesProperty();
+    private static final boolean IMAGE_ATLAS = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.imageAtlas"));
 
     /**
      * The side of the backend's glyph cache textures in texels: the backend's default (1024,
@@ -154,7 +157,7 @@ public final class SKEnvironment {
             if (loadLibrary()) {
                 // before the start: the API creates its device as it starts, and the device takes
                 // the pipeline cache and the configuration then
-                configureNative(GLYPH_CACHE_TEXELS);
+                configureNative(GLYPH_CACHE_TEXELS, IMAGE_ATLAS);
                 SKPipelineCache.configure();
                 startedOn = startNative();
             }
@@ -166,6 +169,7 @@ public final class SKEnvironment {
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
             report("Skia rendering enabled: " + (startedOn != null
                     ? "YES (" + startedOn + ", shapes: " + SHAPES
+                      + ", imageAtlas: " + (IMAGE_ATLAS ? "on" : "off")
                       + ", pipelineCache: " + (SKPipelineCache.directory() != null ? SKPipelineCache.directory() : "off") + ")"
                     : "NO"));
         }
@@ -207,7 +211,7 @@ public final class SKEnvironment {
     private static native String startNative();
 
     /** Hands the configuration to the native backend before any context exists. */
-    private static native void configureNative(int glyphCacheTexels);
+    private static native void configureNative(int glyphCacheTexels, boolean imageAtlas);
 
     // ---- diagnostics, for the backend's tests (test/jdk/jb/java/awt/Graphics2D) ----------------------
 
@@ -227,4 +231,11 @@ public final class SKEnvironment {
 
     private static native long[] glyphCacheCountersNative();
 
+    /** The image atlas's counters (SKImageAtlas.h). */
+    @SuppressWarnings("unused")
+    public static long[] imageAtlasCounters() {
+        return isSkiaEnabled() ? imageAtlasCountersNative() : new long[0];
+    }
+
+    private static native long[] imageAtlasCountersNative();
 }

@@ -26,10 +26,13 @@
 // All functions run on the Skia queue flusher thread.
 
 #include "SKBlitLoops.h"
+#include "SKConfiguration.h"
 #include "SKContext.h"
 #include "SKGraphicsConfig.h"
+#include "SKImageAtlas.h"
 #include "SKImageSources.h"
 #include "SKPaints.h"
+#include "SKPendingBatches.h"
 #include "SKSurfaceData.h"
 
 #include "jlong.h"
@@ -170,6 +173,32 @@ void blitSoftwareSource(JNIEnv *env, SurfaceDataOps *source, const jint sourceFo
     }
 }
 
+// The image atlas (on unless sun.java2d.skia.imageAtlas=false): a blit the caller found may be a
+// sprite (SKBlitLoops::blit), of a small Skia surface of this context, unscaled and pixel-aligned, with a plain SrcOver
+// composite, becomes a sprite of the context's image atlas (SKImageAtlas.h): one mesh for the small images drawn in
+// a row instead of a draw each, each with its own image paint key. False: the caller draws the blit itself.
+bool imageAtlasBlit(const SKSurfaceDataOps *source, const sk_sp<SkImage> &image, const SkPaint &paint, const jint sx1,
+                    const jint sy1, const jint sx2, const jint sy2,
+                    const jdouble dx1, const jdouble dy1, const jdouble dx2, const jdouble dy2) {
+    const SKContext &context = SKContext::current();
+    SKGraphicsConfig *graphicsConfig = context.graphicsConfig();
+    if (source == nullptr || source->state == nullptr || graphicsConfig == nullptr
+            || sx2 - sx1 != dx2 - dx1 || sy2 - sy1 != dy2 - dy1 || dx1 != std::floor(dx1) || dy1 != std::floor(dy1)
+            || !SKImageAtlas::fits(sx2 - sx1, sy2 - sy1) || paint.asBlendMode() != SkBlendMode::kSrcOver
+            || paint.getShader() != nullptr || paint.getColorFilter() != nullptr) {
+        return false;
+    }
+    SKImageAtlas *imageAtlas = graphicsConfig->imageAtlas();
+    if (imageAtlas == nullptr) {
+        return false;
+    }
+    SkPaint sprite = paint;
+    // the color modulates the atlas texel: white, the extra alpha
+    sprite.setColor4f(SkColor4f{.fR = 1, .fG = 1, .fB = 1, .fA = context.extraAlpha()});
+    return imageAtlas->draw(context.canvas(), sprite, source->state, image,
+                            sx1, sy1, sx2 - sx1, sy2 - sy1, static_cast<jint>(dx1), static_cast<jint>(dy1));
+}
+
 // A copy of the destination's `region`, clipped to the surface: sampling the render target in the
 // pass that draws into it is a feedback loop (the draw reads nothing, or what it writes), so the
 // source region is copied out first. Null if the region misses the surface or the copy fails. Made
@@ -191,7 +220,13 @@ void SKBlitLoops::blit(JNIEnv *env, const jint packedParams, const jint sx1, con
     const jboolean isoblit = (packedParams >> sun_java2d_skia_SKBlitLoops_OFFSET_ISOBLIT) & 1;
     const jint hint        = (packedParams >> sun_java2d_skia_SKBlitLoops_OFFSET_HINT) & PACKED_BYTE_MASK;
     const jint sourceFormat  = (packedParams >> sun_java2d_skia_SKBlitLoops_OFFSET_SRCTYPE) & PACKED_BYTE_MASK;
-    if (!context.beginDraw()) {
+    // A blit that may become an image atlas sprite (of a Skia surface, no transform, no XOR, not from the
+    // destination) draws only the other kinds' batches, so consecutive sprites share the atlas batch; any other blit
+    // draws everything pending first, and so does one that turns out not to be a sprite (below).
+    const bool maySprite = SKConfiguration::imageAtlas() && isoblit && !context.xorMode()
+            && !context.hasMatrix() && static_cast<SKSurfaceDataOps *>(jlong_to_ptr(sourceOps)) != context.destination()
+            && dx1 < dx2 && dy1 < dy2 && sx1 < sx2 && sy1 < sy2;
+    if (!(maySprite ? context.beginDraw(SKBatchKind::ImageSprites) : context.beginDraw())) {
         return;
     }
     if (static_cast<SKSurfaceDataOps *>(jlong_to_ptr(destinationOps)) != context.destination()) {
@@ -202,6 +237,7 @@ void SKBlitLoops::blit(JNIEnv *env, const jint packedParams, const jint sx1, con
     }
 
     sk_sp<SkImage> image;
+    SKSurfaceDataOps *linkedSource = nullptr;   // a Skia surface of this context, sampled through its linked image
     SkRect sourceRect;
     if (isoblit) {
         auto *source = static_cast<SKSurfaceDataOps *>(jlong_to_ptr(sourceOps));
@@ -220,6 +256,7 @@ void SKBlitLoops::blit(JNIEnv *env, const jint packedParams, const jint sx1, con
             sourceRect.offset(static_cast<SkScalar>(-region.x()), static_cast<SkScalar>(-region.y()));
         } else if (SKImageSources::isLinkedSource(source)) {
             image = SKImageSources::blitSourceImage(source).image;
+            linkedSource = source;
         } else {
             image = context.getImage(source).image;
         }
@@ -236,6 +273,12 @@ void SKBlitLoops::blit(JNIEnv *env, const jint packedParams, const jint sx1, con
     const SkRect destRect = SkRect::MakeLTRB(static_cast<SkScalar>(dx1), static_cast<SkScalar>(dy1),
                                              static_cast<SkScalar>(dx2), static_cast<SkScalar>(dy2));
     const SkPaint paint = SKPaints::imageSourcePaint();
+    if (maySprite && imageAtlasBlit(linkedSource, image, paint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)) {
+        return;
+    }
+    if (maySprite) {
+        context.flushAllBatches();   // not a sprite: everything pending before it first
+    }
     drawImageQuad(image, sourceRect, destRect, samplingForHint(hint), paint);
 }
 

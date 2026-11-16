@@ -137,8 +137,11 @@ void SKContext::markTouched() {
     if (m_graphicsConfig != nullptr) {
         SKPresentation::markTouched(m_graphicsConfig);
     }
-    if (SKSurfaceDataOps *destination = m_destination;
-            destination != nullptr && destination->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
+    SKSurfaceDataOps *destination = m_destination;
+    if (destination != nullptr && destination->state != nullptr && m_graphicsConfig != nullptr) {
+        destination->state->touch();
+    }
+    if (destination != nullptr && destination->type == sun_java2d_pipe_hw_AccelSurface_WINDOW) {
         SKPresentation::markTouchedWindow(destination);
     }
 }

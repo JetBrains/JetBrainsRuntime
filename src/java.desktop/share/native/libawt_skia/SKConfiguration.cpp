@@ -44,6 +44,7 @@ constexpr jint GLYPH_CACHE_TEXEL_STEP = 32;
 // The configuration SKEnvironment.configureNative hands over.
 struct Configuration {
     jint glyphCacheTexels = DEFAULT_GLYPH_CACHE_TEXELS;
+    bool imageAtlas = true;           // sun.java2d.skia.imageAtlas: small image sources drawn from an atlas (SKImageAtlas.h)
     bool errorTraces = false;         // J2D_TRACE_LEVEL at J2D_TRACE_ERROR or above
 };
 
@@ -67,7 +68,8 @@ Configuration gConfiguration;
 
 } // namespace
 
-void SKConfiguration::configure(const jint glyphCacheTexels) {
+void SKConfiguration::configure(const jint glyphCacheTexels, const bool imageAtlas) {
+    gConfiguration.imageAtlas = imageAtlas;
     gConfiguration.errorTraces = traceLevel() >= J2D_TRACE_ERROR;
     if (glyphCacheTexels >= MIN_GLYPH_CACHE_TEXELS && glyphCacheTexels <= MAX_GLYPH_CACHE_TEXELS
             && glyphCacheTexels % GLYPH_CACHE_TEXEL_STEP == 0) {
@@ -77,6 +79,10 @@ void SKConfiguration::configure(const jint glyphCacheTexels) {
 
 jint SKConfiguration::glyphCacheTexels() {
     return gConfiguration.glyphCacheTexels;
+}
+
+bool SKConfiguration::imageAtlas() {
+    return gConfiguration.imageAtlas;
 }
 
 bool SKConfiguration::errorTraces() {

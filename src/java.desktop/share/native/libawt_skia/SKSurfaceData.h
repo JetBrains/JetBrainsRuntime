@@ -40,10 +40,11 @@ class SKGraphicsConfig;
 
 // The Skia side of a Skia surface, made with its ops (SKSurfaceData.initOps, under the entry lock) and
 // deleted with its platform surface (DISPOSE_SURFACE): the wrapper of its platform texture, made on its
-// first use (SKContext::getSurface), and the context whose recorder made it. Flusher thread only.
+// first use (SKContext::getSurface), and the context whose recorder made it, its identity and content
+// version (the image atlas keys and dates its copies by them). Flusher thread only.
 class SKSurfaceState {
 public:
-    SKSurfaceState() = default;
+    SKSurfaceState();   // with an identity unique for the life of the process
     SKSurfaceState(const SKSurfaceState &) = delete;
     SKSurfaceState &operator=(const SKSurfaceState &) = delete;
 
@@ -61,6 +62,12 @@ public:
     // wrap or unwrap.
     void discardSurface() { m_surface.reset(); }
 
+    // Unique for the life of the process (SKImageAtlas keys copies by it).
+    [[nodiscard]] uint64_t uid() const { return m_uid; }
+    // Advanced by every op drawing into the surface (touch, from SKContext::markTouched).
+    [[nodiscard]] uint64_t contentVersion() const { return m_contentVersion; }
+    void touch() { m_contentVersion++; }
+
 private:
     friend class SKGraphicsConfig;   // wrapSurface, unwrapSurface
 
@@ -73,6 +80,8 @@ private:
     sk_sp<SkSurface> m_surface;
     void *m_wrappedTexture = nullptr;
     SKGraphicsConfig *m_graphicsConfig = nullptr;
+    uint64_t m_uid = 0;
+    uint64_t m_contentVersion = 0;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C

@@ -106,6 +106,23 @@ public final class PipelineComparison {
     }
 
     /**
+     * Indices into {@link SKEnvironment#imageAtlasCounters}, in the order of SKImageAtlas.h's
+     * {@code SKImageAtlasCounter}.
+     */
+    public static final class ImageAtlasCounter {
+        public static final int BLITS = 0;
+        /** Copies of images into the atlas. */
+        public static final int COPIES = 1;
+        @SuppressWarnings("unused")   // the native counters' index 2 (SKImageAtlas.h); no test reads it
+        public static final int REFILLS = 2;
+        /** The atlas batch's mesh draws. */
+        public static final int BATCH_DRAWS = 3;
+
+        private ImageAtlasCounter() {
+        }
+    }
+
+    /**
      * Indices into {@link SKPipelineCache#counters}, in the order of SKPipelineCache.cpp's
      * {@code SKPipelineCacheCounters}.
      */

@@ -150,6 +150,7 @@ SKGraphicsConfig::~SKGraphicsConfig() {
         unwrapSurface(*m_surfaces.begin());
     }
     m_maskCache.reset();
+    m_imageAtlas.reset();
     freeGlyphCaches(m_grayscaleGlyphCaches);
     freeGlyphCaches(m_lcdGlyphCaches);
     m_lcdTables.clear();
@@ -204,9 +205,18 @@ SKMaskCache *SKGraphicsConfig::maskCache() {
     return m_maskCache.get();
 }
 
+SKImageAtlas *SKGraphicsConfig::imageAtlas() {
+    if (m_imageAtlas == nullptr && !m_imageAtlasFailed) {
+        m_imageAtlas = SKImageAtlas::make(this);
+        m_imageAtlasFailed = m_imageAtlas == nullptr;
+    }
+    return m_imageAtlas.get();
+}
+
 void SKGraphicsConfig::flushCaches() {
     flushGlyphCaches();
     flushMaskCache();
+    flushImageAtlas();
 }
 
 // ReSharper disable once CppMemberFunctionMayBeConst - draws the glyph caches' batches
@@ -219,6 +229,13 @@ void SKGraphicsConfig::flushGlyphCaches() {
 void SKGraphicsConfig::flushMaskCache() {
     if (m_maskCache != nullptr) {
         m_maskCache->flush();
+    }
+}
+
+// ReSharper disable once CppMemberFunctionMayBeConst - draws the image atlas's batch
+void SKGraphicsConfig::flushImageAtlas() {
+    if (m_imageAtlas != nullptr) {
+        m_imageAtlas->flush();
     }
 }
 

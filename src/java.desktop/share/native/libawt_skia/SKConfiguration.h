@@ -33,8 +33,10 @@
 namespace SKConfiguration {
 
 // glyphCacheTexels: the side of SKGlyphCache's textures (Java's glyph images); 0 or a value out of range keeps the default
-void configure(jint glyphCacheTexels);
+// imageAtlas: whether small image sources are drawn from an atlas (sun.java2d.skia.imageAtlas, SKImageAtlas.h)
+void configure(jint glyphCacheTexels, bool imageAtlas);
 [[nodiscard]] jint glyphCacheTexels();     // the side SKGlyphCache creates its textures with
+[[nodiscard]] bool imageAtlas();
 // Whether the release traces of errors print (J2D_TRACE_LEVEL at J2D_TRACE_ERROR or above, Trace.c), read
 // once by configure: a check that only feeds such a trace (SKGraphicsConfig's texture paint images) runs only
 // then, and costs nothing otherwise.
