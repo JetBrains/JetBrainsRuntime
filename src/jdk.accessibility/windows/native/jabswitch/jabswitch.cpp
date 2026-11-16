@@ -299,12 +299,14 @@ void printVersion() {
     char* pVersionData = new char[nVersionSize];
     if (!GetFileVersionInfo(executableFileName, 0, nVersionSize, pVersionData)) {
         printf("Unable to get version info.\n");
+        delete[] pVersionData;
         return;
     }
     LPVOID pVersionInfo;
     UINT nSize;
     if (!VerQueryValue(pVersionData, _T("\\"), &pVersionInfo, &nSize)) {
         printf("Unable to query version value.\n");
+        delete[] pVersionData;
         return;
     }
     VS_FIXEDFILEINFO *pVSInfo = (VS_FIXEDFILEINFO *)pVersionInfo;
@@ -319,6 +321,7 @@ void printVersion() {
         "jabswitch enables or disables the Java Access Bridge.\n",
         versionString
     );
+    delete[] pVersionData;
 }
 
 int regEnable() {
@@ -342,9 +345,13 @@ int regEnable() {
         if (err == ERROR_SUCCESS) {
             err = _tcslwr_s(dataBuffer, DEFAULT_ALLOC);
             if (err) {
+                if (data != dataBuffer) delete[] data;
+                RegCloseKey(hKey);
                 return -1;
             }
             if (_tcsstr(dataBuffer, STR_ACCESSBRIDGE) != NULL) {
+                if (data != dataBuffer) delete[] data;
+                RegCloseKey(hKey);
                 return 0;  // This is OK, e.g. ran enable twice and the value is there.
             } else {
                 // add oracle_javaaccessbridge to Config key for HKCU
@@ -353,9 +360,11 @@ int regEnable() {
                 if (newStr != NULL) {
                     wsprintf(newStr, L"%s,%s", dataBuffer, STR_ACCESSBRIDGE);
                     RegSetValueEx(hKey, ACCESSIBILITY_CONFIG, 0, REG_SZ, (BYTE *)newStr, dataLength);
+                    delete[] newStr;
                 }
             }
         }
+        if (data != dataBuffer) delete[] data;
         RegCloseKey(hKey);
     }
     return err;
@@ -387,9 +396,13 @@ int regDeleteValue(HKEY hFamilyKey, LPCWSTR lpSubKey)
         if (err == ERROR_SUCCESS) {
             err = _tcslwr_s(dataBuffer, DEFAULT_ALLOC);
             if (err) {
+                if (data != dataBuffer) delete[] data;
+                RegCloseKey(hKey);
                 return -1;
             }
             if (_tcsstr(dataBuffer, STR_ACCESSBRIDGE) == NULL) {
+                if (data != dataBuffer) delete[] data;
+                RegCloseKey(hKey);
                 return 0;  // This is OK, e.g. ran disable twice and the value is not there.
             } else {
                 // remove oracle_javaaccessbridge from Config key
@@ -403,6 +416,9 @@ int regDeleteValue(HKEY hFamilyKey, LPCWSTR lpSubKey)
                     _tcscpy_s(searchBuffer, DEFAULT_ALLOC, tok);
                     err = _tcslwr_s(searchBuffer, DEFAULT_ALLOC);
                     if (err) {
+                        delete[] newStr;
+                        if (data != dataBuffer) delete[] data;
+                        RegCloseKey(hKey);
                         return -1;
                     }
                     if (_tcsstr(searchBuffer, STR_ACCESSBRIDGE) == NULL) {
@@ -416,8 +432,10 @@ int regDeleteValue(HKEY hFamilyKey, LPCWSTR lpSubKey)
                 }
                 dataLength = (_tcslen(newStr) + 1) * sizeof(TCHAR);
                 RegSetValueEx(hKey, ACCESSIBILITY_CONFIG, 0, REG_SZ, (BYTE *)newStr, dataLength);
+                delete[] newStr;
             }
         }
+        if (data != dataBuffer) delete[] data;
         RegCloseKey(hKey);
     }
     return err;
