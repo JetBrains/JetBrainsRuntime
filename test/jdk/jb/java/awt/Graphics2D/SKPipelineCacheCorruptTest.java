@@ -35,6 +35,7 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -51,15 +52,18 @@ import sun.java2d.skia.SKEnvironment;
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKPipelineCacheCorruptTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan SKPipelineCacheCorruptTest
  */
 
 /*
- * Each session is a child JVM. Dawn's blob file (dawn-*.bin, records
+ * Each session is a child JVM on the parent's Graphite API. Dawn's blob file (dawn-*.bin, records
  * of a key size, a value size, the key and the value) whose first record claims 0x7fffffff bytes
  * for its key and its value is dropped and started over: the session renders and exits normally,
  * and the file holds valid records again afterwards. Before, the store allocated what the header
  * claimed (a C++ exception out of a JNI entry, the process aborted at every start) or kept the bad
- * record in front of every record appended after it.
+ * record in front of every record appended after it. Graphite's Vulkan pipeline data
+ * (graphite.bin, one blob that Graphite checks before it hands it to the driver) of the same bytes
+ * is not used, and the session's own data replaces it (on the window's present).
  */
 
 /** What the corrupt record's header claims for its key and its value: 2 GB each. */
@@ -76,7 +80,8 @@ private static final int SCENE_SIZE = 64;
 private static final int PROBE_X = 20;
 private static final int PROBE_Y = 20;
 private static final int BLUE = 0x0000ff;
-/** How long the child's window stays up, for its present to compile what it uses. */
+
+/** How long the child's window stays up, for its present to offer Graphite's pipeline data to the cache. */
 private static final int WINDOW_SHOWN_MS = 500;
 
 void main(String[] args) throws Exception {
@@ -85,13 +90,14 @@ void main(String[] args) throws Exception {
         return;
     }
     PipelineComparison.requireRequestedAPI();
+    boolean vulkan = PipelineComparison.runsOn("Vulkan");
     // in jtreg's scratch directory, not %TEMP%
     Path cacheDirectory = Files.createTempDirectory(Path.of("."), "skia-pipeline-cache-corrupt").toAbsolutePath();
     try {
-        runSession(cacheDirectory, "first");
-        List<File> cacheFiles = cacheFiles(cacheDirectory);
+        runSession(cacheDirectory, vulkan, "first");
+        List<File> cacheFiles = cacheFiles(cacheDirectory, vulkan);
         if (cacheFiles.isEmpty()) {
-            throw new RuntimeException("no dawn-*.bin after a session");
+            throw new RuntimeException("no " + (vulkan ? "graphite.bin" : "dawn-*.bin") + " after a session");
         }
         // a record header claiming 2 GB for key and value, then a little garbage
         ByteBuffer corrupt = ByteBuffer.allocate(RECORD_HEADER_BYTES + GARBAGE_BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -103,7 +109,7 @@ void main(String[] args) throws Exception {
             Files.write(cacheFile.toPath(), corrupt.array());
             System.out.println("corrupted " + cacheFile.getName());
         }
-        OutputAnalyzer corruptSession = runSession(cacheDirectory, "corrupt");
+        OutputAnalyzer corruptSession = runSession(cacheDirectory, vulkan, "corrupt");
         corruptSession.shouldContain("rendered ok");
         for (File cacheFile : cacheFiles) {
             byte[] bytes = Files.exists(cacheFile.toPath()) ? Files.readAllBytes(cacheFile.toPath()) : new byte[0];
@@ -112,31 +118,37 @@ void main(String[] args) throws Exception {
                     && ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getInt(0) == CLAIMED_SIZE) {
                 throw new RuntimeException(cacheFile.getName() + " still starts with the corrupt record");
             }
+            if (vulkan && (bytes.length == 0 || Arrays.equals(bytes, corrupt.array()))) {
+                throw new RuntimeException(cacheFile.getName() + " was not replaced by the session's pipeline data");
+            }
         }
         // and a third session reads what the second one stored
-        runSession(cacheDirectory, "third").shouldContain("rendered ok");
+        runSession(cacheDirectory, vulkan, "third").shouldContain("rendered ok");
     } finally {
         PipelineComparison.deleteRecursively(cacheDirectory);
     }
     System.out.println("PASSED");
 }
 
-/** Dawn's cache files in the directory: dawn-*.bin. */
-private List<File> cacheFiles(Path cacheDirectory) {
+/** The API's cache files in the directory: graphite.bin on Vulkan, dawn-*.bin on Dawn. */
+private List<File> cacheFiles(Path cacheDirectory, boolean vulkan) {
     List<File> result = new ArrayList<>();
     File[] files = cacheDirectory.toFile().listFiles();
     for (File file : files != null ? files : new File[0]) {
         System.out.println("  " + file.getName() + ": " + file.length() + " bytes");
         String name = file.getName();
-        if (name.startsWith("dawn-") && name.endsWith(".bin")) {
+        if (vulkan ? name.equals("graphite.bin") : name.startsWith("dawn-") && name.endsWith(".bin")) {
             result.add(file);
         }
     }
     return result;
 }
 
-private OutputAnalyzer runSession(Path cacheDirectory, String label) throws Exception {
+private OutputAnalyzer runSession(Path cacheDirectory, boolean vulkan, String label) throws Exception {
     List<String> options = new ArrayList<>(List.of("-Dsun.java2d.skia.pipelineCache=" + cacheDirectory));
+    if (vulkan) {
+        options.add("-Dsun.java2d.skia.graphite.api=vulkan");
+    }
     List<String> command = PipelineComparison.skiaChildCommand(options, getClass(), label);
     OutputAnalyzer output = new OutputAnalyzer(ProcessTools.createTestJavaProcessBuilder(command).start());
     System.out.println(label + ": exit " + output.getExitValue() + ", " + output.getStdout().trim());
@@ -155,7 +167,7 @@ private void child() throws Exception {
     if (rgb != BLUE) {
         throw new RuntimeException("expected blue at " + PROBE_X + "," + PROBE_Y + ", got " + Integer.toHexString(rgb));
     }
-    // a window's present compiles pipelines of its own
+    // a window's present offers Graphite's Vulkan pipeline data to the cache
     AtomicReference<Frame> frameReference = new AtomicReference<>();
     EventQueue.invokeAndWait(() -> {
         Frame frame = new Frame("SKPipelineCacheCorruptTest");

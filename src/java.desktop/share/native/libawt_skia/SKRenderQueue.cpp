@@ -119,6 +119,7 @@ void disposeGraphicsConfig(SKPlatformConfig *platformConfig) {
     J2dTraceLn(J2D_TRACE_VERBOSE, "SKRenderQueue disposeGraphicsConfig: config=%p context=%p surfaces=%zu", platformConfig,
                graphicsConfig, graphicsConfig->surfaceCount());
     SKPresentation::submit(graphicsConfig, true);   // draws the rect batch too
+    graphicsConfig->syncPipelineData();
     std::unique_ptr<SKGraphicsConfig> disposed = SKGraphicsConfig::remove(platformConfig);
     SKContext::current().forgetGraphicsConfig(graphicsConfig);
     SKRectBatch::forgetPaints();

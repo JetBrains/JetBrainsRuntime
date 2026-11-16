@@ -29,11 +29,12 @@
 // the platform configuration it names (getNativeConfigInfo, an SKPlatformConfig), on the configuration's
 // device and queue (SKPlatform.h), the caches of that context, and the end of its recordings. One per
 // configuration that rendered, created on first use and disposed with the configuration (DISPOSE_CONFIG).
-// Flusher thread only.
+// Flusher thread only, but for the exit hook's pipeline data (syncPipelineData, under the entry lock).
 
 #include "SKGlyphCache.h"
 #include "SKImageAtlas.h"
 #include "SKMaskCache.h"
+#include "SKPipelineCache.h"
 #include "SKPlatform.h"
 #include "SKRecordingOwner.h"
 
@@ -54,8 +55,16 @@
 struct SKSurfaceDataOps;
 class SKSurfaceState;
 
-// The owner of the caches' recordings (SKRecordingOwner).
-class SKGraphicsConfig : public SKRecordingOwner {
+// What the end of a recording did (SKGraphicsConfig::endRecording).
+enum class SKRecordingEnd {
+    Inserted,          // the recording went into the context (with the present target, if one was given)
+    InsertFailed,      // the context did not take it: nothing it drew reaches the GPU
+    NothingRecorded    // there was no recording to insert
+};
+
+// The owner of the caches' recordings (SKRecordingOwner) and a provider of pipeline data to the cache
+// (SKPipelineDataProvider), registered for the life of the context.
+class SKGraphicsConfig : public SKRecordingOwner, public SKPipelineDataProvider {
 public:
     // The context of the configuration, created on first use; null for a null configuration and when
     // Graphite cannot make a context or recorder on its device.
@@ -77,10 +86,23 @@ public:
     [[nodiscard]] skgpu::graphite::Recorder *recorder() const override { return m_recorder.get(); }
 
     // Ends the recording (no submit): the pending batches of the caches and the rect batch are drawn into it,
-    // the recording generation advances, and the recording is snapped and inserted into the context.
-    void endRecording() override;
+    // the recording generation advances, and the recording is snapped and inserted into the context. With a
+    // present target (SKPresentation's presents through Graphite) the insert waits for the target's swap
+    // chain image, signals its present and leaves the image in its present layout; `presentImage` is the
+    // image's wrapper the recording draws into (null: nothing is drawn into it, the semaphores are still
+    // passed, and Graphite releases what the acquisition took regardless of whether the insert succeeds).
+    SKRecordingEnd endRecording(SKPlatformPresentTarget *presentTarget, SkSurface *presentImage);
+    // The end of a recording without a present target (the caches', a readback's).
+    void endRecording() override { endRecording(nullptr, nullptr); }
     // Advanced by every recording ended (endRecording); the glyph caches date cells by it.
     [[nodiscard]] uint32_t recordingGeneration() const override { return m_recordingGeneration; }
+
+    // Offers the context's pipeline data to sun.java2d.skia.pipelineCache (Graphite's native Vulkan
+    // backend has some, Dawn and Metal none): now, on dispose and at process exit (SKPipelineCache's
+    // exit hook), or at the end of a flush at most every PIPELINE_SYNC_INTERVAL_NANOS (when due).
+    // Not from a lost device.
+    void syncPipelineData() override;
+    void syncPipelineDataWhenDue();
 
     // The glyph caches of one kind: grayscale (alpha-only atlases, taking the paint color) or LCD (RGB coverage atlases).
     [[nodiscard]] const SKGlyphCacheSet &glyphCaches(const bool lcd) const {
@@ -112,7 +134,7 @@ public:
     // The surfaces wrapped with this recorder (SKContext::getSurface). A surface state names this context
     // (SKSurfaceState::graphicsConfig) exactly while it is one of these surfaces: the one operation wraps its
     // platform texture `texture` in `surface` and adds it, the other removes it and releases every wrapper of
-    // it made with this recorder.
+    // it made with this recorder (the texture's and the swap chain images', SKSurfaceState::presentTarget).
     // The context's destructor unwraps the surfaces left.
     void wrapSurface(SKSurfaceState *surfaceState, sk_sp<SkSurface> surface, void *texture);
     void unwrapSurface(SKSurfaceState *surfaceState);
@@ -152,6 +174,7 @@ private:
     // trackTexturePaintImage, keyed by the image (a linked source's is tracked once)
     std::unordered_map<const SkImage *, sk_sp<SkImage>> m_texturePaintImages;
     uint32_t m_recordingGeneration = 1;
+    uint64_t m_lastPipelineSync = 0;   // when the context last offered its pipeline data to the cache (SKPipelineCache)
 };
 
 #endif /* SKGraphicsConfig_h_Included */

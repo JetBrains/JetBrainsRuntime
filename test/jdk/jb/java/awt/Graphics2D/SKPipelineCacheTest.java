@@ -53,15 +53,19 @@ import sun.java2d.skia.SKPipelineCache;
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKPipelineCacheTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan SKPipelineCacheTest
  */
 
 /*
- * Dawn hands over the shaders and pipelines it compiled as keyed blobs (dawn-&lt;adapter&gt;.bin,
- * appended per blob; SKPipelineCache.h). Each session is a child JVM that renders a scene into a
- * VolatileImage and then into a window. The first session stores data and leaves the file, a
- * second session finds it and, for the offscreen scene (the window's present compiles what timing
- * makes it), stores less than the first (fewer Dawn blobs), and with the property off nothing is
- * looked up or stored.
+ * Two layers, in one directory (SKPipelineCache.h): Dawn hands over the shaders and pipelines it
+ * compiled as keyed blobs (dawn-&lt;adapter&gt;.bin, appended per blob), Graphite's native Vulkan
+ * backend its VkPipelineCache data (graphite.bin, the whole file replaced), which it offers after a
+ * flush (at most every 10 s), when a configuration is disposed and at exit. Each session is a
+ * child JVM on the parent's Graphite API that renders a scene into a VolatileImage and then into a
+ * window. The first session stores data and leaves the API's file, a second session finds it and,
+ * for the offscreen scene (the window's present compiles what timing makes it), stores less than
+ * the first (fewer Dawn blobs; Vulkan's unchanged data not again), and with the property off
+ * nothing is looked up or stored.
  */
 
 private static final int SCENE_SIZE = 256;
@@ -112,7 +116,8 @@ void main(String[] args) throws Exception {
         return;
     }
     PipelineComparison.requireRequestedAPI();
-    String filePrefix = "dawn-";
+    boolean vulkan = PipelineComparison.runsOn("Vulkan");
+    String filePrefix = vulkan ? "graphite" : "dawn-";
     // in jtreg's scratch directory, not %TEMP%
     Path cacheDirectory = Files.createTempDirectory(Path.of("."), "skia-pipeline-cache").toAbsolutePath();
     Session first;
@@ -120,9 +125,9 @@ void main(String[] args) throws Exception {
     Session off;
     int fileCount = 0;
     try {
-        first = runSession(cacheDirectory, "first");
-        second = runSession(cacheDirectory, "second");
-        off = runSession(null, "off");
+        first = runSession(cacheDirectory, vulkan, "first");
+        second = runSession(cacheDirectory, vulkan, "second");
+        off = runSession(null, vulkan, "off");
         File[] files = cacheDirectory.toFile().listFiles();
         for (File file : files != null ? files : new File[0]) {
             System.out.println("  " + file.getName() + ": " + file.length() + " bytes");
@@ -158,9 +163,12 @@ void main(String[] args) throws Exception {
 }
 
 /** One session: a child JVM renders the scene and reports its counters (lookups, hits, stores). */
-private Session runSession(Path cacheDirectory, String label) throws Exception {
+private Session runSession(Path cacheDirectory, boolean vulkan, String label) throws Exception {
     List<String> options = new ArrayList<>(List.of(
             "-Dsun.java2d.skia.pipelineCache=" + (cacheDirectory != null ? cacheDirectory.toString() : "off")));
+    if (vulkan) {
+        options.add("-Dsun.java2d.skia.graphite.api=vulkan");
+    }
     List<String> command = PipelineComparison.skiaChildCommand(options, getClass(), label);
     OutputAnalyzer output = new OutputAnalyzer(ProcessTools.createTestJavaProcessBuilder(command).start());
     System.out.println(label + ": " + output.getStdout().trim());
@@ -181,7 +189,7 @@ private void child() throws Exception {
     PipelineComparison.rendered(PipelineComparison.defaultConfiguration(), SCENE_SIZE, SCENE_SIZE, this::paintScene);
     System.out.println(Counters.current().print(OFFSCREEN_COUNTERS_PREFIX));
 
-    // a window's present compiles pipelines of its own
+    // a window's present offers Graphite's Vulkan pipeline data to the cache
     AtomicReference<Frame> frameReference = new AtomicReference<>();
     EventQueue.invokeAndWait(() -> {
         Frame frame = new Frame("SKPipelineCacheTest");

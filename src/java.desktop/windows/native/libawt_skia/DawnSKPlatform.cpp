@@ -112,6 +112,9 @@ struct DawnSKSurface final : Win32SKSurface {
     // it. Runs on the flusher thread after Graphite's submit; the copy goes to the
     // same queue, so it is ordered after the rendering without a CPU wait.
     bool requestRedraw() override;
+    // Dawn presents itself (requestRedraw).
+    bool acquirePresentTarget(SKPlatformPresentTarget *) override { return false; }
+    bool presentTarget() override { return false; }
 
     SKPlatformConfig *platformConfig = nullptr;   // identity for the shared backend's context lookup; not dereferenced
     std::shared_ptr<DawnSKDevice> gpu;

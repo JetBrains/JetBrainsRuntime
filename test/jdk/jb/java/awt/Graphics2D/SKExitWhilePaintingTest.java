@@ -50,18 +50,28 @@ import sun.java2d.skia.SKEnvironment;
  */
 
 /*
+ * @test id=vulkan
+ * @key headful
+ * @summary Regression test for JBR-10654: as above, on Vulkan.
+ * @requires (os.family == "windows")
+ * @library /test/lib
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @run main/othervm/timeout=600 SKExitWhilePaintingTest vulkan
+ */
+
+/*
  * A child JVM shows a window and starts a thread that paints into it and into a volatile image
  * without pause (text, fills, image draws: the flusher is busy, and flushes that present nothing
  * hold their recordings), and calls System.exit while that thread paints. The exit code must be 0
  * and the child must be gone within EXIT_TIMEOUT_S. Nothing that holds Graphite objects is released
  * at exit (SKNeverDestroyed.h): the release would run during the DLL detach, under the loader lock,
  * after the other threads were killed (it waits for the GPU, shuts the resource cache down, and
- * frees Dawn's objects). The child runs with J2D_TRACE_LEVEL=3 (J2D_TRACE_INFO, the
+ * frees Dawn's and Vulkan's objects). The child runs with J2D_TRACE_LEVEL=3 (J2D_TRACE_INFO, the
  * lowest level that has them), so that the release traces of RELEASE_TRACES show if one of those
  * destructors runs: SKGraphicsConfig's (a context released, as by the table of the contexts),
  * SKContext's (the render state), the rect batch's and the last glyph list's. Their holders made
- * ordinary statics again would go red here. The other never-destroyed objects (the entry lock, the
- * Dawn instance and device, the graphics APIs) are standard
+ * ordinary statics again would go red here. The other never-destroyed objects (the folded presents,
+ * the entry lock, the Dawn instance and devices, the Vulkan device, the graphics APIs) are standard
  * or platform types without such a trace and are not covered by one. Several children per API, the
  * exit racing the painting thread differently each time.
  */
@@ -111,9 +121,10 @@ void main(String[] args) throws Exception {
     }
     String mode = args[0];
     List<String> options = switch (mode) {
+        case "vulkan" -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.skia.graphite.api=vulkan");
         default -> List.of("-Dsun.java2d.skia.pipelineCache=off");
     };
-    String api = "Dawn";
+    String api = mode.equals("vulkan") ? "Vulkan" : "Dawn";
     String direct3D = mode.equals("d3d11") ? "(D3D11)" : null;
     List<String> command = PipelineComparison.skiaChildCommand(options, getClass(), "child", mode);
     for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {

@@ -27,13 +27,13 @@
 
 // The backend's objects with static storage that are never destroyed: the configurations' Graphite
 // contexts and everything that holds Graphite or device objects (the render state, the rect batch,
-// the last glyph list, the platform's instances, devices and graphics APIs), and the entry lock. At
-// process exit their destructors would run during DLL detach, under the loader lock and after the other
-// threads were killed: releasing a context waits for the GPU, shuts the resource cache down and frees
-// the API's objects. The object lives in static storage (at a link-time address, no heap allocation, no
-// pointer to load) and is constructed in place where the variable is initialized; the wrapper has no
-// destructor that would destroy it. Skia's SkNoDestructor does the same but is in Skia's sources
-// (src/core), not its public headers.
+// the last glyph list, the folded presents, the platform's instances, devices and graphics APIs),
+// and the entry lock. At process exit their destructors would run during DLL detach, under the loader
+// lock and after the other threads were killed: releasing a context waits for the GPU, shuts the
+// resource cache down and frees the API's objects. The object lives in static storage (at a link-time
+// address, no heap allocation, no pointer to load) and is constructed in place where the variable is
+// initialized; the wrapper has no destructor that would destroy it. Skia's SkNoDestructor does the
+// same but is in Skia's sources (src/core), not its public headers.
 
 #include <new>
 #include <utility>

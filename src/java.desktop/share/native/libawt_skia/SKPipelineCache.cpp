@@ -25,6 +25,7 @@
 
 #include "SKPipelineCache.h"
 #include "SKEntryLock.h"
+#include "SKPlatform.h"
 
 #include "jni.h"
 #include "Trace.h"
@@ -42,11 +43,12 @@
 #include <system_error>
 #include <vector>
 
+using skgpu::graphite::PersistentPipelineStorage;
 namespace fs = std::filesystem;
 
 namespace {
 
-// Lookups, of which found, and blobs handed over for storing;
+// Lookups, of which found, and blobs handed over for storing, both kinds together;
 // for tests (SKPipelineCache.counters, which reads them in this order).
 struct SKPipelineCacheCounters {
     uint64_t loads, hits, stores;
@@ -62,7 +64,9 @@ constexpr size_t LONG_PATH_THRESHOLD = 240;
 std::mutex gCacheLock;   // guards the directory and the store tables
 fs::path gDirectory;     // empty: off
 std::unordered_map<std::string, SKBlobStore *> gBlobStores;
+std::unordered_map<std::string, PersistentPipelineStorage *> gStorages;
 std::atomic<uint64_t> gLoadCount, gHitCount, gStoreCount;
+std::vector<SKPipelineDataProvider *> gProviders;   // in the order they registered; under the entry lock
 
 // A blob file record: the two sizes, then the key and the value bytes.
 struct RecordHeader {
@@ -116,6 +120,64 @@ size_t fileSize(const fs::path &path) {
     const uintmax_t size = fs::file_size(path, errorCode);
     return errorCode ? 0 : static_cast<size_t>(size);
 }
+
+// Graphite's PersistentPipelineStorage over one file: load() reads it whole, store()
+// writes a temporary file next to it and renames (a reader never sees a partial file).
+class FilePipelineStorage : public PersistentPipelineStorage {
+public:
+    explicit FilePipelineStorage(fs::path path) : m_path(std::move(path)) {}
+
+    // Graphite calls both from a JNI entry: nothing may throw out of them, a file that cannot
+    // be read is no cache.
+    sk_sp<SkData> load() override try {
+        ++gLoadCount;
+        std::ifstream in(m_path, std::ios::binary | std::ios::ate);
+        if (!in) {
+            return nullptr;
+        }
+        const std::streamsize size = in.tellg();
+        if (size <= 0 || static_cast<uintmax_t>(size) > MAX_BLOB_FILE) {
+            return nullptr;   // unreadable (tellg failed), empty, or not a file this cache wrote
+        }
+        in.seekg(0);
+        sk_sp<SkData> data = SkData::MakeUninitialized(static_cast<size_t>(size));
+        if (!in.read(static_cast<char *>(data->writable_data()), size)) {
+            return nullptr;
+        }
+        ++gHitCount;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "SKPipelineCache: %zu bytes of pipeline data from %s",
+                      static_cast<size_t>(size), utf8(m_path).c_str());
+        return data;
+    } catch (const std::exception &) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "SKPipelineCache: cannot read %s", utf8(m_path).c_str());
+        return nullptr;
+    }
+
+    void store(const SkData &data) override try {
+        ++gStoreCount;
+        if (!makeDirectoryOf(m_path)) {
+            return;
+        }
+        fs::path temp = m_path;
+        temp += ".tmp";
+        // the stream is closed at the end of the if statement, before the rename
+        if (std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+            !out.write(static_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()))) {
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "SKPipelineCache: cannot write %s", utf8(temp).c_str());
+            return;
+        }
+        std::error_code errorCode;
+        fs::rename(temp, m_path, errorCode);   // replaces an existing file
+        if (errorCode) {
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "SKPipelineCache: cannot replace %s", utf8(m_path).c_str());
+        }
+    } catch (const std::exception &) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "SKPipelineCache: cannot write %s", utf8(m_path).c_str());
+    }
+
+private:
+    fs::path m_path;
+};
 
 } // namespace
 
@@ -221,6 +283,19 @@ void SKBlobStore::store(const void *key, const size_t keySize, const void *value
     }
 }
 
+void SKPipelineCache::addProvider(SKPipelineDataProvider *provider) {
+    gProviders.push_back(provider);
+}
+
+void SKPipelineCache::removeProvider(SKPipelineDataProvider *provider) {
+    std::erase(gProviders, provider);
+}
+
+bool SKPipelineCache::enabled() {
+    std::lock_guard lock(gCacheLock);
+    return !gDirectory.empty();
+}
+
 SKBlobStore *SKPipelineCache::blobStore(const std::string &name) {
     std::lock_guard lock(gCacheLock);
     if (gDirectory.empty()) {
@@ -235,6 +310,22 @@ SKBlobStore *SKPipelineCache::blobStore(const std::string &name) {
         }
     }
     return store;
+}
+
+PersistentPipelineStorage *SKPipelineCache::storage(const std::string &name) {
+    std::lock_guard lock(gCacheLock);
+    if (gDirectory.empty()) {
+        return nullptr;
+    }
+    PersistentPipelineStorage *&storage = gStorages[name];
+    if (storage == nullptr) {
+        try {
+            storage = new FilePipelineStorage(fileFor(name));
+        } catch (const std::exception &) {
+            return nullptr;   // no cache
+        }
+    }
+    return storage;
 }
 
 // ---------------------------------------------------------------------------
@@ -305,6 +396,18 @@ Java_sun_java2d_skia_SKPipelineCache_countersNative(JNIEnv *env, jclass)
     static_assert(std::tuple_size_v<decltype(values)> == SK_PIPELINE_CACHE_COUNTERS,
                   "one value per counter the Java side reads");
     return toLongArray(env, values);
+}
+
+// SKPipelineCache's shutdown hook: the pipeline data compiled since the last offer, one offer
+// per registered provider (SKGraphicsConfig::syncPipelineData; a lost device offers nothing).
+JNIEXPORT void JNICALL
+Java_sun_java2d_skia_SKPipelineCache_syncNative(JNIEnv *, jclass)
+{
+    SK_ENTRY_LOCK;
+    SKPlatformScope scope;
+    for (SKPipelineDataProvider *provider : gProviders) {
+        provider->syncPipelineData();
+    }
 }
 
 } // extern "C"

@@ -239,10 +239,20 @@ public final class PipelineComparison {
         requireRequestedAPI();
     }
 
-    /** Skips the test unless Skia runs ({@link #requireSkia}), and names what it runs on. */
+    /**
+     * Skips the test unless Skia runs on the Graphite API the run line asks for, if it asks
+     * for one (sun.java2d.skia.graphite.api: {@code vulkan} for Vulkan, any other value for
+     * Dawn, the default); see {@link #requireAPI}. Without the property whatever API the backend
+     * started on is fine.
+     */
     public static void requireRequestedAPI() {
         requireSkia();
-        System.out.println("on " + SKEnvironment.runningOn());
+        String graphiteAPI = System.getProperty("sun.java2d.skia.graphite.api");
+        if (graphiteAPI == null) {
+            System.out.println("on " + SKEnvironment.runningOn());
+            return;
+        }
+        requireAPI("vulkan".equalsIgnoreCase(graphiteAPI) ? "Vulkan" : "Dawn", null);
     }
 
     /** Skips the test unless Skia is enabled (the flag, a runtime with Skia, a device that started). */
@@ -252,15 +262,16 @@ public final class PipelineComparison {
         }
     }
 
-    /** Whether Skia runs on the Graphite API ({@code Dawn}), as {@link SKEnvironment#runningOn()} names it. */
+    /** Whether Skia runs on the Graphite API ({@code Dawn}, {@code Vulkan}), as {@link SKEnvironment#runningOn()} names it. */
     public static boolean runsOn(String api) {
         String runningOn = SKEnvironment.runningOn();
         return runningOn != null && runningOn.contains(" Graphite/" + api + " on ");
     }
 
     /**
-     * Skips the test unless Skia runs on the Graphite API ({@code Dawn}). The backend runs on its
-     * API or does not start ("Skia is not enabled: nothing to test").
+     * Skips the test unless Skia runs on the Graphite API ({@code Dawn}, {@code Vulkan}). The
+     * backend runs on the API sun.java2d.skia.graphite.api names or does not start ("Skia is not
+     * enabled: nothing to test").
      *
      * @param startVerbose what sun.java2d.skia.verbose printed while Skia started
      *                     ({@link #startCapturingVerbose}), or null; given, Skia on another API

@@ -35,17 +35,19 @@ import sun.java2d.skia.SKEnvironment;
 /*
  * @test
  * @key headful
- * @summary Regression test for JBR-10654: a process that rendered with Skia exits cleanly, on Dawn
- *          and with -Dsun.java2d.d3d=true.
+ * @summary Regression test for JBR-10654: a process that rendered with Skia exits cleanly, on Dawn,
+ *          on Vulkan and with -Dsun.java2d.d3d=true.
  * @requires os.family == "windows"
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm SKProcessExitTest dawn
+ * @run main/othervm SKProcessExitTest vulkan
  * @run main/othervm SKProcessExitTest d3d
  */
 
 /*
- * Exit code 0 and nothing on stderr, each in a child JVM: on Dawn, and with
+ * Exit code 0 and nothing on stderr, each in a child JVM: on Dawn, on Vulkan (Vulkan's device and
+ * allocator are not destroyed during DLL detach, after the loader may be gone), and with
  * -Dsun.java2d.d3d=true as well, where the toolkit's shutdown must not start the Direct3D queue
  * (Skia owns the screen, no Direct3D device exists). The child must have rendered on the API of
  * its mode; where that API does not start (Skia does not start then) there is nothing to test.
@@ -79,6 +81,7 @@ void main(String[] args) throws Exception {
     }
     String mode = args[0];
     List<String> options = switch (mode) {
+        case "vulkan" -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.skia.graphite.api=vulkan");
         case "d3d" -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.d3d=true");
         default -> List.of("-Dsun.java2d.skia.pipelineCache=off");
     };
@@ -98,7 +101,7 @@ void main(String[] args) throws Exception {
     if (output.getStdout().contains(NOT_ENABLED)) {
         throw new SkippedException("Skia is not enabled: nothing to test");
     }
-    String api = "Dawn";
+    String api = mode.equals("vulkan") ? "Vulkan" : "Dawn";
     String renderedOn = output.firstMatch("rendered on (.*)", 1);
     if (renderedOn != null && !renderedOn.contains(" Graphite/" + api + " on ")) {
         throw new SkippedException(api + " unavailable here (" + renderedOn + "): nothing to test");

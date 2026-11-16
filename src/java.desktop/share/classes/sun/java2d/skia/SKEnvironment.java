@@ -32,7 +32,8 @@ import sun.util.logging.PlatformLogger;
  * The Skia rendering backend's switches and start. The backend is off unless
  * {@code -Dsun.java2d.skia=true} is given and the runtime was built with it
  * ({@code --with-skia}); it renders Java2D through Skia's Graphite — on Windows
- * over Dawn and Direct3D 11 — into its own window surfaces. The backend is Windows-only.
+ * over Dawn and Direct3D 11 by default, over Vulkan as the alternative — into
+ * its own window surfaces. The backend is Windows-only.
  * <p>
  * The switches, all under {@code sun.java2d.skia}:
  * <ul>
@@ -46,6 +47,8 @@ import sun.util.logging.PlatformLogger;
  *     by Skia's analytic rasterizer with Marlin's coverage masks for general
  *     paths (default), or every shape through Marlin's masks as the other
  *     pipelines do (the fallback for a rendering difference).</li>
+ * <li>{@code sun.java2d.skia.graphite.api=dawn|vulkan} (Windows): the graphics
+ *     API Graphite renders through; Dawn over Direct3D 11 by default.</li>
  * <li>{@code sun.java2d.skia.imageAtlas=false}: images small enough for the
  *     image atlas are drawn as single textures instead.</li>
  * </ul>
@@ -67,6 +70,8 @@ public final class SKEnvironment {
 
     /** {@code analytic} (the default) or {@code marlin}: how antialiased shapes are rasterized. */
     private static final String SHAPES = shapesProperty();
+    /** {@code dawn}, {@code vulkan} or {@code null}: the graphics API asked for; the native side reads the property itself. */
+    private static final String GRAPHITE_API = graphiteAPIProperty();
     private static final boolean IMAGE_ATLAS = !"false".equalsIgnoreCase(System.getProperty("sun.java2d.skia.imageAtlas"));
 
     /**
@@ -87,6 +92,22 @@ public final class SKEnvironment {
             return "analytic";
         }
         return shapes;
+    }
+
+    private static String graphiteAPIProperty() {
+        String requested = System.getProperty("sun.java2d.skia.graphite.api");
+        if (requested == null) {
+            return null;
+        }
+        String api = requested.toLowerCase(Locale.ROOT);
+        if (!api.equals("dawn") && !api.equals("vulkan")) {
+            if (VERBOSE) {
+                System.err.println("sun.java2d.skia.graphite.api=" + requested
+                                   + " is not dawn or vulkan; using the platform's default");
+            }
+            return null;
+        }
+        return api;
     }
 
     /**
@@ -147,7 +168,7 @@ public final class SKEnvironment {
 
     /**
      * Loads libawt_skia, hands it the configuration and the pipeline cache, and starts Graphite
-     * on the platform's graphics API.
+     * on the graphics API the platform chose ({@code graphite.api}).
      *
      * @return what the backend runs on ({@link #runningOn()}), or {@code null} if it did not start
      */
@@ -160,6 +181,9 @@ public final class SKEnvironment {
                 configureNative(GLYPH_CACHE_TEXELS, IMAGE_ATLAS);
                 SKPipelineCache.configure();
                 startedOn = startNative();
+                if (startedOn != null) {
+                    SKPipelineCache.addShutdownHook();
+                }
             }
         } catch (RuntimeException | LinkageError failure) {
             // called while the GraphicsEnvironment is constructed: nothing from here may keep
@@ -205,8 +229,9 @@ public final class SKEnvironment {
     }
 
     /**
-     * Starts the platform's graphics API and creates its device; what the backend runs on then
-     * ({@link #runningOn}), or {@code null} if the API finds no adapter or its device does not start.
+     * Starts the graphics API the platform chose ({@code graphite.api}, read natively) and creates
+     * its device; what the backend runs on then ({@link #runningOn}), or {@code null} if the API
+     * finds no adapter or its device does not start.
      */
     private static native String startNative();
 

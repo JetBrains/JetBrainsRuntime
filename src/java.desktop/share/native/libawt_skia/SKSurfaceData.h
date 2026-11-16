@@ -36,12 +36,17 @@
 
 #include "include/core/SkSurface.h"
 
+// ReSharper disable once CppUnusedIncludeDirective - uint64_t and uint32_t
+#include <cstdint>
+#include <unordered_map>
+
 class SKGraphicsConfig;
 
 // The Skia side of a Skia surface, made with its ops (SKSurfaceData.initOps, under the entry lock) and
 // deleted with its platform surface (DISPOSE_SURFACE): the wrapper of its platform texture, made on its
 // first use (SKContext::getSurface), and the context whose recorder made it, its identity and content
-// version (the image atlas keys and dates its copies by them). Flusher thread only.
+// version (the image atlas keys and dates its copies by them), and, for a window Graphite presents
+// (SKPlatformSurface::acquirePresentTarget), the wrappers of its swap chain images. Flusher thread only.
 class SKSurfaceState {
 public:
     SKSurfaceState();   // with an identity unique for the life of the process
@@ -68,13 +73,21 @@ public:
     [[nodiscard]] uint64_t contentVersion() const { return m_contentVersion; }
     void touch() { m_contentVersion++; }
 
+    // The wrapper of the swap chain image of a window's present target, made with the recorder that made
+    // the state's wrapper (the recorder of the state's context, graphicsConfig) once per image of a swap
+    // chain generation (SKPlatformPresentTarget::imageKey); null without a wrapper, or if the image cannot
+    // be wrapped (tried again on the next present). The wrappers go when the state is unwrapped, with the
+    // context whose recorder made them.
+    [[nodiscard]] sk_sp<SkSurface> presentTarget(const SKPlatformPresentTarget &target);
+
 private:
     friend class SKGraphicsConfig;   // wrapSurface, unwrapSurface
 
     // The wrapper of `texture`, made with the recorder of `graphicsConfig`. Asserts (a release trace) that the
     // state is not another context's surface.
     void wrap(sk_sp<SkSurface> surface, void *texture, SKGraphicsConfig *graphicsConfig);
-    // The wrapper and its context go (the surface is released, or its context disposed).
+    // The wrappers and their context go: the texture's and the swap chain images' (the surface is released, or
+    // its context disposed).
     void unwrap();
 
     sk_sp<SkSurface> m_surface;
@@ -82,6 +95,9 @@ private:
     SKGraphicsConfig *m_graphicsConfig = nullptr;
     uint64_t m_uid = 0;
     uint64_t m_contentVersion = 0;
+    // the wrappers of the swap chain images, by imageKey, of the swap chain generation m_presentGeneration
+    std::unordered_map<uint64_t, sk_sp<SkSurface>> m_presentTargets;
+    uint32_t m_presentGeneration = 0;
 };
 
 // Native ops of a SKSurfaceData. Allocated by SurfaceData_InitOps (plain C

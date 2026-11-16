@@ -31,10 +31,11 @@
 // (Win32SKGraphicsConfig.cpp, Win32SKSurfaceData.cpp, Win32SKEnvironment.cpp)
 // calls only this layer: the selected graphics API (Win32SKGraphicsAPI) makes the
 // configurations, a configuration its surfaces, and each implements SKPlatform.h's
-// classes for its API. Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11):
-// Win32SKEnvironment selects it, and the backend does not start when it has no adapter
-// or its device does not start. The APIs depend on this layer, not this layer on
-// them. Text is the same for every API (SKTextPipe.cpp, shared).
+// classes for its API. Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11)
+// or Vulkan (VKSKPlatform.cpp), one per process: Win32SKEnvironment selects the one
+// sun.java2d.skia.graphite.api names (Dawn by default), and the backend does not start
+// when it has no adapter or its device does not start. The APIs depend on this layer,
+// not this layer on them. Text is the same for every API (SKTextPipe.cpp, shared).
 //
 // Java holds a configuration as the address of its SKPlatformConfig and a platform
 // surface as the address of its SKPlatformSurface, as the shared backend reads them;
@@ -56,8 +57,8 @@
 
 class Win32SKGraphicsAPI;
 
-// The graphics APIs Graphite renders through.
-enum class Win32SKAPI { Dawn };
+// The graphics APIs Graphite renders through (sun.java2d.skia.graphite.api).
+enum class Win32SKAPI { Dawn, Vulkan };
 
 class Win32SKSurface;
 
@@ -65,7 +66,7 @@ class Win32SKSurface;
 // shared device (Win32SKGraphicsAPI::createConfig).
 class Win32SKConfigInfo : public SKPlatformConfig {
 public:
-    // "<adapter> (D3D11)", for SKGraphicsConfig.SKContextCapabilities.
+    // "<adapter> (D3D11|Vulkan)", for SKGraphicsConfig.SKContextCapabilities.
     [[nodiscard]] virtual std::string description() const = 0;
 
     // The texture Skia renders into, plus the swap chain of the window's client area if
@@ -98,8 +99,8 @@ struct Win32SKClientArea {
 };
 
 // A graphics API Graphite renders through: what holds for the whole API, and its configurations
-// (which make its surfaces). Implemented by DawnSKGraphicsAPI (DawnSKPlatform.cpp), one instance for
-// the life of the process.
+// (which make its surfaces). Implemented by DawnSKGraphicsAPI (DawnSKPlatform.cpp) and
+// VKSKGraphicsAPI (VKSKPlatform.cpp), one instance each for the life of the process.
 class Win32SKGraphicsAPI {
 public:
     virtual ~Win32SKGraphicsAPI() = default;
@@ -121,7 +122,7 @@ namespace Win32SKPlatform {
 void selectGraphicsAPI(Win32SKGraphicsAPI *graphicsAPI);
 [[nodiscard]] Win32SKGraphicsAPI *selectedGraphicsAPI();
 
-// "Dawn": the API's name in what SKEnvironment.runningOn reports.
+// "Dawn", "Vulkan": the API's name in what SKEnvironment.runningOn reports.
 const char *apiName(Win32SKAPI api);
 
 // A configuration on the selected API's shared device; null if none can be made (or no API

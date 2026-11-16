@@ -25,12 +25,16 @@
 #ifndef SKPipelineCache_h_Included
 #define SKPipelineCache_h_Included
 
-// The on-disk cache of what the GPU backend compiles (sun.java2d.skia.pipelineCache):
+// The on-disk cache of what the GPU backends compile (sun.java2d.skia.pipelineCache):
 // Dawn hands over the shaders and pipelines it compiled, by its own key, and asks
 // for them in the next session (SKBlobStore, chained into the device descriptor by
-// the Dawn platform). The files are in one directory, one per device, named by the
-// backend. Off until sun.java2d.skia.SKPipelineCache names the directory
-// (setDirectoryNative); its native side also reads the counters.
+// the Dawn platform); Graphite's native Vulkan backend hands over its VkPipelineCache
+// data (PersistentPipelineStorage, SKGraphicsConfig). Both are files in one directory, one
+// per device, named by the backend. Off until sun.java2d.skia.SKPipelineCache names the directory
+// (setDirectoryNative); its native side also reads the counters and, at exit, has the registered
+// providers offer their pipeline data (SKPipelineDataProvider).
+
+#include "include/gpu/graphite/PersistentPipelineStorage.h"
 
 // ReSharper disable once CppUnusedIncludeDirective - size_t (SKBlobStore)
 #include <cstddef>
@@ -56,11 +60,32 @@ private:
     bool m_directoryMade = false;   // the directory is created with the first append
 };
 
+// What hands pipeline data to the cache (a Graphite context, SKGraphicsConfig): registered for its life,
+// it is asked at process exit to offer what it compiled since its last offer (SKPipelineCache.java's
+// shutdown hook, under the entry lock).
+class SKPipelineDataProvider {
+public:
+    virtual ~SKPipelineDataProvider() = default;
+    // Now, whenever the provider last offered its data.
+    virtual void syncPipelineData() = 0;
+};
+
 namespace SKPipelineCache {
+
+// Whether the cache has a directory (SKPipelineCache.java names it; off: none).
+[[nodiscard]] bool enabled();
 
 // The store of <directory>/<name>.bin (name reduced to [A-Za-z0-9._-]); null when off.
 // Lives for the process: a device's callbacks may outlive its configuration.
 SKBlobStore *blobStore(const std::string &name);
+// Graphite's storage over <directory>/<name>.bin (whole-file, replaced atomically); null
+// when off. Same lifetime.
+skgpu::graphite::PersistentPipelineStorage *storage(const std::string &name);
+
+// The providers asked at exit; under the entry lock (SKEntryLock), as the exit hook runs, so that a
+// provider leaving (a disposed configuration) is never asked.
+void addProvider(SKPipelineDataProvider *provider);
+void removeProvider(SKPipelineDataProvider *provider);
 
 } // namespace SKPipelineCache
 

@@ -27,11 +27,13 @@
 package sun.java2d.skia;
 
 import java.nio.file.Path;
+import sun.awt.util.ThreadGroupUtils;
 
 /**
  * The pipeline cache ({@code sun.java2d.skia.pipelineCache=<directory>|off}): where Dawn's shaders
- * and pipelines persist between runs. This side names the directory and reads the counters; the
- * native side (SKPipelineCache.h) keeps the files.
+ * and pipelines and Graphite's Vulkan pipeline data persist between runs. This side names the
+ * directory, offers Graphite's data once more at exit and reads the counters; the native side
+ * (SKPipelineCache.h) keeps the files.
  */
 public final class SKPipelineCache {
 
@@ -57,8 +59,8 @@ public final class SKPipelineCache {
     }
 
     /**
-     * The pipeline cache's counters: lookups, lookups that found data, and stores
-     * (SKPipelineCache.cpp).
+     * The pipeline cache's counters, Dawn's blobs and Graphite's Vulkan pipeline data together:
+     * lookups, lookups that found data, and stores (SKPipelineCache.cpp).
      */
     @SuppressWarnings("unused")
     public static long[] counters() {
@@ -71,7 +73,7 @@ public final class SKPipelineCache {
      * Windows' per-user cache location, %LOCALAPPDATA%/JetBrains/JBR/SkiaPipelineCache/&lt;Skia release&gt;
      * (~/.java/skia/&lt;release&gt; where LOCALAPPDATA is unset or empty): keyed by the pinned Skia, whose and Dawn's formats the
      * files hold, so a runtime update with the same Skia keeps them and directories add up only per Skia bump;
-     * inside, Dawn's keys tell drivers and adapters apart, and a file over
+     * inside, Dawn's keys and Vulkan's pipeline cache header tell drivers and adapters apart, and a file over
      * its bound starts over (SKPipelineCache.cpp).
      */
     private static Path defaultDirectory() {
@@ -107,4 +109,28 @@ public final class SKPipelineCache {
     private static native String skiaReleaseNative();
 
     private static native void setDirectoryNative(String directory);
+
+    /**
+     * Once the backend started with a cache: at exit, Graphite's Vulkan pipeline data compiled since
+     * its last store goes to the cache (the native providers, SKPipelineDataProvider): a session offers it at
+     * most every 10 s and its configurations are not disposed at exit, so without this a session that
+     * exits soon after compiling loses what it compiled. The hook takes the native entry lock, which
+     * keeps it out of a flush, and not the render queue's lock (the AWT lock), which the thread calling
+     * System.exit may hold.
+     */
+    static void addShutdownHook() {
+        if (directory == null) {
+            return;
+        }
+        Thread hook = new Thread(ThreadGroupUtils.getRootThreadGroup(), SKPipelineCache::syncNative,
+                                 "Skia Pipeline Cache", 0, false);
+        hook.setContextClassLoader(null);
+        try {
+            Runtime.getRuntime().addShutdownHook(hook);
+        } catch (IllegalStateException exception) {
+            // started during shutdown: nothing more to store
+        }
+    }
+
+    private static native void syncNative();
 }

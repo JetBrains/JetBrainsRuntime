@@ -30,26 +30,63 @@
 
 #include "DawnSKPlatform.h"
 #include "SKEntryLock.h"
+#include "VKSKPlatform.h"
 #include "Win32SKPlatform.h"
 
 #include <memory>
 #include <string>
+#include <string.h>
 #include "jni.h"
 #include "sun_java2d_skia_SKEnvironment.h"
 #include "include/core/SkMilestone.h"
 
+namespace {
+
+// The value of a system property, empty if unset.
+std::string systemProperty(JNIEnv *env, const char *name) {
+    std::string result;
+    jclass systemClass = env->FindClass("java/lang/System");
+    if (systemClass == nullptr) {
+        env->ExceptionClear();
+        return result;
+    }
+    jmethodID getProperty = env->GetStaticMethodID(systemClass, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+    jstring key = env->NewStringUTF(name);
+    jstring value = getProperty != nullptr && key != nullptr
+            ? (jstring) env->CallStaticObjectMethod(systemClass, getProperty, key) : nullptr;
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        value = nullptr;
+    }
+    if (value != nullptr) {
+        const char *chars = env->GetStringUTFChars(value, nullptr);
+        if (chars != nullptr) {
+            result = chars;
+            env->ReleaseStringUTFChars(value, chars);
+        }
+    }
+    return result;
+}
+
+} // namespace
+
 extern "C" {
 
-// The graphics API the configurations will use, selected here: Dawn. The device is created now
-// (and kept: the configurations share it), so an API that cannot start fails here, before any
-// surface depends on it; null then, as when the API finds no adapter. Otherwise, what the backend
-// runs on (SKEnvironment.runningOn): "Skia m<release> Graphite/<API> on <adapter>".
+// The graphics API the configurations will use, selected here from sun.java2d.skia.graphite.api
+// (vulkan for native Vulkan, anything else leaves Dawn; SKEnvironment reports an unknown value).
+// The device is created now (and kept: the configurations share it), so an API that cannot start
+// fails here, before any surface depends on it; null then, as when the API finds no adapter.
+// Otherwise, what the backend runs on (SKEnvironment.runningOn): "Skia m<release> Graphite/<API> on <adapter>".
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_SKEnvironment_startNative(JNIEnv *env, jclass)
 {
     SK_ENTRY_LOCK;
-    Win32SKGraphicsAPI &graphicsAPI = DawnSKPlatform::graphicsAPI();
+    Win32SKGraphicsAPI &graphicsAPI = _stricmp(systemProperty(env, "sun.java2d.skia.graphite.api").c_str(), "vulkan") == 0
+                                      ? VKSKPlatform::graphicsAPI() : DawnSKPlatform::graphicsAPI();
     Win32SKPlatform::selectGraphicsAPI(&graphicsAPI);
+    // for tests: the Vulkan device of the retry with the minimal set (SKVulkanFeaturesTest)
+    VKSKPlatform::rejectPreferredDevice(
+            _stricmp(systemProperty(env, "sun.java2d.skia.test.rejectVulkanPreferredDevice").c_str(), "true") == 0);
     const std::unique_ptr<Win32SKConfigInfo> config(Win32SKPlatform::createConfig());
     if (config == nullptr) {
         return nullptr;
@@ -60,7 +97,7 @@ Java_sun_java2d_skia_SKEnvironment_startNative(JNIEnv *env, jclass)
 }
 
 // SKEnvironment.deviceFeatures: the features Graphite uses, offered and granted, of the selected API's
-// last device (DawnSKPlatform.cpp).
+// last device (DawnSKPlatform.cpp, VKSKPlatform.cpp).
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_SKEnvironment_deviceFeaturesNative(JNIEnv *env, jclass)
 {

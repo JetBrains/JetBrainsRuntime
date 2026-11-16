@@ -28,6 +28,7 @@
 #include "SKGraphicsConfig.h"
 #include "SKConfiguration.h"
 #include "SKNeverDestroyed.h"
+#include "SKPipelineCache.h"
 #include "SKRectBatch.h"
 #include "SKSurfaceData.h"
 
@@ -39,6 +40,7 @@
 #include "include/gpu/graphite/Surface.h"
 
 #include <algorithm>
+#include <chrono>
 
 using namespace skgpu::graphite;
 
@@ -49,6 +51,12 @@ namespace {
 // leaves it (remove).
 using SKGraphicsConfigTable = std::unordered_map<SKPlatformConfig *, std::unique_ptr<SKGraphicsConfig>>;
 SKNeverDestroyed<SKGraphicsConfigTable> gGraphicsConfigs;
+
+// A context offers its pipeline data to the cache at most this often: Graphite writes the whole
+// file each time it has new pipelines.
+constexpr uint64_t PIPELINE_SYNC_INTERVAL_NANOS = 10ull * 1000 * 1000 * 1000;   // 10 s
+// Context::syncPipelineData's bound on the data handed to the storage.
+constexpr size_t PIPELINE_DATA_MAX_BYTES = 16u << 20;   // 16 MB
 
 // The configured side (SKConfiguration::glyphCacheTexels) is the 32-pixel bucket's; the 16-pixel
 // bucket has half the side (the same cell count), the larger buckets the same side or whatever
@@ -62,6 +70,12 @@ constexpr jint LARGE_BUCKET_MIN_CELLS_PER_ROW = 16;   // 256 cells
 // new contrast over the same frame with a known one, RTX 3080 Ti, Vulkan and Dawn), so at the limit only the
 // least recently used table goes: a cycle through more contrasts than this still rebuilds, one that fits not.
 constexpr size_t MAX_LCD_TABLES = 8;
+
+// The steady clock's time, for the pipeline data's interval.
+uint64_t nanosecondsNow() {
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+}
 
 jint glyphCacheSide(const jint cellSize) {
     const jint configured = SKConfiguration::glyphCacheTexels();
@@ -82,6 +96,21 @@ void freeGlyphCaches(SKGlyphCacheSet &set) {
     }
 }
 
+// The insert of a recording that draws into a swap chain image: it waits for the image's acquire,
+// signals its present, leaves the image in its present layout, and releases what the acquire took
+// (finishedProc; Graphite calls it whether or not the insert succeeds). `image` is null when the
+// image could not be wrapped: the semaphores are still passed, nothing is drawn.
+void insertWithPresentTarget(InsertRecordingInfo &insertInfo, SKPlatformPresentTarget &target, SkSurface *image) {
+    insertInfo.fTargetSurface = image;
+    insertInfo.fTargetTextureState = image != nullptr ? &target.presentState : nullptr;
+    insertInfo.fNumWaitSemaphores = 1;
+    insertInfo.fWaitSemaphores = &target.waitSemaphore;
+    insertInfo.fNumSignalSemaphores = 1;
+    insertInfo.fSignalSemaphores = &target.signalSemaphore;
+    insertInfo.fFinishedProc = target.finishedProc;
+    insertInfo.fFinishedContext = target.finishedContext;
+}
+
 } // namespace
 
 SKGraphicsConfig *SKGraphicsConfig::of(SKPlatformConfig *platformConfig) {
@@ -97,6 +126,9 @@ SKGraphicsConfig *SKGraphicsConfig::of(SKPlatformConfig *platformConfig) {
     // sample count; anti-aliased paths use the path atlas instead, with full
     // coverage precision like the Metal pipeline's shaders.
     options.fInternalMultisampleCount = SampleCount::k1;
+    // sun.java2d.skia.pipelineCache for the backends Graphite caches for itself (Vulkan); one file,
+    // Graphite checks vendor, device and cache UUID before using it.
+    options.fPersistentPipelineStorage = SKPipelineCache::storage("graphite");
     std::unique_ptr<Context> context = platformConfig->makeContext(options);
     if (!context) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "SKGraphicsConfig::of: cannot create Graphite context");
@@ -113,6 +145,7 @@ SKGraphicsConfig *SKGraphicsConfig::of(SKPlatformConfig *platformConfig) {
     graphicsConfig->m_context = std::move(context);
     SKGraphicsConfig *created = graphicsConfig.get();
     (*gGraphicsConfigs)[platformConfig] = std::move(graphicsConfig);
+    SKPipelineCache::addProvider(created);   // asked at exit (SKPipelineCache's exit hook) for the life of the context
     J2dTraceLn(J2D_TRACE_INFO, "SKGraphicsConfig::of: created Graphite context for config %p", platformConfig);
     return created;
 }
@@ -146,6 +179,7 @@ std::unique_ptr<SKGraphicsConfig> SKGraphicsConfig::remove(SKPlatformConfig *pla
 SKGraphicsConfig::~SKGraphicsConfig() {
     J2dRlsTraceLn(J2D_TRACE_INFO, "SKGraphicsConfig: releasing the Graphite context %p of config %p",
                   m_context.get(), m_platformConfig);
+    SKPipelineCache::removeProvider(this);
     while (!m_surfaces.empty()) {
         unwrapSurface(*m_surfaces.begin());
     }
@@ -167,9 +201,9 @@ SKGraphicsConfig::~SKGraphicsConfig() {
     m_context.reset();
 }
 
-void SKGraphicsConfig::endRecording() {
+SKRecordingEnd SKGraphicsConfig::endRecording(SKPlatformPresentTarget *presentTarget, SkSurface *presentImage) {
     if (m_recorder == nullptr) {
-        return;
+        return SKRecordingEnd::NothingRecorded;
     }
     flushCaches();
     SKRectBatch::batch().flush();
@@ -177,12 +211,38 @@ void SKGraphicsConfig::endRecording() {
     releaseUnreferencedTexturePaintImages();
     const std::unique_ptr<Recording> recording = m_recorder->snap();
     if (!recording) {
-        return;
+        return SKRecordingEnd::NothingRecorded;
     }
     InsertRecordingInfo insertInfo;
     insertInfo.fRecording = recording.get();
+    if (presentTarget != nullptr) {
+        insertWithPresentTarget(insertInfo, *presentTarget, presentImage);
+    }
     if (!m_context->insertRecording(insertInfo)) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "SKGraphicsConfig::endRecording: insertRecording failed");
+        return SKRecordingEnd::InsertFailed;
+    }
+    return SKRecordingEnd::Inserted;
+}
+
+// Forced at process exit (SKPipelineCache's shutdown hook, under the entry lock): the configurations
+// are not disposed then and the 10 s interval drops what was compiled since the last offer,
+// so a session that exits soon after compiling, or that only renders offscreen and exits
+// before the flusher's timeout flush, would lose it. A hook rather than a store after every
+// flush that compiled pipelines: the file is rewritten whole, the hook writes it once. The
+// devices stay alive (VKSKPlatform.h); this only reads the pipeline cache and writes the file.
+// Pipelines of recordings still held at exit are not compiled yet and are not offered.
+void SKGraphicsConfig::syncPipelineData() {
+    if (!m_context || !SKPipelineCache::enabled() || m_platformConfig->isLost()) {
+        return;
+    }
+    m_lastPipelineSync = nanosecondsNow();
+    m_context->syncPipelineData(PIPELINE_DATA_MAX_BYTES);
+}
+
+void SKGraphicsConfig::syncPipelineDataWhenDue() {
+    if (nanosecondsNow() - m_lastPipelineSync > PIPELINE_SYNC_INTERVAL_NANOS) {
+        syncPipelineData();
     }
 }
 

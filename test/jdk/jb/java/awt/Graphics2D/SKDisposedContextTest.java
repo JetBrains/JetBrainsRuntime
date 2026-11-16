@@ -47,6 +47,29 @@ import sun.java2d.skia.SKRenderQueue;
 import sun.java2d.skia.Win32SKGraphicsConfig;
 
 /*
+ * @test id=vulkan-window
+ * @key headful
+ * @summary Regression test for JBR-10654: nothing made with the recorder of a disposed Graphite context
+ *          outlives the context: a window presented through Graphite shows what is painted after its
+ *          configuration's context was disposed.
+ * @requires (os.family == "windows")
+ * @library /test/lib
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia:+open
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.graphite.api=vulkan SKDisposedContextTest Vulkan window
+ */
+
+/*
+ * @test id=vulkan-texturePaint
+ * @key headful
+ * @summary Regression test for JBR-10654: a texture paint's shader, an image of a Graphite context's
+ *          recorder, goes with the context.
+ * @requires (os.family == "windows")
+ * @library /test/lib
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia:+open
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 -Dsun.java2d.skia.graphite.api=vulkan SKDisposedContextTest Vulkan texturePaint
+ */
+
+/*
  * @test id=dawn-window
  * @key headful
  * @summary Regression test for JBR-10654: a window shows what is painted after its configuration's
@@ -74,10 +97,10 @@ import sun.java2d.skia.Win32SKGraphicsConfig;
  * disposeConfigInfo: the configuration stays, and its next paint makes a new context on the same
  * device). Nothing made with the disposed context's recorder may be used or freed after it.
  *
- * - window: the window's surface is wrapped with the context's recorder; the wrapper must go
- *   with the context. The window is painted red, the context disposed, the window painted in five
- *   more colors (more frames than the swap chain has images, so that every image is presented
- *   again): each must reach the screen.
+ * - window: on Vulkan the window is presented through Graphite, into wrappers of its swap chain
+ *   images made with the context's recorder; they must go with the context. The window is painted
+ *   red, the context disposed, the window painted in five more colors (more frames than the swap
+ *   chain has images, so that every image is presented again): each must reach the screen.
  * - texturePaint: a TexturePaint whose image is cached as a texture is the paint's shader, an
  *   image of the context's recorder: it must go with the context, not with the next paint. A volatile
  *   image (no present) is filled with the paint and gets a line of text in it, plain and antialiased

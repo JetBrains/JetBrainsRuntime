@@ -116,6 +116,23 @@ void SKSurfaceState::unwrap() {
     m_surface.reset();
     m_wrappedTexture = nullptr;
     m_graphicsConfig = nullptr;
+    m_presentTargets.clear();
+}
+
+sk_sp<SkSurface> SKSurfaceState::presentTarget(const SKPlatformPresentTarget &target) {
+    if (!m_surface) {
+        return nullptr;
+    }
+    if (const auto generation = static_cast<uint32_t>(target.imageKey >> SK_IMAGE_KEY_GENERATION_SHIFT);
+        generation != m_presentGeneration) {
+        m_presentTargets.clear();   // the images of an earlier swap chain
+        m_presentGeneration = generation;
+    }
+    sk_sp<SkSurface> &image = m_presentTargets[target.imageKey];
+    if (!image) {
+        image = SkSurfaces::WrapBackendTexture(m_surface->recorder(), target.texture, target.colorType, nullptr, nullptr);
+    }
+    return image;
 }
 
 SKSurfaceDataOps *SKSurfaceDataOps::from(SurfaceDataOps *ops) {

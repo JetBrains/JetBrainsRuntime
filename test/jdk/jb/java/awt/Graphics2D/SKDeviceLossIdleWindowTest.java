@@ -44,6 +44,7 @@ import sun.java2d.skia.Win32SKGraphicsConfig;
  * @library /test/lib
  * @modules java.desktop/sun.awt java.desktop/sun.awt.windows java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 SKDeviceLossIdleWindowTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan -Dsun.java2d.uiScale=1 SKDeviceLossIdleWindowTest
  */
 
 /*

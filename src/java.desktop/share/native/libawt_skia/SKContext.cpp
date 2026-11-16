@@ -282,7 +282,7 @@ void SKContext::releaseSurface(SKSurfaceDataOps *ops, const bool dispose) {
         // retains the wrapped texture object for as long as a command buffer
         // that uses it is tracked
         SKPresentation::submit(wrappingGraphicsConfig, false);
-        wrappingGraphicsConfig->unwrapSurface(surfaceState);   // its wrapper
+        wrappingGraphicsConfig->unwrapSurface(surfaceState);   // its wrappers, the swap chain images' too
     }
     forgetSurface(ops);
     if (wrappingGraphicsConfig != nullptr) {

@@ -51,6 +51,7 @@ Win32SKGraphicsAPI *Win32SKPlatform::selectedGraphicsAPI() {
 const char *Win32SKPlatform::apiName(const Win32SKAPI api) {
     switch (api) {
         case Win32SKAPI::Dawn: return "Dawn";
+        case Win32SKAPI::Vulkan: return "Vulkan";
     }
     return "?";
 }

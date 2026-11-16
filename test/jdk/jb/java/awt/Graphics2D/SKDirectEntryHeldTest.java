@@ -51,6 +51,7 @@ import sun.java2d.skia.SKRenderQueue;
  * @modules java.desktop/sun.awt java.desktop/sun.java2d java.desktop/sun.java2d.loops
  *          java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 SKDirectEntryHeldTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan -Dsun.java2d.uiScale=1 SKDirectEntryHeldTest
  */
 
 /*
@@ -98,7 +99,7 @@ private static boolean dark(int rgb) {
 }
 
 void main() throws Exception {
-    PipelineComparison.requireRequestedAPI();   // names the API it runs on
+    PipelineComparison.requireRequestedAPI();   // names the API it runs on: the Vulkan run line runs on Vulkan
     GraphicsConfiguration graphicsConfig = PipelineComparison.defaultConfiguration();
     List<String> failures = new ArrayList<>();
     check(graphicsConfig, "drawPoly", graphics -> {

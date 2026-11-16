@@ -62,12 +62,15 @@ import sun.java2d.skia.SKPipelineCache;
  * @requires os.family == "windows"
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan SKPipelineCacheExitTest
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off SKPipelineCacheExitTest
  */
 
 /*
- * Dawn appends each blob as it is produced (dawn-&lt;adapter&gt;.bin). Each session is a child JVM
- * with its own cache directory: it renders a first scene, offscreen or in a
+ * Graphite's native Vulkan backend hands its pipeline data (graphite.bin, the whole file replaced)
+ * to the cache when it is offered, which happens at most every 10 s while the session renders; Dawn
+ * appends each blob as it is produced (dawn-&lt;adapter&gt;.bin). Each session is a child JVM on the
+ * parent's Graphite API with its own cache directory: it renders a first scene, offscreen or in a
  * window, waits until the cache file has it and reports its size, then renders a second scene with
  * pipelines the first does not use and exits at once. The file must then be larger than after the
  * first scene, and a second session on the directory must find the data.
@@ -118,13 +121,14 @@ void main(String[] args) throws Exception {
         return;
     }
     PipelineComparison.requireRequestedAPI();
-    String filePrefix = "dawn-";
+    boolean vulkan = PipelineComparison.runsOn("Vulkan");
+    String filePrefix = vulkan ? "graphite" : "dawn-";
     List<String> errors = new ArrayList<>();
     for (String mode : List.of("offscreen", "window")) {
         // in jtreg's scratch directory, not %TEMP%
         Path cacheDirectory = Files.createTempDirectory(Path.of("."), "skia-pipeline-cache-exit").toAbsolutePath();
         try {
-            OutputAnalyzer firstSession = runSession(cacheDirectory, mode, filePrefix);
+            OutputAnalyzer firstSession = runSession(cacheDirectory, vulkan, mode, filePrefix);
             String firstSceneBytes = firstSession.firstMatch(FIRST_SCENE_PREFIX + "(\\d+) bytes", 1);
             if (firstSceneBytes == null) {
                 errors.add(mode + ": the first scene was not stored within the child's wait");
@@ -138,7 +142,7 @@ void main(String[] args) throws Exception {
                 errors.add(mode + ": what the second scene compiled did not reach the cache before the exit ("
                         + atExit + " bytes at exit, " + afterFirstScene + " after the first scene)");
             }
-            OutputAnalyzer secondSession = runSession(cacheDirectory, "check", filePrefix);
+            OutputAnalyzer secondSession = runSession(cacheDirectory, vulkan, "check", filePrefix);
             Counters counters = Counters.parse(secondSession);
             if (counters == null) {
                 errors.add(mode + ": no counters in the second session's output");
@@ -159,9 +163,12 @@ void main(String[] args) throws Exception {
     System.out.println("PASSED");
 }
 
-private OutputAnalyzer runSession(Path cacheDirectory, String mode, String filePrefix)
+private OutputAnalyzer runSession(Path cacheDirectory, boolean vulkan, String mode, String filePrefix)
         throws Exception {
     List<String> options = new ArrayList<>(List.of("-Dsun.java2d.skia.pipelineCache=" + cacheDirectory));
+    if (vulkan) {
+        options.add("-Dsun.java2d.skia.graphite.api=vulkan");
+    }
     List<String> command = PipelineComparison.skiaChildCommand(options, getClass(),
                                                                mode, cacheDirectory.toString(), filePrefix);
     OutputAnalyzer output = new OutputAnalyzer(ProcessTools.createTestJavaProcessBuilder(command).start());

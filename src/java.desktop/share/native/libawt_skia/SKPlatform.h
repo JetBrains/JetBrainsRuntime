@@ -35,7 +35,10 @@
 
 #include "include/core/SkColorType.h"
 #include "include/gpu/graphite/BackendTexture.h"
+#include "include/gpu/graphite/BackendSemaphore.h"
 #include "include/gpu/graphite/Context.h"
+#include "include/gpu/MutableTextureState.h"
+#include "include/core/SkRect.h"
 
 #include <memory>
 
@@ -72,6 +75,29 @@ protected:
     [[nodiscard]] virtual const void *device() const = 0;
 };
 
+// SKPlatformPresentTarget::imageKey holds the swap chain generation above the image index's 32 bits.
+constexpr int SK_IMAGE_KEY_GENERATION_SHIFT = 32;
+
+// Window surfaces whose swap chain images Graphite draws into itself (Windows over
+// Vulkan), instead of the platform copying the surface texture (SKPlatformSurface::requestRedraw):
+// the next swap chain image, the part of the surface texture that goes into it, the
+// semaphore the draw waits for (the image is acquired) and the one it signals (the
+// present waits for it), and the layout the image must be in for presenting. The
+// backend draws the surface into the image in a recording of its own, inserts it with
+// these, submits, and presents with SKPlatformSurface::presentTarget. imageKey identifies the
+// image until the swap chain is recreated, so the backend can keep the image's wrapper.
+struct SKPlatformPresentTarget {
+    skgpu::graphite::BackendTexture texture;
+    SkColorType colorType = kUnknown_SkColorType;
+    uint64_t imageKey = 0;   // swap chain generation << SK_IMAGE_KEY_GENERATION_SHIFT | image index
+    SkIRect source = SkIRect::MakeEmpty();
+    skgpu::graphite::BackendSemaphore waitSemaphore;
+    skgpu::graphite::BackendSemaphore signalSemaphore;
+    skgpu::MutableTextureState presentState;
+    skgpu::graphite::GpuFinishedProc finishedProc = nullptr;   // releases what the platform acquired for this present
+    skgpu::graphite::GpuFinishedContext finishedContext = nullptr;
+};
+
 // The platform surface a Skia surface wraps: its GPU texture and, for a window, what
 // presents it. Made by the platform layer for a Java surface, which hands its address
 // as an SKPlatformSurface to the surface's ops (SKSurfaceDataOps::platform); deleted with the
@@ -97,6 +123,12 @@ public:
     // The window surface's texture has new content: present it. Returns whether a
     // present was issued (false: no swap chain image, a lost device, a replaced surface).
     [[nodiscard]] virtual bool requestRedraw() = 0;
+
+    // False where the platform presents itself (requestRedraw); true with an invalid
+    // texture where it does not, but has no image now (minimized, a lost device).
+    [[nodiscard]] virtual bool acquirePresentTarget(SKPlatformPresentTarget *target) = 0;
+    // Presents the image acquired last, once the recording that draws into it is submitted.
+    [[nodiscard]] virtual bool presentTarget() = 0;
 
 protected:
     SKPlatformSurface() = default;

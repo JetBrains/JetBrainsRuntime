@@ -41,6 +41,18 @@ import java.awt.image.BufferedImage;
  */
 
 /*
+ * @test id=vulkan
+ * @key headful
+ * @summary Regression test for JBR-10654: the two-pass LCD compositing on Graphite's native Vulkan
+ *          backend, where a kPlus second pass was blended in the shader from an input attachment.
+ * @requires (os.family == "windows")
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @library ../ /test/lib
+ * @build PipelineComparison
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan -Dsun.java2d.uiScale=1 SKLCDTextBackgroundsTest 32 64
+ */
+
+/*
  * Light, dark and mid-tone backgrounds in several text colors, with a second and a third string
  * drawn over the first so that glyphs of two and three lists overlap inside one batch. The two-pass
  * compositing folds the gamma correction into the coverage and is allowed a few levels at glyph

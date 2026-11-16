@@ -41,6 +41,18 @@ import java.awt.image.BufferedImage;
  */
 
 /*
+ * @test id=vulkan
+ * @key headful
+ * @summary Regression test for JBR-10654: the same on Graphite's native Vulkan backend, where a kPlus
+ *          second pass was blended in the shader from an input attachment and the overlap layers lost it.
+ * @requires (os.family == "windows")
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @library ../ /test/lib
+ * @build PipelineComparison
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.graphite.api=vulkan -Dsun.java2d.uiScale=1 SKLCDTextLayersTest 32
+ */
+
+/*
  * 100 lines of 200 glyphs, each line drawn twice with a one-pixel shift, so that half of the
  * 40,000 glyphs overlap a pending glyph. Each glyph has to be
  * composited on top of the previous one like the software loops do it, within the tolerance on
