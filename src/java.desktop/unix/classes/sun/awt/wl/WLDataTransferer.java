@@ -147,6 +147,7 @@ public class WLDataTransferer extends DataTransferer {
             if (charset != null) {
                 return charset;
             }
+            return getDefaultUnicodeEncoding();
         }
         return super.getCharsetForTextFormat(lFormat);
     }
@@ -427,6 +428,11 @@ public class WLDataTransferer extends DataTransferer {
                 if (!encoding.equals(charset)) {
                     natives.add(baseType + ";charset=" + encoding);
                 }
+            }
+
+            // Add a MIME format without specified charset.
+            if (!natives.contains(baseType)) {
+                natives.add(baseType);
             }
         }
 
