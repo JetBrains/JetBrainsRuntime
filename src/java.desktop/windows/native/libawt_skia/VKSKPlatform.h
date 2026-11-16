@@ -27,13 +27,13 @@
 
 // Graphite on native Vulkan, behind the Windows platform layer (Win32SKPlatform.h), as
 // VKSKGraphicsAPI (VKSKPlatform.cpp, the Win32SKGraphicsAPI of Vulkan, and its configurations
-// and surfaces): the API with sun.java2d.skia.graphite.api=vulkan (Win32SKEnvironment selects
-// it). The Vulkan loader is the driver's vulkan-1.dll, loaded at run time (nothing links against
-// it). One device on the first discrete adapter (else the first) serves every configuration.
-// Each surface owns a VkImage Skia renders into; a window surface also owns the swap chain of
-// its HWND, whose images Graphite draws the surface into on present
-// (SKPlatformSurface::acquirePresentTarget), so Graphite tracks every image layout itself. The
-// instance and the devices are never destroyed (a lost device is dropped and stays alive while
+// and surfaces): the API SKGraphicsAPIFallback falls back to when Dawn is not usable, or tries
+// first with sun.java2d.skia.graphite.api=vulkan. The Vulkan loader is the driver's vulkan-1.dll,
+// loaded at run time (nothing links against it). One device on the first discrete adapter (else
+// the first) serves every configuration. Each surface owns a VkImage Skia renders into; a window
+// surface also owns the swap chain of its HWND, whose images Graphite draws the surface into on
+// present (SKPlatformSurface::acquirePresentTarget), so Graphite tracks every image layout itself.
+// The instance and the devices are never destroyed (a lost device is dropped and stays alive while
 // its configurations and surfaces hold it): their destruction at process exit would run during
 // DLL detach, under the loader lock, possibly after the loader and the driver were unloaded (as
 // DawnSKPlatform.cpp keeps its instance and devices).
@@ -42,8 +42,8 @@
 
 namespace VKSKPlatform {
 
-// Vulkan as a Win32SKGraphicsAPI, for the selection (Win32SKEnvironment); the maker of every Vulkan
-// configuration. Lives for the process.
+// Vulkan as a Win32SKGraphicsAPI, for the selection (Win32SKGraphicsAPIFallback.cpp); the maker of
+// every Vulkan configuration. Lives for the process.
 [[nodiscard]] Win32SKGraphicsAPI &graphicsAPI();
 
 // For tests, sun.java2d.skia.test.rejectVulkanPreferredDevice: with `reject` the first attempt to create

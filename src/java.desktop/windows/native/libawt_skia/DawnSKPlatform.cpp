@@ -133,6 +133,7 @@ struct DawnSKSurface final : Win32SKSurface {
 class DawnSKGraphicsAPI final : public Win32SKGraphicsAPI {
 public:
     [[nodiscard]] Win32SKAPI api() const override { return Win32SKAPI::Dawn; }
+    std::optional<Win32SKAdapterIDs> adapterIDs() override;
     // The preferred device features (PREFERRED_FEATURES) of the last device created, as "name=o/g ..." with
     // o whether the adapter offers it and g whether the device has it; empty before the first device.
     std::string deviceFeatures() override;
@@ -287,6 +288,43 @@ std::string adapterDescription(const wgpu::Adapter &adapter, const wgpu::Backend
     adapter.GetInfo(&info);
     return toString(info.device) + " (" + direct3DVersionName(direct3DVersion) + ")";
 }
+
+// The adapter of the first Direct3D version (in gDirect3DOrder) that has one, with that version;
+// null and Undefined if none has.
+wgpu::Adapter firstAdapter(const wgpu::Instance &instance, wgpu::BackendType *direct3DVersion) {
+    for (const size_t slot : gDirect3DOrder) {
+        const wgpu::BackendType candidate = DIRECT3D_VERSIONS[slot];
+        if (wgpu::Adapter adapter = requestAdapter(instance, candidate); adapter != nullptr) {
+            *direct3DVersion = candidate;
+            return adapter;
+        }
+    }
+    *direct3DVersion = wgpu::BackendType::Undefined;
+    return nullptr;
+}
+
+} // namespace
+
+// On an instance of its own, released with the adapter: a device made later enumerates the adapters anew
+// on its instance (createInstance).
+std::optional<Win32SKAdapterIDs> DawnSKGraphicsAPI::adapterIDs() {
+    std::lock_guard lock(gDevicesLock);
+    const wgpu::Instance instance = createInstance();
+    wgpu::BackendType direct3DVersion;
+    const wgpu::Adapter adapter = instance != nullptr ? firstAdapter(instance, &direct3DVersion) : nullptr;
+    if (adapter == nullptr) {
+        return std::nullopt;
+    }
+    wgpu::AdapterInfo info;
+    adapter.GetInfo(&info);
+    Win32SKAdapterIDs ids;
+    ids.vendorID = info.vendorID;
+    ids.deviceID = info.deviceID;
+    ids.name = toString(info.device);
+    return ids;
+}
+
+namespace {
 
 // A WebGPU device has the features it was created with, not the adapter's: Graphite enables what it
 // finds on the device (DawnCaps), e.g. dual-source blending, without which it blends coverage for

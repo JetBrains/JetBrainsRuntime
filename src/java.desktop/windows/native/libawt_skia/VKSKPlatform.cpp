@@ -233,6 +233,7 @@ struct VKSKSurface final : Win32SKSurface {
 class VKSKGraphicsAPI final : public Win32SKGraphicsAPI {
 public:
     [[nodiscard]] Win32SKAPI api() const override { return Win32SKAPI::Vulkan; }
+    std::optional<Win32SKAdapterIDs> adapterIDs() override;
     // The features Graphite reads (GRAPHITE_FEATURES) of the last device created, as "name=o/g ..." with o
     // whether the adapter offers it in the queried chain and g whether the device has it; empty before the
     // first device and after a failed one.
@@ -738,6 +739,22 @@ std::shared_ptr<VKSKDevice> createDevice() {
 std::string VKSKGraphicsAPI::deviceFeatures() {
     std::lock_guard lock(gLock);
     return gFeatureReport;
+}
+
+std::optional<Win32SKAdapterIDs> VKSKGraphicsAPI::adapterIDs() {
+    std::lock_guard lock(gLock);
+    if (!initInstance()) {
+        return std::nullopt;
+    }
+    const std::optional<VKSKAdapter> adapter = pickAdapter();
+    if (!adapter) {
+        return std::nullopt;
+    }
+    Win32SKAdapterIDs ids;
+    ids.vendorID = adapter->properties.vendorID;
+    ids.deviceID = adapter->properties.deviceID;
+    ids.name = adapter->properties.deviceName;
+    return ids;
 }
 
 Win32SKConfigInfo *VKSKGraphicsAPI::createConfig() {

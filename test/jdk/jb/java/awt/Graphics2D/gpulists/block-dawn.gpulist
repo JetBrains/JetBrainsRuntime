@@ -1,0 +1,5 @@
+# A replacement GPU list for SKGPUListFallbackTest: Dawn blocked on every adapter.
+entry test/dawn
+description Dawn blocked everywhere
+blocks dawn
+end

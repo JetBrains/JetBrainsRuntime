@@ -44,8 +44,8 @@
 
 namespace DawnSKPlatform {
 
-// Dawn as a Win32SKGraphicsAPI, for the selection (Win32SKEnvironment); the maker of every Dawn
-// configuration. Lives for the process.
+// Dawn as a Win32SKGraphicsAPI, for the selection (Win32SKGraphicsAPIFallback.cpp); the maker of every
+// Dawn configuration. Lives for the process.
 [[nodiscard]] Win32SKGraphicsAPI &graphicsAPI();
 
 // sun.java2d.skia.dawn.api: the Direct3D version Dawn tries first, 12 before 11 with `preferD3D12`
