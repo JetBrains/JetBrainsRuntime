@@ -27,6 +27,7 @@
 // it. The entries the pipes use when an operation does not fit the queue buffer (flushAndInvokeNow)
 // are the pipes' own (SKDirectEntry.h).
 
+#include "SKAnalyticShapes.h"
 #include "SKBlitLoops.h"
 #include "SKContext.h"
 #include "SKEntryLock.h"
@@ -47,6 +48,7 @@
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "sun_java2d_pipe_BufferedTextPipe.h"
 #include "sun_java2d_skia_SKRenderQueue.h"
+#include "sun_java2d_skia_SKAnalyticShapes.h"
 
 // ReSharper disable once CppUnusedIncludeDirective - memcpy is used here
 #include <cstring>
@@ -95,6 +97,13 @@ namespace {
 
 // DRAW_GLYPH_LIST packs the LCD contrast into 8 bits at OFFSET_CONTRAST (BufferedTextPipe).
 constexpr jint LCD_CONTRAST_MASK = 0xff;
+
+// SKAnalyticShapes' operands (SKAnalyticShapes.java): the AffineTransform's six floats
+// (m00 m10 m01 m11 m02 m12), the stroke's four (width, cap, join, miter limit), and the six
+// of a rect, round rect or oval (x, y, width, height, arc width, arc height).
+constexpr jint XFORM_FLOATS = 6;
+constexpr jint STROKE_FLOATS = 4;
+constexpr jint SHAPE_PARAM_FLOATS = 6;
 
 // DISPOSE_CONFIG (SKRenderQueue.disposeGraphicsConfig): the configuration's context is submitted, offers its
 // pipeline data, leaves the table and every reference to it, and goes with its caches. Nothing made with its
@@ -351,6 +360,31 @@ jboolean flushEntries(JNIEnv *env, unsigned char *cursor, jint limit, bool prese
             jlong configInfo = NEXT_LONG(cursor);
             SKContext::current().invalidate();
             disposeGraphicsConfig(static_cast<SKPlatformConfig *>(jlong_to_ptr(configInfo)));
+            break;
+        }
+        case sun_java2d_skia_SKAnalyticShapes_FILL_SHAPE:
+        case sun_java2d_skia_SKAnalyticShapes_DRAW_SHAPE: {
+            const bool fill = opcode == sun_java2d_skia_SKAnalyticShapes_FILL_SHAPE;
+            jint kind = NEXT_INT(cursor);
+            const auto *xform = reinterpret_cast<const jfloat *>(cursor);
+            SKIP_BYTES(cursor, XFORM_FLOATS * sizeof(jfloat));
+            const jfloat *stroke = nullptr;
+            if (!fill) {
+                stroke = reinterpret_cast<const jfloat *>(cursor);
+                SKIP_BYTES(cursor, STROKE_FLOATS * sizeof(jfloat));
+            }
+            if (kind == sun_java2d_skia_SKAnalyticShapes_KIND_PATH) {
+                jint windingRule = NEXT_INT(cursor), numTypes = NEXT_INT(cursor), numCoords = NEXT_INT(cursor);
+                const auto *types = reinterpret_cast<const jint *>(cursor);
+                SKIP_BYTES(cursor, numTypes * sizeof(jint));
+                const auto *coords = reinterpret_cast<const jfloat *>(cursor);
+                SKIP_BYTES(cursor, numCoords * sizeof(jfloat));
+                SKAnalyticShapes::drawShape(fill, kind, xform, stroke, nullptr, windingRule, numTypes, types, numCoords, coords);
+            } else {
+                const auto *params = reinterpret_cast<const jfloat *>(cursor);
+                SKIP_BYTES(cursor, SHAPE_PARAM_FLOATS * sizeof(jfloat));
+                SKAnalyticShapes::drawShape(fill, kind, xform, stroke, params, 0, 0, nullptr, 0, nullptr);
+            }
             break;
         }
         OP(SYNC): {

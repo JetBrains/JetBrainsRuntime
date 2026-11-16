@@ -25,6 +25,7 @@
 
 package sun.java2d.skia;
 
+import java.util.Locale;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -38,6 +39,10 @@ import sun.util.logging.PlatformLogger;
  * <li>{@code sun.java2d.skia=true|false}: the backend on or off (default off).</li>
  * <li>{@code sun.java2d.skia.verbose=true}: what was chosen and why, on stderr
  *     (as {@code sun.java2d.vulkan=True} and {@code sun.java2d.d3d=True} report).</li>
+ * <li>{@code sun.java2d.skia.shapes=analytic|marlin}: antialiased shapes drawn
+ *     by Skia's analytic rasterizer with Marlin's coverage masks for general
+ *     paths (default), or every shape through Marlin's masks as the other
+ *     pipelines do (the fallback for a rendering difference).</li>
  * </ul>
  * <p>
  * The backend starts on the first call of {@link #isSkiaEnabled} or {@link #runningOn()},
@@ -55,6 +60,9 @@ public final class SKEnvironment {
     private static final boolean REQUESTED = "true".equalsIgnoreCase(System.getProperty("sun.java2d.skia"));
     private static final boolean VERBOSE = Boolean.getBoolean("sun.java2d.skia.verbose");
 
+    /** {@code analytic} (the default) or {@code marlin}: how antialiased shapes are rasterized. */
+    private static final String SHAPES = shapesProperty();
+
     /**
      * The side of the backend's glyph cache textures in texels: the backend's default (1024,
      * SKConfiguration.cpp) unless {@code sun.java2d.skia.glyphCacheTexels} names another, 32 to 16384
@@ -63,6 +71,17 @@ public final class SKEnvironment {
      * this package is not exported.
      */
     private static final int GLYPH_CACHE_TEXELS = Integer.getInteger("sun.java2d.skia.glyphCacheTexels", 0);
+
+    private static String shapesProperty() {
+        String shapes = System.getProperty("sun.java2d.skia.shapes", "analytic").toLowerCase(Locale.ROOT);
+        if (!shapes.equals("analytic") && !shapes.equals("marlin")) {
+            if (VERBOSE) {
+                System.err.println("sun.java2d.skia.shapes=" + shapes + " is not analytic or marlin; using analytic");
+            }
+            return "analytic";
+        }
+        return shapes;
+    }
 
     /**
      * Set once {@link #startOnce} ran, whether the backend started: a start is not
@@ -97,6 +116,14 @@ public final class SKEnvironment {
             startOnce();
         }
         return runningOn;
+    }
+
+    /**
+     * Whether the shapes Skia renders analytically are rasterized by Skia, Marlin's masks
+     * drawing the rest ({@code analytic}), instead of Marlin's masks for every shape.
+     */
+    public static boolean rasterizesShapes() {
+        return !SHAPES.equals("marlin");
     }
 
     private static synchronized void startOnce() {
@@ -134,7 +161,7 @@ public final class SKEnvironment {
         }
         if (VERBOSE || log.isLoggable(PlatformLogger.Level.FINE)) {
             report("Skia rendering enabled: " + (startedOn != null
-                    ? "YES (" + startedOn + ")"
+                    ? "YES (" + startedOn + ", shapes: " + SHAPES + ")"
                     : "NO"));
         }
         return startedOn;

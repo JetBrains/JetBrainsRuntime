@@ -104,6 +104,7 @@ abstract class SKSurfaceData extends SurfaceData implements AccelSurface {
     private static PixelToParallelogramConverter skTransformedRenderPipe;
     private static ParallelogramPipe skAAParallelogramPipe;
     private static SKTextPipe skTextPipe;
+    private static SKAnalyticShapes skAnalyticShapes;
     private static SKDrawImage skImagePipe;
     /**
      * The antialiased converters by the pipe they hand the other shapes to (one of
@@ -114,7 +115,7 @@ abstract class SKSurfaceData extends SurfaceData implements AccelSurface {
 
     private static PixelToParallelogramConverter aaConverter(ShapeDrawPipe marlinPipe) {
         return aaConverters.computeIfAbsent(marlinPipe, pipe -> new PixelToParallelogramConverter(
-                pipe,
+                SKEnvironment.rasterizesShapes() ? new SKAnalyticShapes.HybridShapePipe(skAnalyticShapes, pipe) : pipe,
                 skAAParallelogramPipe, AA_MIN_PEN_SIZE, AA_NORMALIZE_POSITION, /* adjustfill */ false));
     }
 
@@ -123,6 +124,7 @@ abstract class SKSurfaceData extends SurfaceData implements AccelSurface {
             SKRenderQueue renderQueue = SKRenderQueue.getInstance();
             skImagePipe = new SKDrawImage();
             skTextPipe = new SKTextPipe(renderQueue);
+            skAnalyticShapes = new SKAnalyticShapes(renderQueue);
             skRenderPipe = new SKRenderPipe(renderQueue);
             skAAParallelogramPipe = skRenderPipe.getAAParallelogramPipe();
             skTransformedRenderPipe = new PixelToParallelogramConverter(skRenderPipe, skRenderPipe,
@@ -350,8 +352,9 @@ abstract class SKSurfaceData extends SurfaceData implements AccelSurface {
             boolean skiaPaint = sunGraphics2D.compositeState <= SunGraphics2D.COMP_ALPHA
                     && (sunGraphics2D.paintState <= SunGraphics2D.PAINT_ALPHACOLOR || SKPaints.isValid(sunGraphics2D));
             if (skiaPaint) {
-                // Marlin's masks (the pipe of this state) for the shapes; rectangles and lines
-                // become antialiased parallelograms, under every AlphaComposite rule and
+                // Marlin's masks (the pipe of this state) for the shapes Skia does not draw
+                // analytically, all of them with shapes=marlin; rectangles and lines become
+                // antialiased parallelograms either way, under every AlphaComposite rule and
                 // paint Skia draws (MTLSurfaceData takes SrcOver colors only)
                 if (!validated) {
                     super.validatePipe(sunGraphics2D);
