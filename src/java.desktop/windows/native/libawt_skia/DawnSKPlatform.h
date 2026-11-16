@@ -25,7 +25,7 @@
 #ifndef DawnSKPlatform_h_Included
 #define DawnSKPlatform_h_Included
 
-// Graphite on Dawn over Direct3D 11, behind the Windows platform layer
+// Graphite on Dawn over Direct3D 11 or 12, behind the Windows platform layer
 // (Win32SKPlatform.h): DawnSKGraphicsAPI (DawnSKPlatform.cpp, the Win32SKGraphicsAPI
 // of Dawn) and its configurations and surfaces, SKPlatform.h's classes on Dawn.
 //
@@ -47,6 +47,10 @@ namespace DawnSKPlatform {
 // Dawn as a Win32SKGraphicsAPI, for the selection (Win32SKEnvironment); the maker of every Dawn
 // configuration. Lives for the process.
 [[nodiscard]] Win32SKGraphicsAPI &graphicsAPI();
+
+// sun.java2d.skia.dawn.api: the Direct3D version Dawn tries first, 12 before 11 with `preferD3D12`
+// (default: 11 first); call before the first adapter request.
+void preferD3D12(bool preferD3D12);
 
 } // namespace DawnSKPlatform
 

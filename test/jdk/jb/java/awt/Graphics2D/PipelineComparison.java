@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -242,17 +243,19 @@ public final class PipelineComparison {
     /**
      * Skips the test unless Skia runs on the Graphite API the run line asks for, if it asks
      * for one (sun.java2d.skia.graphite.api: {@code vulkan} for Vulkan, any other value for
-     * Dawn, the default); see {@link #requireAPI}. Without the property whatever API the backend
-     * started on is fine.
+     * Dawn, the default; sun.java2d.skia.dawn.api: Dawn on that Direct3D version); see
+     * {@link #requireAPI}. Without either property whatever API the backend started on is fine.
      */
     public static void requireRequestedAPI() {
         requireSkia();
         String graphiteAPI = System.getProperty("sun.java2d.skia.graphite.api");
-        if (graphiteAPI == null) {
+        String dawnAPI = System.getProperty("sun.java2d.skia.dawn.api");
+        if (graphiteAPI == null && dawnAPI == null) {
             System.out.println("on " + SKEnvironment.runningOn());
             return;
         }
-        requireAPI("vulkan".equalsIgnoreCase(graphiteAPI) ? "Vulkan" : "Dawn", null);
+        requireAPI("vulkan".equalsIgnoreCase(graphiteAPI) ? "Vulkan" : "Dawn",
+                   dawnAPI != null ? dawnAPI.toUpperCase(Locale.ROOT) : null, null);
     }
 
     /** Skips the test unless Skia is enabled (the flag, a runtime with Skia, a device that started). */
@@ -269,18 +272,23 @@ public final class PipelineComparison {
     }
 
     /**
-     * Skips the test unless Skia runs on the Graphite API ({@code Dawn}, {@code Vulkan}). The
-     * backend runs on the API sun.java2d.skia.graphite.api names or does not start ("Skia is not
-     * enabled: nothing to test").
+     * Skips the test unless Skia runs on the Graphite API ({@code Dawn}, {@code Vulkan}) and, on
+     * Dawn, on the Direct3D version ({@code D3D11}, {@code D3D12}, null: either). The backend
+     * runs on the API sun.java2d.skia.graphite.api names or does not start ("Skia is not enabled:
+     * nothing to test"); Dawn goes on to its other Direct3D version when the requested one has no
+     * adapter ("Dawn on &lt;version&gt; unavailable here: nothing to test").
      *
      * @param startVerbose what sun.java2d.skia.verbose printed while Skia started
      *                     ({@link #startCapturingVerbose}), or null; given, Skia on another API
      *                     than the one asked for that the start did not report fails
      */
-    public static void requireAPI(String api, String startVerbose) {
+    public static void requireAPI(String api, String dawnAPI, String startVerbose) {
         requireSkia();
         String runningOn = SKEnvironment.runningOn();
         if (runsOn(api)) {
+            if (api.equals("Dawn") && dawnAPI != null && !runningOn.endsWith("(" + dawnAPI + ")")) {
+                throw new SkippedException("Dawn on " + dawnAPI + " unavailable here (" + runningOn + "): nothing to test");
+            }
             System.out.println("on " + runningOn);
             return;
         }

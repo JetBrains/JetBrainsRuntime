@@ -24,8 +24,8 @@
  */
 
 // SKPlatform on Dawn (DawnSKPlatform.h): Graphite/Dawn contexts on the Dawn device shared by the
-// Win32SKGraphicsConfigs, Skia surfaces over textures this file creates, presentation by copying
-// the texture into the window's swap chain.
+// Win32SKGraphicsConfigs of a Direct3D version, Skia surfaces over textures this
+// file creates, presentation by copying the texture into the window's swap chain.
 
 #include "DawnSKPlatform.h"
 #include "SKNeverDestroyed.h"
@@ -56,7 +56,7 @@ using namespace skgpu::graphite;
 
 namespace {
 
-// The GPU side, shared by all configurations
+// The GPU side of one Direct3D version (11 or 12), shared by all its configurations
 // and their surfaces (reference counted), so a surface never dereferences a
 // configuration that the Disposer has already freed; `lost` is set by Dawn's
 // device-lost callback and ends all rendering and presentation on it, and the
@@ -66,17 +66,18 @@ struct DawnSKDevice {
     wgpu::Adapter adapter;
     wgpu::Device device;
     wgpu::Queue queue;
+    wgpu::BackendType direct3DVersion = wgpu::BackendType::D3D11;   // the version the device runs on
     uint32_t maxTextureSize = 0;
     std::shared_ptr<std::atomic<bool>> lost = std::make_shared<std::atomic<bool>>(false);
 };
 
-// One per Win32SKGraphicsConfig, on the shared device.
+// One per Win32SKGraphicsConfig, on the shared device of its Direct3D version.
 struct DawnSKConfigInfo final : Win32SKConfigInfo {
     explicit DawnSKConfigInfo(std::shared_ptr<DawnSKDevice> device) : gpu(std::move(device)) {}
 
     std::unique_ptr<Context> makeContext(const ContextOptions &options) override;
     [[nodiscard]] bool isLost() const override;
-    // "<adapter> (D3D11)".
+    // "<adapter> (D3D11)" or "<adapter> (D3D12)".
     [[nodiscard]] std::string description() const override;
     // Texture, plus the configured swap chain of the window's client area if hwnd
     // is non-null. Null on failure, including a lost device, a texture beyond the
@@ -136,7 +137,9 @@ public:
     // o whether the adapter offers it and g whether the device has it; empty before the first device.
     std::string deviceFeatures() override;
 
-    // A configuration on the shared device; a lost device is replaced. Null if there is none.
+    // A configuration on the shared device of the first Direct3D version that yields
+    // one (11 first, 12 as fallback, unless DawnSKPlatform::preferD3D12); a lost device
+    // is replaced. Null if none.
     Win32SKConfigInfo *createConfig() override;
     void simulateDeviceLoss(bool persistent) override;
 };
@@ -145,14 +148,36 @@ std::string toString(const wgpu::StringView view) {
     return std::string(std::string_view(view));
 }
 
+// Dawn calls the Direct3D version it runs on its backend (wgpu::BackendType: D3D11, D3D12);
+// in this code base "backend" is the Skia backend as a whole, so here it is the Direct3D
+// version. Its name in the adapter descriptions.
+const char *direct3DVersionName(const wgpu::BackendType direct3DVersion) {
+    switch (direct3DVersion) {
+        case wgpu::BackendType::D3D11: return "D3D11";
+        case wgpu::BackendType::D3D12: return "D3D12";
+        default: return "unknown Direct3D version";
+    }
+}
+
 // The surfaces are BGRA8 like the Direct3D swap chains they are copied to.
 constexpr auto SURFACE_FORMAT = wgpu::TextureFormat::BGRA8Unorm;
 constexpr SkColorType SURFACE_COLOR_TYPE = kBGRA_8888_SkColorType;
 
-// The Direct3D version Dawn runs on (Dawn calls it its backend, wgpu::BackendType; in this code
-// base "backend" is the Skia backend as a whole): Direct3D 11, the lowest common denominator of
-// Windows GPUs and VMs.
-constexpr auto DIRECT3D_VERSION = wgpu::BackendType::D3D11;
+// The Direct3D versions Dawn can run on here, Direct3D 11 first: the lowest common
+// denominator of Windows GPUs and VMs. The index into this array is also the device slot.
+constexpr std::array DIRECT3D_VERSIONS = { wgpu::BackendType::D3D11, wgpu::BackendType::D3D12 };
+// The order the versions are tried in, as indices into DIRECT3D_VERSIONS.
+// sun.java2d.skia.dawn.api=d3d12 tries Direct3D 12 first (for triage: the version Chrome ships
+// WebGPU on; Graphite is tested on Direct3D 11 first). Set once, before the first adapter request.
+std::array<size_t, DIRECT3D_VERSIONS.size()> gDirect3DOrder = { 0, 1 };
+
+} // namespace
+
+void DawnSKPlatform::preferD3D12(const bool preferD3D12) {
+    gDirect3DOrder = preferD3D12 ? std::array<size_t, 2>{ 1, 0 } : std::array<size_t, 2>{ 0, 1 };
+}
+
+namespace {
 
 // WebGPU's default maxTextureDimension2D, the limit a device gets when the adapter's limits
 // cannot be read (they are required at creation, so this is only a fallback).
@@ -167,18 +192,21 @@ constexpr uint64_t WAIT_WITHOUT_TIMEOUT = UINT64_MAX;
 constexpr uint32_t BASIC_RENDER_DRIVER_VENDOR_ID = 0x1414;
 constexpr uint32_t BASIC_RENDER_DRIVER_DEVICE_ID = 0x8c;
 
-// One device, shared by the configurations (as the D3D pipeline keeps its device across
-// configurations): a display change (resolution, DPI, a monitor plugged) recreates the
-// configurations, and a device per
+// One device per Direct3D version, shared by the configurations (as the D3D pipeline
+// keeps its device across configurations): a display change (resolution, DPI,
+// a monitor plugged) recreates the configurations, and a device per
 // configuration left every texture of the old one unusable on the new
 // (SKPlatformConfig::sameDevice) and cost a device each time. A lost device is
 // dropped, so recovery gets a new one.
 //
-// The device and the instance are never destroyed (SKNeverDestroyed.h): at process exit their
-// destructors would run during DLL detach, under the loader lock, after the other threads were
-// killed. Each device has its own instance (createInstance), which lives as long as the device.
-std::mutex gDeviceLock;
-SKNeverDestroyed<std::shared_ptr<DawnSKDevice>> gDevice;
+// The devices and their instances are never destroyed (SKNeverDestroyed.h): at process exit their
+// destructors would run during DLL detach, under the loader lock, and Dawn's
+// D3D12 backend fails fast releasing its device there (SKDawnBackendTest,
+// dawn.api=d3d12: exit code 0xC0000409 after the test passed). Each device has its own
+// instance (createInstance), which lives as long as the device.
+std::mutex gDevicesLock;
+using DawnSKDeviceSlots = std::array<std::shared_ptr<DawnSKDevice>, DIRECT3D_VERSIONS.size()>;
+SKNeverDestroyed<DawnSKDeviceSlots> gDevices;   // indexed like DIRECT3D_VERSIONS
 
 // ---------------------------------------------------------------------------
 // Instance, adapter, device
@@ -199,7 +227,7 @@ void waitFor(const wgpu::Instance &instance, const wgpu::Future future, const ch
 // A Dawn instance for a new device; null if Dawn cannot start. A new one per device: an instance
 // keeps the adapters it enumerated when it was created, and after an adapter's removal and return
 // (a driver update) that adapter yields DXGI_ERROR_DEVICE_REMOVED from every D3D11CreateDevice, so
-// a device that replaces a lost one has to come from a new enumeration. Under gDeviceLock.
+// a device that replaces a lost one has to come from a new enumeration. Under gDevicesLock.
 wgpu::Instance createInstance() {
     static bool procsSet = false;
     if (!procsSet) {
@@ -219,23 +247,26 @@ wgpu::Instance createInstance() {
     return instance;
 }
 
-// The Direct3D hardware adapter; null if there is none. Dawn offers the software adapter (WARP, the
-// Microsoft Basic Render Driver) when no hardware adapter is present, at startup on a machine without
-// a GPU and while the only display adapter is disabled (a driver update); it is not used: like the
-// Direct3D pipeline, which asks for a hardware device (D3DPipelineManager), the screens then stay with
-// GDI, and the next configuration made after a display change looks for a hardware adapter again.
-// Whether WARP would beat Java2D's software loops is unmeasured.
-wgpu::Adapter requestAdapter(const wgpu::Instance &instance) {
+// The adapter of the Direct3D version, a hardware one; null if there is none. Dawn offers the
+// software adapter (WARP, the Microsoft Basic Render Driver) when no hardware adapter is present, at
+// startup on a machine without a GPU and while the only display adapter is disabled (a driver
+// update); it is not used: like the Direct3D pipeline, which asks for a hardware device
+// (D3DPipelineManager), the screens then stay with GDI, and the next configuration made after a
+// display change looks for a hardware adapter again. Whether WARP would beat Java2D's software loops
+// is unmeasured.
+wgpu::Adapter requestAdapter(const wgpu::Instance &instance, wgpu::BackendType direct3DVersion) {
     wgpu::RequestAdapterOptions options;
-    options.backendType = DIRECT3D_VERSION;
+    options.backendType = direct3DVersion;
     options.powerPreference = wgpu::PowerPreference::HighPerformance;
     wgpu::Adapter adapter;
     const wgpu::Future request = instance.RequestAdapter(&options, wgpu::CallbackMode::WaitAnyOnly,
-            [&adapter](const wgpu::RequestAdapterStatus status, wgpu::Adapter result, const wgpu::StringView message) {
+            [&adapter, direct3DVersion](const wgpu::RequestAdapterStatus status, wgpu::Adapter result,
+                                        const wgpu::StringView message) {
                 if (status == wgpu::RequestAdapterStatus::Success) {
                     adapter = std::move(result);
                 } else {
-                    J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: no D3D11 adapter: %s", toString(message).c_str());
+                    J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: no %s adapter: %s", direct3DVersionName(direct3DVersion),
+                                  toString(message).c_str());
                 }
             });
     waitFor(instance, request, "adapter request");
@@ -243,18 +274,18 @@ wgpu::Adapter requestAdapter(const wgpu::Instance &instance) {
                                 && (info.adapterType == wgpu::AdapterType::CPU
                                     || (info.vendorID == BASIC_RENDER_DRIVER_VENDOR_ID
                                         && info.deviceID == BASIC_RENDER_DRIVER_DEVICE_ID))) {
-        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: the only D3D11 adapter is the software one (%s), not used",
-                      toString(info.device).c_str());
+        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSK: the only %s adapter is the software one (%s), not used",
+                      direct3DVersionName(direct3DVersion), toString(info.device).c_str());
         return nullptr;
     }
     return adapter;
 }
 
 // "<adapter> (D3D11)": the adapter's name and the Direct3D version.
-std::string adapterDescription(const wgpu::Adapter &adapter) {
+std::string adapterDescription(const wgpu::Adapter &adapter, const wgpu::BackendType direct3DVersion) {
     wgpu::AdapterInfo info;
     adapter.GetInfo(&info);
-    return toString(info.device) + " (D3D11)";
+    return toString(info.device) + " (" + direct3DVersionName(direct3DVersion) + ")";
 }
 
 // A WebGPU device has the features it was created with, not the adapter's: Graphite enables what it
@@ -389,49 +420,54 @@ std::atomic gLoseNewDevices{false};
 
 void DawnSKGraphicsAPI::simulateDeviceLoss(const bool persistent) {
     gLoseNewDevices.store(persistent);
-    std::lock_guard lock(gDeviceLock);
-    if (*gDevice != nullptr) {
-        (*gDevice)->lost->store(true);
+    std::lock_guard lock(gDevicesLock);
+    for (const std::shared_ptr<DawnSKDevice> &gpu : *gDevices) {
+        if (gpu != nullptr) {
+            gpu->lost->store(true);
+        }
     }
 }
 
 Win32SKConfigInfo *DawnSKGraphicsAPI::createConfig() {
-    std::lock_guard lock(gDeviceLock);
-    std::shared_ptr<DawnSKDevice> gpu = *gDevice;
-    if (gpu != nullptr && gpu->lost->load()) {
-        gDevice->reset();
-        gpu.reset();
+    std::lock_guard lock(gDevicesLock);
+    for (const size_t slot : gDirect3DOrder) {
+        const wgpu::BackendType direct3DVersion = DIRECT3D_VERSIONS[slot];
+        std::shared_ptr<DawnSKDevice> gpu = (*gDevices)[slot];
+        if (gpu != nullptr && gpu->lost->load()) {
+            (*gDevices)[slot].reset();
+            gpu.reset();
+        }
+        const bool shared = gpu != nullptr;
+        if (!shared) {
+            const wgpu::Instance instance = createInstance();
+            if (instance == nullptr) {
+                return nullptr;
+            }
+            wgpu::Adapter adapter = requestAdapter(instance, direct3DVersion);
+            if (adapter == nullptr) {
+                continue;
+            }
+            gpu = std::make_shared<DawnSKDevice>();
+            gpu->instance = instance;
+            gpu->device = requestDevice(instance, adapter, gpu->lost, adapterDescription(adapter, direct3DVersion));
+            if (gpu->device == nullptr) {
+                continue;
+            }
+            gpu->adapter = std::move(adapter);
+            gpu->direct3DVersion = direct3DVersion;
+            gpu->queue = gpu->device.GetQueue();
+            wgpu::Limits limits;   // the device's limits (the adapter's limits were required at creation)
+            gpu->maxTextureSize = gpu->device.GetLimits(&limits) == wgpu::Status::Success
+                                  ? limits.maxTextureDimension2D : WEBGPU_DEFAULT_MAX_TEXTURE_SIZE;
+            (*gDevices)[slot] = gpu;
+        }
+        auto *config = new DawnSKConfigInfo(std::move(gpu));
+        J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSKGraphicsAPI::createConfig: %s, max texture %u, %s device",
+                      config->description().c_str(), config->gpu->maxTextureSize, shared ? "shared" : "new");
+        return config;
     }
-    const bool shared = gpu != nullptr;
-    if (!shared) {
-        const wgpu::Instance instance = createInstance();
-        if (instance == nullptr) {
-            return nullptr;
-        }
-        wgpu::Adapter adapter = requestAdapter(instance);
-        if (adapter == nullptr) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR, "DawnSKGraphicsAPI::createConfig: no Direct3D 11 hardware adapter");
-            return nullptr;
-        }
-        gpu = std::make_shared<DawnSKDevice>();
-        gpu->instance = instance;
-        gpu->device = requestDevice(instance, adapter, gpu->lost, adapterDescription(adapter));
-        if (gpu->device == nullptr) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR,
-                          "DawnSKGraphicsAPI::createConfig: the Direct3D 11 adapter yields no Dawn device");
-            return nullptr;
-        }
-        gpu->adapter = std::move(adapter);
-        gpu->queue = gpu->device.GetQueue();
-        wgpu::Limits limits;   // the device's limits (the adapter's limits were required at creation)
-        gpu->maxTextureSize = gpu->device.GetLimits(&limits) == wgpu::Status::Success
-                              ? limits.maxTextureDimension2D : WEBGPU_DEFAULT_MAX_TEXTURE_SIZE;
-        *gDevice = gpu;
-    }
-    auto *config = new DawnSKConfigInfo(std::move(gpu));
-    J2dRlsTraceLn(J2D_TRACE_INFO, "DawnSKGraphicsAPI::createConfig: %s, max texture %u, %s device",
-                  config->description().c_str(), config->gpu->maxTextureSize, shared ? "shared" : "new");
-    return config;
+    J2dRlsTraceLn(J2D_TRACE_ERROR, "DawnSKGraphicsAPI::createConfig: no Direct3D adapter yields a Dawn device");
+    return nullptr;
 }
 
 // ---------------------------------------------------------------------------
@@ -448,7 +484,7 @@ bool DawnSKConfigInfo::isLost() const {
 }
 
 std::string DawnSKConfigInfo::description() const {
-    return adapterDescription(gpu->adapter);
+    return adapterDescription(gpu->adapter, gpu->direct3DVersion);
 }
 
 std::unique_ptr<Context> DawnSKConfigInfo::makeContext(const ContextOptions &options) {

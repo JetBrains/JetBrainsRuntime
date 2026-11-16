@@ -73,10 +73,11 @@ std::string systemProperty(JNIEnv *env, const char *name) {
 extern "C" {
 
 // The graphics API the configurations will use, selected here from sun.java2d.skia.graphite.api
-// (vulkan for native Vulkan, anything else leaves Dawn; SKEnvironment reports an unknown value).
-// The device is created now (and kept: the configurations share it), so an API that cannot start
-// fails here, before any surface depends on it; null then, as when the API finds no adapter.
-// Otherwise, what the backend runs on (SKEnvironment.runningOn): "Skia m<release> Graphite/<API> on <adapter>".
+// (vulkan for native Vulkan, anything else leaves Dawn; SKEnvironment reports an unknown value),
+// and sun.java2d.skia.dawn.api=d3d12 for Direct3D 12 before 11. The device is created now (and
+// kept: the configurations share it), so an API that cannot start fails here, before any surface
+// depends on it; null then, as when the API finds no adapter. Otherwise, what the backend runs on
+// (SKEnvironment.runningOn): "Skia m<release> Graphite/<API> on <adapter>".
 JNIEXPORT jstring JNICALL
 Java_sun_java2d_skia_SKEnvironment_startNative(JNIEnv *env, jclass)
 {
@@ -84,6 +85,10 @@ Java_sun_java2d_skia_SKEnvironment_startNative(JNIEnv *env, jclass)
     Win32SKGraphicsAPI &graphicsAPI = _stricmp(systemProperty(env, "sun.java2d.skia.graphite.api").c_str(), "vulkan") == 0
                                       ? VKSKPlatform::graphicsAPI() : DawnSKPlatform::graphicsAPI();
     Win32SKPlatform::selectGraphicsAPI(&graphicsAPI);
+    const std::string dawnAPI = systemProperty(env, "sun.java2d.skia.dawn.api");
+    if (!dawnAPI.empty()) {
+        DawnSKPlatform::preferD3D12(_stricmp(dawnAPI.c_str(), "d3d12") == 0);
+    }
     // for tests: the Vulkan device of the retry with the minimal set (SKVulkanFeaturesTest)
     VKSKPlatform::rejectPreferredDevice(
             _stricmp(systemProperty(env, "sun.java2d.skia.test.rejectVulkanPreferredDevice").c_str(), "true") == 0);

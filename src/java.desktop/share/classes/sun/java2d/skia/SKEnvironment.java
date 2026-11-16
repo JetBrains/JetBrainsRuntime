@@ -51,6 +51,9 @@ import sun.util.logging.PlatformLogger;
  *     API Graphite renders through; Dawn over Direct3D 11 by default.</li>
  * <li>{@code sun.java2d.skia.imageAtlas=false}: images small enough for the
  *     image atlas are drawn as single textures instead.</li>
+ * <li>{@code sun.java2d.skia.dawn.api=d3d12|d3d11}: the Direct3D version Dawn
+ *     tries first (Direct3D 11 by default), for the backend's tests and for triage
+ *     (Win32SKEnvironment.cpp).</li>
  * </ul>
  * <p>
  * The backend starts on the first call of {@link #isSkiaEnabled} or {@link #runningOn()},

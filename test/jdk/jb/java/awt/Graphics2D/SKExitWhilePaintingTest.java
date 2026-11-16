@@ -50,6 +50,16 @@ import sun.java2d.skia.SKEnvironment;
  */
 
 /*
+ * @test id=d3d12
+ * @key headful
+ * @summary Regression test for JBR-10654: as above, on Dawn over Direct3D 12.
+ * @requires (os.family == "windows")
+ * @library /test/lib
+ * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
+ * @run main/othervm/timeout=600 SKExitWhilePaintingTest d3d12
+ */
+
+/*
  * @test id=vulkan
  * @key headful
  * @summary Regression test for JBR-10654: as above, on Vulkan.
@@ -122,10 +132,15 @@ void main(String[] args) throws Exception {
     String mode = args[0];
     List<String> options = switch (mode) {
         case "vulkan" -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.skia.graphite.api=vulkan");
-        default -> List.of("-Dsun.java2d.skia.pipelineCache=off");
+        case "d3d12" -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.skia.dawn.api=d3d12");
+        default -> List.of("-Dsun.java2d.skia.pipelineCache=off", "-Dsun.java2d.skia.dawn.api=d3d11");
     };
     String api = mode.equals("vulkan") ? "Vulkan" : "Dawn";
-    String direct3D = mode.equals("d3d11") ? "(D3D11)" : null;
+    String direct3D = switch (mode) {
+        case "d3d12" -> "(D3D12)";
+        case "d3d11" -> "(D3D11)";
+        default -> null;
+    };
     List<String> command = PipelineComparison.skiaChildCommand(options, getClass(), "child", mode);
     for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
         ProcessBuilder builder = ProcessTools.createTestJavaProcessBuilder(command);

@@ -31,11 +31,11 @@
 // (Win32SKGraphicsConfig.cpp, Win32SKSurfaceData.cpp, Win32SKEnvironment.cpp)
 // calls only this layer: the selected graphics API (Win32SKGraphicsAPI) makes the
 // configurations, a configuration its surfaces, and each implements SKPlatform.h's
-// classes for its API. Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11)
-// or Vulkan (VKSKPlatform.cpp), one per process: Win32SKEnvironment selects the one
-// sun.java2d.skia.graphite.api names (Dawn by default), and the backend does not start
-// when it has no adapter or its device does not start. The APIs depend on this layer,
-// not this layer on them. Text is the same for every API (SKTextPipe.cpp, shared).
+// classes for its API. Graphite's API is Dawn (DawnSKPlatform.cpp, over Direct3D 11
+// or 12) or Vulkan (VKSKPlatform.cpp), one per process: Win32SKEnvironment selects
+// the one sun.java2d.skia.graphite.api names (Dawn by default), and the backend does
+// not start when it has no adapter. The APIs depend on this layer, not this layer on
+// them. Text is the same for every API (SKTextPipe.cpp, shared).
 //
 // Java holds a configuration as the address of its SKPlatformConfig and a platform
 // surface as the address of its SKPlatformSurface, as the shared backend reads them;
@@ -66,7 +66,7 @@ class Win32SKSurface;
 // shared device (Win32SKGraphicsAPI::createConfig).
 class Win32SKConfigInfo : public SKPlatformConfig {
 public:
-    // "<adapter> (D3D11|Vulkan)", for SKGraphicsConfig.SKContextCapabilities.
+    // "<adapter> (D3D11|D3D12|Vulkan)", for SKGraphicsConfig.SKContextCapabilities.
     [[nodiscard]] virtual std::string description() const = 0;
 
     // The texture Skia renders into, plus the swap chain of the window's client area if

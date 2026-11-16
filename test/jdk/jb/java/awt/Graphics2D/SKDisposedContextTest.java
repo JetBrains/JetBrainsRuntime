@@ -159,7 +159,7 @@ void main(String[] args) throws Exception {
                                       PipelineComparison.WRAPPED_BY_ANOTHER_CONTEXT_TRACE)) {
         return;   // the child ran the test, with the assertions' traces on
     }
-    PipelineComparison.requireAPI(args[0], null);
+    PipelineComparison.requireAPI(args[0], null, null);
     if (args[1].equals("texturePaint")) {
         texturePaint();
     } else {

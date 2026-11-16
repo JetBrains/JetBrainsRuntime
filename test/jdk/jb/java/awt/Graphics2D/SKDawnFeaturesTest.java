@@ -30,11 +30,12 @@ import sun.java2d.skia.SKEnvironment;
  * @test
  * @key headful
  * @summary Regression test for JBR-10654: Graphite on Dawn gets every device feature of its
- *          preferred set that the adapter offers.
+ *          preferred set that the adapter offers, on D3D11 and on D3D12.
  * @requires os.family == "windows"
  * @library /test/lib
  * @modules java.desktop/sun.java2d java.desktop/sun.java2d.skia
  * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.uiScale=1 SKDawnFeaturesTest
+ * @run main/othervm -Dsun.java2d.skia=true -Dsun.java2d.skia.pipelineCache=off -Dsun.java2d.skia.dawn.api=d3d12 -Dsun.java2d.uiScale=1 SKDawnFeaturesTest
  */
 
 /*

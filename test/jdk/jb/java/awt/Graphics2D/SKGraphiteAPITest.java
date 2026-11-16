@@ -77,7 +77,7 @@ static volatile Color panelColor = Color.RED;
 
 void main(String[] args) throws Exception {
     String verbose = PipelineComparison.startCapturingVerbose();
-    PipelineComparison.requireAPI(args[0], verbose);
+    PipelineComparison.requireAPI(args[0], null, verbose);
 
     Robot robot = new Robot();
     AtomicReference<JFrame> frameReference = new AtomicReference<>();
