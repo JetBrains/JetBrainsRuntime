@@ -27,6 +27,7 @@ package sun.java2d.windows;
 
 import sun.awt.windows.WToolkit;
 import sun.java2d.opengl.WGLGraphicsConfig;
+import sun.java2d.skia.SKEnvironment;
 import sun.java2d.vulkan.VKEnv;
 
 public final class WindowsFlags {
@@ -110,11 +111,20 @@ public final class WindowsFlags {
 
     private static native boolean initNativeFlags();
 
-    // Noop: this method is just here as a convenient calling place when
-    // we are initialized by Win32GraphicsEnv.  Calling this will force
-    // us to run through the static block below, which is where the
-    // real work occurs.
-    public static void initFlags() {}
+    // Called once by Win32GraphicsEnv.  Calling this will force us to run
+    // through the static block above, which is where the real work occurs.
+    public static void initFlags() {
+        // A Skia pipeline that started takes precedence over the others (Vulkan
+        // yields to it in WToolkit.<clinit>). Here rather than in the static
+        // block: the toolkit's shutdown hook loads this class in processes that never
+        // create a screen device, and must not start Skia; after the native flags, which
+        // may enable Direct3D (J2D_D3D). Asked only when another pipeline is requested,
+        // so that Skia otherwise starts with the screen devices' configurations.
+        if ((d3dEnabled || oglEnabled) && SKEnvironment.isSkiaEnabled()) {
+            d3dEnabled = false;
+            oglEnabled = false;
+        }
+    }
 
     private static boolean getBooleanProp(String p, boolean defaultVal) {
         String propString = System.getProperty(p);

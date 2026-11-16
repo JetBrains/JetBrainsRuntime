@@ -31,6 +31,8 @@ import java.awt.Graphics2D;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.windows.WComponentPeer;
 import sun.java2d.d3d.D3DScreenUpdateManager;
+import sun.java2d.skia.SKEnvironment;
+import sun.java2d.skia.Win32SKScreenUpdateManager;
 import sun.java2d.windows.WindowsFlags;
 
 /**
@@ -125,7 +127,9 @@ public class ScreenUpdateManager {
      */
     public static synchronized ScreenUpdateManager getInstance() {
         if (theInstance == null) {
-            if (WindowsFlags.isD3DEnabled()) {
+            if (SKEnvironment.isSkiaEnabled()) {
+                theInstance = new Win32SKScreenUpdateManager();
+            } else if (WindowsFlags.isD3DEnabled()) {
                 theInstance = new D3DScreenUpdateManager();
             } else {
                 theInstance = new ScreenUpdateManager();

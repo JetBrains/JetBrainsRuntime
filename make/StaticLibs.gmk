@@ -69,6 +69,8 @@ else ifeq ($(call isTargetOs, windows), true)
   BROKEN_STATIC_LIBS += sspi_bridge
   # dt_shmem define jdwpTransport_OnLoad which conflict with dt_socket
   BROKEN_STATIC_LIBS += dt_shmem
+  # awt_skia links a prebuilt Skia against the static CRT (-MT), which cannot join the -MD link
+  BROKEN_STATIC_LIBS += awt_skia
 else ifeq ($(call isTargetOs, aix), true)
   # libsplashscreen has a name conflict with libawt in the function
   # BitmapToYXBandedRectangles, so we exclude it for now.
