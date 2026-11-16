@@ -71,6 +71,7 @@ import sun.java2d.ScreenUpdateManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.d3d.D3DSurfaceData;
 import sun.java2d.opengl.OGLSurfaceData;
+import sun.java2d.skia.Win32SKSurfaceData;
 import sun.java2d.vulkan.Win32VKWindowSurfaceData;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
@@ -213,7 +214,8 @@ public abstract class WComponentPeer extends WObjectPeer
                 cont.validate();
 
                 if (surfaceData instanceof D3DSurfaceData.D3DWindowSurfaceData ||
-                        surfaceData instanceof OGLSurfaceData || surfaceData instanceof Win32VKWindowSurfaceData)
+                        surfaceData instanceof OGLSurfaceData || surfaceData instanceof Win32VKWindowSurfaceData ||
+                        surfaceData instanceof Win32SKSurfaceData)
                 {
                     // When OGL or D3D is enabled, it is necessary to
                     // replace the SurfaceData for each dynamic layout

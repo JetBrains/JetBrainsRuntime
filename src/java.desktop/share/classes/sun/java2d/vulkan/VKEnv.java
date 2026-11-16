@@ -88,6 +88,13 @@ public final class VKEnv {
         throw new VKInitializationException("Vulkan is experimental on '" + platformDescription + "', use -Dsun.java2d.vulkan=Force to enable anyway.");
     }
 
+    // for use in init's getPlatformData: a pipeline that started and takes precedence over Vulkan
+    public static void requireNotSuperseded(String pipeline, boolean pipelineStarted) {
+        if (pipelineStarted) {
+            throw new VKInitializationException("the " + pipeline + " pipeline started and takes precedence over Vulkan");
+        }
+    }
+
     public static synchronized void init(Supplier<Long> getPlatformData) {
         if (state > INITIALIZING) return;
         int newState = DISABLED;

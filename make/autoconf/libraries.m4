@@ -37,6 +37,7 @@ m4_include([lib-speechd.m4])
 m4_include([lib-nvdacontrollerclient.m4])
 m4_include([lib-dbus.m4])
 m4_include([lib-vulkan.m4])
+m4_include([lib-skia.m4])
 m4_include([lib-wayland.m4])
 m4_include([lib-tests.m4])
 
@@ -150,6 +151,7 @@ AC_DEFUN_ONCE([LIB_SETUP_LIBRARIES],
   LIB_SETUP_NVDACONTROLLERCLIENT
   LIB_SETUP_DBUS
   LIB_SETUP_VULKAN
+  LIB_SETUP_SKIA
   LIB_SETUP_WAYLAND
   LIB_TESTS_SETUP_GTEST
 

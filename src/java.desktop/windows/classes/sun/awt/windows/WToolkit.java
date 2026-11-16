@@ -132,6 +132,8 @@ import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.d3d.D3DRenderQueue;
+import sun.java2d.skia.SKEnvironment;
+import sun.java2d.skia.SKRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.vulkan.VKEnv;
 import sun.java2d.windows.WindowsFlags;
@@ -182,6 +184,7 @@ public final class WToolkit extends SunToolkit implements Runnable {
         if (!GraphicsEnvironment.isHeadless()) {
             VKEnv.init(() -> {
                 VKEnv.requireForceVulkan("WToolkit");
+                VKEnv.requireNotSuperseded("Skia", SKEnvironment.isSkiaEnabled());
                 return VKEnv.initPlatformWin32();
             });
         }
@@ -252,7 +255,7 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
     private void registerShutdownHook() {
         Thread shutdown = new Thread(ThreadGroupUtils.getRootThreadGroup(), () -> {
-            // D3D's Java2D Queue Flusher thread needs to be syncronized with shutdown logic
+            // D3D's Java2D Queue Flusher thread needs to be synchronized with shutdown logic
             if (WindowsFlags.isD3DEnabled()) {
                 D3DRenderQueue.getInstance().flushAndInvokeNow(() -> {
                     shutdown();
@@ -636,6 +639,8 @@ public final class WToolkit extends SunToolkit implements Runnable {
         OGLRenderQueue.sync();
         // now flush the D3D pipeline (this is a no-op if D3D is not enabled)
         D3DRenderQueue.sync();
+        // now flush the Skia pipeline (this is a no-op if Skia is not enabled)
+        SKRenderQueue.sync();
     }
 
     @Override
@@ -1189,6 +1194,6 @@ public final class WToolkit extends SunToolkit implements Runnable {
 
     @Override
     public boolean needUpdateWindowAfterPaint() {
-        return VKEnv.isPresentationEnabled();
+        return VKEnv.isPresentationEnabled() || SKEnvironment.isSkiaEnabled();
     }
 }
