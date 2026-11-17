@@ -222,8 +222,12 @@ typedef struct {
     float outerX11, outerY11, innerX11, innerY11;
     float outerDx21, outerDy21, outerDx12, outerDy12;
     float innerDx21, innerDy21, innerDx12, innerDy12;
+} VKParallelogramRing;
+
+typedef struct {
+    VKParallelogramRing ring;
     unsigned int data;
-} VKAAParallelogramInstance;
+} VKParallelogramRingInstance;
 
 VKPipelineContext* VKPipelines_CreateContext(VKDevice* device);
 void VKPipelines_DestroyContext(VKPipelineContext* pipelines);
