@@ -140,7 +140,8 @@ void VKRenderer_RenderRect(VkBool32 fill, jint x, jint y, jint w, jint h);
 void VKRenderer_RenderParallelogram(VkBool32 fill,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
-                                    jfloat dx12, jfloat dy12);
+                                    jfloat dx12, jfloat dy12,
+                                    jfloat lwr21, jfloat lwr12);
 
 void VKRenderer_RenderAAParallelogram(VkBool32 fill,
                                       jfloat x11, jfloat y11,
