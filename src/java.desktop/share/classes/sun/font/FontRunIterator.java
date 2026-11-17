@@ -30,6 +30,8 @@
 
 package sun.font;
 
+import static sun.font.CharToGlyphMapper.INVISIBLE_GLYPH_ID;
+
 /**
  * Iterates over runs of fonts in a CompositeFont, optionally taking script runs into account.
  */
@@ -123,7 +125,7 @@ public final class FontRunIterator {
         int gl = mapper.charToVariationGlyph(ch, vs);
         slotInfo = font.getSlotInfoForGlyph(gl);
         int slotMask = slotInfo.getSlotMask();
-        slot = gl & slotMask;
+        slot = gl == INVISIBLE_GLYPH_ID ? 0 : (gl & slotMask);
         if (slotInfo.slotShift == 0) {
             // This is a non-composite font, so return early.
             pos = lim;
@@ -145,12 +147,10 @@ public final class FontRunIterator {
     }
 
     private boolean isSameRun(int ch, int variationSelector, int slotMask) {
-        // Every font is meant to be able to render format chars
-        // So we make format chars stick to the current font run
-        if (CMap.getFormatCharGlyph(ch) == CharToGlyphMapper.INVISIBLE_GLYPH_ID) {
-            return true;
-        }
-        return (mapper.charToVariationGlyph(ch, variationSelector) & slotMask) == slot;
+        // Every font is meant to be able to render invisible glyphs (format chars, tabs, line breaks)
+        // So we make them stick to the current font run
+        int gl = mapper.charToVariationGlyph(ch, variationSelector);
+        return gl == INVISIBLE_GLYPH_ID || (gl & slotMask) == slot;
     }
 
     static final int SURROGATE_START = 0x10000;
