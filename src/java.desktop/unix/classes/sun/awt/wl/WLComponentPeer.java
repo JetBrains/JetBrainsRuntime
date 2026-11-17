@@ -693,14 +693,23 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         target.print(g);
     }
 
-    private void resetTargetLocationTo(int newX, int newY) {
+    // returns true if posted COMPONENT_MOVED event
+    private boolean resetTargetLocationTo(int newX, int newY) {
         var acc = AWTAccessor.getComponentAccessor();
+        Point oldLocation = acc.getLocation(target);
+        Point newLocation = new Point(newX, newY);
         acc.setLocation(target, newX, newY);
+        if (!newLocation.equals(oldLocation)) {
+            WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
+            return true;
+        }
+
+        return false;
     }
 
-    private void resetTargetLocationTo(GraphicsConfiguration gc) {
+    private boolean resetTargetLocationTo(GraphicsConfiguration gc) {
         var l = gc.getBounds().getLocation();
-        resetTargetLocationTo(l.x, l.y);
+        return resetTargetLocationTo(l.x, l.y);
     }
 
     private boolean popupNeedsReposition() {
@@ -749,13 +758,14 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         boolean positionChanged = (op == SET_BOUNDS || op == SET_LOCATION);
         boolean sizeChanged = (op == SET_BOUNDS || op == SET_SIZE || op == SET_CLIENT_SIZE);
         boolean isPopup = targetIsWlPopup();
+        boolean postedComponentMoved = false;
 
         if (positionChanged && isVisible() && !isPopup) {
             // Wayland provides the ability to programmatically change the location of popups,
             // but not top-level windows. So we can only ask robot to do that.
             int newXNative = javaUnitsToSurfaceUnits(newX);
             int newYNative = javaUnitsToSurfaceUnits(newY);
-            performLocked(() -> setLocationOfToplevel(newXNative, newYNative));
+            postedComponentMoved = performLocked(() -> setLocationOfToplevel(newXNative, newYNative), () -> false);
         }
 
         boolean markedForReposition = false;
@@ -765,7 +775,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
             markedForReposition = markPopupNeedsReposition();
         }
 
-        if (positionChanged) {
+        if (positionChanged && !postedComponentMoved) {
             WLToolkit.postEvent(new ComponentEvent(getTarget(), ComponentEvent.COMPONENT_MOVED));
         }
 
@@ -893,14 +903,16 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
         }
     }
 
-    private void setLocationOfToplevel(int xNative, int yNative) {
+    // returns true if posted COMPONENT_MOVED event
+    private boolean setLocationOfToplevel(int xNative, int yNative) {
         assert !targetIsWlPopup() : "Must not be used for popup-type windows";
 
         if (WLKWinHelperState.isEnabled()) {
             WLKWinHelper.setWindowLocation(kwinAppId, xNative, yNative);
+            return false;
         } else {
             // Toplevels are assumed to be always located at (0, 0) of their respective monitors.
-            resetTargetLocationTo(target.getGraphicsConfiguration());
+            return resetTargetLocationTo(target.getGraphicsConfiguration());
         }
     }
 
