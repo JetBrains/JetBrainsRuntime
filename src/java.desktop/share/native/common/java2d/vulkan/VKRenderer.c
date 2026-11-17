@@ -1562,45 +1562,102 @@ static VkBool32 VKRenderer_ValidatePaint(VKShaderCoverageSource shaderCoverageSo
 
 // Drawing operations.
 
+// Returns VK_TRUE when there is a non-empty hole.
+static VkBool32 VKRenderer_MakeParallelogramRing(VKParallelogramRing* outRing,
+                                                 VkBool32 fill,
+                                                 jfloat x11, jfloat y11,
+                                                 jfloat dx21, jfloat dy21,
+                                                 jfloat dx12, jfloat dy12,
+                                                 jfloat lwr21, jfloat lwr12) {
+    if (fill) {
+        lwr21 = lwr12 = 0.0f;
+    }
+    bool hasInnerHole = !fill && lwr21 < 1.0f && lwr12 < 1.0f;
+
+    // These are all zero in the fill case,
+    // and centerline-to-outer/inner deltas in the !fill case.
+    float lineDx21 = dx21 * lwr21;
+    float lineDy21 = dy21 * lwr21;
+    float lineDx12 = dx12 * lwr12;
+    float lineDy12 = dy12 * lwr12;
+    float centerToLineEdgeDx = 0.5f * (lineDx21 + lineDx12);
+    float centerToLineEdgeDy = 0.5f * (lineDy21 + lineDy12);
+    *outRing = (VKParallelogramRing) {
+        .outerX11 = x11 - centerToLineEdgeDx,
+        .outerY11 = y11 - centerToLineEdgeDy,
+        .innerX11 = x11 + centerToLineEdgeDx,
+        .innerY11 = y11 + centerToLineEdgeDy,
+        .outerDx21 = dx21 + lineDx21,
+        .outerDy21 = dy21 + lineDy21,
+        .outerDx12 = dx12 + lineDx12,
+        .outerDy12 = dy12 + lineDy12,
+    };
+    // Only set inner sides in case of a non-inverted hole.
+    if (hasInnerHole) {
+        outRing->innerDx21 = dx21 - lineDx21;
+        outRing->innerDy21 = dy21 - lineDy21;
+        outRing->innerDx12 = dx12 - lineDx12;
+        outRing->innerDy12 = dy12 - lineDy12;
+    }
+    return hasInnerHole;
+}
+
 void VKRenderer_RenderRect(VkBool32 fill, jint x, jint y, jint w, jint h) {
-    VKRenderer_RenderParallelogram(fill, (float) x, (float) y,
-                                   (float) w, 0, 0,(float) h);
+    if (fill) {
+        if (w <= 0 || h <= 0) return;
+        VKRenderer_RenderParallelogram(VK_TRUE, (float) x, (float) y, (float) w, 0, 0,(float) h, 0.0f, 0.0f);
+        return;
+    }
+
+    if (w < 0 || h < 0) return;
+
+    if (w <= 1 || h <= 1) {
+        // No hole inside
+        VKRenderer_RenderParallelogram(VK_TRUE, (float) x, (float) y, (float) w + 1.0f, 0, 0,(float) h + 1.0f, 0.0f, 0.0f);
+    } else {
+        VKRenderer_RenderParallelogram(VK_FALSE, (float) x + 0.5f, (float) y + 0.5f,
+                                       (float) w, 0, 0,(float) h, 1.0f / (float) w, 1.0f / (float) h);
+    }
 }
 
 void VKRenderer_RenderParallelogram(VkBool32 fill,
                                     jfloat x11, jfloat y11,
                                     jfloat dx21, jfloat dy21,
-                                    jfloat dx12, jfloat dy12) {
-    if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_NONE, fill ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK_PRIMITIVE_TOPOLOGY_LINE_LIST)) return; // Not ready.
+                                    jfloat dx12, jfloat dy12,
+                                    jfloat lwr21, jfloat lwr12) {
+    assert(lwr21 >= 0.0f && lwr12 >= 0.0f);
+    if (dx21 * dy12 - dx12 * dy21 == 0.0f) return; // Ignore degenerate parallelograms
+    if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_NONE, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)) return; // Not ready.
 
-    /*                   dx21
-     *    (p1)---------(p2) |          (p1)------
-     *     |\            \  |            |  \    dy21
-     *     | \            \ |       dy12 |   \
-     *     |  \            \|            |   (p2)-
-     *     |  (p4)---------(p3)        (p4)   |
-     *      dx12                           \  |  dy12
-     *                              dy21    \ |
-     *                                  -----(p3)
-     */
-    VKVertex p1 = {x11, y11, context.vertexData};
-    VKVertex p2 = {x11 + dx21, y11 + dy21, context.vertexData};
-    VKVertex p3 = {x11 + dx21 + dx12, y11 + dy21 + dy12, context.vertexData};
-    VKVertex p4 = {x11 + dx12, y11 + dy12, context.vertexData};
+    VKParallelogramRing ring;
+    VkBool32 hasInnerHole = VKRenderer_MakeParallelogramRing(&ring, fill, x11, y11, dx21, dy21, dx12, dy12, lwr21, lwr12);
+
+    VKVertex outerVertices[4] = {
+        { .x = ring.outerX11, .y = ring.outerY11, .data = context.vertexData },
+        { .x = ring.outerX11 + ring.outerDx21, .y = ring.outerY11 + ring.outerDy21, .data = context.vertexData },
+        { .x = ring.outerX11 + ring.outerDx21 + ring.outerDx12, .y = ring.outerY11 + ring.outerDy21 + ring.outerDy12, .data = context.vertexData },
+        { .x = ring.outerX11 + ring.outerDx12, .y = ring.outerY11 + ring.outerDy12, .data = context.vertexData },
+    };
 
     VKVertex* vs;
-    VK_DRAW(vs, 1, fill ? 6 : 8);
+    VK_DRAW(vs, 1, hasInnerHole ? 24 : 6); // 8 triangles with hole / 2 triangles with no hole
     uint32_t i = 0;
-    vs[i++] = p1;
-    vs[i++] = p2;
-    vs[i++] = p3;
-    vs[i++] = p4;
-    vs[i++] = p1;
-    if (!fill) {
-        vs[i++] = p4;
-        vs[i++] = p2;
+    if (hasInnerHole) {
+        VKVertex innerVertices[4] = {
+            { .x = ring.innerX11, .y = ring.innerY11, .data = context.vertexData },
+            { .x = ring.innerX11 + ring.innerDx21, .y = ring.innerY11 + ring.innerDy21, .data = context.vertexData },
+            { .x = ring.innerX11 + ring.innerDx21 + ring.innerDx12, .y = ring.innerY11 + ring.innerDy21 + ring.innerDy12, .data = context.vertexData },
+            { .x = ring.innerX11 + ring.innerDx12, .y = ring.innerY11 + ring.innerDy12, .data = context.vertexData },
+        };
+        for (uint32_t corner = 0; corner < 4; ++corner) {
+            uint32_t nextCorner = (corner + 1) % 4;
+            vs[i++] = outerVertices[corner]; vs[i++] = outerVertices[nextCorner]; vs[i++] = innerVertices[corner];
+            vs[i++] = innerVertices[corner]; vs[i++] = outerVertices[nextCorner]; vs[i++] = innerVertices[nextCorner];
+        }
+    } else {
+        vs[i++] = outerVertices[0]; vs[i++] = outerVertices[1]; vs[i++] = outerVertices[2];
+        vs[i++] = outerVertices[3]; vs[i++] = outerVertices[0]; vs[i++] = outerVertices[2];
     }
-    vs[i++] = p3;
 }
 
 void VKRenderer_RenderAAParallelogram(VkBool32 fill,
@@ -1609,60 +1666,13 @@ void VKRenderer_RenderAAParallelogram(VkBool32 fill,
                                       jfloat dx12, jfloat dy12,
                                       jfloat lwr21, jfloat lwr12) {
     assert(lwr21 >= 0.0f && lwr12 >= 0.0f);
-
     if (dx21 * dy12 - dx12 * dy21 == 0.0f) return; // Ignore degenerate parallelograms
-
     if (!VKRenderer_ValidatePaint(SHADER_COVERAGE_AA_PARALLELOGRAM, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)) return;
 
-    VKAAParallelogramInstance* inst;
+    VKParallelogramRingInstance* inst;
     VK_DRAW_INSTANCES(inst, 1, 10);
-    if (fill) {
-        *inst = (VKAAParallelogramInstance) {
-            .outerX11 = x11,
-            .outerY11 = y11,
-            .innerX11 = x11,
-            .innerY11 = y11,
-            .outerDx21 = dx21,
-            .outerDy21 = dy21,
-            .outerDx12 = dx12,
-            .outerDy12 = dy12,
-            .innerDx21 = 0.0f,
-            .innerDy21 = 0.0f,
-            .innerDx12 = 0.0f,
-            .innerDy12 = 0.0f,
-            .data = context.vertexData
-        };
-    } else {
-        float lineDx21 = dx21 * lwr21;
-        float lineDy21 = dy21 * lwr21;
-        float lineDx12 = dx12 * lwr12;
-        float lineDy12 = dy12 * lwr12;
-        float centerToLineEdgeDx = 0.5f * (lineDx21 + lineDx12);
-        float centerToLineEdgeDy = 0.5f * (lineDy21 + lineDy12);
-        *inst = (VKAAParallelogramInstance) {
-            .outerX11 = x11 - centerToLineEdgeDx,
-            .outerY11 = y11 - centerToLineEdgeDy,
-            .innerX11 = x11 + centerToLineEdgeDx,
-            .innerY11 = y11 + centerToLineEdgeDy,
-            .outerDx21 = dx21 + lineDx21,
-            .outerDy21 = dy21 + lineDy21,
-            .outerDx12 = dx12 + lineDx12,
-            .outerDy12 = dy12 + lineDy12,
-            .innerDx21 = 0.0f,
-            .innerDy21 = 0.0f,
-            .innerDx12 = 0.0f,
-            .innerDy12 = 0.0f,
-            .data = context.vertexData
-        };
-        // Only fill these when there is a non-zero-area inner parallelogram to cut out.
-        // Otherwise, leave empty.
-        if (lwr21 < 1.0f && lwr12 < 1.0f) {
-            inst->innerDx21 = dx21 - lineDx21;
-            inst->innerDy21 = dy21 - lineDy21;
-            inst->innerDx12 = dx12 - lineDx12;
-            inst->innerDy12 = dy12 - lineDy12;
-        }
-    }
+    VKRenderer_MakeParallelogramRing(&inst->ring, fill, x11, y11, dx21, dy21, dx12, dy12, lwr21, lwr12);
+    inst->data = context.vertexData;
 }
 
 static void VKRenderer_SetVKVerticesToCornersOfInclusiveIntRect(
