@@ -180,7 +180,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "VKRenderQueue_flushBuffer: DRAW_PARALLELOGRAM(%f, %f, %f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12, lwr21, lwr12);
                 VKRenderer_RenderParallelogram(VK_FALSE, x11, y11, dx21, dy21,
-                                               dx12, dy12);
+                                               dx12, dy12, lwr21, lwr12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
@@ -236,7 +236,7 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
                     "VKRenderQueue_flushBuffer: FILL_PARALLELOGRAM(%f, %f, %f, %f, %f, %f)",
                     x11, y11, dx21, dy21, dx12, dy12);
                 VKRenderer_RenderParallelogram(VK_TRUE, x11, y11, dx21, dy21,
-                                               dx12, dy12);
+                                               dx12, dy12, /* unused */ 0.0f, /* unused */ 0.0f);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
