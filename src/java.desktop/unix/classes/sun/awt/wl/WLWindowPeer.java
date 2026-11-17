@@ -25,6 +25,7 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
+import sun.awt.PeerEvent;
 import sun.awt.SurfacePixelGrabber;
 import sun.awt.UngrabEvent;
 import sun.java2d.SunGraphics2D;
@@ -52,6 +53,7 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
@@ -65,7 +67,6 @@ import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
-import java.awt.peer.WindowPeer;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -151,16 +152,29 @@ public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber
             }
         }
         if (!v && targetIsWlPopup() && getWindow().isFocused()) {
-            Window targetOwner = getWindow().getOwner();
-            while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
-                targetOwner = targetOwner.getOwner();
-            }
-            if (targetOwner != null) {
-                WLWindowPeer wndpeer = AWTAccessor.getComponentAccessor().getPeer(targetOwner);
-                if (wndpeer != null) {
-                    wndpeer.requestWindowFocus();
+            // Enqueue transferring focus to first visible focusable parent.
+            WLToolkit.executeOnEventHandlerThread(new PeerEvent(getNativelyFocusableOwnerOrSelf(getWindow()), () -> {
+                Window curFocusTarget = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
+                if (curFocusTarget != null && curFocusTarget.isVisible()) {
+                    // focus moved somewhere else
+                    return;
                 }
-            }
+
+                Window newFocusTarget = getWindow().getOwner();
+                while (newFocusTarget != null) {
+                    if (newFocusTarget.isFocusableWindow() && newFocusTarget.isVisible()) {
+                        break;
+                    }
+                    newFocusTarget = newFocusTarget.getOwner();
+                }
+
+                if (newFocusTarget != null) {
+                    WLWindowPeer wndpeer = AWTAccessor.getComponentAccessor().getPeer(newFocusTarget);
+                    if (wndpeer != null) {
+                        wndpeer.requestWindowFocus();
+                    }
+                }
+            }, PeerEvent.PRIORITY_EVENT));
         }
     }
 
