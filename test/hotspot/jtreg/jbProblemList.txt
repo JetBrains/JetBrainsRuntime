@@ -202,6 +202,7 @@ runtime/memory/ReserveMemory.java initial_run windows-aarch64
 runtime/memory/ReadFromNoaccessArea.java initial_run windows-aarch64
 
 runtime/cds/appcds/ArchiveRelocationTest.java JBR-9420 macosx-26.0
+runtime/cds/appcds/BootClassPathMismatch.java JBR-9069 windows-all
 runtime/cds/appcds/CommandLineFlagCombo.java JBR-6616 windows-aarch64
 runtime/cds/appcds/complexURI/ComplexURITest.java JBR-6616 windows-aarch64
 runtime/cds/appcds/lambdaForm/DefaultClassListLFInvokers.java JBR-9079 windows-aarch64
@@ -242,11 +243,13 @@ serviceability/dcmd/gc/RunFinalizationTest.java 8227120 generic-all
 serviceability/sa/ClhsdbCDSCore.java              8318754,JBR-6259 macosx-aarch64,windows-aarch64
 serviceability/sa/ClhsdbFindPC.java#xcomp-core    8318754,JBR-6259 macosx-aarch64,windows-aarch64
 serviceability/sa/ClhsdbFindPC.java#no-xcomp-core 8318754,JBR-6259 macosx-aarch64,windows-aarch64
+serviceability/sa/ClhsdbFindPC.java#xcomp-process 8318754,JBR-6259 macosx-all,windows-aarch64
 serviceability/sa/ClhsdbPmap.java#core            8318754,JBR-6259 macosx-aarch64,windows-aarch64
 serviceability/sa/ClhsdbPstack.java#core          8318754,JBR-6259 macosx-aarch64,windows-aarch64
 serviceability/sa/TestJmapCore.java               8318754 macosx-aarch64
 serviceability/sa/TestJmapCoreMetaspace.java      8318754 macosx-aarch64
 
+serviceability/jvmti/stress/StackTrace/Suspended/GetStackTraceSuspendedStressTest.java JBR-10811 windows-aarch64
 serviceability/jvmti/stress/StackTrace/NotSuspended/GetStackTraceNotSuspendedStressTest.java 8315980,JBR-7403 linux-all,windows-x64,windows-aarch64
 
 serviceability/jvmti/RedefineClasses/TestMultipleClasses.java initial_run windows-all
