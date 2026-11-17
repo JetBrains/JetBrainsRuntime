@@ -185,6 +185,33 @@ public final class KeyUtil {
     }
 
     /**
+     * If the key is a sub-algorithm of a larger group of algorithms, this
+     * method will return that sub-algorithm.  For example, key.getAlgorithm()
+     * returns "EdDSA", but the underlying key may be "Ed448".  For
+     * DisabledAlgorithmConstraints (DAC), this distinction is important.
+     * "EdDSA" means all curves for DAC, but when using it with
+     * KeyPairGenerator, "EdDSA" means "Ed25519".
+     */
+    public static String getAlgorithm(Key key) {
+        /*
+        if (key instanceof PrivateKey ak &&
+            ak.getParams() instanceof NamedParameterSpec nps) {
+            return nps.getName();
+        } else if (key instanceof PublicKey ak &&
+            ak.getParams() instanceof NamedParameterSpec nps) {
+            return nps.getName();
+        }
+        */
+        if (key instanceof PrivateKey || key instanceof PublicKey) {
+            AlgorithmParameterSpec params = KeyUtil.getParams(key);
+            if (params instanceof NamedParameterSpec nps) {
+                return nps.getName();
+            }
+        }
+        return key.getAlgorithm();
+    }
+
+    /**
      * Returns whether the key is valid or not.
      * <P>
      * Note that this method is only apply to DHPublicKey at present.
