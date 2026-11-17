@@ -1047,17 +1047,6 @@ abstract class CMap {
         return charCode >= 0xFFFF;
     }
 
-    static char getFormatCharGlyph(int charCode) {
-        if (charCode >= 0x200c) {
-            if ((charCode <= 0x200f) ||
-                (charCode >= 0x2028 && charCode <= 0x202e) ||
-                (charCode >= 0x206a && charCode <= 0x206f)) {
-                return (char)CharToGlyphMapper.INVISIBLE_GLYPH_ID;
-            }
-        }
-        return 0;
-    }
-
     static class UVS {
         int numSelectors;
         int[] selector;
