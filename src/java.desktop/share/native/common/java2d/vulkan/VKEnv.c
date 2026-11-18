@@ -390,7 +390,7 @@ static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
 static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
     jclass deviceClass = (*env)->FindClass(env, "sun/java2d/vulkan/VKGPU");
     if (deviceClass == NULL) return NULL;
-    jmethodID deviceConstructor = (*env)->GetMethodID(env, deviceClass, "<init>", "(JLjava/lang/String;II[I)V");
+    jmethodID deviceConstructor = (*env)->GetMethodID(env, deviceClass, "<init>", "(JLjava/lang/String;IIZ[I)V");
     if (deviceConstructor == NULL) return NULL;
     jobjectArray deviceArray = (*env)->NewObjectArray(env, (jsize)vk->devices.size, deviceClass, NULL);
     if (deviceArray == NULL) return NULL;
@@ -402,7 +402,7 @@ static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {
         (*env)->SetIntArrayRegion(env, supportedFormats, 0, (jsize)vk->devices.data[i].supportedFormats.size, vk->devices.data[i].supportedFormats.data);
         jobject device = (*env)->NewObject(env, deviceClass, deviceConstructor,
                                            ptr_to_jlong(&vk->devices.data[i]), name, vk->devices.data[i].type,
-                                           vk->devices.data[i].caps, supportedFormats);
+                                           vk->devices.data[i].caps, vk->devices.data[i].autoSelectable, supportedFormats);
         if (device == NULL) return NULL;
         (*env)->SetObjectArrayElement(env, deviceArray, i, device);
     }

@@ -139,8 +139,31 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .pNext = pNext
     };
     vk->vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
-    VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    VkPhysicalDeviceDriverProperties driverProperties = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+    };
+    VkPhysicalDeviceProperties2 deviceProperties2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &driverProperties,
+    };
     vk->vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+
+    bool autoSelectable =
+        deviceProperties2.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
+        deviceProperties2.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+
+    static const VkDriverId DRIVER_ID_AUTO_SELECTABLE_DENYLIST[] = {
+        // Mesa Venus - a virtio driver for VMs. Unsupported, known crash: JBR-10784.
+        22, // VK_DRIVER_ID_MESA_VENUS - first defined in vulkan-headers 1.3.204
+    };
+    if (autoSelectable) {
+        for (uint32_t i = 0; i < SARRAY_COUNT_OF(DRIVER_ID_AUTO_SELECTABLE_DENYLIST); ++i) {
+            if (driverProperties.driverID == DRIVER_ID_AUTO_SELECTABLE_DENYLIST[i]) {
+                autoSelectable = false;
+                break;
+            }
+        }
+    }
 
     bool hasSwapchainMaintenance1 =
         vk->presentationSupported && vk->surfaceMaintenance1Supported &&
@@ -149,12 +172,13 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     // Check API version.
     pchar_array_t errors = {0};
     jint caps = 0;
-    J2dRlsTraceLn(J2D_TRACE_INFO, "%s (%d.%d.%d, %s)",
+    J2dRlsTraceLn(J2D_TRACE_INFO, "%s (%d.%d.%d, %s) [autoSelectable=%s]",
                   (const char *) deviceProperties2.properties.deviceName,
                   VK_API_VERSION_MAJOR(deviceProperties2.properties.apiVersion),
                   VK_API_VERSION_MINOR(deviceProperties2.properties.apiVersion),
                   VK_API_VERSION_PATCH(deviceProperties2.properties.apiVersion),
-                  physicalDeviceTypeString(deviceProperties2.properties.deviceType));
+                  physicalDeviceTypeString(deviceProperties2.properties.deviceType),
+                  autoSelectable ? "true" : "false");
     if (deviceProperties2.properties.apiVersion < REQUIRED_VULKAN_VERSION) {
         ARRAY_PUSH_BACK(errors) = "Unsupported API version";
     }
@@ -302,7 +326,8 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .supportedFormats = { .as_untyped = supportedFormats.as_untyped },
         .caps = caps,
         .swapchainMaintenance1Supported = hasSwapchainMaintenance1,
-        .bresenhamLinesSupported = lineRasterizationFeatures.bresenhamLines
+        .bresenhamLinesSupported = lineRasterizationFeatures.bresenhamLines,
+        .autoSelectable = autoSelectable,
     };
 }
 

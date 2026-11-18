@@ -52,6 +52,7 @@ public class VKGPU {
     private final String name;
     private final Type type;
     private final int caps;
+    private final boolean autoSelectable;
     private final List<VKGraphicsConfig> offscreenGraphicsConfigs, presentableGraphicsConfigs;
 
     private static native void init(long nativeHandle);
@@ -62,11 +63,13 @@ public class VKGPU {
      * Fresh devices are created in uninitialized state. They can be queried for their properties
      * but cannot be used for rendering until initialized via getNativeHandle().
      */
-    private VKGPU(long nativeHandle, String name, int type, int caps, int[] supportedFormats) {
+    private VKGPU(long nativeHandle, String name, int type, int caps, boolean autoSelectable, int[] supportedFormats) {
         this.nativeHandle = nativeHandle;
         this.name = name;
         this.type = Type.VALUES[type];
         this.caps = caps;
+        this.autoSelectable = autoSelectable;
+
         offscreenGraphicsConfigs = new ArrayList<>();
         presentableGraphicsConfigs = new ArrayList<>();
         VKFormat[] allFormats = VKFormat.values();
@@ -101,6 +104,14 @@ public class VKGPU {
 
     public boolean hasCap(int cap) {
         return (caps & cap) == cap;
+    }
+
+    public boolean isAutoSelectable() {
+        return autoSelectable;
+    }
+
+    public boolean isPresentable() {
+        return hasCap(CAP_PRESENTABLE_BIT) && getPresentableGraphicsConfigs().findAny().isPresent();
     }
 
     /**

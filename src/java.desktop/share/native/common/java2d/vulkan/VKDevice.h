@@ -58,6 +58,8 @@ struct VKDevice {
     jint caps;
     VkBool32 swapchainMaintenance1Supported;
     VkBool32 bresenhamLinesSupported;
+    // Can this device be used for Vulkan without an explicit deviceNumber=x?
+    VkBool32 autoSelectable;
 
     VKAllocator*     allocator;
     VKRenderer*      renderer;
