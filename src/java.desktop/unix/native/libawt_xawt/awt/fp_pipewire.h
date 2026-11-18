@@ -70,14 +70,17 @@ int (*fp_pw_core_disconnect)(struct pw_core *core);
 struct pw_context * (*fp_pw_context_new)(struct pw_loop *main_loop,
                                    struct pw_properties *props,
                                    size_t user_data_size);
+void (*fp_pw_context_destroy)(struct pw_context *context);
 
 struct pw_thread_loop *
 (*fp_pw_thread_loop_new)(const char *name, const struct spa_dict *props);
 struct pw_loop * (*fp_pw_thread_loop_get_loop)(struct pw_thread_loop *loop);
 void (*fp_pw_thread_loop_signal)(struct pw_thread_loop *loop,
                                  bool wait_for_accept);
-void (*fp_pw_thread_loop_wait)(struct pw_thread_loop *loop);
-void (*fp_pw_thread_loop_accept)(struct pw_thread_loop *loop);
+int (*fp_pw_thread_loop_timed_wait_full)(struct pw_thread_loop *loop,
+                                        const struct timespec *abstime);
+int (*fp_pw_thread_loop_get_time)(struct pw_thread_loop *loop,
+                                  struct timespec *abstime, int64_t timeout);
 int (*fp_pw_thread_loop_start)(struct pw_thread_loop *loop);
 void (*fp_pw_thread_loop_stop)(struct pw_thread_loop *loop);
 void (*fp_pw_thread_loop_destroy)(struct pw_thread_loop *loop);
