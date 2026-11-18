@@ -114,8 +114,6 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
 
 #endif
 
-void VKDevice_Reset(VKDevice* device);
-
 static void VKEnv_Destroy(VKEnv* vk) {
     if (vk == NULL) return;
 
@@ -172,7 +170,7 @@ static VkBool32 debugCallback(
 }
 #endif
 
-static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPlatformData* platformData) {
+static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, const VKPlatformData* platformData) {
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
     // Init global function table.
@@ -373,23 +371,51 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     return vk;
 }
 
-void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice);
+typedef struct {
+    VKEnv* vk;
+    ARRAY(VkPhysicalDevice) physicalDevices;
+    VkBool32 expectProbeSurface;
+} VKEnv_CheckAndAddAllDevices_UserData;
+
+static void VKEnv_CheckAndAddAllDevices(VkSurfaceKHR probeSurface, void* userDataPtr) {
+    VKEnv_CheckAndAddAllDevices_UserData* userData = userDataPtr;
+    if (userData->expectProbeSurface && probeSurface == VK_NULL_HANDLE) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: could not create a probe surface, disabling Vulkan presentation.");
+        userData->vk->presentationSupported = userData->vk->surfaceMaintenance1Supported = VK_FALSE;
+    }
+    for (uint32_t i = 0; i < userData->physicalDevices.size; i++) {
+        VKDevice_CheckAndAdd(userData->vk, userData->physicalDevices.data[i], probeSurface);
+    }
+}
 
 static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     uint32_t count;
-    VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, NULL)) return JNI_FALSE;
-    DECL_ARRAY(VkPhysicalDevice, physicalDevices, count);
-    VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, physicalDevices)) return JNI_FALSE;
+    VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, NULL)) return VK_FALSE;
+
+    VkBool32 result = VK_FALSE;
+    VKEnv_CheckAndAddAllDevices_UserData userData = { .vk = vk, .expectProbeSurface = VK_FALSE };
+    ARRAY_RESIZE(userData.physicalDevices, count);
+    VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, userData.physicalDevices.data)) goto fail;
+    ARRAY_RESIZE(userData.physicalDevices, count); // technically can change according to Vulkan, we don't want to crash
     ARRAY_ENSURE_CAPACITY(vk->devices, count);
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", count);
-    for (uint32_t i = 0; i < count; i++) {
-        VKDevice_CheckAndAdd(vk, physicalDevices[i]);
+
+    if (vk->presentationSupported && vk->platformData->runWithProbeSurface != NULL) {
+        userData.expectProbeSurface = VK_TRUE;
+        vk->platformData->runWithProbeSurface(vk, VKEnv_CheckAndAddAllDevices, &userData);
+    } else {
+        VKEnv_CheckAndAddAllDevices(VK_NULL_HANDLE, &userData);
     }
+
     if (vk->devices.size == 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: No compatible device found");
-        return JNI_FALSE;
+        goto fail;
     }
-    return JNI_TRUE;
+
+    result = VK_TRUE; // finished normally
+    fail:
+    ARRAY_FREE(userData.physicalDevices);
+    return result;
 }
 
 static jobjectArray createJavaGPUs(JNIEnv *env, VKEnv* vk) {

@@ -27,8 +27,9 @@
 #define VK_USE_PLATFORM_WAYLAND_KHR
 #include <jni_util.h>
 #include "VKEnv.h"
-#include "VKUtil.h"
 #include "VKSurfaceData.h"
+#include "VKUtil.h"
+#include "WLToolkit.h"
 #include "sun_java2d_vulkan_WLVKWindowSurfaceData.h"
 
 #define PLATFORM_FUNCTION_TABLE(ENTRY, ...) \
@@ -36,7 +37,6 @@ ENTRY(__VA_ARGS__, vkGetPhysicalDeviceWaylandPresentationSupportKHR); \
 ENTRY(__VA_ARGS__, vkCreateWaylandSurfaceKHR); \
 
 PLATFORM_FUNCTION_TABLE(DECL_PFN)
-static struct wl_display* wl_display;
 
 static VkBool32 WLVK_InitFunctions(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr) {
     VkBool32 missingAPI = JNI_FALSE;
@@ -52,21 +52,46 @@ static VkBool32 WLVK_CheckPresentationSupport(VKEnv* vk, VkPhysicalDevice device
     return vkGetPhysicalDeviceWaylandPresentationSupportKHR(device, family, wl_display);
 }
 
-static VKPlatformData platformData = {
+static void WLVK_RunWithProbeSurface(VKEnv* vk, VKPlatform_RunWithProbeSurfaceCallback callback, void* userData) {
+    struct wl_surface* wlSurface = NULL;
+    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
+
+    if (wl_compositor == NULL) goto run;
+    wlSurface = wl_compositor_create_surface(wl_compositor);
+    if (wlSurface == NULL) goto run;
+    VkWaylandSurfaceCreateInfoKHR createInfo = {
+        .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
+        .display = wl_display,
+        .surface = wlSurface,
+    };
+    VK_IF_ERROR(vkCreateWaylandSurfaceKHR(vk->instance, &createInfo, NULL, &vkSurface)) vkSurface = VK_NULL_HANDLE;
+
+    run:
+    callback(vkSurface, userData);
+
+    if (vkSurface != VK_NULL_HANDLE) {
+        vk->vkDestroySurfaceKHR(vk->instance, vkSurface, NULL);
+    }
+    if (wlSurface != NULL) {
+        wl_surface_destroy(wlSurface);
+    }
+}
+
+static const VKPlatformData PLATFORM_DATA = {
     .surfaceExtensionName = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
     .initFunctions = WLVK_InitFunctions,
-    .checkPresentationSupport = WLVK_CheckPresentationSupport
+    .checkPresentationSupport = WLVK_CheckPresentationSupport,
+    .runWithProbeSurface = WLVK_RunWithProbeSurface,
 };
 
 /*
  * Class:     sun_java2d_vulkan_VKEnv
  * Method:    initPlatformWayland
- * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
+ * Signature: ()J
  */
 JNIEXPORT jlong JNICALL
-Java_sun_java2d_vulkan_VKEnv_initPlatformWayland(JNIEnv* env, jclass vkenv, jlong nativePtr) {
-    wl_display = jlong_to_ptr(nativePtr);
-    return ptr_to_jlong(&platformData);
+Java_sun_java2d_vulkan_VKEnv_initPlatformWayland(JNIEnv* env, jclass vkenv) {
+    return ptr_to_jlong(&PLATFORM_DATA);
 }
 
 static void WLVK_InitSurfaceData(VKWinSDOps* surface, void* data) {

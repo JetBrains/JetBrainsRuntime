@@ -76,7 +76,13 @@ static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalD
     return VK_FALSE;
 }
 
-void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
+static VkBool32 VKDevice_CheckQueueFamilySurfacePresentationSupport(VKEnv* vk, VkPhysicalDevice physicalDevice, uint32_t queueFamily, VkSurfaceKHR surface) {
+    VkBool32 supported;
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamily, surface, &supported)) return VK_FALSE;
+    return supported;
+}
+
+void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice, VkSurfaceKHR probeSurface) {
     // Query supported layers.
     uint32_t layerCount;
     VK_IF_ERROR(vk->vkEnumerateDeviceLayerProperties(physicalDevice, &layerCount, NULL)) return;
@@ -169,7 +175,8 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     int64_t queueFamily = -1;
     for (uint32_t j = 0; j < queueFamilyCount; j++) {
         VkBool32 presentationSupported = vk->presentationSupported && VK_KHR_SWAPCHAIN_EXTENSION.found &&
-            vk->platformData->checkPresentationSupport(vk, physicalDevice, j);
+            vk->platformData->checkPresentationSupport(vk, physicalDevice, j) &&
+            (probeSurface == VK_NULL_HANDLE || VKDevice_CheckQueueFamilySurfacePresentationSupport(vk, physicalDevice, j, probeSurface));
         char logFlags[5] = {
                 queueFamilies[j].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 'G' : '-',
                 queueFamilies[j].queueFlags & VK_QUEUE_COMPUTE_BIT ? 'C' : '-',

@@ -68,4 +68,8 @@ struct VKDevice {
     SWAPCHAIN_MAINTENANCE_1_DEVICE_FUNCTION_TABLE(DECL_PFN)
 };
 
+void VKDevice_Reset(VKDevice* device);
+void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice, VkSurfaceKHR probeSurface);
+
+
 #endif //VKDevice_h_Included
