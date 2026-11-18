@@ -51,6 +51,7 @@ ENTRY(__VA_ARGS__, vkCreateDevice); \
 ENTRY(__VA_ARGS__, vkGetDeviceProcAddr); \
 
 #define SURFACE_INSTANCE_FUNCTION_TABLE(ENTRY, ...) \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceSupportKHR); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceCapabilitiesKHR); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfaceFormatsKHR); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceSurfacePresentModesKHR); \

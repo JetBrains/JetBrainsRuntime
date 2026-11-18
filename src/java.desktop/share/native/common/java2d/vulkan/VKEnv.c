@@ -114,8 +114,6 @@ static PFN_vkGetInstanceProcAddr vulkanLibOpen() {
 
 #endif
 
-void VKDevice_Reset(VKDevice* device);
-
 static void VKEnv_Destroy(VKEnv* vk) {
     if (vk == NULL) return;
 
@@ -368,8 +366,6 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
     return vk;
 }
 
-void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice);
-
 static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     uint32_t count;
     VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, NULL)) return JNI_FALSE;
@@ -377,8 +373,25 @@ static VkBool32 VKEnv_FindDevices(VKEnv* vk) {
     VK_IF_ERROR(vk->vkEnumeratePhysicalDevices(vk->instance, &count, physicalDevices)) return JNI_FALSE;
     ARRAY_ENSURE_CAPACITY(vk->devices, count);
     J2dRlsTraceLn(J2D_TRACE_INFO, "Vulkan: Found %d physical devices:", count);
+    void* probeSurface = NULL;
+    VkSurfaceKHR vkProbeSurface = VK_NULL_HANDLE;
+    bool useProbeSurface = vk->presentationSupported &&
+        vk->platformData->createProbeSurface != NULL &&
+        vk->platformData->getProbeSurface != NULL &&
+        vk->platformData->destroyProbeSurface != NULL;
+    if (useProbeSurface) {
+        probeSurface = vk->platformData->createProbeSurface(vk);
+        vkProbeSurface = vk->platformData->getProbeSurface(probeSurface);
+        if (vkProbeSurface == VK_NULL_HANDLE) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: could not create the probe surface, disabling Vulkan presentation.");
+            vk->presentationSupported = vk->surfaceMaintenance1Supported = VK_FALSE;
+        }
+    }
     for (uint32_t i = 0; i < count; i++) {
-        VKDevice_CheckAndAdd(vk, physicalDevices[i]);
+        VKDevice_CheckAndAdd(vk, physicalDevices[i], vkProbeSurface);
+    }
+    if (useProbeSurface) {
+        vk->platformData->destroyProbeSurface(vk, probeSurface);
     }
     if (vk->devices.size == 0) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "Vulkan: No compatible device found");

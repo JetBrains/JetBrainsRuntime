@@ -187,8 +187,12 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             initLibwaylandLogging();
             keyboard = new WLKeyboard();
             long display = WLDisplay.getInstance().getDisplayPtr();
-            VKEnv.init(() -> VKEnv.initPlatformWayland(display));
             initDisplay(display);
+
+            // Called after initDisplay so WLVK can use wl_compositor to create a probe surface.
+            VKEnv.init(() -> VKEnv.initPlatformWayland());
+            // But before WLOutput.initialize, because WLOutput.initialize depends on VKEnv.isPresentationEnabled()
+
             WLOutput.initialize();
             while (numCallbacksBeforeEndOfInit > 0) {
                 waitForSyncDuringInit();
