@@ -194,83 +194,104 @@ abstract class AbstractMask<E> extends VectorMask<E> {
      */
     /*package-private*/
     @ForceInline
-    void checkIndexByLane(int offset, int alength,
+    void checkIndexByLane(long offset, long length,
                           Vector<E> iota,
                           int esize) {
         if (VectorIntrinsics.VECTOR_ACCESS_OOB_CHECK == 0) {
             return;
         }
-        // Although the specification is simple, the implementation is
-        // tricky, because the value iota*esize might possibly
-        // overflow.  So we calculate our test values as scalars,
-        // clipping to the range [-1..VLENGTH], and test them against
-        // the unscaled iota vector, whose values are in [0..VLENGTH-1].
+        assert length >= 0;
         int vlength = length();
-        VectorMask<E> badMask;
-        if (esize == 1) {
-            badMask = checkIndex0(offset, alength, iota, vlength);
-        } else if (offset >= 0) {
-            // Masked access to multi-byte lanes in byte array.
-            // It could be aligned anywhere.
-            int elemCount = Math.min(vlength, (alength - offset) / esize);
-            badMask = checkIndex0(0, elemCount, iota, vlength);
-        } else {
-            // This requires a split test.
-            int clipOffset = Math.max(offset, -(vlength * esize));
-            int elemCount = Math.min(vlength, (alength - clipOffset) / esize);
-            badMask = checkIndex0(0, elemCount, iota, vlength);
-            clipOffset &= (esize - 1);  // power of two, so OK
-            VectorMask<E> badMask2 = checkIndex0(clipOffset / esize, vlength,
-                                                 iota, vlength);
-            badMask = badMask.or(badMask2);
-        }
+        // badMask marks lanes that are not valid, i.e. fall outside
+        // the segment.
+
+        // The implementation assumes that iota*esize will not overflow.
+        VectorMask<E> badMask = checkIndex0(offset, length - esize + 1,
+                iota.lanewise(VectorOperators.MUL, esize),
+                vlength * esize);
         badMask = badMask.and(this);
+        // if any active lanes fall outside, throw.
         if (badMask.anyTrue()) {
             int badLane = badMask.firstTrue();
             throw ((AbstractMask<E>)badMask)
-                   .checkIndexFailed(offset, badLane, alength, esize);
+                    .checkIndexFailed(offset, badLane, length, esize);
         }
     }
 
     private
     @ForceInline
-    VectorMask<E> checkIndex0(int offset, int alength,
-                              Vector<E> iota, int vlength) {
-        // An active lane is bad if its number is greater than
-        // alength-offset, since when added to offset it will step off
-        // of the end of the array.  To avoid overflow when
-        // converting, clip the comparison value to [0..vlength]
-        // inclusive.
-        int indexLimit = Math.max(0, Math.min(alength - offset, vlength));
-        VectorMask<E> badMask =
-            iota.compare(GE, iota.broadcast(indexLimit));
-        if (offset < 0) {
-            // An active lane is bad if its number is less than
-            // -offset, because when added to offset it will then
-            // address an array element at a negative index.  To avoid
-            // overflow when converting, clip the comparison value at
-            // vlength.  This specific expression works correctly even
-            // when offset is Integer.MIN_VALUE.
-            int firstGoodIndex = -Math.max(offset, -vlength);
-            VectorMask<E> badMask2 =
-                iota.compare(LT, iota.broadcast(firstGoodIndex));
-            if (indexLimit >= vlength) {
-                badMask = badMask2;  // 1st badMask is all true
-            } else {
-                badMask = badMask.or(badMask2);
-            }
+    VectorMask<E> checkIndex0(long offset, long length,
+                              Vector<E> iotaScaled, int vlengthScaled) {
+        // This method takes:
+        // - vector length scaled by esize (vlengthScaled)
+        // - vector of lane offsets for the given vector type
+        //   with values (0, esize, 2 * esize, ..., vlengthScaled - esize) (iotaScaled)
+        // - an offset into the segment at which the access
+        //   will take place (offset)
+        // - the length of the segment, reduced by esize - 1 (length)
+        // Returns a mask where bad lanes are set to true
+        // and good lanes are set to false.
+        // Bad lanes are defined as lanes whose offset falls below 0
+        // or above length.
+        // Technically, the algorithm is equivalent to:
+        // offsets = iotaScaled + offset
+        // mask = !(0 <= offsets < length)
+        // except it's trying hard to avoid overflows.
+
+        // iotaScaled is scaled by esize, it is the caller's responsibility
+        // to adjust the length down by esize - 1 to ensure that the lanes
+        // completely fit in bounds. If esize = 1 no adjustment is required.
+
+        // The algorithm assumes that:
+        // - values in iotaScaled are between [0, vlengthScaled)
+        // - vector type can represent values in [0, vlengthScaled) range with full precision
+        //   (this will not work for float8)
+        assert vlengthScaled > 0;
+        if (length < offset || length < 0 || offset <= -vlengthScaled) {
+            return vectorSpecies().maskAll(true);
         }
-        return badMask;
+
+        // For each index i, the access at i is in-bounds if and only if
+        // 0 <= offset + i < length
+        if (offset < 0) {
+            // 0 <= offset + i is equivalent to E(-offset) < i;
+            // E(-offset) will be precise because -vlengthScaled < offset < 0
+            VectorMask<E> lowMask =
+                    iotaScaled.compare(LT, iotaScaled.broadcast(-offset));
+            // check if we need to mask lanes above length.
+            // offset < 0 and vlengthScaled > 0, so offset + vlengthScaled will not overflow
+            if (offset + vlengthScaled > length) {
+                // offset + i < length is equivalent to i < E(length - offset)
+                // E(length - offset) will be precise because 0 <= length - offset < vlengthScaled
+                VectorMask<E> highMask =
+                        iotaScaled.compare(GE, iotaScaled.broadcast(length - offset));
+                return highMask.or(lowMask);
+
+            } else {
+                return lowMask;
+            }
+        } else {
+            // 0 <= offset + i is guaranteed here because offset >= 0 and i >= 0
+            // offset + i < length is equivalent to i < E(min(vlengthScaled, length - offset))
+            // length - offset will not underflow because 0 <= offset <= length,
+            // length - offset can be clamped to vlengthScaled because i < vlengthScaled.
+
+            // Alternatively, we could directly return an all-false mask if length - offset >= vlengthScaled.
+            int indexLimit = (int) Math.min(Math.max(length - offset, 0), vlengthScaled);
+            VectorMask<E> highMask =
+                    iotaScaled.compare(GE, iotaScaled.broadcast(indexLimit));
+            return highMask;
+        }
     }
 
-    private IndexOutOfBoundsException checkIndexFailed(int offset, int lane,
-                                                       int alength, int esize) {
+    private IndexOutOfBoundsException checkIndexFailed(long offset, int lane,
+                                                       long length, int esize) {
         String msg = String.format("Masked range check failed: "+
                                    "vector mask %s out of bounds at "+
-                                   "index %d+%d in array of length %d",
-                                   this, offset, lane * esize, alength);
+                                   "index %d+%d for length %d",
+                                   this, offset, lane * esize, length);
         if (esize != 1) {
-            msg += String.format(" (each lane spans %d array elements)", esize);
+            msg += String.format(" (each lane spans %d elements)", esize);
         }
         throw new IndexOutOfBoundsException(msg);
     }

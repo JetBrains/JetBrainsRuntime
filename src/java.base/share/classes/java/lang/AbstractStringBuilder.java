@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -222,6 +222,9 @@ abstract class AbstractStringBuilder implements Appendable, CharSequence {
      * overflow, this method throws {@code OutOfMemoryError}.
      */
     private void ensureCapacityInternal(int minimumCapacity) {
+        if (minimumCapacity < 0) {
+            throwExcessiveLengthError();
+        }
         // overflow-conscious code
         int oldCapacity = value.length >> coder;
         if (minimumCapacity - oldCapacity > 0) {
@@ -247,17 +250,17 @@ abstract class AbstractStringBuilder implements Appendable, CharSequence {
      * is greater than that.
      *
      * @param  minCapacity the desired minimum capacity
-     * @throws OutOfMemoryError if minCapacity is less than zero or
-     *         greater than (Integer.MAX_VALUE >> coder)
+     * @throws OutOfMemoryError if {@code minCapacity} is out of bounds
      */
     private int newCapacity(int minCapacity) {
+        assert minCapacity >= 0 : "Invalid minimum capacity: " + minCapacity;
         int oldLength = value.length;
-        int newLength = minCapacity << coder;
-        int growth = newLength - oldLength;
-        int length = ArraysSupport.newLength(oldLength, growth, oldLength + (2 << coder));
-        if (length == Integer.MAX_VALUE) {
-            throw new OutOfMemoryError("Required length exceeds implementation limit");
+        long newLength = (long) minCapacity << coder;
+        if (newLength < 0 || newLength >= Integer.MAX_VALUE) {
+            throwExcessiveLengthError();
         }
+        int growth = (int) newLength - oldLength;
+        int length = ArraysSupport.newLength(oldLength, growth, oldLength + (2 << coder));
         return length >> coder;
     }
 
@@ -1811,4 +1814,9 @@ abstract class AbstractStringBuilder implements Appendable, CharSequence {
                 "start " + start + ", end " + end + ", length " + len);
         }
     }
+
+    private static void throwExcessiveLengthError() {
+        throw new OutOfMemoryError("Required length exceeds implementation limit");
+    }
+
 }
