@@ -103,6 +103,10 @@ public class VKGPU {
         return (caps & cap) == cap;
     }
 
+    public boolean isPresentable() {
+        return hasCap(CAP_PRESENTABLE_BIT) && getPresentableGraphicsConfigs().findAny().isPresent();
+    }
+
     /**
      * Initialize the device and return its native handle.
      */

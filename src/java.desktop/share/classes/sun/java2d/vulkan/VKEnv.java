@@ -31,6 +31,8 @@ import sun.util.logging.PlatformLogger;
 import java.awt.Toolkit;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -54,7 +56,7 @@ public final class VKEnv {
 
         @SuppressWarnings("removal")
         private static final int deviceNumber = !vulkan ? 0 : AccessController.doPrivileged(
-                (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.java2d.vulkan.deviceNumber", 0));
+                (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.java2d.vulkan.deviceNumber", -1));
     }
 
     private static final int UNINITIALIZED = 0;
@@ -97,15 +99,31 @@ public final class VKEnv {
                 if (devices != null) {
                     newState = ENABLED;
                     if (Options.accelsd) newState |= ACCELSD_BIT;
-                    defaultDevice = devices[Options.deviceNumber >= 0 && Options.deviceNumber < devices.length ?
-                            Options.deviceNumber : 0];
-                    // Check whether the presentation is supported.
-                    for (VKGPU device : devices) {
-                        if (device.hasCap(VKGPU.CAP_PRESENTABLE_BIT) &&
-                                device.getPresentableGraphicsConfigs().findAny().isPresent()) {
-                            newState |= PRESENT_BIT;
-                            break;
+                    if (Options.deviceNumber >= 0 && Options.deviceNumber < devices.length) {
+                        defaultDevice = devices[Options.deviceNumber];
+                    } else {
+                        if (Options.deviceNumber != -1 && log.isLoggable(PlatformLogger.Level.WARNING)) {
+                            log.warning("Invalid deviceNumber provided: " + Options.deviceNumber + ", using auto-selection instead.");
                         }
+                        // First, try to pick the first hw device that is also presentable.
+                        // If none, pick the first hw device (presentation will be disabled).
+                        // If none are hw at all, disable Vulkan.
+                        List<VKGPU> hwDevices = Arrays.stream(devices).filter(device -> {
+                            VKGPU.Type type = device.getType();
+                            return type == VKGPU.Type.DISCRETE_GPU || type == VKGPU.Type.INTEGRATED_GPU;
+                        }).toList();
+                        defaultDevice = hwDevices.stream().filter(VKGPU::isPresentable).findFirst().orElse(null);
+                        if (defaultDevice == null) {
+                            defaultDevice = hwDevices.stream().findFirst().orElse(null);
+                        }
+                        if (defaultDevice == null) {
+                            throw new VKInitializationException("No auto-selectable device found, provide -Dsun.java2d.vulkan.deviceNumber to force selecting a device.");
+                        }
+                    }
+                    // Check whether presentation is supported.
+                    // Only use the default device's present bit, otherwise windows would silently use another device.
+                    if (defaultDevice.isPresentable()) {
+                        newState |= PRESENT_BIT;
                     }
 
                     VKBlitLoops.register();
