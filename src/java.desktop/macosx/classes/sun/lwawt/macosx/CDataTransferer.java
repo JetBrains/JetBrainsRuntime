@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -243,7 +243,18 @@ public final class CDataTransferer extends DataTransferer {
     }
 
     @Override
-    protected byte[] imageToPlatformBytes(Image image, long format) {
+    protected byte[] imageToPlatformBytes(Image image, long format) throws IOException {
+        if (format == CF_PNG) {
+            return imageToStandardBytes(image, "image/png");
+        }
+        if (format == CF_JPEG) {
+            // JPEG doesn't support transparency, convert to opaque
+            Image opaque = CImage.getCreator().getOpaqueImage(image);
+            if (opaque == null) {
+                return null;
+            }
+            return imageToStandardBytes(opaque, "image/jpeg");
+        }
         return CImage.getCreator().getPlatformImageBytes(image);
     }
 
