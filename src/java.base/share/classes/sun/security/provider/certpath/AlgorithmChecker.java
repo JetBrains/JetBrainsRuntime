@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import java.security.spec.DSAPublicKeySpec;
 import sun.security.util.ConstraintsParameters;
 import sun.security.util.Debug;
 import sun.security.util.DisabledAlgorithmConstraints;
+import sun.security.util.KeyUtil;
 import sun.security.validator.Validator;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.X509CertImpl;
@@ -224,7 +225,8 @@ public final class AlgorithmChecker extends PKIXCertPathChecker {
                 CertPathConstraintsParameters cp =
                     new CertPathConstraintsParameters(trustedPubKey, variant,
                         anchor, date);
-                dac.permits(trustedPubKey.getAlgorithm(), cp, true);
+                dac.permits(KeyUtil.getAlgorithm(trustedPubKey),
+                    cp, true);
             }
             // Check the signature algorithm and parameters against constraints
             CertPathConstraintsParameters cp =
