@@ -77,7 +77,7 @@ static void WLVK_RunWithProbeSurface(VKEnv* vk, VKPlatform_RunWithProbeSurfaceCa
     }
 }
 
-static VKPlatformData platformData = {
+static const VKPlatformData PLATFORM_DATA = {
     .surfaceExtensionName = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
     .initFunctions = WLVK_InitFunctions,
     .checkPresentationSupport = WLVK_CheckPresentationSupport,
@@ -87,11 +87,11 @@ static VKPlatformData platformData = {
 /*
  * Class:     sun_java2d_vulkan_VKEnv
  * Method:    initPlatformWayland
- * Signature: ()[Lsun/java2d/vulkan/VKDevice;
+ * Signature: ()J
  */
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_vulkan_VKEnv_initPlatformWayland(JNIEnv* env, jclass vkenv) {
-    return ptr_to_jlong(&platformData);
+    return ptr_to_jlong(&PLATFORM_DATA);
 }
 
 static void WLVK_InitSurfaceData(VKWinSDOps* surface, void* data) {
