@@ -316,18 +316,20 @@ public class TestAliasing {
         applyIfPlatform = {"64-bit", "true"},
         applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true"})
     // Without speculative runtime check we cannot know that there is no aliasing.
-    @IR(counts = {IRNode.LOAD_VECTOR_B, "> 0",
-                  IRNode.STORE_VECTOR, "> 0",
+    @IR(counts = {IRNode.LOAD_VECTOR_B, "= 0",
+                  IRNode.STORE_VECTOR, "= 0",
                   ".*multiversion.*", "= 0"},
         phase = CompilePhase.PRINT_IDEAL,
         applyIfAnd = {"UseAutoVectorizationSpeculativeAliasingChecks", "true", "AlignVector", "false"},
         applyIfPlatform = {"64-bit", "true"},
         applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true"})
-    // We use speculative runtime checks, they never fail, so no multiversioning required.
-    // With AlignVector we cannot prove that both accesses are alignable.
+    // Upstream vectorizes this with speculative runtime checks, like copy_B_differentIndex_noalias.
+    // JBR25 does not: the range check of AB[i + INVAR_ZERO] is not eliminated, so SuperWord
+    // rejects the loop because of the control flow in it. JBR25 doesn't have JDK-8356176,
+    // which stops split_thru_phi from breaking RCE in such loops.
+    // If this IR rule fails, restore the upstream rule (LOAD_VECTOR_B > 0, STORE_VECTOR > 0).
     //
-    // Same as "copy_B_differentIndex_noalias, but somehow loading from fields rather
-    // than arguments does not lead to vectorization.
+    // Same as "copy_B_differentIndex_noalias, but loading from fields rather than arguments.
     static void copy_B_differentIndex_noalias_v2() {
         for (int i = 0; i < AB.length; i++) {
             BB[i] = AB[i + INVAR_ZERO];

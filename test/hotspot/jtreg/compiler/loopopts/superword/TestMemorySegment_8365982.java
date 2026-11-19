@@ -52,10 +52,9 @@ public class TestMemorySegment_8365982 {
     public static void main(String[] args) {
         TestFramework f = new TestFramework();
         f.addFlags("-XX:+IgnoreUnrecognizedVMOptions");
-        f.addScenarios(new Scenario(0, "-XX:-AlignVector", "-XX:-ShortRunningLongLoop"),
-                       new Scenario(1, "-XX:+AlignVector", "-XX:-ShortRunningLongLoop"),
-                       new Scenario(2, "-XX:-AlignVector", "-XX:+ShortRunningLongLoop"),
-                       new Scenario(3, "-XX:+AlignVector", "-XX:+ShortRunningLongLoop"));
+        // JBR25 doesn't have ShortRunningLongLoop (JDK-8342692).
+        f.addScenarios(new Scenario(0, "-XX:-AlignVector"),
+                       new Scenario(1, "-XX:+AlignVector"));
         f.start();
     }
 
@@ -71,16 +70,10 @@ public class TestMemorySegment_8365982 {
                   ".*multiversion.*",  "= 0"}, // Good: The AutoVectorization predicate suffices.
         phase = CompilePhase.PRINT_IDEAL,
         applyIfPlatform = {"64-bit", "true"},
-        applyIfAnd = {"AlignVector", "false", "ShortRunningLongLoop", "false"},
+        applyIf = {"AlignVector", "false"},
         applyIfCPUFeatureOr = {"avx", "true", "asimd", "true"})
-    //
-    @IR(counts = {IRNode.STORE_VECTOR, "> 0",
-                  IRNode.REPLICATE_S,  "> 0",
-                  ".*multiversion.*",  "> 0"}, // Bad: Sadly, we now multiversion
-        phase = CompilePhase.PRINT_IDEAL,
-        applyIfPlatform = {"64-bit", "true"},
-        applyIfAnd = {"AlignVector", "false", "ShortRunningLongLoop", "true"},
-        applyIfCPUFeatureOr = {"avx", "true", "asimd", "true"})
+    // JBR25 doesn't have ShortRunningLongLoop (JDK-8342692), so it behaves like
+    // -XX:-ShortRunningLongLoop upstream. With +ShortRunningLongLoop, upstream multiversions:
     // Some but not all predicates are RCE'd at the beginning. After unrolling, we multiversion (why?).
     // After PreMainPost, we can do more RangeCheck. Now the main-loop of the multiversion_fast loop
     // does not have any range checks any more.

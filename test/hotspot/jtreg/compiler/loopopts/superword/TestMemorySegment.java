@@ -816,13 +816,22 @@ class TestMemorySegmentImpl {
     }
 
     @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I, "> 0",
+                  IRNode.ADD_VI,        "> 0",
+                  IRNode.STORE_VECTOR,  "> 0"},
+        applyIfAnd = {"AlignVector", "false", "UseAutoVectorizationSpeculativeAliasingChecks", "true"},
+        applyIfPlatform = {"64-bit", "true"},
+        applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true", "rvv", "true"})
     @IR(counts = {IRNode.LOAD_VECTOR_I, "= 0",
                   IRNode.ADD_VI,        "= 0",
                   IRNode.STORE_VECTOR,  "= 0"},
+        applyIf = {"UseAutoVectorizationSpeculativeAliasingChecks", "false"},
         applyIfPlatform = {"64-bit", "true"},
         applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true", "rvv", "true"})
-    // FAILS: invariants are sorted differently, because of differently inserted Cast.
-    // See: JDK-8331659
+    // Invariants are sorted differently, because of differently inserted Cast, see JDK-8331659.
+    // So the two addresses are not recognized as the same, and we only vectorize with the
+    // speculative aliasing runtime check (JDK-8324751).
+    // Upstream vectorizes this without the runtime check since JDK-8356176, which JBR25 doesn't have.
     static Object[] testLongLoop_longIndex_intInvar_int(MemorySegment a, int invar) {
         for (long i = 0; i < a.byteSize()/4; i++) {
             long adr1 = 4L * (long)(i) + 4L * (long)(invar);
@@ -834,13 +843,22 @@ class TestMemorySegmentImpl {
     }
 
     @Test
+    @IR(counts = {IRNode.LOAD_VECTOR_I, "> 0",
+                  IRNode.ADD_VI,        "> 0",
+                  IRNode.STORE_VECTOR,  "> 0"},
+        applyIfAnd = {"AlignVector", "false", "UseAutoVectorizationSpeculativeAliasingChecks", "true"},
+        applyIfPlatform = {"64-bit", "true"},
+        applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true", "rvv", "true"})
     @IR(counts = {IRNode.LOAD_VECTOR_I, "= 0",
                   IRNode.ADD_VI,        "= 0",
                   IRNode.STORE_VECTOR,  "= 0"},
+        applyIf = {"UseAutoVectorizationSpeculativeAliasingChecks", "false"},
         applyIfPlatform = {"64-bit", "true"},
         applyIfCPUFeatureOr = {"sse4.1", "true", "asimd", "true", "rvv", "true"})
-    // FAILS: invariants are sorted differently, because of differently inserted Cast.
-    // See: JDK-8331659
+    // Invariants are sorted differently, because of differently inserted Cast, see JDK-8331659.
+    // So the two addresses are not recognized as the same, and we only vectorize with the
+    // speculative aliasing runtime check (JDK-8324751).
+    // Upstream vectorizes this without the runtime check since JDK-8356176, which JBR25 doesn't have.
     static Object[] testLongLoop_longIndex_longInvar_int(MemorySegment a, long invar) {
         for (long i = 0; i < a.byteSize()/4; i++) {
             long adr1 = 4L * (long)(i) + 4L * (long)(invar);
