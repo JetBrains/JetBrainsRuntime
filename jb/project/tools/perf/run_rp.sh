@@ -65,7 +65,7 @@ fi
 
 OPTS=""
 # use time + repeat
-OPTS="$OPTS -t -n=$N  -e$MODE $1"
+OPTS="$OPTS -t -n=$N  -e=$MODE $1"
 
 echo "OPTS: $OPTS"
 
