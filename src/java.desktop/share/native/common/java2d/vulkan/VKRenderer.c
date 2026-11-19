@@ -1610,7 +1610,7 @@ void VKRenderer_FillSpans(jint spanCount, jint *spans) {
 }
 
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
-                         jint maskoff, jint maskscan, jint masklen, uint8_t *mask) {
+                         jint maskoff, jint maskscan, jint masklen, const uint8_t *mask) {
     if (!VKRenderer_ValidatePaint(SHADER_MASK, VK_TRUE)) return; // Not ready.
 
     // maskoff is the offset from the beginning of mask,
