@@ -88,24 +88,6 @@ JNIEnv *getEnv();
 bool wlListenerCheckException(JNIEnv *env);
 void wlListenerThrowInternalError(JNIEnv *env, const char *message);
 
-// Convert UTF-8 null-terminated string into java.lang.String.
-// For invalid UTF-8, replaces invalid byte sequences with replacement characters.
-// Returns a local ref.
-// Returns NULL and throws an exception on error (most likely OOM).
-// Also returns NULL when passed NULL.
-// Must only be called after WLToolkit.initIDs()
-// Must not be called with exception pending.
-jstring wlUtf8ToJavaString(JNIEnv *env, const char *cstring);
-
-// Convert java.lang.String into a UTF-8 null-terminated string.
-// The caller must free() the returned string.
-// NOTE: If Java string contains embedded null bytes, the resulting string will be silently truncated.
-// Returns NULL and throws an exception on error (most likely OOM).
-// Also returns NULL when passed NULL.
-// Must only be called after WLToolkit.initIDs()
-// Must not be called with exception pending.
-char *wlJavaStringToUtf8(JNIEnv *env, jstring string);
-
 int wlFlushToServer(JNIEnv* env);
 struct wl_cursor_theme *getCursorTheme(int scale);
 
