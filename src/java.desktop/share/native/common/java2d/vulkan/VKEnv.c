@@ -165,7 +165,7 @@ static VkBool32 debugCallback(
 }
 #endif
 
-static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPlatformData* platformData) {
+static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, const VKPlatformData* platformData) {
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
     // Init global function table.

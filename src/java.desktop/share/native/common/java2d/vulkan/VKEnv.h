@@ -64,7 +64,7 @@ struct VKEnv {
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif
 
-    VKPlatformData* platformData;
+    const VKPlatformData* platformData;
     VkBool32 presentationSupported;
     VkBool32 surfaceMaintenance1Supported;
 
