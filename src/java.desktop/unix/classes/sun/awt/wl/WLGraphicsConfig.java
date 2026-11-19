@@ -47,12 +47,10 @@ import java.awt.image.WritableRaster;
 
 public abstract class WLGraphicsConfig extends GraphicsConfiguration implements LWGraphicsConfig {
     private final WLGraphicsDevice device;
-    private final WLOutputState outputInfo;
     private BufferCapabilities bufferCaps;
 
     protected WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
-        this.outputInfo = device.getOutputState();
     }
 
     @Override
@@ -70,31 +68,31 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
 
     @Override
     public AffineTransform getDefaultTransform() {
-        double scale = outputInfo.effectiveScale();
+        double scale = device.getEffectiveScale();
         return AffineTransform.getScaleInstance(scale, scale);
     }
 
     @Override
     public AffineTransform getNormalizingTransform() {
-        double xScale = outputInfo.dpiX() / 72.0;
-        double yScale = outputInfo.dpiY() / 72.0;
+        double xScale = device.getResolutionX(this) / 72.0;
+        double yScale = device.getResolutionY(this) / 72.0;
         return new AffineTransform(xScale, 0.0, 0.0, yScale, 0.0, 0.0);
     }
 
     @Override
     public Rectangle getBounds() {
-        return outputInfo.logicalBounds();
+        return device.getBounds();
     }
 
-    public Dimension getPhysicalSizeMm() {
-        return outputInfo.physicalSizeMm();
+    public Rectangle getRealBounds() {
+        return device.getRealBounds();
     }
 
     /**
      * Returns the preferred Wayland buffer scale for this display configuration.
      */
     public int getDisplayScale() {
-        return outputInfo.scale();
+        return device.getDisplayScale();
     }
 
     /**
@@ -102,7 +100,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
      * if overridden with the sun.java2d.uiScale system property.
      */
     public double getEffectiveScale() {
-       return outputInfo.effectiveScale();
+       return device.getEffectiveScale();
     }
 
     public abstract SurfaceType getSurfaceType();

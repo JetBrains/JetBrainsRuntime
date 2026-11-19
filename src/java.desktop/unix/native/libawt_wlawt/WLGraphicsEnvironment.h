@@ -1,6 +1,5 @@
 /*
-* Copyright (c) 2026, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2026, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2022, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +23,18 @@
  * questions.
  */
 
-#ifndef WLAWT_WL_OUTPUT_H_INCLUDED_
-#define WLAWT_WL_OUTPUT_H_INCLUDED_
-
+#include "jni.h"
+#include "wayland-client-protocol.h"
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "JNIUtilities.h"
-
-struct WLOutput {
-    jobject javaObject;
-
-    uint32_t registryId;
-    struct wl_output *wl_output;
-    struct zxdg_output_v1 *xdg_output;
-};
-
-
+jboolean WLGraphicsEnvironment_initIDs(JNIEnv *env, jclass clazz);
+void WLOutputRegister(struct wl_registry *wl_registry, uint32_t id);
+void WLOutputDeregister(struct wl_registry *wl_registry, uint32_t id);
+uint32_t WLOutputID(struct wl_output *wlOutput);
+struct wl_output* WLOutputByID(uint32_t id);
+void WLOutputXdgOutputManagerBecameAvailable(void);
 bool wlToDeviceSpaceBounds(int *x, int *y, int *width, int *height);
 void wlToCompositorSpaceCoords(int *x, int *y,
                              int boundsX, int boundsY,
                              int boundsWidth, int boundsHeight);
-
-#endif // WLAWT_WL_OUTPUT_H_INCLUDED_

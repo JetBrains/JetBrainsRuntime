@@ -30,7 +30,7 @@
 #endif
 
 #include "screencast_scale.h"
-#include "WLOutput.h"
+#include "WLGraphicsEnvironment.h"
 
 void screencast_toDeviceSpaceBounds(int *x, int *y, int *width, int *height) {
     wlToDeviceSpaceBounds(x, y, width, height);
