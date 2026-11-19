@@ -29,11 +29,22 @@ package sun.awt.wl;
 import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAutoShutdown;
+import sun.awt.AWTUtilities;
 import sun.awt.LightweightFrame;
 import sun.awt.PeerEvent;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.datatransfer.DataTransferer;
+import sun.awt.wl.im.WLInputMethodMetaDescriptor;
+import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKRenderQueue;
+import sun.lwawt.LWComponentPeerAPI;
+import sun.lwawt.LWDummyPlatformComponent;
+import sun.lwawt.LWToolkit;
+import sun.lwawt.LWWindowPeerAPI;
+import sun.lwawt.PlatformDropTarget;
+import sun.lwawt.PlatformWindow;
+import sun.lwawt.ToolkitAPI;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.*;
@@ -42,9 +53,11 @@ import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragGestureRecognizer;
 import java.awt.dnd.DragSource;
+import java.awt.dnd.DropTarget;
 import java.awt.dnd.InvalidDnDOperationException;
 import java.awt.dnd.peer.DragSourceContextPeer;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.event.WindowEvent;
 import java.awt.font.TextAttribute;
 import java.awt.im.InputMethodHighlight;
@@ -77,17 +90,16 @@ import java.awt.peer.TextAreaPeer;
 import java.awt.peer.TextFieldPeer;
 import java.awt.peer.TrayIconPeer;
 import java.awt.peer.WindowPeer;
-import java.beans.PropertyChangeListener;
-import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.Semaphore;
 
 /**
@@ -101,7 +113,7 @@ import java.util.concurrent.Semaphore;
  * "AWT-EventThread" by means of SunToolkit.postEvent(). See the implementation
  * of run() method for more comments.
  */
-public class WLToolkit extends UNIXToolkit implements Runnable {
+public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLToolkit");
     private static final PlatformLogger logKeys = PlatformLogger.getLogger("sun.awt.wl.WLToolkit.keys");
 
@@ -132,55 +144,137 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     private static final int MOUSE_BUTTONS_COUNT = 3;
     private static final int AWT_MULTICLICK_DEFAULT_TIME_MS = 500;
-
-    private static final int CAPS_LOCK_MASK = 0x01;
-    private static final int NUM_LOCK_MASK = 0x02;
+    private static final int AWT_MULTICLICK_MOUSE_MOVE_THRESHOLD_JAVA_UNITS = 5;
 
     private static boolean initialized = false;
     private static Thread toolkitThread;
-    private final WLClipboard clipboard;
-    private final WLClipboard selection;
+    private static WLDataDevice dataDevice;
+    private static WLDragSourceContextPeer dragSourceContextPeer;
 
+    private static Boolean sunAwtDisableGtkFileDialogs = null;
+
+    private static final boolean isKDE;
+
+    // NOTE: xdg_toplevel_icon_v1 is pretty much only supported on KDE, and KWin always sends 96px as the icon size,
+    // regardless of the display resolution, scale, or anything else.
+    // TODO: this is currently unused
+    private static final List<Integer> preferredIconSizes = new ArrayList<>();
+
+    private static native void initLibwaylandLogging();
     private static native void initIDs();
+    private static native void initDisplay(long displayPtr);
+    private static native void waitForSyncDuringInit();
+
+    private static int numCallbacksBeforeEndOfInit = 0;
+
+    /**
+     * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
+     */
+    private static final Map<Long, WLWindowPeer> wlSurfaceToPeerMap = new HashMap<>();
+
+    private static WLInputState inputState = WLInputState.initialState();
+    private static boolean areExtraMouseButtonsEnabled = true;
 
     static {
+        // This field must be initialized BEFORE initIDs is called because it'll be read there
+        ENABLE_NATIVE_IM_SUPPORT = obtainWhetherToEnableNativeIMSupport();
+        // Same for this one
+        ENABLE_PINCH_AS_CTRL_WHEEL = Boolean.getBoolean("sun.awt.wl.PinchAsCtrlWheel");
+
         if (!GraphicsEnvironment.isHeadless()) {
             initIDs();
+            initLibwaylandLogging();
+            keyboard = new WLKeyboard();
+            long display = WLDisplay.getInstance().getDisplayPtr();
+            VKEnv.init(() -> VKEnv.initPlatformWayland(display));
+            initDisplay(display);
+            WLOutput.initialize();
+            while (numCallbacksBeforeEndOfInit > 0) {
+                waitForSyncDuringInit();
+            }
         }
+        String desktop = System.getenv("XDG_CURRENT_DESKTOP");
+        isKDE = desktop != null && desktop.toLowerCase().contains("kde");
         initialized = true;
     }
 
     @SuppressWarnings("removal")
     public WLToolkit() {
         AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
-            final String extraButtons = "sun.awt.enableExtraMouseButtons";
-            areExtraMouseButtonsEnabled =
-                    Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
-            System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
+            initSystemProperties();
             return null;
         });
 
         if (!GraphicsEnvironment.isHeadless()) {
+            quirkSyncBeforePopupMap = computeQuirkSyncBeforePopupMap();
+            if (quirkSyncBeforePopupMap && log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Vulkan: quirkSyncBeforePopupMap enabled as a workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173");
+            }
+
             toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
             toolkitThread.setDaemon(true);
             toolkitThread.start();
 
-            final Thread toolkitSystemThread = InnocuousThread.newThread("AWT-Wayland-system-dispatcher", this::dispatchNonDefaultQueues);
-            toolkitSystemThread.setDaemon(true);
-            toolkitSystemThread.start();
+            dataDevice = new WLDataDevice(0); // TODO: for multiseat support pass wl_seat pointer here
+            dragSourceContextPeer = new WLDragSourceContextPeer(dataDevice);
 
-            WLClipboard selectionClipboard = null;
-            try {
-                selectionClipboard = new WLClipboard("Selection", true);
-            } catch (UnsupportedOperationException ignored) {
-            }
-
-            clipboard = new WLClipboard("System", false);
-            selection = selectionClipboard;
+            registerShutdownHook();
         } else {
-            clipboard = null;
-            selection = null;
+            dataDevice = null;
+            dragSourceContextPeer = null;
         }
+    }
+
+    private void registerShutdownHook() {
+        Runnable r = () -> {
+            List<WLWindowPeer> livePeers = getLiveWindowPeers();
+            livePeers.forEach(p -> {
+                Component target = p.getTarget();
+                if (target.isDisplayable()) {
+                    target.removeNotify();
+                }
+            });
+        };
+        Thread shutdownThread = InnocuousThread.newSystemThread("WLToolkit-Shutdown-Thread", r);
+        shutdownThread.setDaemon(true);
+        Runtime.getRuntime().addShutdownHook(shutdownThread);
+    }
+
+    // called from native
+    private static void handleWaylandLog(String message) {
+        log.warning("libwayland-client: " + message.strip());
+    }
+
+    // called from native
+    private static void handleProtocolError(String interfaceName, int code, long objectId) {
+        throw new AWTError("Wayland protocol error, interface = " + interfaceName + ", error code = " + code + ", object ID = " + objectId);
+    }
+
+    // called from native
+    private static void handleExceptionFromEventHandler(Throwable exc) {
+        log.severe("Unexpected exception in Wayland event handler on thread " + Thread.currentThread().getName() + ": " + exc.getMessage(), exc);
+    }
+
+    public static synchronized boolean getSunAwtDisableGtkFileDialogs() {
+        if (sunAwtDisableGtkFileDialogs == null) {
+            sunAwtDisableGtkFileDialogs = Boolean.getBoolean("sun.awt.disableGtkFileDialogs");
+        }
+        return sunAwtDisableGtkFileDialogs;
+    }
+
+    private static void initSystemProperties() {
+        final String extraButtons = "sun.awt.enableExtraMouseButtons";
+        areExtraMouseButtonsEnabled =
+                Boolean.parseBoolean(System.getProperty(extraButtons, "true"));
+        System.setProperty(extraButtons, String.valueOf(areExtraMouseButtonsEnabled));
+    }
+
+    static String getApplicationID() {
+        // Do not cache the properties as the application might want to change
+        // them at run time. Might also consider using JComponent's client property
+        // for per-window app ID
+        String appID = System.getProperty("awt.app.id");
+        return appID != null ? appID : System.getProperty("sun.java.command");
     }
 
     public static boolean isToolkitThread() {
@@ -194,9 +288,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public ButtonPeer createButton(Button target) {
-        ButtonPeer peer = new WLButtonPeer(target);
-        targetCreatedPeer(target, peer);
-        return peer;
+        return LWToolkit.createButton(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
@@ -213,13 +305,44 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return peer;
     }
 
-    /**
-     * Wayland events coming to queues other that the default are handled here.
-     * The code is executed on a separate thread and must not call any user code.
-     */
-    private void dispatchNonDefaultQueues() {
-        dispatchNonDefaultQueuesImpl(); // does not return until error or server disconnect
+    public static WLDragSourceContextPeer getDragSourceContextPeer() {
+        return dragSourceContextPeer;
     }
+
+    // This method is directly used by native code at the class loading stage, be careful with changing it in any way.
+    public static boolean isNativeInputMethodSupportEnabled() {
+        return ENABLE_NATIVE_IM_SUPPORT;
+    }
+
+    /**
+     * This flag allows disabling ALL integrations with native IMs. The idea is to allow users to disable
+     *   unnecessary for them functionality if they face any problems because of it.
+     * Therefore, if it's {@code false}, the Toolkit code shouldn't use (directly or indirectly)
+     *   any of Wayland's input methods-related APIs (e.g. the "text-input" protocol).
+     */
+    private final static boolean ENABLE_NATIVE_IM_SUPPORT;
+
+    private static boolean obtainWhetherToEnableNativeIMSupport() {
+        // NB: make sure this default value is synchronized with the one used in the native function
+        //     isNativeInputMethodSupportEnabled() in WLToolkit.c
+        boolean result = true;
+        try {
+            result = Boolean.parseBoolean(System.getProperty("sun.awt.wl.im.enabled", "true"));
+        } catch (Exception err) {
+            log.severe(
+                String.format(
+                    "Failed to read the value of the system property \"sun.awt.wl.im.enabled\". Assuming the default value(=%b).",
+                    result
+                ),
+                err
+            );
+        }
+        return result;
+    }
+
+    // If true, touchpad pinch gestures are translated into Ctrl + mouse wheel events, like on Windows.
+    // Read by the native code.
+    private final static boolean ENABLE_PINCH_AS_CTRL_WHEEL;
 
     private final Semaphore eventsQueued = new Semaphore(0);
 
@@ -235,12 +358,18 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
             } else if (result == READ_RESULT_FINISHED_WITH_EVENTS) {
                 AWTAutoShutdown.notifyToolkitThreadBusy(); // busy processing events
                 SunToolkit.postEvent(new PeerEvent(this, () -> {
-                    WLToolkit.awtLock();
                     try {
-                        dispatchEventsOnEDT();
+                        WLToolkit.awtLock();
+                        try {
+                            dispatchEventsOnEDT();
+                            if (dataDevice != null) {
+                                dataDevice.performDeletionsOnEDT();
+                            }
+                        } finally {
+                            WLToolkit.awtUnlock();
+                        }
                     } finally {
                         eventsQueued.release();
-                        WLToolkit.awtUnlock();
                     }
                 }, PeerEvent.ULTIMATE_PRIORITY_EVENT));
                 try {
@@ -266,6 +395,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         });
     }
 
+    static WLDataDevice getDataDevice() {
+        return dataDevice;
+    }
+
     /**
      * If more than this amount milliseconds has passed since the same mouse button click,
      * the next click is considered separate and not part of multi-click event.
@@ -276,190 +409,158 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return AWT_MULTICLICK_DEFAULT_TIME_MS;
     }
 
-
-    /**
-     * The rate of repeating keys in characters per second
-     * Set from the native code  by the 'repeat_info' Wayland event (see wayland.xml).
-     */
-    static volatile int keyRepeatRate = 33;
-
-    /**
-     * Delay in milliseconds since key down until repeating starts.
-     * Set from the native code by the 'repeat_info' Wayland event (see wayland.xml).
-     */
-    static volatile int keyRepeatDelay = 500;
-
-    static int getKeyRepeatRate() {
-        return keyRepeatRate;
+    static int getMulticlickMouseMoveThresholdJavaUnits() {
+        return AWT_MULTICLICK_MOUSE_MOVE_THRESHOLD_JAVA_UNITS;
     }
 
-    static int getKeyRepeatDelay() {
-        return keyRepeatDelay;
+    private static WLKeyboard keyboard;
+
+    private static void dispatchRelativePointerEvent(double dx, double dy) {
+        WLMouseInfoPeer.getInstance().accumulatePointerDelta(dx, dy);
     }
 
-    private static class KeyRepeatManager {
-        private Timer keyRepeatTimer;
-        private PostKeyEventTask postKeyEventTask;
+    // Wheel rotations per the natural logarithm of the pinch scale: zooming 2x gives about 4 rotations
+    private static final double PINCH_ROTATIONS_PER_LOG_SCALE = 6.0;
+    private static final int PINCH_SCROLL_AMOUNT = 3;
+    private static final int PINCH_FINGERS = 2;
 
-        KeyRepeatManager() {
-        }
+    // The state of the current pinch gesture. Only used on EDT.
+    private static long pinchSurfacePtr;
+    private static double pinchPrevTotal;
+    private static int pinchDispatchedRound;
 
-        private void stopKeyRepeat() {
-            assert EventQueue.isDispatchThread();
+    private static void dispatchPinchBeginEvent(long surfacePtr, int fingers) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-            if (postKeyEventTask != null) {
-                postKeyEventTask.cancel();
-                postKeyEventTask = null;
-            }
-        }
-
-        private void initiateDelayedKeyRepeat(long keycode,
-                                              int keyCodePoint,
-                                              WLComponentPeer peer) {
-            assert EventQueue.isDispatchThread();
-            assert postKeyEventTask == null;
-
-            if (keyRepeatTimer == null) {
-                // The following starts a dedicated daemon thread.
-                keyRepeatTimer = new Timer("WLToolkit Key Repeat", true);
-            }
-
-            postKeyEventTask = new PostKeyEventTask(keycode, keyCodePoint, peer);
-
-            assert WLToolkit.keyRepeatRate > 0;
-            assert WLToolkit.keyRepeatDelay > 0;
-
-            keyRepeatTimer.schedule(
-                    postKeyEventTask,
-                    WLToolkit.keyRepeatDelay,
-                    (long)(1000.0 / WLToolkit.keyRepeatRate));
-        }
-
-        static boolean xkbCodeRequiresRepeat(long code) {
-            return !WLKeySym.xkbCodeIsModifier(code);
-        }
-
-        void keyboardEvent(long keycode, int keyCodePoint,
-                           boolean isPressed, WLComponentPeer peer) {
-            stopKeyRepeat();
-            if (isPressed && KeyRepeatManager.xkbCodeRequiresRepeat(keycode)) {
-                initiateDelayedKeyRepeat(keycode, keyCodePoint, peer);
-            }
-        }
-
-        void windowEvent(WindowEvent event) {
-            if (event.getID() == WindowEvent.WINDOW_LOST_FOCUS) {
-                stopKeyRepeat();
-            }
-        }
-
-        private static class PostKeyEventTask extends TimerTask {
-            final long keycode;
-            final int keyCodePoint;
-            final WLComponentPeer peer;
-
-            PostKeyEventTask(long keycode,
-                             int keyCodePoint,
-                             WLComponentPeer peer) {
-                this.keycode = keycode;
-                this.keyCodePoint = keyCodePoint;
-                this.peer = peer;
-            }
-
-            @Override
-            public void run() {
-                final long timestamp = System.currentTimeMillis();
-                try {
-                    EventQueue.invokeAndWait(() -> {
-                        generateKeyEventFrom(timestamp, keycode, keyCodePoint, true, peer);
-                    });
-                } catch (InterruptedException ignored) {
-                } catch (InvocationTargetException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
+        pinchSurfacePtr = (fingers == PINCH_FINGERS) ? surfacePtr : 0;
+        pinchPrevTotal = 0;
+        pinchDispatchedRound = 0;
     }
 
-    private static final KeyRepeatManager keyRepeatManager = new KeyRepeatManager();
+    private static void dispatchPinchUpdateEvent(double scale) {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-    private static WLInputState inputState = WLInputState.initialState();
+        if (pinchSurfacePtr == 0 || !(scale > 0) || Double.isInfinite(scale)) return;
+
+        // The scale is relative to the beginning of the gesture; spreading the fingers gives negative rotations (zoom in)
+        final double total = -Math.log(scale) * PINCH_ROTATIONS_PER_LOG_SCALE;
+        final double precise = total - pinchPrevTotal;
+        final int round = (int) total - pinchDispatchedRound;
+        pinchPrevTotal = total;
+        pinchDispatchedRound += round;
+
+        final WLWindowPeer peer = peerFromSurface(pinchSurfacePtr);
+        if (peer == null || peer != inputState.peerForPointerEvents()) return;
+
+        final int x = inputState.getPointerX();
+        final int y = inputState.getPointerY();
+        final Point abs = peer.relativePointToAbsolute(new Point(x, y));
+        // Like on Windows, a pinch is a mouse wheel event with Ctrl down, but no Ctrl key events are generated
+        peer.getMouseEventDispatcher().notifyMouseWheelEvent(
+                System.currentTimeMillis(),
+                x, y,
+                abs.x, abs.y,
+                inputState.getModifiers() | KeyEvent.CTRL_DOWN_MASK,
+                1,
+                false,
+                MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                PINCH_SCROLL_AMOUNT,
+                round,
+                precise);
+    }
+
+    private static void dispatchPinchEndEvent() {
+        // Invoked from the native code
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+
+        pinchSurfacePtr = 0;
+    }
 
     private static void dispatchPointerEvent(WLPointerEvent e) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) log.fine("dispatchPointerEvent: " + e);
 
         final WLInputState oldInputState = inputState;
-        final WLInputState newInputState = oldInputState.update(e);
-        inputState = newInputState;
-        final WLComponentPeer peer = newInputState.getPeer();
+        final WLInputState newInputState = oldInputState.updatedFromPointerEvent(e);
+        setInputState(newInputState);
+
+        if (e.hasLeaveEvent() && !e.hasEnterEvent() && newInputState.pendingCrossingModifiers() != 0) {
+            // Reset temporary pending crossing state once the compositor fully processes the leave event
+            // If by that time we get an enter event, assume a crossing, and restore modifiers from pendingCrossingModifiers
+            // (this happens in WLInputState.updatedFromPointerEvent)
+            // Otherwise, reset pendingCrossingModifiers
+            syncCallback(() -> {
+                setInputState(inputState.resetPendingCrossingState());
+            });
+        }
+
+        if (e.hasLeaveEvent() || e.hasEnterEvent()) {
+            // We've lost the control over the cursor, assume no knowledge about it
+            getCursorManager().reset();
+        }
+
+        if (e.hasButtonEvent()) {
+            boolean oldPressed = oldInputState.hasPointerButtonPressed();
+            boolean newPressed = newInputState.hasPointerButtonPressed();
+            if (!oldPressed || !newPressed) {
+                // last mouse button is released or first mouse button is pressed,
+                // let's reset drag state if it's still unconfirmed
+                dragSourceContextPeer.cancelDragIfPending();
+            }
+        }
+
+        final WLComponentPeer peer = newInputState.peerForPointerEvents();
         if (peer == null) {
             // We don't know whom to notify of the event; may happen when
             // the surface has recently disappeared, in which case
             // e.getSurface() is likely 0.
         } else {
-            peer.dispatchPointerEventInContext(e, oldInputState, newInputState);
+            peer.dispatchPointerEventInContext(e, newInputState);
         }
     }
 
     private static void dispatchKeyboardKeyEvent(long serial,
-                                                 long timestamp,
-                                                 long keycode,
-                                                 int keyCodePoint,  // UTF32 character
-                                                 boolean isPressed) {
+                                                 int id,
+                                                 int keyCode,
+                                                 int keyLocation,
+                                                 int rawCode,
+                                                 int extendedKeyCode,
+                                                 char keyChar,
+                                                 int modifiers) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
-        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
-            logKeys.fine("dispatchKeyboardKeyEvent: keycode " + keycode + ", code point 0x"
-                    + Integer.toHexString(keyCodePoint) + ", " + (isPressed ? "pressed" : "released")
-                    + ", serial " + serial + ", timestamp " + timestamp);
-        }
+        final long timestamp = System.currentTimeMillis();
 
-        if (timestamp == 0) {
-            // Happens when a surface was focused with keys already pressed.
-            // Fake the timestamp by peeking at the last known event.
-            timestamp = inputState.getTimestamp();
-        }
+        setInputState(inputState.updatedFromKeyEvent(serial));
 
-        final long surfacePtr = inputState.getSurfaceForKeyboardInput();
-        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        final long surfacePtr = inputState.surfaceForKeyboardInput();
+        final WLComponentPeer peer = peerFromSurface(surfacePtr);
         if (peer != null) {
-            generateKeyEventFrom(timestamp, keycode, keyCodePoint, isPressed, peer);
-            keyRepeatManager.keyboardEvent(keycode, keyCodePoint, isPressed, peer);
-        }
-    }
+            if (extendedKeyCode >= 0x1000000) {
+                int ch = extendedKeyCode - 0x1000000;
+                int correctCode = KeyEvent.getExtendedKeyCodeForChar(ch);
+                if (extendedKeyCode == keyCode) {
+                    keyCode = correctCode;
+                }
+                extendedKeyCode = correctCode;
+            }
 
-    private static void generateKeyEventFrom(long timestamp, long keycode, int keyCodePoint,
-                                             boolean isPressed, WLComponentPeer peer) {
-        // See also XWindow.handleKeyPress()
-        final char keyChar = Character.isBmpCodePoint(keyCodePoint)
-                ? (char) keyCodePoint
-                : KeyEvent.CHAR_UNDEFINED;
-        final WLKeySym.KeyDescriptor keyDescriptor = WLKeySym.KeyDescriptor.fromXKBCode(keycode);
-        final int jkeyExtended = keyDescriptor.javaKeyCode() == KeyEvent.VK_UNDEFINED
-                        ? primaryUnicodeToJavaKeycode(keyCodePoint)
-                        : keyDescriptor.javaKeyCode();
-        postKeyEvent(peer.getTarget(),
-                isPressed ? KeyEvent.KEY_PRESSED : KeyEvent.KEY_RELEASED,
-                timestamp,
-                keyDescriptor.javaKeyCode(),
-                keyChar,
-                keyDescriptor.keyLocation(),
-                keycode,
-                jkeyExtended);
-
-        if (isPressed && keyChar != 0 && keyChar != KeyEvent.CHAR_UNDEFINED) {
-            postKeyEvent(peer.getTarget(),
-                    KeyEvent.KEY_TYPED,
+            postKeyEvent(
+                    peer.getTarget(),
+                    id,
                     timestamp,
-                    KeyEvent.VK_UNDEFINED,
+                    keyCode,
                     keyChar,
-                    KeyEvent.KEY_LOCATION_UNKNOWN,
-                    keycode,
-                    KeyEvent.VK_UNDEFINED);
+                    keyLocation,
+                    rawCode,
+                    extendedKeyCode,
+                    modifiers
+            );
         }
     }
 
@@ -474,9 +575,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                                      char keyChar,
                                      int keyLocation,
                                      long rawCode,
-                                     int extendedKeyCode) {
+                                     int extendedKeyCode,
+                                     int modifiers) {
+        int mergedModifiers = inputState.getNonKeyboardModifiers() | modifiers;
         final KeyEvent keyEvent = new KeyEvent(source, id, timestamp,
-                inputState.getModifiers(), keyCode, keyChar, keyLocation);
+                mergedModifiers, keyCode, keyChar, keyLocation);
 
         AWTAccessor.KeyEventAccessor kea = AWTAccessor.getKeyEventAccessor();
         kea.setRawCode(keyEvent, rawCode);
@@ -487,97 +590,95 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         postEvent(keyEvent);
     }
 
-    private static void dispatchKeyboardModifiersEvent(long serial,
-                                                       boolean isShiftActive,
-                                                       boolean isAltActive,
-                                                       boolean isCtrlActive,
-                                                       boolean isMetaActive,
-                                                       boolean isCapsActive,
-                                                       boolean isNumActive) {
-        // Invoked from the native code
-        assert EventQueue.isDispatchThread();
-
-        final int newModifiers =
-                  (isShiftActive ? InputEvent.SHIFT_DOWN_MASK : 0)
-                | (isAltActive   ? InputEvent.ALT_DOWN_MASK   : 0)
-                | (isCtrlActive  ? InputEvent.CTRL_DOWN_MASK  : 0)
-                | (isMetaActive  ? InputEvent.META_DOWN_MASK  : 0);
-
-        final int newLockingKeyState =
-                  (isCapsActive ? CAPS_LOCK_MASK : 0)
-                | (isNumActive ? NUM_LOCK_MASK : 0);
-
-        if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
-            logKeys.fine("dispatchKeyboardModifiersEvent: new modifiers 0x"
-                    + Integer.toHexString(newModifiers));
-        }
-
-        inputState = inputState.updatedFromKeyboardModifiersEvent(serial, newModifiers, newLockingKeyState);
+    private static void dispatchKeyboardModifiersEvent(long serial) {
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
+        setInputState(inputState.updatedFromKeyboardModifiersEvent(serial, keyboard.getModifiers()));
+        WLDropTargetContextPeer.getInstance().handleModifiersUpdate();
     }
 
     private static void dispatchKeyboardEnterEvent(long serial, long surfacePtr) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardEnterEvent: " + serial + ", surface 0x"
                     + Long.toHexString(surfacePtr));
         }
 
+        final WLWindowPeer peer = peerFromSurface(surfacePtr);
         final WLInputState newInputState = inputState.updatedFromKeyboardEnterEvent(serial, surfacePtr);
-        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
-        if (peer != null && peer.getTarget() instanceof Window window) {
-            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
-            final WindowEvent windowEnterEvent = new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS);
-            postEvent(windowEnterEvent);
+        if (peer != null) {
+            Dialog blocker = peer.getBlockerDialog();
+            if (blocker != null) { // Modality support
+                WLInputSerial activationSerial = new WLInputSerial(serial);
+                if (WLToolkit.isKDE()) {
+                    activationSerial = inputState.latestInputSerial().freshOrElse(activationSerial);
+                }
+                WLWindowPeer blockerPeer = AWTAccessor.getComponentAccessor().getPeer(blocker);
+                blockerPeer.reactivate(activationSerial.serial(), surfacePtr);
+            } else {
+                Window window = peer.getTarget();
+                Window winToFocus = window;
+
+                Component s = peer.getSyntheticFocusOwner();
+                if (s instanceof Window synthWindow) {
+                    if (synthWindow.isVisible() && synthWindow.isFocusableWindow()) {
+                        winToFocus = synthWindow;
+                    }
+                }
+
+                Window ow = WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow();
+                WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(window);
+                WindowEvent windowEnterEvent = new WindowEvent(winToFocus, WindowEvent.WINDOW_GAINED_FOCUS, ow);
+                postPriorityEvent(windowEnterEvent);
+            }
         }
-        inputState = newInputState;
+        setInputState(newInputState);
     }
 
     private static void dispatchKeyboardLeaveEvent(long serial, long surfacePtr) {
         // Invoked from the native code
-        assert EventQueue.isDispatchThread();
+        assert EventQueue.isDispatchThread() : "Method must only be invoked on EDT";
 
         if (logKeys.isLoggable(PlatformLogger.Level.FINE)) {
             logKeys.fine("dispatchKeyboardLeaveEvent: " + serial + ", surface 0x"
                     + Long.toHexString(surfacePtr));
         }
 
+        keyboard.onLostFocus();
+
+        WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
+        WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
+
         final WLInputState newInputState = inputState.updatedFromKeyboardLeaveEvent(serial, surfacePtr);
-        final WLComponentPeer peer = componentPeerFromSurface(surfacePtr);
+        final WLWindowPeer peer = peerFromSurface(surfacePtr);
         if (peer != null && peer.getTarget() instanceof Window window) {
             final WindowEvent winLostFocusEvent = new WindowEvent(window, WindowEvent.WINDOW_LOST_FOCUS);
-            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow(null);
-            WLKeyboardFocusManagerPeer.getInstance().setCurrentFocusOwner(null);
-            keyRepeatManager.windowEvent(winLostFocusEvent);
-            postEvent(winLostFocusEvent);
+            postPriorityEvent(winLostFocusEvent);
         }
-        inputState = newInputState;
+        setInputState(newInputState);
     }
 
-    /**
-     * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
-     */
-    private static final Map<Long, WLComponentPeer> wlSurfaceToComponentMap = new HashMap<>();
-
-    static void registerWLSurface(long wlSurfacePtr, WLComponentPeer componentPeer) {
+    static void registerWLSurface(long wlSurfacePtr, WLWindowPeer peer) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + componentPeer);
+            log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + peer);
         }
-        synchronized (wlSurfaceToComponentMap) {
-            wlSurfaceToComponentMap.put(wlSurfacePtr, componentPeer);
+        synchronized (wlSurfaceToPeerMap) {
+            wlSurfaceToPeerMap.put(wlSurfacePtr, peer);
         }
     }
 
     static void unregisterWLSurface(long wlSurfacePtr) {
-        synchronized (wlSurfaceToComponentMap) {
-            wlSurfaceToComponentMap.remove(wlSurfacePtr);
+        synchronized (wlSurfaceToPeerMap) {
+            wlSurfaceToPeerMap.remove(wlSurfacePtr);
         }
+
+        setInputState(inputState.updatedFromUnregisteredSurface(wlSurfacePtr));
     }
 
-    static WLComponentPeer componentPeerFromSurface(long wlSurfacePtr) {
-        synchronized (wlSurfaceToComponentMap) {
-            return wlSurfaceToComponentMap.get(wlSurfacePtr);
+    static WLWindowPeer peerFromSurface(long wlSurfacePtr) {
+        synchronized (wlSurfaceToPeerMap) {
+            return wlSurfaceToPeerMap.get(wlSurfacePtr);
         }
     }
 
@@ -586,15 +687,21 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * associated with that surface.
      * Otherwise, throw UOE.
      */
-    static WLComponentPeer getSingularWindowPeer() {
-        synchronized (wlSurfaceToComponentMap) {
-            if (wlSurfaceToComponentMap.size() > 1) {
+    static WLWindowPeer getSingularWindowPeer() {
+        synchronized (wlSurfaceToPeerMap) {
+            if (wlSurfaceToPeerMap.size() > 1) {
                 throw new UnsupportedOperationException("More than one native window");
-            } else if (wlSurfaceToComponentMap.isEmpty()) {
+            } else if (wlSurfaceToPeerMap.isEmpty()) {
                 throw new UnsupportedOperationException("No native windows");
             }
 
-            return wlSurfaceToComponentMap.values().iterator().next();
+            return wlSurfaceToPeerMap.values().iterator().next();
+        }
+    }
+
+    static List<WLWindowPeer> getLiveWindowPeers() {
+        synchronized (wlSurfaceToPeerMap) {
+            return new ArrayList<>(wlSurfaceToPeerMap.values());
         }
     }
 
@@ -608,7 +715,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void setDynamicLayout(boolean b) {
-        log.info("Not implemented: WLToolkit.setDynamicLayout()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.setDynamicLayout()");
+        }
     }
 
     @Override
@@ -623,12 +732,16 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     protected boolean isDynamicLayoutSet() {
-        log.info("Not implemented: WLToolkit.isDynamicLayoutSet()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.isDynamicLayoutSet()");
+        }
         return false;
     }
 
     protected boolean isDynamicLayoutSupported() {
-        log.info("Not implemented: WLToolkit.isDynamicLayoutSupported()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.isDynamicLayoutSupported()");
+        }
         return false;
     }
 
@@ -638,18 +751,20 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     @Override
-    public FontPeer getFontPeer(String name, int style){
-        log.info("Not implemented: WLToolkit.getFontPeer()");
+    public FontPeer getFontPeer(String name, int style) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.getFontPeer()");
+        }
         return null;
     }
 
     @Override
     public DragSourceContextPeer createDragSourceContextPeer(DragGestureEvent dge) throws InvalidDnDOperationException {
-        log.info("Not implemented: WLToolkit.createDragSourceContextPeer()");
-        return null;
+        return dragSourceContextPeer.createDragSourceContextPeer(dge);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T extends DragGestureRecognizer> T
     createDragGestureRecognizer(Class<T> recognizerClass,
                     DragSource ds,
@@ -657,81 +772,82 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                     int srcActions,
                     DragGestureListener dgl)
     {
-        log.info("Not implemented: WLToolkit.createDragGestureRecognizer()");
+        final LightweightFrame f = SunToolkit.getLightweightFrame(c);
+        if (f != null) {
+            return f.createDragGestureRecognizer(recognizerClass, ds, c, srcActions, dgl);
+        }
+
+        if (recognizerClass.isAssignableFrom(WLMouseDragGestureRecognizer.class)) {
+            return (T)new WLMouseDragGestureRecognizer(ds, c, srcActions, dgl);
+        }
+
         return null;
     }
 
     @Override
     public CheckboxMenuItemPeer createCheckboxMenuItem(CheckboxMenuItem target) {
-        log.info("Not implemented: WLToolkit.createCheckboxMenuItem()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createCheckboxMenuItem()");
+        }
         return null;
     }
 
     @Override
     public MenuItemPeer createMenuItem(MenuItem target) {
-        log.info("Not implemented: WLToolkit.createMenuItem()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createMenuItem()");
+        }
         return null;
     }
 
     @Override
     public TextFieldPeer createTextField(TextField target) {
-        log.info("Not implemented: WLToolkit.createTextField()");
-        return null;
+        return LWToolkit.createTextField(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public LabelPeer createLabel(Label target) {
-        log.info("Not implemented: WLToolkit.createLabel()");
-        return null;
+        return LWToolkit.createLabel(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ListPeer createList(java.awt.List target) {
-        log.info("Not implemented: WLToolkit.createList()");
-        return null;
+        return LWToolkit.createList(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public CheckboxPeer createCheckbox(Checkbox target) {
-        log.info("Not implemented: WLToolkit.createCheckbox()");
-        return null;
+        return LWToolkit.createCheckbox(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ScrollbarPeer createScrollbar(Scrollbar target) {
-        log.info("Not implemented: WLToolkit.createScrollbar()");
-        return null;
+        return LWToolkit.createScrollbar(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ScrollPanePeer createScrollPane(ScrollPane target) {
-        log.info("Not implemented: WLToolkit.createScrollPane()");
-        return null;
+        return LWToolkit.createScrollPane(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public TextAreaPeer createTextArea(TextArea target) {
-        log.info("Not implemented: WLToolkit.createTextArea()");
-        return null;
+        return LWToolkit.createTextArea(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public ChoicePeer createChoice(Choice target) {
-        log.info("Not implemented: WLToolkit.createChoice()");
-        return null;
+        return LWToolkit.createChoice(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public CanvasPeer createCanvas(Canvas target) {
-        WLCanvasPeer peer = new WLCanvasPeer(target);
-        targetCreatedPeer(target, peer);
-        return peer;
+        return LWToolkit.createCanvas(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
     public PanelPeer createPanel(Panel target) {
-        log.info("Not implemented: WLToolkit.createPanel()");
-        return null;
+        return LWToolkit.createPanel(target, LWDummyPlatformComponent.getInstance());
     }
 
     @Override
@@ -750,25 +866,40 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public FileDialogPeer createFileDialog(FileDialog target) {
-        log.info("Not implemented: WLToolkit.createFileDialog()");
-        return null;
+        FileDialogPeer peer = null;
+        if (!getSunAwtDisableGtkFileDialogs() && checkGtkVersion(3, 0, 0)) {
+            peer = new GtkFileDialogPeer(target);
+            targetCreatedPeer(target, peer);
+            return peer;
+        } else {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Not implemented: WLToolkit.createFileDialog()");
+            }
+            return null;
+        }
     }
 
     @Override
     public MenuBarPeer createMenuBar(MenuBar target) {
-        log.info("Not implemented: WLToolkit.createMenuBar()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createMenuBar()");
+        }
         return null;
     }
 
     @Override
     public MenuPeer createMenu(Menu target) {
-        log.info("Not implemented: WLToolkit.createMenu()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createMenu()");
+        }
         return null;
     }
 
     @Override
     public PopupMenuPeer createPopupMenu(PopupMenu target) {
-        log.info("Not implemented: WLToolkit.createPopupMenu()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createPopupMenu()");
+        }
         return null;
     }
 
@@ -792,22 +923,26 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
     }
 
     @Override
-    public TrayIconPeer createTrayIcon(TrayIcon target)
-      throws HeadlessException
-    {
-        log.info("Not implemented: WLToolkit.createTrayIcon()");
+    public TrayIconPeer createTrayIcon(TrayIcon target) throws HeadlessException {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createTrayIcon()");
+        }
         return null;
     }
 
     @Override
     public SystemTrayPeer createSystemTray(SystemTray target) throws HeadlessException {
-        log.info("Not implemented: WLToolkit.createSystemTray()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createSystemTray()");
+        }
         return null;
     }
 
     @Override
     public boolean isTraySupported() {
-        log.info("Not implemented: WLToolkit.isTraySupported()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.isTraySupported()");
+        }
         return false;
     }
 
@@ -827,16 +962,32 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return 16777216; // 24 bits per pixel, 8 bits per channel
     }
 
+    /**
+     * {@link java.awt.event.InputMethodEvent#getText()} can contain attributes which provide AWT/Swing with additional useful information
+     *   (e.g. a language of the text).
+     *
+     * One kind of the possible attributes is {@link InputMethodHighlight}. It informs AWT/Swing that some parts of
+     *   the text are in different states of the text composing process, hence they should look differently from the others.
+     *   However, it doesn't tell how exactly they should look; this choice is left to Toolkit's implementations,
+     *   or more precisely implementations of this method.
+     *
+     * @param highlight a state of a part of InputMethodEvent's text
+     *
+     * @return a collection of {@link TextAttribute}s (with their corresponding values as documented) informing how exactly
+     *         such text should look or {@code null} if a mapping can't be provided.
+     *
+     * @see Toolkit#mapInputMethodHighlight(InputMethodHighlight)
+     */
     @Override
-    public Map<TextAttribute, ?> mapInputMethodHighlight( InputMethodHighlight highlight) {
-        log.info("Not implemented: WLToolkit.mapInputMethodHighlight()");
-        return null;
+    public Map<TextAttribute, ?> mapInputMethodHighlight(InputMethodHighlight highlight) {
+        return WLInputMethodMetaDescriptor.mapInputMethodHighlight(highlight);
     }
+
     @Override
     public boolean getLockingKeyState(int key) {
         return switch (key) {
-            case KeyEvent.VK_CAPS_LOCK -> (inputState.lockingKeyState() & CAPS_LOCK_MASK) != 0;
-            case KeyEvent.VK_NUM_LOCK -> (inputState.lockingKeyState() & NUM_LOCK_MASK) != 0;
+            case KeyEvent.VK_CAPS_LOCK -> keyboard.isCapsLockPressed();
+            case KeyEvent.VK_NUM_LOCK -> keyboard.isNumLockPressed();
             case KeyEvent.VK_SCROLL_LOCK, KeyEvent.VK_KANA_LOCK ->
                     throw new UnsupportedOperationException("getting locking key state is not supported for this key");
             default -> throw new IllegalArgumentException("invalid key for Toolkit.getLockingKeyState");
@@ -845,23 +996,27 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public  Clipboard getSystemClipboard() {
-        return clipboard;
+        return dataDevice.getSystemClipboard();
     }
 
     @Override
     public Clipboard getSystemSelection() {
-        return selection;
+        return dataDevice.getPrimarySelectionClipboard();
     }
 
     @Override
     public void beep() {
-        log.info("Not implemented: WLToolkit.beep()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.beep()");
+        }
     }
 
     @Override
     public PrintJob getPrintJob(final Frame frame, final String doctitle,
                                 final Properties props) {
-        log.info("Not implemented: WLToolkit.getPrintJob()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.getPrintJob()");
+        }
         return null;
     }
 
@@ -870,7 +1025,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
                 final JobAttributes jobAttributes,
                 final PageAttributes pageAttributes)
     {
-        log.info("Not implemented: WLToolkit.getPrintJob()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.getPrintJob()");
+        }
         return null;
     }
 
@@ -885,8 +1042,15 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public InputMethodDescriptor getInputMethodAdapterDescriptor() {
-        log.info("Not implemented: WLToolkit.getInputMethodAdapterDescriptor()");
-        return null;
+        final InputMethodDescriptor result = ENABLE_NATIVE_IM_SUPPORT
+                                             ? WLInputMethodMetaDescriptor.getInstanceIfAvailableOnPlatform()
+                                             : null;
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("getInputMethodAdapterDescriptor(): ENABLE_NATIVE_IM_SUPPORT={0}, result={1}.", ENABLE_NATIVE_IM_SUPPORT, result);
+        }
+
+        return result;
     }
 
     /**
@@ -895,7 +1059,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     public boolean enableInputMethodsForTextComponent() {
-        log.info("Not implemented: WLToolkit.enableInputMethodsForTextComponent()");
         return true;
     }
 
@@ -935,13 +1098,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     protected Object lazilyLoadDesktopProperty(String name) {
-        log.info("Not implemented: WLToolkit.lazilyLoadDesktopProperty()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.lazilyLoadDesktopProperty()");
+        }
         return null;
-    }
-
-    @Override
-    public synchronized void addPropertyChangeListener(String name, PropertyChangeListener pcl) {
-        log.info("Not implemented: WLToolkit.addPropertyChangeListener()");
     }
 
     /**
@@ -949,7 +1109,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     protected boolean needsXEmbedImpl() {
-        log.info("Not implemented: WLToolkit.needsXEmbedImpl()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.needsXEmbedImpl()");
+        }
         return false;
     }
 
@@ -961,7 +1123,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean isModalExclusionTypeSupported(Dialog.ModalExclusionType exclusionType) {
-        log.info("Not implemented: WLToolkit.isModalExclusionTypeSupported()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.isModalExclusionTypeSupported()");
+        }
         return false;
     }
 
@@ -972,7 +1136,9 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public boolean useBufferPerWindow() {
-        log.info("Not implemented: WLToolkit.useBufferPerWindow()");
+        // TODO: this may depend on the rendering engine used.
+        // When rendering is performed into memory buffers shared with Wayland,
+        // there's no sense in having additional buffers in AWT/Swing.
         return false;
     }
 
@@ -981,19 +1147,36 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      */
     @Override
     protected boolean syncNativeQueue(long timeout) {
-        log.info("Not implemented: WLToolkit.syncNativeQueue()");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.syncNativeQueue()");
+        }
         return false;
     }
 
     @Override
     public void grab(Window w) {
-        log.info("Not implemented: WLToolkit.grab()");
+        // There is no input grab in Wayland for client applications, only
+        // the compositor can control grabs. But we need UngrabEvent
+        // for popup/tooltip management, so we do input grab accounting here
+        // and in ungrab() below.
+        Objects.requireNonNull(w);
+
+        var peer = AWTAccessor.getComponentAccessor().getPeer(w);
+        if (peer instanceof WLWindowPeer windowPeer) {
+            windowPeer.grab();
+        }
     }
 
     @Override
     public void ungrab(Window w) {
-        log.info("Not implemented: WLToolkit.ungrab()");
+        Objects.requireNonNull(w);
+
+        var peer = AWTAccessor.getComponentAccessor().getPeer(w);
+        if (peer instanceof WLWindowPeer windowPeer) {
+            windowPeer.ungrab(false);
+        }
     }
+
     /**
      * Returns if the java.awt.Desktop class is supported on the current
      * desktop.
@@ -1002,30 +1185,31 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
      * Check if the running desktop is Gnome by checking the window manager.
      */
     @Override
-    public boolean isDesktopSupported(){
-        log.info("Not implemented: WLToolkit.isDesktopSupported()");
+    public boolean isDesktopSupported() {
+        return WLDesktopPeer.isDesktopSupported();
+    }
+
+    @Override
+    public DesktopPeer createDesktopPeer(Desktop target) {
+        return new WLDesktopPeer();
+    }
+
+    @Override
+    public boolean isTaskbarSupported() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.isTaskbarSupported()");
+        }
         return false;
     }
 
     @Override
-    public DesktopPeer createDesktopPeer(Desktop target){
-        log.info("Not implemented: WLToolkit.createDesktopPeer()");
+    public TaskbarPeer createTaskbarPeer(Taskbar target) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Not implemented: WLToolkit.createTaskbarPeer()");
+        }
         return null;
     }
 
-    @Override
-    public boolean isTaskbarSupported(){
-        log.info("Not implemented: WLToolkit.isTaskbarSupported()");
-        return false;
-    }
-
-    @Override
-    public TaskbarPeer createTaskbarPeer(Taskbar target){
-        log.info("Not implemented: WLToolkit.createTaskbarPeer()");
-        return null;
-    }
-
-    private static boolean areExtraMouseButtonsEnabled = true;
     @Override
     public boolean areExtraMouseButtonsEnabled() throws HeadlessException {
         return areExtraMouseButtonsEnabled;
@@ -1056,6 +1240,13 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
 
     @Override
     public void sync() {
+        if(VKEnv.isPresentationEnabled()) {
+            VKRenderQueue.sync();
+        }
+        flushImpl();
+    }
+
+    public void flush() {
         flushImpl();
     }
 
@@ -1070,16 +1261,42 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
+    /**
+     * @return true if xdg-decoration-unstable-v1 is supported and false otherwise.
+     */
+    public static boolean isSSDAvailable() {
+        return isSSDAvailableImpl();
+    }
+
+    private static native boolean isSSDAvailableImpl();
+
     private native int readEvents();
     private native void dispatchEventsOnEDT();
     private native void flushImpl();
     private native void dispatchNonDefaultQueuesImpl();
+    private static native void syncCallbackImpl(Runnable callback);
 
-    protected static void targetDisposedPeer(Object target, Object peer) {
+    public static void syncCallback(Runnable callback) {
+        if (isInitialized()) {
+            syncCallbackImpl(callback);
+        } else {
+            ++numCallbacksBeforeEndOfInit;
+            syncCallbackImpl(() -> {
+                try {
+                    callback.run();
+                } finally {
+                    --numCallbacksBeforeEndOfInit;
+                }
+            });
+        }
+
+    }
+
+    public static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);
     }
 
-    static void postEvent(AWTEvent event) {
+    public static void postEvent(AWTEvent event) {
         SunToolkit.postEvent(event);
     }
 
@@ -1092,12 +1309,123 @@ public class WLToolkit extends UNIXToolkit implements Runnable {
         return inputState;
     }
 
+    private static void setInputState(WLInputState newInputState) {
+        WLInputState oldInputState = inputState;
+        inputState = newInputState;
+
+        boolean hasNewSerial = oldInputState.latestInputSerial() != newInputState.latestInputSerial();
+        if (dataDevice != null && hasNewSerial) {
+            dataDevice.onNewSerialAvailable();
+        }
+    }
+
     // this emulates pointer leave event, which isn't sent sometimes by compositor
     static void resetPointerInputState() {
-        inputState = inputState.resetPointerState();
+        setInputState(inputState.resetPointerState());
     }
 
     static boolean isInitialized() {
         return initialized;
+    }
+
+    public static WLCursorManager getCursorManager() {
+        return WLCursorManager.getInstance();
+    }
+
+    public static boolean isKDE() {
+        return isKDE;
+    }
+
+    // called from native
+    private static void handleToplevelIconSize(int size) {
+        preferredIconSizes.add(size);
+    }
+
+    // A workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173
+    private boolean quirkSyncBeforePopupMap = false;
+
+    private boolean computeQuirkSyncBeforePopupMap() {
+        // Never enable when not using Vulkan with presentation
+        if (!VKEnv.isPresentationEnabled()) {
+            return false;
+        }
+
+        // First, check the property override
+        final String syncBeforePopupMapPropertyName = "sun.java2d.vulkan.quirk.syncBeforePopupMap";
+        Boolean overrideValue = VKEnv.resolveTrueFalseAutoProperty(syncBeforePopupMapPropertyName, System.getProperty(syncBeforePopupMapPropertyName, "auto"));
+        if (overrideValue != null) {
+            return overrideValue;
+        }
+
+        // Match GNOME 46 and unknown GNOME versions to be safe.
+        if (!"gnome".equals(getDesktop())) {
+            return false;
+        }
+        Integer majorVersion = getGnomeShellMajorVersion();
+        return majorVersion == null || majorVersion == 46;
+    }
+
+    public void syncBeforePopupMapIfEnabled() {
+        if (!quirkSyncBeforePopupMap) {
+            return;
+        }
+
+        sync();
+        roundtripForSyncBeforePopupMap();
+    }
+
+    private native static void roundtripForSyncBeforePopupMap();
+
+    public static WLToolkit getWLToolkit() {
+        return (WLToolkit)Toolkit.getDefaultToolkit();
+    }
+
+    @Override
+    public Object peerForTarget(Object target) {
+        return SunToolkit.targetToPeer(target);
+    }
+
+    @Override
+    public void peerDisposedForTarget(Object target, Object peer) {
+        targetDisposedPeer(target, peer);
+    }
+
+    @Override
+    public void postAWTEvent(AWTEvent event) {
+        postEvent(event);
+    }
+
+    @Override
+    public void flushOnscreenGraphics(Component context) {
+        AWTUtilities.updateWindowThisOrAncestor(context);
+    }
+
+    @Override
+    public void updateCursorImmediately(LWComponentPeerAPI peer) {
+        WLWindowPeer windowPeer = (WLWindowPeer)peer.getWindowPeerOrSelf();
+        WLToolkit.getCursorManager().updateCursorImmediatelyFor(windowPeer);
+    }
+
+    @Override
+    public void updateCursorLater(Window target) {
+        assert EventQueue.isDispatchThread() : "Current implementation assumes this method is invoked on EDT";
+        WLWindowPeer peer = AWTAccessor.getComponentAccessor().getPeer(target);
+        WLToolkit.getCursorManager().updateCursorImmediatelyFor(peer);
+    }
+
+    @Override
+    public PlatformWindow getPlatformWindowUnderMouse() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public LWWindowPeerAPI getWindowPeerUnderMouse() {
+        WLComponentPeer peerUnderMouse = WLMouseInfoPeer.getInstance().getPeerUnderMouse();
+        return peerUnderMouse instanceof WLWindowPeer windowPeer ? windowPeer : null;
+    }
+
+    @Override
+    public PlatformDropTarget createDropTarget(DropTarget dropTarget, Component component, LWComponentPeerAPI peer) {
+        return () -> {};
     }
 }

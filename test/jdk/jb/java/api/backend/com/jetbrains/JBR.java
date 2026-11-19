@@ -28,13 +28,7 @@ package com.jetbrains;
  */
 public class JBR {
 
-    public interface ServiceApi {
-
-        <T> T getService(Class<T> interFace);
-    }
-
-    static final class Metadata {
-        static String[] KNOWN_SERVICES = {};
-        static String[] KNOWN_PROXIES = {};
-    }
+    @Service
+    @Provided
+    public interface ServiceApi {}
 }

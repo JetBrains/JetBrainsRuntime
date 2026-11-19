@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012–2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
+import sun.lwawt.FullScreenCapable;
 import sun.util.logging.PlatformLogger;
 
 import static java.awt.peer.ComponentPeer.SET_BOUNDS;
@@ -55,6 +56,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     private volatile int displayID;
     private volatile double xResolution;
     private volatile double yResolution;
+    private volatile boolean isMirroring;
     private volatile Rectangle bounds;
     private volatile int scale;
     private volatile Insets screenInsets;
@@ -140,6 +142,10 @@ public final class CGraphicsDevice extends GraphicsDevice
         return yResolution;
     }
 
+    public boolean isMirroring() {
+        return isMirroring;
+    }
+
     Rectangle getBounds() {
         return bounds.getBounds();
     }
@@ -167,6 +173,7 @@ public final class CGraphicsDevice extends GraphicsDevice
     public void displayChanged() {
         xResolution = nativeGetXResolution(displayID);
         yResolution = nativeGetYResolution(displayID);
+        isMirroring = nativeIsMirroring(displayID);
         bounds = nativeGetBounds(displayID).getBounds(); //does integer rounding
         screenInsets = nativeGetScreenInsets(displayID);
         initScaleFactor();
@@ -180,9 +187,10 @@ public final class CGraphicsDevice extends GraphicsDevice
     boolean updateDevice() {
         int s = scale;
         double xr = xResolution, yr = yResolution;
+        boolean m = isMirroring;
         var b = bounds;
         displayChanged();
-        return s == scale && xr == xResolution && yr == yResolution && b.equals(bounds);
+        return s == scale && xr == xResolution && yr == yResolution && m == isMirroring && b.equals(bounds);
     }
 
     public void displayParametersChanged() {
@@ -369,6 +377,8 @@ public final class CGraphicsDevice extends GraphicsDevice
     private static native double nativeGetXResolution(int displayID);
 
     private static native double nativeGetYResolution(int displayID);
+
+    private static native boolean nativeIsMirroring(int displayID);
 
     private static native Insets nativeGetScreenInsets(int displayID);
 

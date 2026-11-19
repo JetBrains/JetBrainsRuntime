@@ -106,6 +106,7 @@ final class CFileDialog implements FileDialogPeer {
                         chooseFiles,
                         createDirectories,
                         target.getFilenameFilter() != null,
+                        jbrDialog.fileFilterExtensions,
                         target.getDirectory(),
                         target.getFile());
 
@@ -210,7 +211,7 @@ final class CFileDialog implements FileDialogPeer {
             long ownerPtr, String title, int mode, int modality,
             boolean multipleMode, boolean shouldNavigateApps,
             boolean canChooseDirectories, boolean canChooseFiles,
-            boolean canCreateDirectories, boolean hasFilenameFilter,
+            boolean canCreateDirectories, boolean hasFilenameFilter, String[] allowedFileTypes,
             String directory, String file);
 
     @Override

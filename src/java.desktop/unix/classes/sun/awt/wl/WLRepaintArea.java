@@ -58,18 +58,11 @@ final class WLRepaintArea extends RepaintArea {
      */
     protected void paintComponent(Component comp, Graphics g) {
         if (comp != null) {
-            final WLComponentPeer peer = AWTAccessor.getComponentAccessor()
-                                                   .getPeer(comp);
-            try {
-                if (peer != null) {
-                    peer.paintPeer(g);
-                }
-                super.paintComponent(comp, g);
-            } finally {
-                if (comp instanceof Window window) {
-                    AWTAccessor.getWindowAccessor().updateWindow(window);
-                }
+            final WLComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(comp);
+            if (peer != null) {
+                peer.paintPeer(g);
             }
+            super.paintComponent(comp, g);
         }
     }
 }

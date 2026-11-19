@@ -53,6 +53,7 @@ import java.awt.image.Raster;
 
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 
@@ -220,7 +221,7 @@ public abstract class MTLSurfaceData extends SurfaceData
 
     protected native boolean initRTexture(long pData, boolean isOpaque, int width, int height);
 
-    protected native boolean initFlipBackbuffer(long pData);
+    protected native boolean initFlipBackbuffer(long pData, boolean isOpaque, int width, int height);
 
     @Override
     public SurfaceDataProxy makeProxyFor(SurfaceData srcData) {
@@ -246,7 +247,7 @@ public abstract class MTLSurfaceData extends SurfaceData
                 break;
 
             case FLIP_BACKBUFFER:
-                success = initFlipBackbuffer(getNativeOps());
+                success = initFlipBackbuffer(getNativeOps(), isOpaque, width, height);
                 break;
 
             default:
@@ -270,6 +271,7 @@ public abstract class MTLSurfaceData extends SurfaceData
             switch (type) {
                 case TEXTURE:
                 case RT_TEXTURE:
+                case FLIP_BACKBUFFER:
                     // need to make sure the context is current before
                     // creating the texture
                     MTLContext.setScratchSurface(graphicsConfig);
@@ -562,7 +564,7 @@ public abstract class MTLSurfaceData extends SurfaceData
 
         private MTLLayerSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
                                    int width, int height) {
-            super(layer, gc, gc.getColorModel(), RT_TEXTURE, width, height);
+            super(layer, gc, gc.getColorModel(), FLIP_BACKBUFFER, width, height);
             this.layer = layer;
             initSurface(this.width, this.height);
         }
@@ -635,6 +637,20 @@ public abstract class MTLSurfaceData extends SurfaceData
         try {
             MTLContext.disposeSurface(pData);
             // this call is expected to complete synchronously, so flush now
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    static void flushBuffer(long layer) {
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(layer);
             rq.flushNow();
         } finally {
             rq.unlock();

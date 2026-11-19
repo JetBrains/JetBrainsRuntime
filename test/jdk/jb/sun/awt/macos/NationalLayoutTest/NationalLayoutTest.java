@@ -40,9 +40,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.text.CharacterIterator;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -101,6 +99,7 @@ import java.util.stream.Collectors;
 public class NationalLayoutTest {
 
     private static final String MANUAL= "manual";
+    private static final String NODEAD = "nodead";
 
     private static final int PAUSE = 2000;
 
@@ -115,6 +114,7 @@ public class NationalLayoutTest {
     private static boolean jbr = true;
     private static boolean autoTest = true;
     private static boolean showKeyCodeHex = false;
+    private static boolean noDeadKeys = false;
 
     private static Frame mainFrame;
 
@@ -123,6 +123,8 @@ public class NationalLayoutTest {
     private static TextArea typeArea;
 
     private static Robot robot;
+
+    private static final Set<String> addedLayouts = new HashSet<>();
 
     // Synchronized lists for storing results of different key events
     private static CopyOnWriteArrayList<Integer> keysPressed = new CopyOnWriteArrayList();
@@ -145,7 +147,7 @@ public class NationalLayoutTest {
         // Check if program arguments contain known layouts to test
         List<Layout> layoutList = new ArrayList();
         for (String arg : args) {
-            if(!arg.equals(MANUAL)) {
+            if(!arg.equals(MANUAL) && !arg.equals(NODEAD)) {
                 try {
                     layoutList.add(Layout.valueOf(arg));
                 } catch (IllegalArgumentException e) {
@@ -171,6 +173,10 @@ public class NationalLayoutTest {
             System.out.println("WARNING - Manual mode: Press " + KeyEvent.getKeyText(NEXT_MODIFIER)
                     + " to start testing keyboard layout with the modifier set");
             autoTest = false;
+        }
+
+        if (Arrays.asList(args).contains(NODEAD)) {
+            noDeadKeys = true;
         }
 
         String initialLayoutName = null;
@@ -202,10 +208,17 @@ public class NationalLayoutTest {
             }
 
         } finally {
+            for (String layoutId : addedLayouts) {
+                try {
+                    LWCToolkit.disableKeyboardLayout(layoutId);
+                } catch (Exception ignored) {}
+            }
+
             // Restore initial keyboard layout
             if(initialLayoutName != null && !initialLayoutName.isEmpty()) {
                 LWCToolkit.switchKeyboardLayout(initialLayoutName);
             }
+
             // Destroy test GUI
             destroyGUI();
             // Wait for EDT auto-shutdown
@@ -365,7 +378,12 @@ public class NationalLayoutTest {
 
         // Switch current keyboard layout to the test one
         if(jbr) {
-            LWCToolkit.switchKeyboardLayout(layout.toString());
+            String layoutId = layout.toString();
+            if (!LWCToolkit.isKeyboardLayoutEnabled(layoutId)) {
+                LWCToolkit.enableKeyboardLayout(layoutId);
+                addedLayouts.add(layoutId);
+            }
+            LWCToolkit.switchKeyboardLayout(layoutId);
         }
 
         // Support for manual mode: wait while user switches the keyboard layout (if needed)
@@ -400,13 +418,8 @@ public class NationalLayoutTest {
             // Get Key object from LayoutKey enum
             Key key = layoutKey.getKey();
 
-            if (key.isDead() || key.isDead(modifier)) {
-                // TODO: Disable skipping testing dead keys once they work properly on macOS
-                continue;
-            }
-
             // Obtain the key code for the current layout
-            int keyCode = key.getKeyCode();
+            int keyCode = key.getKeyCode(noDeadKeys);
 
             // Append input area with the modifiers + key under test
             if(!modifier.isEmpty()) {
@@ -442,7 +455,11 @@ public class NationalLayoutTest {
 
             // Define array of key codes expected to be pressed as the result of modifiers + key
             int[] keysPattern = Arrays.copyOf(modifiers, modifiers.length + 1);
-            keysPattern[modifiers.length] = keyCode;
+            if (layoutKey.isCmdQWERTY() && modifier.isCommand()) {
+                keysPattern[modifiers.length] = key.getKeyCode_US();
+            } else {
+                keysPattern[modifiers.length] = keyCode;
+            }
 
             // Define array of key codes which were really pressed as the result of modifiers + key
             int[] keysResult = listToInts(keysPressed);

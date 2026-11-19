@@ -26,41 +26,39 @@
 
 package sun.awt;
 
-import java.awt.FontFormatException;
-import java.awt.GraphicsEnvironment;
+import java.awt.*;
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.NoSuchElementException;
-import java.util.StringTokenizer;
-import java.util.function.Supplier;
+import java.util.*;
+import java.util.List;
+import java.util.stream.Stream;
 
 import sun.awt.windows.WFontConfiguration;
-import sun.font.FontManager;
-import sun.font.SunFontManager;
-import sun.font.TrueTypeFont;
+import sun.font.*;
 
 /**
- * The X11 implementation of {@link FontManager}.
+ * The Win32 implementation of {@link FontManager}.
  */
 public final class Win32FontManager extends SunFontManager {
+    private HashMap<String, String> windowsSystemVersion = null;
 
-    private static final TrueTypeFont eudcFont =
-            ((Supplier<TrueTypeFont>) () -> {
-                String eudcFile = getEUDCFontFile();
-                if (eudcFile != null) {
-                    try {
-                        /* Must use Java rasteriser since GDI doesn't
-                         * enumerate (allow direct use) of EUDC fonts.
-                         */
-                        return new TrueTypeFont(eudcFile, null, 0,
-                                                    true, false);
-                    } catch (FontFormatException e) {
-                    }
-                }
-                return null;
-            }).get();
+    private static final List<Font2D> additionalFallbackFonts;
+    static {
+        List<Font2D> list = new ArrayList<>();
+        list.add(new EmojiFont());
+        // https://learn.microsoft.com/en-us/windows/win32/intl/end-user-defined-characters
+        String eudcFile = getEUDCFontFile();
+        if (eudcFile != null) {
+            try {
+                /* Must use Java rasteriser since GDI doesn't
+                 * enumerate (allow direct use) of EUDC fonts.
+                 */
+                list.add(new TrueTypeFont(eudcFile, null, 0,
+                        true, false));
+            } catch (FontFormatException e) {
+            }
+        }
+        additionalFallbackFonts = Collections.unmodifiableList(list);
+    }
 
     /* Used on Windows to obtain from the windows registry the name
      * of a file containing the system EUFC font. If running in one of
@@ -71,8 +69,8 @@ public final class Win32FontManager extends SunFontManager {
     private static native String getEUDCFontFile();
 
     @Override
-    public TrueTypeFont getEUDCFont() {
-        return eudcFont;
+    public List<Font2D> getAdditionalFallbackFonts() {
+        return additionalFallbackFonts;
     }
 
     public Win32FontManager() {
@@ -179,6 +177,28 @@ public final class Win32FontManager extends SunFontManager {
     }
 
     @Override
+    protected void registerJREFonts() {
+        if (versionCheckEnabled) {
+            windowsSystemVersion = new HashMap<>();
+            HashMap<String, String> fontToFileMap = new HashMap<>(100);
+            populateFontFileNameMap(fontToFileMap, new HashMap<>(), new HashMap<>(), Locale.ENGLISH);
+            for (String key : fontToFileMap.keySet()) {
+                // find maximum observable platform font's version
+                Optional<String> version = Stream.concat(Arrays.stream(getPlatformFontDirs(true)), Stream.of("")).
+                        map((path) -> (getTrueTypeVersion(path + File.separator + fontToFileMap.get(key)))).
+                        max(SunFontManager::fontVersionComparator);
+                windowsSystemVersion.put(key, version.isPresent() ? version.get() : "0");
+            }
+        }
+        super.registerJREFonts();
+    }
+
+    @Override
+    protected String getSystemFontVersion(TrueTypeFont bundledFont) {
+        return windowsSystemVersion.getOrDefault(bundledFont.getFullName().toLowerCase(), "0");
+    }
+
+    @Override
     protected void
         populateFontFileNameMap(HashMap<String,String> fontToFileMap,
                                 HashMap<String,String> fontToFamilyNameMap,
@@ -234,7 +254,9 @@ public final class Win32FontManager extends SunFontManager {
      */
     static String fontsForPrinting = null;
     protected void registerJREFontsWithPlatform(String pathName) {
-        fontsForPrinting = pathName;
+        if (JREFontsDirExists(pathName)) {
+            fontsForPrinting = pathName;
+        }
     }
 
     public static void registerJREFontsForPrinting() {

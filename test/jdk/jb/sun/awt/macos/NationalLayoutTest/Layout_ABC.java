@@ -27,7 +27,7 @@
  * @summary Regression test for IDEA-165950: National keyboard layouts support
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx
- * @run main NationalLayoutTest ABC
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=false NationalLayoutTest ABC
  */
 
 /*
@@ -38,10 +38,7 @@ public enum Layout_ABC implements LayoutKey {
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
-    // TODO Robot cannot press section sign key (16777383),
-    // located on the left side of the key 1 on the Apple International English keyboard
-    // SECTION       ('§', '§', '±', '±'),
-
+    VK_SECTION       ('§', '§', '±', '±', '0'),
     VK_MINUS         ('-', '–', '_', '—', '\u001F'),
     VK_EQUALS        ('=', '≠', '+', '±', '='),
 
@@ -70,13 +67,13 @@ public enum Layout_ABC implements LayoutKey {
 
     // macOS system shortcuts: Shift+Cmd+Q - Log Out, Ctrl+Cmd+Q - Lock Screen
     //VK_Q ('q', 'œ', 'Q', 'Œ'),
-    //VK_W ('w', '∑', 'W', '„'),
-    //VK_E (KeyChar.ch('e'), KeyChar.dead('´') ,KeyChar.ch('E'), KeyChar.ch('´')),
+    VK_W ('w', '∑', 'W', '„', '\u0017'),
+    VK_E (KeyChar.ch('e'), KeyChar.dead('´') ,KeyChar.ch('E'), KeyChar.ch('´'), KeyChar.ch('\u0005')),
     //VK_R ('r', '®', 'R', '‰'),
     //VK_T ('t', '†', 'T', 'ˇ'),
     //VK_Y ('y', '¥', 'Y', 'Á'),
-    //VK_U (KeyChar.ch('u'), KeyChar.dead('¨'), KeyChar.ch('U'), KeyChar.ch('¨')),
-    //VK_I (KeyChar.ch('i'), KeyChar.dead('ˆ'), KeyChar.ch('I'), KeyChar.ch('ˆ')),
+    VK_U (KeyChar.ch('u'), KeyChar.dead('¨'), KeyChar.ch('U'), KeyChar.ch('¨'), KeyChar.ch('\u0015')),
+    VK_I (KeyChar.ch('i'), KeyChar.dead('ˆ'), KeyChar.ch('I'), KeyChar.ch('ˆ'), KeyChar.ch('\u0009')),
     //VK_O ('o', 'ø', 'O', 'Ø'),
     //VK_P ('p', 'π', 'P', '∏'),
 

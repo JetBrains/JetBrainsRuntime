@@ -30,6 +30,12 @@
 
 #include "WLToolkit.h"
 
+#include "cursor-shape-v1.h"
+#include "sun_awt_wl_WLCursorManager.h"
+
+/**
+ * Describes a cursor managed by the wl_pointer interface.
+ */
 struct WLCursor {
     struct wl_buffer *buffer;
     bool managed;
@@ -39,10 +45,23 @@ struct WLCursor {
     int32_t hotspot_y;
 };
 
+static struct wp_cursor_shape_device_v1* cursor_shape_device;
+
 JNIEXPORT void JNICALL
 Java_java_awt_Cursor_initIDs
   (JNIEnv *env, jclass cls)
 {
+    CHECK_NULL(wl_pointer);
+
+    if (wp_cursor_shape_manager) {
+        cursor_shape_device = wp_cursor_shape_manager_v1_get_pointer(wp_cursor_shape_manager, wl_pointer);
+    }
+}
+
+JNIEXPORT jboolean JNICALL Java_sun_awt_wl_WLCursorManager_nativeIsCursorShapeSupported
+  (JNIEnv *env, jclass cls)
+{
+    return cursor_shape_device != NULL;
 }
 
 JNIEXPORT void JNICALL
@@ -57,20 +76,19 @@ Java_java_awt_Cursor_finalizeImpl
     }
 }
 
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCursor
-  (JNIEnv *env, jclass cls, jstring name)
+JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCursorManager_nativeGetPredefinedCursor
+  (JNIEnv *env, jclass cls, jstring name, jint scale)
 {
-    if (!wl_cursor_theme)
+    struct wl_cursor_theme *cursor_theme = getCursorTheme(scale);
+
+    if (!cursor_theme)
         return 0;
 
-    jboolean isCopy = JNI_FALSE;
-    const char *name_c_str = JNU_GetStringPlatformChars(env, name, &isCopy);
+    char *name_c_str = wlJavaStringToUtf8(env, name);
     if (!name_c_str)
         return 0;
-    struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(wl_cursor_theme, name_c_str);
-    if (isCopy) {
-        JNU_ReleaseStringPlatformChars(env, name, name_c_str);
-    }
+    struct wl_cursor *wl_cursor = wl_cursor_theme_get_cursor(cursor_theme, name_c_str);
+    free(name_c_str);
 
     if (!wl_cursor || !wl_cursor->image_count || !wl_cursor->images[0])
         return 0;
@@ -88,6 +106,13 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_nativeGetPredefinedCurso
     return ptr_to_jlong(cursor);
 }
 
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeDestroyPredefinedCursor
+        (JNIEnv *env, jclass cls, jlong cursorPtr)
+{
+    struct WLCursor *cursor = jlong_to_ptr(cursorPtr);
+    free(cursor);
+}
+
 JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
   (JNIEnv *env, jclass cls, jintArray pixels, jint width, jint height, jint xHotSpot, jint yHotSpot)
 {
@@ -96,7 +121,7 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
         return 0;
     int32_t byteSize = pixelCount * 4;
     jint *sharedBuffer;
-    struct wl_shm_pool *pool = CreateShmPool(byteSize, "customCursor", (void**)&sharedBuffer);
+    struct wl_shm_pool *pool = CreateShmPool(byteSize, "customCursor", (void**)&sharedBuffer, NULL);
     if (!pool)
         return 0;
 
@@ -131,8 +156,8 @@ JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLCustomCursor_nativeCreateCustomCursor
     return ptr_to_jlong(cursor);
 }
 
-JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
-  (JNIEnv *env, jclass cls, jlong pData)
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeSetCursor
+  (JNIEnv *env, jclass cls, jlong pData, jint scale, jlong pointerEnterSerial)
 {
     struct wl_buffer *buffer = NULL;
     int32_t width = 0;
@@ -142,7 +167,7 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
 
     CHECK_NULL(wl_pointer);
 
-    if (pData != -1) {
+    if (pData != -1 && pData != 0) {
         struct WLCursor *cursor = jlong_to_ptr(pData);
         buffer = cursor->buffer;
         width = cursor->width;
@@ -152,26 +177,28 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetCursor
     }
 
     static struct wl_surface *wl_cursor_surface = NULL;
-    static struct wl_buffer *last_buffer = NULL;
-    static uint32_t last_serial = 0;
-    static int32_t last_hotspot_x = 0;
-    static int32_t last_hotspot_y = 0;
 
     if (!wl_cursor_surface)
         wl_cursor_surface = wl_compositor_create_surface(wl_compositor);
 
     CHECK_NULL(wl_cursor_surface);
-    if (buffer != last_buffer) {
-        last_buffer = buffer;
-        wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
+    wl_pointer_set_cursor(wl_pointer, pointerEnterSerial, wl_cursor_surface,
+                          hotspot_x / scale, hotspot_y / scale);
+    wl_surface_attach(wl_cursor_surface, buffer, 0, 0);
+    wl_surface_set_buffer_scale(wl_cursor_surface, scale);
+    if (width > 0 && height > 0) { // or else we risk a protocol error
         wl_surface_damage_buffer(wl_cursor_surface, 0, 0, width, height);
-        wl_surface_commit(wl_cursor_surface);
     }
 
-    if (last_pointer_enter_serial != last_serial || hotspot_x != last_hotspot_x || hotspot_y != last_hotspot_y) {
-        last_serial = last_pointer_enter_serial;
-        last_hotspot_x = hotspot_x;
-        last_hotspot_y = hotspot_y;
-        wl_pointer_set_cursor(wl_pointer, last_pointer_enter_serial, wl_cursor_surface, hotspot_x, hotspot_y);
-    }
+    wl_surface_commit(wl_cursor_surface);
+    wlFlushToServer(env);
 }
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLCursorManager_nativeSetCursorShape
+  (JNIEnv *env, jclass cls, jint shape, jlong pointerEnterSerial)
+{
+    CHECK_NULL(cursor_shape_device);
+
+    wp_cursor_shape_device_v1_set_shape(cursor_shape_device, pointerEnterSerial, shape);
+}
+

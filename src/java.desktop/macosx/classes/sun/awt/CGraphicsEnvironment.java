@@ -45,6 +45,8 @@ import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.MacOSFlags;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.metal.MTLGraphicsConfig;
+import sun.lwawt.macosx.CThreading;
 import sun.util.logging.PlatformLogger;
 
 import com.jetbrains.exported.JBRApi;
@@ -157,7 +159,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         }
 
         /* Populate the device table */
-        rebuildDevices();
+        initDevices();
 
         if (LogDisplay.ENABLED) {
             for (CGraphicsDevice gd : devices.values()) {
@@ -177,11 +179,7 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
         return mtlShadersLib;
     }
 
-    /**
-     * Updates the list of devices and notify listeners.
-     */
-    private void rebuildDevices() {
-        initDevices();
+    private void doNotifyListeners() {
         // Do not notify devices, this was already done in initDevices.
         displayChanger.notifyListeners();
     }
@@ -190,26 +188,58 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * Called by the CoreGraphics Display Reconfiguration Callback.
      *
      * @param displayId CoreGraphics displayId
-     * @param removed   true if displayId was removed, false otherwise.
+     * @param flags CGDisplayChangeSummaryFlags flags as integer
      */
     void _displayReconfiguration(int displayId, int flags) {
-        // See CGDisplayChangeSummaryFlags
-        LogDisplay log = !LogDisplay.ENABLED ? null :
-                (flags & (1 << 4)) != 0 ? LogDisplay.ADDED :
-                (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
-        if (log == LogDisplay.REMOVED) {
-            CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfiguration({}): enter", displayId);
         }
-        // we ignore the passed parameters and check removed devices ourself
-        // Note that it is possible that this callback is called when the
-        // monitors are not added nor removed, but when the video card is
-        // switched to/from the discrete video card, so we should try to map the
-        // old to the new devices.
-        rebuildDevices();
-        if (log != null && log != LogDisplay.REMOVED) {
-            CGraphicsDevice gd = devices.get(displayId);
-            log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+        try {
+            // See CGDisplayChangeSummaryFlags
+            LogDisplay log = !LogDisplay.ENABLED ? null :
+                    (flags & (1 << 4)) != 0 ? LogDisplay.ADDED :
+                    (flags & (1 << 5)) != 0 ? LogDisplay.REMOVED : LogDisplay.CHANGED;
+            if (log == LogDisplay.REMOVED) {
+                CGraphicsDevice gd = devices.get(displayId);
+                log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+            }
+            // we ignore the passed parameters and check removed devices ourself
+            // Note that it is possible that this callback is called when the
+            // monitors are not added nor removed, but when the video card is
+            // switched to/from the discrete video card, so we should try to map the
+            // old to the new devices.
+            initDevices();
+            if (log != null && log != LogDisplay.REMOVED) {
+                CGraphicsDevice gd = devices.get(displayId);
+                log.log(displayId, gd != null ? gd.getBounds() : "UNKNOWN", gd != null ? gd.getScaleFactor() : Double.NaN);
+            }
+        } catch (RuntimeException re) {
+            logger.severe("CGraphicsEnvironment._displayReconfiguration: exception occurred: ", re);
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfiguration({}): exit", displayId);
+        }
+    }
+
+    /**
+     * Called by the CoreGraphics Display Reconfiguration Callback (once all displays processed = finished)
+     */
+    void _displayReconfigurationFinished() {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfigurationFinished(): enter");
+        }
+        try {
+            doNotifyListeners();
+        } catch (RuntimeException re) {
+            logger.severe("CGraphicsEnvironment._displayReconfigurationFinished: exception occurred: ", re);
+        } finally {
+            // notify the metal pipeline after processing listeners:
+            if (CGraphicsEnvironment.usingMetalPipeline()) {
+                MTLGraphicsConfig.displayReconfigurationDone();
+            }
+        }
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CGraphicsEnvironment._displayReconfigurationFinished(): exit");
         }
     }
 
@@ -229,6 +259,13 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * (Re)create all CGraphicsDevices, reuses a devices if it is possible.
      */
     private synchronized void initDevices() {
+        // Calling initDevices() on a non-AppKit thread may result in deadlocks.
+        // For instance, when initDevices() is blocked by a call to AppKit from the CGraphicsDevice constructor
+        // and AppKit is waiting on a CGraphicsEnvironment monitor via _AppEventHandler.handleNativeNotification(NOTIFY_SCREEN_CHANGE_PARAMETERS)
+        if (!CThreading.isAppKit() && SunGraphicsEnvironment.isInitialized()) {
+            throw new Error("Must only be called either from the AppKit thread or during the GraphicsEnvironment initialization");
+        }
+
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
         devices.clear();
         mainDisplayID = getMainDisplayID();

@@ -36,6 +36,7 @@
 #include "Trace.h"
 #include "WLSMSurfaceData.h"
 #include "WLBuffers.h"
+#include "WLToolkit.h"
 
 struct WLSDOps {
     SurfaceDataOps      sdOps;
@@ -62,6 +63,23 @@ typedef struct WLSDPrivate {
     jint           lockFlags;
     WLDrawBuffer * wlBuffer;
 } WLSDPrivate;
+
+static jmethodID countNewFrameMID;
+static jmethodID countDroppedFrameMID;
+static jmethodID bufferAttachedMID;
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_wl_WLSMSurfaceData_initIDs
+        (JNIEnv *env, jclass clazz)
+{
+    // NB: don't care if those "count" methods are found.
+    countNewFrameMID = (*env)->GetMethodID(env, clazz, "countNewFrame", "()V");
+    countDroppedFrameMID = (*env)->GetMethodID(env, clazz, "countDroppedFrame", "()V");
+    CHECK_NULL_THROW_IE(env,
+                        bufferAttachedMID = (*env)->GetMethodID(env, clazz, "bufferAttached", "()V"),
+                        "Failed to find method WLSMSurfaceData.bufferAttached"
+    );
+}
 
 JNIEXPORT WLSDOps * JNICALL
 WLSMSurfaceData_GetOps(JNIEnv *env, jobject sData)
@@ -107,7 +125,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_commit(JNIEnv *env, jobject wsd)
 }
 
 JNIEXPORT void JNICALL
-Java_sun_java2d_wl_WLSMSurfaceData_revalidate(JNIEnv *env, jobject wsd,
+Java_sun_java2d_wl_WLSMSurfaceData_nativeRevalidate(JNIEnv *env, jobject wsd,
                                               jint width, jint height, jint scale)
 {
 #ifndef HEADLESS
@@ -117,7 +135,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_revalidate(JNIEnv *env, jobject wsd,
         return;
     }
 
-    WLSBM_SizeChangeTo(wsdo->bufferManager, width, height, scale);
+    WLSBM_SizeChangeTo(wsdo->bufferManager, width, height);
 #endif /* !HEADLESS */
 }
 
@@ -177,6 +195,7 @@ Java_sun_java2d_wl_WLSMSurfaceData_pixelsAt(JNIEnv *env, jobject wsd, jint x, ji
     }
 
     if (rasInfo.bounds.x2 - rasInfo.bounds.x1 < width || rasInfo.bounds.y2 - rasInfo.bounds.y1 < height) {
+        SurfaceData_InvokeUnlock(env, ops, &rasInfo);
         JNU_ThrowByName(env, "java/lang/ArrayIndexOutOfBoundsException", "Surface too small");
         return NULL;
     }
@@ -313,6 +332,46 @@ WLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
 #endif
 }
 
+static void
+BufferAttachedHandler(jobject surfaceDataWeakRef)
+{
+    JNIEnv *env = getEnv();
+    jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
+    if (surfaceData != NULL) {
+        (*env)->CallVoidMethod(env, surfaceData, bufferAttachedMID);
+        (*env)->DeleteLocalRef(env, surfaceData);
+        JNU_CHECK_EXCEPTION(env);
+    }
+}
+
+static void
+CountFrameSent(jobject surfaceDataWeakRef)
+{
+    if (countNewFrameMID != NULL) {
+        JNIEnv *env = getEnv();
+        jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
+        if (surfaceData != NULL) {
+            (*env)->CallVoidMethod(env, surfaceData, countNewFrameMID);
+            (*env)->DeleteLocalRef(env, surfaceData);
+            JNU_CHECK_EXCEPTION(env);
+        }
+    }
+}
+
+static void
+CountFrameDropped(jobject surfaceDataWeakRef)
+{
+    if (countDroppedFrameMID != NULL) {
+        JNIEnv *env = getEnv();
+        jobject surfaceData = (*env)->NewLocalRef(env, surfaceDataWeakRef);
+        if (surfaceData != NULL) {
+            (*env)->CallVoidMethod(env, surfaceData, countDroppedFrameMID);
+            (*env)->DeleteLocalRef(env, surfaceData);
+            JNU_CHECK_EXCEPTION(env);
+        }
+    }
+}
+
 /*
  * Class:     sun_java2d_wl_WLSMSurfaceData
  * Method:    initOps
@@ -322,9 +381,8 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
                                            jint width,
                                            jint height,
-                                           jint scale,
-                                           jint backgroundRGB,
-                                           jint wlShmFormat)
+                                           jint wlShmFormat,
+                                           jboolean perfCountersEnabled)
 {
 #ifndef HEADLESS
 
@@ -342,11 +400,23 @@ Java_sun_java2d_wl_WLSMSurfaceData_initOps(JNIEnv *env, jobject wsd,
         height = 1;
     }
 
+    jobject surfaceDataWeakRef = NULL;
+    surfaceDataWeakRef = (*env)->NewWeakGlobalRef(env, wsd);
+    JNU_CHECK_EXCEPTION(env);
+
     wsdo->sdOps.Lock = WLSD_Lock;
     wsdo->sdOps.Unlock = WLSD_Unlock;
     wsdo->sdOps.GetRasInfo = WLSD_GetRasInfo;
     wsdo->sdOps.Dispose = WLSD_Dispose;
-    wsdo->bufferManager = WLSBM_Create(width, height, scale, backgroundRGB, wlShmFormat);
+    wsdo->bufferManager = WLSBM_Create(width, height, wlShmFormat,
+                                       surfaceDataWeakRef,
+                                       perfCountersEnabled ? CountFrameSent : NULL,
+                                       perfCountersEnabled ? CountFrameDropped : NULL,
+                                       BufferAttachedHandler);
+    if (wsdo->bufferManager == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Failed to create Wayland surface buffer manager");
+        return;
+    }
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     // Recursive mutex is required because blit can be done with both source

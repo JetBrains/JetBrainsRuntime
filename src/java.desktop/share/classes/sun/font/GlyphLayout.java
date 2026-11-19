@@ -76,6 +76,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.WeakHashMap;
 
 import static java.lang.Character.*;
@@ -95,7 +96,6 @@ public final class GlyphLayout {
     private Point2D.Float _pt;
     private FontStrikeDesc _sd;
     private float[] _mat;
-    private int _typo_flags;
     private int _offset;
 
     /**
@@ -260,14 +260,6 @@ public final class GlyphLayout {
 
         init(count);
 
-        // need to set after init
-        // go through the back door for this
-        if (font.hasLayoutAttributes()) {
-            AttributeValues values = ((AttributeMap)font.getAttributes()).getValues();
-            if (values.getKerning() != 0) _typo_flags |= 0x1;
-            if (values.getLigatures() != 0) _typo_flags |= 0x2;
-        }
-
         _offset = offset;
 
         // use cache now - can we use the strike cache for this?
@@ -284,9 +276,11 @@ public final class GlyphLayout {
 
         int min = 0;
         int max = text.length;
+        boolean ltrDirection = true;
+
         if (flags != 0) {
             if ((flags & Font.LAYOUT_RIGHT_TO_LEFT) != 0) {
-              _typo_flags |= 0x80000000; // RTL
+                ltrDirection = false; // RTL
             }
 
             if ((flags & Font.LAYOUT_NO_START_CONTEXT) != 0) {
@@ -305,36 +299,19 @@ public final class GlyphLayout {
 
         _textRecord.init(text, offset, lim, min, max);
         int start = offset;
-        if (font2D instanceof CompositeFont composite) {
-            _scriptRuns.init(text, offset, count); // ??? how to handle 'common' chars
-            _fontRuns.init(composite, text, offset, lim);
-            while (_scriptRuns.next()) {
-                int limit = _scriptRuns.getScriptLimit();
-                int script = _scriptRuns.getScriptCode();
-                while (_fontRuns.next(script, limit)) {
-                    Font2D pfont = _fontRuns.getFont();
-                    /* layout can't deal with NativeFont instances. The
-                     * native font is assumed to know of a suitable non-native
-                     * substitute font. This currently works because
-                     * its consistent with the way NativeFonts delegate
-                     * in other cases too.
-                     */
-                    if (pfont instanceof NativeFont nf) {
-                        pfont = nf.getDelegateFont();
-                    }
-                    int gmask = _fontRuns.getGlyphMask();
-                    int pos = _fontRuns.getPos();
-                    nextEngineRecord(start, pos, script, pfont, gmask);
-                    start = pos;
-                }
-            }
-        } else {
-            _scriptRuns.init(text, offset, count); // ??? don't worry about 'common' chars
-            while (_scriptRuns.next()) {
-                int limit = _scriptRuns.getScriptLimit();
-                int script = _scriptRuns.getScriptCode();
-                nextEngineRecord(start, limit, script, font2D, 0);
-                start = limit;
+        _scriptRuns.init(text, offset, count); // ??? how to handle 'common' chars
+        _fontRuns.init(font2D, text, offset, lim);
+        while (_scriptRuns.next()) {
+            int limit = _scriptRuns.getScriptLimit();
+            int script = _scriptRuns.getScriptCode();
+            while (_fontRuns.next(limit)) {
+                Font2D.SlotInfo slotInfo = _fontRuns.getSlotInfo();
+                Font2D pfont = slotInfo.font;
+                int slotShift = slotInfo.slotShift;
+                int slot = _fontRuns.getSlot();
+                int pos = _fontRuns.getPos();
+                nextEngineRecord(start, pos, script, pfont, slot, slotShift);
+                start = pos;
             }
         }
 
@@ -342,7 +319,7 @@ public final class GlyphLayout {
         int stop = _ercount;
         int dir = 1;
 
-        if (_typo_flags < 0) { // RTL
+        if (!ltrDirection) { // RTL
             ix = stop - 1;
             stop = -1;
             dir = -1;
@@ -354,7 +331,7 @@ public final class GlyphLayout {
             EngineRecord er = _erecords.get(ix);
             for (;;) {
                 try {
-                    er.layout();
+                    er.layout(ltrDirection, FontAccess.getFontAccess().getFeatures(font));
                     break;
                 }
                 catch (IndexOutOfBoundsException e) {
@@ -401,12 +378,11 @@ public final class GlyphLayout {
     }
 
     private void init(int capacity) {
-        this._typo_flags = 0;
         this._ercount = 0;
         this._gvdata.init(capacity);
     }
 
-    private void nextEngineRecord(int start, int limit, int script, Font2D font, int gmask) {
+    private void nextEngineRecord(int start, int limit, int script, Font2D font, int slot, int slotShift) {
         EngineRecord er = null;
         if (_ercount == _erecords.size()) {
             er = new EngineRecord();
@@ -414,7 +390,7 @@ public final class GlyphLayout {
         } else {
             er = _erecords.get(_ercount);
         }
-        er.init(start, limit, font, script, gmask);
+        er.init(start, limit, font, script, slot, slotShift);
         ++_ercount;
     }
 
@@ -523,7 +499,8 @@ public final class GlyphLayout {
     private final class EngineRecord {
         private int start;
         private int limit;
-        private int gmask;
+        private int slot;
+        private int slotShift;
         private int eflags;
         private Font2D font;
         private int script;
@@ -531,12 +508,13 @@ public final class GlyphLayout {
         EngineRecord() {
         }
 
-        void init(int start, int limit, Font2D font, int script, int gmask) {
+        void init(int start, int limit, Font2D font, int script, int slot, int slotShift) {
             this.start = start;
             this.limit = limit;
             this.font = font;
             this.script = script;
-            this.gmask = gmask;
+            this.slot = slot;
+            this.slotShift = slotShift;
             this.eflags = 0;
 
             // only request canonical substitution if we have combining marks
@@ -559,11 +537,11 @@ public final class GlyphLayout {
             }
         }
 
-        void layout() {
+        void layout(boolean ltrDirection, String[] features) {
             _textRecord.start = start;
             _textRecord.limit = limit;
-            SunLayoutEngine.layout(font, script, _sd, _mat, gmask, start - _offset, _textRecord,
-                          _typo_flags | eflags, _pt, _gvdata);
+            SunLayoutEngine.layout(font, script, _sd, _mat, slot, slotShift, start - _offset, _textRecord,
+                    ltrDirection, features, _pt, _gvdata);
         }
     }
 }

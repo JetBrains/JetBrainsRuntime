@@ -29,59 +29,40 @@ package sun.java2d.vulkan;
 import java.awt.AlphaComposite;
 import sun.awt.SunHints;
 import sun.awt.image.PixelConverter;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.java2d.SurfaceDataProxy;
+import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
+import sun.java2d.loops.MaskFill;
 import sun.java2d.loops.SurfaceType;
+import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
+import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.ParallelogramPipe;
 import sun.java2d.pipe.PixelToParallelogramConverter;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
-import java.awt.GraphicsEnvironment;
+import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
-import java.awt.image.ColorModel;
+import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
+import java.awt.image.VolatileImage;
+
+import static sun.java2d.pipe.BufferedOpCodes.FLUSH_BUFFER;
 import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
+import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
 
 
 public abstract class VKSurfaceData extends SurfaceData
-        implements AccelSurface {
+        implements BufferedSurfaceDataExt, AccelSurface {
 
-    /**
-     * Pixel formats
-     */
-    public static final int PF_INT_ARGB        = 0;
-    public static final int PF_INT_ARGB_PRE    = 1;
-    public static final int PF_INT_RGB         = 2;
-    public static final int PF_INT_RGBX        = 3;
-    public static final int PF_INT_BGR         = 4;
-    public static final int PF_INT_BGRX        = 5;
-    public static final int PF_USHORT_565_RGB  = 6;
-    public static final int PF_USHORT_555_RGB  = 7;
-    public static final int PF_USHORT_555_RGBX = 8;
-    public static final int PF_BYTE_GRAY       = 9;
-    public static final int PF_USHORT_GRAY     = 10;
-    public static final int PF_3BYTE_BGR       = 11;
-    /**
-     * SurfaceTypes
-     */
-
-    private static final String DESC_VK_SURFACE = "VK Surface";
-    private static final String DESC_VK_SURFACE_RTT =
-            "VK Surface (render-to-texture)";
-    private static final String DESC_VK_TEXTURE = "VK Texture";
-
-
-    static final SurfaceType VKSurface =
-            SurfaceType.Any.deriveSubType(DESC_VK_SURFACE,
-                    PixelConverter.ArgbPre.instance);
-    static final SurfaceType VKSurfaceRTT =
-            VKSurface.deriveSubType(DESC_VK_SURFACE_RTT);
-    static final SurfaceType VKTexture =
-            SurfaceType.Any.deriveSubType(DESC_VK_TEXTURE);
+    // We want non-premultiplied alpha to prevent precision loss, so use PixelConverter.Argb
+    // See also VKUtil_DecodeJavaColor.
+    static final SurfaceType VKSurface = SurfaceType.Any.deriveSubType("VK Surface", PixelConverter.Argb.instance);
 
     protected static VKRenderer vkRenderPipe;
     protected static PixelToParallelogramConverter vkTxRenderPipe;
@@ -90,73 +71,60 @@ public abstract class VKSurfaceData extends SurfaceData
     protected static VKDrawImage vkImagePipe;
 
     static {
-        if (!GraphicsEnvironment.isHeadless()) {
-            VKRenderQueue rq = VKRenderQueue.getInstance();
-            vkImagePipe = new VKDrawImage();
-            vkTextPipe = new VKTextRenderer(rq);
-            vkRenderPipe = new VKRenderer(rq);
-            if (GraphicsPrimitive.tracingEnabled()) {
-                vkTextPipe = vkTextPipe.traceWrap();
-                //The wrapped vkRenderPipe will wrap the AA pipe as well...
-                vkAAPgramPipe = vkRenderPipe.traceWrap();
-            }
-            vkAAPgramPipe = vkRenderPipe.getAAParallelogramPipe();
-            vkTxRenderPipe =
-                    new PixelToParallelogramConverter(vkRenderPipe, vkRenderPipe, 1.0, 0.25, true);
-
-            VKBlitLoops.register();
-            VKMaskFill.register();
-            VKMaskBlit.register();
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        vkImagePipe = new VKDrawImage();
+        vkTextPipe = new VKTextRenderer(rq);
+        vkRenderPipe = new VKRenderer(rq);
+        if (GraphicsPrimitive.tracingEnabled()) {
+            vkTextPipe = vkTextPipe.traceWrap();
+            //The wrapped vkRenderPipe will wrap the AA pipe as well...
+            vkAAPgramPipe = vkRenderPipe.traceWrap();
         }
+        vkAAPgramPipe = vkRenderPipe.getAAParallelogramPipe();
+        vkTxRenderPipe = new PixelToParallelogramConverter(vkRenderPipe, vkRenderPipe, 1.0, 0.25, true);
     }
 
-    protected final int scale;
-    protected final int width;
-    protected final int height;
-    protected int type;
-    private VKGraphicsConfig graphicsConfig;
-    // these fields are set from the native code when the surface is
-    // initialized
-    private int nativeWidth;
-    private int nativeHeight;
+    private final VKFormat format;
+    protected VKGraphicsConfig gc;
+    protected double scale;
+    protected int width;
+    protected int height;
+    private int type;
 
-    /**
-     * Returns the appropriate SurfaceType corresponding to the given Metal
-     * surface type constant (e.g. TEXTURE -> MTLTexture).
-     */
-    private static SurfaceType getCustomSurfaceType(int vkType) {
-        switch (vkType) {
-            case TEXTURE:
-                return VKTexture;
-            case RT_TEXTURE:
-                return VKSurfaceRTT;
-            default:
-                return VKSurface;
-        }
-    }
-
-    protected VKSurfaceData(VKGraphicsConfig gc, ColorModel cm, int type, int width, int height)
-    {
-        super(getCustomSurfaceType(type), cm);
-        this.graphicsConfig = gc;
+    protected VKSurfaceData(VKFormat format, int transparency, int type) {
+        super(format.getSurfaceType(transparency), format.getFormatModel(transparency).getColorModel());
+        this.format = format;
         this.type = type;
-        setBlitProxyCache(gc.getSurfaceDataProxyCache());
-
-        // TEXTURE shouldn't be scaled, it is used for managed BufferedImages.
-        scale = 1;
-        this.width = width * scale;
-        this.height = height * scale;
     }
 
+    public VKFormat getFormat() {
+        return format;
+    }
 
+    @Override
+    public double getDefaultScaleX() {
+        return scale;
+    }
+
+    @Override
+    public double getDefaultScaleY() {
+        return scale;
+    }
 
     /**
      * Returns one of the surface type constants defined above.
      */
+    @Override
     public final int getType() {
         return type;
     }
 
+    @Override
+    public GraphicsConfiguration getDeviceConfiguration() {
+        return (GraphicsConfiguration) gc;
+    }
+
+    @Override
     public void flush() {
         invalidate();
         VKRenderQueue rq = VKRenderQueue.getInstance();
@@ -174,28 +142,66 @@ public abstract class VKSurfaceData extends SurfaceData
         }
     }
 
-
-    public Raster getRaster(int x, int y, int w, int h) {
-        throw new InternalError("not implemented yet");
-    }
-
-
-
-    public Rectangle getNativeBounds() {
+    @Override
+    public void commit() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
         try {
-            return new Rectangle(nativeWidth, nativeHeight);
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(FLUSH_BUFFER);
+            buf.putLong(getNativeOps());
+
+            rq.flushNow();
         } finally {
             rq.unlock();
         }
+    }
+
+    /**
+     * Disposes the native resources associated with the given VKSurfaceData
+     * (referenced by the pData parameter).  This method is invoked from
+     * the native Dispose() method from the Disposer thread when the
+     * Java-level VKSurfaceData object is about to go away.
+     */
+    static void dispose(long pData) {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(DISPOSE_SURFACE);
+            buf.putLong(pData);
+
+            // this call is expected to complete synchronously, so flush now
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+    }
+
+    public BufferedImage getSnapshot(int x, int y, int width, int height) {
+        BufferedImage image = getFormat().createCompatibleImage(width, height, getTransparency());
+        SurfaceData sd = SurfaceData.getPrimarySurfaceData(image);
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa, sd.getSurfaceType());
+        blit.Blit(this, sd, AlphaComposite.Src, null, x, y, 0, 0, width, height);
+        return image;
+    }
+
+    public Raster getRaster(int x, int y, int w, int h) {
+        return getSnapshot(x, y, w, h).getRaster().createTranslatedChild(x, y);
+    }
+
+    @Override
+    public Rectangle getNativeBounds() {
+        return new Rectangle(width, height);
     }
 
     public void validatePipe(SunGraphics2D sg2d) {
         TextPipe textpipe;
         boolean validated = false;
 
-        // MTLTextRenderer handles both AA and non-AA text, but
+        // VKTextRenderer handles both AA and non-AA text, but
         // only works with the following modes:
         // (Note: For LCD text we only enter this code path if
         // canRenderLCDText() has already validated that the mode is
@@ -243,7 +249,7 @@ public abstract class VKSurfaceData extends SurfaceData
             }
         } else {
             if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) {
-                if (graphicsConfig.isCapPresent(CAPS_PS30) &&
+                if (getGraphicsConfig().isCapPresent(CAPS_PS30) &&
                         (sg2d.imageComp == CompositeType.SrcOverNoEa ||
                                 sg2d.imageComp == CompositeType.SrcOver))
                 {
@@ -296,9 +302,71 @@ public abstract class VKSurfaceData extends SurfaceData
         sg2d.imagepipe = vkImagePipe;
     }
 
-    public VKGraphicsConfig getGraphicsConfig() {
-        return graphicsConfig;
+    @Override
+    protected MaskFill getMaskFill(SunGraphics2D sg2d) {
+        if (sg2d.paintState > SunGraphics2D.PAINT_ALPHACOLOR) {
+            /*
+             * We can only accelerate non-Color MaskFill operations if
+             * all of the following conditions hold true:
+             *   - there is an implementation for the given paintState
+             *   - the current Paint can be accelerated for this destination
+             *   - multitexturing is available (since we need to modulate
+             *     the alpha mask texture with the paint texture)
+             *
+             * In all other cases, we return null, in which case the
+             * validation code will choose a more general software-based loop.
+             */
+            if (!VKPaints.isValid(sg2d) ||
+                    !gc.isCapPresent(CAPS_MULTITEXTURE))
+            {
+                return null;
+            }
+        }
+        return super.getMaskFill(sg2d);
+
     }
 
-    public abstract boolean isOnScreen();
+    public VKGraphicsConfig getGraphicsConfig() {
+        return (VKGraphicsConfig) getDeviceConfiguration();
+    }
+
+    @Override
+    public SurfaceDataProxy makeProxyFor(SurfaceData srcData) {
+        return VKSurfaceDataProxy.createProxy(srcData, getGraphicsConfig());
+    }
+
+    protected int revalidate(VKGraphicsConfig gc) {
+        if (gc.getFormat() != format) return VolatileImage.IMAGE_INCOMPATIBLE;
+        else if (this.gc == gc) return VolatileImage.IMAGE_OK;
+        // TODO proxy cache needs to be cleared for this surface data?
+        setBlitProxyCache(gc.getGPU().getSurfaceDataProxyCache());
+        this.gc = gc;
+        return VolatileImage.IMAGE_RESTORED;
+    }
+
+    private native boolean configureNow(long pData, long pDevice, int width, int height);
+
+    /**
+     * For any surface, this can return false in case of an allocation failure.
+     * For a window surface, this can also return false when reallocation is deferred until the end of the frame.
+     * @return true iff image is immediately ready at the requested dimensions.
+     */
+    protected boolean configure() {
+        VKRenderQueue rq = VKRenderQueue.getInstance();
+        rq.lock();
+        boolean[] imageReady = {false};
+        try {
+            rq.flushAndInvokeNow(() -> {
+                imageReady[0] = configureNow(getNativeOps(), gc.getGPU().getNativeHandle(), width, height);
+            });
+        } finally {
+            rq.unlock();
+        }
+        return imageReady[0];
+    }
+
+    @Override
+    public BufferedContext getContext() {
+        return VKContext.INSTANCE;
+    }
 }

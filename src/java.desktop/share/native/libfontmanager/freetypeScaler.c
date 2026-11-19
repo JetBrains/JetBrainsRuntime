@@ -57,23 +57,52 @@
 #include FT_MODULE_H
 #include FT_LCD_FILTER_H
 
-// Linux is built with system Freetype by default,
-// and it's often a bit old and doesn't have FT_COLOR_H.
-// Thus, we disable colored outlines on Linux to be able
-// to build on older Linuxes, this is not a big problem,
-// as Linux uses bitmap emoji anyway.
 #if defined(_WIN32) || defined(MACOSX)
 #include FT_COLOR_H
-#define ENABLE_COLOR_OUTLINES
+#define COLOR_OUTLINES_AVAILABLE (1)
+#else
+// Linux is built with system Freetype by default,
+// and it's often a bit old and doesn't have FT_COLOR_H.
+// Thus, we load required symbols dynamically on Linux.
+#define DYNAMIC_COLOR_OUTLINES
+
+typedef struct FT_Color__Dynamic {
+    FT_Byte  blue;
+    FT_Byte  green;
+    FT_Byte  red;
+    FT_Byte  alpha;
+} FT_Color_Dynamic;
+
+typedef struct FT_LayerIterator__Dynamic {
+    FT_UInt   num_layers;
+    FT_UInt   layer;
+    FT_Byte*  p;
+} FT_LayerIterator_Dynamic;
+
+#define FT_Color FT_Color_Dynamic
+#define FT_LayerIterator FT_LayerIterator_Dynamic
+
+typedef FT_Error (*FT_Palette_Select_Func)(FT_Face     face,
+                                           FT_UShort   palette_index,
+                                           FT_Color*  *apalette);
+
+typedef FT_Bool (*FT_Get_Color_Glyph_Layer_Func)(FT_Face            face,
+                                                 FT_UInt            base_glyph,
+                                                 FT_UInt           *aglyph_index,
+                                                 FT_UInt           *acolor_index,
+                                                 FT_LayerIterator*  iterator);
+
+FT_Palette_Select_Func FT_Palette_Select_Dynamic = NULL;
+FT_Get_Color_Glyph_Layer_Func FT_Get_Color_Glyph_Layer_Dynamic = NULL;
+
+#define FT_Palette_Select FT_Palette_Select_Dynamic
+#define FT_Get_Color_Glyph_Layer FT_Get_Color_Glyph_Layer_Dynamic
+#define COLOR_OUTLINES_AVAILABLE (FT_Palette_Select && FT_Get_Color_Glyph_Layer)
 #endif
 
 #ifndef DISABLE_FONTCONFIG
-/* Use bundled fontconfig.h for now */
-#include "fontconfig.h"
-#endif
-
-#ifndef FC_LCD_FILTER
-#define FC_LCD_FILTER	"lcdfilter"
+#include "fontconfigmanager.h"
+#include <fontconfig/fontconfig.h>
 #endif
 
 #ifndef FC_LCD_NONE
@@ -101,15 +130,7 @@
 #define  FT26Dot6ToIntRound(x) (((int)(x + (1 << 5))) >> 6)
 #define  FT26Dot6ToIntCeil(x) (((int)(x - 1 + (1 << 6))) >> 6)
 #define  IntToFT26Dot6(x) (((FT_Fixed)(x)) << 6)
-#define  DEFAULT_DPI 72
-#define  MAX_DPI 1024
-#define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
 #define  FLOOR_DIV(X, Y) ((X) >= 0 ? (X) / (Y) : ((X) - (Y) + 1) / (Y))
-
-#ifndef DISABLE_FONTCONFIG
-#define FONTCONFIG_DLL JNI_LIB_NAME("fontconfig")
-#define FONTCONFIG_DLL_VERSIONED VERSIONED_JNI_LIB_NAME("fontconfig", "1")
-#endif
 
 #ifndef FALSE
 #define FALSE 0
@@ -216,77 +237,13 @@ static jmethodID invalidateScalerMID;
 static jboolean  debugFonts; // Stores the value of FontUtilities.debugFonts()
 static jmethodID getDefaultToolkitMID;
 static jclass tkClass;
-static jmethodID getScreenResolutionMID;
 static jfieldID platNameFID;
 static jfieldID familyNameFID;
 
-#ifndef DISABLE_FONTCONFIG
-typedef FcBool (*FcPatternAddPtrType) (FcPattern *p, const char *object, FcValue value, FcBool append);
-typedef FcBool (*FcPatternAddBoolPtrType) (FcPattern *p, const char *object, FcBool b);
-typedef FcBool (*FcPatternAddDoublePtrType) (FcPattern *p, const char *object, double d);
-typedef FcBool (*FcConfigSubstitutePtrType) (FcConfig *config, FcPattern *p, FcMatchKind kind);
-typedef void (*FcDefaultSubstitutePtrType) (FcPattern *pattern);
-typedef FcPattern* (*FcPatternCreatePtrType) ();
-typedef FcPattern* (*FcFontMatchPtrType) (FcConfig *config, FcPattern *p, FcResult *result);
-typedef void (*FcPatternDestroyPtrType) (FcPattern *p);
-typedef FcResult (*FcPatternGetBoolPtrType) (const FcPattern *p, const char *object, int n, FcBool *b);
-typedef FcResult (*FcPatternGetIntegerPtrType) (const FcPattern *p, const char *object, int n, int *i);
-typedef FT_Error (*FtLibrarySetLcdFilterPtrType) (FT_Library library, FT_LcdFilter  filter);
-typedef FcBool (*FcConfigParseAndLoadPtrType) (FcConfig *config, const FcChar8 *file, FcBool complain);
-typedef FcBool (*FcConfigSetCurrentPtrType) (FcConfig *config);
-typedef FcConfig * (*FcInitLoadConfigAndFontsPtrType)();
-typedef int (*FcGetVersionPtrType)();
-#endif
-
-static void *libFontConfig = NULL;
 static jboolean logFC = JNI_FALSE;
 static jboolean logFFS = JNI_FALSE;
 
-#ifndef DISABLE_FONTCONFIG
-static FcPatternAddPtrType FcPatternAddPtr;
-static FcPatternAddBoolPtrType FcPatternAddBoolPtr;
-static FcPatternAddDoublePtrType FcPatternAddDoublePtr;
-static FcConfigSubstitutePtrType FcConfigSubstitutePtr;
-static FcDefaultSubstitutePtrType FcDefaultSubstitutePtr;
-static FcPatternCreatePtrType FcPatternCreatePtr;
-static FcFontMatchPtrType FcFontMatchPtr;
-static FcPatternDestroyPtrType FcPatternDestroyPtr;
-static FcPatternGetBoolPtrType FcPatternGetBoolPtr;
-static FcPatternGetIntegerPtrType FcPatternGetIntegerPtr;
-static FcConfigParseAndLoadPtrType FcConfigParseAndLoadPtr;
-static FcConfigSetCurrentPtrType FcConfigSetCurrentPtr;
-static FcInitLoadConfigAndFontsPtrType FcInitLoadConfigAndFontsPtr;
-static FcGetVersionPtrType FcGetVersionPtr;
-#endif
-
 static FT_UnitVector subpixelGlyphResolution;
-
-static void* openFontConfig() {
-    void* libfontconfig = NULL;
-#ifndef DISABLE_FONTCONFIG
-    char *fcLogEnabled = getenv("OPENJDK_FFS_LOG_FC");
-
-    if (fcLogEnabled != NULL && !strcmp(fcLogEnabled, "yes")) {
-        logFC = JNI_TRUE;
-    }
-
-    char *useFC = getenv("OPENJDK_FFS_USE_FC");
-    if (useFC != NULL && !strcmp(useFC, "no")) {
-        if (logFC) fprintf(stderr, "FC_LOG: fontconfig disabled in freetypescaler\n");
-        return NULL;
-    }
-
-    libfontconfig = dlopen(FONTCONFIG_DLL_VERSIONED, RTLD_LOCAL | RTLD_LAZY);
-    if (libfontconfig == NULL) {
-        libfontconfig = dlopen(FONTCONFIG_DLL, RTLD_LOCAL | RTLD_LAZY);
-        if (libfontconfig == NULL) {
-            if (logFC) fprintf(stderr, "FC_LOG: cannot open %s\n", FONTCONFIG_DLL);
-            return NULL;
-        }
-    }
-#endif
-    return libfontconfig;
-}
 
 JNIEXPORT void JNICALL
 Java_sun_font_FreetypeFontScaler_initIDs(
@@ -316,56 +273,23 @@ Java_sun_font_FreetypeFontScaler_initIDs(
     getDefaultToolkitMID =
         (*env)->GetStaticMethodID(env, TKClass, "getDefaultToolkit",
                                   "()Ljava/awt/Toolkit;");
-    getScreenResolutionMID =
-        (*env)->GetMethodID(env, TKClass, "getScreenResolution", "()I");
     tkClass = (*env)->NewGlobalRef(env, TKClass);
     platNameFID = (*env)->GetFieldID(env, PFClass, "platName", "Ljava/lang/String;");
     familyNameFID = (*env)->GetFieldID(env, PFClass, "familyName", "Ljava/lang/String;");
-    libFontConfig = openFontConfig();
-#ifndef DISABLE_FONTCONFIG
-    if (libFontConfig) {
-        FcConfig* fcConfig;
-        FcBool result;
-        FcPatternAddPtr = (FcPatternAddPtrType) dlsym(libFontConfig, "FcPatternAdd");
-        FcPatternAddBoolPtr = (FcPatternAddBoolPtrType) dlsym(libFontConfig, "FcPatternAddBool");
-        FcPatternAddDoublePtr = (FcPatternAddDoublePtrType) dlsym(libFontConfig, "FcPatternAddDouble");
-        FcConfigSubstitutePtr = (FcConfigSubstitutePtrType) dlsym(libFontConfig, "FcConfigSubstitute");
-        FcDefaultSubstitutePtr = (FcDefaultSubstitutePtrType)  dlsym(libFontConfig, "FcDefaultSubstitute");
-        FcPatternCreatePtr = (FcPatternCreatePtrType)  dlsym(libFontConfig, "FcPatternCreate");
-        FcFontMatchPtr = (FcFontMatchPtrType)  dlsym(libFontConfig, "FcFontMatch");
-        FcPatternDestroyPtr = (FcPatternDestroyPtrType)  dlsym(libFontConfig, "FcPatternDestroy");
-        FcPatternGetBoolPtr = (FcPatternGetBoolPtrType)  dlsym(libFontConfig, "FcPatternGetBool");
-        FcPatternGetIntegerPtr = (FcPatternGetIntegerPtrType)  dlsym(libFontConfig, "FcPatternGetInteger");
-        FcConfigParseAndLoadPtr = (FcConfigParseAndLoadPtrType) dlsym(libFontConfig, "FcConfigParseAndLoad");
-        FcConfigSetCurrentPtr =  (FcConfigSetCurrentPtrType) dlsym(libFontConfig, "FcConfigSetCurrent");
-        FcInitLoadConfigAndFontsPtr = (FcInitLoadConfigAndFontsPtrType) dlsym(libFontConfig, "FcInitLoadConfigAndFonts");
-        FcGetVersionPtr = (FcGetVersionPtrType) dlsym(libFontConfig, "FcGetVersion");
 
-
-        if (logFC) fprintf(stderr, "FC_LOG: fontconfig version %d \n", (*FcGetVersionPtr)());
-        fcConfig = (*FcInitLoadConfigAndFontsPtr)();
-        if (fcConfig != NULL && fontConf != NULL) {
-            result = (*FcConfigParseAndLoadPtr)(fcConfig, (const FcChar8 *) fontConf, FcFalse);
-            if (logFC) fprintf(stderr, "FC_LOG: FcConfigParseAndLoad %d \n", result);
-            result = (*FcConfigSetCurrentPtr)(fcConfig);
-            if (logFC) fprintf(stderr, "FC_LOG: FcConfigSetCurrent %d \n", result);
-        }
-        else {
-            if (logFC) {
-                if (fontConf) {
-                    fprintf(stderr, "FC_LOG: FcInitLoadConfigAndFonts failed\n");
-                }
-                else {
-                    fprintf(stderr, "FC_LOG: FcInitLoadConfigAndFonts disabled\n");
-                }
-            }
-        }
+#ifdef DYNAMIC_COLOR_OUTLINES
+    void *lib = dlopen("libfreetype.so", RTLD_LOCAL|RTLD_LAZY);
+    if (!lib) {
+        lib = dlopen("libfreetype.so.6", RTLD_LOCAL|RTLD_LAZY);
+    }
+    if (lib) {
+        FT_Palette_Select = (FT_Palette_Select_Func)dlsym(lib, "FT_Palette_Select");
+        FT_Get_Color_Glyph_Layer = (FT_Get_Color_Glyph_Layer_Func)dlsym(lib, "FT_Get_Color_Glyph_Layer");
     }
 #endif
-    if (fontConf) {
-        (*env)->ReleaseStringUTFChars(env, jreFontConfName, fontConf);
-    }
 }
+
+typedef FT_Error (*FtLibrarySetLcdFilterPtrType) (FT_Library library, FT_LcdFilter  filter);
 
 static FT_Error FT_Library_SetLcdFilter_Proxy(FT_Library library, FT_LcdFilter  filter) {
 #ifndef DISABLE_FONTCONFIG
@@ -386,46 +310,6 @@ static FT_Error FT_Library_SetLcdFilter_Proxy(FT_Library library, FT_LcdFilter  
     return 0;
 #else
     return FT_Library_SetLcdFilter(library, filter);
-#endif
-}
-
-static int getScreenResolution(JNIEnv *env) {
-/*
- * Actual screen dpi is necessary only for fontconfig requests
- */
-#ifndef DISABLE_FONTCONFIG
-    jthrowable exc;
-    jclass tk = (*env)->CallStaticObjectMethod(
-        env, tkClass, getDefaultToolkitMID);
-    exc = (*env)->ExceptionOccurred(env);
-    if (exc) {
-        (*env)->ExceptionClear(env);
-        return DEFAULT_DPI;
-    }
-    int dpi = (*env)->CallIntMethod(env, tk, getScreenResolutionMID);
-
-    /* Test if there is no exception here (can get java.awt.HeadlessException)
-     * Fallback to default DPI otherwise
-     */
-    exc = (*env)->ExceptionOccurred(env);
-    if (exc) {
-        (*env)->ExceptionClear(env);
-        return DEFAULT_DPI;
-    }
-
-    /* Some configurations report invalid dpi settings */
-    if (dpi > MAX_DPI) {
-        if (logFFS) {
-            fprintf(stderr, "FFS_LOG: Invalid dpi reported (%d) replaced with default (%d)\n", dpi, DEFAULT_DPI);
-        }
-        return DEFAULT_DPI;
-    }
-    if (logFFS) {
-        fprintf(stderr, "FFS_LOG: Screen Resolution (%d) dpi\n", dpi);
-    }
-    return dpi;
-#else
-    return DEFAULT_DPI;
 #endif
 }
 
@@ -958,25 +842,33 @@ static void setDefaultScalerSettings(FTScalerContext *context) {
     context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
 }
 
+#ifndef DISABLE_FONTCONFIG
+static FcBool getRenderingSettingsField(int *target, int value) {
+    *target = value;
+    return (value != -1) ? FcTrue : FcFalse;
+}
+#endif
+
 static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo, FTScalerContext *context,
                           FT_Bool configureFont) {
     FT_Matrix matrix;
     int errCode = 0;
     scalerInfo->env = env;
     scalerInfo->font2D = font2D;
+    const char *cfontFamilyName = NULL;
+    const char *cfontPath = NULL;
+    jstring jfontFamilyName = NULL;
+    jstring jfontPath = NULL;
 
     if (context != NULL) {
         context->colorFont = FT_HAS_COLOR(scalerInfo->face) || !FT_IS_SCALABLE(scalerInfo->face);
 
         setupTransform(&matrix, context);
         FT_Set_Transform(scalerInfo->face, &matrix, NULL);
-        FT_UInt dpi = (FT_UInt) getScreenResolution(env);
 
         if (FT_IS_SCALABLE(scalerInfo->face)) { // Standard scalable face
             context->fixedSizeIndex = -1;
-            errCode = FT_Set_Char_Size(scalerInfo->face, 0,
-                                       ADJUST_FONT_SIZE(context->ptsz, dpi),
-                                       dpi, dpi);
+            errCode = FT_Set_Char_Size(scalerInfo->face, 0, context->ptsz, 72, 72);
         } else { // Non-scalable face (that should only be bitmap faces)
             const int ptsz = context->ptsz;
             // Best size is smallest, but not smaller than requested
@@ -993,35 +885,33 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 }
             }
             context->fixedSizeIndex = bestSizeIndex;
-            errCode = FT_Set_Char_Size(scalerInfo->face, 0,
-                                       ADJUST_FONT_SIZE(bestSize, dpi),
-                                       dpi, dpi);
+            errCode = FT_Set_Char_Size(scalerInfo->face, 0, bestSize, 72, 72);
         }
+
         if (errCode) return errCode;
 
         errCode = FT_Activate_Size(scalerInfo->face->size);
         if (errCode) return errCode;
+
         if (configureFont) {
             context->renderFlags = FT_RENDER_MODE_NORMAL;
             context->lcdFilter = FT_LCD_FILTER_NONE;
             context->loadFlags = FT_LOAD_DEFAULT;
 
-            if (libFontConfig == NULL) {
-                setDefaultScalerSettings(context);
-                return 0;
-            }
-#ifndef DISABLE_FONTCONFIG
-            jstring jfontFamilyName = (*env)->GetObjectField(env, font2D, familyNameFID);
-            const char *cfontFamilyName = (*env)->GetStringUTFChars(env, jfontFamilyName, NULL);
+#ifdef DISABLE_FONTCONFIG
+            setDefaultScalerSettings(context);
+            return 0;
+#else
+            jfontFamilyName = (*env)->GetObjectField(env, font2D, familyNameFID);
+            cfontFamilyName = (*env)->GetStringUTFChars(env, jfontFamilyName, NULL);
+            jfontPath = (*env)->GetObjectField(env, font2D, platNameFID);
+            cfontPath = (*env)->GetStringUTFChars(env, jfontPath, NULL);
 
             if (logFC) {
-                jstring jfontPath = (*env)->GetObjectField(env, font2D, platNameFID);
-                char *cfontPath = (char*)(*env)->GetStringUTFChars(env, jfontPath, NULL);
                 fprintf(stderr, "FC_LOG: %s %s ", cfontFamilyName, cfontPath);
-                (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
             }
 
-            double fcSize = FT26Dot6ToDouble(ADJUST_FONT_SIZE(context->ptsz, dpi));
+            double fcSize = FT26Dot6ToDouble(context->ptsz);
             if (logFC) fprintf(stderr, " size=%f", fcSize);
 
             // Find cached value
@@ -1035,55 +925,33 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             }
 
             if (cachedMatch.fcSize == 0) {
-                cachedMatch.fcSize = fcSize;
-                clock_t begin = logFC ? clock() : 0;
-                // Setup query
-                FcPattern *fcPattern = 0;
-                fcPattern = (*FcPatternCreatePtr)();
-                FcValue fcValue;
-                fcValue.type = FcTypeString;
-
-                fcValue.u.s = (const FcChar8 *) cfontFamilyName;
-                (*FcPatternAddPtr)(fcPattern, FC_FAMILY, fcValue, FcTrue);
-                (*FcPatternAddBoolPtr)(fcPattern, FC_SCALABLE, FcTrue);
-                (*FcPatternAddDoublePtr)(fcPattern, FC_SIZE, fcSize);
-
-                (*FcConfigSubstitutePtr)(0, fcPattern, FcMatchPattern);
-                (*FcDefaultSubstitutePtr)(fcPattern);
-                FcResult matchResult = FcResultNoMatch;
-                // Match on pattern
-                FcPattern *resultPattern = 0;
-                resultPattern = (*FcFontMatchPtr)(0, fcPattern, &matchResult);
-
-                if (logFC) {
-                    clock_t end = clock();
-                    double time_spent = (double)(end - begin) * 1000.0 / CLOCKS_PER_SEC;
-                    fprintf(stderr, " in %f ms", time_spent);
-                }
-
-                if (matchResult != FcResultMatch) {
-                    (*FcPatternDestroyPtr)(fcPattern);
-                    if (logFC) fprintf(stderr, " - NOT FOUND\n");
+                RenderingFontHints renderingFontHints;
+                int status = setupRenderingFontHints(cfontFamilyName, NULL, fcSize, &renderingFontHints);
+                if (status != 0) {
+                    if (cfontPath) {
+                        (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
+                    }
+                    if (cfontFamilyName) {
+                        (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
+                    }
                     setDefaultScalerSettings(context);
                     return 0;
                 }
-                (*FcPatternDestroyPtr)(fcPattern);
-                FcPattern *pattern = resultPattern;
 
-                // Extract values from result
-                cachedMatch.fcHintingSet = (*FcPatternGetBoolPtr)(pattern, FC_HINTING, 0, &cachedMatch.fcHinting) == FcResultMatch;
+                cachedMatch.fcSize = fcSize;
 
+                cachedMatch.fcHintingSet =
+                        getRenderingSettingsField(&cachedMatch.fcHinting, renderingFontHints.fcHinting);
                 cachedMatch.fcHintStyleSet =
-                        (*FcPatternGetIntegerPtr)(pattern, FC_HINT_STYLE, 0, &cachedMatch.fcHintStyle) == FcResultMatch;
-
-                cachedMatch.fcAntialiasSet = (*FcPatternGetBoolPtr)(pattern, FC_ANTIALIAS, 0, &cachedMatch.fcAntialias) == FcResultMatch;
-                cachedMatch.fcAutohintSet = (*FcPatternGetBoolPtr)(pattern, FC_AUTOHINT, 0, &cachedMatch.fcAutohint) == FcResultMatch;
+                        getRenderingSettingsField(&cachedMatch.fcHintStyle, renderingFontHints.fcHintStyle);
+                cachedMatch.fcAntialiasSet =
+                        getRenderingSettingsField(&cachedMatch.fcAntialias, renderingFontHints.fcAntialias);
+                cachedMatch.fcAutohintSet =
+                        getRenderingSettingsField(&cachedMatch.fcAutohint, renderingFontHints.fcAutohint);
                 cachedMatch.fcLCDFilterSet =
-                        (*FcPatternGetIntegerPtr)(pattern, FC_LCD_FILTER, 0, &cachedMatch.fcLCDFilter) == FcResultMatch;
-
-                cachedMatch.fcRGBASet = (*FcPatternGetIntegerPtr)(pattern, FC_RGBA, 0, &cachedMatch.fcRGBA) == FcResultMatch;
-
-                (*FcPatternDestroyPtr)(pattern);
+                        getRenderingSettingsField(&cachedMatch.fcRGBA, renderingFontHints.fcRGBA);
+                cachedMatch.fcRGBASet =
+                        getRenderingSettingsField(&cachedMatch.fcLCDFilter, renderingFontHints.fcLCDFilter);
 
                 if (NUM_CACHED_VALUES > 0) {
                     int nextCacheIdx = scalerInfo->nextCacheIdx;
@@ -1235,8 +1103,14 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 }
             }
 
-            (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
             if (logFC) fprintf(stderr, "\n");
+
+            if (cfontPath) {
+                (*env)->ReleaseStringUTFChars(env, jfontPath, cfontPath);
+            }
+            if (cfontFamilyName) {
+                (*env)->ReleaseStringUTFChars(env, jfontFamilyName, cfontFamilyName);
+            }
 #endif
         }
 
@@ -1587,10 +1461,18 @@ static FT_BBox getTransformedBitmapBoundingBox(FT_GlyphSlot ftglyph,
     int i;
     for (i = 1; i < 4; i++) {
         FT_Vector_Transform(corners + i, transform);
-        if (corners[i].x < bb.xMin) bb.xMin = corners[i].x;
-        if (corners[i].x > bb.xMax) bb.xMax = corners[i].x;
-        if (corners[i].y < bb.yMin) bb.yMin = corners[i].y;
-        if (corners[i].y > bb.yMax) bb.yMax = corners[i].y;
+        if (corners[i].x < bb.xMin) {
+            bb.xMin = corners[i].x;
+        }
+        if (corners[i].x > bb.xMax) {
+            bb.xMax = corners[i].x;
+        }
+        if (corners[i].y < bb.yMin) {
+            bb.yMin = corners[i].y;
+        }
+        if (corners[i].y > bb.yMax) {
+            bb.yMax = corners[i].y;
+        }
     }
     bb.xMin = FT26Dot6ToInt(bb.xMin);
     bb.yMin = FT26Dot6ToInt(bb.yMin);
@@ -1640,10 +1522,18 @@ static SampledBGRABitmap createSampledBGRABitmap(FT_GlyphSlot ftglyph,
                     yFrom = y * yDownscale + yOffset,
                     xTo = xFrom + xDownscale,
                     yTo = yFrom + yDownscale;
-                if (xFrom < 0) xFrom = 0;
-                if (xTo > (int) ftglyph->bitmap.width) xTo = (int) ftglyph->bitmap.width;
-                if (yFrom < 0) yFrom = 0;
-                if (yTo > (int) ftglyph->bitmap.rows) yTo = (int) ftglyph->bitmap.rows;
+                if (xFrom < 0) {
+                    xFrom = 0;
+                }
+                if (xTo > (int) ftglyph->bitmap.width) {
+                    xTo = (int) ftglyph->bitmap.width;
+                }
+                if (yFrom < 0) {
+                    yFrom = 0;
+                }
+                if (yTo > (int) ftglyph->bitmap.rows) {
+                    yTo = (int) ftglyph->bitmap.rows;
+                }
                 int i, j;
                 for (j = yFrom; j < yTo; j++) {
                     for (i = xFrom; i < xTo; i++) {
@@ -1704,8 +1594,12 @@ static void transformBGRABitmapGlyph(FT_GlyphSlot ftglyph, GlyphInfo* glyphInfo,
                                               FT_MulFix(inv.xy, inv.xy)));
     int invScaleY = (int) sqrt(FTFixedToFloat(FT_MulFix(inv.yx, inv.yx) +
                                               FT_MulFix(inv.yy, inv.yy)));
-    if (invScaleX < 1) invScaleX = 1;
-    if (invScaleY < 1) invScaleY = 1;
+    if (invScaleX < 1) {
+        invScaleX = 1;
+    }
+    if (invScaleY < 1) {
+        invScaleY = 1;
+    }
     SampledBGRABitmap sampledBitmap =
             createSampledBGRABitmap(ftglyph, invScaleX, invScaleY);
     int x, y;
@@ -1978,10 +1872,14 @@ static jlong
     glyphInfo->subpixelResolutionX = subpixelResolutionX;
     glyphInfo->subpixelResolutionY = subpixelResolutionY;
 
-    if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_BGRA;
-    else if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD ||
-             ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_LCD;
-    else glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
+    if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA) {
+        glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_BGRA;
+    } else if (ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD ||
+             ftglyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) {
+        glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_LCD;
+    } else {
+        glyphInfo->format = sun_font_StrikeCache_PIXEL_FORMAT_GREYSCALE;
+    }
 
     if (renderImage) {
         if (ftglyph->bitmap.pixel_mode ==  FT_PIXEL_MODE_LCD && width > 0) {
@@ -2455,18 +2353,22 @@ static jboolean addColorLayersRenderData(JNIEnv* env, FTScalerContext *context,
                                          FTScalerInfo* scalerInfo, jint glyphCode,
                                          jfloat xpos, jfloat ypos, jobject result) {
 
-#ifdef ENABLE_COLOR_OUTLINES
+    if (!COLOR_OUTLINES_AVAILABLE) return JNI_FALSE;
     FT_Error error;
 
     FT_Color* colors;
     error = FT_Palette_Select(scalerInfo->face, 0, &colors);
-    if (error) return JNI_FALSE;
+    if (error) {
+        return JNI_FALSE;
+    }
 
     FT_LayerIterator iterator;
     iterator.p = NULL;
     FT_UInt glyphIndex, colorIndex;
     if (!FT_Get_Color_Glyph_Layer(scalerInfo->face, glyphCode,
-                                  &glyphIndex, &colorIndex, &iterator)) return JNI_FALSE;
+                                  &glyphIndex, &colorIndex, &iterator)) {
+        return JNI_FALSE;
+    }
     (*env)->CallVoidMethod(env, result, sunFontIDs.glyphRenderDataSetColorLayersListMID, iterator.num_layers);
     do {
         FT_Outline* outline = getFTOutlineNoSetup(context, scalerInfo, glyphIndex, xpos, ypos);
@@ -2483,9 +2385,6 @@ static jboolean addColorLayersRenderData(JNIEnv* env, FTScalerContext *context,
                                      &glyphIndex, &colorIndex, &iterator));
 
     return JNI_TRUE;
-#else
-    return JNI_FALSE;
-#endif
 }
 
 static void addBitmapRenderData(JNIEnv *env, jobject scaler, jobject font2D,
@@ -2498,7 +2397,9 @@ static void addBitmapRenderData(JNIEnv *env, jobject scaler, jobject font2D,
 
     FT_GlyphSlot ftglyph = scalerInfo->face->glyph;
 
-    if (ftglyph->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA) return;
+    if (ftglyph->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA) {
+        return;
+    }
 
     int pitch = ftglyph->bitmap.pitch / 4;
     int size = pitch * ftglyph->bitmap.rows;
@@ -2596,97 +2497,6 @@ Java_sun_font_FreetypeFontScaler_getGlyphOutlineBoundsNative(
 
 /*
  * Class:     sun_font_FreetypeFontScaler
- * Method:    getGlyphVectorOutlineNative
- * Signature: (Lsun/font/Font2D;J[IIFF)Ljava/awt/geom/GeneralPath;
- */
-JNIEXPORT jobject
-JNICALL
-Java_sun_font_FreetypeFontScaler_getGlyphVectorOutlineNative(
-        JNIEnv *env, jobject scaler, jobject font2D,
-        jlong pScalerContext, jlong pScaler,
-        jintArray glyphArray, jint numGlyphs, jfloat xpos, jfloat ypos) {
-
-    FT_Outline* outline;
-    jobject gp = NULL;
-    jbyteArray types;
-    jfloatArray coords;
-    GPData gpdata;
-    int i;
-    jint *glyphs;
-
-    FTScalerContext *context =
-         (FTScalerContext*) jlong_to_ptr(pScalerContext);
-    FTScalerInfo *scalerInfo =
-             (FTScalerInfo*) jlong_to_ptr(pScaler);
-
-    glyphs = NULL;
-    if (numGlyphs > 0 && 0xffffffffu / sizeof(jint) >= (unsigned int)numGlyphs) {
-        glyphs = (jint*) malloc(numGlyphs*sizeof(jint));
-    }
-    if (glyphs == NULL) {
-        // We reach here if:
-        // 1. numGlyphs <= 0,
-        // 2. overflow check failed, or
-        // 3. malloc failed.
-        gp = (*env)->NewObject(env, sunFontIDs.gpClass, sunFontIDs.gpCtrEmpty);
-        return gp;
-    }
-
-    (*env)->GetIntArrayRegion(env, glyphArray, 0, numGlyphs, glyphs);
-
-    gpdata.numCoords = 0;
-    for (i=0; i<numGlyphs;i++) {
-        if (glyphs[i] >= INVISIBLE_GLYPHS) {
-            continue;
-        }
-        outline = getFTOutline(env,
-                               font2D,
-                               context,
-                               scalerInfo,
-                               glyphs[i],
-                               xpos, ypos);
-
-        if (outline == NULL || outline->n_points == 0) {
-            continue;
-        }
-
-        gpdata.pointTypes  = NULL;
-        gpdata.pointCoords = NULL;
-        if (!allocateSpaceForGP(&gpdata, outline->n_points,
-                                outline->n_contours)) {
-            break;
-        }
-
-        addToGP(&gpdata, outline);
-    }
-    free(glyphs);
-
-    if (gpdata.numCoords != 0) {
-      types = (*env)->NewByteArray(env, gpdata.numTypes);
-      coords = (*env)->NewFloatArray(env, gpdata.numCoords);
-
-      if (types && coords) {
-        (*env)->SetByteArrayRegion(env, types, 0,
-                                   gpdata.numTypes, gpdata.pointTypes);
-        (*env)->SetFloatArrayRegion(env, coords, 0,
-                                    gpdata.numCoords, gpdata.pointCoords);
-
-        gp=(*env)->NewObject(env,
-                             sunFontIDs.gpClass,
-                             sunFontIDs.gpCtr,
-                             gpdata.wr,
-                             types,
-                             gpdata.numTypes,
-                             coords,
-                             gpdata.numCoords);
-        return gp;
-      }
-    }
-    return (*env)->NewObject(env, sunFontIDs.gpClass, sunFontIDs.gpCtrEmpty);
-}
-
-/*
- * Class:     sun_font_FreetypeFontScaler
  * Method:    getGlyphRenderDataNative
  * Signature: (Lsun/font/Font2D;JIFFLsun/font/GlyphRenderData;)V
  */
@@ -2705,7 +2515,9 @@ Java_sun_font_FreetypeFontScaler_getGlyphRenderDataNative(
     }
 
     FT_Error error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
-    if (error) return;
+    if (error) {
+        return;
+    }
 
     if (context->fixedSizeIndex == -1) {
         if (!context->colorFont ||
@@ -2761,13 +2573,4 @@ Java_sun_font_FreetypeFontScaler_getGlyphPointNative(
 
     return (*env)->NewObject(env, sunFontIDs.pt2DFloatClass,
                              sunFontIDs.pt2DFloatCtr, x, y);
-}
-
-JNIEXPORT void JNICALL
-JNI_OnUnload(JavaVM *vm, void *reserved) {
-    if (libFontConfig != NULL) {
-#ifndef DISABLE_FONTCONFIG
-        dlclose(libFontConfig);
-#endif
-    }
 }

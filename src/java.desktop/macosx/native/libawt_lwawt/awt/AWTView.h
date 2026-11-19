@@ -46,10 +46,10 @@
     BOOL fInputMethodInteractionEnabled;
     BOOL fKeyEventsNeeded;
     BOOL fProcessingKeystroke;
+    NSString* actualCharacters;
 
     BOOL fEnablePressAndHold;
-    BOOL fInPressAndHold;
-    BOOL fPAHNeedsToSelect;
+    BOOL fIsPressAndHold;
 
     id cglLayer; // is a sublayer of view.layer
 

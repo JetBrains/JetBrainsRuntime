@@ -26,93 +26,144 @@
 
 package sun.java2d.wl;
 
+import java.awt.AlphaComposite;
+import java.awt.Component;
+import java.awt.Window;
 import java.awt.GraphicsConfiguration;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.Raster;
+import java.awt.image.SampleModel;
+import java.awt.image.WritableRaster;
+import java.util.Objects;
 
+import sun.awt.AWTAccessor;
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLSMGraphicsConfig;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SurfaceData;
+import sun.java2d.loops.Blit;
+import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.SurfaceType;
 import sun.util.logging.PlatformLogger;
 
 /**
  * SurfaceData for shared memory buffers.
  */
-public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
+public class WLSMSurfaceData extends SurfaceData implements BufferedSurfaceDataExt, WLSurfaceDataExt, WLPixelGrabberExt {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.java2d.wl.WLSMSurfaceData");
-    private final WLComponentPeer peer;
+    private final Component target; // optional
+    private final WLSurfaceSizeListener sizeListener;
+    private WLSMGraphicsConfig gc;
+    private int width; // in pixels
+    private int height; // in pixels
 
     public native void assignSurface(long surfacePtr);
 
-    private native void initOps(int width, int height, int scale, int backgroundRGB, int wlShmFormat);
+    private native void initOps(int width, int height, int wlShmFormat, boolean perfCountersEnabled);
+    private static native void initIDs();
 
-    private WLSMSurfaceData(WLComponentPeer peer, SurfaceType surfaceType, ColorModel colorModel, int scale, int wlShmFormat) {
-        super(surfaceType, colorModel);
-        this.peer = peer;
+    static {
+        initIDs();
+    }
 
-        int backgroundRGB = peer.getBackground() != null
-                ? peer.getBackground().getRGB()
-                : 0;
-        int backgroundPixel = surfaceType.pixelFor(backgroundRGB, colorModel);
-        int width = peer.getBufferWidth();
-        int height = peer.getBufferHeight();
+    private WLSMSurfaceData(Component target, WLSurfaceSizeListener sl, WLSMGraphicsConfig gc,
+                            int width, int height, int wlShmFormat, boolean perfCountersEnabled) {
+        super(gc.getSurfaceType(), gc.getColorModel());
+        this.target = target;
+        this.sizeListener = sl;
+        this.width = width;
+        this.height = height;
+        this.gc = gc;
 
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine(String.format("Shared memory surface data %dx%d x%d scale, format %d", width, height, scale, wlShmFormat));
+        Objects.requireNonNull(sl);
+        Objects.requireNonNull(gc);
+
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("Invalid surface data size: " + width + "x" + height);
         }
 
-        initOps(width, height, scale, backgroundPixel, wlShmFormat);
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine(String.format("Shared memory surface data %dx%d, format %d", width, height, wlShmFormat));
+        }
+        initOps(width, height, wlShmFormat, perfCountersEnabled);
     }
 
     /**
      * Method for instantiating a Window SurfaceData
      */
     public static WLSMSurfaceData createData(WLComponentPeer peer, WLSMGraphicsConfig graphicsConfig) {
-        if (peer == null) {
-            throw new UnsupportedOperationException("Surface without the corresponding window peer is not supported");
-        }
-        ColorModel cm = graphicsConfig.getColorModel();
-        SurfaceType surfaceType = graphicsConfig.getSurfaceType();
-        return new WLSMSurfaceData(peer, surfaceType, cm, graphicsConfig.getScale(), graphicsConfig.getWlShmFormat());
+        Objects.requireNonNull(peer);
+        Objects.requireNonNull(graphicsConfig);
+
+        Window target = peer.getTarget() instanceof Window ? (Window) peer.getTarget() : null;
+        boolean perfCountersEnabled = target instanceof Window window && AWTAccessor.getWindowAccessor().countersEnabled(window);
+        return new WLSMSurfaceData(target, peer, graphicsConfig,
+                peer.getBufferWidth(), peer.getBufferHeight(),
+                graphicsConfig.getWlShmFormat(), perfCountersEnabled);
+    }
+
+    public static WLSMSurfaceData createData(WLSurfaceSizeListener sizeListener, int width, int height, WLSMGraphicsConfig graphicsConfig) {
+        Objects.requireNonNull(graphicsConfig);
+
+        return new WLSMSurfaceData(null, sizeListener, graphicsConfig,
+                width, height,
+                graphicsConfig.getWlShmFormat(), false);
     }
 
     @Override
     public SurfaceData getReplacement() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // It does not seem possible in Wayland to get your window's surface
+        // change mid-flight such that it needs a replacement.
+        // The only scenario when a surface gets forcibly invalidated is
+        // after WLComponentPeer.dispose(), at which point the surface
+        // is no longer needed anyway.
+        return null;
     }
 
     @Override
     public GraphicsConfiguration getDeviceConfiguration() {
-        return peer.getGraphicsConfiguration();
+        return gc;
+    }
+
+    public BufferedImage getSnapshot(int x, int y, int width, int height) {
+        ColorModel colorModel = getColorModel();
+        SampleModel sampleModel = colorModel.createCompatibleSampleModel(width, height);
+        WritableRaster raster = Raster.createWritableRaster(sampleModel, null);
+        BufferedImage image = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
+        SurfaceData sd = SurfaceData.getPrimarySurfaceData(image);
+        Blit blit = Blit.getFromCache(getSurfaceType(), CompositeType.SrcNoEa, sd.getSurfaceType());
+        blit.Blit(this, sd, AlphaComposite.Src, null, x, y, 0, 0, width, height);
+        return image;
     }
 
     @Override
     public Raster getRaster(int x, int y, int w, int h) {
-        // Can do something like the following:
-        // Raster r = getColorModel().createCompatibleWritableRaster(w, h);
-        // copy surface data to this raster
-        // save a reference to this raster
-        // return r;
-        // then in flush() check if raster was modified and take pixels from there
-        // This is obviously suboptimal and shouldn't be used in performance-critical situations.
-        throw new UnsupportedOperationException("Not implemented yet");
+        return getSnapshot(x, y, w, h).getRaster().createTranslatedChild(x, y);
     }
 
     @Override
     public Rectangle getBounds() {
-        Rectangle r = peer.getBufferBounds();
-        r.x = r.y = 0;
-        return r;
+        return new Rectangle(width, height);
     }
 
     @Override
     public Object getDestination() {
-        return peer.getTarget();
+        // NB: optional; could be null
+        return target;
     }
 
-    public native void revalidate(int width, int height, int scale);
+    public void revalidate(GraphicsConfiguration gc, int width, int height, int scale) {
+        Objects.requireNonNull(gc);
+
+        WLSMGraphicsConfig wlgc = (WLSMGraphicsConfig) gc;
+        this.gc = wlgc;
+        this.width = width;
+        this.height = height;
+
+        nativeRevalidate(width, height, scale);
+    }
 
     @Override
     public native void commit();
@@ -136,6 +187,29 @@ public class WLSMSurfaceData extends SurfaceData implements WLSurfaceDataExt {
         return pixels;
     }
 
+    private void bufferAttached() {
+        // Called from the native code when a buffer has just been attached to this surface,
+        // but the surface has not been committed yet.
+        sizeListener.updateSurfaceSize();
+    }
+
+    private void countNewFrame() {
+        // Called from the native code when this surface data has been sent to the Wayland server
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.frames");
+        }
+    }
+
+    private void countDroppedFrame() {
+        // Called from the native code when an attempt was made to send this surface data to
+        // the Wayland server, but that attempt was not successful. This can happen, for example,
+        // when those attempts are too frequent.
+        if (target instanceof Window window) {
+            AWTAccessor.getWindowAccessor().incrementCounter(window, "java2d.native.framesDropped");
+        }
+    }
+
+    private native void nativeRevalidate(int width, int height, int scale);
     private native int pixelAt(int x, int y);
     private native int [] pixelsAt(int x, int y, int width, int height);
 }

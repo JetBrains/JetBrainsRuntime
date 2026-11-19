@@ -30,12 +30,14 @@ import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Window;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,6 +49,10 @@ import sun.java2d.loops.SurfaceType;
 import sun.awt.X11.XToolkit;
 import sun.java2d.opengl.GLXGraphicsConfig;
 import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.VKEnv;
+import sun.java2d.vulkan.VKGPU;
+import sun.java2d.vulkan.VKGraphicsConfig;
+import sun.java2d.vulkan.X11VKGraphicsConfig;
 import sun.java2d.xr.XRGraphicsConfig;
 
 /**
@@ -136,12 +142,45 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return TYPE_RASTER_SCREEN;
     }
 
-    public int scaleUp(int x) {
-        return Region.clipRound(x * (double)getScaleFactor());
+    public int scaleUp(int i) {
+        return Region.clipRound(i * (double)getScaleFactor());
     }
 
-    public int scaleDown(int x) {
-        return Region.clipRound(x / (double)getScaleFactor());
+    public int scaleDown(int i) {
+        return Region.clipRound(i / (double)getScaleFactor());
+    }
+
+    public Point scaleUp(int x, int y) {
+        double ls = getScaleFactor(), lx = (x - bounds.x) * ls, ly = (y - bounds.y) * ls;
+        return new Point(
+                Region.clipRound(bounds.x + lx),
+                Region.clipRound(bounds.y + ly));
+    }
+
+    public Point scaleUpChecked(int x, int y) {
+        double ls = getScaleFactor(), lx = (x - bounds.x) * ls, ly = (y - bounds.y) * ls;
+        if (lx >= 0 && ly >= 0 && lx <= bounds.width && ly <= bounds.height) {
+            return new Point(
+                    Region.clipRound(bounds.x + lx),
+                    Region.clipRound(bounds.y + ly));
+        } else return null;
+    }
+
+    public Point scaleDown(int x, int y) {
+        double lx = x - bounds.x, ly = y - bounds.y, ls = getScaleFactor();
+        return new Point(
+                Region.clipRound(bounds.x + lx / ls),
+                Region.clipRound(bounds.y + ly / ls));
+    }
+
+    public Point scaleDownChecked(int x, int y) {
+        double lx = x - bounds.x, ly = y - bounds.y;
+        if (lx >= 0 && ly >= 0 && lx <= bounds.width && ly <= bounds.height) {
+            double ls = getScaleFactor();
+            return new Point(
+                    Region.clipRound(bounds.x + lx / ls),
+                    Region.clipRound(bounds.y + ly / ls));
+        } else return null;
     }
 
     private Rectangle getBoundsImpl() {
@@ -161,8 +200,6 @@ public final class X11GraphicsDevice extends GraphicsDevice
         }
 
         if (getScaleFactor() != 1) {
-            rect.x = scaleDown(rect.x);
-            rect.y = scaleDown(rect.y);
             rect.width = scaleDown(rect.width);
             rect.height = scaleDown(rect.height);
         }
@@ -240,6 +277,12 @@ public final class X11GraphicsDevice extends GraphicsDevice
             boolean glxSupported = X11GraphicsEnvironment.isGLXAvailable();
             boolean xrenderSupported = X11GraphicsEnvironment.isXRenderAvailable();
 
+            List<VKGraphicsConfig> vulkanGCs = List.of();
+
+            if (VKEnv.isPresentationEnabled()) {
+                vulkanGCs = VKEnv.getDevices().flatMap(VKGPU::getPresentableGraphicsConfigs).toList();
+            }
+
             boolean dbeSupported = isDBESupported();
             if (dbeSupported && doubleBufferVisuals == null) {
                 doubleBufferVisuals = new HashSet<>();
@@ -248,7 +291,12 @@ public final class X11GraphicsDevice extends GraphicsDevice
             for ( ; i < num; i++) {
                 int visNum = getConfigVisualId(i, screen);
                 int depth = getConfigDepth (i, screen);
-                if (glxSupported) {
+                if (!vulkanGCs.isEmpty()) {
+                    // FIXME: we should probably match the visual's format with the vulkan format here.
+                    // Otherwise, some configs might be broken; need to check on 'real' X11 (not Xwayland).
+                    ret[i] = X11VKGraphicsConfig.getConfig(vulkanGCs.getFirst(), this, visNum);
+                }
+                if (ret[i] == null && glxSupported) {
                     ret[i] = GLXGraphicsConfig.getConfig(this, visNum);
                 }
                 if (ret[i] == null) {
@@ -319,7 +367,13 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private void makeDefaultConfiguration() {
         if (defaultConfig == null) {
             int visNum = getConfigVisualId(0, screen);
-            if (X11GraphicsEnvironment.isGLXAvailable()) {
+            if (VKEnv.isPresentationEnabled()) {
+                List<VKGraphicsConfig> vulkanGCs = VKEnv.getDevices().flatMap(VKGPU::getPresentableGraphicsConfigs).toList();
+                if (!vulkanGCs.isEmpty()) {
+                    defaultConfig = X11VKGraphicsConfig.getConfig(vulkanGCs.getFirst(), this, visNum);
+                }
+            }
+            if (defaultConfig == null && X11GraphicsEnvironment.isGLXAvailable()) {
                 defaultConfig = GLXGraphicsConfig.getConfig(this, visNum);
                 if (X11GraphicsEnvironment.isGLXVerbose()) {
                     if (defaultConfig != null) {
@@ -620,7 +674,6 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
                     x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
                     x11gd.isScaleFactorDefault.set(false);
-                    if (X11GraphicsEnvironment.useBoundsCache()) x11gd.resetBoundsCache();
                 }
             }
         }

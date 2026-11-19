@@ -30,18 +30,31 @@
 #include <CoreVideo/CVDisplayLink.h>
 #import "common.h"
 
+#define TRACE_DISPLAY_ENABLED   0
+#define TRACE_DISPLAY_CHANGED   0
+
+#define TRACE_DISPLAY_ON        (TRACE_DISPLAY_ENABLED == 1)
+
 @interface MTLLayer : CAMetalLayer
 
 @property (nonatomic) jobject javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
+@property (readwrite, assign) NSInteger displayID;
 @property (readwrite, assign) id<MTLTexture>* buffer;
+@property (readwrite, assign) id<MTLTexture>* outBuffer;
 @property (readwrite, atomic) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 @property (readwrite, atomic) int redrawCount;
-@property (readwrite, atomic) int displayLinkFailCount;
+@property (readwrite, atomic) NSTimeInterval avgBlitFrameTime;
 
-- (id) initWithJavaLayer:(jobject)layer;
+#if TRACE_DISPLAY_ON
+@property (readwrite, atomic) NSTimeInterval avgNextDrawableTime;
+@property (readwrite, atomic) CFTimeInterval lastPresentedTime;
+#endif
+@property (readwrite, atomic) BOOL perfCountersEnabled;
+
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled;
 
 - (void) blitTexture;
 - (void) fillParallelogramCtxX:(jfloat)x
@@ -53,8 +66,15 @@
 - (void) blitCallback;
 - (void) display;
 - (void) startRedraw;
+- (void) startRedrawIfNeeded;
 - (void) stopRedraw:(BOOL)force;
+- (void) stopRedraw:(MTLContext*)mtlc displayID:(jint)displayID force:(BOOL)force;
+- (void) flushBuffer;
 - (void) commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
+
+- (void) addStatCallback:(int)type value:(double)value;
+- (void) countFramePresentedCallback;
+- (void) countFrameDroppedCallback;
 @end
 
 #endif /* MTLLayer_h_Included */

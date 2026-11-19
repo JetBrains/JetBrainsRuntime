@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -602,11 +602,8 @@ typedef struct GtkApi {
                     GError **error, jmethodID icon_upcall_method, jobject this);
     void (*gdk_threads_enter)(void);
     void (*gdk_threads_leave)(void);
-    gboolean (*gtk_show_uri)(GdkScreen *screen, const gchar *uri,
+    gboolean (*gtk_show_uri_on_window)(GdkWindow *parent, const gchar *uri,
                              guint32 timestamp, GError **error);
-    gboolean (*get_drawable_data)(JNIEnv *env, jintArray pixelArray,
-                                  jint x, jint y, jint width, jint height,
-                                  jint jwidth, int dx, int dy);
     void (*g_free)(gpointer mem);
 
     gchar* (*gtk_file_chooser_get_filename)(GtkFileChooser *chooser);
@@ -640,9 +637,9 @@ typedef struct GtkApi {
     gchar* (*g_path_get_dirname) (const gchar *file_name);
     void (*gtk_widget_destroy)(void *widget);
     void (*gtk_window_present)(void *window);
+    void (*gtk_window_present_with_time)(void *window, guint32 timestamp);
     void (*gtk_window_move)(void *window, gint x, gint y);
     void (*gtk_window_resize)(void *window, gint width, gint height);
-    GdkWindow *(*get_window)(void *widget);
 
     void (*g_object_unref)(gpointer object);
     GList* (*g_list_append) (GList *list, gpointer data);
@@ -671,6 +668,8 @@ typedef struct GtkApi {
                           ...);
     const gchar *(*g_variant_get_string)(GVariant *value, gsize *length);
     guint32 (*g_variant_get_uint32)(GVariant *value);
+    const gchar *(*g_variant_get_type_string)(GVariant *value);
+    gboolean (*g_variant_is_of_type)(GVariant *value, const GVariantType *type);
 
     gboolean (*g_variant_lookup)(GVariant *dictionary,
                                  const gchar *key,
@@ -780,6 +779,9 @@ typedef struct GtkApi {
                                gint index_,
                                GError **error);
 
+    gint (*g_unix_fd_list_get_length)(GUnixFDList* list);
+
+
     GdkPixbuf *(*gdk_pixbuf_new)(GdkColorspace colorspace,
                                  gboolean has_alpha,
                                  int bits_per_sample,
@@ -819,6 +821,9 @@ typedef struct GtkApi {
             int dest_x,
             int dest_y
     );
+
+    gchar *(*g_variant_print)(GVariant *value, gboolean type_annotate);
+    gchar *(*g_strconcat)(const gchar *string1, ...);
 
     /* </for screencast, used only with GTK3>  */
 } GtkApi;

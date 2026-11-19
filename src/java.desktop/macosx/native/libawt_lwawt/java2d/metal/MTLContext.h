@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,15 @@
 // https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
 #define MTL_GPU_FAMILY_MAC_TXT_SIZE 16384
 
+typedef enum {
+    MTLDCM_SYSTEM_UNDEFINED,
+    MTLDCM_SYSTEM_SLEEP,
+    MTLDCM_SYSTEM_WAKEUP,
+    MTLDCM_DISPLAY_SLEEP,
+    MTLDCM_DISPLAY_WAKEUP,
+    MTLDCM_DISPLAY_RECONFIGURE
+} MTLContextStoreNotification;
+
 /**
  * The MTLCommandBufferWrapper class contains command buffer and
  * associated resources that will be released in completion handler
@@ -68,8 +77,6 @@
 @property (readwrite, retain) MTLPaint * paint;
 @property (readonly) MTLTransform * transform;
 @property (readonly) MTLClip * clip;
-@property (readonly) id syncEvent;
-@property (readwrite, atomic) UInt64 syncCount;
 
 /**
  * There are two separate glyph caches: for AA and for LCD.
@@ -87,9 +94,12 @@
 @property jboolean      useMaskColor;
 
 @property (readonly, strong)   id<MTLDevice>   device;
+@property (readonly) NSString*                 shadersLib;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLCommandQueue>         blitCommandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
+
+@property (readonly) NSMutableDictionary<NSNumber*, NSValue*>* displayLinkStates;
 
 @property (readonly) EncoderManager * encoderManager;
 @property (readonly) MTLSamplerManager * samplerManager;
@@ -108,8 +118,15 @@
  */
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
-- (id)initWithDevice:(jint)displayID shadersLib:(NSString*)shadersLib;
++ (NSMutableDictionary*) contextStore;
++ (void) processContextStoreNotification:(MTLContextStoreNotification)notification;
+
++ (MTLContext*) createContextWithDeviceIfAbsent:(jint)displayID shadersLib:(NSString*)mtlShadersLib;
+- (id)initWithDevice:(id<MTLDevice>)device shadersLib:(NSString*)mtlShadersLib;
 - (void)dealloc;
+
+- (void)handleDisplayLink:(BOOL)enabled displayID:(jint)displayID source:(const char*)src;
+- (void)createDisplayLinkIfAbsent: (NSNumber*)displayID;
 
 /**
  * Resets the current clip state (disables both scissor and depth tests).
@@ -247,6 +264,8 @@
 - (void)commitCommandBuffer:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay;
 - (void)startRedraw:(MTLLayer*)layer;
 - (void)stopRedraw:(MTLLayer*)layer;
+- (void)stopRedraw:(jint)displayID layer:(MTLLayer*)layer;
+- (void)haltRedraw;
 @end
 
 /**

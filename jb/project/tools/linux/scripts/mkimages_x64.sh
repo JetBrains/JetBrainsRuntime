@@ -32,6 +32,20 @@ function do_configure {
       --build=x86_64-unknown-linux-gnu \
       --openjdk-target=x86_64-unknown-linux-gnu"
   fi
+
+  WAYLAND_PROTOCOLS_PATH=/opt/wayland-protocols
+  WITH_WAYLAND_PROTOCOLS=
+
+  if [ -e "$WAYLAND_PROTOCOLS_PATH" ]; then
+    WITH_WAYLAND_PROTOCOLS="--with-wayland-protocols=$WAYLAND_PROTOCOLS_PATH"
+  fi
+
+  if [ -n "${JCEF_BUILD_LEGACY:-}" ]; then
+    WITH_VULKAN=""
+  else
+    WITH_VULKAN="--with-vulkan"
+  fi
+
   sh configure \
     $WITH_DEBUG_LEVEL \
     --with-vendor-name="$VENDOR_NAME" \
@@ -42,12 +56,14 @@ function do_configure {
     --with-version-opt=b"$build_number" \
     --with-boot-jdk="$BOOT_JDK" \
     --enable-cds=yes \
+    $WITH_VULKAN \
     $LINUX_TARGET \
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
     $WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS \
     $WITH_BUNDLED_FREETYPE \
+    $WITH_WAYLAND_PROTOCOLS \
     || do_exit $?
 }
 
@@ -100,7 +116,9 @@ function create_image_bundle {
 
   # jmod does not preserve file permissions (JDK-8173610)
   [ -f "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/jcef_helper
-  [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
+  if [ ! -n "${JCEF_BUILD_LEGACY:-}" ]; then
+    [ -f "$IMAGES_DIR"/"$__root_dir"/lib/cef_server ] && chmod a+x "$IMAGES_DIR"/"$__root_dir"/lib/cef_server
+  fi
 
   echo Creating "$JBR".tar.gz ...
 
@@ -179,8 +197,7 @@ if [ $do_maketest -eq 1 ]; then
     JBRSDK_TEST=${JBRSDK_BUNDLE}-${JBSDK_VERSION}-linux-${libc_type_suffix}test-x64-b${build_number}
     echo Creating "$JBRSDK_TEST" ...
     [ $do_reset_changes -eq 1 ] && git checkout HEAD jb/project/tools/common/modules.list src/java.desktop/share/classes/module-info.java
-    make test-image jbr-api CONF=$RELEASE_NAME JBR_API_JBR_VERSION=TEST || do_exit $?
-    cp "build/${RELEASE_NAME}/jbr-api/jbr-api.jar" "${IMAGES_DIR}/test"
+    make test-image CONF=$RELEASE_NAME JBR_API_JBR_VERSION=TEST || do_exit $?
     tar -pcf "$JBRSDK_TEST".tar -C $IMAGES_DIR --exclude='test/jdk/demos' test || do_exit $?
     [ -f "$JBRSDK_TEST.tar.gz" ] && rm "$JBRSDK_TEST.tar.gz"
     gzip "$JBRSDK_TEST".tar || do_exit $?

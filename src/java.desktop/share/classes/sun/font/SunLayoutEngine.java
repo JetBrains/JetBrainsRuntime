@@ -37,8 +37,11 @@ import sun.java2d.DisposerRecord;
 
 import java.awt.geom.Point2D;
 import java.lang.foreign.MemorySegment;
+import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
+import java.util.stream.Collectors;
 
 public final class SunLayoutEngine {
 
@@ -66,26 +69,54 @@ public final class SunLayoutEngine {
         useFFM = "true".equals(prop);
     }
 
-    public static void layout(Font2D font, int script, FontStrikeDesc desc, float[] mat, int gmask,
-                       int baseIndex, TextRecord tr, int typo_flags,
+    public static Set<String> getAvailableFeatures(Font2D font) {
+        long pFace = getFacePtr(font);
+        return (pFace != 0) ? Arrays.stream(getFeatures(pFace)).filter(elem -> elem != null).collect(Collectors.toSet())
+                : Set.of();
+    }
+
+    // HarfBuzz keeps up to 5 code points of context on each side of the run
+    // (hb_buffer_t::CONTEXT_LENGTH in its internal hb-buffer.hh), at most 10 UTF-16 units.
+    // jb/java/awt/Font/ShapingContextTest checks the value in case of a future change.
+    private static final int HB_CONTEXT_LENGTH = 10;
+
+    public static void layout(Font2D font, int script, FontStrikeDesc desc, float[] mat, int slot, int slotShift,
+                       int baseIndex, TextRecord tr, boolean ltrDirection, String[] features,
                        Point2D.Float pt, GVData data) {
 
         FontStrike strike = font.getStrike(desc);
+
+        // Both shapers copy the entire array to native memory on every call,
+        // and long text is shaped in many runs, so pass only the run itself and its context.
+        char[] text = tr.text;
+        int start = tr.start;
+        int limit = tr.limit;
+
+        int contextStart = Math.max(0, start - HB_CONTEXT_LENGTH);
+        int contextLimit = Math.min(text.length, limit + HB_CONTEXT_LENGTH);
+        if (contextStart > 0 || contextLimit < text.length) {
+            text = Arrays.copyOfRange(text, contextStart, contextLimit);
+            start -= contextStart;
+            limit -= contextStart;
+        }
+
         if (useFFM) {
             MemorySegment face = HBShaper.getFace(font);
             if (face != null) {
                 HBShaper.shape(font, strike, mat, face,
-                        tr.text, data, script,
-                        tr.start, tr.limit, baseIndex, pt,
-                        typo_flags, gmask);
+                        text, data, script,
+                        start, limit, baseIndex, pt,
+                        ltrDirection, String.join(";", features),
+                        slot, slotShift);
             }
         } else {
             long pFace = getFacePtr(font);
             if (pFace != 0) {
                 shape(font, strike, mat, pFace,
-                    tr.text, data, script,
-                    tr.start, tr.limit, baseIndex, pt,
-                    typo_flags, gmask);
+                        text, data, script,
+                        start, limit, baseIndex, pt,
+                        ltrDirection, String.join(";", features),
+                        slot, slotShift);
             }
         }
     }
@@ -96,7 +127,8 @@ public final class SunLayoutEngine {
               long pFace,
               char[] chars, GVData data,
               int script, int offset, int limit,
-              int baseIndex, Point2D.Float pt, int typo_flags, int slot);
+              int baseIndex, Point2D.Float pt, boolean ltrDirection, String features,
+              int slot, int slotShift);
 
     private static native long createFace(Font2D font,
                                           long platformNativeFontPtr);
@@ -128,4 +160,6 @@ public final class SunLayoutEngine {
             disposeFace(facePtr);
         }
     }
+
+    private static native String[] getFeatures(long pFace);
 }

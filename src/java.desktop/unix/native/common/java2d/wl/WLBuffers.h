@@ -48,20 +48,27 @@ typedef struct WLDrawBuffer WLDrawBuffer;
  */
 typedef uint32_t pixel_t;
 
+typedef void (*BufferEventCallback)(jobject);
+
+
 /**
  * Create a WayLand Surface Buffer Manager for a surface of size width x height
- * pixels with the given background 32-bit pixel value and wl_shm_format.
+ * pixels of wl_shm_format.
  *
  * At least two buffers are associated with the manager:
  * - a drawing buffer that SurfaceDataOps operate with (see WLSMSurfaceData.c) and
- * - a displaying buffer that is essentially wl_buffer attached to wl_surface.
+ * - one or more displaying buffer(s) that is essentially wl_buffer attached to wl_surface.
  *
  * Wayland displays pixels from the displaying buffer and we draw pixels to
  * the drawing buffer. The manager is responsible for timely copying from
  * the drawing to displaying buffer, synchronization, and sending
  * the appropriate notifications to Wayland.
  */
-WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint scale, jint bgPixel, jint wlShmFormat);
+WLSurfaceBufferManager * WLSBM_Create(jint width, jint height, jint wlShmFormat,
+                                      jobject surfaceDataWeakRef,
+                                      BufferEventCallback frameSentCallback,
+                                      BufferEventCallback frameDroppedCallback,
+                                      BufferEventCallback bufferAttachedCallback);
 
 /**
  * Free all resources allocated for the WayLand Surface Buffer Manager,
@@ -76,6 +83,14 @@ void WLSBM_Destroy(WLSurfaceBufferManager *);
  */
 void WLSBM_SurfaceAssign(WLSurfaceBufferManager *, struct wl_surface *);
 
+/**
+ * Arrange to send the current drawing buffer to the Wayland server
+ * to show on the screen.
+ * If the attempt to send the buffer immediately fails (for example,
+ * because the drawing buffer is still locked or there's nothing
+ * new to send), arranges a re-try at the next 'frame' event
+ * from Wayland.
+ */
 void WLSBM_SurfaceCommit(WLSurfaceBufferManager *);
 
 /**
@@ -100,7 +115,7 @@ jint WLSBM_HeightGet(WLSurfaceBufferManager *);
  * displays things will change later, but before the changes in drawing buffer
  * are propagated to the display buffer.
  */
-void WLSBM_SizeChangeTo(WLSurfaceBufferManager *, jint width, jint height, jint scale);
+void WLSBM_SizeChangeTo(WLSurfaceBufferManager *, jint width, jint height);
 
 /**
  * Returns a buffer managed by the WayLand Surface Buffer Manager

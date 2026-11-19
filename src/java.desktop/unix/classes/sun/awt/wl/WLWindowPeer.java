@@ -25,14 +25,78 @@
 package sun.awt.wl;
 
 import sun.awt.AWTAccessor;
-import java.awt.*;
-import java.awt.event.WindowEvent;
-import java.awt.peer.ComponentPeer;
-import java.awt.peer.WindowPeer;
+import sun.awt.PeerEvent;
+import sun.awt.SurfacePixelGrabber;
+import sun.awt.UngrabEvent;
+import sun.java2d.SunGraphics2D;
+import sun.java2d.pipe.Region;
+import sun.java2d.vulkan.VKSurfaceData;
+import sun.java2d.wl.WLSMSurfaceData;
+import sun.lwawt.LWChildPeers;
+import sun.lwawt.LWComponentPeerAPI;
+import sun.lwawt.LWContainerPeerAPI;
+import sun.lwawt.LWMouseEventDispatcher;
+import sun.lwawt.LWWindowPeerAPI;
+import sun.lwawt.PlatformWindow;
 
-public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
+import javax.swing.JRootPane;
+import javax.swing.RootPaneContainer;
+import java.awt.AWTEvent;
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dialog;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.SystemColor;
+import java.awt.Window;
+import java.awt.dnd.DropTarget;
+import java.awt.event.FocusEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
+import java.awt.geom.Path2D;
+import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
+import java.awt.peer.ComponentPeer;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+
+public class WLWindowPeer extends WLComponentPeer implements SurfacePixelGrabber, LWWindowPeerAPI {
     private static Font defaultFont;
-    private Dialog blocker;
+    private Dialog blocker; // guarded by getStateLock()
+    private static WLWindowPeer grabbingWindow; // fake, kept for UngrabEvent only
+
+    // If this window gets focus from Wayland, we need to transfer focus synthFocusOwner, if any
+    private WeakReference<Component> synthFocusOwner = new WeakReference<>(null);
+
+    public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
+
+    private WLRoundedCornersManager.RoundedCornerKind roundedCornerKind = WLRoundedCornersManager.RoundedCornerKind.DEFAULT; // guarded by stateLock
+    private Path2D.Double topLeftMask;      // guarded by stateLock
+    private Path2D.Double topRightMask;     // guarded by stateLock
+    private Path2D.Double bottomLeftMask;   // guarded by stateLock
+    private Path2D.Double bottomRightMask;  // guarded by stateLock
+    private Path2D.Double borderPath;  // guarded by stateLock
+    private Color borderColor;  // guarded by stateLock
+    private SunGraphics2D graphics;         // guarded by stateLock
+
+    private final LWChildPeers childPeers = new LWChildPeers(new Object());
+
+    static {
+        if (!GraphicsEnvironment.isHeadless()) {
+            initIDs();
+        }
+    }
 
     static synchronized Font getDefaultFont() {
         if (null == defaultFont) {
@@ -42,7 +106,11 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     public WLWindowPeer(Window target) {
-        super(target);
+        this(target, true);
+    }
+
+    public WLWindowPeer(Window target, boolean dropShadow) {
+        super(target, dropShadow);
 
         if (!target.isFontSet()) {
             target.setFont(getDefaultFont());
@@ -53,10 +121,22 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
         if (!target.isForegroundSet()) {
             target.setForeground(SystemColor.windowText);
         }
+
+        if (target instanceof RootPaneContainer) {
+            JRootPane rootpane = ((RootPaneContainer)target).getRootPane();
+            if (rootpane != null) {
+                Object roundedCornerKind = rootpane.getClientProperty(WINDOW_CORNER_RADIUS);
+                if (roundedCornerKind != null) {
+                    setRoundedCornerKind(WLRoundedCornersManager.roundedCornerKindFrom(roundedCornerKind));
+                }
+            }
+        }
     }
 
     @Override
     protected void wlSetVisible(boolean v) {
+        if (!v) ungrab(true);
+
         if (v && targetIsWlPopup() && shouldBeFocusedOnShowing()) {
             requestWindowFocus();
         }
@@ -72,24 +152,30 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
             }
         }
         if (!v && targetIsWlPopup() && getWindow().isFocused()) {
-            Window targetOwner = getWindow().getOwner();
-            while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
-                targetOwner = targetOwner.getOwner();
-            }
-            if (targetOwner != null) {
-                WLWindowPeer wndpeer = AWTAccessor.getComponentAccessor().getPeer(targetOwner);
-                if (wndpeer != null) {
-                    wndpeer.requestWindowFocus();
+            // Enqueue transferring focus to first visible focusable parent.
+            WLToolkit.executeOnEventHandlerThread(new PeerEvent(getNativelyFocusableOwnerOrSelf(getWindow()), () -> {
+                Window curFocusTarget = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
+                if (curFocusTarget != null && curFocusTarget.isVisible()) {
+                    // focus moved somewhere else
+                    return;
                 }
-            }
-        }
-    }
 
-    @Override
-    void configureWLSurface() {
-        super.configureWLSurface();
-        updateMinimumSize();
-        updateMaximumSize();
+                Window newFocusTarget = getWindow().getOwner();
+                while (newFocusTarget != null) {
+                    if (newFocusTarget.isFocusableWindow() && newFocusTarget.isVisible()) {
+                        break;
+                    }
+                    newFocusTarget = newFocusTarget.getOwner();
+                }
+
+                if (newFocusTarget != null) {
+                    WLWindowPeer wndpeer = AWTAccessor.getComponentAccessor().getPeer(newFocusTarget);
+                    if (wndpeer != null) {
+                        wndpeer.requestWindowFocus();
+                    }
+                }
+            }, PeerEvent.PRIORITY_EVENT));
+        }
     }
 
     @Override
@@ -129,24 +215,76 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void setModalBlocked(Dialog blocker, boolean blocked) {
-        this.blocker = blocked ? blocker : null;
+        synchronized (getStateLock()) {
+            this.blocker = blocked ? blocker : null;
+        }
+    }
+
+    public Dialog getBlockerDialog() {
+        synchronized (getStateLock()) {
+            return blocker;
+        }
     }
 
     @Override
     public void updateMinimumSize() {
-        final Dimension minSize = getMinimumSize();
-        super.setMinimumSizeTo(minSize);
-    }
-
-    public void updateMaximumSize() {
-        // TODO: make sure this is called when our target's maximum size changes
-        final Dimension maxSize = target.isMaximumSizeSet() ? target.getMaximumSize() : null;
-        if (maxSize != null) super.setMaximumSizeTo(maxSize);
+        // No op, it gets updated at each resize
     }
 
     @Override
     public void updateIconImages() {
+        List<Image> iconImages = getWindow().getIconImages();
+        List<Image> suitableIconImages = new ArrayList<Image>();
 
+        if (iconImages != null) {
+            for (Image image : iconImages) {
+                if (image == null) {
+                    continue;
+                }
+                int width = image.getWidth(null);
+                int height = image.getHeight(null);
+                if (width > 0 && height > 0 && width == height) {
+                    suitableIconImages.add(image);
+                }
+            }
+        }
+
+        if (suitableIconImages.isEmpty()) {
+            setIcon(null, null);
+            return;
+        }
+
+        int imageCount = suitableIconImages.size();
+        int pixelCount = 0;
+        for (Image image : suitableIconImages) {
+            int dim = image.getWidth(null); // width == height
+            pixelCount += dim * dim;
+        }
+
+        int[] dims = new int[imageCount];
+        int[] pixels = new int[pixelCount];
+
+        int offset = 0;
+        for (int i = 0; i < imageCount; ++i) {
+            Image image = suitableIconImages.get(i);
+            int dim = image.getWidth(null); // width == height
+            dims[i] = dim;
+
+            BufferedImage bufferedImage;
+            if (image instanceof BufferedImage && ((BufferedImage) image).getType() == BufferedImage.TYPE_INT_ARGB) {
+                bufferedImage = (BufferedImage) image;
+            } else {
+                bufferedImage = new BufferedImage(dim, dim, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g = bufferedImage.createGraphics();
+                g.drawImage(image, 0, 0, null);
+                g.dispose();
+            }
+
+            bufferedImage.getRGB(0, 0, dim, dim, pixels, offset, dim);
+            offset += dim * dim;
+        }
+
+        setIcon(dims, pixels);
     }
 
     @Override
@@ -163,6 +301,9 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
 
     @Override
     public void updateWindow() {
+        if (needToPaintRoundedCorners()) {
+            paintRoundCorners();
+        }
         commitToServer();
     }
 
@@ -170,6 +311,19 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     public GraphicsConfiguration getAppropriateGraphicsConfiguration(
             GraphicsConfiguration gc) {
         return gc;
+    }
+
+    @Override
+    public void dispose() {
+        ungrab(true);
+        resetCornerPaths();
+        super.dispose();
+    }
+
+    @Override
+    void updateSurfaceData() {
+        resetCornerPaths();
+        super.updateSurfaceData();
     }
 
     private Window getWindow() {
@@ -184,12 +338,442 @@ public class WLWindowPeer extends WLComponentPeer implements WindowPeer {
     }
 
     // supporting only 'synthetic' focus transfers for now (when natively focused window stays the same)
-    private void requestWindowFocus() {
+    private boolean requestWindowFocus() {
         Window window = getWindow();
         Window nativeFocusTarget = getNativelyFocusableOwnerOrSelf(window);
-        if (nativeFocusTarget != null &&
-                WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget) {
-            WLToolkit.postEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
+        boolean isFocusable = nativeFocusTarget != null &&
+                WLKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow() == nativeFocusTarget;
+        if (isFocusable) {
+            WLToolkit.postPriorityEvent(new WindowEvent(window, WindowEvent.WINDOW_GAINED_FOCUS));
+            return true;
         }
+        return false;
+    }
+
+    public Component getSyntheticFocusOwner() {
+        return synthFocusOwner.get();
+    }
+
+    public void setSyntheticFocusOwner(Component c) {
+        synthFocusOwner = new WeakReference<>(c);
+    }
+
+    public void grab() {
+        if (grabbingWindow != null && !isGrabbing()) {
+            grabbingWindow.ungrab(false);
+        }
+        grabbingWindow = this;
+    }
+
+    public void ungrab(boolean externalUngrab) {
+        if (isGrabbing()) {
+            grabbingWindow = null;
+            if (externalUngrab) {
+                WLToolkit.postEvent(new UngrabEvent(getTarget()));
+            }
+        }
+    }
+
+    private boolean isGrabbing() {
+        return this == grabbingWindow;
+    }
+
+    @Override
+    void handleJavaWindowFocusEvent(AWTEvent e) {
+        if (e.getID() == WindowEvent.WINDOW_LOST_FOCUS) {
+            ungrab(true);
+        }
+    }
+
+    // called from native code
+    void postWindowClosing() {
+        WLToolkit.postEvent(new WindowEvent((Window) target, WindowEvent.WINDOW_CLOSING));
+    }
+
+    @Override
+    public BufferedImage getClientAreaSnapshot(int x, int y, int width, int height) {
+        // Move the coordinate system to the client area
+        Insets insets = getInsets();
+        x += insets.left;
+        y += insets.top;
+
+        if (width <= 0 || height <= 0) {
+            return null;
+        }
+        if (x < 0 || y < 0) {
+            // Shouldn't happen, but better avoid accessing surface data outside the range
+            throw new IllegalArgumentException("Negative coordinates are not allowed");
+        }
+        if (x >= getWidth()) {
+            throw new IllegalArgumentException(String.format("x coordinate (%d) is out of bounds (%d)", x, getWidth()));
+        }
+        if (y >= getHeight()) {
+            throw new IllegalArgumentException(String.format("y coordinate (%d) is out of bounds (%d)", y, getHeight()));
+        }
+        if ((long) x + width > getWidth()) {
+            width = getWidth() - x;
+        }
+        if ((long) y + height > getHeight()) {
+            height = getHeight() - y;
+        }
+
+        // At this point the coordinates and size are in Java units;
+        // need to convert them into pixels.
+        Rectangle bounds = new Rectangle(
+                javaUnitsToBufferUnits(x),
+                javaUnitsToBufferUnits(y),
+                javaSizeToBufferSize(width),
+                javaSizeToBufferSize(height)
+        );
+        Rectangle bufferBounds = getBufferBounds();
+        if (bounds.x >= bufferBounds.width) {
+            bounds.x = bufferBounds.width - 1;
+        }
+        if (bounds.y >= bufferBounds.height) {
+            bounds.y = bufferBounds.height - 1;
+        }
+        if (bounds.x + bounds.width > bufferBounds.width) {
+            bounds.width = bufferBounds.width - bounds.x;
+        }
+        if (bounds.y + bounds.height > bufferBounds.height) {
+            bounds.height = bufferBounds.height - bounds.y;
+        }
+
+        if (surfaceData instanceof VKSurfaceData vksd) {
+            return vksd.getSnapshot(bounds.x, bounds.y, bounds.width, bounds.height);
+        } else if (surfaceData instanceof WLSMSurfaceData smsd) {
+            return smsd.getSnapshot(bounds.x, bounds.y, bounds.width, bounds.height);
+        }
+
+        return null;
+    }
+
+    private boolean needToPaintRoundedCorners() {
+        synchronized (getStateLock()) {
+            if (!(roundedCornerKind instanceof WLRoundedCornersManager.CustomRoundedCorners customCorners)) return false;
+            int roundedCornerSize = customCorners.radius();
+            int borderWidth = customCorners.borderWidth();
+            int width = getWidth();
+            int height = getHeight();
+            // Note: You would normally get a transparency-capable color model when using
+            // the default graphics configuration
+            return surfaceData.getColorModel().hasAlpha()
+                    && roundedCornerSize > 0
+                    && borderWidth < roundedCornerSize
+                    && width > roundedCornerSize * 2
+                    && height > roundedCornerSize * 2;
+        }
+    }
+
+    WLRoundedCornersManager.RoundedCornerKind getRoundedCornerKind() {
+        synchronized (getStateLock()) {
+            return roundedCornerKind;
+        }
+    }
+
+    void setRoundedCornerKind(WLRoundedCornersManager.RoundedCornerKind kind) {
+        synchronized (getStateLock()) {
+            if (roundedCornerKind != kind) {
+                roundedCornerKind = kind;
+                resetCornerPaths();
+            }
+        }
+    }
+
+    private void createCornerPaths() {
+        if (graphics == null) {
+            graphics = new SunGraphics2D(surfaceData, Color.WHITE, Color.BLACK, null);
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            graphics.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        }
+
+        if (topLeftMask == null) {
+            createCornerPaths((WLRoundedCornersManager.CustomRoundedCorners)roundedCornerKind);
+        }
+    }
+
+    private void createCornerPaths(WLRoundedCornersManager.CustomRoundedCorners customCorners) {
+        int w = getWidth();
+        int h = getHeight();
+        int radius = customCorners.radius();
+
+        // Imitate what RoundRectangle2D does under the hood (using cubic curves),
+        // but without the entire rectangle to keep the corners local.
+
+        // We need just a single control value for control points.
+        // It pretty much corresponds to java.awt.geom.RoundRectIterator.acv,
+        // but we multiply it by two because we use the arc radius, not the diameter like RoundRectangle2D does.
+        double control = 0.44771525016920666;
+        // The following value pretty much defines both cubic control points for every corner.
+        // For the top-left corner it's (0, rc) and (rc, 0). For others, everything's symmetric.
+        double rc = radius * control;
+
+        topLeftMask = new Path2D.Double();
+        topLeftMask.moveTo(0, 0);
+        topLeftMask.lineTo(radius, 0);
+        topLeftMask.curveTo(rc, 0, 0, rc, 0, radius);
+        topLeftMask.closePath();
+
+        topRightMask = new Path2D.Double();
+        topRightMask.moveTo(w - radius, 0);
+        topRightMask.curveTo(w - rc, 0, w, rc, w, radius);
+        topRightMask.lineTo(w, 0);
+        topRightMask.closePath();
+
+        bottomLeftMask = new Path2D.Double();
+        bottomLeftMask.moveTo(0, h - radius);
+        bottomLeftMask.curveTo(0, h - rc, rc, h, radius, h);
+        bottomLeftMask.lineTo(0, h);
+        bottomLeftMask.closePath();
+
+        bottomRightMask = new Path2D.Double();
+        bottomRightMask.moveTo(w - radius, h);
+        bottomRightMask.curveTo(w - rc, h, w, h - rc, w, h - radius);
+        bottomRightMask.lineTo(w, h);
+        bottomRightMask.closePath();
+
+        borderColor = customCorners.borderColor();
+        if (borderColor == null) return;
+
+        int borderWidth = customCorners.borderWidth();
+        borderPath = new Path2D.Double(Path2D.WIND_EVEN_ODD);
+        borderPath.append(new RoundRectangle2D.Double(
+                0, 0,
+                w, h,
+                radius * 2, radius * 2
+        ), false);
+        int innerRadius = radius - borderWidth;
+        // borderWidth is used here for both X and Y, that's actually correct, but the inspection doesn't like it
+        //noinspection SuspiciousNameCombination
+        borderPath.append(new RoundRectangle2D.Double(
+                borderWidth, borderWidth,
+                w - borderWidth * 2, h - borderWidth * 2,
+                innerRadius * 2, innerRadius * 2
+        ), false);
+    }
+
+    private void resetCornerPaths() {
+        synchronized (getStateLock()) {
+            if (graphics != null) graphics.dispose();
+            graphics = null;
+            topLeftMask = null;
+            topRightMask = null;
+            bottomLeftMask = null;
+            bottomRightMask = null;
+            borderPath = null;
+            borderColor = null;
+        }
+    }
+
+    private void paintRoundCorners() {
+        synchronized (getStateLock()) {
+            createCornerPaths();
+
+            graphics.setComposite(AlphaComposite.Clear);
+            graphics.fill(topLeftMask);
+            graphics.fill(topRightMask);
+            graphics.fill(bottomLeftMask);
+            graphics.fill(bottomRightMask);
+
+            if (borderColor == null) return;
+
+            graphics.setComposite(AlphaComposite.SrcOver); // the default one for Graphics
+            graphics.setColor(borderColor);
+            graphics.fill(borderPath);
+        }
+    }
+
+    private static native void initIDs();
+
+    @Override
+    public Window getTarget() {
+        return getWindow();
+    }
+
+    @Override
+    public Graphics getOnscreenGraphics(Color fg, Color bg, Font f) {
+        return getGraphics(surfaceData, fg, bg, f);
+    }
+
+    @Override
+    public boolean requestWindowFocus(FocusEvent.Cause cause) {
+        return requestWindowFocus();
+    }
+
+    @Override
+    public LWWindowPeerAPI getBlocker() {
+        Dialog blocker = getBlockerDialog();
+        return blocker != null ? AWTAccessor.getComponentAccessor().getPeer(blocker) : null;
+    }
+
+    @Override
+    public LWMouseEventDispatcher getMouseEventDispatcher() {
+        if (mouseEventDispatcher == null) {
+            mouseEventDispatcher = new LWMouseEventDispatcher(this);
+        }
+        return mouseEventDispatcher;
+    }
+
+    @Override
+    public void postMouseEvent(MouseEvent e) {
+        super.postMouseEvent(e);
+    }
+
+    @Override
+    public boolean isActive() {
+        return super.isActive();
+    }
+
+    @Override
+    public void addChildPeer(LWComponentPeerAPI child) {
+        childPeers.addChildPeer(child);
+    }
+
+    @Override
+    public void removeChildPeer(LWComponentPeerAPI child) {
+        childPeers.removeChildPeer(child);
+    }
+
+    @Override
+    public void setChildPeerZOrder(LWComponentPeerAPI peer, LWComponentPeerAPI above) {
+        childPeers.setChildPeerZOrder(peer, above);
+    }
+
+    @Override
+    public Region cutChildren(Region r, LWComponentPeerAPI above) {
+        return childPeers.cutChildren(r, above, getContentSize());
+    }
+
+    @Override
+    public Rectangle getContentSize() {
+        Region region = getRegion();
+        return new Rectangle(region.getWidth(), region.getHeight());
+    }
+
+    @Override
+    public void repaintPeer(Rectangle r) {
+        final Rectangle toPaint = getContentSize().intersection(r);
+        if (!isShowing() || toPaint.isEmpty()) {
+            return;
+        }
+        postPaintEvent(toPaint.x, toPaint.y, toPaint.width, toPaint.height);
+        childPeers.repaintChildren(toPaint, getContentSize());
+    }
+
+    @Override
+    public LWComponentPeerAPI findPeerAt(int x, int y) {
+        final Rectangle r = getBounds();
+        int xLocal = x - r.x;
+        int yLocal = y - r.y;
+        if (!(isVisible() && getRegion().contains(xLocal, yLocal))) {
+            return null;
+        }
+        LWComponentPeerAPI childPeerAt = childPeers.findChildPeerAt(xLocal, yLocal);
+        return childPeerAt != null ? childPeerAt : this;
+    }
+
+    @Override
+    public void setEnabled(boolean value) {
+        super.setEnabled(value);
+        childPeers.setChildrenEnabled(value);
+    }
+
+    @Override
+    public void setBackground(final Color c) {
+        childPeers.setChildrenBackground(c);
+        super.setBackground(c);
+    }
+
+    @Override
+    public void setForeground(final Color c) {
+        childPeers.setChildrenForeground(c);
+        super.setForeground(c);
+    }
+
+    @Override
+    public void setFont(final Font f) {
+        childPeers.setChildrenFont(f);
+        super.setFont(f);
+    }
+
+    @Override
+    public void paint(final Graphics g) {
+        super.paint(g);
+        LWChildPeers.paintChildren(getWindow().getComponents(), g);
+    }
+
+    @Override
+    public void print(final Graphics g) {
+        super.print(g);
+        LWChildPeers.printChildren(getWindow().getComponents(), g);
+    }
+
+    @Override
+    public boolean isVisible() {
+        return super.isVisible();
+    }
+
+    @Override
+    public boolean isShowing() {
+        return isVisible();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
+    @Override
+    public LWWindowPeerAPI getWindowPeerOrSelf() {
+        return this;
+    }
+
+    @Override
+    public LWContainerPeerAPI getContainerPeer() {
+        return null;
+    }
+
+    @Override
+    public PlatformWindow getPlatformWindow() {
+        return WLPlatformWindow.getInstance();
+    }
+
+    @Override
+    public Region getRegion() {
+        return Region.getInstance(new Rectangle(getWidth(), getHeight()));
+    }
+
+    @Override
+    public Rectangle getBounds() {
+        Point loc = getLocationOnScreen();
+        return new Rectangle(loc.x, loc.y, getWidth(), getHeight());
+    }
+
+    @Override
+    public void setBounds(Rectangle r) {
+        setBounds(r.x, r.y, r.width, r.height, SET_BOUNDS);
+    }
+
+    @Override
+    public void setBounds(int x, int y, int w, int h, int op, boolean notify, boolean updateTarget) {
+        setBounds(x, y, w, h, op);
+    }
+
+    @Override
+    public Point windowToLocal(int x, int y, LWWindowPeerAPI wp) {
+        Point p = new Point(x, y);
+        Point thisLocation = getFakeLocationOnScreen();
+        Point thatLocation = ((WLComponentPeer) wp).getFakeLocationOnScreen();
+        p.translate(thatLocation.x - thisLocation.x, thatLocation.y - thisLocation.y);
+        return new Point(p);
+    }
+
+    @Override
+    public void addDropTarget(DropTarget dt) {
+    }
+
+    @Override
+    public void removeDropTarget(DropTarget dt) {
     }
 }

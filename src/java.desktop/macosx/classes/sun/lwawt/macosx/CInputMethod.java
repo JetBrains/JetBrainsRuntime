@@ -37,13 +37,10 @@ import java.lang.Character.Subset;
 import java.lang.reflect.InvocationTargetException;
 import java.text.AttributedCharacterIterator.Attribute;
 import java.text.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.text.JTextComponent;
 
 import sun.awt.AWTAccessor;
-import sun.awt.AppContext;
-import sun.awt.SunToolkit;
 import sun.awt.im.InputMethodAdapter;
 import sun.lwawt.*;
 
@@ -54,6 +51,7 @@ public final class CInputMethod extends InputMethodAdapter {
     private volatile Component fAwtFocussedComponent;
     private LWComponentPeer<?, ?> fAwtFocussedComponentPeer;
     private boolean isActive;
+    private boolean isTemporarilyDeactivated;
 
     private static Map<TextAttribute, Integer>[] sHighlightStyles;
 
@@ -246,13 +244,14 @@ public final class CInputMethod extends InputMethodAdapter {
     @Override
     public void activate() {
         isActive = true;
-
         enableListening(true);
+        isTemporarilyDeactivated = false;
     }
 
     @Override
     public void deactivate(boolean isTemporary) {
         isActive = false;
+        isTemporarilyDeactivated = isTemporary;
     }
 
     /**
@@ -299,10 +298,10 @@ public final class CInputMethod extends InputMethodAdapter {
      */
     @Override
     protected void setAWTFocussedComponent(Component component) {
-        if (component == null || component == fAwtFocussedComponent) {
+        if ((isTemporarilyDeactivated && component == null) || component == fAwtFocussedComponent) {
             // Sometimes input happens for the natively unfocused window
             // (e.g. in case of system emoji picker),
-            // so we don't reset last focused component on focus lost.
+            // so we don't reset last focused component on temporary focus lost.
             return;
         }
 
@@ -533,25 +532,29 @@ public final class CInputMethod extends InputMethodAdapter {
         fCurrentText.addAttribute(TextAttribute.INPUT_METHOD_HIGHLIGHT, theHighlight, begin, end);
     }
 
-   /* Called from JNI to select the previously typed glyph during press and hold */
-    private void selectPreviousGlyph() {
-        if (fIMContext == null || fAwtFocussedComponent == null) return; // ???
+    private void selectRange(int selectionStart, int length) {
+        if (fIMContext == null || fAwtFocussedComponent == null) {
+            return;
+        }
+        final int selectionEnd = selectionStart + length;
         try {
             LWCToolkit.invokeLater(new Runnable() {
                 public void run() {
-                    final int offset = fIMContext.getInsertPositionOffset();
-                    if (offset < 1) return; // ???
-
                     if (fAwtFocussedComponent instanceof JTextComponent) {
-                        ((JTextComponent) fAwtFocussedComponent).select(offset - 1, offset);
+                        ((JTextComponent) fAwtFocussedComponent).select(selectionStart, selectionEnd);
                         return;
                     }
 
                     if (fAwtFocussedComponent instanceof TextComponent) {
-                        ((TextComponent) fAwtFocussedComponent).select(offset - 1, offset);
+                        ((TextComponent) fAwtFocussedComponent).select(selectionStart, selectionEnd);
                         return;
                     }
-                    // TODO: Ideally we want to disable press-and-hold in this case
+
+                    var desc = (CInputMethodDescriptor)LWCToolkit.getLWCToolkit().getInputMethodAdapterDescriptor();
+                    if (desc.textInputEventListener != null) {
+                        var event = new JBRTextInputMacOS.SelectTextRangeEvent(fAwtFocussedComponent, selectionStart, length);
+                        desc.textInputEventListener.handleSelectTextRangeEvent(event);
+                    }
                 }
             }, fAwtFocussedComponent);
         } catch (Exception e) {

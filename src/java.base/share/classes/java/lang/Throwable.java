@@ -27,6 +27,8 @@ package java.lang;
 
 import java.io.*;
 import java.util.*;
+
+import com.jetbrains.exported.JBRApi;
 import jdk.internal.event.ThrowableTracer;
 
 /**
@@ -1134,5 +1136,21 @@ public class Throwable implements Serializable {
             return EMPTY_THROWABLE_ARRAY;
         else
             return suppressedExceptions.toArray(EMPTY_THROWABLE_ARRAY);
+    }
+
+    private static volatile java.util.function.Supplier<String> $$jb$additionalInfoSupplier = null;
+
+    @JBRApi.Provides("Jstack#includeInfoFrom")
+    private static void $$jb$additionalInfoForJstack(java.util.function.Supplier<String> supplier) {
+        $$jb$additionalInfoSupplier = supplier;
+    }
+
+    // NB: this is invoked from the VM
+    private static String $$jb$getAdditionalInfoForJstack() {
+        final java.util.function.Supplier<String> supplier = $$jb$additionalInfoSupplier;
+        if (supplier != null) {
+            return supplier.get();
+        }
+        return null;
     }
 }

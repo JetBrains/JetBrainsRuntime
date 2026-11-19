@@ -26,7 +26,8 @@
  * @summary Regression test for IDEA-165950: National keyboard layouts support
  * @requires (jdk.version.major >= 8 & os.family == "mac")
  * @modules java.desktop/sun.lwawt.macosx
- * @run main NationalLayoutTest SPANISH_ISO
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=false NationalLayoutTest SPANISH_ISO
+ * @run main/othervm -Dcom.sun.awt.reportDeadKeysAsNormal=true NationalLayoutTest nodead SPANISH_ISO
  */
 
 /*
@@ -37,6 +38,7 @@ public enum Layout_SPANISH_ISO implements LayoutKey {
     // Enum name must be the same as KeyEvent.VK_ constant name corresponding to the key on US keyboard layout
     // Note that '\u0000' may be used if no char is mapped to a key + modifier or if one wants to skip its testing
 
+    VK_SECTION       ('º', '\\', 'ª', '°', '0'),
     VK_MINUS         ('\'', '´', '?', '¸', '\u001F'),
     VK_EQUALS        ('¡',  '‚', '¿', '˛', '='),
 

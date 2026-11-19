@@ -49,23 +49,19 @@ import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.DataBufferInt;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.DisplayChangedListener;
 import sun.awt.SunToolkit;
@@ -73,9 +69,11 @@ import sun.awt.TimedWindowEvent;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.Win32GraphicsEnvironment;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.pipe.Region;
 
 import sun.java2d.SunGraphics2D;
+import sun.java2d.vulkan.Win32VKWindowSurfaceData;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.SunGraphicsEnvironment.toUserSpace;
@@ -241,7 +239,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             this.isOpaque = true;
             setOpaque(((Window)target).isOpaque());
         }
-        
+
         if (target instanceof RootPaneContainer) {
             JRootPane rootpane = ((RootPaneContainer)target).getRootPane();
             if (rootpane != null) {
@@ -797,7 +795,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
-    // JBR API internals
+    @JBRApi.Provides("RoundedCornersManager")
     private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (peer instanceof WWindowPeer) {
@@ -812,19 +810,30 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     private void setRoundedCornersImpl(Object params) {
         if (params instanceof String) {
-            int type = 0; // default
-            if ("none".equals(params)) {
-                type = 1;
-            } else if ("full".equals(params)) {
-                type = 2;
-            } else if ("small".equals(params)) {
-                type = 3;
+            setRoundedCorners(getRoundedType(params), false, 0);
+        } else if (params instanceof Object[]) {
+            Object[] values = (Object[]) params;
+            if (values.length == 2 && values[0] instanceof String && values[1] instanceof Color) {
+                Color color = (Color) values[1];
+                setRoundedCorners(getRoundedType(values[0]), true, color.getRGB());
             }
-            setRoundedCorners(type);
         }
     }
 
-    private native void setRoundedCorners(int type);
+    private static int getRoundedType(Object params) {
+        if ("none".equals(params)) {
+            return  1;
+        }
+        if ("full".equals(params)) {
+            return 2;
+        }
+        if ("small".equals(params)) {
+            return 3;
+        }
+        return 0; // default
+    }
+
+    private native void setRoundedCorners(int type, boolean isBorderColor, int borderColor);
 
     native void updateWindowImpl(int[] data, int width, int height);
 
@@ -836,16 +845,21 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     private void updateWindow(boolean repaint) {
         Window w = (Window)target;
         synchronized (getStateLock()) {
-            if (isOpaque || !w.isVisible() ||
+            if (!w.isVisible() ||
                 (w.getWidth() <= 0) || (w.getHeight() <= 0))
             {
                 return;
             }
-            TranslucentWindowPainter currentPainter = painter;
-            if (currentPainter != null) {
-                currentPainter.updateWindow(repaint);
-            } else if (log.isLoggable(PlatformLogger.Level.FINER)) {
-                log.finer("Translucent window painter is null in updateWindow");
+            if (!isOpaque) {
+                TranslucentWindowPainter currentPainter = painter;
+                if (currentPainter != null) {
+                    currentPainter.updateWindow(repaint);
+                } else if (log.isLoggable(PlatformLogger.Level.FINER)) {
+                    log.finer("Translucent window painter is null in updateWindow");
+                }
+            }
+            if (surfaceData instanceof BufferedSurfaceDataExt csd) {
+                csd.commit();
             }
         }
     }
@@ -876,6 +890,16 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         Graphics g = super.getGraphics();
         if (!(g instanceof SunGraphics2D)) return g;
         SunGraphics2D sg = (SunGraphics2D)g;
+
+        // Decorated Vulkan windows' surface only covers the client area,
+        // so we undo java2d's translation that assumes otherwise.
+        if (surfaceData instanceof Win32VKWindowSurfaceData) {
+            Insets insets = ((Window) target).getInsets();
+            if (insets.left != 0 || insets.top != 0) {
+                sg.translate(-insets.left, -insets.top);
+            }
+            return sg; // In this case, we don't want to use the following correction.
+        }
 
         // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
         // to place [0, 0] of the client area in its correct device pixel.
@@ -948,31 +972,5 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             }
         }
         return err;
-    }
-
-    // called from client via reflection
-    @Deprecated
-    private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
-        List<Map.Entry<Shape, Integer>> spots = new ArrayList<>();
-        for (Rectangle spot : hitTestSpots) spots.add(Map.entry(spot, 1));
-        try {
-            Field f = Window.class.getDeclaredField("customDecorHitTestSpots");
-            f.setAccessible(true);
-            f.set(target, spots);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new Error(e);
-        }
-    }
-
-    // called from client via reflection
-    @Deprecated
-    private void setCustomDecorationTitleBarHeight(int height) {
-        try {
-            Field f = Window.class.getDeclaredField("customDecorTitleBarHeight");
-            f.setAccessible(true);
-            f.set(target, height);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new Error(e);
-        }
     }
 }

@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2024, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,108 +24,428 @@
  * questions.
  */
 
-#ifndef HEADLESS
-
-#include "jlong.h"
-#include "SurfaceData.h"
+#include "VKUtil.h"
+#include "VKRenderer.h"
 #include "VKSurfaceData.h"
-#include "VKVertex.h"
 #include "VKImage.h"
-#include <Trace.h>
+#include "VKEnv.h"
 
-void VKSD_InitImageSurface(VKSDOps *vksdo) {
-    if (vksdo->image != VK_NULL_HANDLE) {
-        return;
-    }
+#include <assert.h>
 
-    vksdo->image = VKImage_Create(vksdo->width, vksdo->height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR,
-                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    if (!vksdo->image)
-    {
-        J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create image\n");
-        return;
-    }
+/**
+ * Release VKSDOps resources & reset to initial state.
+ */
+static void VKSD_ResetImageSurface(VKSDOps* vksdo) {
+    if (vksdo == NULL) return;
 
-    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ResetImageSurface(%p)", vksdo);
 
-    if (!VKImage_CreateFramebuffer(vksdo->image, logicalDevice->fillTexturePoly->renderPass)) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot create framebuffer for window surface");
-        return;
+    // DestroyRenderPass also waits while the surface resources are being used by device.
+    VKRenderer_DestroyRenderPass(vksdo);
+    vksdo->lastTimestamp = 0;
+
+    if (vksdo->device != NULL) {
+        VKImage_Destroy(vksdo->device, vksdo->stencil);
+        VKImage_Destroy(vksdo->device, vksdo->image);
+        vksdo->image = vksdo->stencil = NULL;
     }
 }
 
-void VKSD_InitWindowSurface(VKWinSDOps *vkwinsdo) {
-    VKGraphicsEnvironment* ge = VKGE_graphics_environment();
-    VKLogicalDevice* logicalDevice = &ge->devices[ge->enabledDeviceNum];
-    VkPhysicalDevice physicalDevice = logicalDevice->physicalDevice;
+static void VKSwapchain_DestroyImpl(VKSwapchain* swapchain)
+{
+    if (swapchain == NULL) {
+        return;
+    }
 
-    if (vkwinsdo->swapchainKhr == VK_NULL_HANDLE) {
-        ge->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &vkwinsdo->capabilitiesKhr);
-        ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &vkwinsdo->formatsKhrCount, NULL);
-        if (vkwinsdo->formatsKhrCount == 0) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "No formats for swapchain found\n");
-            return;
+    if (swapchain->device != NULL && swapchain->handle != VK_NULL_HANDLE) {
+        swapchain->device->vkDestroySwapchainKHR(swapchain->device->handle, swapchain->handle, NULL);
+    }
+
+    ARRAY_FREE(swapchain->images);
+    free(swapchain);
+}
+
+VKSwapchain* VKSwapchain_Create(VKDevice* device, const VkSwapchainCreateInfoKHR* createInfo) {
+    VKSwapchain *swapchain = calloc(1, sizeof *swapchain);
+
+    if (swapchain == NULL) {
+        return NULL;
+    }
+
+    swapchain->refcount = 1;
+    swapchain->device = device;
+    swapchain->extent = createInfo->imageExtent;
+    swapchain->isSuboptimal = VK_FALSE;
+
+    VK_IF_ERROR(device->vkCreateSwapchainKHR(device->handle, createInfo, NULL, &swapchain->handle)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    uint32_t imageCount = 0;
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchain->handle, &imageCount, NULL)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    ARRAY_RESIZE(swapchain->images, imageCount);
+    VK_IF_ERROR(device->vkGetSwapchainImagesKHR(device->handle, swapchain->handle, &imageCount, swapchain->images.data)) {
+        VKSwapchain_DestroyImpl(swapchain);
+        return NULL;
+    }
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Create(%p): swapchain created", swapchain);
+    return swapchain;
+}
+
+VKSwapchain* VKSwapchain_Retain(VKSwapchain* swapchain) {
+    if (swapchain == NULL) return NULL;
+    ++swapchain->refcount;
+    return swapchain;
+}
+
+void VKSwapchain_Release(VKSwapchain* swapchain) {
+    if (swapchain == NULL) return;
+    if (--swapchain->refcount > 0) return;
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSwapchain_Release(%p): destroying Vulkan objects", swapchain);
+    VKSwapchain_DestroyImpl(swapchain);
+}
+
+static void VKSwapchain_DestroySync(VKSwapchain* swapchain) {
+    if (swapchain == NULL) return;
+    VKDevice* device = swapchain->device;
+    VKRenderer* renderer = device->renderer;
+    if (renderer != NULL) {
+        VKRenderer_CleanupPresentations(renderer, VK_TRUE, swapchain);
+    }
+    assert(swapchain->refcount == 1);
+    VKSwapchain_Release(swapchain);
+}
+
+void VKSD_ResetSurface(VKSDOps* vksdo) {
+    VKSD_ResetImageSurface(vksdo);
+
+    // Release VKWinSDOps resources, if applicable.
+    if (vksdo->drawableType == VKSD_WINDOW) {
+        VKWinSDOps* vkwinsdo = (VKWinSDOps*) vksdo;
+        VKSwapchain_DestroySync(vkwinsdo->swapchain);
+        vkwinsdo->swapchain = NULL;
+        if (vkwinsdo->surface != VK_NULL_HANDLE) {
+            VKEnv* vk = VKEnv_GetInstance();
+            vk->vkDestroySurfaceKHR(vk->instance, vkwinsdo->surface, NULL);
         }
-        vkwinsdo->formatsKhr = calloc(vkwinsdo->formatsKhrCount, sizeof(VkSurfaceFormatKHR));
-        ge->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &vkwinsdo->formatsKhrCount,
-                                                 vkwinsdo->formatsKhr);
-
-        ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface,
-                                                      &vkwinsdo->presentModeKhrCount, NULL);
-
-        if (vkwinsdo->presentModeKhrCount == 0) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "No present modes found\n");
-            return;
-        }
-
-        vkwinsdo->presentModesKhr = calloc(vkwinsdo->presentModeKhrCount, sizeof(VkPresentModeKHR));
-        ge->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &vkwinsdo->presentModeKhrCount,
-                                                      vkwinsdo->presentModesKhr);
-
-        VkExtent2D extent = {
-                (uint32_t) (vkwinsdo->vksdOps.width),
-                (uint32_t) (vkwinsdo->vksdOps.height)
-        };
-
-        uint32_t imageCount = vkwinsdo->capabilitiesKhr.minImageCount + 1;
-        if (vkwinsdo->capabilitiesKhr.maxImageCount > 0 && imageCount > vkwinsdo->capabilitiesKhr.maxImageCount) {
-            imageCount = vkwinsdo->capabilitiesKhr.maxImageCount;
-        }
-        VkSwapchainCreateInfoKHR createInfoKhr = {
-                .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-                .surface = vkwinsdo->surface,
-                .minImageCount = imageCount,
-                .imageFormat = vkwinsdo->formatsKhr[0].format,
-                .imageColorSpace = vkwinsdo->formatsKhr[0].colorSpace,
-                .imageExtent = extent,
-                .imageArrayLayers = 1,
-                .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-                .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
-                .queueFamilyIndexCount = 0,
-                .pQueueFamilyIndices = NULL,
-                .preTransform = vkwinsdo->capabilitiesKhr.currentTransform,
-                .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-                .presentMode = VK_PRESENT_MODE_FIFO_KHR,
-                .clipped = VK_TRUE
-        };
-
-        if (ge->vkCreateSwapchainKHR(logicalDevice->device, &createInfoKhr, NULL, &vkwinsdo->swapchainKhr) != VK_SUCCESS) {
-            J2dRlsTrace(J2D_TRACE_ERROR, "Cannot create swapchain\n");
-            return;
-        }
-
-        vkwinsdo->swapChainImages = VKImage_CreateImageArrayFromSwapChain(
-                                        vkwinsdo->swapchainKhr,
-                                        logicalDevice->fillTexturePoly->renderPass,
-                                        vkwinsdo->formatsKhr[0].format, extent);
-
-        if (!vkwinsdo->swapChainImages) {
-          J2dRlsTraceLn(J2D_TRACE_ERROR, "Cannot get swapchain images");
-          return;
-        }
+        vkwinsdo->surface = VK_NULL_HANDLE;
     }
 }
 
-#endif /* !HEADLESS */
+static void VKSD_FindImageSurfaceMemoryType(VKMemoryRequirements* requirements) {
+    VKAllocator_FindMemoryType(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_ALL_MEMORY_PROPERTIES);
+}
+
+VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
+    // Initialize the device. current device can be changed on the fly, and we must reconfigure surfaces accordingly.
+    VKDevice* device = vksdo->requestedDevice;
+    if (device == NULL) return VK_FALSE;
+    if (device != vksdo->device) {
+        VKSD_ResetImageSurface(vksdo);
+        vksdo->device = device;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): device updated", vksdo);
+    }
+    // Initialize image.
+    if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 && (vksdo->image == NULL ||
+            vksdo->requestedExtent.width != vksdo->image->extent.width ||
+            vksdo->requestedExtent.height != vksdo->image->extent.height)) {
+        // Currently, we only support *_SRGB and *_UNORM formats,
+        // as other types may not be trivial to alias for logicOp rendering.
+        VkFormat format = (VkFormat) (vksdo->drawableFormat & ~VKSD_FORMAT_OPAQUE_BIT);
+
+        VKSD_ResetImageSurface(vksdo);
+        VKImage* image = VKImage_Create(device, vksdo->requestedExtent.width, vksdo->requestedExtent.height,
+                                        0, format, VK_IMAGE_TILING_OPTIMAL,
+                                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                                        VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
+        if (image == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_ConfigureImageSurface(%p): VKImage_Create failed (%dx%d, format=%d)",
+                vksdo, vksdo->requestedExtent.width, vksdo->requestedExtent.height, format);
+            return VK_FALSE;
+        }
+        vksdo->image = image;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, image->extent.width, image->extent.height);
+    }
+    return vksdo->image != NULL;
+}
+
+VkBool32 VKSD_ConfigureImageSurfaceStencil(VKSDOps* vksdo) {
+    // Check that image is ready.
+    if (vksdo->image == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKSD_ConfigureImageSurfaceStencil(%p): image is not ready", vksdo);
+        return VK_FALSE;
+    }
+    // Initialize stencil image.
+    if (vksdo->stencil == NULL) {
+        vksdo->stencil = VKImage_Create(vksdo->device, vksdo->image->extent.width, vksdo->image->extent.height,
+                                        0, VK_FORMAT_S8_UINT, VK_IMAGE_TILING_OPTIMAL,
+                                        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+                                        VK_SAMPLE_COUNT_1_BIT, VKSD_FindImageSurfaceMemoryType);
+        if (vksdo->stencil == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_ConfigureImageSurfaceStencil(%p): VKImage_Create failed %dx%d",
+                vksdo, vksdo->image->extent.width, vksdo->image->extent.height);
+            return VK_FALSE;
+        }
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurfaceStencil(%p): stencil image updated %dx%d",
+                      vksdo, vksdo->stencil->extent.width, vksdo->stencil->extent.height);
+    }
+    return vksdo->stencil != NULL;
+}
+
+VkBool32 VKSD_ConfigureWindowSurface(VKWinSDOps* vkwinsdo) {
+    // Check that image is ready.
+    if (vkwinsdo->vksdOps.image == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): image is not ready", vkwinsdo);
+        return VK_FALSE;
+    }
+    // Check for changes.
+    if (vkwinsdo->swapchain != NULL && !vkwinsdo->swapchain->isSuboptimal &&
+            vkwinsdo->swapchain->device == vkwinsdo->vksdOps.device &&
+            vkwinsdo->swapchain->extent.width == vkwinsdo->vksdOps.image->extent.width &&
+            vkwinsdo->swapchain->extent.height == vkwinsdo->vksdOps.image->extent.height) return VK_TRUE;
+    // Check that surface is ready.
+    if (vkwinsdo->surface == VK_NULL_HANDLE) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING, "VKSD_ConfigureWindowSurface(%p): surface is not ready", vkwinsdo);
+        return VK_FALSE;
+    }
+
+    VKEnv* vk = VKEnv_GetInstance();
+    VKDevice* device = vkwinsdo->vksdOps.device;
+    VkPhysicalDevice physicalDevice = device->physicalDevice;
+
+    VkSurfaceCapabilitiesKHR capabilities;
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, vkwinsdo->surface, &capabilities)) {
+        return VK_FALSE;
+    }
+
+    VkExtent2D swapchainImageExtent;
+
+    // currentExtent is the current width and height of the surface, or the special value (0xFFFFFFFF, 0xFFFFFFFF)
+    // indicating that the surface size will be determined by the extent of a swapchain targeting the surface.
+    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSurfaceCapabilitiesKHR.html
+    if (capabilities.currentExtent.width == 0xFFFFFFFF && capabilities.currentExtent.height == 0xFFFFFFFF) {
+        swapchainImageExtent = vkwinsdo->vksdOps.image->extent;
+    } else {
+        assert(capabilities.currentExtent.width != 0xFFFFFFFF && capabilities.currentExtent.height != 0xFFFFFFFF);
+        // The behavior is platform-dependent if the image extent does not match the surface’s currentExtent
+        // as returned by vkGetPhysicalDeviceSurfaceCapabilitiesKHR.
+        // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkSwapchainCreateInfoKHR.html
+        swapchainImageExtent = capabilities.currentExtent;
+        if (vkwinsdo->vksdOps.image->extent.width != capabilities.currentExtent.width ||
+            vkwinsdo->vksdOps.image->extent.height != capabilities.currentExtent.height) {
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                          "VKSD_ConfigureWindowSurface(%p): surface size doesn't match backing image size (this is ok during resize), proceeding anyway - image=%dx%d, capabilities.currentExtent=%dx%d",
+                          vkwinsdo, vkwinsdo->vksdOps.image->extent.width, vkwinsdo->vksdOps.image->extent.height,
+                          capabilities.currentExtent.width, capabilities.currentExtent.height);
+        }
+    }
+
+    if (swapchainImageExtent.width  < capabilities.minImageExtent.width  ||
+        swapchainImageExtent.height < capabilities.minImageExtent.height ||
+        swapchainImageExtent.width  > capabilities.maxImageExtent.width  ||
+        swapchainImageExtent.height > capabilities.maxImageExtent.height) {
+        J2dRlsTraceLn(J2D_TRACE_WARNING,
+                      "VKSD_ConfigureWindowSurface(%p): surface size doesn't fit, expected=%dx%d, "
+                      "capabilities.minImageExtent=%dx%d, capabilities.minImageExtent=%dx%d",
+                      vkwinsdo, swapchainImageExtent.width, swapchainImageExtent.height,
+                      capabilities.minImageExtent.width, capabilities.minImageExtent.height,
+                      capabilities.maxImageExtent.width, capabilities.maxImageExtent.height);
+        return VK_FALSE;
+    }
+
+    // Our surfaces use pre-multiplied alpha, try to match.
+    // This allows us to have semi-transparent windows.
+    VkCompositeAlphaFlagBitsKHR compositeAlpha;
+    if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR) {
+        compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    } else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR) {
+        // This is wrong, but at least some transparency is better than none, right?
+        compositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+    } else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+        compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+    } else compositeAlpha = (VkCompositeAlphaFlagBitsKHR) capabilities.supportedCompositeAlpha;
+
+    uint32_t formatCount;
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, NULL)) {
+        return VK_FALSE;
+    }
+    DECL_ARRAY(VkSurfaceFormatKHR, formats, formatCount);
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, vkwinsdo->surface, &formatCount, formats)) {
+        return VK_FALSE;
+    }
+
+    VkSurfaceFormatKHR* format = NULL;
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): available swapchain formats:", vkwinsdo);
+    for (uint32_t i = 0; i < formatCount; i++) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "    format=%d, colorSpace=%d", formats[i].format, formats[i].colorSpace);
+        // We draw with sRGB colors (see VKUtil_DecodeJavaColor()), so we don't want Vulkan to do color space
+        // conversions when drawing to surface. We use *_UNORM formats, so that colors are written "as is".
+        // With VK_COLOR_SPACE_SRGB_NONLINEAR_KHR these colors will be interpreted by presentation engine as sRGB.
+        if (formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
+            formats[i].format == vkwinsdo->vksdOps.image->format) {
+            format = &formats[i];
+        }
+    }
+    if (format == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_ConfigureWindowSurface(%p): no suitable format found", vkwinsdo);
+        return VK_FALSE;
+    }
+
+    uint32_t presentModeCount;
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, NULL)) {
+        return VK_FALSE;
+    }
+    DECL_ARRAY(VkPresentModeKHR, presentModes, presentModeCount);
+    VK_IF_ERROR(vk->vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, vkwinsdo->surface, &presentModeCount, presentModes)) {
+        return VK_FALSE;
+    }
+    // FIFO mode is guaranteed to be supported.
+    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPresentModeKHR.html
+    uint32_t imageCount = 2;
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    // Try to use mailbox whenever possible, FIFO currently has serious issues on Mutter.
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            presentMode = VK_PRESENT_MODE_MAILBOX_KHR;
+            // MAILBOX needs at least 3 images to be functionally different from FIFO.
+            imageCount = 3;
+            break;
+        }
+    }
+    if (imageCount > capabilities.maxImageCount && capabilities.maxImageCount != 0) imageCount = capabilities.maxImageCount;
+    else if (imageCount < capabilities.minImageCount) imageCount = capabilities.minImageCount;
+
+    VkSwapchainCreateInfoKHR createInfoKhr = {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .surface = vkwinsdo->surface,
+            .minImageCount = imageCount,
+            .imageFormat = format->format,
+            .imageColorSpace = format->colorSpace,
+            .imageExtent = swapchainImageExtent,
+            .imageArrayLayers = 1,
+            .imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices = NULL,
+            .preTransform = capabilities.currentTransform,
+            .compositeAlpha = compositeAlpha,
+            .presentMode = presentMode,
+            .clipped = VK_TRUE,
+            .oldSwapchain = (vkwinsdo->swapchain != NULL && vkwinsdo->swapchain->device == device) ?
+                    vkwinsdo->swapchain->handle : VK_NULL_HANDLE,
+    };
+
+    VkSwapchainPresentModesCreateInfoEXT presentModesCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT
+    };
+
+    if (device->swapchainMaintenance1Supported) {
+        presentModesCreateInfo.presentModeCount = 1;
+        presentModesCreateInfo.pPresentModes = &presentMode;
+        createInfoKhr.pNext = &presentModesCreateInfo;
+    }
+
+    VKSwapchain *swapchain = VKSwapchain_Create(device, &createInfoKhr);
+
+    if (swapchain == NULL) {
+        return VK_FALSE;
+    }
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): swapchain created, format=%d, presentMode=%d, imageCount=%d, compositeAlpha=%d",
+                  vkwinsdo, format->format, presentMode, imageCount, compositeAlpha);
+    vkwinsdo->resizeCallback(vkwinsdo);
+
+    if (vkwinsdo->swapchain != NULL) {
+        // Destroy old swapchain.
+        VKSwapchain_Release(vkwinsdo->swapchain);
+        vkwinsdo->swapchain = NULL;
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureWindowSurface(%p): old swapchain released", vkwinsdo);
+    }
+    vkwinsdo->swapchain = swapchain;
+
+    return VK_TRUE;
+}
+
+static void VKSD_OnDispose(JNIEnv* env, SurfaceDataOps* ops) {
+    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/vulkan/VKSurfaceData", "dispose", "(J)V", ptr_to_jlong(ops));
+}
+
+JNIEXPORT VKSDOps* VKSD_CreateSurface(JNIEnv* env, jobject vksd, jint type, jint format,
+                                      VKWinSD_SurfaceResizeCallback resizeCallback) {
+    VKSDOps* sd = (VKSDOps*)SurfaceData_InitOps(env, vksd,
+        type == VKSD_WINDOW ? sizeof(VKWinSDOps) : sizeof(VKSDOps));
+    J2dTraceLn(J2D_TRACE_INFO,
+               "VKSD_CreateSurface(%p): type=%d, format=%d", sd, type, format & ~VKSD_FORMAT_OPAQUE_BIT);
+    if (sd == NULL) {
+        JNU_ThrowOutOfMemoryError(env, "Initialization of VKSDOps failed");
+        return NULL;
+    }
+    sd->sdOps.Dispose = VKSD_OnDispose;
+    sd->drawableType = type;
+    sd->drawableFormat = format;
+    sd->lastTimestamp = 0;
+    if (type == VKSD_WINDOW) {
+        VKWinSDOps* winSD = (VKWinSDOps*) sd;
+        winSD->resizeCallback = resizeCallback;
+    }
+    VKSD_ResetSurface(sd);
+    return sd;
+}
+
+JNIEXPORT void VKSD_InitWindowSurface(JNIEnv* env, jobject vksd, VKWinSD_SurfaceInitCallback initCallback, void* data) {
+    VKWinSDOps* sd = (VKWinSDOps*)SurfaceData_GetOps(env, vksd);
+    J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p)", sd);
+
+    if (sd == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "VKSD_InitWindowSurface(%p): VKWinSDOps is NULL", vksd);
+        VK_UNHANDLED_ERROR();
+    }
+
+    if (sd->surface != VK_NULL_HANDLE) {
+        VKSD_ResetSurface(&sd->vksdOps);
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p): surface reset", vksd);
+    }
+
+    initCallback(sd, data);
+
+    if (sd->surface != VK_NULL_HANDLE) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_InitWindowSurface(%p): surface created", vksd);
+    }
+    // Swapchain will be created later after CONFIGURE_SURFACE.
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKOffScreenSurfaceData
+ * Method:    initOps
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKOffScreenSurfaceData_initOps(JNIEnv* env, jobject vksd, jint format) {
+    VKSD_CreateSurface(env, vksd, VKSD_RT_TEXTURE, format, NULL);
+}
+
+/*
+ * Class:     sun_java2d_vulkan_VKSurfaceData
+ * Method:    configureNow
+ * Signature: (JJII)Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_java2d_vulkan_VKSurfaceData_configureNow(JNIEnv* env, jobject vksd,
+    jlong pData, jlong pDevice, jint width, jint height) {
+    VKSDOps* surface = jlong_to_ptr(pData);
+    VKDevice* device = jlong_to_ptr(pDevice);
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKSurfaceData_configureNow (%p) %dx%d", surface, width, height);
+    VKRenderer_ConfigureSurface(surface, (VkExtent2D) { width, height }, device);
+    // Return true iff image is immediately ready at the requested dimensions.
+    // For any surface, this can be false in case of an allocation failure.
+    // For a window surface, this can also be false when reallocation is deferred until the end of the frame.
+    return surface->image != NULL && surface->device == device &&
+           surface->image->extent.width == (uint32_t)width &&
+           surface->image->extent.height == (uint32_t)height;
+}
+

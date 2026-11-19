@@ -138,6 +138,14 @@
 /* Store the name of the executable once computed */
 static char *execname = NULL;
 
+typedef enum awt_toolkit {
+    TK_UNKNOWN = 0,
+    TK_X11 = 1,
+    TK_WAYLAND = 2
+} awt_toolkit;
+
+static awt_toolkit _awt_toolkit = TK_X11;
+
 /*
  * execname accessor from other parts of platform dependent logic
  */
@@ -638,7 +646,6 @@ SetExecname(char **argv)
 }
 
 /* --- Splash Screen shared library support --- */
-static const char* SPLASHSCREEN_SO = JNI_LIB_NAME("splashscreen");
 static void* hSplashLib = NULL;
 
 void* SplashProcAddress(const char* name) {
@@ -654,8 +661,14 @@ void* SplashProcAddress(const char* name) {
                 JLI_ReportErrorMessage(LAUNCHER_ERROR1);
                 return NULL;
             }
+#if defined(__linux__)
+            const char* splash_screen_so = _awt_toolkit == TK_WAYLAND ?
+                                      JNI_LIB_NAME("wlsplashscreen") : JNI_LIB_NAME("splashscreen");
+#else
+            const char* splash_screen_so = JNI_LIB_NAME("splashscreen");
+#endif
             ret = JLI_Snprintf(splashPath, sizeof(splashPath), "%s/lib/%s",
-                           jdkRoot, SPLASHSCREEN_SO);
+                           jdkRoot, splash_screen_so);
 
             if (ret >= (int) sizeof(splashPath)) {
                 JLI_ReportErrorMessage(LAUNCHER_ERROR3);
@@ -740,11 +753,49 @@ CallJavaMainInNewThread(jlong stack_size, void* args) {
     return rslt;
 }
 
+#ifdef __linux
+static char*
+GetToolkitName(void) {
+    if (_awt_toolkit == TK_UNKNOWN) { // Prefer WLToolkit, then XToolkit
+        void* libwayland = dlopen(VERSIONED_JNI_LIB_NAME("wayland-client", "0"), RTLD_LAZY | RTLD_LOCAL);
+        if (!libwayland) {
+            // Fallback to any development version available on the system
+            libwayland = dlopen(JNI_LIB_NAME("wayland-client"), RTLD_LAZY | RTLD_LOCAL);
+        }
+        if (libwayland) {
+            typedef void* (*wl_display_connect_t)(const char*);
+            typedef void (*wl_display_disconnect_t)(void*);
+
+            wl_display_connect_t fp_wl_display_connect = dlsym(libwayland, "wl_display_connect");
+            wl_display_disconnect_t fp_wl_display_disconnect = dlsym(libwayland, "wl_display_disconnect");
+
+            if (fp_wl_display_connect && fp_wl_display_disconnect) {
+                void* display = fp_wl_display_connect(NULL);
+                if (display) {
+                    _awt_toolkit = TK_WAYLAND;
+                    fp_wl_display_disconnect(display);
+                }
+            }
+            dlclose(libwayland);
+        }
+    }
+    return _awt_toolkit == TK_WAYLAND ? "WLToolkit" : "XToolkit";
+}
+#endif // __linux
+
 int
 JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
+#ifdef  __linux
+    char *toolkit_name = GetToolkitName();
+    size_t toolkit_name_size = JLI_StrLen("-Dawt.toolkit.name=") + JLI_StrLen(toolkit_name) + 1;
+    char *toolkit_option = (char *)JLI_MemAlloc(toolkit_name_size);
+    snprintf(toolkit_option, toolkit_name_size, "-Dawt.toolkit.name=%s", toolkit_name);
+    AddOption(toolkit_option, NULL);
+#endif // __linux
+
     ShowSplashScreen();
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
 }
@@ -761,11 +812,19 @@ RegisterThread()
     // stubbed out for windows and *nixes.
 }
 
-/*
- * on unix, we return a false to indicate this option is not applicable
- */
 jboolean
 ProcessPlatformOption(const char *arg)
 {
+    if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=auto") == 0) {
+        _awt_toolkit = TK_UNKNOWN;
+        return JNI_TRUE;
+    } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=WLToolkit") == 0) {
+        _awt_toolkit = TK_WAYLAND;
+        return JNI_TRUE;
+    } else if (JLI_StrCCmp(arg, "-Dawt.toolkit.name=XToolkit") == 0) {
+        _awt_toolkit = TK_X11;
+        return JNI_TRUE;
+    }
+
     return JNI_FALSE;
 }

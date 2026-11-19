@@ -34,6 +34,7 @@ import java.awt.Rectangle;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.FramePeer;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.im.InputMethodManager;
 
@@ -260,9 +261,30 @@ class WFramePeer extends WWindowPeer implements FramePeer {
 
     private native void synthesizeWmActivate(boolean activate);
 
-    // JBR API internals
-    private static void updateCustomDecoration(ComponentPeer peer) {
-        if (peer instanceof WFramePeer) ((WFramePeer) peer).updateCustomDecoration();
+    @JBRApi.Provides("java.awt.Window.CustomTitleBarPeer#update")
+    private static void updateCustomTitleBar(ComponentPeer peer) {
+        // In native code AwtDialog is actually a descendant of AwtFrame,
+        // so we don't distinguish between WFramePeer and WDialogPeer here,
+        // just treat WFramePeer like a base class.
+        if (peer instanceof WFramePeer || peer instanceof WDialogPeer) {
+            updateCustomTitleBar((WWindowPeer) peer);
+        }
     }
-    private native void updateCustomDecoration();
+    private static native void updateCustomTitleBar(WWindowPeer peer);
+
+    private static boolean isWin11OrNewer() {
+        String osName = System.getProperty("os.name");
+        String osVersion = System.getProperty("os.version");
+        if ("Windows 10".equals(osName)) {
+            return false;
+        } else {
+            int version = 10;
+            try {
+                version = (int) Double.parseDouble(osVersion);
+            } catch (NullPointerException | NumberFormatException ignored) {}
+            return version >= 10;
+        }
+    }
+    // Used from native
+    private static final boolean WIN11_OR_NEWER = isWin11OrNewer();
 }

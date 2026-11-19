@@ -63,6 +63,7 @@ AWT_ASSERT_APPKIT_THREAD;
                                     [NSNull null], @"anchorPoint",
                                     [NSNull null], @"bounds",
                                     [NSNull null], @"contents",
+                                    [NSNull null], @"cornerRadius",
                                     [NSNull null], @"contentsScale",
                                     [NSNull null], @"onOrderIn",
                                     [NSNull null], @"onOrderOut",
@@ -178,7 +179,6 @@ JNI_COCOA_ENTER(env);
 
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
             AWT_ASSERT_APPKIT_THREAD;
-
             layer = [[CGLLayer alloc] initWithJavaLayer: javaLayer];
     }];
 

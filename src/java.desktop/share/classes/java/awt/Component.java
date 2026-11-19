@@ -52,10 +52,14 @@ import java.awt.event.TextEvent;
 import java.awt.im.InputContext;
 import java.awt.im.InputMethodRequests;
 import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.ImageObserver;
 import java.awt.image.ImageProducer;
+import java.awt.image.Raster;
+import java.awt.image.SampleModel;
 import java.awt.image.VolatileImage;
+import java.awt.image.WritableRaster;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.ContainerPeer;
 import java.awt.peer.LightweightPeer;
@@ -88,6 +92,7 @@ import javax.accessibility.AccessibleStateSet;
 import javax.swing.JComponent;
 import javax.swing.JRootPane;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.ComponentFactory;
 import sun.awt.ConstrainableGraphics;
@@ -95,6 +100,7 @@ import sun.awt.EmbeddedFrame;
 import sun.awt.RequestFocusController;
 import sun.awt.SubRegionShowable;
 import sun.awt.SunToolkit;
+import sun.awt.SurfacePixelGrabber;
 import sun.awt.dnd.SunDropTargetEvent;
 import sun.awt.im.CompositionArea;
 import sun.awt.image.VSyncedBSManager;
@@ -4468,6 +4474,13 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 // to translate to client area.
                 g.translate(insets.left, insets.top);
                 for (int i = 0; i < backBuffers.length; i++) {
+                    // If we try to draw outside the buffer's bounds, some backends may
+                    // fill this area with some color rather than avoid drawing altogether.
+                    // Protect against that by clipping the area to the back buffer's rectangle.
+                    x1 = Math.max(0, x1);
+                    y1 = Math.max(0, y1);
+                    x2 = Math.min(backBuffers[i].getWidth(), x2);
+                    y2 = Math.min(backBuffers[i].getHeight(), y2);
                     g.drawImage(backBuffers[i],
                                 x1, y1, x2, y2,
                                 x1, y1, x2, y2,
@@ -4859,6 +4872,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
         {
             return;
         }
+        // Custom title bar hit test is performed by all mouse events except MOUSE_EXITED and MOUSE_WHEEL
+        Window customTitleBarWindow = e.getID() >= MouseEvent.MOUSE_FIRST && e.getID() <= MouseEvent.MOUSE_LAST &&
+                e.getID() != MouseEvent.MOUSE_EXITED && e.getID() != MouseEvent.MOUSE_WHEEL ?
+                updateCustomTitleBarHitTest(true) : null;
 
         /*
          * 2. Allow the Toolkit to pass this to AWTEventListeners.
@@ -5021,6 +5038,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
             if (tpeer != null) {
                 tpeer.handleEvent(e);
             }
+        }
+
+        if (customTitleBarWindow != null) {
+            customTitleBarWindow.applyCustomTitleBarHitTest();
         }
 
         if (SunToolkit.isTouchKeyboardAutoShowEnabled() &&
@@ -10495,5 +10516,101 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     public static void disableInputMethodSupport() {
         INPUT_METHODS_DISABLED = true;
+    }
+
+    Window updateCustomTitleBarHitTest(boolean allowNativeActions) {
+        Container p = parent;
+        if (p == null) return null;
+        if ((eventMask & (AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.MOUSE_WHEEL_EVENT_MASK)) != 0 ||
+                mouseListener != null || mouseMotionListener != null || mouseWheelListener != null || cursor != null) {
+            allowNativeActions = false;
+        }
+        return p.updateCustomTitleBarHitTest(allowNativeActions);
+    }
+
+    @JBRApi.Provides("Screenshoter#getWindowBackbufferArea")
+    private static BufferedImage getWindowBackbufferArea(Window window, int x, int y, int width, int height) {
+        Objects.requireNonNull(window);
+
+        if (x < 0 || y < 0) {
+            throw new IllegalArgumentException("Negative coordinates are not allowed");
+        }
+
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("The size must be positive");
+        }
+
+        var insets = window.getInsets();
+        int clientWidth = window.getWidth() - insets.left - insets.right;
+        int clientHeight = window.getHeight() - insets.top - insets.bottom;
+        if (x >= clientWidth) {
+            throw new IllegalArgumentException(String.format("x coordinate (%d) is out of bounds (%d)", x, clientWidth));
+        }
+        if (y >= clientHeight) {
+            throw new IllegalArgumentException(String.format("y coordinate (%d) is out of bounds (%d)", y, clientHeight));
+        }
+
+        Image fullBackbuffer = window.getBackBuffer();
+        if (fullBackbuffer == null) {
+            return null;
+        }
+
+        // Note: the buffer may be of different size than the window when the window has been resized very recently.
+        var bufferWidth = fullBackbuffer.getWidth(null);
+        var bufferHeight = fullBackbuffer.getHeight(null);
+        if (x >= bufferWidth) {
+            throw new IllegalArgumentException(String.format("x coordinate (%d) is out of bounds (%d)", x, bufferWidth));
+        }
+
+        if (y >= bufferHeight) {
+            throw new IllegalArgumentException(String.format("y coordinate (%d) is out of bounds (%d)", y, bufferHeight));
+        }
+
+        if ((long) x + width > bufferWidth) {
+            width = bufferWidth - x;
+        }
+
+        if ((long) y + height > bufferHeight) {
+            height  = bufferHeight - y;
+        }
+
+        if (fullBackbuffer instanceof BufferedImage bufferedImage) {
+            return bufferedImage.getSubimage(x, y, width, height);
+        } else {
+            ColorModel colorModel = window.getGraphicsConfiguration().getColorModel();
+            SampleModel sampleModel = colorModel.createCompatibleSampleModel(width, height);
+            WritableRaster raster = Raster.createWritableRaster(sampleModel, null);
+            BufferedImage image = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
+            image.getGraphics().drawImage(fullBackbuffer,
+                    0, 0, width, height,
+                    x, y, x + width, y + height,
+                    null);
+            return image;
+        }
+    }
+
+    @JBRApi.Provides("Screenshoter#getWindowSurfaceArea")
+    private static BufferedImage getWindowSurfaceArea(Window window, int x, int y, int width, int height) {
+        Objects.requireNonNull(window);
+
+        if (x < 0 || y < 0) {
+            throw new IllegalArgumentException("Negative coordinates are not allowed");
+        }
+
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("The size must be positive");
+        }
+
+        ComponentPeer peer = window.peer;
+        if (peer == null || !window.isVisible()) {
+            return null;
+        }
+
+        if (peer instanceof SurfacePixelGrabber spg) {
+            // TODO: translate coordinates, maybe?
+            return spg.getClientAreaSnapshot(x, y, width, height);
+        }
+
+        return null;
     }
 }

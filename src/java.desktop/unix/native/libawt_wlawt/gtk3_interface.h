@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2026, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2025, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -292,8 +292,6 @@ static gchar* (*fp_gtk_check_version)(guint required_major, guint
 
 static void (*fp_g_free)(gpointer mem);
 static void (*fp_g_object_unref)(gpointer object);
-static GdkWindow *(*fp_gdk_get_default_root_window) (void);
-static int (*fp_gdk_window_get_scale_factor) (GdkWindow *window);
 
 static int (*fp_gdk_pixbuf_get_bits_per_sample)(const GdkPixbuf *pixbuf);
 static guchar *(*fp_gdk_pixbuf_get_pixels)(const GdkPixbuf *pixbuf);
@@ -314,6 +312,7 @@ static GdkPixbuf *(*fp_gdk_pixbuf_scale_simple)(GdkPixbuf *src,
 
 static void (*fp_gtk_widget_destroy)(void *widget);
 static void (*fp_gtk_window_present)(GtkWindow *window);
+static void (*fp_gtk_window_present_with_time)(GtkWindow *window, guint32 timestamp);
 static void (*fp_gtk_window_move)(GtkWindow *window, gint x, gint y);
 static void (*fp_gtk_window_resize)(GtkWindow *window, gint width, gint height);
 
@@ -358,7 +357,7 @@ static void (*fp_g_list_free_full) (GList *list, GDestroyNotify free_func);
 static void (*fp_gdk_threads_enter)(void);
 static void (*fp_gdk_threads_leave)(void);
 
-static gboolean (*fp_gtk_show_uri)(GdkScreen *screen, const gchar *uri,
+static gboolean (*fp_gtk_show_uri_on_window)(GdkWindow *parent, const gchar *uri,
     guint32 timestamp, GError **error);
 
 // Implementation functions prototypes
@@ -710,6 +709,10 @@ static const gchar *(*fp_g_variant_get_string)(GVariant *value, gsize *length);
 
 static guint32 (*fp_g_variant_get_uint32)(GVariant *value);
 
+static const gchar *(*fp_g_variant_get_type_string)(GVariant *value);
+
+static gboolean (*fp_g_variant_is_of_type)(GVariant *value, const GVariantType *type);
+
 static gboolean (*fp_g_variant_lookup)(GVariant *dictionary,
                                        const gchar *key,
                                        const gchar *format_string,
@@ -751,11 +754,15 @@ static void *(*fp_g_string_printf)(GString *string, const gchar *format, ...);
 
 static gboolean (*fp_g_uuid_string_is_valid)(const gchar *str);
 
+static gchar *(*fp_g_variant_print)(GVariant *value, gboolean type_annotate);
+static gchar *(*fp_g_strconcat)(const gchar *string1, ...);
 
 // ---------- * ----------
 static void (*fp_g_error_free)(GError *error);
 
 static gint (*fp_g_unix_fd_list_get)(GUnixFDList *list, gint index_, GError **error);
+
+static gint (*fp_g_unix_fd_list_get_length)(GUnixFDList* list);
 
 #endif /* !_GTK3_INTERFACE_H */
 

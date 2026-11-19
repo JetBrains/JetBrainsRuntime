@@ -1,0 +1,214 @@
+/*
+ * Copyright 2025 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package sun.awt.wl;
+
+import sun.util.logging.PlatformLogger;
+
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.datatransfer.Transferable;
+import java.awt.image.BufferedImage;
+import java.util.LinkedHashSet;
+
+public class WLDataSource {
+    protected static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataSource");
+
+    private long nativePtr;
+
+    private final Transferable data;
+
+    private final boolean anyMimesAnnounced;
+
+    private native long initNative(long dataDeviceNativePtr, int protocol);
+
+    private static native void offerMimeImpl(long nativePtr, String mime);
+
+    private static native void destroyImpl(long nativePtr);
+
+    private static native void setDnDActionsImpl(long nativePtr, int actions);
+
+    private static native void setDnDIconImpl(long nativePtr, int scale, int width, int height, int offsetX, int offsetY, int[] pixels);
+
+    @Override
+    public String toString() {
+        return "WLDataSource{" +
+                "nativePtr=0x" + Long.toHexString(nativePtr) +
+                ", data=" + data +
+                ", anyMimesAnnounced=" + anyMimesAnnounced +
+                '}';
+    }
+
+    public String getID() {
+        return "0x" + Long.toHexString(nativePtr);
+    }
+
+    WLDataSource(WLDataDevice dataDevice, int protocol, Transferable data) {
+        var wlDataTransferer = (WLDataTransferer) WLDataTransferer.getInstance();
+
+        nativePtr = initNative(dataDevice.getNativePtr(), protocol);
+        assert nativePtr != 0 : "Failed to initialize the native part of the source"; // should've already thrown in native
+        this.data = data;
+        boolean anyMimesAnnounced = false;
+
+        try {
+            if (data != null) {
+                var mimes = new LinkedHashSet<String>();
+
+                long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(data, wlDataTransferer.getFlavorTable());
+                if (formats.length > 0) {
+                    anyMimesAnnounced = true;
+                }
+
+                for (long format : formats) {
+                    String mime = wlDataTransferer.getNativeForFormat(format);
+                    mimes.add(mime);
+
+                    if (mime.contains("/") && !mime.startsWith("JAVA_DATAFLAVOR")) {
+                        // Qt apps require lowercase spelling of mime types, like text/plain;charset=utf-8
+                        mimes.add(mime.toLowerCase());
+                    }
+                }
+
+                for (var mime : mimes) {
+                    offerMimeImpl(nativePtr, mime);
+                }
+            }
+        } catch (Throwable e) {
+            destroyImpl(nativePtr);
+            throw e;
+        }
+
+        this.anyMimesAnnounced = anyMimesAnnounced;
+    }
+
+    // Used by WLDataDevice to set this source as a selection or to start drag-and-drop.
+    // This method can only safely be called before setting this source as selection, or starting drag-and-drop,
+    // because after that, source might receive a cancel event at any time and be destroyed.
+    long getNativePtr() {
+        return nativePtr;
+    }
+
+    public Transferable getData() {
+        return data;
+    }
+
+    public boolean hasSerializableFormats() {
+        return anyMimesAnnounced;
+    }
+
+    // This method can only be called once before setting this object as a drag-and-drop source
+    public void setDnDActions(int actions) {
+        log.fine("setDnDActions(), this = " + getID() + ", actions = " + actions);
+        if (nativePtr == 0) {
+            throw new IllegalStateException("Native pointer is null");
+        }
+        setDnDActionsImpl(nativePtr, actions);
+    }
+
+    public void setDnDIcon(Image image, int scale, int offsetX, int offsetY) {
+        log.fine("setDnDIcon(), this = " + getID() + ", image = " + image + ", scale = " + scale + ", offsetX = " + offsetX + ", offsetY = " + offsetY);
+        if (nativePtr == 0) {
+            throw new IllegalStateException("Native pointer is null");
+        }
+
+        if (scale <= 0) {
+            throw new IllegalArgumentException("Scale must be positive");
+        }
+
+        int width = image.getWidth(null);
+        int height = image.getHeight(null);
+
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        width = (width + scale - 1) / scale * scale;
+        height = (height + scale - 1) / scale * scale;
+
+        int[] pixels = new int[width * height];
+
+        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = bufferedImage.createGraphics();
+        g.drawImage(image, 0, 0, null);
+        g.dispose();
+
+        bufferedImage.getRGB(0, 0, width, height, pixels, 0, width);
+
+        setDnDIconImpl(nativePtr, scale, width, height, offsetX, offsetY, pixels);
+    }
+
+    // externally synchronized, only call from one thread at a time (e.g. by holding a lock)
+    // destroy all references to this object after this method returns
+    public void destroy() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("destroy(), this = " + getID());
+        }
+        if (nativePtr != 0) {
+            destroyImpl(nativePtr);
+            nativePtr = 0;
+        }
+    }
+
+    // Event handlers, called from native code on the data source dispatch thread
+
+    protected void handleSend(String mime, int fd) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleSend(), this = " + getID() + ", mime = " + mime + ", fd = " + fd);
+        }
+        WLDataDevice.transferContentsWithType(data, mime, fd);
+    }
+
+    protected void handleCancelled() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleCancelled(), this = " + getID());
+        }
+        destroy();
+    }
+
+    protected void handleTargetAcceptsMime(String mime) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleTargetAcceptsMime(), this = " + getID());
+        }
+    }
+
+    protected void handleDnDDropPerformed() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDnDDropPerformed(), this = " + getID());
+        }
+    }
+
+    protected void handleDnDFinished() {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDnDFinished(), this = " + getID());
+        }
+    }
+
+    protected void handleDnDAction(int action) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("handleDnDAction(), this = " + getID() + ", action = " + action);
+        }
+    }
+}

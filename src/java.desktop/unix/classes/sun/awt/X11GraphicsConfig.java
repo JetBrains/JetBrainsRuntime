@@ -273,12 +273,12 @@ public class X11GraphicsConfig extends GraphicsConfiguration
         return getDevice().getScaleFactor();
     }
 
-    public int scaleUp(int x) {
-        return Region.clipRound(x * (double)getScale());
+    public int scaleUp(int i) {
+        return getDevice().scaleUp(i);
     }
 
-    public int scaleDown(int x) {
-        return Region.clipRound(x / (double)getScale());
+    public int scaleDown(int i) {
+        return getDevice().scaleDown(i);
     }
 
     /**

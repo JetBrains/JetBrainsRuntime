@@ -150,10 +150,9 @@ import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
 import sun.font.FontConfigManager;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.vulkan.VKEnv;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
-
-import static sun.awt.X11.XlibUtil.scaleDown;
 
 public final class XToolkit extends UNIXToolkit implements Runnable {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.X11.XToolkit");
@@ -508,6 +507,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             device = (X11GraphicsDevice) localEnv.getDefaultScreenDevice();
             display = device.getDisplay();
             setupModifierMap();
+            VKEnv.init(() -> {
+                VKEnv.requireForceVulkan("XToolkit");
+                return VKEnv.initPlatformX11(display);
+            });
             initIDs();
             setBackingStoreType();
         }
@@ -549,6 +552,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         MotifColorUtilities.loadSystemColors(systemColors);
     }
 
+    @Override
+    public boolean needUpdateWindow() {
+        return VKEnv.isPresentationEnabled();
+    }
+
+    @Override
+    public boolean needUpdateWindowAfterPaint() {
+        return VKEnv.isPresentationEnabled();
+    }
 
 
     static void initUIDefaults() {
@@ -611,6 +623,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 log.finer("X locale modifiers are not supported, using default");
             }
             tryXKB();
+            checkXInput();
 
             arrowCursor = XlibWrapper.XCreateFontCursor(XToolkit.getDisplay(),
                 XCursorFontConstants.XC_arrow);
@@ -792,13 +805,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             XMotionEvent ev = e.get_xmotion();
             awtLock();
             try {
-                if (lastCursorPos == null) {
-                    lastCursorPos = new Point(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
-                } else {
-                    lastCursorPos.setLocation(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
-                }
+                lastCursorPos = win.scaleDown(ev.get_x_root(), ev.get_y_root());
             } finally {
                 awtUnlock();
             }
@@ -815,13 +822,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             XCrossingEvent ev = e.get_xcrossing();
             awtLock();
             try {
-                if (lastCursorPos == null) {
-                    lastCursorPos = new Point(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
-                } else {
-                    lastCursorPos.setLocation(win.scaleDown(ev.get_x_root()),
-                                              win.scaleDown(ev.get_y_root()));
-                }
+                lastCursorPos = win.scaleDown(ev.get_x_root(), ev.get_y_root());
             } finally {
                 awtUnlock();
             }
@@ -981,6 +982,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                     processXkbChanges(ev);
                 }
 
+                if (ev.get_type() == XConstants.KeyPress) {
+                    doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC =
+                        mayXResetICReturnThePreeditTextViaNextKeyPressEvent &&
+                        isKeyPressSyntetic(ev.get_xkey());
+
+                    mayXResetICReturnThePreeditTextViaNextKeyPressEvent = false;
+                }
+
                 if (XDropTargetEventProcessor.processEvent(ev) ||
                     XDragSourceContextPeer.processEvent(ev)) {
                     continue;
@@ -1006,11 +1015,22 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 final boolean isKeyEvent = ( (ev.get_type() == XConstants.KeyPress) ||
                                              (ev.get_type() == XConstants.KeyRelease) );
 
+                final long keyEventSerial = isKeyEvent ? ev.get_xkey().get_serial() : -1;
+
                 if (keyEventLog.isLoggable(PlatformLogger.Level.FINE) && isKeyEvent) {
                     keyEventLog.fine("before XFilterEvent:" + ev);
                 }
                 if (XlibWrapper.XFilterEvent(ev.getPData(), w)) {
                     if (isKeyEvent) {
+                        if (keyEventLog.isLoggable(PlatformLogger.Level.FINE)) {
+                            keyEventLog.fine(
+                                "Setting lastFilteredKeyEventSerial=={0} to {1}",
+                                lastFilteredKeyEventSerial, keyEventSerial
+                            );
+                        }
+                        lastFilteredKeyEventSerial = keyEventSerial;
+
+                        XInputMethod.delayAllXICDestroyUntilAFurtherNotice();
                         XInputMethod.onXKeyEventFiltering(true);
                     }
                     continue;
@@ -1022,6 +1042,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
                 if (isKeyEvent) {
                     XInputMethod.onXKeyEventFiltering(false);
+                    if (keyEventSerial == lastFilteredKeyEventSerial) {
+                        // JBR-6456: Sudden keyboard death on Linux using iBus.
+                        // If more than 1 key events are being processed by iBus
+                        //   (i.e. more than one in a row calls of XFilterEvent(...) with instances of XKeyEvent have
+                        //    returned true),
+                        //   we have to postpone destroying until the very last one is completely processed)
+                        XInputMethod.delayedXICDestroyShouldBeDone();
+                    }
                 }
 
                 dispatchEvent(ev);
@@ -1029,10 +1057,77 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 XBaseWindow.ungrabInput();
                 processException(thr);
             } finally {
+                doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC = false;
+                // free event data if XGetEventData was called
+                XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
                 awtUnlock();
             }
         }
     }
+
+
+    // ================================================================================================================
+    // JBR-3112 Linux: Last character issue with Korean.
+    // XmbResetIC/XwcResetIC are called (by sun.awt.X11InputMethodBase#endComposition) when
+    //   the keyboard focus goes to another Java component.
+    // By the X11 specification, these functions must return the current preedit text. However, some
+    //   input methods (e.g., iBus and fcitx4) don't return the preedit text, but instead send it later
+    //   (asynchronously) via a combination of a synthetic KeyPress event + XmbLookupString applied to it.
+    // Not only does this behavior breaks the X11 specification,
+    //   but it also causes the preedit text to wrongly go to the newly focused Java component rather than
+    //   its intended target, the previously focused component for which the preedit text was originally composed.
+    // Thus, in order to prevent the "outdated" preedit text from going to the newly focused component, let's
+    //   at least discard it at all.
+    // *How* it's done: the toolkit gets notified whenever XmbResetIC/XwcResetIC gets called and then
+    //   discards the preedit text returned from XmbLookupString/XwcLookupString, applied to the next
+    //   KeyPress event being dispatched.
+    // ================================================================================================================
+
+    private volatile boolean mayXResetICReturnThePreeditTextViaNextKeyPressEvent = false;
+    private boolean doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC = false;
+
+    /**
+     * Notifies the toolkit that XmbResetIC/XwcResetIC has recently returned null
+     *   (likely meaning that the preedit text will be sent later via a synthetic KeyPress event,
+     *    although the focus may have already moved to another component)
+     */
+    public void xResetICMayReturnThePreeditTextViaNextKeyPressEvent() {
+        mayXResetICReturnThePreeditTextViaNextKeyPressEvent = true;
+    }
+
+    /**
+     * @return true if the composed text returned from XmbLookupString/XwcLookupString
+     *              (see function awt_x11inputmethod_lookupString in awt_InputMethod.c), applied to the currently
+     *              dispatched KeyEvent, must be discarded (instead of being dispatched to the focused component) ;
+     *         false otherwise
+     * @see XWindow#handleKeyPress(XKeyEvent)
+     */
+    public boolean doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC() {
+        assert isToolkitThread();
+        return doesCurrentlyDispatchedKeyPressContainThePreeditTextOfLastXResetIC;
+    }
+
+    private static boolean isKeyPressSyntetic(XKeyEvent ev) {
+        assert (ev.get_type() == XConstants.KeyPress);
+
+        return ( (ev.get_root()      == 0) &&
+                 (ev.get_subwindow() == 0) &&
+                 (ev.get_time()      == 0) &&
+                 (ev.get_x()         == 0) &&
+                 (ev.get_y()         == 0) &&
+                 (ev.get_x_root()    == 0) &&
+                 (ev.get_y_root()    == 0) &&
+                 (ev.get_state()     == 0) );
+    }
+
+
+    // JBR-6456: Sudden keyboard death on Linux using iBus.
+    // The field holds the value of sun.awt.X11.XKeyEvent#get_serial of the last key event, which
+    //   XFilterEvent(...) returned True for.
+    // See the usages of the variable for more info.
+    // See sun.awt.X11.XInputMethod#disposeXIC for the detailed explanation of the whole fix.
+    private long lastFilteredKeyEventSerial = -1;
+
 
     /**
      * Listener installed to detect display changes.
@@ -1089,7 +1184,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return maxWindowHeightInPixels;
     }
 
-    private static Rectangle getWorkArea(long root, int scale)
+    private static Rectangle getWorkArea(long root)
     {
         XAtom XA_NET_WORKAREA = XAtom.get("_NET_WORKAREA");
 
@@ -1105,10 +1200,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 int rootWidth = (int)Native.getLong(native_ptr, 2);
                 int rootHeight = (int)Native.getLong(native_ptr, 3);
 
-                return new Rectangle(scaleDown(rootX, scale),
-                                     scaleDown(rootY, scale),
-                                     scaleDown(rootWidth, scale),
-                                     scaleDown(rootHeight, scale));
+                return new Rectangle(rootX, rootY, rootWidth, rootHeight);
             }
         }
         finally
@@ -1124,12 +1216,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
      * insets are calculated using _NET_WORKAREA property of the root window.
      * <p>
      * Note that _NET_WORKAREA is a rectangular area and it does not work
-     * well in the Xinerama mode.
-     * <p>
-     * We will trust the part of this rectangular area only if it starts at the
-     * requested graphics configuration. Below is an example when the
-     * _NET_WORKAREA intersects with the requested graphics configuration but
-     * produces wrong result.
+     * well in the Xinerama mode, so we assume that only 0th screen has insets.
+     * Below is an example when _NET_WORKAREA produces wrong result.
      *
      *         //<-x1,y1///////
      *         //            // ////////////////
@@ -1147,20 +1235,32 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         if (np == null || !(gd instanceof X11GraphicsDevice) || !np.active()) {
             return super.getScreenInsets(gc);
         }
+        final GraphicsDevice[] devices = ((X11GraphicsEnvironment)GraphicsEnvironment.
+                getLocalGraphicsEnvironment()).getScreenDevices();
+        if (localEnv.runningXinerama() && devices.length > 1) {
+            return new Insets(0, 0, 0, 0);
+        }
+        X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
+        int screenNum = x11gd.getScreen();
+        Rectangle screen = gc.getBounds();
 
         XToolkit.awtLock();
         try {
-            X11GraphicsDevice x11gd = (X11GraphicsDevice) gd;
-            long root = XlibUtil.getRootWindow(x11gd.getScreen());
-            Rectangle workArea = getWorkArea(root, x11gd.getScaleFactor());
-            Rectangle screen = gc.getBounds();
-            if (workArea != null && screen.contains(workArea.getLocation())) {
+            Rectangle workArea = getWorkArea(XlibUtil.getRootWindow(screenNum));
+            if (workArea != null) {
+                Point p = x11gd.scaleDown(workArea.x, workArea.y);
+                workArea.x = p.x;
+                workArea.y = p.y;
+                workArea.width = x11gd.scaleDown(workArea.width);
+                workArea.height = x11gd.scaleDown(workArea.height);
                 workArea = workArea.intersection(screen);
-                int top = workArea.y - screen.y;
-                int left = workArea.x - screen.x;
-                int bottom = screen.height - workArea.height - top;
-                int right = screen.width - workArea.width - left;
-                return new Insets(top, left, bottom, right);
+                if (!workArea.isEmpty()) {
+                    int top = workArea.y;
+                    int left = workArea.x;
+                    int bottom = screen.height - workArea.height - top;
+                    int right = screen.width - workArea.width - left;
+                    return new Insets(top, left, bottom, right);
+                }
             }
             // Note that it is better to return zeros than inadequate values
             return new Insets(0, 0, 0, 0);
@@ -2684,6 +2784,58 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
+    private static volatile boolean hasXInputExtension = false;
+
+    public static boolean isXInputEnabled() {
+        return hasXInputExtension;
+    }
+
+    public static void checkXInput() {
+        awtLock();
+        try {
+            String extensionName = "XInputExtension";
+            boolean hasExtension = XlibWrapper.XQueryExtension(XToolkit.getDisplay(), extensionName,
+                    XlibWrapper.iarg1, XlibWrapper.iarg2, XlibWrapper.iarg3);
+            if (!hasExtension) {
+                log.warning("X Input extension isn't available, error: {0}", Native.getInt(XlibWrapper.iarg1));
+                return;
+            }
+
+            final int requiredMajor = 2;
+            final int requiredMinor = 2;
+            Native.putInt(XlibWrapper.iarg1, requiredMajor);
+            Native.putInt(XlibWrapper.iarg2, requiredMinor);
+            int status = XlibWrapper.XIQueryVersion(XToolkit.getDisplay(), XlibWrapper.iarg1, XlibWrapper.iarg2);
+            if (status == XConstants.BadRequest) {
+                log.warning("X Input2 not supported in the server");
+                return;
+            }
+
+            int major = Native.getInt(XlibWrapper.iarg1);
+            int minor = Native.getInt(XlibWrapper.iarg2);
+            if (major >= requiredMajor && minor >= requiredMinor) {
+                hasXInputExtension = true;
+            } else {
+                log.warning("Desired version is 2.2, server version is {0}.{1}", major, minor);
+            }
+        } finally {
+            awtUnlock();
+        }
+    }
+
+    public static XIDeviceEvent GetXIDeviceEvent(XGenericEventCookie cookie) {
+        return new XIDeviceEvent(cookie.get_data());
+    }
+
+    public static int XISelectEvents(long display, long window, long mask, int deviceid) {
+        if (isXInputEnabled()) {
+            return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
+        } else {
+            log.warning("Attempting to select xi events while xinput isn't available");
+            return XConstants.BadRequest;
+        }
+    }
+
     private static long eventNumber;
     public static long getEventNumber() {
         awtLock();
@@ -2860,5 +3012,15 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             isXWayland = getEnv("WAYLAND_DISPLAY") != null;
         }
         return isXWayland;
+    }
+
+    /**
+     * Checks if the window manager supports _NET_WM_MOVERESIZE protocol.
+     *
+     * @return {@code true} if _NET_WM_MOVERESIZE is supported by the
+     * window manager and false otherwise.
+     */
+    boolean isWindowMoveSupported() {
+        return XWM.isWMMoveResizeSupported();
     }
 }

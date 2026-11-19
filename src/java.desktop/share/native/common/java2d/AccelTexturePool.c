@@ -516,6 +516,19 @@ jint ATexturePoolHandle_GetRequestedHeight(ATexturePoolHandle *handle) {
     return handle->reqHeight;
  }
 
+jint ATexturePoolHandle_GetActualWidth(ATexturePoolHandle *handle) {
+    CHECK_NULL_RETURN(handle, 0);
+    CHECK_NULL_RETURN(handle->_poolItem, 0);
+    if (TRACE_USE_API) J2dRlsTraceLn(J2D_TRACE_INFO, "ATexturePoolHandle_GetActualWidth: handle = %p", handle);
+    return handle->_poolItem->width;
+}
+
+jint ATexturePoolHandle_GetActualHeight(ATexturePoolHandle *handle) {
+    CHECK_NULL_RETURN(handle, 0);
+    CHECK_NULL_RETURN(handle->_poolItem, 0);
+    if (TRACE_USE_API) J2dRlsTraceLn(J2D_TRACE_INFO, "ATexturePoolHandle_GetActualHeight: handle = %p", handle);
+    return handle->_poolItem->height;
+}
 
 /* ATexturePool API */
 static void ATexturePool_cleanIfNecessary(ATexturePool *pool, int lastUsedTimeThreshold);
@@ -811,8 +824,6 @@ ATexturePoolHandle* ATexturePool_getTexture(ATexturePool* pool,
         pool->memoryAllocated += requestedBytes;
         pool->totalMemoryAllocated += requestedBytes;
 
-        J2dTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d | allocated memory = %lld Kb (allocs: %d)",
-                   minDeltaTpi->texture, width, height, format, pool->memoryAllocated / UNIT_KB, pool->allocatedCount);
         if (TRACE_MEM_API) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "ATexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d | allocated memory = %lld Kb (allocs: %d)",
                                          minDeltaTpi->texture, width, height, format, pool->memoryAllocated / UNIT_KB, pool->allocatedCount);
     } else {

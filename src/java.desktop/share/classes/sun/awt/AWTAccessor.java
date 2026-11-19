@@ -37,7 +37,6 @@ import java.awt.event.InputEvent;
 import java.awt.event.InvocationEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Point2D;
 import java.awt.image.BufferStrategy;
 import java.awt.peer.ComponentPeer;
 
@@ -46,6 +45,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.reflect.InvocationTargetException;
 
 import java.io.File;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Vector;
 import java.util.function.BooleanSupplier;
@@ -288,9 +288,6 @@ public final class AWTAccessor {
          */
         void updateWindow(Window window);
 
-        void setPopupParent(Window window, Component component);
-        Component getPopupParent(Window window);
-
         /** Sets the synchronous status of focus requests on lightweight
          * components in the specified window to the specified value.
          */
@@ -318,10 +315,15 @@ public final class AWTAccessor {
          */
         Window[] getOwnedWindows(Window w);
 
+        /* JBR Window counters API */
         boolean countersEnabled(Window w);
-        void bumpCounter(Window w, String counterName);
+        void incrementCounter(Window w, String counterName);
+        void addStat(Window w, String statName, double value);
+
         long getCounter(Window w, String counterName);
-        long getCounterPerSecond(Window w, String counterName);
+        double getCounterPerSecond(Window w, String counterName);
+
+        void dumpStats(Window w, boolean reset, StringBuilder sb);
     }
 
     /**
@@ -515,6 +517,11 @@ public final class AWTAccessor {
          * Creates a secondary loop with the provided condition.
          */
         SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond);
+
+        /**
+         * Returns {@code true} if {@code child} is on the queue stack of {@code parent}
+         */
+        boolean isOnStack(EventQueue parent, EventQueue child);
     }
 
     /*
@@ -583,9 +590,19 @@ public final class AWTAccessor {
      */
     public interface CursorAccessor {
         /**
+         * Returns pData of the Cursor class according to scale or 0 otherwise
+         */
+        long getPData(Cursor cursor, int scale);
+
+        /**
          * Returns pData of the Cursor class
          */
         long getPData(Cursor cursor);
+
+        /**
+         * Sets pData to the Cursor class according to scale
+         */
+        void setPData(Cursor cursor, int scale, long pData);
 
         /**
          * Sets pData to the Cursor class
@@ -683,6 +700,16 @@ public final class AWTAccessor {
          * Gets isProxyActive field for KeyEvent
          */
         boolean isProxyActive(KeyEvent ev);
+
+        /**
+         * Returns the JBR-specific property map
+         */
+        Map<String, Object> getJBRExtraProperties(KeyEvent ev);
+
+        /**
+         * Overwrites the JBR-specific property map
+         */
+        void setJBRExtraProperties(KeyEvent ev, Map<String, Object> properties);
     }
 
     /**

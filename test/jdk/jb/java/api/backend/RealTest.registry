@@ -1,0 +1,5 @@
+SERVICE com.jetbrains.test.jbr.Real.ServiceImpl com.jetbrains.test.api.Real.Service
+PROVIDES com.jetbrains.test.jbr.Real.ProxyImpl com.jetbrains.test.api.Real.Proxy
+PROVIDED com.jetbrains.test.jbr.Real.Client com.jetbrains.test.api.Real.ClientImpl
+TWO_WAY com.jetbrains.test.jbr.Real.JBR2Way com.jetbrains.test.api.Real.Api2Way
+TWO_WAY com.jetbrains.test.jbr.Real.JBRLazyNumber com.jetbrains.test.api.Real.ApiLazyNumber

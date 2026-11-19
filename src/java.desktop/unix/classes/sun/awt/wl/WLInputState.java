@@ -26,33 +26,42 @@
 
 package sun.awt.wl;
 
+import java.awt.event.InputEvent;
+
 /**
  * MouseEvent objects cannot be created directly from WLPointerEvent because they require
  * the information of certain events from the past like keyboard modifiers keys getting
  * pressed. WLInputState maintains this information.
  *
- * @param eventWithSurface null or the latest PointerEvent such that hasSurface() == true
- * @param eventWithSerial null or the latest PointerEvent such that hasSerial() == true
- * @param eventWithTimestamp null or the latest PointerEvent such that hasTimestamp() == true
- * @param eventWithCoordinates null or the latest PointerEvent such that hasCoordinates() == true
+ * @param eventWithSurface null or the latest WLPointerEvent such that hasSurface() == true
+ * @param pointerEnterSerial the serial of the latest wl_pointer::enter event
+ * @param pointerButtonSerial the serial of the latest wl_pointer::button event
+ * @param keyboardEnterSerial the serial of the latest wl_keyboard::enter event
+ * @param keySerial the serial of the latest wl_keyboard::key event
+ * @param eventWithTimestamp null or the latest WLPointerEvent such that hasTimestamp() == true
+ * @param eventWithCoordinates null or the latest WLPointerEvent such that hasCoordinates() == true
  * @param pointerButtonPressedEvent null or the latest PointerButtonEvent such that getIsButtonPressed() == true
  * @param modifiers a bit set of modifiers reflecting currently pressed keys (@see WLInputState.getNewModifiers())
  * @param surfaceForKeyboardInput represents 'struct wl_surface*' that keyboards events should go to
- * @param lockingKeyState a bit set of locking modifiers currently active
+ * @param isPointerOverSurface true if the mouse pointer has entered a surface and has not left yet
+ * @param latestInputSerial the serial of the latest input event (key or pointer button press)
  */
 record WLInputState(WLPointerEvent eventWithSurface,
-                    WLPointerEvent eventWithSerial,
+                    WLInputSerial pointerEnterSerial,
+                    WLInputSerial pointerButtonSerial,
+                    WLInputSerial keyboardEnterSerial,
+                    WLInputSerial keySerial,
                     WLPointerEvent eventWithTimestamp,
                     WLPointerEvent eventWithCoordinates,
                     PointerButtonEvent pointerButtonPressedEvent,
                     int modifiers,
+                    int pendingCrossingModifiers,
                     long surfaceForKeyboardInput,
                     boolean isPointerOverSurface,
-                    int lockingKeyState) {
+                    WLInputSerial latestInputSerial) {
     /**
      * Groups together information about a mouse pointer button event.
      * @param surface 'struct wl_surface*' the button was pressed over
-     * @param serial serial number of the event as received from Wayland
      * @param timestamp time of the event as received from Wayland
      * @param clickCount number of consecutive clicks of the same button performed
      *                   within WLToolkit.getMulticlickTime() milliseconds from one another
@@ -62,7 +71,6 @@ record WLInputState(WLPointerEvent eventWithSurface,
      */
     record PointerButtonEvent(
             long surface,
-            long serial,
             long timestamp,
             int clickCount,
             int linuxCode,
@@ -70,110 +78,211 @@ record WLInputState(WLPointerEvent eventWithSurface,
             int surfaceY) {}
 
     static WLInputState initialState() {
-        return new WLInputState(null, null, null, null,
-                null, 0, 0, false, 0);
+        return new WLInputState(
+                null,
+                WLInputSerial.INVALID,
+                WLInputSerial.INVALID,
+                WLInputSerial.INVALID,
+                WLInputSerial.INVALID,
+                null,
+                null,
+                null,
+                0,
+                0,
+                0,
+                false,
+                WLInputSerial.INVALID);
     }
 
     /**
-     * Creates new state based on the existing one and the supplied WLPointerEvent.
+     * Creates a new state based on the existing one and the supplied WLPointerEvent.
      */
-    WLInputState update(WLPointerEvent pointerEvent) {
+    WLInputState updatedFromPointerEvent(WLPointerEvent pointerEvent) {
         final WLPointerEvent newEventWithSurface = pointerEvent.hasSurface()
                 ? pointerEvent : eventWithSurface;
-        final WLPointerEvent newEventWithSerial = pointerEvent.hasSerial()
-                ? pointerEvent : eventWithSerial;
+        final WLInputSerial newPointerEnterSerial = pointerEvent.hasEnterEvent()
+                ? new WLInputSerial(pointerEvent.getSerial()) : pointerEnterSerial;
+        final WLInputSerial newPointerButtonSerial = pointerEvent.hasButtonEvent()
+                ? new WLInputSerial(pointerEvent.getSerial()) : pointerButtonSerial;
         final WLPointerEvent newEventWithTimestamp = pointerEvent.hasTimestamp()
                 ? pointerEvent : eventWithTimestamp;
         final WLPointerEvent newEventWithCoordinates = pointerEvent.hasCoordinates()
                 ? pointerEvent : eventWithCoordinates;
         final PointerButtonEvent newPointerButtonEvent = getNewPointerButtonEvent(pointerEvent,
                 newEventWithSurface,
-                newEventWithSerial,
                 newEventWithTimestamp,
                 newEventWithCoordinates);
         final int newModifiers = getNewModifiers(pointerEvent);
+        final int newPendingCrossingModifiers = getNewPendingCrossingModifiers(pointerEvent);
 
         boolean newPointerOverSurface = (pointerEvent.hasEnterEvent() || isPointerOverSurface)
                 && !pointerEvent.hasLeaveEvent();
 
+        final WLInputSerial newLatestInputEventSerial = pointerEvent.hasButtonEvent()
+                ? new WLInputSerial(pointerEvent.getSerial()) : latestInputSerial;
+
         return new WLInputState(
                 newEventWithSurface,
-                newEventWithSerial,
+                newPointerEnterSerial,
+                newPointerButtonSerial,
+                keyboardEnterSerial,
+                keySerial,
                 newEventWithTimestamp,
                 newEventWithCoordinates,
                 newPointerButtonEvent,
                 newModifiers,
+                newPendingCrossingModifiers,
                 surfaceForKeyboardInput,
                 newPointerOverSurface,
-                lockingKeyState);
+                newLatestInputEventSerial);
+    }
+
+    public WLInputState updatedFromKeyEvent(long serial) {
+        return new WLInputState(
+                eventWithSurface,
+                pointerEnterSerial,
+                pointerButtonSerial,
+                keyboardEnterSerial,
+                new WLInputSerial(serial),
+                eventWithTimestamp,
+                eventWithCoordinates,
+                pointerButtonPressedEvent,
+                modifiers,
+                0,
+                surfaceForKeyboardInput,
+                isPointerOverSurface,
+                new WLInputSerial(serial));
     }
 
     public WLInputState updatedFromKeyboardEnterEvent(long serial, long surfacePtr) {
         // "The compositor must send the wl_keyboard.modifiers event after this event".
         return new WLInputState(
                 eventWithSurface,
-                eventWithSerial,
+                pointerEnterSerial,
+                pointerButtonSerial,
+                new WLInputSerial(serial),
+                keySerial.makeStale(),
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 modifiers,
+                0,
                 surfacePtr,
                 isPointerOverSurface,
-                lockingKeyState);
+                latestInputSerial);
     }
 
-    public WLInputState updatedFromKeyboardModifiersEvent(long serial, int keyboardModifiers, int newLockingKeyState) {
-        // "The compositor must send the wl_keyboard.modifiers event after this event".
+    public WLInputState updatedFromKeyboardModifiersEvent(long serial, int keyboardModifiers) {
+        // NB: there seem to be no use for the serial number of this kind of event so far
         final int oldPointerModifiers = modifiers & WLPointerEvent.PointerButtonCodes.combinedMask();
         final int newModifiers = oldPointerModifiers | keyboardModifiers;
         return new WLInputState(
                 eventWithSurface,
-                eventWithSerial,
-                eventWithTimestamp,
-                eventWithCoordinates,
-                pointerButtonPressedEvent,
-                newModifiers,
-                surfaceForKeyboardInput,
-                isPointerOverSurface,
-                newLockingKeyState);
-    }
-
-    public WLInputState updatedFromKeyboardLeaveEvent(long serial, long surfacePtr) {
-        // "After this event client must assume that all keys, including modifiers,
-        //	are lifted and also it must stop key repeating if there's some going on".
-        final int newModifiers = modifiers & WLPointerEvent.PointerButtonCodes.combinedMask();
-        return new WLInputState(
-                eventWithSurface,
-                eventWithSerial,
+                pointerEnterSerial,
+                pointerButtonSerial,
+                keyboardEnterSerial,
+                keySerial,
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 newModifiers,
                 0,
+                surfaceForKeyboardInput,
                 isPointerOverSurface,
-                lockingKeyState);
+                latestInputSerial);
+    }
+
+    public WLInputState updatedFromKeyboardLeaveEvent(long serial, long surfacePtr) {
+        // NB: there seem to be no use for the serial number of this kind of event so far
+
+        // "After this event client must assume that all keys, including modifiers,
+        //	are lifted and also it must stop key repeating if there's some going on".
+
+        // We learned from experience that some serials become invalid after focus lost, so they
+        // are zeroed-out to prevent the use of a stale serial.
+        // Note: Wayland doesn't report failure when a stale serial is passed.
+        final int newModifiers = modifiers & WLPointerEvent.PointerButtonCodes.combinedMask();
+        return new WLInputState(
+                eventWithSurface,
+                pointerEnterSerial,
+                pointerButtonSerial.makeStale(),
+                keyboardEnterSerial.makeStale(),
+                keySerial.makeStale(),
+                eventWithTimestamp,
+                eventWithCoordinates,
+                pointerButtonPressedEvent,
+                newModifiers,
+                0,
+                0,
+                isPointerOverSurface,
+                latestInputSerial);
+    }
+
+    public WLInputState updatedFromUnregisteredSurface(long surfacePtr) {
+        if (surfaceForKeyboardInput == surfacePtr) {
+            // When a window is hidden, we don't receive the keyboard.leave event, but the surface
+            // becomes stale and its use dangerous, so must clear it out.
+            return new WLInputState(
+                    eventWithSurface,
+                    pointerEnterSerial,
+                    pointerButtonSerial,
+                    keyboardEnterSerial,
+                    keySerial,
+                    eventWithTimestamp,
+                    eventWithCoordinates,
+                    pointerButtonPressedEvent,
+                    modifiers,
+                    0,
+                    0,
+                    isPointerOverSurface,
+                    latestInputSerial);
+        } else {
+            return this;
+        }
     }
 
     public WLInputState resetPointerState() {
         return new WLInputState(
                 eventWithSurface,
-                eventWithSerial,
+                pointerEnterSerial,
+                pointerButtonSerial,
+                keyboardEnterSerial,
+                keySerial,
                 eventWithTimestamp,
                 eventWithCoordinates,
                 pointerButtonPressedEvent,
                 modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask(),
+                0,
                 surfaceForKeyboardInput,
                 false,
-                lockingKeyState);
+                latestInputSerial);
+    }
+
+    public WLInputState resetPendingCrossingState() {
+        return new WLInputState(
+                eventWithSurface,
+                pointerEnterSerial,
+                pointerButtonSerial,
+                keyboardEnterSerial,
+                keySerial,
+                eventWithTimestamp,
+                eventWithCoordinates,
+                pointerButtonPressedEvent,
+                modifiers,
+                0,
+                surfaceForKeyboardInput,
+                isPointerOverSurface,
+                latestInputSerial);
     }
 
     private PointerButtonEvent getNewPointerButtonEvent(WLPointerEvent pointerEvent,
                                                         WLPointerEvent newEventWithSurface,
-                                                        WLPointerEvent newEventWithSerial,
                                                         WLPointerEvent newEventWithTimestamp,
                                                         WLPointerEvent newEventWithPosition) {
         if (pointerEvent.hasButtonEvent() && pointerEvent.getIsButtonPressed() && newEventWithSurface != null) {
-            assert newEventWithSerial != null && newEventWithTimestamp != null && newEventWithPosition != null;
+            assert newEventWithTimestamp != null && newEventWithPosition != null
+                    : "Events with timestamp and position are both required to be present";
+
             int clickCount = 1;
             final boolean pressedSameButton = pointerButtonPressedEvent != null
                     && pointerEvent.getButtonCode() == pointerButtonPressedEvent.linuxCode;
@@ -183,17 +292,13 @@ record WLInputState(WLPointerEvent eventWithSurface,
                 final boolean clickedQuickly
                         = (pointerEvent.getTimestamp() - pointerButtonPressedEvent.timestamp)
                         <= WLToolkit.getMulticlickTime();
-                final boolean mouseDidNotMove =
-                        newEventWithPosition.getSurfaceX() == pointerButtonPressedEvent.surfaceX &&
-                        newEventWithPosition.getSurfaceY() == pointerButtonPressedEvent.surfaceY;
-                if (clickedSameSurface && clickedQuickly && mouseDidNotMove) {
+                if (clickedSameSurface && clickedQuickly && multiclickMouseDidNotMove(newEventWithPosition)) {
                     clickCount = pointerButtonPressedEvent.clickCount + 1;
                 }
             }
 
             return new PointerButtonEvent(
                     newEventWithSurface.getSurface(),
-                    newEventWithSerial.getSerial(),
                     newEventWithTimestamp.getTimestamp(),
                     clickCount,
                     pointerEvent.getButtonCode(),
@@ -204,51 +309,90 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return pointerButtonPressedEvent;
     }
 
+    private boolean multiclickMouseDidNotMove(WLPointerEvent newEvent) {
+        final int mouseSurfaceDeltaX = newEvent.getSurfaceX() - pointerButtonPressedEvent.surfaceX;
+        final int mouseSurfaceDeltaY = newEvent.getSurfaceY() - pointerButtonPressedEvent.surfaceY;
+        final WLComponentPeer peer = peerForPointerEvents();
+        final int mouseDeltaX = peer != null ? peer.surfaceUnitsToJavaUnits(mouseSurfaceDeltaX) : mouseSurfaceDeltaX;
+        final int mouseDeltaY = peer != null ? peer.surfaceUnitsToJavaUnits(mouseSurfaceDeltaY) : mouseSurfaceDeltaY;
+        final int mouseDeltaSquared = mouseDeltaX * mouseDeltaX + mouseDeltaY * mouseDeltaY;
+        final int mouseDeltaThreshold = WLToolkit.getMulticlickMouseMoveThresholdJavaUnits();
+        return mouseDeltaSquared <= (mouseDeltaThreshold * mouseDeltaThreshold);
+    }
+
+    private static int getUpdatedModifiersFromPointerEvent(int modifiers, WLPointerEvent pointerEvent) {
+        if (!pointerEvent.hasButtonEvent()) {
+            return modifiers;
+        }
+
+        final WLPointerEvent.PointerButtonCodes buttonCode
+                = WLPointerEvent.PointerButtonCodes.recognizedOrNull(pointerEvent.getButtonCode());
+        if (buttonCode != null) {
+            if (pointerEvent.getIsButtonPressed()) {
+                modifiers |= buttonCode.mask();
+            } else {
+                modifiers &= ~buttonCode.mask();
+            }
+        }
+        return modifiers;
+    }
+
     private int getNewModifiers(WLPointerEvent pointerEvent) {
         int newModifiers = modifiers;
 
-        if (pointerEvent.hasLeaveEvent()) {
+        if (pointerEvent.hasLeaveEvent() && !pointerEvent.hasEnterEvent()) {
             return modifiers & ~WLPointerEvent.PointerButtonCodes.combinedMask();
         }
 
-        if (pointerEvent.hasButtonEvent()) {
-            final WLPointerEvent.PointerButtonCodes buttonCode
-                    = WLPointerEvent.PointerButtonCodes.recognizedOrNull(pointerEvent.getButtonCode());
-            if (buttonCode != null) {
-                if (pointerEvent.getIsButtonPressed()) {
-                    newModifiers |= buttonCode.mask();
-                } else {
-                    newModifiers &= ~buttonCode.mask();
-                }
-            }
+        if (pointerEvent.hasEnterEvent()) {
+            newModifiers |= pendingCrossingModifiers;
         }
-        return newModifiers;
+
+        return getUpdatedModifiersFromPointerEvent(newModifiers, pointerEvent);
     }
 
-    public boolean hasThisPointerButtonPressedAt(int linuxCode, long x, long y) {
-        return pointerButtonPressedEvent != null && pointerButtonPressedEvent.linuxCode == linuxCode
-                && pointerButtonPressedEvent.surfaceX == x && pointerButtonPressedEvent.surfaceY == y;
+    private int getNewPendingCrossingModifiers(WLPointerEvent pointerEvent) {
+        if (!pointerEvent.hasLeaveEvent() || pointerEvent.hasEnterEvent()) {
+            return 0;
+        }
+
+        int buttons = modifiers & WLPointerEvent.PointerButtonCodes.combinedMask();
+        return getUpdatedModifiersFromPointerEvent(buttons, pointerEvent);
     }
 
     public boolean hasPointerButtonPressed() {
         return WLPointerEvent.PointerButtonCodes.anyMatchMask(modifiers);
     }
 
-    public long getSurfaceForKeyboardInput() {
-        return surfaceForKeyboardInput;
-    }
-
     public int getPointerX() {
-        return eventWithCoordinates != null ? eventWithCoordinates.getSurfaceX() : 0;
+        int x = eventWithCoordinates != null ? eventWithCoordinates.getSurfaceX() : 0;
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return x;
+        } else {
+            WLComponentPeer peer = peerForPointerEvents();
+            return peer == null ? x : peer.surfaceUnitsToJavaUnits(x);
+        }
     }
 
     public int getPointerY() {
-        return eventWithCoordinates != null ? eventWithCoordinates.getSurfaceY() : 0;
+        int y = eventWithCoordinates != null ? eventWithCoordinates.getSurfaceY() : 0;
+        if (!WLGraphicsEnvironment.isDebugScaleEnabled()) {
+            return y;
+        } else {
+            WLComponentPeer peer = peerForPointerEvents();
+            return peer == null ? y : peer.surfaceUnitsToJavaUnits(y);
+        }
     }
 
-    public WLComponentPeer getPeer() {
+    /**
+     * Which peer mouse pointer events should be delivered to, if any.
+     *
+     * @return WLComponentPeer instance corresponding to the Wayland surface that
+     *         received pointer-related events the last
+     */
+    public WLComponentPeer peerForPointerEvents() {
         return eventWithSurface != null
-                ? WLToolkit.componentPeerFromSurface(eventWithSurface.getSurface())
+                ? WLToolkit.peerFromSurface(eventWithSurface.getSurface())
                 : null;
     }
 
@@ -257,9 +401,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
      */
     public boolean isPointerOverPeer() {
         if (isPointerOverSurface && eventWithCoordinates != null) {
-            int x = eventWithCoordinates.getSurfaceX();
-            int y = eventWithCoordinates.getSurfaceY();
-            WLComponentPeer peer = getPeer();
+            int x = getPointerX();
+            int y = getPointerY();
+            WLComponentPeer peer = peerForPointerEvents();
             if (peer != null) {
                 return x >= 0
                         && x < peer.getWidth()
@@ -270,6 +414,12 @@ record WLInputState(WLPointerEvent eventWithSurface,
         return true;
     }
 
+    /**
+     * @return the timestamp of the most recent known {@code wl_pointer::*} event or 0 if no such event is known.
+     *
+     * @apiNote don't use these timestamps for constructing any new {@link java.awt.event.InputEvent}s
+     *          because they are not guaranteed to be based on the midnight of Jan 1, 1970 UTC.
+     */
     public long getTimestamp() {
         return eventWithTimestamp != null ? eventWithTimestamp.getTimestamp() : 0;
     }
@@ -280,5 +430,9 @@ record WLInputState(WLPointerEvent eventWithSurface,
 
     public int getModifiers() {
         return modifiers;
+    }
+
+    public int getNonKeyboardModifiers() {
+        return modifiers & ~(InputEvent.SHIFT_DOWN_MASK |  InputEvent.CTRL_DOWN_MASK | InputEvent.META_DOWN_MASK | InputEvent.ALT_DOWN_MASK);
     }
 }

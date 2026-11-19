@@ -27,6 +27,7 @@ package sun.awt;
 
 import java.awt.AWTError;
 import java.awt.GraphicsDevice;
+import java.awt.Point;
 import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -51,7 +52,7 @@ import sun.java2d.xr.XRSurfaceData;
  * @see GraphicsDevice
  * @see java.awt.GraphicsConfiguration
  */
-public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
+public final class X11GraphicsEnvironment extends SunGraphicsEnvironment implements HiDPIInfoProvider {
 
     static {
         initStatic();
@@ -240,6 +241,8 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         int index = getDefaultScreenNum();
         mainScreen = 0 < index && index < numScreens ? index : 0;
 
+        updateWaylandMonitorScaling();
+
         for (int id = 0; id < numScreens; ++id) {
             X11GraphicsDevice reused = old.remove(id);
             X11GraphicsDevice gd = reused != null ? reused : new X11GraphicsDevice(id);
@@ -268,6 +271,32 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                 it.remove();
             }
         }
+    }
+
+    public Point scaleUp(X11GraphicsDevice defaultDevice, int x, int y) {
+        Point p = defaultDevice == null ? null : defaultDevice.scaleUpChecked(x, y);
+        if (p != null) {
+            return p;
+        }
+        for (X11GraphicsDevice d : devices.values()) {
+            if (d != defaultDevice && (p = d.scaleUpChecked(x, y)) != null) {
+                return p;
+            }
+        }
+        return defaultDevice == null ? null : defaultDevice.scaleUp(x, y);
+    }
+
+    public Point scaleDown(X11GraphicsDevice defaultDevice, int x, int y) {
+        Point p = defaultDevice == null ? null : defaultDevice.scaleDownChecked(x, y);
+        if (p != null) {
+            return p;
+        }
+        for (X11GraphicsDevice d : devices.values()) {
+            if (d != defaultDevice && (p = d.scaleDownChecked(x, y)) != null) {
+                return p;
+            }
+        }
+        return defaultDevice == null ? null : defaultDevice.scaleDown(x, y);
     }
 
     @Override
@@ -380,11 +409,23 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         return pRunningXinerama();
     }
 
+    private static native void updateWaylandMonitorScaling();
+
     /**
      * From the DisplayChangedListener interface; devices do not need
      * to react to this event.
      */
     @Override
     public void paletteChanged() {
+    }
+
+    public String[][] getHiDPIInfo() {
+        X11GraphicsDevice device = null;
+        synchronized (this) {
+            if (devices.containsKey(0)) {
+                device = devices.get(0);
+            }
+        }
+        return device != null ? device.getDpiInfo() : null;
     }
 }

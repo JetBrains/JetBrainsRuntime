@@ -59,7 +59,9 @@ public class XBaseWindow {
         VISIBLE = "visible", // whether it is visible by default
         SAVE_UNDER = "save under", // save content under this window
         BACKING_STORE = "backing store", // enables double buffering
-        BIT_GRAVITY = "bit gravity"; // copy old content on geometry change
+        BIT_GRAVITY = "bit gravity", // copy old content on geometry change
+        XI_EVENT_MASK = "xi event mask", // xi event mask, Long
+        XI_DEVICE_ID = "xi device id"; // xi device id, Integer
     private XCreateWindowParams delayedParams;
 
     Set<Long> children = new HashSet<Long>();
@@ -313,12 +315,18 @@ public class XBaseWindow {
         return 1;
     }
 
-    protected int scaleUp(int x) {
-        return x;
+    protected int scaleUp(int i) {
+        return i;
+    }
+    protected Point scaleUp(int x, int y) {
+        return new Point(x, y);
     }
 
-    protected int scaleDown(int x) {
-        return x;
+    protected int scaleDown(int i) {
+        return i;
+    }
+    protected Point scaleDown(int x, int y) {
+        return new Point(x, y);
     }
 
     /**
@@ -387,10 +395,10 @@ public class XBaseWindow {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine("Creating window for " + this + " with the following attributes: \n" + params);
                 }
+                Point p = scaleUp(bounds.x, bounds.y);
                 window = XlibWrapper.XCreateWindow(XToolkit.getDisplay(),
                                                    parentWindow.longValue(),
-                                                   scaleUp(bounds.x),
-                                                   scaleUp(bounds.y),
+                                                   p.x, p.y,
                                                    scaleUp(bounds.width),
                                                    scaleUp(bounds.height),
                                                    0, // border
@@ -404,6 +412,19 @@ public class XBaseWindow {
                     throw new IllegalStateException("Couldn't create window because of wrong parameters. Run with NOISY_AWT to see details");
                 }
                 XToolkit.addToWinMap(window, this);
+
+                Long xiEventMask = (Long) params.get(XI_EVENT_MASK);
+                if (xiEventMask != null && XToolkit.isXInputEnabled()) {
+                    Integer xiDeviceId = (Integer) params.get(XI_DEVICE_ID);
+                    if (xiDeviceId == null) {
+                        xiDeviceId = XConstants.XIAllDevices;
+                    }
+
+                    int status = XToolkit.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
+                    if (status != XConstants.Success) {
+                        throw new IllegalStateException("Couldn't select XI events. Status: " + status);
+                    }
+                }
             } finally {
                 xattr.dispose();
             }
@@ -516,8 +537,9 @@ public class XBaseWindow {
             // we want to reset PPosition in hints.  This is necessary
             // for locationByPlatform functionality
             if ((flags & XUtilConstants.PPosition) != 0) {
-                hints.set_x(scaleUp(x));
-                hints.set_y(scaleUp(y));
+                Point p = scaleUp(x, y);
+                hints.set_x(p.x);
+                hints.set_y(p.y);
             }
             if ((flags & XUtilConstants.PSize) != 0) {
                 hints.set_width(scaleUp(width));
@@ -749,9 +771,9 @@ public class XBaseWindow {
         height = Math.max(MIN_SIZE, height);
         XToolkit.awtLock();
         try {
+            Point p = parentWindow == null ? scaleUp(x, y) : new Point(scaleUp(x), scaleUp(y));
             XlibWrapper.XMoveResizeWindow(XToolkit.getDisplay(), getWindow(),
-                                          scaleUp(x), scaleUp(y),
-                                          scaleUp(width), scaleUp(height));
+                                          p.x, p.y, scaleUp(width), scaleUp(height));
         } finally {
             XToolkit.awtUnlock();
         }
@@ -773,8 +795,9 @@ public class XBaseWindow {
 
         if (srcPeer != null && dstPeer != null) {
             // (x, y) is relative to src
-            rpt.x = x + srcPeer.getAbsoluteX() - dstPeer.getAbsoluteX();
-            rpt.y = y + srcPeer.getAbsoluteY() - dstPeer.getAbsoluteY();
+            Point s = srcPeer.scaleUp(x + srcPeer.getAbsoluteX(), y + srcPeer.getAbsoluteY());
+            Point d = dstPeer.scaleUp(x + dstPeer.getAbsoluteX(), y + dstPeer.getAbsoluteY());
+            rpt = dstPeer.scaleDown(s.x - d.x, s.y - d.y);
         } else if (dstPeer != null && XlibUtil.isRoot(src, dstPeer.getScreenNumber())) {
             // from root into peer
             rpt.x = x - dstPeer.getAbsoluteX();
@@ -784,8 +807,15 @@ public class XBaseWindow {
             rpt.x = x + srcPeer.getAbsoluteX();
             rpt.y = y + srcPeer.getAbsoluteY();
         } else {
-            int scale = srcPeer == null ? 1 : srcPeer.getScale();
-            rpt = XlibUtil.translateCoordinates(src, dst, new Point(x, y), scale);
+            if (srcPeer != null) {
+                x = srcPeer.scaleUp(x);
+                y = srcPeer.scaleUp(y);
+            }
+            rpt = XlibUtil.translateCoordinates(src, dst, x, y);
+            if (dstPeer != null) {
+                rpt.x = dstPeer.scaleDown(rpt.x);
+                rpt.y = dstPeer.scaleDown(rpt.y);
+            }
         }
         return rpt;
     }
@@ -1035,6 +1065,11 @@ public class XBaseWindow {
         if (theButton > SunToolkit.MAX_BUTTONS_SUPPORTED) {
             return;
         }
+
+        if (xbe.get_type() == XConstants.ButtonPress) {
+            rememberLastButtonPressLocation(xbe.get_x_root(), xbe.get_y_root());
+        }
+
         int buttonState = 0;
         buttonState = xbe.get_state() & XConstants.ALL_BUTTONS_MASK;
 
@@ -1077,11 +1112,16 @@ public class XBaseWindow {
             insLog.finer("Configure, {0}", xe);
         }
 
-        x = scaleDown(xe.get_x());
-        y = scaleDown(xe.get_y());
+        Point p = scaleDown(xe.get_x(), xe.get_y());
+        x = p.x;
+        y = p.y;
         width = scaleDown(xe.get_width());
         height = scaleDown(xe.get_height());
     }
+
+    public void handleTouchEvent(XEvent xev) {
+    }
+
     /**
      * Checks ButtonRelease released all Mouse buttons
      */
@@ -1121,6 +1161,12 @@ public class XBaseWindow {
         if (target == null || !isGrabbedEvent(ev, target)) {
             target = XToolkit.windowToXWindow(ev.get_xany().get_window());
         }
+
+        if (target == null && ev.get_type() == XConstants.GenericEvent &&
+                XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
+            target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
+        }
+
         if (target != null && target.checkInitialised()) {
             target.dispatchEvent(ev);
         }
@@ -1186,6 +1232,17 @@ public class XBaseWindow {
               break;
           case XConstants.CreateNotify:
               handleCreateNotify(xev);
+              break;
+          case XConstants.GenericEvent:
+              switch (xev.get_xgeneric().get_evtype()) {
+                  case XConstants.XI_TouchBegin:
+                  case XConstants.XI_TouchUpdate:
+                  case XConstants.XI_TouchEnd:
+                      handleTouchEvent(xev);
+                      break;
+                  default:
+                      break;
+              }
               break;
         }
     }
@@ -1307,5 +1364,16 @@ public class XBaseWindow {
         else {
             log.fine("No DESKTOP_STARTUP_ID");
         }
+    }
+
+
+    private static volatile Point lastButtonPressAbsLocation = null;
+
+    protected static Point getLastButtonPressAbsLocation() {
+        return lastButtonPressAbsLocation;
+    }
+
+    private static void rememberLastButtonPressLocation(int absX, int absY) {
+        lastButtonPressAbsLocation = new Point(absX, absY);
     }
 }

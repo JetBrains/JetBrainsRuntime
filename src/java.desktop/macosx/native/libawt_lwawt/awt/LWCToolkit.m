@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,10 @@
 #import "AWTWindow.h"
 
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#import <Carbon/Carbon.h>
+
+#include <IOKit/hidsystem/IOHIDShared.h>
+#include <IOKit/hidsystem/IOHIDParameter.h>
 
 // SCROLL PHASE STATE
 #define SCROLL_PHASE_UNSUPPORTED 1
@@ -50,6 +54,19 @@
 #define SCROLL_PHASE_CONTINUED 3
 #define SCROLL_PHASE_MOMENTUM_BEGAN 4
 #define SCROLL_PHASE_ENDED 5
+
+/* RunLoop run max duration = 4 millis */
+#define RUN_LOOP_TICK           (0.004)
+/* RunLoop critical run max duration = 1 millis */
+#define RUN_LOOP_TICK_CRITICAL  (0.001)
+
+/* max wait timeout for AWTRunLoop > 10s */
+#define WAIT_TIMEOUT_LIMIT      (13.333)
+
+/* power transition period = 10s */
+#define PWM_TRANSITION_PERIOD   (10.000)
+
+#define TRACE_RUN_LOOP  0
 
 int gNumberOfButtons;
 jint* gButtonDownMasks;
@@ -579,50 +596,96 @@ JNI_COCOA_EXIT(env);
  * Signature: (JZZI)Z
  */
 JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_doAWTRunLoopImpl
-(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jint timeoutSeconds/*(-1) for infinite*/)
+(JNIEnv *env, jclass clz, jlong mediator, jboolean processEvents, jboolean inAWT, jdouble timeoutSeconds/*(<=0.0>) for infinite*/)
 {
     AWT_ASSERT_APPKIT_THREAD;
     jboolean result = JNI_TRUE;
 JNI_COCOA_ENTER(env);
 
+    /* defensive programming (should not happen) */
+    if ([ThreadUtilities blockingMainThread]) {
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: invalid state: blockingMainThread = YES !");
+        return JNI_FALSE;
+    }
+
     AWTRunLoopObject* mediatorObject = (AWTRunLoopObject*)jlong_to_ptr(mediator);
 
-    if (mediatorObject == nil) return JNI_TRUE;
+    if (mediatorObject == nil) {
+        return JNI_TRUE;
+    }
 
-    NSDate *date = timeoutSeconds > 0 ? [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds] : nil;
+    /*
+     * 2025.02: infinite timeout means possible deadlocks or freezes may happen.
+     * To ensure responsiveness, infinite is limited to a huge delay (~10s)
+     */
+    if ((timeoutSeconds <= 0.0) || (timeoutSeconds > WAIT_TIMEOUT_LIMIT)) {
+        timeoutSeconds = WAIT_TIMEOUT_LIMIT;
+    }
+
+    NSDate *timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeoutSeconds];
+    if (TRACE_RUN_LOOP) {
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: timeoutDate = %s", [[timeoutDate description] UTF8String]);
+        NSLog(@"LWCToolkit_doAWTRunLoopImpl: processEvents = %d", processEvents);
+    }
+    NSRunLoopMode criticalRunMode = [ThreadUtilities criticalRunLoopMode];
+    NSRunLoopMode runMode = inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode;
+    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: runMode = %@", runMode);
 
     // Don't use acceptInputForMode because that doesn't setup autorelease pools properly
     BOOL isRunning = true;
-    while (![mediatorObject shouldEndRunLoop] && isRunning) {
-        isRunning = [[NSRunLoop currentRunLoop] runMode:(inAWT ? [ThreadUtilities javaRunLoopMode] : NSDefaultRunLoopMode)
-                                             beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.010]];
+    NSDate *deadlineDate = nil;
 
-        if (date != nil) {
-            NSDate *now = [[NSDate alloc] init];
-            if ([date compare:(now)] == NSOrderedAscending) result = JNI_FALSE;
+    while (![mediatorObject shouldEndRunLoop] && isRunning) {
+        // always process critical events:
+        // Check every few ms at least:
+        deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK_CRITICAL];
+
+        // Runs the loop once, blocking for input in the specified mode until the deadline date:
+        BOOL hasRunCritical = [[NSRunLoop currentRunLoop] runMode:criticalRunMode beforeDate:deadlineDate];
+        [deadlineDate release];
+        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: hasRunCritical = %d", hasRunCritical);
+
+        // Check every few ms at least:
+        deadlineDate = [NSDate dateWithTimeIntervalSinceNow:RUN_LOOP_TICK];
+
+        // Runs the loop once, blocking for input in the specified mode until the deadline date:
+        isRunning = [[NSRunLoop currentRunLoop] runMode:runMode beforeDate:deadlineDate];
+        [deadlineDate release];
+        if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: isRunning = %d", isRunning);
+
+        NSDate *now = [[NSDate alloc] init];
+        if ([timeoutDate compare:(now)] == NSOrderedAscending) {
             [now release];
-            if (result == JNI_FALSE) break;
+            result = JNI_FALSE;
+            break;
         }
+        [now release];
 
         if (processEvents) {
-            //We do not spin a runloop here as date is nil, so does not matter which mode to use
+            // We do not spin a runloop here as date is nil, so does not matter which mode to use
             // Processing all events excluding NSApplicationDefined which need to be processed
             // on the main loop only (those events are intended for disposing resources)
-            NSEvent *event;
-            if ((event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
-                                           untilDate:nil
-                                              inMode:NSDefaultRunLoopMode
-                                             dequeue:YES]) != nil) {
+            NSEvent *event = [NSApp nextEventMatchingMask:(NSAnyEventMask & ~NSApplicationDefinedMask)
+                                                untilDate:nil
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:YES];
+            if (event != nil) {
                 if ([event.window isKindOfClass:[AWTWindow_Normal class]]) {
                     // Filter only events from AWTWindow (to skip events from ScreenMenu)
                     // See https://youtrack.jetbrains.com/issue/IDEA-305287/Implement-non-blocking-ScreenMenu.invokeOpenLater#focus=Comments-27-6614719.0-0
+                    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: send event = %@", event);
                     [NSApp sendEvent:event];
+                } else {
+                    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: discarded event = %@", event);
                 }
             }
-
         }
-    }
+    } // while loop
+
+    [timeoutDate release];
     [mediatorObject release];
+
+    if (TRACE_RUN_LOOP) NSLog(@"LWCToolkit_doAWTRunLoopImpl: exit result = %d", result);
 JNI_COCOA_EXIT(env);
 
     return result;
@@ -637,6 +700,37 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingEventDispa
         (JNIEnv *env, jclass clz)
 {
     return ThreadUtilities.blockingEventDispatchThread;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    isBlockingMainThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_LWCToolkit_isBlockingMainThread
+        (JNIEnv *env, jclass clz)
+{
+    return [ThreadUtilities blockingMainThread];
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getThreadTraceContexts
+ * Signature: (Ljava/lang/String)
+ */
+JNIEXPORT jstring JNICALL Java_sun_lwawt_macosx_LWCToolkit_getThreadTraceContexts
+        (JNIEnv *env, jclass clz)
+{
+JNI_COCOA_ENTER(env);
+
+    // Convert NSString* to JavaString
+    NSString* result = [ThreadUtilities getThreadTraceContexts];
+
+    jstring javaString = (*env)->NewStringUTF(env, result.UTF8String);
+    [result release];
+    return javaString;
+
+JNI_COCOA_EXIT(env);
 }
 
 /*
@@ -925,4 +1019,158 @@ Java_sun_lwawt_macosx_LWCToolkit_getMultiClickTime(JNIEnv *env, jclass klass) {
     }];
     JNI_COCOA_EXIT(env);
     return multiClickTime;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getKeyboardLayoutNativeId
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls) {
+    jstring jLayoutId = NULL;
+    JNI_COCOA_ENTER(env);
+        __block CFStringRef layoutId = nil;
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+            layoutId = (CFStringRef)CFRetain(TISGetInputSourceProperty(source, kTISPropertyInputSourceID));
+            CFRelease(source);
+        }];
+        jLayoutId = NSStringToJavaString(env, (NSString*)layoutId);
+        CFRelease(layoutId);
+    JNI_COCOA_EXIT(env);
+    return jLayoutId;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    switchKeyboardLayoutNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_switchKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId) {
+    __block bool success = false;
+    JNI_COCOA_ENTER(env);
+        __block NSString* layoutId = JavaStringToNSString(env, jLayoutId);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            NSDictionary* searchParam = @{ (NSString*)kTISPropertyInputSourceID : layoutId };
+            CFArrayRef sources = TISCreateInputSourceList((CFDictionaryRef)searchParam, NO);
+
+            if (CFArrayGetCount(sources) == 0) {
+                NSLog(@"failed to switch to keyboard layout %@: no such layout", layoutId);
+                CFRelease(sources);
+                return;
+            }
+
+            TISInputSourceRef source = (TISInputSourceRef)CFArrayGetValueAtIndex(sources, 0);
+            OSStatus status = TISSelectInputSource(source);
+            if (status == noErr) {
+                success = true;
+            } else {
+                NSLog(@"failed to switch to keyboard layout %@, error code %d", layoutId, status);
+            }
+
+            CFRelease(sources);
+        }];
+    JNI_COCOA_EXIT(env);
+    return success;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getKeyboardLayoutListNative
+ * Signature: (Z)[Ljava/lang/String;
+ */
+JNIEXPORT jarray JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutListNative(JNIEnv *env, jclass cls, jboolean includeAll) {
+    jclass stringClazz = (*env)->FindClass(env, "java/lang/String");
+    jarray out = NULL;
+    JNI_COCOA_ENTER(env);
+        __block NSMutableArray* layoutIds = [[[NSMutableArray alloc] init] autorelease];
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            CFArrayRef sources = TISCreateInputSourceList(nil, includeAll);
+            int numSources = CFArrayGetCount(sources);
+
+            for (int i = 0; i < numSources; ++i) {
+                TISInputSourceRef layout = CFArrayGetValueAtIndex(sources, i);
+                NSString* sourceId = TISGetInputSourceProperty(layout, kTISPropertyInputSourceID);
+                [layoutIds addObject:sourceId];
+            }
+
+            CFRelease(sources);
+        }];
+
+        int numLayoutIds = (int)[layoutIds count];
+        out = (*env)->NewObjectArray(env, numLayoutIds, stringClazz, NULL);
+        for (int i = 0; i < numLayoutIds; ++i) {
+            NSString* layoutId = [layoutIds objectAtIndex:i];
+            jstring jLayoutId = NSStringToJavaString(env, layoutId);
+            (*env)->SetObjectArrayElement(env, out, i, jLayoutId);
+        }
+    JNI_COCOA_EXIT(env);
+    return out;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    setKeyboardLayoutEnabledNative
+ * Signature: (Ljava/lang/String;Z)V
+ */
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_setKeyboardLayoutEnabledNative(JNIEnv *env, jclass cls, jstring jLayoutId, jboolean enabled) {
+    __block bool success = false;
+    JNI_COCOA_ENTER(env);
+        __block NSString* layoutId = JavaStringToNSString(env, jLayoutId);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+            NSDictionary* searchParam = @{ (NSString*)kTISPropertyInputSourceID : layoutId };
+            CFArrayRef sources = TISCreateInputSourceList((CFDictionaryRef)searchParam, YES);
+
+            if (CFArrayGetCount(sources) == 0) {
+                NSLog(@"failed to set keyboard layout %@ enabled state: no such layout", layoutId);
+                CFRelease(sources);
+                return;
+            }
+
+            TISInputSourceRef source = (TISInputSourceRef)CFArrayGetValueAtIndex(sources, 0);
+            OSStatus status = enabled ? TISEnableInputSource(source) : TISDisableInputSource(source);
+            if (status == noErr) {
+                success = true;
+            } else {
+                NSLog(@"failed to set keyboard layout %@ enabled state, error code %d", layoutId, status);
+            }
+
+            CFRelease(sources);
+        }];
+    JNI_COCOA_EXIT(env);
+    return success;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    setCapsLockState
+ * Signature: (Z)Z
+ */
+JNIEXPORT jboolean JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_setCapsLockState(JNIEnv *env, jclass cls, jboolean on) {
+    __block kern_return_t err = KERN_SUCCESS;
+    JNI_COCOA_ENTER(env);
+        [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
+            io_service_t ioHIDService = IOServiceGetMatchingService(kIOMasterPortDefault,
+                                                                    IOServiceMatching(kIOHIDSystemClass));
+            if (!ioHIDService) {
+                err = KERN_FAILURE;
+                return;
+            }
+
+            io_connect_t ioHIDConnect;
+            err = IOServiceOpen(ioHIDService, mach_task_self(), kIOHIDParamConnectType, &ioHIDConnect);
+            if (err == KERN_SUCCESS) {
+                err = IOHIDSetModifierLockState(ioHIDConnect, kIOHIDCapsLockState, on);
+                IOServiceClose(ioHIDConnect);
+            }
+
+            IOObjectRelease(ioHIDService);
+        }];
+    JNI_COCOA_EXIT(env);
+    return err == KERN_SUCCESS;
 }

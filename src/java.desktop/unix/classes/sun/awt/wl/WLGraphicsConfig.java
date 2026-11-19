@@ -26,30 +26,33 @@
 
 package sun.awt.wl;
 
-import java.awt.*;
+import sun.awt.image.OffScreenImage;
+import sun.java2d.SurfaceData;
+import sun.java2d.loops.SurfaceType;
+import sun.java2d.wl.WLSurfaceSizeListener;
+import sun.lwawt.LWComponentPeer;
+import sun.lwawt.LWGraphicsConfig;
+
+import java.awt.BufferCapabilities;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
+import java.awt.Image;
+import java.awt.ImageCapabilities;
+import java.awt.Rectangle;
+import java.awt.Transparency;
 import java.awt.geom.AffineTransform;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 
-import sun.awt.image.OffScreenImage;
-import sun.java2d.SurfaceData;
-import sun.java2d.loops.SurfaceType;
-
-public abstract class WLGraphicsConfig extends GraphicsConfiguration {
+public abstract class WLGraphicsConfig extends GraphicsConfiguration implements LWGraphicsConfig {
     private final WLGraphicsDevice device;
-    private final int width;
-    private final int height;
-    private final int scale;
+    private final WLOutputState outputInfo;
+    private BufferCapabilities bufferCaps;
 
-    protected WLGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale) {
+    protected WLGraphicsConfig(WLGraphicsDevice device) {
         this.device = device;
-        this.width = width;
-        this.height = height;
-        this.scale = scale;
-    }
-
-    boolean differsFrom(int width, int height, int scale) {
-        return width != this.width || height != this.height || scale != this.scale;
+        this.outputInfo = device.getOutputState();
     }
 
     @Override
@@ -67,34 +70,89 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration {
 
     @Override
     public AffineTransform getDefaultTransform() {
-        double scale = getScale();
+        double scale = outputInfo.effectiveScale();
         return AffineTransform.getScaleInstance(scale, scale);
     }
 
     @Override
     public AffineTransform getNormalizingTransform() {
-        double xScale = device.getResolutionX(this) / 72.0;
-        double yScale = device.getResolutionY(this) / 72.0;
+        double xScale = outputInfo.dpiX() / 72.0;
+        double yScale = outputInfo.dpiY() / 72.0;
         return new AffineTransform(xScale, 0.0, 0.0, yScale, 0.0, 0.0);
     }
 
     @Override
     public Rectangle getBounds() {
-        // NB: despite the claims of GraphicsConfiguration.getBounds()'s javadoc,
-        // the value returned is expected to be in user-space coordinates,
-        // same as windows sizes, offsets, components' coordinates, etc.
-        return new Rectangle((int) (width / effectiveScale), (int) (height / effectiveScale));
+        return outputInfo.logicalBounds();
     }
 
-    public int getScale() {
-        return scale;
+    public Dimension getPhysicalSizeMm() {
+        return outputInfo.physicalSizeMm();
+    }
+
+    /**
+     * Returns the preferred Wayland buffer scale for this display configuration.
+     */
+    public int getDisplayScale() {
+        return outputInfo.scale();
+    }
+
+    /**
+     * Returns the effective scale, which can differ from the buffer scale
+     * if overridden with the sun.java2d.uiScale system property.
+     */
+    public double getEffectiveScale() {
+       return outputInfo.effectiveScale();
     }
 
     public abstract SurfaceType getSurfaceType();
     public abstract SurfaceData createSurfaceData(WLComponentPeer peer);
+    public abstract SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height);
+
+    @Override
+    public BufferCapabilities getBufferCapabilities() {
+        if (bufferCaps == null) {
+            bufferCaps = new WLDefaultBufferCapabilities();
+        }
+        return bufferCaps;
+    }
+
+    @Override
+    public int getMaxTextureWidth() {
+        // Not used by Wayland currently
+        return getMaxBufferBounds().width;
+    }
+
+    @Override
+    public int getMaxTextureHeight() {
+        // Not used by Wayland currently
+        return getMaxBufferBounds().height;
+    }
+
+    @Override
+    public void flush(LWComponentPeer<?, ?> peer) {
+        // Not used by Wayland currently
+    }
+
+    public static Dimension getMaxBufferBounds() {
+        // Need to limit the maximum size of the window so that the creation of the underlying
+        // buffers for it may succeed at least in theory. A window that is too large may crash
+        // JVM or even the window manager.
+        Dimension bounds = WLGraphicsEnvironment.getSingleInstance().getTotalDisplayBounds();
+        bounds.width *= 2;
+        bounds.height *= 2;
+        return bounds;
+    }
 
     @Override
     public String toString() {
-        return String.format("%dx%d %dx scale", width, height, scale);
+        Rectangle bounds = getBounds();
+        return String.format("%dx%d@(%d, %d) %dx scale", bounds.width, bounds.height, bounds.x, bounds.y, getDisplayScale());
+    }
+
+    private static class WLDefaultBufferCapabilities extends BufferCapabilities {
+        WLDefaultBufferCapabilities() {
+            super(new ImageCapabilities(false), new ImageCapabilities(false), FlipContents.UNDEFINED);
+        }
     }
 }

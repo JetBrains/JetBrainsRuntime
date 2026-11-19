@@ -33,13 +33,17 @@ import java.awt.im.spi.InputMethodContext;
 import java.awt.peer.ComponentPeer;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
+import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import sun.awt.AWTAccessor;
+import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsDevice;
+import sun.awt.X11GraphicsEnvironment;
 import sun.awt.X11InputMethod;
 
 import sun.util.logging.PlatformLogger;
@@ -98,11 +102,68 @@ public final class XInputMethod extends X11InputMethod {
     @Override
     public void dispatchEvent(AWTEvent e) {
         if (doesSupportMovingCandidatesNativeWindow) {
+            if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+                /* doesSupportMovingCandidatesNativeWindow == true means that natively the IM uses XIMPreeditPosition
+                 *   input mode (the term "input style" is used in XOrg docs).
+                 * The main flaw of this mode is that AWT doesn't receive any information about changes in the
+                 *   currently composed preedit text. In other words, Java applications don't know whether
+                 *   composing is happening now or not and don't have a way to get the current preedit text. Therefore,
+                 *   when the caret position changes in response to mouse clicks, Swing doesn't understand that
+                 *   there's a need to discard the preedit text (because it thinks there is no any), see
+                 *   javax.swing.text.JTextComponent.ComposedTextCaret#positionCaret.
+                 * To prevent the preedit text from following the caret when it's moved in response to mouse clicks,
+                 *   let's manually discard the preedit text here.
+                 */
+                endComposition();
+            }
             clientComponentCaretPositionTracker.onDispatchEvent(e);
         }
         super.dispatchEvent(e);
     }
 
+    @Override
+    public void endComposition() {
+        if (!doesSupportMovingCandidatesNativeWindow) {
+            // Use the old implementation if
+            //   the IM isn't using the new mode introduced in JBR-2460 (XIMPreeditPosition)
+            super.endComposition();
+            return;
+        }
+
+        if (disposed) {
+            return;
+        }
+
+        String preeditText = invokeResetXIC();
+        needResetXIC = false;
+
+        awtLock();
+        try {
+            if (composedText != null) {
+                composedText = null;
+                // Remove any existing composed text by posting an InputMethodEvent with null composed text
+                postInputMethodEvent(
+                    InputMethodEvent.INPUT_METHOD_TEXT_CHANGED,
+                    null,
+                    0,
+                    null,
+                    null,
+                    EventQueue.getMostRecentEventTime()
+                );
+            }
+
+            if (committedText != null) {
+                preeditText = preeditText == null ? committedText : committedText + preeditText;
+                committedText = null;
+            }
+
+            if (preeditText != null && !preeditText.isEmpty()) {
+                dispatchCommittedText(preeditText);
+            }
+        } finally {
+            awtUnlock();
+        }
+    }
 
     // Is called from native
     private static boolean isJbNewXimClientEnabled() {
@@ -253,6 +314,155 @@ public final class XInputMethod extends X11InputMethod {
     }
 
 
+    // JBR-6456: Sudden keyboard death on Linux using iBus.
+    // xicDestroyMustBeDelayed, XIC_DELAYED_TO_BE_DESTROYED_CAPACITY, xicDelayedToBeDestroyed can only be accessed
+    //   under the AWT lock
+    // See the #disposeXIC method for the purpose of these fields
+    private static boolean xicDestroyMustBeDelayed = false;
+    private static final int XIC_DELAYED_TO_BE_DESTROYED_CAPACITY = 16;
+    private static final Queue<Long> xicDelayedToBeDestroyed = new ArrayDeque<>(XIC_DELAYED_TO_BE_DESTROYED_CAPACITY);
+
+    static void delayAllXICDestroyUntilAFurtherNotice()  {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("delayAllXICDestroyUntilAFurtherNotice(): is being called", new Throwable("Stacktrace"));
+        }
+
+        XToolkit.awtLock();
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("delayAllXICDestroyUntilAFurtherNotice(): xicDestroyMustBeDelayed=={0}", xicDestroyMustBeDelayed);
+            }
+
+            xicDestroyMustBeDelayed = true;
+        } finally {
+            XToolkit.awtUnlock();
+        }
+    }
+
+    static void delayedXICDestroyShouldBeDone() {
+        XToolkit.awtLock();
+        try {
+            xicDestroyMustBeDelayed = false;
+            doDelayedXICDestroy(false, -1);
+        } finally {
+            XToolkit.awtUnlock();
+        }
+    }
+
+    private static void doDelayedXICDestroy(boolean forced, int maxCountToDestroy) {
+        final boolean isFineLoggable = log.isLoggable(PlatformLogger.Level.FINE);
+
+        if (isFineLoggable) {
+            log.fine(
+                "doDelayedXICDestroy(forced==" + forced + ", maxCountToDestroy==" + maxCountToDestroy + "): is being called",
+                new Throwable("Stacktrace")
+            );
+        }
+
+        assert(SunToolkit.isAWTLockHeldByCurrentThread());
+        assert(forced || !xicDestroyMustBeDelayed);
+
+        while ( (maxCountToDestroy != 0) && !xicDelayedToBeDestroyed.isEmpty() ) {
+            final long pX11IMData = xicDelayedToBeDestroyed.remove();
+            --maxCountToDestroy;
+
+            if (isFineLoggable) {
+                log.fine("doDelayedXICDestroy(): destroying pX11IMData={0}", pX11IMData);
+            }
+
+            assert(pX11IMData != 0);
+            delayedDisposeXIC_disposeXICNative(pX11IMData);
+        }
+    }
+
+    @Override
+    protected void disposeXIC() {
+        awtLock();
+        try {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("disposeXIC(): xicDestroyMustBeDelayed=={0}", xicDestroyMustBeDelayed);
+            }
+
+            if (!xicDestroyMustBeDelayed) {
+                // JBR-6456: Sudden keyboard death on Linux using iBus.
+                // iBus's X11 frontend being run in the async mode (IBUS_ENABLE_SYNC_MODE=0) has a bug leading to a
+                //   violation of the communication protocol between iBus and Xlib (so-called "XIM protocol"),
+                //   later causing Xlib to behave unexpectedly from iBus's point of view, breaking iBus's
+                //   internal state. After all, iBus starts to "steal" all the keyboard events
+                //   (so that each call of XFilterEvent(...) with an instance of XKeyEvent returns True).
+                // The initial iBus's bug only appears when XDestroyIC(...) gets called right after a call of
+                //   XFilterEvent(...) with an instance of XKeyEvent returned True,
+                //   meaning that iBus has started, but hasn't finished yet processing of the key event.
+                // In case of AWT/Swing apps, XDestroyIC gets called whenever a focused HW window gets closed
+                //   (because it leads to disposing of the associated input context,
+                //    see java.awt.Window#doDispose and sun.awt.im.InputContext#dispose)
+                // So, to work around iBus's bug, we have to avoid calling XDestroyIC until iBus finishes processing of
+                //   all the keyboard events it has already started processing of, i.e. until a call of
+                //   XFilterEvent(...) returns False.
+                // To achieve that, the implemented fix delays destroying of input contexts whenever a call of
+                //   XFilterEvent(...) with an instance of XKeyEvent returns True until one of the next calls of
+                //   XFilterEvent(...) with the same instance of XKeyEvent returns False.
+                //   The delaying is implemented via storing the native pointers to the input contexts to
+                //   xicDelayedToBeDestroyed instead of applying XDestroyIC(...) immediately.
+                //   The xicDelayedToBeDestroyed's size is explicitly limited to
+                //      XIC_DELAYED_TO_BE_DESTROYED_CAPACITY. If the limit gets reached, a few input contexts gets
+                //      pulled from there and destroyed regardless of the current value of xicDestroyMustBeDelayed.
+                // The xicDestroyMustBeDelayed field is responsible for indication whether it's required to delay
+                //   the destroying or not. It gets set in #delayAllXICDestroyUntilAFurtherNotice
+                //   and unset in delayedXICDestroyShouldBeDone; both are called by sun.awt.X11.XToolkit depending on
+                //   the value returned by the calls of sun.awt.X11.XlibWrapper#XFilterEvent.
+
+                super.disposeXIC();
+                return;
+            }
+
+            final long pX11IMData = pData;
+
+            // To make sure that the delayed to be destroyed input context won't get used by AWT/Swing or Xlib
+            //   by a mistake, the following things are done:
+            //     1. The input method focus gets detached from the input context (via a call of XUnsetICFocus)
+            //     2. All the native pointers to this instance of XInputMethod
+            //        (now it's just the variable currentX11InputMethodInstance in awt_InputMethod.c) get unset
+            //     3. All the java pointers to the native context (now it's just sun.awt.X11InputMethodBase#pData)
+            //        get unset as well
+            delayedDisposeXIC_preparation_unsetFocusAndDetachCurrentXICNative();
+
+            //     4. The state of the native context gets reset (effectively via a call of XmbResetIC)
+            delayedDisposeXIC_preparation_resetSpecifiedCtxNative(pX11IMData);
+
+            if (pX11IMData == 0) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("disposeXIC(): pX11IMData==NULL, skipped");
+                }
+                return;
+            }
+
+            // If the storage is full, a few input context are pulled from there and destroyed regardless of
+            //   the value of xicDestroyMustBeDelayed
+            if (xicDelayedToBeDestroyed.size() >= XIC_DELAYED_TO_BE_DESTROYED_CAPACITY) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine(
+                        "disposeXIC(): xicDelayedToBeDestroyed.size()=={0} >= XIC_DELAYED_TO_BE_DESTROYED_CAPACITY",
+                        xicDelayedToBeDestroyed.size()
+                    );
+                }
+
+                doDelayedXICDestroy(true, xicDelayedToBeDestroyed.size() - XIC_DELAYED_TO_BE_DESTROYED_CAPACITY + 1);
+            }
+
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine(
+                    "disposeXIC(): adding pX11IMData=={0} to xicDelayedToBeDestroyed (which already contains {1} elements)",
+                    pX11IMData, xicDelayedToBeDestroyed.size()
+                );
+            }
+            xicDelayedToBeDestroyed.add(pX11IMData);
+        } finally {
+            awtUnlock();
+        }
+    }
+
+
     static void onXKeyEventFiltering(final boolean isXKeyEventFiltered) {
         // Fix of JBR-1573, JBR-2444, JBR-4394 (a.k.a. IDEA-246833).
         // Input method is considered broken if and only if all the following statements are true:
@@ -375,7 +585,7 @@ public final class XInputMethod extends X11InputMethod {
         final int clientComponentAbsoluteMaxY = clientComponentAbsolutePos.y + clientComponent.getHeight();
 
         // Initial values are the fallback which is the bottom-left corner of the component
-        final Point expectedCandidatesNativeWindowAbsolutePos = new Point(
+        Point expectedCandidatesNativeWindowAbsolutePos = new Point(
             clientComponentAbsolutePos.x,
             clientComponentAbsoluteMaxY
         );
@@ -414,12 +624,14 @@ public final class XInputMethod extends X11InputMethod {
         // To do it properly, we have to know the screen which the point is on.
         // The code below supposes this is the one which clientComponent belongs to, because we've clamped
         //   the point coordinates within the component's bounds above.
+        final X11GraphicsEnvironment graphicsEnvironment =
+                ((X11GraphicsEnvironment) GraphicsEnvironment.getLocalGraphicsEnvironment());
         final X11GraphicsDevice candidatesNativeWindowDevice = getComponentX11Device(clientComponent);
-        if (candidatesNativeWindowDevice != null) {
-            expectedCandidatesNativeWindowAbsolutePos.x =
-                candidatesNativeWindowDevice.scaleUpX(expectedCandidatesNativeWindowAbsolutePos.x);
-            expectedCandidatesNativeWindowAbsolutePos.y =
-                candidatesNativeWindowDevice.scaleUpY(expectedCandidatesNativeWindowAbsolutePos.y);
+        Point scaledExpectedCandidatesNativeWindowAbsolutePos = graphicsEnvironment.scaleUp(candidatesNativeWindowDevice,
+                expectedCandidatesNativeWindowAbsolutePos.x,
+                expectedCandidatesNativeWindowAbsolutePos.y);
+        if (scaledExpectedCandidatesNativeWindowAbsolutePos != null) {
+            expectedCandidatesNativeWindowAbsolutePos = scaledExpectedCandidatesNativeWindowAbsolutePos;
         }
 
         // Clamping within screen bounds (to avoid the input candidates window to appear outside a screen).
@@ -441,13 +653,13 @@ public final class XInputMethod extends X11InputMethod {
 
         if (forceUpdate || !expectedCandidatesNativeWindowAbsolutePos.equals(lastKnownCandidatesNativeWindowAbsolutePosition)) {
             // adjustCandidatesNativeWindowPosition expects coordinates relative to the client window
-            final Point clientComponentWindowAbsolutePos = clientComponentWindow.getLocationOnScreen();
+            Point clientComponentWindowAbsolutePos = clientComponentWindow.getLocationOnScreen();
             final X11GraphicsDevice clientComponentWindowDevice = getComponentX11Device(clientComponentWindow);
-            if (clientComponentWindowDevice != null) {
-                clientComponentWindowAbsolutePos.x =
-                    clientComponentWindowDevice.scaleUpX(clientComponentWindowAbsolutePos.x);
-                clientComponentWindowAbsolutePos.y =
-                    clientComponentWindowDevice.scaleUpY(clientComponentWindowAbsolutePos.y);
+            Point scaledClientComponentWindowAbsolutePos = graphicsEnvironment.scaleUp(clientComponentWindowDevice,
+                    clientComponentWindowAbsolutePos.x,
+                    clientComponentWindowAbsolutePos.y);
+            if (scaledClientComponentWindowAbsolutePos != null) {
+                clientComponentWindowAbsolutePos = scaledClientComponentWindowAbsolutePos;
             }
 
             final int relativeX = expectedCandidatesNativeWindowAbsolutePos.x - clientComponentWindowAbsolutePos.x;
@@ -563,6 +775,15 @@ public final class XInputMethod extends X11InputMethod {
     private native int releaseXICNative(long px11data);
     private native void setXICFocusNative(long window, boolean value, boolean active);
     private native void adjustStatusWindow(long window);
+
+    // 1. Applies XUnsetICFocus to the current input context
+    // 2. Unsets currentX11InputMethodInstance if it's set to this instance of XInputMethod
+    // 3. Unsets sun.awt.X11InputMethodBase#pData
+    private native void delayedDisposeXIC_preparation_unsetFocusAndDetachCurrentXICNative();
+    // Applies XmbResetIC to the passed input context
+    private static native void delayedDisposeXIC_preparation_resetSpecifiedCtxNative(long pX11IMData);
+    // Applies XDestroyIC to the passed input context
+    private static native void delayedDisposeXIC_disposeXICNative(long pX11IMData);
 
     private native boolean doesFocusedXICSupportMovingCandidatesNativeWindow();
 

@@ -26,6 +26,7 @@
 #import "JNIUtilities.h"
 
 #import <ApplicationServices/ApplicationServices.h>
+#import <Carbon/Carbon.h>
 
 #import "CRobotKeyCode.h"
 #import "LWCToolkit.h"
@@ -324,7 +325,33 @@ Java_sun_lwawt_macosx_CRobot_keyEvent
     autoDelay(NO);
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
         CGEventSourceRef source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
-        CGKeyCode keyCode = GetCGKeyCode(javaKeyCode);
+        CGKeyCode keyCode;
+
+        if (javaKeyCode & 0x2000000) {
+            // This is a dirty, dirty hack and is only used in tests.
+            // This allows us to send macOS virtual key code directly, without first looking up a Java key code.
+            // It also allows the caller to set the physical keyboard layout directly.
+            // The key code that should be passed to Robot in this case is the following:
+            //   0x2000000 | keyCode | (physicalLayout << 8)
+            // where physicalLayout is:
+            //   0 - ANSI
+            //   1 - ISO
+            //   2 - JIS
+
+            UInt32 physicalLayout = (javaKeyCode >> 8) & 0xff;
+            UInt32 keyboardType;
+            if (physicalLayout == 1) {
+                keyboardType = 41; // ISO
+            } else if (physicalLayout == 2) {
+                keyboardType = 42; // JIS
+            } else {
+                keyboardType = 40; // ANSI
+            }
+            CGEventSourceSetKeyboardType(source, keyboardType);
+            keyCode = javaKeyCode & 0xff;
+        } else {
+            keyCode = GetCGKeyCode(javaKeyCode);
+        }
         CGEventRef event = CGEventCreateKeyboardEvent(source, keyCode, keyPressed);
         if (event != NULL) {
              // this assumes Robot isn't used to generate Fn key presses

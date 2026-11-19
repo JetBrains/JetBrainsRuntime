@@ -66,14 +66,9 @@ const UINT MAX_ACP_STR_LEN = 7; // ANSI CP identifiers are no longer than this
 // combination of standard mouse button flags
 const int ALL_MK_BUTTONS = MK_LBUTTON|MK_MBUTTON|MK_RBUTTON;
 const int X_BUTTONS = MK_XBUTTON1|MK_XBUTTON2;
-
-// The allowable difference between coordinates of the WM_TOUCH event and the
-// corresponding WM_LBUTTONDOWN/WM_LBUTTONUP event letting to associate these
-// events, when their coordinates are slightly different.
-const int TOUCH_MOUSE_COORDS_DELTA = 10;
-const int TOUCH_BEGIN = 2;
-const int TOUCH_UPDATE = 3;
-const int TOUCH_END = 4;
+// Do not set drag capture when dispatching mouse event.
+// This is useful for non-client events in custom title bar area for preserving native behavior.
+#define MK_NOCAPTURE 0x80000000
 
 // Whether to check for embedded frame and adjust location
 #define CHECK_EMBEDDED 0
@@ -533,7 +528,8 @@ public:
     BOOL IsInsideTouchClickBoundaries(POINT p);
     POINT TouchCoordsToLocal(LONG x, LONG y);
     void SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels);
-    void SendMouseEventFromTouch(jint id, POINT p, jint modifiers);
+    void SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button);
+    void SendButtonPressEventFromTouch(POINT p, jint modifiers);
 
     // NB: 64-bit: vkey is wParam of the message, but other API's take
     // vkey parameters of type UINT, so we do the cast before dispatching.
@@ -777,7 +773,7 @@ private:
     UINT m_mouseButtonClickAllowed;
 
     BOOL m_isTouchScroll;
-    POINT m_touchDownPoint;
+    POINT m_touchBeginPoint;
     POINT m_lastTouchPoint;
 
     BOOL m_bSubclassed;

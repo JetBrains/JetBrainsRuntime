@@ -36,28 +36,42 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       [specify directory for the wayland include files])])
   AC_ARG_WITH(wayland-lib, [AS_HELP_STRING([--with-wayland-lib],
       [specify directory for the wayland library files])])
-
+  AC_ARG_WITH(wayland-protocols, [AS_HELP_STRING([--with-wayland-protocols],
+      [specify the root directory for the wayland protocols xml files])])
+  AC_ARG_WITH(xkbcommon, [AS_HELP_STRING([--with-xkbcommon],
+      [specify prefix directory for the xkbcommon package
+      (expecting the headers under PATH/include)])])
+  AC_ARG_WITH(xkbcommon-include, [AS_HELP_STRING([--with-xkbcommon-include],
+      [specify directory for the xkbcommon include files])])
+  AC_ARG_WITH(xkbcommon-lib, [AS_HELP_STRING([--with-xkbcommon-lib],
+      [specify directory for the xkbcommon library files])])
 
   if test "x$NEEDS_LIB_WAYLAND" = xfalse; then
     if (test "x${with_wayland}" != x && test "x${with_wayland}" != xno) || \
         (test "x${with_wayland_include}" != x && test "x${with_wayland_include}" != xno); then
       AC_MSG_WARN([[wayland not used, so --with-wayland[-*] is ignored]])
     fi
+    if (test "x${with_xkbcommon}" != x && test "x${with_xkbcommon}" != xno) || \
+        (test "x${with_xkbcommon_include}" != x && test "x${with_xkbcommon_include}" != xno); then
+      AC_MSG_WARN([[wayland not used, so --with-xkbcommon[-*] is ignored]])
+    fi
     WAYLAND_CFLAGS=
     WAYLAND_LIBS=
-    VULKAN_FLAGS=
-    VULKAN_ENABLED=false
   else
     WAYLAND_FOUND=no
-
+    WAYLAND_INCLUDES=
+    WAYLAND_DEFINES=
     if test "x${with_wayland}" = xno || test "x${with_wayland_include}" = xno; then
       AC_MSG_ERROR([It is not possible to disable the use of wayland. Remove the --without-wayland option.])
+    fi
+    if test "x${with_xkbcommon}" = xno || test "x${with_xkbcommon_include}" = xno; then
+      AC_MSG_ERROR([It is not possible to disable the use of xkbcommon. Remove the --without-xkbcommon option.])
     fi
 
     if test "x${with_wayland}" != x; then
       AC_MSG_CHECKING([for wayland headers])
       if test -s "${with_wayland}/include/wayland-client.h" && test -s "${with_wayland}/include/wayland-cursor.h"; then
-        WAYLAND_CFLAGS="-I${with_wayland}/include"
+        WAYLAND_INCLUDES="-I${with_wayland}/include"
         WAYLAND_LIBS="-L${with_wayland}/lib -lwayland-client -lwayland-cursor"
 
         WAYLAND_FOUND=yes
@@ -69,17 +83,29 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
     if test "x${with_wayland_include}" != x; then
       AC_MSG_CHECKING([for wayland headers])
       if test -s "${with_wayland_include}/wayland-client.h" && test -s "${with_wayland_include}/wayland-cursor.h"; then
-        WAYLAND_CFLAGS="-I${with_wayland_include}"
+        WAYLAND_INCLUDES="-I${with_wayland_include}"
         WAYLAND_FOUND=yes
         AC_MSG_RESULT([$WAYLAND_FOUND])
       else
         AC_MSG_ERROR([Can't find 'wayland-client.h' and 'wayland-cursor.h' under ${with_wayland_include} given with the --with-wayland-include option.])
       fi
     fi
+    UTIL_REQUIRE_PROGS(WAYLAND_SCANNER, wayland-scanner)
+    if test "x${with_wayland_protocols}" != x; then
+        WAYLAND_PROTOCOLS_ROOT=${with_wayland_protocols}
+    else
+        WAYLAND_PROTOCOLS_ROOT=/usr/share/wayland-protocols/
+    fi
+    AC_MSG_CHECKING([for wayland-protocols])
+    if test -d "$WAYLAND_PROTOCOLS_ROOT"; then
+      AC_MSG_RESULT([yes])
+    else
+      AC_MSG_ERROR([Can't find 'wayland-protocols' under $WAYLAND_PROTOCOLS_ROOT.])
+    fi
     if test "x${with_wayland_lib}" != x; then
       WAYLAND_LIBS="-L${with_wayland_lib} -lwayland-client -lwayland-cursor"
     fi
- 
+
     if test "x$WAYLAND_FOUND" = xno; then
       # Are the wayland headers installed in the default /usr/include location?
       AC_CHECK_HEADERS([wayland-client.h wayland-cursor.h],
@@ -87,7 +113,7 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
           [ WAYLAND_FOUND=no; break ]
       )
       if test "x$WAYLAND_FOUND" = xyes; then
-          WAYLAND_CFLAGS=
+          WAYLAND_INCLUDES=
           WAYLAND_LIBS="-lwayland-client -lwayland-cursor"
           DEFAULT_WAYLAND=yes
       fi
@@ -97,98 +123,53 @@ AC_DEFUN_ONCE([LIB_SETUP_WAYLAND],
       AC_MSG_ERROR([Could not find wayland! $HELP_MSG ])
     fi
 
+    XKBCOMMON_FOUND=no
+    XKBCOMMON_INCLUDES=
+    XKBCOMMON_LIBS=-lxkbcommon
+    if test "x${with_xkbcommon}" != x; then
+      AC_MSG_CHECKING([for xkbcommon headers])
+      if test -s "${with_xkbcommon}/include/xkbcommon/xkbcommon.h" &&
+         test -s "${with_xkbcommon}/include/xkbcommon/xkbcommon-compose.h"; then
+        XKBCOMMON_INCLUDES="-I${with_xkbcommon}/include"
+        XKBCOMMON_LIBS="-L${with_xkbcommon}/lib ${XKBCOMMON_LIBS}"
 
-    # Checking for vulkan sdk
-
-    AC_ARG_WITH(vulkan, [AS_HELP_STRING([--with-vulkan],
-      [specify whether we use vulkan])])
-
-    AC_ARG_WITH(vulkan-include, [AS_HELP_STRING([--with-vulkan-include],
-      [specify directory for the vulkan include files ({with-vulkan-include}/vulkan/vulkan.h)])])
-
-    AC_ARG_WITH(vulkan-shader-compiler, [AS_HELP_STRING([--with-vulkan-shader-compiler],
-      [specify which shader compiler to use: glslc/glslangValidator])])
-
-    if test "x$SUPPORTS_LIB_VULKAN" = xfalse; then
-
-      if (test "x${with_vulkan}" != x && test "x${with_vulkan}" != xno) || \
-         (test "x${with_vulkan_include}" != x && test "x${with_vulkan_include}" != xno); then
-        AC_MSG_WARN([[vulkan not used, so --with-vulkan-include is ignored]])
-      fi
-      VULKAN_FLAGS=
-      VULKAN_ENABLED=false
-    else
-      # Do not build vulkan rendering pipeline by default
-      if (test "x${with_vulkan}" = x && test "x${with_vulkan_include}" = x) || \
-          test "x${with_vulkan}" = xno || test "x${with_vulkan_include}" = xno ; then
-        VULKAN_FLAGS=
-        VULKAN_ENABLED=false
+        XKBCOMMON_FOUND=yes
+        AC_MSG_RESULT([$XKBCOMMON_FOUND])
       else
-        VULKAN_FOUND=no
-
-        if test "x${with_vulkan_include}" != x; then
-          AC_MSG_CHECKING([for ${with_vulkan_include}/vulkan/vulkan.h])
-          if test -s "${with_vulkan_include}/vulkan/vulkan.h"; then
-            VULKAN_FOUND=yes
-            VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${with_vulkan_include} -DVULKAN_ENABLED"
-            AC_MSG_RESULT([yes])
-          else
-            AC_MSG_RESULT([no])
-            AC_MSG_ERROR([Can't find 'vulkan/vulkan.h' under '${with_vulkan_include}'])
-          fi
-        fi
-
-        if test "x$VULKAN_FOUND" = xno && test "x${VULKAN_SDK}" != x; then
-          AC_MSG_CHECKING([for ${VULKAN_SDK}/include/vulkan/vulkan.h])
-          if test -s "${VULKAN_SDK}/include/vulkan/vulkan.h"; then
-            VULKAN_FOUND=yes
-            VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -I${VULKAN_SDK}/include -DVULKAN_ENABLED"
-            AC_MSG_RESULT([yes])
-          else
-            AC_MSG_RESULT([no])
-          fi
-        fi
-
-        if test "x$VULKAN_FOUND" = xno; then
-          # Check default /usr/include location
-          AC_CHECK_HEADERS([vulkan/vulkan.h],
-            [ VULKAN_FOUND=yes
-              VULKAN_FLAGS="-DVK_USE_PLATFORM_WAYLAND_KHR -DVULKAN_ENABLED"
-            ],
-            [ VULKAN_FOUND=no; break ]
-          )
-        fi
-
-        if test "x$VULKAN_FOUND" = xno; then
-          HELP_MSG_MISSING_DEPENDENCY([vulkan])
-          AC_MSG_ERROR([Could not find vulkan! $HELP_MSG ])
-        else
-          # Find shader compiler - glslc or glslangValidator
-          if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslc); then
-            UTIL_LOOKUP_PROGS(GLSLC, glslc)
-            SHADER_COMPILER="$GLSLC"
-            VULKAN_SHADER_COMPILER="glslc --target-env=vulkan1.2 -mfmt=num -o"
-          fi
-
-          if (test "x${with_vulkan_shader_compiler}" = x || test "x${with_vulkan_shader_compiler}" = xglslangValidator) && \
-              test "x$SHADER_COMPILER" = x; then
-            UTIL_LOOKUP_PROGS(GLSLANG, glslangValidator)
-            SHADER_COMPILER="$GLSLANG"
-            VULKAN_SHADER_COMPILER="glslangValidator --target-env vulkan1.2 -x -o"
-          fi
-
-          if test "x$SHADER_COMPILER" != x; then
-            VULKAN_ENABLED=true
-          else
-            AC_MSG_ERROR([Can't find shader compiler])
-          fi
-        fi
+        AC_MSG_ERROR([Can't find 'include/xkbcommon/xkbcommon.h' and 'include/xkbcommon/xkbcommon-compose.h' under ${with_xkbcommon} given with the --with-xkbcommon option.])
       fi
     fi
+    if test "x${with_xkbcommon_include}" != x; then
+      AC_MSG_CHECKING([for xkbcommon headers])
+      if test -s "${with_xkbcommon_include}/xkbcommon/xkbcommon.h" &&
+         test -s "${with_xkbcommon_include}/xkbcommon/xkbcommon-compose.h"; then
+        XKBCOMMON_INCLUDES="-I${with_xkbcommon_include}"
+        XKBCOMMON_FOUND=yes
+        AC_MSG_RESULT([$XKBCOMMON_FOUND])
+      else
+        AC_MSG_ERROR([Can't find 'include/xkbcommon/xkbcommon.h' and 'include/xkbcommon/xkbcommon-compose.h' under ${with_xkbcommon_include} given with the --with-xkbcommon-include option.])
+      fi
+    fi
+    if test "x${with_xkbcommon_lib}" != x; then
+      XKBCOMMON_LIBS="-L${with_xkbcommon_lib} ${XKBCOMMON_LIBS}"
+    fi
+
+    if test "x${XKBCOMMON_FOUND}" != xyes; then
+      AC_CHECK_HEADERS([xkbcommon/xkbcommon.h xkbcommon/xkbcommon-compose.h],
+          [ XKBCOMMON_FOUND=yes ],
+          [ XKBCOMMON_FOUND=no; break ]
+      )
+    fi
+
+    if test "x$XKBCOMMON_FOUND" != xyes; then
+      HELP_MSG_MISSING_DEPENDENCY([xkbcommon])
+      AC_MSG_ERROR([Could not find xkbcommon! $HELP_MSG ])
+    fi
+
+    WAYLAND_LIBS="${WAYLAND_LIBS} ${XKBCOMMON_LIBS}"
+    WAYLAND_CFLAGS="${WAYLAND_INCLUDES} ${XKBCOMMON_INCLUDES} ${WAYLAND_DEFINES}"
   fi
-  AC_SUBST(VULKAN_FLAGS)
-  AC_SUBST(VULKAN_SHADER_COMPILER)
-  AC_SUBST(VULKAN_ENABLED)
   AC_SUBST(WAYLAND_CFLAGS)
   AC_SUBST(WAYLAND_LIBS)
+  AC_SUBST(WAYLAND_PROTOCOLS_ROOT)
 ])

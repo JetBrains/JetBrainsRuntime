@@ -74,9 +74,11 @@ public final class BufferedOpCodes {
     @Native public static final int INVALIDATE_CONTEXT   = 75;
     @Native public static final int SYNC                 = 76;
     @Native public static final int RESTORE_DEVICES      = 77;
+    @Native public static final int CONFIGURE_SURFACE    = 78;
 
     // multibuffering ops
     @Native public static final int SWAP_BUFFERS         = 80;
+    @Native public static final int FLUSH_BUFFER         = 81;
 
     // special no-op op code (mainly used for achieving 8-byte alignment)
     @Native public static final int NOOP                 = 90;

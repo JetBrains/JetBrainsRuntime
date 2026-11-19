@@ -29,6 +29,7 @@ import java.awt.image.BufferedImage;
 import java.util.Locale;
 import java.util.function.Supplier;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.PlatformGraphicsInfo;
 import sun.font.FontManager;
 import sun.font.FontManagerFactory;
@@ -83,6 +84,10 @@ public abstract class GraphicsEnvironment {
          */
         static final GraphicsEnvironment INSTANCE = createGE();
 
+        static {
+            SunGraphicsEnvironment.setInitialized();
+        }
+
         /**
          * Creates and returns the GraphicsEnvironment, according to the
          * platform-specific proxy class.
@@ -92,6 +97,7 @@ public abstract class GraphicsEnvironment {
         private static GraphicsEnvironment createGE() {
             if (graphicsEnvironmentProvider != null) {
                 GraphicsEnvironment overriddenGE = graphicsEnvironmentProvider.get();
+                graphicsEnvironmentProvider = null;
                 if (overriddenGE != null)
                     return overriddenGE;
             }
@@ -112,12 +118,12 @@ public abstract class GraphicsEnvironment {
         return LocalGE.INSTANCE;
     }
 
-    // JBR API internals
+    @JBRApi.Provides("ProjectorUtils")
     private static void setLocalGraphicsEnvironmentProvider(Supplier<GraphicsEnvironment> geProvider) {
         graphicsEnvironmentProvider = geProvider;
     }
 
-    // JBR API internals
+    @JBRApi.Provides("ProjectorUtils#overrideGraphicsEnvironment")
     private static void overrideLocalGraphicsEnvironment(GraphicsEnvironment overriddenGE) {
         setLocalGraphicsEnvironmentProvider(() -> overriddenGE);
     }

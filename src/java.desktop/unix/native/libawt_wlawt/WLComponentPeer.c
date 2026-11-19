@@ -26,76 +26,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <jni.h>
+#include <jni_util.h>
 #include <Trace.h>
 #include <assert.h>
-#include <gtk-shell1-client-protocol.h>
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "WLRobotPeer.h"
-#include "WLGraphicsEnvironment.h"
+#include "WLOutput.h"
 
-#ifdef WAKEFIELD_ROBOT
-#include "wakefield-client-protocol.h"
-#endif
+#include "xdg-decoration-unstable-v1.h"
+#include <stdbool.h>
+#include <sys/mman.h>
 
-static jfieldID nativePtrID;
-static jmethodID postWindowClosingMID;
+static jmethodID postWindowClosingMID; // WLWindowPeer.postWindowClosing
 static jmethodID notifyConfiguredMID;
-static jmethodID notifyEnteredOutputMID;
-static jmethodID notifyLeftOutputMID;
 static jmethodID notifyPopupDoneMID;
-
-struct activation_token_list_item {
-    struct xdg_activation_token_v1 *token;
-    struct activation_token_list_item *next_item;
-};
-
-static struct activation_token_list_item *add_token(JNIEnv* env,
-                                                    struct activation_token_list_item *list,
-                                                    struct xdg_activation_token_v1* token_to_add) {
-    struct activation_token_list_item *new_item =
-        (struct activation_token_list_item *) calloc(1, sizeof(struct activation_token_list_item));
-    CHECK_NULL_THROW_OOME_RETURN(env, new_item, "Failed to allocate a Wayland activation token", NULL);
-    new_item->token = token_to_add;
-    new_item->next_item = list;
-    return new_item;
-}
-
-static struct activation_token_list_item *delete_last_token(struct activation_token_list_item *list) {
-    assert(list);
-    xdg_activation_token_v1_destroy(list->token);
-    struct activation_token_list_item *next_item = list->next_item;
-    free(list);
-    return next_item;
-}
-
-static struct activation_token_list_item *delete_token(struct activation_token_list_item *list,
-                                                       struct xdg_activation_token_v1 *token_to_delete) {
-    if (list == NULL) {
-        return NULL;
-    } else if (list->token == token_to_delete) {
-        return delete_last_token(list);
-    } else {
-        list->next_item = delete_token(list->next_item, token_to_delete);
-        return list;
-    }
-}
-
-static void delete_all_tokens(struct activation_token_list_item *list) {
-    while (list) {
-        list = delete_last_token(list);
-    }
-}
 
 struct WLFrame {
     jobject nativeFramePeer; // weak reference
-    struct wl_surface *wl_surface;
+    struct wl_surface *wl_surface; // not owned
     struct xdg_surface *xdg_surface;
-    struct gtk_surface1 *gtk_surface;
     struct WLFrame *parent;
     struct xdg_positioner *xdg_positioner;
-    struct activation_token_list_item *activation_token_list;
     jboolean toplevel;
     union {
         struct xdg_toplevel *xdg_toplevel;
@@ -108,6 +60,7 @@ struct WLFrame {
     int32_t configuredHeight;
     jboolean configuredActive;
     jboolean configuredMaximized;
+    jboolean configuredFullscreen;
 };
 
 static void
@@ -129,59 +82,15 @@ xdg_surface_configure(void *data,
             (*env)->CallVoidMethod(env, nativeFramePeer, notifyConfiguredMID,
                                    wlFrame->configuredX, wlFrame->configuredY,
                                    wlFrame->configuredWidth, wlFrame->configuredHeight,
-                                   wlFrame->configuredActive, wlFrame->configuredMaximized);
+                                   wlFrame->configuredActive, wlFrame->configuredMaximized, wlFrame->configuredFullscreen);
+            wlListenerCheckException(env);
             (*env)->DeleteLocalRef(env, nativeFramePeer);
-            JNU_CHECK_EXCEPTION(env);
         }
     }
 }
 
-static void
-wl_surface_entered_output(void *data,
-                          struct wl_surface *wl_surface,
-                          struct wl_output *output)
-{
-    J2dTrace(J2D_TRACE_INFO, "wl_surface %p entered output %p\n", wl_surface, output);
-    struct WLFrame *wlFrame = (struct WLFrame*) data;
-    uint32_t wlOutputID = WLOutputID(output);
-    if (wlOutputID == 0) return;
-
-    JNIEnv *env = getEnv();
-    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
-    if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyEnteredOutputMID, wlOutputID);
-        (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
-    }
-}
-
-static void
-wl_surface_left_output(void *data,
-                       struct wl_surface *wl_surface,
-                       struct wl_output *output)
-{
-    J2dTrace(J2D_TRACE_INFO, "wl_surface %p left output %p\n", wl_surface, output);
-    struct WLFrame *wlFrame = (struct WLFrame*) data;
-    uint32_t wlOutputID = WLOutputID(output);
-    if (wlOutputID == 0) return;
-
-    JNIEnv *env = getEnv();
-    const jobject nativeFramePeer = (*env)->NewLocalRef(env, wlFrame->nativeFramePeer);
-    if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyLeftOutputMID, wlOutputID);
-        (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
-    }
-
-}
-
 static const struct xdg_surface_listener xdg_surface_listener = {
         .configure = xdg_surface_configure,
-};
-
-static const struct wl_surface_listener wl_surface_listener = {
-        .enter = wl_surface_entered_output,
-        .leave = wl_surface_left_output
 };
 
 static void
@@ -199,6 +108,7 @@ xdg_toplevel_configure(void *data,
 
     jboolean active = JNI_FALSE;
     jboolean maximized = JNI_FALSE;
+    jboolean fullscreen = JNI_FALSE;
     uint32_t *p;
     wl_array_for_each(p, states) {
         uint32_t state = *p;
@@ -207,6 +117,7 @@ xdg_toplevel_configure(void *data,
                 active = JNI_TRUE;
                 break;
             case XDG_TOPLEVEL_STATE_FULLSCREEN:
+                fullscreen = JNI_TRUE;
                 break;
             case XDG_TOPLEVEL_STATE_MAXIMIZED:
                 maximized = JNI_TRUE;
@@ -221,6 +132,7 @@ xdg_toplevel_configure(void *data,
     wlFrame->configuredHeight = height;
     wlFrame->configuredActive = active;
     wlFrame->configuredMaximized = maximized;
+    wlFrame->configuredFullscreen= fullscreen;
 }
 
 static void
@@ -251,10 +163,10 @@ xdg_toplevel_close(void *data,
     struct WLFrame *frame = (struct WLFrame *) data;
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
-    if (nativeFramePeer) {
+    if (nativeFramePeer) { // a reference to WLWinowPeer or its descendant
         (*env)->CallVoidMethod(env, nativeFramePeer, postWindowClosingMID);
+        wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
     }
 }
 
@@ -268,8 +180,8 @@ xdg_popup_done(void *data,
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, frame->nativeFramePeer);
     if (nativeFramePeer) {
         (*env)->CallVoidMethod(env, nativeFramePeer, notifyPopupDoneMID);
+        wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
-        JNU_CHECK_EXCEPTION(env);
     }
 }
 
@@ -290,48 +202,25 @@ static const struct xdg_popup_listener xdg_popup_listener = {
         .repositioned = xdg_popup_repositioned
 };
 
-static void
-xdg_activation_token_v1_done(void *data,
-		                     struct xdg_activation_token_v1 *xdg_activation_token_v1,
-		                     const char *token) {
-	struct WLFrame *frame = (struct WLFrame *) data;
-	assert(frame);
-	struct wl_surface *surface = frame->wl_surface;
-    assert(surface);
-    xdg_activation_v1_activate(xdg_activation_v1, token, surface);
-    frame->activation_token_list = delete_token(frame->activation_token_list, xdg_activation_token_v1);
-}
-
-static const struct xdg_activation_token_v1_listener xdg_activation_token_v1_listener = {
-        .done = xdg_activation_token_v1_done,
-};
-
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
-    CHECK_NULL(nativePtrID = (*env)->GetFieldID(env, clazz, "nativePtr", "J"));
     CHECK_NULL_THROW_IE(env,
-                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZ)V"),
+                        notifyConfiguredMID = (*env)->GetMethodID(env, clazz, "notifyConfigured", "(IIIIZZZ)V"),
                         "Failed to find method WLComponentPeer.notifyConfigured");
-    CHECK_NULL_THROW_IE(env,
-                        notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
-                        "Failed to find method WLComponentPeer.notifyEnteredOutput");
-    CHECK_NULL_THROW_IE(env,
-                        notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(I)V"),
-                        "Failed to find method WLComponentPeer.notifyLeftOutput");
     CHECK_NULL_THROW_IE(env,
                         notifyPopupDoneMID = (*env)->GetMethodID(env, clazz, "notifyPopupDone", "()V"),
                         "Failed to find method WLComponentPeer.notifyPopupDone");
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLDecoratedPeer_initIDs
+Java_sun_awt_wl_WLWindowPeer_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_IE(env,
                         postWindowClosingMID = (*env)->GetMethodID(env, clazz, "postWindowClosing", "()V"),
-                        "Failed to find method WLDecoratedPeer.postWindowClosing");
+                        "Failed to find method WLWindowPeer.postWindowClosing");
 }
 
 JNIEXPORT jlong JNICALL
@@ -349,13 +238,10 @@ FrameSetTitle
 {
     if (!frame->xdg_toplevel) return;
 
-    jboolean iscopy = JNI_FALSE;
-    const char *title_c_str = JNU_GetStringPlatformChars(env, title, &iscopy);
+    char *title_c_str = wlJavaStringToUtf8(env, title);
     if (title_c_str) {
         xdg_toplevel_set_title(frame->xdg_toplevel, title_c_str);
-        if (iscopy) {
-            JNU_ReleaseStringPlatformChars(env, title, title_c_str);
-        }
+        free(title_c_str);
     }
 }
 
@@ -365,13 +251,10 @@ FrameSetAppID
 {
     if (!frame->xdg_toplevel) return;
 
-    jboolean iscopy = JNI_FALSE;
-    const char *id_c_str = JNU_GetStringPlatformChars(env, appid, &iscopy);
+    char *id_c_str = wlJavaStringToUtf8(env, appid);
     if (id_c_str) {
         xdg_toplevel_set_app_id(frame->xdg_toplevel, id_c_str);
-        if (iscopy) {
-            JNU_ReleaseStringPlatformChars(env, appid, id_c_str);
-        }
+        free(id_c_str);
     }
 }
 
@@ -390,6 +273,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMinimized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_minimized(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
@@ -400,6 +284,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestMaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_set_maximized(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
@@ -410,17 +295,20 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_maximized(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestFullScreen
-        (JNIEnv *env, jobject obj, jlong ptr, jint wlID)
+        (JNIEnv *env, jobject obj, jlong ptr, jlong wlOutputPtr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
-        struct wl_output *wl_output = WLOutputByID((uint32_t)wlID);
+        struct WLOutput *output = jlong_to_ptr(wlOutputPtr);
+        struct wl_output *wl_output = output ? output->wl_output : NULL;
         xdg_toplevel_set_fullscreen(frame->xdg_toplevel, wl_output);
+        wlFlushToServer(env);
     }
 }
 
@@ -431,29 +319,23 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnsetFullScreen
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
         xdg_toplevel_unset_fullscreen(frame->xdg_toplevel);
+        wlFlushToServer(env);
     }
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
-      (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
-       jint x, jint y,
-       jboolean isModal, jboolean isMaximized, jboolean isMinimized,
+Java_sun_awt_wl_WLComponentPeer_nativeCreateWindow
+      (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jlong wlSurfacePtr,
+       jboolean isMaximized, jboolean isMinimized,
        jstring title, jstring appid)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     struct WLFrame *parentFrame = jlong_to_ptr(parentPtr);
-    if (frame->wl_surface) return;
-    frame->wl_surface = wl_compositor_create_surface(wl_compositor);
-    CHECK_NULL(frame->wl_surface);
-    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
-    CHECK_NULL(frame->xdg_surface);
-    if (gtk_shell1 != NULL) {
-        frame->gtk_surface = gtk_shell1_get_gtk_surface(gtk_shell1, frame->wl_surface);
-        CHECK_NULL(frame->gtk_surface);
-    }
+    struct wl_surface *wl_surface = jlong_to_ptr(wlSurfacePtr);
 
-    wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
+    frame->wl_surface = wl_surface;
+    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
+    CHECK_NULL(frame->xdg_surface);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_TRUE;
     frame->xdg_toplevel = xdg_surface_get_toplevel(frame->xdg_surface);
@@ -474,26 +356,11 @@ Java_sun_awt_wl_WLComponentPeer_nativeCreateWLSurface
     if (parentFrame && parentFrame->toplevel) {
         xdg_toplevel_set_parent(frame->xdg_toplevel, parentFrame->xdg_toplevel);
     }
-
-    if (isModal && frame->gtk_surface != NULL) {
-        gtk_surface1_set_modal(frame->gtk_surface);
-    }
-
-#ifdef WAKEFIELD_ROBOT
-        if (wakefield) {
-            // TODO: this doesn't work quite as expected for some reason
-            wakefield_move_surface(wakefield, frame->wl_surface, x, y);
-        }
-#endif
-    // From xdg-shell.xml: "After creating a role-specific object and
-    // setting it up, the client must perform an initial commit
-    // without any buffer attached"
-    wl_surface_commit(frame->wl_surface);
 }
 
 static struct xdg_positioner *
 newPositioner
-        (jint width, jint height, jint offsetX, jint offsetY)
+        (jint width, jint height, jint offsetX, jint offsetY, jboolean isUnconstrained)
 {
     struct xdg_positioner *xdg_positioner = xdg_wm_base_create_positioner(xdg_wm_base);
     CHECK_NULL_RETURN(xdg_positioner, NULL);
@@ -504,90 +371,81 @@ newPositioner
     xdg_positioner_set_size(xdg_positioner, width, height);
     xdg_positioner_set_anchor_rect(xdg_positioner, offsetX, offsetY, 1, 1);
     xdg_positioner_set_offset(xdg_positioner, 0, 0);
-    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_BOTTOM_LEFT);
+    xdg_positioner_set_anchor(xdg_positioner, XDG_POSITIONER_ANCHOR_TOP_LEFT);
     xdg_positioner_set_gravity(xdg_positioner, XDG_POSITIONER_GRAVITY_BOTTOM_RIGHT);
-    xdg_positioner_set_constraint_adjustment(xdg_positioner,
-        XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y
-        | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X
-        | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+    if (isUnconstrained) {
+        xdg_positioner_set_constraint_adjustment(xdg_positioner,
+                                                 XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_NONE);
+    } else {
+        xdg_positioner_set_constraint_adjustment(xdg_positioner,
+                                                 XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_FLIP_Y
+                                                 | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_X
+                                                 | XDG_POSITIONER_CONSTRAINT_ADJUSTMENT_SLIDE_Y);
+    }
     return xdg_positioner;
 }
 
 JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeCreateWLPopup
-        (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr,
+Java_sun_awt_wl_WLComponentPeer_nativeCreatePopup
+        (JNIEnv *env, jobject obj, jlong ptr, jlong parentPtr, jlong wlSurfacePtr,
          jint width, jint height,
-         jint offsetX, jint offsetY)
+         jint offsetX, jint offsetY,
+         jboolean isUnconstrained)
 {
     struct WLFrame *frame = (struct WLFrame *) ptr;
     struct WLFrame *parentFrame = (struct WLFrame*) parentPtr;
-    if (frame->wl_surface) return;
-    frame->wl_surface = wl_compositor_create_surface(wl_compositor);
-    CHECK_NULL(frame->wl_surface);
-    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, frame->wl_surface);
+    struct wl_surface* wl_surface = jlong_to_ptr(wlSurfacePtr);
+    frame->wl_surface = wl_surface;
+    frame->xdg_surface = xdg_wm_base_get_xdg_surface(xdg_wm_base, wl_surface);
     CHECK_NULL(frame->xdg_surface);
 
-    wl_surface_add_listener(frame->wl_surface, &wl_surface_listener, frame);
     xdg_surface_add_listener(frame->xdg_surface, &xdg_surface_listener, frame);
     frame->toplevel = JNI_FALSE;
 
     assert(parentFrame);
-    struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY);
+    struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY, isUnconstrained);
     CHECK_NULL(xdg_positioner);
+    JNU_RUNTIME_ASSERT(env, parentFrame->toplevel, "Popup's parent surface must be a toplevel");
     frame->xdg_popup = xdg_surface_get_popup(frame->xdg_surface, parentFrame->xdg_surface, xdg_positioner);
     CHECK_NULL(frame->xdg_popup);
     xdg_popup_add_listener(frame->xdg_popup, &xdg_popup_listener, frame);
     xdg_positioner_destroy(xdg_positioner);
-
-    // From xdg-shell.xml: "After creating a role-specific object and
-    // setting it up, the client must perform an initial commit
-    // without any buffer attached"
-    wl_surface_commit(frame->wl_surface);
 }
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRepositionWLPopup
         (JNIEnv *env, jobject obj, jlong ptr,
          jint width, jint height,
-         jint offsetX, jint offsetY)
+         jint offsetX, jint offsetY,
+         jboolean isUnconstrained)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     assert (!frame->toplevel);
 
     if (wl_proxy_get_version((struct wl_proxy *)xdg_wm_base) >= 3) {
-        struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY);
+        struct xdg_positioner *xdg_positioner = newPositioner(width, height, offsetX, offsetY, isUnconstrained);
         CHECK_NULL(xdg_positioner);
-        static int token = 42; // This will be received by xdg_popup_repositioned(); unused for now.
-        xdg_popup_reposition(frame->xdg_popup, xdg_positioner, token++);
+        xdg_popup_reposition(frame->xdg_popup, xdg_positioner, 0);
         xdg_positioner_destroy(xdg_positioner);
+        wlFlushToServer(env);
     }
 }
 
 static void
-DoHide(struct WLFrame *frame)
+DoHide(JNIEnv *env, struct WLFrame *frame)
 {
-    if (frame->wl_surface) {
-        if(frame->toplevel) {
-            xdg_toplevel_destroy(frame->xdg_toplevel);
-        } else {
-            xdg_popup_destroy(frame->xdg_popup);
-        }
-        if (wl_surface_in_focus == frame->wl_surface) {
-            wl_surface_in_focus = NULL;
-        }
-        if (frame->gtk_surface != NULL) {
-            gtk_surface1_destroy(frame->gtk_surface);
-        }
-        xdg_surface_destroy(frame->xdg_surface);
-        wl_surface_destroy(frame->wl_surface);
-        delete_all_tokens(frame->activation_token_list);
-        frame->activation_token_list = NULL;
-        frame->wl_surface = NULL;
-        frame->xdg_surface = NULL;
-        frame->xdg_toplevel = NULL;
-        frame->xdg_popup = NULL;
-        frame->toplevel = JNI_FALSE;
+    if(frame->toplevel) {
+        xdg_toplevel_destroy(frame->xdg_toplevel);
+    } else {
+        xdg_popup_destroy(frame->xdg_popup);
     }
+    xdg_surface_destroy(frame->xdg_surface);
+
+    frame->wl_surface = NULL;
+    frame->xdg_surface = NULL;
+    frame->xdg_toplevel = NULL;
+    frame->xdg_popup = NULL;
+    frame->toplevel = JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
@@ -595,7 +453,7 @@ Java_sun_awt_wl_WLComponentPeer_nativeHideFrame
   (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    DoHide(frame);
+    DoHide(env, frame);
 }
 
 JNIEXPORT void JNICALL
@@ -603,32 +461,27 @@ Java_sun_awt_wl_WLComponentPeer_nativeDisposeFrame
         (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    DoHide(frame);
     (*env)->DeleteWeakGlobalRef(env, frame->nativeFramePeer);
     free(frame);
 }
 
-JNIEXPORT jlong JNICALL Java_sun_awt_wl_WLComponentPeer_getWLSurface
-        (JNIEnv *env, jobject obj, jlong ptr)
-{
-    return ptr_to_jlong(((struct WLFrame*)jlong_to_ptr(ptr))->wl_surface);
-}
-
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartDrag
-        (JNIEnv *env, jobject obj, jlong ptr)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat) {
-        xdg_toplevel_move(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial);
+        xdg_toplevel_move(frame->xdg_toplevel, wl_seat, serial);
+        wlFlushToServer(env);
     }
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeStartResize
-        (JNIEnv *env, jobject obj, jlong ptr, jint edges)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jint edges)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel && wl_seat && frame->xdg_toplevel != NULL) {
-        xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, edges);
+        xdg_toplevel_resize(frame->xdg_toplevel, wl_seat, serial, edges);
+        wlFlushToServer(env);
     }
 }
 
@@ -638,6 +491,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetWindowGeometry
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_surface) {
         xdg_surface_set_window_geometry(frame->xdg_surface, x, y, width, height);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
@@ -647,6 +502,8 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMinimumSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_min_size(frame->xdg_toplevel, width, height);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
@@ -656,32 +513,155 @@ JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetMaximumSize
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
         xdg_toplevel_set_max_size(frame->xdg_toplevel, width, height);
+        // Do not flush here as this update needs to be committed together with the change
+        // of the buffer's size and scale, if any.
     }
 }
 
 JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeShowWindowMenu
-        (JNIEnv *env, jobject obj, jlong ptr, jint x, jint y)
+        (JNIEnv *env, jobject obj, jlong serial, jlong ptr, jint x, jint y)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->toplevel) {
-        xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, last_mouse_pressed_serial, x, y);
+        xdg_toplevel_show_window_menu(frame->xdg_toplevel, wl_seat, serial, x, y);
+        wlFlushToServer(env);
     }
 }
 
-JNIEXPORT void JNICALL
-Java_sun_awt_wl_WLComponentPeer_nativeActivate
+JNIEXPORT jlong JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_createToplevelDecorationImpl
         (JNIEnv *env, jobject obj, jlong ptr)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
-    if (frame->wl_surface && xdg_activation_v1 && wl_seat) {
-        struct xdg_activation_token_v1 *token = xdg_activation_v1_get_activation_token(xdg_activation_v1);
-        CHECK_NULL(token);
-        xdg_activation_token_v1_add_listener(token, &xdg_activation_token_v1_listener, frame);
-        xdg_activation_token_v1_set_serial(token, last_input_or_focus_serial, wl_seat);
-        if (wl_surface_in_focus) {
-            xdg_activation_token_v1_set_surface(token, wl_surface_in_focus);
-        }
-        xdg_activation_token_v1_commit(token);
-        frame->activation_token_list = add_token(env, frame->activation_token_list, token);
+    if (frame->toplevel) {
+        struct zxdg_toplevel_decoration_v1 * decor = zxdg_decoration_manager_v1_get_toplevel_decoration(
+            xdg_decoration_manager, frame->xdg_toplevel);
+        zxdg_toplevel_decoration_v1_set_mode(decor, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        return ptr_to_jlong(decor);
     }
+
+    return 0;
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_ServerSideFrameDecoration_disposeImpl
+        (JNIEnv *env, jobject obj, jlong ptr)
+{
+    struct zxdg_toplevel_decoration_v1 * decor = jlong_to_ptr(ptr);
+    if (decor) {
+        zxdg_toplevel_decoration_v1_destroy(decor);
+    }
+}
+
+JNIEXPORT void JNICALL Java_sun_awt_wl_WLComponentPeer_nativeSetIcon
+        (JNIEnv *env, jobject obj, jlong ptr, jintArray dims, jintArray pixels)
+{
+    struct WLFrame *frame = jlong_to_ptr(ptr);
+    if (frame == NULL || !frame->toplevel || xdg_toplevel_icon_manager == NULL) {
+        return;
+    }
+
+    jsize dimCount = dims != NULL ? (*env)->GetArrayLength(env, dims) : 0;
+    jsize pixelCount = pixels != NULL ? (*env)->GetArrayLength(env, pixels) : 0;
+
+    bool willHaveIcon = dimCount > 0 && pixelCount > 0;
+
+    if (!willHaveIcon) {
+        xdg_toplevel_icon_manager_v1_set_icon(xdg_toplevel_icon_manager, frame->xdg_toplevel, NULL);
+        return;
+    }
+
+    void* poolData = NULL;
+    size_t poolSize = pixelCount * sizeof(uint32_t);
+    struct wl_shm_pool* pool = CreateShmPool(poolSize, "toplevel_icon", &poolData, NULL);
+    if (pool == NULL) {
+        goto error_CreateShmPool;
+    }
+
+    (*env)->GetIntArrayRegion(env, pixels, 0, pixelCount, poolData);
+    EXCEPTION_CLEAR(env); // can't happen, pixelCount is precisely the length of the pixels array
+
+    // Convert in-place to little-endian ARGB with premultiplied alpha that Wayland expects
+    for (uint32_t *pixel = poolData; pixel != (uint32_t*)poolData + pixelCount; ++pixel) {
+        uint8_t alpha255_uint8 = (uint8_t)(*pixel >> 24);
+        float alpha255 = (float)alpha255_uint8;
+        float red = (float)((*pixel >> 16) & 0xFF) / 255.0f;
+        float green = (float)((*pixel >> 8) & 0xFF) / 255.0f;
+        float blue = (float)(*pixel & 0xFF) / 255.0f;
+
+        // it's legal to alias a uint32_t* with an unsigned char*
+        unsigned char *out = (unsigned char*)pixel;
+        out[0] = (unsigned char)(blue * alpha255 + 0.5f);
+        out[1] = (unsigned char)(green * alpha255 + 0.5f);
+        out[2] = (unsigned char)(red * alpha255 + 0.5f);
+        out[3] = alpha255_uint8;
+    }
+
+    munmap(poolData, poolSize);
+
+    jint* dimValues = calloc(dimCount, sizeof(jint));
+    if (dimValues == NULL) {
+        goto error_AllocateDimValues;
+    }
+
+    (*env)->GetIntArrayRegion(env, dims, 0, dimCount, dimValues);
+    EXCEPTION_CLEAR(env); // can't happen, dimCount is precisely the length of the dims array
+
+    struct wl_buffer** buffers = calloc(dimCount, sizeof(struct wl_buffer*));
+    if (buffers == NULL) {
+        goto error_AllocateBuffers;
+    }
+
+    struct xdg_toplevel_icon_v1* icon = xdg_toplevel_icon_manager_v1_create_icon(xdg_toplevel_icon_manager);
+    if (icon == NULL) {
+        goto error_CreateIcon;
+    }
+
+    int offset = 0;
+    for (int i = 0; i < dimCount; ++i) {
+        int dim = dimValues[i];
+        int stride = dim * (int32_t)sizeof(uint32_t);
+        int byteSize = dim * stride;
+
+        struct wl_buffer* buffer = wl_shm_pool_create_buffer(pool, offset, dim, dim, stride, WL_SHM_FORMAT_ARGB8888);
+        if (buffer == NULL) {
+            goto error_CreateIconBuffer;
+        }
+        buffers[i] = buffer;
+        offset += byteSize;
+        xdg_toplevel_icon_v1_add_buffer(icon, buffer, 1);
+    }
+
+    xdg_toplevel_icon_manager_v1_set_icon(xdg_toplevel_icon_manager, frame->xdg_toplevel, icon);
+    xdg_toplevel_icon_v1_destroy(icon);
+
+    for (int i = 0; i < dimCount; ++i) {
+        wl_buffer_destroy(buffers[i]);
+    }
+
+    free(buffers);
+    free(dimValues);
+    return;
+
+error_CreateIconBuffer:
+    for (int i = 0; i < dimCount; ++i) {
+        if (buffers[i] != NULL) {
+            wl_buffer_destroy(buffers[i]);
+        }
+    }
+    xdg_toplevel_icon_v1_destroy(icon);
+    icon = NULL;
+
+error_CreateIcon:
+    free(buffers);
+    buffers = NULL;
+
+error_AllocateBuffers:
+    free(dimValues);
+    dimValues = NULL;
+
+error_AllocateDimValues:
+    wl_shm_pool_destroy(pool);
+    pool = NULL;
+
+error_CreateShmPool:
+    return;
 }

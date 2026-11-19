@@ -133,6 +133,7 @@ import sun.awt.util.PerformanceLogger;
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.d3d.D3DRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
+import sun.java2d.vulkan.VKEnv;
 import sun.java2d.windows.WindowsFlags;
 import sun.print.PrintJob2D;
 import sun.util.logging.PlatformLogger;
@@ -177,6 +178,13 @@ public final class WToolkit extends SunToolkit implements Runnable {
     static {
         loadLibraries();
         initIDs();
+
+        if (!GraphicsEnvironment.isHeadless()) {
+            VKEnv.init(() -> {
+                VKEnv.requireForceVulkan("WToolkit");
+                return VKEnv.initPlatformWin32();
+            });
+        }
 
         // Print out which version of Windows is running
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
@@ -1177,5 +1185,10 @@ public final class WToolkit extends SunToolkit implements Runnable {
     @Override
     public boolean needUpdateWindow() {
         return true;
+    }
+
+    @Override
+    public boolean needUpdateWindowAfterPaint() {
+        return VKEnv.isPresentationEnabled();
     }
 }

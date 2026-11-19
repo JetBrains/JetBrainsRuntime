@@ -34,7 +34,6 @@ import java.awt.event.WindowFocusListener;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowStateListener;
 import java.awt.geom.Path2D;
-import java.awt.geom.Point2D;
 import java.awt.im.InputContext;
 import java.awt.image.BufferStrategy;
 import java.awt.peer.ComponentPeer;
@@ -44,20 +43,25 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OptionalDataException;
+import java.io.PrintStream;
 import java.io.Serial;
 import java.io.Serializable;
 import java.lang.annotation.Native;
-import java.lang.invoke.MethodHandles;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EventListener;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -67,11 +71,14 @@ import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
 import javax.accessibility.AccessibleStateSet;
 
-import com.jetbrains.internal.JBRApi;
+import com.jetbrains.exported.JBRApi;
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.AWTAccessor;
 import sun.awt.DebugSettings;
 import sun.awt.SunToolkit;
 import sun.awt.util.IdentityArrayList;
+import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.marlin.stats.StatDouble;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
@@ -1146,45 +1153,51 @@ public class Window extends Container implements Accessible {
     }
 
     void doDispose() {
-    class DisposeAction implements Runnable {
-        public void run() {
-            disposing = true;
-            try {
-                // Check if this window is the fullscreen window for the
-                // device. Exit the fullscreen mode prior to disposing
-                // of the window if that's the case.
-                GraphicsDevice gd = getGraphicsConfiguration().getDevice();
-                if (gd.getFullScreenWindow() == Window.this) {
-                    gd.setFullScreenWindow(null);
-                }
+        final class DisposeAction implements Runnable {
+            public void run() {
+                final Window window = Window.this;
 
-                Object[] ownedWindowArray;
-                synchronized(ownedWindowList) {
-                    ownedWindowArray = new Object[ownedWindowList.size()];
-                    ownedWindowList.copyInto(ownedWindowArray);
-                }
-                for (int i = 0; i < ownedWindowArray.length; i++) {
-                    Window child = (Window) (((WeakReference)
-                                   (ownedWindowArray[i])).get());
-                    if (child != null) {
-                        child.disposeImpl();
+                // dump stats if needed:
+                AWTAccessor.getWindowAccessor().dumpStats(window, true, null);
+
+                disposing = true;
+                try {
+                    // Check if this window is the fullscreen window for the
+                    // device. Exit the fullscreen mode prior to disposing
+                    // of the window if that's the case.
+                    GraphicsDevice gd = getGraphicsConfiguration().getDevice();
+                    if (gd.getFullScreenWindow() == window) {
+                        gd.setFullScreenWindow(null);
                     }
-                }
-                hide();
-                beforeFirstShow = true;
-                removeNotify();
-                synchronized (inputContextLock) {
-                    if (inputContext != null) {
-                        inputContext.dispose();
-                        inputContext = null;
+
+                    Object[] ownedWindowArray;
+                    synchronized(ownedWindowList) {
+                        ownedWindowArray = new Object[ownedWindowList.size()];
+                        ownedWindowList.copyInto(ownedWindowArray);
                     }
+                    for (int i = 0; i < ownedWindowArray.length; i++) {
+                        Window child = (Window) (((WeakReference)
+                                       (ownedWindowArray[i])).get());
+                        if (child != null) {
+                            child.disposeImpl();
+                        }
+                    }
+                    hide();
+                    beforeFirstShow = true;
+                    removeNotify();
+                    synchronized (inputContextLock) {
+                        if (inputContext != null) {
+                            inputContext.dispose();
+                            inputContext = null;
+                        }
+                    }
+                    clearCurrentFocusCycleRootOnHide();
+                } finally {
+                    disposing = false;
                 }
-                clearCurrentFocusCycleRootOnHide();
-            } finally {
-                disposing = false;
             }
         }
-    }
+
         boolean fireWindowClosedEvent = isDisplayable();
         DisposeAction action = new DisposeAction();
         if (EventQueue.isDispatchThread()) {
@@ -3880,93 +3893,167 @@ public class Window extends Container implements Accessible {
         }
     }
 
-    private transient volatile boolean hasCustomDecoration;
-    private transient volatile List<Map.Entry<Shape, Integer>> customDecorHitTestSpots;
-    private transient volatile int customDecorTitleBarHeight = -1; // 0 can be a legal value when no title bar is expected
+    // ************************** Custom title bar support *******************************
 
-    // called from native
-    private int hitTestCustomDecoration(int x, int y) {
-        var spots = customDecorHitTestSpots;
-        if (spots == null) return CustomWindowDecoration.NO_HIT_SPOT;
-        for (var spot : spots) {
-            if (spot.getKey().contains(x, y)) return spot.getValue();
-        }
-        return CustomWindowDecoration.NO_HIT_SPOT;
+    @JBRApi.Service
+    @JBRApi.Provides("WindowDecorations")
+    private static final class WindowDecorations {
+        WindowDecorations() { CustomTitleBar.assertSupported(); }
+        void setCustomTitleBar(Frame frame, CustomTitleBar customTitleBar) { ((Window) frame).setCustomTitleBar(customTitleBar); }
+        void setCustomTitleBar(Dialog dialog, CustomTitleBar customTitleBar) { ((Window) dialog).setCustomTitleBar(customTitleBar); }
+        CustomTitleBar createCustomTitleBar() { return new CustomTitleBar(); }
     }
 
-    private static class CustomWindowDecoration {
 
-        CustomWindowDecoration() {
-            if (Win.INSTANCE == null && MacOS.INSTANCE == null) {
+    @JBRApi.Provides("WindowDecorations.CustomTitleBar")
+    private static final class CustomTitleBar implements Serializable {
+        @Serial
+        private static final long serialVersionUID = -2330620200902241173L;
+
+        @Native
+        private static final int
+                HIT_UNDEFINED = 0,
+                HIT_TITLEBAR = 1,
+                HIT_CLIENT = 2,
+                HIT_MINIMIZE_BUTTON = 3,
+                HIT_MAXIMIZE_BUTTON = 4,
+                HIT_CLOSE_BUTTON = 5;
+
+        private static void assertSupported() {
+            if (CustomTitleBarPeer.INSTANCE == null) {
                 throw new JBRApi.ServiceNotAvailableException("Only supported on Windows and macOS");
             }
         }
 
-        @Native public static final int
-                NO_HIT_SPOT = 0,
-                OTHER_HIT_SPOT = 1,
-                MINIMIZE_BUTTON = 2,
-                MAXIMIZE_BUTTON = 3,
-                CLOSE_BUTTON = 4,
-                MENU_BAR = 5,
-                DRAGGABLE_AREA = 6;
+        private volatile Window window;
+        private float height;
+        private HashMap<String, Object> properties;
+        private final float[] insets = new float[2];
 
-        void setCustomDecorationEnabled(Window window, boolean enabled) {
-            window.hasCustomDecoration = enabled;
-            if (Win.INSTANCE != null) {
-                Win.INSTANCE.updateCustomDecoration(window.peer);
-            } else if (MacOS.INSTANCE != null && window.customDecorTitleBarHeight > 0f) {
-                MacOS.INSTANCE.setTitleBarHeight(window, window.peer, enabled ? window.customDecorTitleBarHeight : 0);
+        private float getHeight() { return height; }
+        private void setHeight(float height) {
+            if (height <= 0.0f) throw new IllegalArgumentException("TitleBar height must be positive");
+            if (this.height == height) return;
+            this.height = height;
+            notifyUpdate();
+        }
+        private Map<String, Object> getProperties() {
+            return properties != null ? Collections.unmodifiableMap(properties) : Collections.emptyMap();
+        }
+        private void putProperties(Map<String, ?> m) {
+            if (properties == null) properties = new HashMap<>();
+            boolean needsUpdate = false;
+            for (Map.Entry<String, ?> e : m.entrySet()) {
+                Object old = properties.put(e.getKey(), e.getValue());
+                if (!needsUpdate && !Objects.equals(old, e.getValue())) needsUpdate = true;
+            }
+            if (needsUpdate) notifyUpdate();
+        }
+        private void putProperty(String key, Object value) {
+            if (properties == null) properties = new HashMap<>();
+            Object old = properties.put(key, value);
+            if (!Objects.equals(old, value)) notifyUpdate();
+        }
+        private float getLeftInset() { return insets[0]; }
+        private float getRightInset() { return insets[1]; }
+        private void forceHitTest(boolean client) {
+            Window w = window;
+            if (w != null) {
+                w.pendingCustomTitleBarHitTest = client ? CustomTitleBar.HIT_CLIENT : CustomTitleBar.HIT_TITLEBAR;
+                w.applyCustomTitleBarHitTest();
             }
         }
-        boolean isCustomDecorationEnabled(Window window) {
-            return window.hasCustomDecoration;
-        }
+        private Window getContainingWindow() { return window; }
 
-        void setCustomDecorationHitTestSpots(Window window, List<Map.Entry<Shape, Integer>> spots) {
-            window.customDecorHitTestSpots = List.copyOf(spots);
-        }
-        List<Map.Entry<Shape, Integer>> getCustomDecorationHitTestSpots(Window window) {
-            return window.customDecorHitTestSpots;
-        }
-
-        void setCustomDecorationTitleBarHeight(Window window, int height) {
-            if (height >= 0) {
-                window.customDecorTitleBarHeight = height;
-                if (MacOS.INSTANCE != null && window.hasCustomDecoration) {
-                    MacOS.INSTANCE.setTitleBarHeight(window, window.peer, height);
+        private void notifyUpdate() {
+            // Do not synchronize on itself to prevent possible deadlocks, synchronize on parent window instead.
+            Window w = window;
+            if (w != null) {
+                synchronized (w) {
+                    if (w == window) w.setCustomTitleBar(this);
                 }
             }
         }
-        int getCustomDecorationTitleBarHeight(Window window) {
-            return window.customDecorTitleBarHeight;
-        }
+    }
 
-        private interface Win {
-            Win INSTANCE = (Win) JBRApi.internalServiceBuilder(MethodHandles.lookup())
-                    .withStatic("updateCustomDecoration", "updateCustomDecoration", "sun.awt.windows.WFramePeer").build();
-            void updateCustomDecoration(ComponentPeer peer);
-        }
+    private CustomTitleBar customTitleBar;
 
-        private interface MacOS {
-            MacOS INSTANCE = (MacOS) JBRApi.internalServiceBuilder(MethodHandles.lookup())
-                    .withStatic("setTitleBarHeight", "setCustomDecorationTitleBarHeight", "sun.lwawt.macosx.CPlatformWindow").build();
-            void setTitleBarHeight(Window target, ComponentPeer peer, float height);
+    /**
+     * Convenience method for JNI access.
+     * @return 0 if there's no custom title bar, >0 otherwise.
+     */
+    private float internalCustomTitleBarHeight() {
+        CustomTitleBar t = customTitleBar;
+        return t != null ? t.getHeight() : 0.0f;
+    }
+    /**
+     * Convenience method for JNI access.
+     * @return true if custom title bar controls are visible.
+     */
+    private boolean internalCustomTitleBarControlsVisible() {
+        CustomTitleBar t = customTitleBar;
+        return t == null || Boolean.TRUE.equals(t.getProperties().getOrDefault("controls.visible", Boolean.TRUE));
+    }
+    /**
+     * Convenience method for JNI access.
+     */
+    private void internalCustomTitleBarUpdateInsets(float left, float right) {
+        CustomTitleBar t = customTitleBar;
+        if (t != null) {
+            t.insets[0] = left;
+            t.insets[1] = right;
         }
     }
 
-    @Deprecated
-    boolean hasCustomDecoration() {
-        return hasCustomDecoration;
+    private interface CustomTitleBarPeer {
+        CustomTitleBarPeer INSTANCE = JBRApi.internalService();
+        void update(ComponentPeer peer);
+    }
+
+    private synchronized void setCustomTitleBar(CustomTitleBar t) {
+        if (t != null && t.getHeight() <= 0.0f) throw new IllegalArgumentException("TitleBar height must be positive");
+        if (customTitleBar != null && customTitleBar != t) {
+            customTitleBar.window = null;
+            customTitleBar.insets[0] = customTitleBar.insets[1] = 0;
+        }
+        customTitleBar = t;
+        if (t != null) t.window = this;
+        if (CustomTitleBarPeer.INSTANCE != null) {
+            CustomTitleBarPeer.INSTANCE.update(peer);
+        }
     }
 
     /**
-     * Set via reflection (JB JdkEx API).
+     * Used to allow/prevent native title bar actions: window drag and double-click maximization.
      */
-    @Deprecated
-    void setHasCustomDecoration() {
-        hasCustomDecoration = true;
+    private transient volatile int customTitleBarHitTest = CustomTitleBar.HIT_UNDEFINED;
+    /**
+     * Temporary value which will eventually substitute {@code customTitleBarHitTest}.
+     * @see #applyCustomTitleBarHitTest()
+     */
+    private transient int pendingCustomTitleBarHitTest = CustomTitleBar.HIT_UNDEFINED;
+    /**
+     * Unlike {@code customTitleBarHitTest}, {@code customTitleBarHitTestQuery} is not updated on each mouse event.
+     * Reset this to {@code CustomTitleBar.HIT_UNDEFINED} and it will be set and fixed on the next hit test update.
+     */
+    private transient volatile int customTitleBarHitTestQuery = CustomTitleBar.HIT_UNDEFINED;
+
+    @Override
+    Window updateCustomTitleBarHitTest(boolean allowNativeActions) {
+        if (customTitleBar == null) return null;
+        pendingCustomTitleBarHitTest = allowNativeActions ? CustomTitleBar.HIT_TITLEBAR : CustomTitleBar.HIT_CLIENT;
+        return this;
     }
+
+    void applyCustomTitleBarHitTest() {
+        // Normally this will only be updated on EDT, so we don't care about non-atomic update.
+        if (customTitleBarHitTestQuery == CustomTitleBar.HIT_UNDEFINED) {
+            customTitleBarHitTestQuery = pendingCustomTitleBarHitTest;
+        }
+        customTitleBarHitTest = pendingCustomTitleBarHitTest;
+    }
+
+    // ************************** JBR stuff *******************************
 
     private volatile boolean ignoreMouseEvents;
 
@@ -4060,20 +4147,40 @@ public class Window extends Container implements Accessible {
         return value;
     }
 
+    private final static String STATS_ALL_SUFFIX = ".all";
+    private final static String SYSTEM_PROPERTY_COUNTERS;
+
+    private final static boolean USE_COUNTERS;
+    private final static boolean TRACE_ALL_COUNTERS;
+    private final static boolean TRACE_STD_ERR;
+
+    private final static int TRACE_CAPACITY;
+
+    private final static boolean TRACE_COUNTERS = true;
+    private final static boolean DUMP_STATS = true;
+
+    // thread dump interval (ms)
+    static final long DUMP_INTERVAL = 10 * 1000L;
+
+    private static PrintStream getTraceStdStream() {
+        // get live std stream:
+        return TRACE_STD_ERR ? System.err : System.out;
+    }
+
     static {
-        String counters = System.getProperty("awt.window.counters");
+        SYSTEM_PROPERTY_COUNTERS = System.getProperty("awt.window.counters");
+        USE_COUNTERS = (SYSTEM_PROPERTY_COUNTERS != null);
+
+        TRACE_ALL_COUNTERS = USE_COUNTERS && (Objects.equals(SYSTEM_PROPERTY_COUNTERS, "")
+                                            || Objects.equals(SYSTEM_PROPERTY_COUNTERS, "stderr")
+                                            || Objects.equals(SYSTEM_PROPERTY_COUNTERS, "stdout"));
+
+        TRACE_STD_ERR = USE_COUNTERS && SYSTEM_PROPERTY_COUNTERS.contains("stderr");
+        TRACE_CAPACITY = USE_COUNTERS ? 8 : 0;
 
         AWTAccessor.setWindowAccessor(new AWTAccessor.WindowAccessor() {
             public void updateWindow(Window window) {
                 window.updateWindow();
-            }
-
-            public void setPopupParent(Window window, Component component) {
-                window.popupParent = component;
-            }
-
-            public Component getPopupParent(Window window) {
-                return window.popupParent;
             }
 
             public void setLWRequestStatus(Window changed, boolean status) {
@@ -4098,100 +4205,201 @@ public class Window extends Container implements Accessible {
 
             public boolean countersEnabled(Window w) {
                 // May want to selectively enable or disable counters per window
-                return counters != null;
+                return USE_COUNTERS;
             }
 
-            public void bumpCounter(Window w, String counterName) {
-                Objects.requireNonNull(w);
-                Objects.requireNonNull(counterName);
+            private final static long NANO_IN_SEC = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
 
-                PerfCounter newCounter;
-                long curTimeNanos = System.nanoTime();
-                synchronized (w.perfCounters) {
-                    newCounter = w.perfCounters.compute(counterName, (k, v) ->
-                            v == null
-                            ? new PerfCounter(curTimeNanos, 1L)
-                            : new PerfCounter(curTimeNanos, v.value + 1));
-                }
-                PerfCounter prevCounter;
-                synchronized (w.perfCountersPrev) {
-                    prevCounter = w.perfCountersPrev.putIfAbsent(counterName, newCounter);
-                }
-                if (prevCounter != null) {
-                    long nanosInSecond = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
-                    long timeDeltaNanos = curTimeNanos - prevCounter.updateTimeNanos;
-                    if (timeDeltaNanos > nanosInSecond) {
-                        long valPerSecond = (long) ((double) (newCounter.value - prevCounter.value)
-                                * nanosInSecond / timeDeltaNanos);
-                        boolean traceAllCounters = Objects.equals(counters, "")
-                                || Objects.equals(counters, "stdout")
-                                || Objects.equals(counters, "stderr");
-                        boolean traceEnabled = traceAllCounters || (counters != null && counters.contains(counterName));
-                        if (traceEnabled) {
-                            if (counters.contains("stderr")) {
-                                System.err.println(counterName + " per second: " + valPerSecond);
-                            } else {
-                                System.out.println(counterName + " per second: " + valPerSecond);
-                            }
-                        }
-                        if (perfLog.isLoggable(PlatformLogger.Level.FINE)) {
-                            perfLog.fine(counterName + " per second: " + valPerSecond);
+            public void incrementCounter(final Window w, final String counterName) {
+                if (USE_COUNTERS) {
+                    Objects.requireNonNull(w);
+                    Objects.requireNonNull(counterName);
+
+                    final long curTimeNanos = System.nanoTime();
+                    // use try-catch to avoid throwing runtime exception to native JNI callers!
+                    try {
+                        PerfCounter newCounter, prevCounter;
+                        synchronized (w.perfCounters) {
+                            newCounter = w.perfCounters.compute(counterName, (_, v) ->
+                                    v == null
+                                            ? new PerfCounter(curTimeNanos, 1L)
+                                            : new PerfCounter(curTimeNanos, v.value + 1));
                         }
                         synchronized (w.perfCountersPrev) {
-                            w.perfCountersPrev.put(counterName, newCounter);
+                            prevCounter = w.perfCountersPrev.putIfAbsent(counterName, newCounter);
+                        }
+                        if (prevCounter != null) {
+                            final long timeDeltaNanos = curTimeNanos - prevCounter.updateTimeNanos;
+                            if (timeDeltaNanos > NANO_IN_SEC) {
+                                final double valPerSecond = (double) (newCounter.value - prevCounter.value)
+                                        * NANO_IN_SEC / timeDeltaNanos;
+
+                                synchronized (w.perfCountersPrev) {
+                                    w.perfCountersPrev.put(counterName, newCounter);
+                                }
+                                addStat(w, counterName, valPerSecond);
+                                if (TRACE_COUNTERS) {
+                                    dumpCounter(counterName, valPerSecond);
+                                }
+                            }
+                        }
+                    } catch (RuntimeException re) {
+                        perfLog.severe("incrementCounter: failed", re);
+                    }
+                }
+            }
+
+            public void addStat(final Window w, final String statName, final double value) {
+                if (USE_COUNTERS && Double.isFinite(value)) {
+                    Objects.requireNonNull(w);
+                    Objects.requireNonNull(statName);
+
+                    // use try-catch to avoid throwing runtime exception to native JNI callers!
+                    try {
+                        synchronized (w.perfStats) {
+                            StatDouble stat = w.perfStats.computeIfAbsent(statName, StatDouble::new);
+                            stat.add(value);
+                            stat = w.perfStats.computeIfAbsent(statName + STATS_ALL_SUFFIX, StatDouble::new);
+                            stat.add(value);
+                        }
+                    } catch (RuntimeException re) {
+                        perfLog.severe("addStat: failed", re);
+                    }
+                }
+            }
+
+            public long getCounter(final Window w, final String counterName) {
+                if (USE_COUNTERS) {
+                    Objects.requireNonNull(w);
+                    Objects.requireNonNull(counterName);
+
+                    synchronized (w.perfCounters) {
+                        PerfCounter counter = w.perfCounters.get(counterName);
+                        return counter != null ? counter.value : -1L;
+                    }
+                }
+                return -1L;
+            }
+
+            public double getCounterPerSecond(final Window w, final String counterName) {
+                if (USE_COUNTERS) {
+                    Objects.requireNonNull(w);
+                    Objects.requireNonNull(counterName);
+
+                    PerfCounter newCounter, prevCounter;
+                    synchronized (w.perfCounters) {
+                        newCounter = w.perfCounters.get(counterName);
+                    }
+                    synchronized (w.perfCountersPrev) {
+                        prevCounter = w.perfCountersPrev.get(counterName);
+                    }
+
+                    if (newCounter != null && prevCounter != null) {
+                        final long timeDeltaNanos = newCounter.updateTimeNanos - prevCounter.updateTimeNanos;
+                        // Note that this time delta will usually be above one second.
+                        if (timeDeltaNanos > 0L) {
+                            return (double) (newCounter.value - prevCounter.value) * NANO_IN_SEC / timeDeltaNanos;
+                        }
+                    }
+                }
+                return Double.NaN;
+            }
+
+            public void dumpStats(final Window w, final boolean reset, StringBuilder sb) {
+                if (USE_COUNTERS) {
+                    synchronized (w.perfStats) {
+                        boolean header = false;
+
+                        for (final StatDouble stat : w.perfStats.values()) {
+                            if (stat.shouldLog()) {
+                                final boolean traceEnabled = TRACE_ALL_COUNTERS || SYSTEM_PROPERTY_COUNTERS.contains(stat.name);
+                                if (!header) {
+                                    header = true;
+                                    doLog(String.format("* Window['%s'@%s]:",
+                                            (w instanceof Frame ? ((Frame) w).getTitle() : ""),
+                                            Integer.toHexString(System.identityHashCode(w))),
+                                            traceEnabled);
+                                }
+                                // format:
+                                if (sb == null) {
+                                    sb = new StringBuilder(128);
+                                }
+                                sb.setLength(0);
+                                sb.append("  - ");
+                                stat.toString(sb);
+                                doLog(sb.toString(), traceEnabled);
+
+                                if (reset && !stat.name.endsWith(STATS_ALL_SUFFIX)) {
+                                    stat.reset();
+                                } else {
+                                    stat.updateLastLogCount();
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            public long getCounter(Window w, String counterName) {
-                Objects.requireNonNull(w);
-                Objects.requireNonNull(counterName);
-
-                synchronized (w.perfCounters) {
-                    PerfCounter counter = w.perfCounters.get(counterName);
-                    return counter != null ? counter.value : -1L;
+            private static void dumpCounter(final String counterName, final double valPerSecond) {
+                if (USE_COUNTERS) {
+                    doLog(String.format("%s per second: %.2f", counterName, valPerSecond),
+                            TRACE_ALL_COUNTERS || SYSTEM_PROPERTY_COUNTERS.contains(counterName));
                 }
             }
 
-            public long getCounterPerSecond(Window w, String counterName) {
-                Objects.requireNonNull(w);
-                Objects.requireNonNull(counterName);
-
-                PerfCounter newCounter;
-                PerfCounter prevCounter;
-
-                synchronized (w.perfCounters) {
-                    newCounter = w.perfCounters.get(counterName);
+            private static void doLog(final String msg, final boolean traceEnabled) {
+                if (traceEnabled) {
+                    getTraceStdStream().println(msg);
                 }
-
-                synchronized (w.perfCountersPrev) {
-                    prevCounter = w.perfCountersPrev.get(counterName);
+                if (perfLog.isLoggable(PlatformLogger.Level.FINE)) {
+                    perfLog.fine(msg);
                 }
-
-                if (newCounter != null && prevCounter != null) {
-                    long timeDeltaNanos = newCounter.updateTimeNanos - prevCounter.updateTimeNanos;
-                    // Note that this time delta will usually be above one second.
-                    if (timeDeltaNanos > 0) {
-                        long nanosInSecond = java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
-                        long valPerSecond = (long) ((double) (newCounter.value - prevCounter.value)
-                                * nanosInSecond / timeDeltaNanos);
-                        return valPerSecond;
-                    }
-                }
-                return -1;
             }
         }); // WindowAccessor
+
+        if (USE_COUNTERS) {
+            final Runnable dumper = new Runnable() {
+                private final static StringBuilder sb = new StringBuilder(128);
+
+                @Override
+                public void run() {
+                    getTraceStdStream().printf("--- WindowStats dump at: %s ---\n", new java.util.Date());
+
+                    final AWTAccessor.WindowAccessor windowAccessor = AWTAccessor.getWindowAccessor();
+
+                    for (Window window : Window.getWindows()) {
+                        // dump stats if needed:
+                        windowAccessor.dumpStats(window, true, sb);
+                    }
+                    getTraceStdStream().println("-----");
+                }
+            };
+            final Thread hook = InnocuousThread.newSystemThread("WindowStatsHook", dumper);
+            hook.setDaemon(true);
+            hook.setContextClassLoader(null);
+            Runtime.getRuntime().addShutdownHook(hook);
+
+            if (DUMP_STATS) {
+                final Timer statTimer = new Timer("WindowStats", true);
+                statTimer.scheduleAtFixedRate(new TimerTask() {
+                    @Override
+                    public void run() {
+                        dumper.run();
+                    }
+                }, DUMP_INTERVAL, DUMP_INTERVAL);
+            }
+        }
     } // static
 
     // a window doesn't need to be updated in the Z-order.
     @Override
     void updateZOrder() {}
 
-    private record PerfCounter(Long updateTimeNanos, Long value) {}
+    private record PerfCounter(long updateTimeNanos, long value) {}
 
-    private transient final Map<String, PerfCounter> perfCounters = new HashMap<>(4);
-    private transient final Map<String, PerfCounter> perfCountersPrev = new HashMap<>(4);
+    private transient final HashMap<String, PerfCounter> perfCounters = (USE_COUNTERS) ? new HashMap<>(TRACE_CAPACITY) : null;
+    private transient final HashMap<String, PerfCounter> perfCountersPrev = (USE_COUNTERS) ? new HashMap<>(TRACE_CAPACITY) : null;
+    private transient final LinkedHashMap<String, StatDouble> perfStats = (USE_COUNTERS) ? new LinkedHashMap<>(TRACE_CAPACITY) : null;
 
 } // class Window
 

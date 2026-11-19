@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,9 +46,11 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
     }
     __block MTLContext *mtlc = (MTLContext*)mtlinfo->context;
     mtlinfo->context = nil;
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+                                          block:^() {
+        AWT_ASSERT_APPKIT_THREAD;
         if (mtlc != NULL) {
-            [mtlc release];
+            [MTLContext releaseContext:mtlc];
         }
         free(mtlinfo);
     }];
@@ -74,9 +76,10 @@ JNI_COCOA_ENTER(env);
 
     __block NSString* path = NormalizedPathNSStringFromJavaString(env, mtlShadersLib);
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^() {
-
-        MTLContext* mtlc = [[MTLContext alloc] initWithDevice:displayID
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^() {
+        AWT_ASSERT_APPKIT_THREAD;
+        MTLContext* mtlc = [MTLContext createContextWithDeviceIfAbsent:displayID
                                        shadersLib:path];
         if (mtlc != 0L) {
             // create the MTLGraphicsConfigInfo record for this context
@@ -84,6 +87,7 @@ JNI_COCOA_ENTER(env);
             if (mtlinfo != NULL) {
                 memset(mtlinfo, 0, sizeof(MTLGraphicsConfigInfo));
                 mtlinfo->context = mtlc;
+                mtlinfo->displayID = displayID;
             } else {
                 J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_getMTLConfigInfo: could not allocate memory for mtlinfo");
                 [mtlc release];
@@ -106,4 +110,15 @@ Java_sun_java2d_metal_MTLGraphicsConfig_nativeGetMaxTextureSize
     J2dTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_nativeGetMaxTextureSize");
 
     return (jint)MTL_GPU_FAMILY_MAC_TXT_SIZE;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_metal_MTLGraphicsConfig_displayReconfigurationDone
+(JNIEnv *env, jclass mtlgc)
+{
+    JNI_COCOA_ENTER(env);
+
+    [MTLContext processContextStoreNotification:MTLDCM_DISPLAY_RECONFIGURE];
+
+    JNI_COCOA_EXIT(env);
 }

@@ -90,9 +90,6 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.net.MalformedURLException;
 import javax.swing.UIManager;
 
@@ -101,9 +98,11 @@ import sun.awt.*;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.dnd.SunDragSourceContextPeer;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.MacOSFlags;
 import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
-import sun.lwawt.LWComponentPeer;
+import sun.java2d.pipe.RenderQueue;
+import sun.lwawt.LWComponentPeerAPI;
 import sun.lwawt.LWCursorManager;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
@@ -134,6 +133,61 @@ public final class LWCToolkit extends LWToolkit {
     private static native void initIDs();
     private static native void initAppkit(ThreadGroup appKitThreadGroup, boolean headless);
     private static CInputMethodDescriptor sInputMethodDescriptor;
+
+    private static native boolean switchKeyboardLayoutNative(String layoutName);
+
+    private static native String getKeyboardLayoutNativeId();
+
+    private static native String[] getKeyboardLayoutListNative(boolean includeAll);
+
+    private static native boolean setKeyboardLayoutEnabledNative(String layoutName, boolean enabled);
+
+    public static void switchKeyboardLayout (String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        if (!switchKeyboardLayoutNative(layoutName)) {
+            throw new RuntimeException("Couldn't switch layout to " + layoutName);
+        }
+    }
+
+    public static String getKeyboardLayoutId () {
+        return getKeyboardLayoutNativeId();
+    }
+
+    public static List<String> getKeyboardLayoutList(boolean includeAll) {
+        String[] result = getKeyboardLayoutListNative(includeAll);
+        if (result == null) {
+            return new ArrayList<>();
+        }
+        return Arrays.asList(result);
+    }
+
+    public static void enableKeyboardLayout(String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        if (!setKeyboardLayoutEnabledNative(layoutName, true)) {
+            throw new RuntimeException("Couldn't enable layout " + layoutName);
+        }
+    }
+
+    public static void disableKeyboardLayout(String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        if (!setKeyboardLayoutEnabledNative(layoutName, false)) {
+            throw new RuntimeException("Couldn't disable layout " + layoutName);
+        }
+    }
+
+    public static boolean isKeyboardLayoutEnabled(String layoutName) {
+        return getKeyboardLayoutList(false).contains(layoutName);
+    }
+
+    public static boolean isKeyboardLayoutInstalled(String layoutName) {
+        return getKeyboardLayoutList(true).contains(layoutName);
+    }
 
     // Listens to EDT state in invokeAndWait() and disposes the invocation event
     // when EDT becomes free but the invocation event is not yet dispatched (considered lost).
@@ -526,6 +580,8 @@ public final class LWCToolkit extends LWToolkit {
 
     private native boolean isCapsLockOn();
 
+    private static native boolean setCapsLockState(boolean on);
+
     /*
      * NOTE: Among the keys this method is supposed to check,
      * only Caps Lock works as a true locking key with OS X.
@@ -549,6 +605,25 @@ public final class LWCToolkit extends LWToolkit {
 
             default:
                 throw new IllegalArgumentException("invalid key for Toolkit.getLockingKeyState");
+        }
+    }
+
+    @Override
+    public void setLockingKeyState(int keyCode, boolean on) throws UnsupportedOperationException {
+        switch (keyCode) {
+            case KeyEvent.VK_NUM_LOCK:
+            case KeyEvent.VK_SCROLL_LOCK:
+            case KeyEvent.VK_KANA_LOCK:
+                throw new UnsupportedOperationException("Toolkit.setLockingKeyState");
+
+            case KeyEvent.VK_CAPS_LOCK:
+                if (!setCapsLockState(on)) {
+                    throw new RuntimeException("failed to set caps lock state");
+                }
+                break;
+
+            default:
+                throw new IllegalArgumentException("invalid key for Toolkit.setLockingKeyState");
         }
     }
 
@@ -663,18 +738,26 @@ public final class LWCToolkit extends LWToolkit {
         if (a == b) return true;
 
         final boolean[] ret = new boolean[1];
-
-        try {  invokeAndWait(new Runnable() { @Override
-                                              public void run() { synchronized(ret) {
-            ret[0] = a.equals(b);
-        }}}, c); } catch (Exception e) { e.printStackTrace(); }
+        try {
+            // check invokeAndWait: OK (operations look not requiring locks or main thread):
+            invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized(ret) {
+                        ret[0] = a.equals(b);
+                    }
+                }
+             }, c);
+        } catch (Exception e) {
+            log.severe("LWCToolkit.doEquals: exception occurred: ", e);
+        }
 
         synchronized(ret) { return ret[0]; }
     }
 
     public static <T> T invokeAndWait(final Callable<T> callable,
                                       Component component) throws Exception {
-        return invokeAndWait(callable, component, -1);
+        return invokeAndWait(callable, component, 0);
     }
 
     public static <T> T invokeAndWait(final Callable<T> callable, Component component, int timeoutSeconds) throws Exception {
@@ -723,20 +806,37 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, -1);
+        invokeAndWait(runnable, component, false, 0.0);
     }
 
+    /* 25.04: keep public methods with (int timeoutSeconds) */
+    @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, int timeoutSeconds)
             throws InvocationTargetException
     {
-        invokeAndWait(runnable, component, false, -1);
+        invokeAndWait(runnable, component, false, timeoutSeconds);
     }
 
+    @Deprecated(since = "25")
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, int timeoutSeconds)
+            throws InvocationTargetException {
+        final double timeout = (timeoutSeconds > 0) ? timeoutSeconds : 0.0;
+        invokeAndWait(runnable, component, processEvents, timeout);
+    }
+
+    /* 25.04: added public methods with (double timeoutSeconds) to have more precise timeouts */
+
+    public static void invokeAndWait(Runnable runnable, Component component, double timeoutSeconds)
+            throws InvocationTargetException
+    {
+        invokeAndWait(runnable, component, false, timeoutSeconds);
+    }
+
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents, double timeoutSeconds)
             throws InvocationTargetException
     {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("invokeAndWait started: " + runnable);
+            log.fine("invokeAndWait started: {0}", runnable);
         }
 
         if (isBlockingEventDispatchThread()) {
@@ -786,13 +886,17 @@ public final class LWCToolkit extends LWToolkit {
         }
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("invokeAndWait finished: " + runnable);
+            log.fine("invokeAndWait finished: {0}", runnable);
         }
 
         checkException(invocationEvent);
     }
 
     private static native boolean isBlockingEventDispatchThread();
+
+    public static native boolean isBlockingMainThread();
+
+    static native String getThreadTraceContexts();
 
     public static void invokeLater(Runnable event, Component component)
             throws InvocationTargetException {
@@ -873,9 +977,9 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     @Override
-    protected PlatformDropTarget createDropTarget(DropTarget dropTarget,
-                                                  Component component,
-                                                  LWComponentPeer<?, ?> peer) {
+    public PlatformDropTarget createDropTarget(DropTarget dropTarget,
+                                               Component component,
+                                               LWComponentPeerAPI peer) {
         return new CDropTarget(dropTarget, component, peer);
     }
 
@@ -892,23 +996,6 @@ public final class LWCToolkit extends LWToolkit {
         }
 
         return locale;
-    }
-
-    public static boolean isLocaleUSInternationalPC(Locale locale) {
-        return (locale != null ?
-            locale.toString().equals("_US_UserDefined_15000") : false);
-    }
-
-    public static boolean isCharModifierKeyInUSInternationalPC(char ch) {
-        // 5 characters: APOSTROPHE, QUOTATION MARK, ACCENT GRAVE, SMALL TILDE,
-        // CIRCUMFLEX ACCENT
-        final char[] modifierKeys = {'\'', '"', '`', '\u02DC', '\u02C6'};
-        for (char modKey : modifierKeys) {
-            if (modKey == ch) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
@@ -985,7 +1072,7 @@ public final class LWCToolkit extends LWToolkit {
     static native long createAWTRunLoopMediator();
     /**
      * Method to run a nested run-loop. The nested loop is spinned in the javaRunLoop mode, so selectors sent
-     * by [JNFRunLoop performOnMainThreadWaiting] are processed.
+     * by [ThreadUtilities performOnMainThreadWaiting] are processed.
      * @param mediator a native pointer to the mediator object created by createAWTRunLoopMediator
      * @param processEvents if true - dispatches event while in the nested loop. Used in DnD.
      *                      Additional attention is needed when using this feature as we short-circuit normal event
@@ -995,16 +1082,25 @@ public final class LWCToolkit extends LWToolkit {
      *                      if false - all events come after exit form the nested loop
      */
     static void doAWTRunLoop(long mediator, boolean processEvents) {
-        doAWTRunLoop(mediator, processEvents, -1);
+        doAWTRunLoop(mediator, processEvents, 0.0);
     }
 
     /**
-     * Starts run-loop with the provided timeout. Use (-1) for the infinite value.
+     * Starts run-loop with the provided timeout. Use (<= 0.0) for the infinite value.
      */
-    static boolean doAWTRunLoop(long mediator, boolean processEvents, int timeoutSeconds) {
-        return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+    static boolean doAWTRunLoop(long mediator, boolean processEvents, double timeoutSeconds) {
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("doAWTRunLoop: enter: mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
+        }
+        try {
+            return doAWTRunLoopImpl(mediator, processEvents, inAWT, timeoutSeconds);
+        } finally {
+            if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("doAWTRunLoop: exit:  mediator: " + mediator + " processEvents: "+ processEvents + " timeoutSeconds: " + timeoutSeconds);
+            }
+        }
     }
-    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, int timeoutSeconds);
+    private static native boolean doAWTRunLoopImpl(long mediator, boolean processEvents, boolean inAWT, double timeoutSeconds);
     static native void stopAWTRunLoop(long mediator);
 
     private native boolean nativeSyncQueue(long timeout);
@@ -1100,7 +1196,7 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     @Override
-    protected PlatformWindow getPlatformWindowUnderMouse() {
+    public PlatformWindow getPlatformWindowUnderMouse() {
         return CPlatformWindow.nativeGetTopmostPlatformWindowUnderMouse();
     }
 
@@ -1110,6 +1206,23 @@ public final class LWCToolkit extends LWToolkit {
             UIManager.put("MenuBarUI", "com.apple.laf.AquaMenuBarUI");
         } else {
             UIManager.put("MenuBarUI", null);
+        }
+    }
+
+    @Override
+    public boolean needUpdateWindowAfterPaint() {
+        return MacOSFlags.isMetalEnabled() && !MacOSFlags.isMetalDisplaySyncEnabled();
+    }
+
+    @Override
+    public void flushOnscreenGraphics(Component context) {
+        RenderQueue rq = CGraphicsEnvironment.usingMetalPipeline() ?
+                MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+        } finally {
+            rq.unlock();
         }
     }
 }

@@ -27,6 +27,7 @@ package sun.java2d.windows;
 
 import sun.awt.windows.WToolkit;
 import sun.java2d.opengl.WGLGraphicsConfig;
+import sun.java2d.vulkan.VKEnv;
 
 public final class WindowsFlags {
 
@@ -190,6 +191,13 @@ public final class WindowsFlags {
                 oglEnabled = false;
             }
         }
+
+        // WToolkit.<clinit> has been run by this point, so it's ok to use VKEnv
+        if (VKEnv.isVulkanEnabled()) {
+            d3dEnabled = false;
+            oglEnabled = false;
+        }
+
         gdiBlitEnabled = getBooleanProp("sun.java2d.gdiBlit", true);
         d3dSet = getPropertySet("sun.java2d.d3d");
         if (d3dSet) {

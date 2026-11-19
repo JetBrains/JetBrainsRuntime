@@ -50,6 +50,7 @@
 #include "awt_Win32GraphicsDevice.h"
 #include "Hashtable.h"
 #include "ComCtl32Util.h"
+#include "AccessibleCaret.h"
 
 #include <Region.h>
 
@@ -64,6 +65,7 @@
 #include <java_awt_event_InputEvent.h>
 #include <java_awt_event_ActionEvent.h>
 #include <java_awt_event_InputMethodEvent.h>
+#include <sun_awt_event_TouchEvent.h>
 #include <sun_awt_windows_WInputMethod.h>
 #include <java_awt_event_MouseEvent.h>
 #include <java_awt_event_MouseWheelEvent.h>
@@ -211,7 +213,7 @@ AwtComponent::AwtComponent()
     m_mouseButtonClickAllowed = 0;
 
     m_isTouchScroll = FALSE;
-    m_touchDownPoint = {0, 0};
+    m_touchBeginPoint = {0, 0};
     m_lastTouchPoint = {0, 0};
 
     m_callbacksEnabled = FALSE;
@@ -759,6 +761,18 @@ jobject AwtComponent::FindHeavyweightUnderCursor(BOOL useCache) {
         if (comp != NULL) {
             INT nHittest = (INT)::SendMessage(hit, WM_NCHITTEST,
                                           0, MAKELPARAM(p.x, p.y));
+
+            if (AwtFrame::IsTitleBarHitTest(nHittest)) {
+                AwtWindow* window = comp->GetContainer();
+                if (window != NULL && !window->IsSimpleWindow() &&
+                    ((AwtFrame*) window)->HasCustomTitleBar()) {
+                    // In case of custom title bar, WindowFromPoint will return root frame, so search further
+                    ScreenToBottommostChild(hit, p.x, p.y);
+                    comp = AwtComponent::GetComponent(hit);
+                    if (comp != NULL) nHittest = HTCLIENT;
+                }
+            }
+
             /*
              * Fix for BugTraq ID 4304024.
              * Allow a non-default cursor only for the client area.
@@ -1318,10 +1332,18 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
 
 #endif /* SPY_MESSAGES */
 
-static BOOL IsMouseEventFromTouch()
+// consider making general function
+// T getClassStaticField(cls, field, default_val)
+static BOOL IsDefaultTouch()
 {
-    return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH_MASK) == MOUSEEVENTF_FROMTOUCH;
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    jclass cls = env->FindClass("sun/awt/event/TouchEvent");
+    CHECK_NULL_RETURN(cls, FALSE);
+    jfieldID fieldID = env->GetStaticFieldID(cls, "defaultTouchHandling", "Z");
+    CHECK_NULL_RETURN(fieldID, FALSE);
+    return static_cast<BOOL>(env->GetStaticBooleanField(cls, fieldID));
 }
+
 /*
  * Dispatch messages for this window class--general component
  */
@@ -1346,6 +1368,8 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
     // resource hogging ::SetProp
         return (LRESULT)TRUE;
     }
+
+    static const BOOL PROCESS_TOUCH_EVENTS = !IsDefaultTouch();
 
     DWORD curPos = 0;
 
@@ -1610,11 +1634,39 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           mr = WmNcMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), LEFT_BUTTON);
           break;
       case WM_NCRBUTTONDOWN:
-           mr = WmNcMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), RIGHT_BUTTON);
-           break;
-        case WM_NCMOUSEMOVE:
-            mr = WmNcMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            break;
+      case WM_NCRBUTTONDBLCLK:
+          mr = WmNcMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), RIGHT_BUTTON);
+          break;
+      case WM_NCRBUTTONUP:
+          mr = WmNcMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), RIGHT_BUTTON);
+          break;
+      case WM_NCMBUTTONDOWN:
+      case WM_NCMBUTTONDBLCLK:
+          mr = WmNcMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MIDDLE_BUTTON);
+          break;
+      case WM_NCMBUTTONUP:
+          mr = WmNcMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), MIDDLE_BUTTON);
+          break;
+      case WM_NCXBUTTONDOWN:
+      case WM_NCXBUTTONDBLCLK:
+          if (AwtToolkit::GetInstance().areExtraMouseButtonsEnabled()) {
+              int b = 0;
+              if (HIWORD(wParam) == 1) b = X1_BUTTON;
+              else if (HIWORD(wParam) == 2) b = X2_BUTTON;
+              if (b != 0) mr = WmNcMouseDown(LOWORD(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), b);
+          }
+          break;
+      case WM_NCXBUTTONUP:
+          if (AwtToolkit::GetInstance().areExtraMouseButtonsEnabled()) {
+              int b = 0;
+              if (HIWORD(wParam) == 1) b = X1_BUTTON;
+              else if (HIWORD(wParam) == 2) b = X2_BUTTON;
+              if (b != 0) mr = WmNcMouseUp(LOWORD(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), b);
+          }
+          break;
+      case WM_NCMOUSEMOVE:
+          mr = WmNcMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+          break;
       case WM_LBUTTONUP:
           if (ignoreNextLBTNUP) {
               ignoreNextLBTNUP = FALSE;
@@ -1639,7 +1691,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_MOUSEHWHEEL:
       case WM_AWT_MOUSEENTER:
       case WM_AWT_MOUSEEXIT:
-          if (IsMouseEventFromTouch()) {
+          if (IsMouseEventFromTouch() && PROCESS_TOUCH_EVENTS) {
               break;
           }
           curPos = ::GetMessagePos();
@@ -1719,13 +1771,27 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           }
           break;
       case WM_TOUCH:
-          WmTouch(wParam, lParam);
-          break;
+          if (PROCESS_TOUCH_EVENTS) {
+              WmTouch(wParam, lParam);
+              break;
+          }
       case WM_SETCURSOR:
           mr = mrDoDefault;
-          if (LOWORD(lParam) == HTCLIENT) {
+          if (LOWORD(lParam) == HTCLIENT || AwtFrame::IsTitleBarHitTest(LOWORD(lParam))) {
               if (AwtComponent* comp =
                                     AwtComponent::GetComponent((HWND)wParam)) {
+                  if (AwtFrame::IsTitleBarHitTest(LOWORD(lParam))) {
+                      AwtWindow* window = comp->GetContainer();
+                      if (window == NULL || window->IsSimpleWindow() ||
+                          !((AwtFrame*) window)->HasCustomTitleBar()) break;
+                      // When custom title bar is enabled, WM_SETCURSOR is sent to root Frame, so find actual component under cursor
+                      HWND hwnd = (HWND) wParam;
+                      POINT p;
+                      ::GetCursorPos(&p);
+                      ScreenToBottommostChild(hwnd, p.x, p.y);
+                      comp = AwtComponent::GetComponent(hwnd);
+                      if (!comp) break;
+                  }
                   AwtCursor::UpdateCursor(comp);
                   mr = mrConsume;
               }
@@ -1970,6 +2036,32 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           if (::IsWindow(AwtWindow::GetModalBlocker(GetHWnd()))) {
               mr = mrConsume;
           }
+          break;
+      }
+      case WM_GETOBJECT:
+      {
+          // We've got a WM_GETOBJECT message which was likely sent by an assistive tool.
+          // Therefore, we can start generating native caret accessibility events.
+          DWORD objId = static_cast<DWORD>(static_cast<DWORD_PTR>(lParam));
+          if (objId == OBJID_CLIENT) {
+              JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+              if (env != nullptr) {
+                  jclass cls = env->FindClass("sun/awt/windows/AccessibleCaretLocationNotifier");
+                  if (cls != nullptr) {
+                      jmethodID mid = env->GetStaticMethodID(cls, "startCaretNotifier", "(J)V");
+                      if (mid != nullptr) {
+                          env->CallStaticVoidMethod(cls, mid, reinterpret_cast<jlong>(GetHWnd()));
+                      }
+                  }
+              }
+          } else if (objId == OBJID_CARET) {
+              AccessibleCaret *caret = AccessibleCaret::getInstanceIfPresent();
+              if (caret != nullptr) {
+                  retValue = LresultFromObject(IID_IAccessible, wParam, caret);
+                  mr = mrConsume;
+              }
+          }
+          break;
       }
     }
 
@@ -2324,8 +2416,8 @@ void AwtComponent::WmTouch(WPARAM wParam, LPARAM lParam) {
 
 BOOL AwtComponent::IsInsideTouchClickBoundaries(POINT p)
 {
-    return abs(p.x - m_touchDownPoint.x) <= TOUCH_MOUSE_COORDS_DELTA &&
-           abs(p.y - m_touchDownPoint.y) <= TOUCH_MOUSE_COORDS_DELTA;
+    return abs(p.x - m_touchBeginPoint.x) <= sun_awt_event_TouchEvent_CLICK_RADIUS &&
+           abs(p.y - m_touchBeginPoint.y) <= sun_awt_event_TouchEvent_CLICK_RADIUS;
 }
 
 POINT AwtComponent::TouchCoordsToLocal(LONG x, LONG y)
@@ -2338,17 +2430,24 @@ POINT AwtComponent::TouchCoordsToLocal(LONG x, LONG y)
 void AwtComponent::SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels)
 {
     SendMouseWheelEvent(java_awt_event_MouseEvent_MOUSE_WHEEL, ::JVM_CurrentTimeMillis(NULL, 0),
-                        p.x, p.y, modifiers, 0, 0, scrollType,
-                        /*scrollAmount*/ 1, pixels,
+                        p.x, p.y, modifiers, /*clickCount*/ 0, /*popupTrigger*/ JNI_FALSE,
+                         scrollType, /*scrollAmount*/ 1, pixels,
                         static_cast<double>(pixels), /*msg*/ nullptr);
 }
 
-void AwtComponent::SendMouseEventFromTouch(jint id, POINT p, jint modifiers)
+void AwtComponent::SendMouseEventFromTouch(jint id, POINT p, jint modifiers, jint clickCount, jint button)
 {
     SendMouseEvent(id, ::JVM_CurrentTimeMillis(NULL, 0), p.x, p.y,
-                   modifiers, /*clickCount*/ 1, JNI_FALSE,
-                   java_awt_event_MouseEvent_BUTTON1,
-                   /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+                   modifiers, clickCount, /*popupTrigger*/ JNI_FALSE,
+                   button, /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+}
+
+void AwtComponent::SendButtonPressEventFromTouch(POINT p, jint modifiers)
+{
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_MOVED, p, modifiers, 0, java_awt_event_MouseEvent_NOBUTTON);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
+    SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers, 1, java_awt_event_MouseEvent_BUTTON1);
 }
 
 void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
@@ -2358,46 +2457,39 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
         return;
     }
 
-    jint modifiers = GetJavaModifiers();
-    // turn off horizontal
-    modifiers &= ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+    const jint modifiers = GetJavaModifiers();
     const POINT p = TouchCoordsToLocal(touchInput.x, touchInput.y);
 
     if (touchInput.dwFlags & TOUCHEVENTF_DOWN) {
-        m_touchDownPoint = p;
-        m_lastTouchPoint = p;
+        m_touchBeginPoint = p;
         m_isTouchScroll = FALSE;
+        SendMouseWheelEventFromTouch(p, modifiers, sun_awt_event_TouchEvent_TOUCH_BEGIN, 1);
     } else if (touchInput.dwFlags & TOUCHEVENTF_MOVE) {
-        if (IsInsideTouchClickBoundaries(p)) {
+        if (!m_isTouchScroll && IsInsideTouchClickBoundaries(p)) {
             return;
         }
+        m_isTouchScroll = TRUE;
+
+        const jint deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
+        if (deltaY != 0) {
+            const jint scrollModifiers = modifiers & ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaY);
+        }
+
+        const jint deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
+        if (deltaX != 0) {
+            const jint scrollModifiers = modifiers | java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, scrollModifiers, sun_awt_event_TouchEvent_TOUCH_UPDATE, deltaX);
+        }
+    } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
+        SendMouseWheelEventFromTouch(p, modifiers, sun_awt_event_TouchEvent_TOUCH_END, 1);
 
         if (!m_isTouchScroll) {
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_BEGIN, 1);
-            m_isTouchScroll = TRUE;
-        }
-
-        const int deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
-        if (abs(deltaY) != 0) {
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_UPDATE, deltaY);
-        }
-        
-        const int deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
-        if (abs(deltaX) != 0) {
-            modifiers |= java_awt_event_InputEvent_SHIFT_DOWN_MASK;
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_UPDATE, deltaX);
-        }
-
-        m_lastTouchPoint = p;
-    } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
-        if (m_isTouchScroll) {
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_END, 1);
-        } else {
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers);
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers);
-            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers);
+            SendButtonPressEventFromTouch(p, modifiers);
         }
     }
+
+    m_lastTouchPoint = p;
 }
 
 /* Double-click variables. */
@@ -2469,7 +2561,7 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
      * SetCapture() sends WM_CAPTURECHANGED and breaks that
      * assumption.
      */
-    SetDragCapture(flags);
+    if (!(flags & MK_NOCAPTURE)) SetDragCapture(flags);
 
     AwtWindow * owner = (AwtWindow*)GetComponent(GetTopLevelParentForWindow(GetHWnd()));
     if (AwtWindow::GetGrabbedWindow() != NULL && owner != NULL) {
@@ -4733,7 +4825,7 @@ MsgRouting AwtComponent::WmNcHitTest(int x, int y, LRESULT &retVal)
     AwtWindow* window = GetContainer();
     if (window == NULL || window->IsSimpleWindow()) return mrDoDefault;
     AwtFrame* frame = (AwtFrame*)window;
-    if (frame->HasCustomDecoration() &&
+    if (frame->HasCustomTitleBar() &&
         frame->WmNcHitTest(x, y, retVal) == mrConsume) {
         retVal = HTTRANSPARENT;
         return mrConsume;

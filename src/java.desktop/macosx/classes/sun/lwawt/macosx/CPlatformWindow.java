@@ -30,11 +30,13 @@ import java.awt.Component;
 import java.awt.DefaultKeyboardFocusManager;
 import java.awt.Dialog;
 import java.awt.Dialog.ModalityType;
+import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.MenuBar;
@@ -52,6 +54,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -62,24 +65,25 @@ import javax.swing.SwingUtilities;
 
 import com.apple.laf.ClientPropertyApplicator;
 import com.apple.laf.ClientPropertyApplicator.Property;
+import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.awt.AWTThreading;
+import sun.awt.CGraphicsDevice;
+import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceData;
 import sun.lwawt.LWKeyboardFocusManagerPeer;
-import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.LWWindowPeer;
 import sun.lwawt.LWWindowPeer.PeerType;
+import sun.lwawt.LWWindowPeerAPI;
 import sun.lwawt.PlatformWindow;
 import sun.util.logging.PlatformLogger;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class CPlatformWindow extends CFRetainedResource implements PlatformWindow {
-    private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h, double transparentTitleBarHeight);
+    private native long nativeCreateNSWindow(long nsViewPtr,long ownerPtr, long styleBits, double x, double y, double w, double h);
     private static native void nativeSetNSWindowStyleBits(long nsWindowPtr, int mask, int data);
     private static native void nativeSetNSWindowAppearance(long nsWindowPtr, String appearanceName);
     private static native void nativeSetNSWindowMenuBar(long nsWindowPtr, long menuBarPtr);
@@ -107,9 +111,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     static native CPlatformWindow nativeGetTopmostPlatformWindowUnderMouse();
     private static native void nativeRaiseLevel(long nsWindowPtr, boolean popup, boolean onlyIfParentIsActive);
     private static native boolean nativeDelayShowing(long nsWindowPtr);
-    private static native void nativeSetTransparentTitleBarHeight(long nsWindowPtr, float height);
+    private static native void nativeUpdateCustomTitleBar(long nsWindowPtr);
     private static native void nativeCallDeliverMoveResizeEvent(long nsWindowPtr);
-    private static native void nativeSetRoundedCorners(long nsWindowPrt, float radius);
+    private static native void nativeSetRoundedCorners(long nsWindowPrt, float radius, int borderWidth, int borderColor);
 
     // Logger to report issues happened during execution but that do not affect functionality
     private static final PlatformLogger logger = PlatformLogger.getLogger("sun.lwawt.macosx.CPlatformWindow");
@@ -144,7 +148,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     public static final String WINDOW_ACCESSIBILITY_ELEMENT =
             "apple.awt.windowAccessibilityElement";
     public static final String WINDOW_APPEARANCE = "apple.awt.windowAppearance";
-    public static final String WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT = "apple.awt.windowTransparentTitleBarHeight";
     public static final String WINDOW_CORNER_RADIUS = "apple.awt.windowCornerRadius";
 
     // This system property is named as jdk.* because it is not specific to AWT
@@ -301,17 +304,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                 }
             }
         },
-        new Property<CPlatformWindow>(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT) {
-            public void applyProperty(final CPlatformWindow c, final Object value) {
-                if (value != null && (value instanceof Float)) {
-                    boolean enabled = (float) value != 0f;
-                    c.setStyleBits(FULL_WINDOW_CONTENT, enabled);
-                    c.setStyleBits(TRANSPARENT_TITLE_BAR, enabled);
-                    c.setStyleBits(TITLE_VISIBLE, !enabled);
-                    c.execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeSetTransparentTitleBarHeight(ptr, (float) value)));
-                }
-            }
-        },
         new Property<CPlatformWindow>(WINDOW_CORNER_RADIUS) {
             public void applyProperty(final CPlatformWindow c, final Object value) {
                 c.setRoundedCorners(value);
@@ -382,8 +374,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         responder = createPlatformResponder();
         contentView.initialize(peer, responder);
 
-        float transparentTitleBarHeight = getTransparentTitleBarHeight(_target);
-
         Rectangle bounds;
         if (!IS(DECORATED, styleBits)) {
             // For undecorated frames the move/resize event does not come if the frame is centered on the screen
@@ -404,7 +394,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 + ", bounds=" + bounds);
                     }
                     long windowPtr = createNSWindow(viewPtr, ownerPtr, styleBits,
-                            bounds.x, bounds.y, bounds.width, bounds.height, transparentTitleBarHeight);
+                            bounds.x, bounds.y, bounds.width, bounds.height);
                     if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                         logger.fine("window created: " + Long.toHexString(windowPtr));
                     }
@@ -419,7 +409,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                             + ", bounds=" + bounds);
                 }
                 long windowPtr = createNSWindow(viewPtr, 0, styleBits,
-                        bounds.x, bounds.y, bounds.width, bounds.height, transparentTitleBarHeight);
+                        bounds.x, bounds.y, bounds.width, bounds.height);
                 if (logger.isLoggable(PlatformLogger.Level.FINE)) {
                     logger.fine("window created: " + Long.toHexString(windowPtr));
                 }
@@ -583,14 +573,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (prop != null) {
                 styleBits = SET(styleBits, TITLE_VISIBLE, Boolean.parseBoolean(prop.toString()));
             }
-
-            prop = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT);
-            if (prop != null) {
-                boolean enabled = Float.parseFloat(prop.toString()) != 0f;
-                styleBits = SET(styleBits, FULL_WINDOW_CONTENT, enabled);
-                styleBits = SET(styleBits, TRANSPARENT_TITLE_BAR, enabled);
-                styleBits = SET(styleBits, TITLE_VISIBLE, !enabled);
-            }
         }
 
         if (isDialog) {
@@ -649,8 +631,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override // PlatformWindow
     public FontMetrics getFontMetrics(Font f) {
-        // TODO: not implemented
-        (new RuntimeException("unimplemented")).printStackTrace();
+        logger.severe("CPlatformWindow.getFontMetrics: exception occurred: ",
+                new RuntimeException("unimplemented"));
         return null;
     }
 
@@ -682,6 +664,18 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     @Override // PlatformWindow
     public SurfaceData replaceSurfaceData() {
         return contentView.replaceSurfaceData();
+    }
+
+    public void displayChanged(boolean profileOnly) {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine(profileOnly ? "DISPLAY_PROFILE_CHANGED" : "DISPLAY_CHANGED");
+        }
+
+        if (peer != null && !profileOnly) {
+            EventQueue.invokeLater(
+                    () -> ((SunGraphicsEnvironment) GraphicsEnvironment.
+                            getLocalGraphicsEnvironment()).displayChanged());
+        }
     }
 
     @Override // PlatformWindow
@@ -748,7 +742,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return this.visible;
     }
 
-    private static LWWindowPeer getBlockerFor(Window window) {
+    private static LWWindowPeerAPI getBlockerFor(Window window) {
         if (window != null) {
             ComponentPeer peer = AWTAccessor.getComponentAccessor().getPeer(window);
             if (peer instanceof LWWindowPeer) {
@@ -802,13 +796,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         this.visible = visible;
 
         // Actually show or hide the window
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
+        LWWindowPeerAPI blocker = (peer == null)? null : peer.getBlocker();
         if (!visible) {
             execute(ptr -> AWTThreading.executeWaitToolkit(wait -> nativeHideWindow(ptr, wait)));
         } else if (delayShowing()) {
             if (blocker == null) {
                 Window focusedWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusedWindow();
-                LWWindowPeer focusedWindowBlocker = getBlockerFor(focusedWindow);
+                LWWindowPeerAPI focusedWindowBlocker = getBlockerFor(focusedWindow);
                 if (focusedWindowBlocker == peer) {
                     // try to switch to target space if we're adding a modal dialog
                     // that would block currently focused window
@@ -1027,6 +1021,14 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return ref.get();
     }
 
+    private boolean isTabbedWindow() {
+        AtomicBoolean ref = new AtomicBoolean();
+        execute(ptr -> {
+            ref.set(CWrapper.NSWindow.isTabbedWindow(ptr));
+        });
+        return ref.get();
+    }
+
     // We want a window to be always shown at the same space as its owning window.
     // But macOS doesn't have an API to control the target space for a window -
     // it's always shown at the active space. So if the target space isn't active now,
@@ -1239,19 +1241,185 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return contentView.getWindowLayerPtr();
     }
 
-    void flushBuffers() {
-        if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
-            try {
-                LWCToolkit.invokeAndWait(new Runnable() {
-                    @Override
-                    public void run() {
-                        //Posting an empty to flush the EventQueue without blocking the main thread
-                    }
-                }, target);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+    private final static int INVOKE_LATER_DISABLED = 0;
+    private final static int INVOKE_LATER_AUTO     = 1;
+    private final static int INVOKE_LATER_ENABLED  = 2;
+
+    private final static int INVOKE_LATER_FLUSH_BUFFERS = getInvokeLaterMode();
+
+    private static int getInvokeLaterMode() {
+        final String invokeLaterKey = "awt.mac.flushBuffers.invokeLater";
+        final String invokeLaterArg = System.getProperty(invokeLaterKey);
+        final int result;
+        if (invokeLaterArg == null) {
+            // default = 'false':
+            result = INVOKE_LATER_DISABLED;
+        } else {
+            switch (invokeLaterArg.toLowerCase()) {
+                default:
+                case "auto":
+                    result = INVOKE_LATER_AUTO;
+                    break;
+                case "false":
+                    result = INVOKE_LATER_DISABLED;
+                    break;
+                case "true":
+                    result = INVOKE_LATER_ENABLED;
+                    break;
+            }
+            logger.info("CPlatformWindow: property \"{0}={1}\", using invokeLater={2}.",
+                    invokeLaterKey, invokeLaterArg,
+                    (result == INVOKE_LATER_DISABLED) ? "false"
+                    : ((result == INVOKE_LATER_AUTO) ? "auto" : "true"));
+        }
+        return result;
+    }
+
+    private final static long NANOS_PER_SEC = 1000000000L;
+    /* 10s period arround reference times (sleep/wake-up...)
+     * to ensure all displays are awaken properly */
+    private final static long STATE_CHANGE_PERIOD = 10L * NANOS_PER_SEC;
+
+    private final AtomicBoolean mirroringState = new AtomicBoolean(false);
+    /** per window timestamp of disabling mirroring */
+    private final AtomicLong mirroringDisablingTime = new AtomicLong(0L);
+
+    // Specific class needed to get obvious stack traces:
+    private final static class EmptyRunnable implements Runnable {
+
+        private final String identifier;
+
+        EmptyRunnable(final String identifier) {
+            this.identifier = identifier;
+        }
+
+        @Override
+        public void run() {
+            // Posting an empty to flush the EventQueue without blocking the main thread
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("CPlatformWindow.flushBuffers: run() invoked on target: {0}", identifier);
             }
         }
+    };
+
+    void flushBuffers() {
+        // Only 1 usage by deliverMoveResizeEvent():
+        //                          System-dependent appearance optimization.
+        //                          May be blocking so postpone this event processing:
+
+        // Test only to validate LWCToolkit self-defense against freezes:
+        final boolean checkLWCToolkitBlockingMainGuard = false;
+
+        if (!checkLWCToolkitBlockingMainGuard && LWCToolkit.isBlockingMainThread()) {
+            logger.fine("Blocked main thread, skip flushBuffers().");
+            return;
+        }
+
+        if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
+            // use the system property 'awt.mac.flushBuffers.invokeLater' to true/auto (default: auto)
+            // to avoid deadlocks caused by the LWCToolkit.invokeAndWait() call below:
+            boolean useInvokeLater;
+
+            switch (INVOKE_LATER_FLUSH_BUFFERS) {
+                case INVOKE_LATER_DISABLED:
+                    useInvokeLater = false;
+                    break;
+                default:
+                case INVOKE_LATER_AUTO:
+                    useInvokeLater = false;
+
+                    // JBR-5497: force using invokeLater() when computer returns from sleep or displayChanged()
+                    // (mirroring case especially) to avoid deadlocks until solved definitely:
+                    boolean mirroring = false;
+                    if (peer != null) {
+                        final GraphicsDevice device = peer.getGraphicsConfiguration().getDevice();
+                        if (device instanceof CGraphicsDevice) {
+                            // JBR-5497: avoid deadlock in mirroring mode (laptop + external screen):
+                            // Note: the CGraphicsDevice instance will be recreated when mirroring is enabled/disabled.
+                            mirroring = ((CGraphicsDevice)device).isMirroring();
+                            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                                logger.fine("CPlatformWindow.flushBuffers[auto]: CGraphicsDevice.isMirroring = {0}",
+                                        mirroring);
+                            }
+                        }
+                    }
+                    if (mirroring) {
+                        mirroringState.set(true);
+                    } else if (mirroringState.get()) {
+                        // mirroringState trigger enabled but mirroring=false:
+                        // keep mirroring enabled for some time (STATE_CHANGE_PERIOD):
+                        mirroring = true;
+                        final long now = System.nanoTime(); // timestamp
+
+                        // should disable mirroring now ? check timestamp:
+                        final long lastTime = mirroringDisablingTime.get();
+                        final long delta;
+                        if (lastTime == 0L) {
+                            delta = 0L;
+                            // unset: set timestamp of disabling mirroring:
+                            mirroringDisablingTime.set(now);
+                        } else {
+                            delta = Math.abs(now - lastTime);
+                            if (delta > STATE_CHANGE_PERIOD) {
+                                // disable mirroring as period is elapsed:
+                                mirroring = false;
+                                mirroringState.set(false);
+                                // reset timestamp:
+                                mirroringDisablingTime.set(0L);
+                            }
+                        }
+                        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                            logger.fine("CPlatformWindow.flushBuffers[auto]: mirroring = {0} (mirroring = {1} delta = {2} ms)",
+                                    mirroring, mirroringState.get(), delta * 1e-6);
+                        }
+                    }
+                    useInvokeLater = mirroring;
+                    break;
+                case INVOKE_LATER_ENABLED:
+                    useInvokeLater = true;
+                    break;
+            }
+            try {
+                final String identifier = logger.isLoggable(PlatformLogger.Level.FINE) ? getIdentifier(target) : null;
+                final EmptyRunnable emptyTask = new EmptyRunnable(identifier);
+
+                // check invokeAndWait: KO (operations require AWTLock and main thread)
+                // => use invokeLater as it is an empty event to force refresh
+                if (useInvokeLater) {
+                    LWCToolkit.invokeLater(emptyTask, target);
+                } else {
+                    /* Ensure >3000ms = 3.666ms timeout to avoid any deadlock among
+                     * appkit, EDT, Flusher & a11y threads, locks
+                     * and various synchronization patterns... */
+                    final double timeoutSeconds = 3.666; // seconds
+
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        logger.fine("CPlatformWindow.flushBuffers: enter " +
+                                        "LWCToolkit.invokeAndWait(emptyTask) on target = {0}", identifier);
+                    }
+
+                    LWCToolkit.invokeAndWait(emptyTask, target, timeoutSeconds);
+
+                    if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                        logger.fine("CPlatformWindow.flushBuffers: exit  " +
+                                        "LWCToolkit.invokeAndWait(emptyTask) on target = {0}", identifier);
+                    }
+                }
+            } catch (InvocationTargetException ite) {
+                if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                    logger.fine("CPlatformWindow.flushBuffers: timeout or LWCToolkit.invoke failure: ", ite);
+                }
+            }
+        }
+    }
+
+    private static String getIdentifier(Window t) {
+        if (t == null) {
+            return "null";
+        }
+        return t.getClass().getName()
+                + "['" + Objects.toString(t.getName(), "")
+                + "' @" + Integer.toHexString(System.identityHashCode(t)) + ']';
     }
 
     /**
@@ -1275,12 +1443,22 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         responder.handleWindowFocusEvent(gained, oppositePeer);
     }
 
+    /* useless ? */
     public void doDeliverMoveResizeEvent() {
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("CPlatformWindow.doDeliverMoveResizeEvent() called by {0}",
+                    Thread.currentThread());
+        }
         execute(ptr -> nativeCallDeliverMoveResizeEvent(ptr));
     }
 
+    /* native call by AWTWindow._deliverMoveResizeEvent() */
     protected void deliverMoveResizeEvent(int x, int y, int width, int height,
                                         boolean byUser) {
+
+        /* Test only to generate more appkit freezes */
+        final boolean bypassToHaveMoreFreezes = false;
+
         AtomicBoolean ref = new AtomicBoolean();
         execute(ptr -> {
             ref.set(CWrapper.NSWindow.isZoomed(ptr));
@@ -1292,8 +1470,15 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         nativeBounds = new Rectangle(x, y, width, height);
         if (peer != null) {
             peer.notifyReshape(x, y, width, height);
+
+            if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+                logger.fine("CPlatformWindow.deliverMoveResizeEvent(): byUser = {0} " +
+                        "isFullScreenAnimationOn = {1}", byUser, isFullScreenAnimationOn);
+            }
+
             // System-dependent appearance optimization.
-            if ((byUser && !oldB.getSize().equals(nativeBounds.getSize()))
+            if (bypassToHaveMoreFreezes
+                    || (byUser && !oldB.getSize().equals(nativeBounds.getSize()))
                     || isFullScreenAnimationOn) {
                 flushBuffers();
             }
@@ -1361,7 +1546,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     private void checkBlockingAndOrder() {
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
+        LWWindowPeerAPI blocker = (peer == null)? null : peer.getBlocker();
         if (blocker == null) {
             // If it's not blocked, make sure it's above its siblings
             orderAboveSiblings();
@@ -1423,7 +1608,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         // which is going to become 'main window', are placed above their siblings.
         CPlatformWindow rootOwner = getRootOwner();
         if (rootOwner.isVisible() && !rootOwner.isIconified() && !rootOwner.isActive()) {
-            rootOwner.execute(CWrapper.NSWindow::orderFrontIfOnActiveSpace);
+            if (rootOwner != this || !isTabbedWindow()) {
+                rootOwner.execute(CWrapper.NSWindow::orderFrontIfOnActiveSpace);
+            }
         }
 
         // Do not order child windows of iconified owner.
@@ -1511,10 +1698,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
                                 double x,
                                 double y,
                                 double w,
-                                double h,
-                                double transparentTitleBarHeight) {
+                                double h) {
         return AWTThreading.executeWaitToolkit(() ->
-                nativeCreateNSWindow(nsViewPtr, ownerPtr, styleBits, x, y, w, h, transparentTitleBarHeight));
+                nativeCreateNSWindow(nsViewPtr, ownerPtr, styleBits, x, y, w, h));
     }
 
     // ----------------------------------------------------------------------
@@ -1522,54 +1708,57 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     // ----------------------------------------------------------------------
 
     private void windowWillMiniaturize() {
+        logger.fine("windowWillMiniaturize");
         isIconifyAnimationActive = true;
     }
 
     private void windowDidBecomeMain() {
+        logger.fine("windowDidBecomeMain");
         lastBecomeMainTime = System.currentTimeMillis();
         checkBlockingAndOrder();
     }
 
     private void windowWillEnterFullScreen() {
         isFullScreenAnimationOn = true;
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("windowWillEnterFullScreen: isFullScreenAnimationOn = {0}", isFullScreenAnimationOn);
+        }
     }
 
     private void windowDidEnterFullScreen() {
         isInFullScreen = true;
         isFullScreenAnimationOn = false;
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("windowWillEnterFullScreen: isFullScreenAnimationOn = {0} isInFullScreen = {1}",
+                    isFullScreenAnimationOn, isInFullScreen);
+        }
     }
 
     private void windowWillExitFullScreen() {
         isFullScreenAnimationOn = true;
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("windowWillExitFullScreen: isFullScreenAnimationOn = {0}", isFullScreenAnimationOn);
+        }
     }
 
     private void windowDidExitFullScreen() {
         isInFullScreen = false;
         isFullScreenAnimationOn = false;
-    }
-
-    private float getTransparentTitleBarHeight(Window target) {
-        if (target instanceof javax.swing.RootPaneContainer) {
-            final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
-            if (rootpane != null) {
-                Object transparentTitleBarHeightProperty = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT);
-                if (transparentTitleBarHeightProperty != null) {
-                    return Float.parseFloat(transparentTitleBarHeightProperty.toString());
-                }
-            }
-        }
-        return 0f;
-    }
-
-    // JBR API internals
-    private static void setCustomDecorationTitleBarHeight(Window target, ComponentPeer peer, float height) {
-        if (target instanceof javax.swing.RootPaneContainer) {
-            final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
-            if (rootpane != null) rootpane.putClientProperty(WINDOW_TRANSPARENT_TITLE_BAR_HEIGHT, height);
+        if (logger.isLoggable(PlatformLogger.Level.FINE)) {
+            logger.fine("windowDidExitFullScreen: isFullScreenAnimationOn = {0} isInFullScreen = {1}",
+                    isFullScreenAnimationOn, isInFullScreen);
         }
     }
 
-    // JBR API internals
+    @JBRApi.Provides("java.awt.Window.CustomTitleBarPeer#update")
+    private static void updateCustomTitleBar(ComponentPeer peer) {
+        if (peer instanceof LWWindowPeer lwwp &&
+            lwwp.getPlatformWindow() instanceof CPlatformWindow cpw)  {
+            cpw.execute(CPlatformWindow::nativeUpdateCustomTitleBar);
+        }
+    }
+
+    @JBRApi.Provides("RoundedCornersManager")
     private static void setRoundedCorners(Window window, Object params) {
         Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (peer instanceof CPlatformWindow) {
@@ -1584,7 +1773,13 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     private void setRoundedCorners(Object params) {
         if (params instanceof Float) {
-            execute(ptr -> nativeSetRoundedCorners(ptr, (float) params));
+            execute(ptr -> nativeSetRoundedCorners(ptr, (float) params, 0, 0));
+        } else if (params instanceof Object[]) {
+            Object[] values = (Object[]) params;
+            if (values.length == 3 && values[0] instanceof Float && values[1] instanceof Integer && values[2] instanceof Color) {
+                Color color = (Color) values[2];
+                execute(ptr -> nativeSetRoundedCorners(ptr, (float) values[0], (int) values[1], color.getRGB()));
+            }
         }
     }
 

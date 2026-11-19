@@ -458,7 +458,9 @@ jdk_editpad = \
      jdk/editpad
 
 jbr_all = \
-     jb
+     jb \
+     -jb/java/awt/vulkan \
+     -jb/java/awt/wayland/vulkan \
 
 jdk_desktop = \
     :jdk_desktop_part1 \
@@ -489,9 +491,6 @@ jdk_desktop_part3 = \
     java/awt/Modal \
     java/awt/datatransfer \
     java/awt/Window
-
-jbr_all = \
-     jb
 
 jbr_desktop_part11 = \
     :jdk_desktop_part1 \
@@ -834,6 +833,8 @@ jdk_since_checks = \
 jdk_awt_wayland = \
     :jdk_awt \
     jb/java/awt/wayland \
+    -jb/java/awt/wayland/vulkan \
+    jb/java/awt/Focus/ActivateAfterHide.java \
     -com/apple/eawt \
     -com/apple/laf \
     -sun/awt \
@@ -878,7 +879,6 @@ jdk_awt_wayland = \
     -java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java \
     -java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java \
     -java/awt/Debug \
-    -java/awt/Desktop \
     -java/awt/Dialog \
     -java/awt/FullScreen/DisplayModeNoRefreshTest.java \
     -java/awt/dnd \
@@ -947,7 +947,8 @@ jdk_awt_wayland = \
     -java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java \
     -java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.java \
     -java/awt/EventQueue/6980209/bug6980209.java \
-    -java/awt/FileDialog \
+    -java/awt/FileDialog/DoubleActionESC.java \
+    -java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java \
     -java/awt/FlowLayout \
     -java/awt/Focus/6378278 \
     -java/awt/Focus/6382144 \
@@ -958,7 +959,6 @@ jdk_awt_wayland = \
     -java/awt/Focus/8073453 \
     -java/awt/Focus/8282640 \
     -java/awt/Focus/ActualFocusedWindowTest \
-    -java/awt/Focus/ActivateOnProperAppContextTest.java \
     -java/awt/Focus/AsyncUpFocusCycleTest.java \
     -java/awt/Focus/AutoRequestFocusTest \
     -java/awt/Focus/Cause \
@@ -1094,8 +1094,11 @@ jdk_awt_wayland = \
     -java/awt/Mouse \
     -java/awt/MouseAdapter \
     -java/awt/MouseInfo \
+    -java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java \
     -java/awt/Multiscreen/MouseEventTest/MouseEventTest.java \
+    -java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java \
     -java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java \
+    -java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java \
     -java/awt/Paint/bug8024864.java \
     -java/awt/Paint/ButtonRepaint.java \
     -java/awt/Paint/CheckboxRepaint.java \
@@ -1124,13 +1127,12 @@ jdk_awt_wayland = \
     -java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java \
     -java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java \
     -java/awt/TrayIcon \
-    -java/awt/wakefield \
     -java/awt/Window \
     -java/awt/xembed
 
 jdk_swing_wayland= \
     :jdk_swing \
-    jb/javax/swing/Popup/WLPopupAsParent.java \
+    jb/javax/swing/wayland \
     -com/sun/java/swing/plaf/gtk/TestBackSpaceAction.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserCtrlASelection.java \
     -com/sun/java/swing/plaf/gtk/TestFileChooserSingleDirectorySelection.java \
@@ -1146,6 +1148,7 @@ jdk_swing_wayland= \
     -javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java \
     -javax/swing/dnd/7171812/bug7171812.java \
     -javax/swing/event/FocusEventCauseTest.java \
+    -javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java \
     -javax/swing/JButton/4368790/bug4368790.java \
     -javax/swing/JButton/8151303/PressedIconTest.java \
     -javax/swing/JButton/bug4234034.java \
@@ -1442,3 +1445,44 @@ jdk_swing_wayland= \
 jdk_desktop_wayland = \
     :jdk_awt_wayland \
     :jdk_swing_wayland
+
+# Wayland+Vulkan tests to be executed with -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True
+jdk_awt_wayland_vulkan = \
+    :jdk_awt_wayland \
+    jb/java/awt/wayland/vulkan
+
+jdk_swing_wayland_vulkan = \
+    :jdk_swing_wayland
+
+jdk_desktop_wayland_vulkan = \
+    :jdk_awt_wayland_vulkan \
+    :jdk_swing_wayland_vulkan \
+    :jdk_awt_vulkan
+
+# Vulkan tests to be executed with -Dsun.java2d.vulkan=True
+jdk_awt_vulkan = \
+    jb/java/awt/vulkan
+
+# Vulkan rendering tests on WLToolkit, to be executed with
+# -Dawt.toolkit.name=WLToolkit -Dsun.java2d.vulkan=True
+# Make sure that the tests below are green for any Wayland+Vulkan rendering changes.
+# These tests should be executed with the following exclude list: jbRenderWLVKProblemList.txt
+jdk_render_wayland_vulkan = \
+    sun/java2d \
+    java/awt/Graphics \
+    java/awt/Graphics2D \
+    java/awt/AlphaComposite \
+    java/awt/GradientPaint \
+    java/awt/GraphicsConfiguration \
+    java/awt/GraphicsDevice \
+    java/awt/GraphicsEnvironment \
+    java/awt/hidpi \
+    java/awt/image/DrawImage \
+    java/awt/image/VolatileImage \
+    java/awt/Paint \
+    javax/swing/GraphicsConfigNotifier \
+    javax/swing/RepaintManager \
+    jb/java/awt/vulkan \
+    jb/java/awt/wayland/vulkan \
+    -sun/java2d/cmm \
+    -sun/java2d/marlin

@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 JetBrains s.r.o.
+ * Copyright 2025 JetBrains s.r.o.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package sun.awt.wl;
 
+import jdk.internal.misc.InnocuousThread;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.ToolkitThreadBlockedHandler;
 import sun.datatransfer.DataFlavorUtil;
@@ -39,17 +40,27 @@ import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.FlavorTable;
+import java.awt.datatransfer.SystemFlavorMap;
+import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Objects;
 
 /**
@@ -60,8 +71,6 @@ import java.util.Objects;
  *                 once established, this mapping never changes
  */
 public class WLDataTransferer extends DataTransferer {
-    private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLDataTransferer");
-
     private static ImageTypeSpecifier defaultImageSpec = null;
 
     // Maps the "native" format (MIME) to its numeric ID
@@ -73,12 +82,22 @@ public class WLDataTransferer extends DataTransferer {
     private final Map<Long, Boolean> imageFormats = new HashMap<>();
     private final Map<Long, Boolean> textFormats = new HashMap<>();
 
+    private final FlavorTable flavorTable;
+
+    public FlavorTable getFlavorTable() {
+        return flavorTable;
+    }
+
     private static class HOLDER {
         static WLDataTransferer instance = new WLDataTransferer();
     }
 
     static WLDataTransferer getInstanceImpl() {
         return HOLDER.instance;
+    }
+
+    private WLDataTransferer() {
+        flavorTable = adaptFlavorMap(SystemFlavorMap.getDefaultFlavorMap());
     }
 
     @Override
@@ -196,9 +215,53 @@ public class WLDataTransferer extends DataTransferer {
 
     @Override
     protected String[] dragQueryFile(byte[] bytes) {
-        // TODO
-        log.info("Unimplemented");
-        return new String[0];
+        ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+            // NB: decodes what was encoded in convertFileListToBytes()
+            String line = reader.readLine();
+            return line.split("\0");
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    @Override
+    protected boolean isURIListFormat(long format) {
+        String nat = getNativeForFormat(format);
+        if (nat == null) {
+            return false;
+        }
+        try {
+            DataFlavor df = new DataFlavor(nat);
+            if (df.getPrimaryType().equals("text") && df.getSubType().equals("uri-list")) {
+                return true;
+            }
+        } catch (Exception e) {
+            // Not a MIME format.
+        }
+        return false;
+    }
+
+    @Override
+    protected URI[] dragQueryURIs(InputStream stream,
+                                  long format,
+                                  Transferable localeTransferable)
+            throws IOException {
+        String charset = getBestCharsetForTextFormat(format, localeTransferable);
+        try (InputStreamReader isr = new InputStreamReader(stream, charset);
+             BufferedReader reader = new BufferedReader(isr)) {
+            // NB: decodes what was encoded in DataTransferer.translateTransferable()
+            String line;
+            ArrayList<URI> uriList = new ArrayList<>();
+            while ((line = reader.readLine()) != null) {
+                try {
+                    uriList.add(new URI(line));
+                } catch (URISyntaxException uriSyntaxException) {
+                    throw new IOException(uriSyntaxException);
+                }
+            }
+            return uriList.toArray(new URI[0]);
+        }
     }
 
     @Override

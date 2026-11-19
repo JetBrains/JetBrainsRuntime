@@ -55,12 +55,12 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
 //    @Override
 //    public void beginLayout() {
-//        log.info("Not implemented: WLFramePeer.beginLayout()");
+//        log.fine("Not implemented: WLFramePeer.beginLayout()");
 //    }
 //
 //    @Override
 //    public void endLayout() {
-//        log.info("Not implemented: WLFramePeer.endLayout()");
+//        log.fine("Not implemented: WLFramePeer.endLayout()");
 //    }
 
     @Override
@@ -75,7 +75,7 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
     @Override
     public boolean isInteractivelyResizable() {
-        return getFrame().isResizable() && !isMaximized();
+        return getFrame().isResizable() && !isMaximized() && !isFullscreen();
     }
 
     @Override
@@ -128,6 +128,9 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
 
     @Override
     public void setMaximizedBounds(Rectangle bounds) {
+        // Ignored as some Wayland implementations (Weston) react badly when the size
+        // of a maximized surface differs from the size suggested by Wayland through
+        // the "configure" event.
     }
 
     @Override
@@ -151,30 +154,40 @@ public class WLFramePeer extends WLDecoratedPeer implements FramePeer {
     }
 
     @Override
-    void notifyConfigured(int newX, int newY, int newWidth, int newHeight, boolean active, boolean maximized) {
+    void notifyConfigured(int newSurfaceX, int newSurfaceY, int newSurfaceWidth, int newSurfaceHeight,
+                          boolean active, boolean maximized, boolean fullscreen) {
         int widthBefore = getWidth();
         int heightBefore = getHeight();
-        
-        super.notifyConfigured(newX, newY, newWidth, newHeight, active, maximized);
+        boolean notifyOfDecorationChange = isFullscreen() ^ fullscreen;
+
+        super.notifyConfigured(newSurfaceX, newSurfaceY, newSurfaceWidth, newSurfaceHeight,
+                active, maximized, fullscreen);
+
 
         synchronized (getStateLock()) {
             int oldState = state;
             state = maximized ? Frame.MAXIMIZED_BOTH : Frame.NORMAL;
             AWTAccessor.getFrameAccessor().setExtendedState(getFrame(), state);
             if (state != oldState) {
+                boolean clientDecidesDimension = newSurfaceWidth == 0 || newSurfaceHeight == 0;
                 if (maximized) {
                     widthBeforeMaximized = widthBefore;
                     heightBeforeMaximized = heightBefore;
-                } else if (newWidth == 0 && newHeight == 0 && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
+                } else if (clientDecidesDimension && widthBeforeMaximized > 0 && heightBeforeMaximized > 0) {
                     performUnlocked(() -> target.setSize(widthBeforeMaximized, heightBeforeMaximized));
                 }
                 WLToolkit.postEvent(new WindowEvent(getFrame(), WindowEvent.WINDOW_STATE_CHANGED, oldState, state));
-                notifyClientDecorationsChanged();
+                notifyOfDecorationChange = true;
             }
+        }
+
+        if (notifyOfDecorationChange) {
+            notifyClientDecorationsChanged();
         }
     }
 
     private Frame getFrame() {
         return (Frame)target;
     }
+
 }

@@ -23,29 +23,59 @@
 
 /*
  * @test
- * @modules java.base/com.jetbrains.internal:+open
- * @build com.jetbrains.* com.jetbrains.api.Real com.jetbrains.jbr.Real
- * @run main RealTest
+ * @modules java.base/com.jetbrains.internal.jbrapi:+open
+ * @build com.jetbrains.* com.jetbrains.test.api.Real com.jetbrains.test.jbr.Real
+ * @run main/othervm -Djetbrains.runtime.api.verbose=true -Djetbrains.runtime.api.verifyBytecode=true -Djetbrains.runtime.api.extendRegistry=true RealTest
  */
 
-import com.jetbrains.internal.JBRApi;
+import com.jetbrains.Extensions;
+import com.jetbrains.internal.jbrapi.JBRApi;
 
+import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static com.jetbrains.Util.*;
-import static com.jetbrains.api.Real.*;
-import static com.jetbrains.jbr.Real.*;
+import static com.jetbrains.test.api.Real.*;
 
 public class RealTest {
 
-    public static void main(String[] args) {
-        init()
-                .service(Service.class.getName(), ServiceImpl.class.getName())
-                .twoWayProxy(Api2Way.class.getName(), JBR2Way.class.getName())
-                .twoWayProxy(ApiLazyNumber.class.getName(), JBRLazyNumber.class.getName());
+    public static void main(String[] args) throws Throwable {
+        // Plain run.
+        run();
+
+        // Run in an isolated classloader at least 2 times until the proxy gets GC'ed.
+        WeakReference<?> weak = null;
+        for (int i = 0; i < 2 || weak.get() != null; i++) {
+            System.gc();
+            new IsolatedLoader().loadClass(RealTest.class.getName()).getMethod("run").invoke(null);
+            if (weak == null) weak = new WeakReference<>(getProxy(Proxy.class));
+            if (i > 300) throw new Error("Proxy was not collected after 300 iterations");
+        }
+    }
+
+    public static void run() {
+        init("RealTest", Map.of(Extensions.FOO, new Class<?>[] {Proxy.class}, Extensions.BAR, new Class<?>[] {Proxy.class}));
 
         // Get service
-        Service service = Objects.requireNonNull(JBRApi.getService(Service.class));
+        Service service = Objects.requireNonNull(api.getService(Service.class));
+
+        // Proxy passthrough
+        Proxy p = Objects.requireNonNull(service.getProxy());
+        Proxy np = Objects.requireNonNull(service.passthrough(p));
+        if (p.getClass() != np.getClass()) {
+            throw new Error("Different classes when passing through the same object");
+        }
+
+        // Client proxy passthrough
+        ClientImpl c = new ClientImpl();
+        ClientImpl nc = Objects.requireNonNull(service.passthrough(c));
+        if (c.getClass() != nc.getClass()) {
+            throw new Error("Different classes when passing through the same object");
+        }
 
         // Test JBR-side proxy wrapping & unwrapping
         Api2Way stw = Objects.requireNonNull(service.get2Way());
@@ -65,14 +95,50 @@ public class RealTest {
         Objects.requireNonNull(tw.value);
 
         // Passing through null object -> null
-        requireNull(service.passthrough(null));
-
-        if (!service.isSelf(service)) {
-            throw new Error("service.isSelf(service) == false");
-        }
+        requireNull(service.passthrough((Api2Way) null));
 
         if (service.sum(() -> 200, () -> 65).get() != 265) {
             throw new Error("Lazy numbers conversion error");
+        }
+
+        // Check extensions
+        if (!api.isExtensionSupported(Extensions.FOO)) {
+            throw new Error("FOO extension must be supported");
+        }
+        if (api.isExtensionSupported(Extensions.BAR)) {
+            throw new Error("BAR extension must not be supported");
+        }
+        try {
+            service.getProxy().foo();
+            throw new Error("FOO extension was disabled but call succeeded");
+        } catch (UnsupportedOperationException ignore) {}
+        try {
+            service.getProxy().bar();
+            throw new Error("BAR extension was disabled but call succeeded");
+        } catch (UnsupportedOperationException ignore) {}
+        // foo() must succeed when enabled
+        api.getService(Service.class, Extensions.FOO).getProxy().foo();
+        // Asking for BAR must return null, as it is not supported
+        requireNull(api.getService(Service.class, Extensions.FOO, Extensions.BAR));
+        requireNull(api.getService(Service.class, Extensions.BAR));
+
+        // Test specialized (implicit) List proxy
+        List<Api2Way> list = Objects.requireNonNull(service.testList(null));
+        Api2Way listItem = new TwoWayImpl();
+        list.add(listItem);
+        if (list.size() != 1) {
+            throw new Error("Unexpected List size");
+        }
+        if (list.get(0) != listItem) {
+            throw new Error("Unexpected List item");
+        }
+        service.testList(list);
+        if (!list.isEmpty()) {
+            throw new Error("Unexpected List size");
+        }
+        list = new ArrayList<>();
+        if (list != service.testList(list)) {
+            throw new Error("List passthrough mismatch");
         }
     }
 
@@ -81,6 +147,27 @@ public class RealTest {
         @Override
         public void accept(Object o) {
             value = o;
+        }
+    }
+
+    private static class IsolatedLoader extends ClassLoader {
+        @Override
+        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            if (name.equals("RealClassloadersTest") ||
+                    (name.startsWith("com.jetbrains.") && !name.startsWith("com.jetbrains.test.jbr.") &&
+                            !name.startsWith("com.jetbrains.exported.") && !name.startsWith("com.jetbrains.internal."))) {
+                Class<?> c = findLoadedClass(name);
+                if (c != null) return c;
+                String path = name.replace('.', '/').concat(".class");
+                try (var stream = getResourceAsStream(path)) {
+                    if (stream == null) throw new ClassNotFoundException(name);
+                    byte[] b = stream.readAllBytes();
+                    return defineClass(name, b, 0, b.length);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            return super.loadClass(name, resolve);
         }
     }
 }

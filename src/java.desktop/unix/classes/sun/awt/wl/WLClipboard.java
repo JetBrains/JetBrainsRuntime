@@ -24,96 +24,99 @@
  */
 package sun.awt.wl;
 
-import jdk.internal.misc.InnocuousThread;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.datatransfer.SunClipboard;
 import sun.util.logging.PlatformLogger;
 
-import javax.swing.SwingUtilities;
-import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.FlavorTable;
 import java.awt.datatransfer.Transferable;
-import java.io.FileDescriptor;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.SortedMap;
 
 public final class WLClipboard extends SunClipboard {
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLClipboard");
 
-    public static final int INITIAL_MIME_FORMATS_COUNT = 10;
-    private static final int DEFAULT_BUFFER_SIZE = 4096;
-    private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
+    // These are ordered in order of preference, with more standardized spellings first
+    private static final List<String> utf8Mimes = Arrays.asList(
+            "text/plain;charset=utf-8",
+            "UTF8_STRING",
+            "text/plain;charset=UTF-8"
+    );
 
-    // A native handle of a Wayland queue dedicated to handling
-    // data offer-related events
-    private static final long dataOfferQueuePtr;
-
-    private final long ID;
+    private final WLDataDevice dataDevice;
 
     // true if this is the "primary selection" clipboard,
     // false otherwise (the regular clipboard).
-    private final boolean isPrimary; // used by native
+    private final boolean isPrimary;
 
-    // A handle to the native clipboard representation, 0 if not available.
-    private long clipboardNativePtr;     // guarded by 'this'
+    // Latest active data offer to us, containing up-to-date clipboard content,
+    // as provided by the Wayland compositor.
+    // If null, there's no clipboard data available.
+    // Guarded by 'this'.
+    private WLDataOffer clipboardDataOfferedToUs;
 
-    // The list of numeric format IDs the current clipboard is available in;
-    // could be null or empty.
-    private List<Long> clipboardFormats; // guarded by 'this'
+    // Clipboard data source we are providing to the Wayland compositor.
+    // If null, we are not offering any clipboard data at the moment.
+    // Guarded by 'this'.
+    private WLDataSource ourDataSource;
 
-    // The "current" list formats for the new clipboard contents that is about
-    // to be received from Wayland. Could be empty, but never null.
-    private List<Long> newClipboardFormats = new ArrayList<>(INITIAL_MIME_FORMATS_COUNT); // guarded by 'this'
+    // A Transferable that we should provide to the compositor, but can't for now,
+    // since we're waiting for a valid serial
+    // Guarded by 'this'.
+    private Transferable pendingTransferable;
+
+    // Guarded by 'this'.
+    private WLInputSerial lastSuccessfulSerial = WLInputSerial.INVALID;
 
     static {
-        initIDs();
-        dataOfferQueuePtr = createDataOfferQueue();
         flavorTable = DataTransferer.adaptFlavorMap(getDefaultFlavorTable());
-
-        final Thread toolkitSystemThread = InnocuousThread.newThread(
-                "AWT-Wayland-clipboard-dispatcher",
-                WLClipboard::dispatchDataOfferQueue);
-        toolkitSystemThread.setDaemon(true);
-        toolkitSystemThread.start();
     }
 
     private final static FlavorTable flavorTable;
 
-    public WLClipboard(String name, boolean isPrimary) {
+    public WLClipboard(WLDataDevice dataDevice, String name, boolean isPrimary) {
         super(name);
-        this.ID = initNative(isPrimary);
         this.isPrimary = isPrimary;
+        this.dataDevice = dataDevice;
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("Clipboard: Created " + this);
         }
     }
 
-    private static void dispatchDataOfferQueue() {
-        dispatchDataOfferQueueImpl(dataOfferQueuePtr); // does not return until error or server disconnect
-        if (log.isLoggable(PlatformLogger.Level.INFO)) {
-            log.info("Clipboard: data offer dispatcher exited");
+    private int getClipboardSelectionType() {
+        if (isPrimary) {
+            return WLDataDevice.CLIPBOARD_SELECTION_PRIMARY;
+        } else {
+            return WLDataDevice.CLIPBOARD_SELECTION_DEFAULT;
+        }
+    }
+
+    private int getProtocol() {
+        if (dataDevice.isProtocolSupported(WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL)) {
+            return WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL;
+        } else if (isPrimary) {
+            return WLDataDevice.DATA_TRANSFER_PROTOCOL_PRIMARY_SELECTION;
+        } else {
+            return WLDataDevice.DATA_TRANSFER_PROTOCOL_WAYLAND;
         }
     }
 
     @Override
     public String toString() {
-        return String.format("Clipboard: Wayland %s (%x)", (isPrimary ? "selection clipboard" : "clipboard"), ID);
+        return String.format("Clipboard: Wayland %s", (isPrimary ? "selection clipboard" : "clipboard"));
     }
 
     @Override
     public long getID() {
-        return ID;
+        return isPrimary ? 2 : 1;
     }
 
     /**
-     * Called when we loose ownership of the clipboard.
+     * Called when we lose ownership of the clipboard.
      */
     @Override
     protected void clearNativeContext() {
@@ -124,6 +127,94 @@ public final class WLClipboard extends SunClipboard {
         }
     }
 
+    private WLInputSerial pickSerial() {
+        // The server requires "serial number of the event that triggered this request"
+        // as a proof of the right to copy data.
+
+        // It is not specified which event's serial number the Wayland server expects here,
+        // so the following is a speculation based on experiments.
+        // The worst case is that a "wrong" serial will be silently ignored, and our clipboard
+        // will be out of sync with the real one that Wayland maintains.
+        WLInputSerial serial = WLInputSerial.INVALID;
+
+        if (isPrimary) {
+            serial = WLToolkit.getInputState().pointerButtonSerial();
+        } else {
+            serial = WLToolkit.getInputState().keySerial().freshOrElse(WLToolkit.getInputState().pointerButtonSerial());
+        }
+
+        serial = serial.freshOrElse(WLToolkit.getInputState().latestInputSerial());
+
+        synchronized (this) {
+            serial = serial.newerOrElse(lastSuccessfulSerial, WLToolkit.getInputState().latestInputSerial());
+            if (serial.isNewerThan(lastSuccessfulSerial)) {
+                return serial;
+            } else {
+                return WLInputSerial.INVALID;
+            }
+        }
+    }
+
+    private void doSetWaylandContents(Transferable contents, int protocol, WLInputSerial serial) {
+        if (protocol != WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL && !serial.isValid()) {
+            return;
+        }
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Clipboard: About to offer new contents using Wayland event serial " + serial + ", protocol " + protocol);
+        }
+
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Clipboard: Offering new contents (" + contents + ")");
+        }
+
+        WLDataSource newOffer = new WLDataSource(dataDevice, protocol, contents) {
+            @Override
+            protected void handleCancelled() {
+                synchronized (WLClipboard.this) {
+                    if (ourDataSource == this) {
+                        ourDataSource = null;
+                        // NOTE: cannot do lostOwnershipNow, because we're on the data source dispatch thread, not on EDT
+                        lostOwnershipLater();
+                    }
+                }
+
+                // This object is not reachable anymore, we can safely destroy it.
+                super.handleCancelled();
+            }
+        };
+
+        synchronized (this) {
+            pendingTransferable = null;
+            if (serial.isValid()) {
+                lastSuccessfulSerial = serial;
+            }
+            if (ourDataSource != null) {
+                ourDataSource.destroy();
+            }
+            ourDataSource = newOffer;
+            dataDevice.setSelection(protocol, getClipboardSelectionType(), newOffer, serial.serial());
+        }
+    }
+
+    void trySetPendingWaylandContents() {
+        int protocol = getProtocol();
+        WLInputSerial serial = WLInputSerial.INVALID;
+        if (protocol != WLDataDevice.DATA_TRANSFER_PROTOCOL_DATA_CONTROL) {
+            serial = pickSerial();
+            if (!serial.isValid()) {
+                return;
+            }
+        }
+
+        synchronized (this) {
+            if (pendingTransferable == null) {
+                return;
+            }
+            doSetWaylandContents(pendingTransferable, protocol, serial);
+        }
+    }
+
     /**
      * Called to make the new clipboard contents known to Wayland.
      *
@@ -131,108 +222,53 @@ public final class WLClipboard extends SunClipboard {
      */
     @Override
     protected void setContentsNative(Transferable contents) {
-        // The server requires "serial number of the event that triggered this request"
-        // as a proof of the right to copy data.
-        WLPointerEvent wlPointerEvent = WLToolkit.getInputState().eventWithSerial();
-        long eventSerial = wlPointerEvent == null ? 0 : wlPointerEvent.getSerial();
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Clipboard: About to offer new contents using Wayland event serial " + eventSerial);
-        }
-        if (eventSerial != 0) {
-            WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
-            long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(contents, flavorTable);
-
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("Clipboard: New one is available in these integer formats: " + Arrays.toString(formats));
-            }
-            notifyOfNewFormats(formats);
-
-            if (formats.length > 0) {
-                String[] mime = new String[formats.length];
-                for (int i = 0; i < formats.length; i++) {
-                    mime[i] = wlDataTransferer.getNativeForFormat(formats[i]);
-                }
-
-                if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine("Clipboard: Offering new contents (" + contents + ") in these MIME formats: " + Arrays.toString(mime));
-                }
-
-                offerData(eventSerial, mime, contents, dataOfferQueuePtr);
-
-                // Once we have offered the data, someone may come back and ask to provide them.
-                // In that event, the transferContentsWithType() will be called from native on EDT.
-                // A reference to contents is retained until we are notified of the new contents
-                // by the Wayland server.
-            }
-        } else {
-            this.owner = null;
-            this.contents = null;
-        }
-    }
-
-    /**
-     * Called from native on EDT when a client has asked to provide the actual data for
-     * the clipboard that we own in the given format to the given file.
-     * NB: that client could be us, but we aren't necessarily aware of that once we
-     * lost keyboard focus at least once after Ctrl-C.
-     *
-     * @param contents a reference to the clipboard's contents to be transferred
-     * @param mime transfer the contents in this MIME format
-     * @param destFD transfer the contents to this file descriptor and close it afterward
-     *
-     * @throws IOException in case writing to the given file descriptor failed
-     */
-    private void transferContentsWithType(Transferable contents, String mime, int destFD) throws IOException {
-        assert SwingUtilities.isEventDispatchThread();
-        Objects.requireNonNull(contents);
-        Objects.requireNonNull(mime);
-
         WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
-        SortedMap<Long,DataFlavor> formatMap =
-                wlDataTransferer.getFormatsForTransferable(contents, flavorTable);
-
-        long targetFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
-        DataFlavor flavor = formatMap.get(targetFormat);
+        long[] formats = wlDataTransferer.getFormatsForTransferableAsArray(contents, flavorTable);
 
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Clipboard: will write contents (" + contents + ") in format " + mime + " to fd=" + destFD);
-            log.fine("Clipboard: data flavor: " + flavor);
+            log.fine("Clipboard: New one is available in these integer formats: " + Arrays.toString(formats));
+        }
+        notifyOfNewFormats(formats);
+
+        if (formats.length == 0) {
+            return;
         }
 
-        if (flavor != null) {
-            FileDescriptor javaDestFD = new FileDescriptor();
-            jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaDestFD, destFD);
-
-            try (var out = new FileOutputStream(javaDestFD)) {
-                byte[] bytes = wlDataTransferer.translateTransferable(contents, flavor, targetFormat);
-                if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine("Clipboard: about to write " + (bytes != null ? bytes.length : 0) + " bytes to " + out);
-                }
-                // TODO: large data transfer will block EDT for a long time.
-                //  Implement an option to do the writing on a dedicated thread.
-                //  Alternatively, arrange for this event to arrive on a dedicated queue and
-                //  only work with this queue on a dedicated thread.
-                out.write(bytes);
-            }
+        synchronized (this) {
+            pendingTransferable = contents;
         }
+        trySetPendingWaylandContents();
     }
 
     /**
-     * @return formats the current clipboard is available in; could be null
+     * Returns zero-length array (not null) if the number of available formats is zero.
+     *
+     * @throws IllegalStateException if formats could not be retrieved
      */
     @Override
     protected long[] getClipboardFormats() {
+        WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
+        List<String> mimes;
         synchronized (this) {
-            if (clipboardFormats != null && !clipboardFormats.isEmpty()) {
-                long[] res = new long[clipboardFormats.size()];
-                for (int i = 0; i < res.length; i++) {
-                    res[i] = clipboardFormats.get(i);
+            if (clipboardDataOfferedToUs == null) {
+                return new long[0];
+            }
+
+            mimes = clipboardDataOfferedToUs.getMimes();
+        }
+
+        var formatsSet = new LinkedHashSet<Long>();
+        for (var mime : mimes) {
+            if (utf8Mimes.contains(mime)) {
+                for (String utf8Mime : utf8Mimes) {
+                    formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(utf8Mime));
                 }
-                return res;
             } else {
-                return null;
+                formatsSet.add(wlDataTransferer.getFormatForNativeAsLong(mime));
             }
         }
+
+        return formatsSet.stream().mapToLong(Long::longValue).toArray();
     }
 
     /**
@@ -244,97 +280,66 @@ public final class WLClipboard extends SunClipboard {
      */
     @Override
     protected byte[] getClipboardData(long format) throws IOException {
-        synchronized (this) {
-            if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                log.fine("Clipboard: requested content of clipboard with handle "
-                        + clipboardNativePtr + " in format " + format);
+        final WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
+        WLDataOffer offer = null;
+        boolean isUtf8Format = false;
+        for (String utf8Mime : utf8Mimes) {
+            if (wlDataTransferer.getFormatForNativeAsLong(utf8Mime) == format) {
+                isUtf8Format = true;
+                break;
             }
-            if (clipboardNativePtr != 0) {
-                WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
-                String mime = wlDataTransferer.getNativeForFormat(format);
-                int fd = requestDataInFormat(clipboardNativePtr, mime);
-                if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                    log.fine("Clipboard: will read data from " + fd + " in format " + mime);
+        }
+
+        try {
+            synchronized (this) {
+                offer = clipboardDataOfferedToUs.ref();
+            }
+
+            // Iterate over all mime types, since the mapping between mime types and java formats might not be 1:1
+            List<String> suitableMimes = new ArrayList<>();
+            for (String mime : offer.getMimes()) {
+                long curFormat = wlDataTransferer.getFormatForNativeAsLong(mime);
+                boolean isUtf8String = isUtf8Format && utf8Mimes.contains(mime);
+                if (curFormat == format || isUtf8String) {
+                    suitableMimes.add(mime);
                 }
-                if (fd >= 0) {
-                    FileDescriptor javaFD = new FileDescriptor();
-                    jdk.internal.access.SharedSecrets.getJavaIOFileDescriptorAccess().set(javaFD, fd);
-                    try (var in = new FileInputStream(javaFD)) {
-                        byte[] bytes = readAllBytesFrom(in);
-                        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-                            log.fine("Clipboard: read data from " + fd + ": "
-                                    + (bytes != null ? bytes.length : 0) + " bytes");
-                        }
-                        return bytes;
+            }
+
+            if (suitableMimes.isEmpty()) {
+                throw new IOException("No appropriate mime type found for WLClipboard.getClipboardData with format = " + format);
+            }
+
+            if (isUtf8Format) {
+                // Prefer certain, more standardized spellings of "a UTF-8 string" over others
+                // This is a workaround for several issues (JBR-8912, JBR-10230)
+                for (String utf8Mime : utf8Mimes) {
+                    if (suitableMimes.contains(utf8Mime)) {
+                        return offer.receiveData(utf8Mime);
                     }
                 }
             }
-        }
-        return null;
-    }
 
-    /**
-     * Called from native to notify us of the availability of a new clipboard
-     * denoted by the native handle in a specific MIME format.
-     * This method is usually called repeatedly with the same nativePtr and
-     * different formats. When all formats are announces in this way,
-     * handleNewClipboard() is called.
-     *
-     * @param nativePtr a native handle to the clipboard
-     * @param mime the MIME format in which this clipboard is available.
-     */
-    private void handleClipboardFormat(long nativePtr, String mime) {
-        WLDataTransferer wlDataTransferer = (WLDataTransferer) DataTransferer.getInstance();
-        Long format = wlDataTransferer.getFormatForNativeAsLong(mime);
-
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Clipboard: new format is available for " + nativePtr + ": " + mime);
-        }
-
-        synchronized (this) {
-            newClipboardFormats.add(format);
-        }
-    }
-
-    /**
-     * Called from native to notify us that a new clipboard content
-     * has been made available. The list of supported formats
-     * should have already been received and saved in newClipboardFormats.
-     *
-     * @param nativePtr a native handle to the clipboard
-     */
-    private void handleNewClipboard(long nativePtr) {
-        // Since we have a new clipboard, the existing one is no longer valid.
-        // We have now way of knowing whether this "new" one is the same as the "old" one.
-        lostOwnershipNow(null);
-
-        if (log.isLoggable(PlatformLogger.Level.FINE)) {
-            log.fine("Clipboard: new clipboard is available: " + nativePtr);
-        }
-
-        synchronized (this) {
-            long oldClipboardNativePtr = clipboardNativePtr;
-            if (oldClipboardNativePtr != 0) {
-                destroyClipboard(oldClipboardNativePtr);
+            return offer.receiveData(suitableMimes.getFirst());
+        } finally {
+            if (offer != null) {
+                offer.unref();
             }
-            clipboardFormats = newClipboardFormats;
-            clipboardNativePtr = nativePtr; // Could be NULL
-
-            newClipboardFormats = new ArrayList<>(INITIAL_MIME_FORMATS_COUNT);
-
-            notifyOfNewFormats(getClipboardFormats());
         }
     }
 
     @Override
     protected void registerClipboardViewerChecked() {
         // TODO: is there any need to do more here?
-        log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Unimplemented");
+        }
     }
 
     @Override
     protected void unregisterClipboardViewerChecked() {
-        log.info("Unimplemented");
+        if (log.isLoggable(PlatformLogger.Level.FINE)) {
+            log.fine("Unimplemented");
+        }
     }
 
     private void notifyOfNewFormats(long[] formats) {
@@ -343,76 +348,18 @@ public final class WLClipboard extends SunClipboard {
         }
     }
 
-    /**
-     * Reads the given input stream until EOF and returns its contents as an array of bytes.
-     */
-    private byte[] readAllBytesFrom(FileInputStream inputStream) throws IOException {
-        int len = Integer.MAX_VALUE;
-        List<byte[]> bufs = null;
-        byte[] result = null;
-        int total = 0;
-        int remaining = len;
-        int n;
-        do {
-            byte[] buf = new byte[Math.min(remaining, DEFAULT_BUFFER_SIZE)];
-            int nread = 0;
-
-            while ((n = inputStream.read(buf, nread,
-                    Math.min(buf.length - nread, remaining))) > 0) {
-                nread += n;
-                remaining -= n;
+    void handleClipboardOffer(WLDataOffer offer /* nullable */) {
+        synchronized (this) {
+            if (ourDataSource == null) {
+                // probably not needed, the data_source.cancelled handler already calls lostOwnershipLater
+                // still, there's no harm in doing this
+                lostOwnershipNow();
             }
 
-            if (nread > 0) {
-                if (MAX_BUFFER_SIZE - total < nread) {
-                    throw new OutOfMemoryError("Required array size too large");
-                }
-                if (nread < buf.length) {
-                    buf = Arrays.copyOfRange(buf, 0, nread);
-                }
-                total += nread;
-                if (result == null) {
-                    result = buf;
-                } else {
-                    if (bufs == null) {
-                        bufs = new ArrayList<>();
-                        bufs.add(result);
-                    }
-                    bufs.add(buf);
-                }
+            if (clipboardDataOfferedToUs != null) {
+                clipboardDataOfferedToUs.unref();
             }
-            // if the last call to read returned -1 or the number of bytes
-            // requested have been read then break
-        } while (n >= 0 && remaining > 0);
-
-        if (bufs == null) {
-            if (result == null) {
-                return new byte[0];
-            }
-            return result.length == total ?
-                    result : Arrays.copyOf(result, total);
+            clipboardDataOfferedToUs = offer;
         }
-
-        result = new byte[total];
-        int offset = 0;
-        remaining = total;
-        for (byte[] b : bufs) {
-            int count = Math.min(b.length, remaining);
-            System.arraycopy(b, 0, result, offset, count);
-            offset += count;
-            remaining -= count;
-        }
-
-        return result;
     }
-
-    private static native void initIDs();
-    private static native long createDataOfferQueue();
-    private static native void dispatchDataOfferQueueImpl(long dataOfferQueuePtr);
-    private native long initNative(boolean isPrimary);
-    private native void offerData(long eventSerial, String[] mime, Object data, long dataOfferQueuePtr);
-    private native void cancelOffer(long eventSerial); // TODO: this is unused, delete, maybe?
-
-    private native int requestDataInFormat(long clipboardNativePtr, String mime);
-    private native void destroyClipboard(long clipboardNativePtr);
 }

@@ -27,211 +27,90 @@
 package sun.java2d.vulkan;
 
 
-import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
-import static sun.java2d.pipe.hw.AccelSurface.TEXTURE;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_MULTITEXTURE;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS20;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_PS30;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_RT_TEXTURE_ALPHA;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_RT_TEXTURE_OPAQUE;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_TEXNONPOW2;
-import static sun.java2d.pipe.hw.ContextCapabilities.CAPS_TEXNONSQUARE;
-
 import java.awt.BufferCapabilities;
 import java.awt.ImageCapabilities;
-import java.awt.Transparency;
-import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
-import java.awt.image.DataBuffer;
-import java.awt.image.DirectColorModel;
-import java.awt.image.VolatileImage;
-import java.awt.image.WritableRaster;
-import sun.awt.image.SunVolatileImage;
-import sun.awt.image.SurfaceManager;
+
 import sun.awt.wl.WLComponentPeer;
 import sun.awt.wl.WLGraphicsConfig;
 import sun.awt.wl.WLGraphicsDevice;
-import sun.java2d.Surface;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
-import sun.java2d.pipe.hw.AccelGraphicsConfig;
-import sun.java2d.pipe.hw.AccelSurface;
-import sun.java2d.pipe.hw.AccelTypedVolatileImage;
-import sun.java2d.pipe.hw.ContextCapabilities;
+import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.util.logging.PlatformLogger;
 
 public final class WLVKGraphicsConfig extends WLGraphicsConfig
-        implements VKGraphicsConfig
-{
+        implements VKGraphicsConfig {
     private static final PlatformLogger log =
             PlatformLogger.getLogger("sun.java2d.vulkan.WLVKGraphicsConfig");
 
-    private static ImageCapabilities imageCaps = new VKImageCaps();
+    private final VKGraphicsConfig offscreenConfig;
 
-    private BufferCapabilities bufferCaps;
-    private ContextCapabilities vkCaps;
-    private final VKContext context;
-    // TODO this is wrong caching level!
-    //      on which level should we cache surface data proxies? Single cache per GPU?
-    private final SurfaceManager.ProxyCache surfaceDataProxyCache = new SurfaceManager.ProxyCache();
-
-    private static native long getVKConfigInfo();
-
-    public WLVKGraphicsConfig(WLGraphicsDevice device, int width, int height, int scale, ContextCapabilities vkCaps) {
-        super(device, width, height, scale);
-        this.vkCaps = vkCaps;
-        context = new VKContext(VKRenderQueue.getInstance());
+    public WLVKGraphicsConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device) {
+        super(device);
+        this.offscreenConfig = offscreenConfig;
     }
 
     @Override
-    public SurfaceManager.ProxyCache getSurfaceDataProxyCache() {
-        return surfaceDataProxyCache;
+    public VKGraphicsConfig getOffscreenConfig() {
+        return offscreenConfig;
     }
 
-    public static WLVKGraphicsConfig getConfig(WLGraphicsDevice device, int width, int height, int scale)
-    {
-        ContextCapabilities caps = new VKContext.VKContextCaps(
-            CAPS_PS30 | CAPS_PS20 | CAPS_RT_TEXTURE_ALPHA |
-            CAPS_RT_TEXTURE_OPAQUE | CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 |
-            CAPS_TEXNONSQUARE, null);
-        return new WLVKGraphicsConfig(device, width, height, scale, caps);
-    }
-
-    /**
-     * Returns true if the provided capability bit is present for this config.
-     * See VKContext.java for a list of supported capabilities.
-     */
     @Override
-    public boolean isCapPresent(int cap) {
-        return ((vkCaps.getCaps() & cap) != 0);
+    public double getFractionalScale() {
+        return getEffectiveScale();
     }
 
-
-    /**
-     * {@inheritDoc}
-     *
-     * @see sun.java2d.pipe.hw.BufferedContextProvider#getContext
-     */
-    @Override
-    public VKContext getContext() {
-        return context;
+    public static WLVKGraphicsConfig getConfig(VKGraphicsConfig offscreenConfig, WLGraphicsDevice device) {
+        return new WLVKGraphicsConfig(offscreenConfig, device);
     }
 
     @Override
     public BufferedImage createCompatibleImage(int width, int height) {
-        ColorModel model = new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-        WritableRaster
-                raster = model.createCompatibleWritableRaster(width, height);
-        return new BufferedImage(model, raster, model.isAlphaPremultiplied(),
-                null);
+        return VKGraphicsConfig.super.createCompatibleImage(width, height);
     }
-
     @Override
-    public ColorModel getColorModel(int transparency) {
-        switch (transparency) {
-            case Transparency.OPAQUE:
-                return new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-            case Transparency.BITMASK:
-                return new DirectColorModel(25, 0xff0000, 0xff00, 0xff, 0x1000000);
-            case Transparency.TRANSLUCENT:
-                ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_sRGB);
-                return new DirectColorModel(cs, 32,
-                        0xff0000, 0xff00, 0xff, 0xff000000,
-                        true, DataBuffer.TYPE_INT);
-            default:
-                return null;
-        }
+    public BufferedImage createCompatibleImage(int width, int height, int transparency) {
+        return VKGraphicsConfig.super.createCompatibleImage(width, height, transparency);
     }
-
     @Override
     public ColorModel getColorModel() {
-        return getColorModel(Transparency.TRANSLUCENT);
+        return VKGraphicsConfig.super.getColorModel();
     }
-
-
-    public boolean isDoubleBuffered() {
-        return true;
+    @Override
+    public ColorModel getColorModel(int transparency) {
+        return VKGraphicsConfig.super.getColorModel(transparency);
+    }
+    @Override
+    public BufferCapabilities getBufferCapabilities() {
+        return VKGraphicsConfig.super.getBufferCapabilities();
+    }
+    @Override
+    public ImageCapabilities getImageCapabilities() {
+        return VKGraphicsConfig.super.getImageCapabilities();
+    }
+    @Override
+    public boolean isTranslucencyCapable() {
+        return VKGraphicsConfig.super.isTranslucencyCapable();
     }
 
     @Override
     public String toString() {
-        return ("VKGraphicsConfig[" + getDevice().getIDstring() + "] " + super.toString());
-    }
-
-
-    private static class VKBufferCaps extends BufferCapabilities {
-        public VKBufferCaps(boolean dblBuf) {
-            super(imageCaps, imageCaps,
-                    dblBuf ? FlipContents.UNDEFINED : null);
-        }
-    }
-
-    @Override
-    public BufferCapabilities getBufferCapabilities() {
-        if (bufferCaps == null) {
-            bufferCaps = new VKBufferCaps(isDoubleBuffered());
-        }
-        return bufferCaps;
-    }
-
-    private static class VKImageCaps extends ImageCapabilities {
-        private VKImageCaps() {
-            super(true);
-        }
-        public boolean isTrueVolatile() {
-            return true;
-        }
-    }
-
-    @Override
-    public ImageCapabilities getImageCapabilities() {
-        return imageCaps;
-    }
-
-    @Override
-    public VolatileImage createCompatibleVolatileImage(int width, int height,
-                                                       int transparency,
-                                                       int type) {
-        if ((type != RT_TEXTURE && type != TEXTURE) ||
-            transparency == Transparency.BITMASK) {
-            return null;
-        }
-
-        SunVolatileImage vi = new AccelTypedVolatileImage(this, width, height,
-                transparency, type);
-        Surface sd = vi.getDestSurface();
-        if (!(sd instanceof AccelSurface) ||
-                ((AccelSurface)sd).getType() != type)
-        {
-            vi.flush();
-            vi = null;
-        }
-
-        return vi;
+        return "WLVKGraphicsConfig[" + descriptorString() + ", " + getDevice().getIDstring() + "]";
     }
 
     @Override
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
-        return WLVKSurfaceData.createData(peer);
+        return new WLVKWindowSurfaceData(peer);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @see AccelGraphicsConfig#getContextCapabilities
-     */
     @Override
-    public ContextCapabilities getContextCapabilities() {
-        return vkCaps;
+    public SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height) {
+        return new WLVKWindowSurfaceData(sl, width, height, this);
     }
 
     public SurfaceType getSurfaceType() {
         return SurfaceType.IntArgb;
-    }
-
-    @Override
-    public boolean isTranslucencyCapable() {
-        return true;
     }
 }

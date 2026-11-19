@@ -1,13 +1,12 @@
 #version 450
+#extension GL_GOOGLE_include_directive: require
+#include "common.glsl"
 
-layout(push_constant) uniform PushConstants {
-    vec4 fragColor;
-} pushConstants;
-
-layout(location = 0) in vec2 inPosition;
-layout(location = 0) out flat vec4 fragColor;
+layout(location = 0) in vec2 in_Position;
+layout(location = 1) in uint in_Color;
+layout(location = 0) out flat vec4 out_Color;
 
 void main() {
-    gl_Position = vec4(inPosition, 0.0, 1.0);
-    fragColor = pushConstants.fragColor;
+    gl_Position = transformToDeviceSpace(in_Position);
+    out_Color = convertAlpha(decodeColor(in_Color)); // No need to APPLY_COMPOSITE - it was already done on the host.
 }

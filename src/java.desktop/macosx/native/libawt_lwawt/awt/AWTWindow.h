@@ -32,6 +32,7 @@
 #import "LWCToolkit.h"
 
 @class AWTView;
+@class AWTWindowZoomButtonMouseResponder;
 
 @interface AWTWindow : NSObject <NSWindowDelegate> {
 @private
@@ -49,10 +50,11 @@
     BOOL isJustCreated;
     NSWindowTabbingMode javaWindowTabbingMode;
     BOOL isEnterFullScreen;
-    CGFloat _transparentTitleBarHeight;
-    NSMutableArray* _transparentTitleBarConstraints;
-    NSLayoutConstraint *_transparentTitleBarHeightConstraint;
-    NSMutableArray *_transparentTitleBarButtonCenterXConstraints;
+    CGFloat _customTitleBarHeight;
+    BOOL hideTabController;
+    NSView *_fullScreenButtons;
+    NSView *_fullScreenOriginalButtons;
+
 }
 
 // An instance of either AWTWindow_Normal or AWTWindow_Panel
@@ -71,6 +73,14 @@
 @property (nonatomic) BOOL isJustCreated;
 @property (nonatomic) NSWindowTabbingMode javaWindowTabbingMode;
 @property (nonatomic) BOOL isEnterFullScreen;
+@property (nonatomic, retain) NSNumber *currentDisplayID;
+@property (nonatomic, readonly) CGFloat customTitleBarHeight;
+@property (nonatomic) BOOL customTitleBarControlsVisible;
+@property (nonatomic, retain) NSMutableArray *customTitleBarConstraints;
+@property (nonatomic, retain) NSLayoutConstraint *customTitleBarHeightConstraint;
+@property (nonatomic, retain) NSMutableArray *customTitleBarButtonCenterXConstraints;
+@property (nonatomic) BOOL hideTabController;
+@property (nonatomic, retain) AWTWindowZoomButtonMouseResponder* zoomButtonMouseResponder;
 
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow
                   ownerWindow:owner
@@ -94,7 +104,9 @@
 
 @end
 
-@interface AWTWindow_Normal : NSWindow
+@interface AWTWindow_Normal : NSWindow {
+    @private BOOL _ignoreMove;
+}
 - (id) initWithDelegate:(AWTWindow *)delegate
               frameRect:(NSRect)rect
               styleMask:(NSUInteger)styleMask
@@ -112,5 +124,20 @@
 @property (nonatomic) jobject javaPlatformWindow;
 - (id) initWithPlatformWindow:(jobject)javaPlatformWindow;
 @end
+
+@interface AWTButtonsView : NSView {
+    @private BOOL _showButtons;
+             NSColor* _color;
+}
+
+
+- (void)configureColors;
+
+@end
+
+@interface AWTWindowZoomButtonMouseResponder : NSResponder
+- (id) initWithWindow:(NSWindow*)window;
+@end
+
 
 #endif _AWTWINDOW_H

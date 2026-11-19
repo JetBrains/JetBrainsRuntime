@@ -46,6 +46,9 @@ public class Key {
     // So to press some key on the current layout, one needs to pass corresponding US layout key code to Robot.
     // So every key stores corresponding KeyEvent.VK_ constant name to provide mapping to US layout.
     int getKeyCode_US() {
+        if (vkName.equals("VK_SECTION")) {
+            return 0x01000000 + 0x00A7;
+        }
         try {
             return KeyEvent.class.getField(vkName).getInt(null);
         } catch (IllegalAccessException | NoSuchFieldException e) {
@@ -57,15 +60,19 @@ public class Key {
     // Key that generates VK_ code when using a US keyboard layout also generates a unique code for other layout.
     // Test firstly determines char mapped to the key on the current layout
     // and then uses KeyEvent.getExtendedKeyCodeForChar(c) to get the key code.
-    int getKeyCode() {
+    int getKeyCode(boolean ignoreDead) {
         KeyChar keyChar = mappedKeyChars.getKeyChar();
         char ch = keyChar.getChar();
-        if (keyChar.isDead() && deadKeyCodesMap.containsKey(ch)) {
+        if (!ignoreDead && keyChar.isDead() && deadKeyCodesMap.containsKey(ch)) {
             // KeyEvent.getExtendedKeyCodeForChar(ch) does not return corresponding VK_ constant for dead keys
             return deadKeyCodesMap.get(ch);
         } else {
             return KeyEvent.getExtendedKeyCodeForChar(ch);
         }
+    }
+
+    int getKeyCode() {
+        return getKeyCode(false);
     }
 
     // Returns key char for the current layout
@@ -104,8 +111,8 @@ public class Key {
             put((char) 0x02DA, VK_DEAD_ABOVERING);
             put((char) 0x00B4, VK_DEAD_ACUTE);              // ACUTE ACCENT
             put((char) 0x0384, VK_DEAD_ACUTE);              // GREEK TONOS
-            // TODO No corresponding VK_DEAD constant for this key as it may add either acute or cedilla to the next key
-            //put((char) 0x0027 /* ' */, VK_DEAD_QUOTE);      // APOSTROPHE, QUOTE
+            // This key may either be an acute accent or a cedilla. On Windows, it is reported as DEAD_ACUTE, let's do the same.
+            put((char) 0x0027 /* ' */, VK_DEAD_ACUTE);      // APOSTROPHE, QUOTE
             put((char) 0x02D8, VK_DEAD_BREVE);
             put((char) 0x02C7, VK_DEAD_CARON);
             put((char) 0x00B8, VK_DEAD_CEDILLA);            // CEDILLA

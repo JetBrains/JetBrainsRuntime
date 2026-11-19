@@ -67,6 +67,8 @@ AWT_ASSERT_APPKIT_THREAD;
     dummyEventTimestamp = 0.0;
     seenDummyEventLock = nil;
 
+    // Ensure JNIUtilities flags are early initialized (log):
+    JNIUTIL_init();
 
     // NSApplication will call _RegisterApplication with the application's bundle, but there may not be one.
     // So, we need to call it ourselves to ensure the app is set up properly.
@@ -320,6 +322,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
 + (void) runAWTLoopWithApp:(NSApplication*)app {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
+
+    // Define the special Critical RunLoop mode to ensure action executed ASAP:
+    [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities criticalRunLoopMode]];
 
     // Make sure that when we run in javaRunLoopMode we don't exit randomly
     [[NSRunLoop currentRunLoop] addPort:[NSPort port] forMode:[ThreadUtilities javaRunLoopMode]];

@@ -50,6 +50,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.Label;
 import java.awt.MenuComponent;
 import java.awt.Panel;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.ScrollPane;
 import java.awt.Scrollbar;
@@ -90,6 +91,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.jetbrains.exported.JBRApi;
 import sun.awt.im.InputContext;
 import sun.awt.image.ByteArrayImageSource;
 import sun.awt.image.FileImageSource;
@@ -236,26 +238,40 @@ public abstract class SunToolkit extends Toolkit
         awtLockListeners.add(l);
     }
 
-    public static final void awtLock() {
-        AWT_LOCK.lock();
-        if (awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+    public static void awtLock() {
+        // fast-path:
+        if (!awtTryLock()) {
+            // lock() may block current thread = wait:
+            AWT_LOCK.lock();
+            // AWT_LOCK owned by the current thread
+            if (awtLockListeners != null) {
+                awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            }
         }
     }
 
-    public static final boolean awtTryLock() {
-        final boolean wasLocked = AWT_LOCK.tryLock();
-        if (wasLocked && awtLockListeners != null) {
-            awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+    public static boolean awtTryLock() {
+        try {
+            final boolean acquired = AWT_LOCK.tryLock(0L, TimeUnit.NANOSECONDS);
+            if (acquired && (awtLockListeners != null)) {
+                awtLockListeners.forEach(AwtLockListener::afterAwtLocked);
+            }
+            return acquired;
+        } catch (InterruptedException ie) {
+            PlatformLogger.getLogger(SunToolkit.class.getName())
+                    .fine("awtTryLock() interrupted");
         }
-        return wasLocked;
+        return false;
     }
 
-    public static final void awtUnlock() {
+    public static void awtUnlock() {
         if (awtLockListeners != null) {
             awtLockListeners.forEach(AwtLockListener::beforeAwtUnlocked);
         }
+        // AWT_LOCK is owned by current thread
         AWT_LOCK.unlock();
+        // AWT_LOCK is no more owned by current thread,
+        // 1 waiting thread will wake up and take the AWT_LOCK
     }
 
     public static final void awtLockWait()
@@ -270,11 +286,13 @@ public abstract class SunToolkit extends Toolkit
         AWT_LOCK_COND.await(timeout, TimeUnit.MILLISECONDS);
     }
 
-    public static final void awtLockNotify() {
+    public static final void awtLockNotify()
+    {
         AWT_LOCK_COND.signal();
     }
 
-    public static final void awtLockNotifyAll() {
+    public static final void awtLockNotifyAll()
+    {
         AWT_LOCK_COND.signalAll();
     }
 
@@ -1836,6 +1854,15 @@ public abstract class SunToolkit extends Toolkit
     }
 
     /**
+     * Similar to needUpdateWindow, but this
+     * returns whether the native system requires using the peer.updateWindow()
+     * method to update the contents of ANY window, even an opaque one.
+     */
+    public boolean needUpdateWindowAfterPaint() {
+        return false;
+    }
+
+    /**
      * Descendants of the SunToolkit should override and put their own logic here.
      */
     public int getNumberOfButtons(){
@@ -1909,6 +1936,35 @@ public abstract class SunToolkit extends Toolkit
         return AWTAccessor.getAWTEventAccessor().isSystemGenerated(e);
     }
 
+    @JBRApi.Service
+    @JBRApi.Provides("RelativePointerMovement")
+    public interface RelativePointerMovementInfoProvider {
+        private static RelativePointerMovementInfoProvider create() {
+            var tk = Toolkit.getDefaultToolkit();
+            if (tk instanceof ComponentFactory cf) {
+                var mouseInfoPeer = cf.getMouseInfoPeer();
+                if (mouseInfoPeer instanceof RelativePointerMovementInfoProvider p){
+                    return p;
+                }
+            }
+
+            throw new JBRApi.ServiceNotAvailableException("Service not supported for toolkit " + tk.getClass().getName());
+        }
+
+        Point getAccumulatedMouseDeltaAndReset();
+    }
+
+    @JBRApi.Service
+    @JBRApi.Provides("ToolkitEvents")
+    public static class ToolkitEventsProvider {
+        EventQueue setTargetEventQueue(EventQueue newEventQueue) {
+            PostEventQueue postEventQueue = SunToolkit.postEventQueue;
+            if (postEventQueue == null) {
+                throw new IllegalStateException("postEventQueue is null");
+            }
+            return postEventQueue.setTargetQueue(newEventQueue);
+        }
+    }
 } // class SunToolkit
 
 
@@ -1924,12 +1980,14 @@ public abstract class SunToolkit extends Toolkit
 class PostEventQueue {
     private EventQueueItem queueHead = null;
     private EventQueueItem queueTail = null;
-    private final EventQueue eventQueue;
+    private final EventQueue eventQueue; // root event queue
+    private EventQueue targetEventQueue; // event queue that currently receives posted events
 
     private Thread flushThread = null;
 
     PostEventQueue(EventQueue eq) {
         eventQueue = eq;
+        targetEventQueue = eq;
     }
 
     /*
@@ -1946,6 +2004,7 @@ class PostEventQueue {
         Thread newThread = Thread.currentThread();
 
         try {
+            EventQueue target;
             EventQueueItem tempQueue;
             synchronized (this) {
                 // Avoid method recursion
@@ -1965,10 +2024,11 @@ class PostEventQueue {
 
                 tempQueue = queueHead;
                 queueHead = queueTail = null;
+                target = targetEventQueue;
             }
             try {
                 while (tempQueue != null) {
-                    eventQueue.postEvent(tempQueue.event);
+                    target.postEvent(tempQueue.event);
                     tempQueue = tempQueue.next;
                 }
             }
@@ -2002,5 +2062,34 @@ class PostEventQueue {
             }
         }
         SunToolkit.wakeupEventQueue(eventQueue, event.getSource() == AWTAutoShutdown.getInstance());
+    }
+
+    EventQueue setTargetQueue(EventQueue newEventQueue) {
+        if (newEventQueue == null) {
+            newEventQueue = eventQueue;
+        }
+
+        AWTAccessor.EventQueueAccessor eqa = AWTAccessor.getEventQueueAccessor();
+        if (!eqa.isOnStack(eventQueue, newEventQueue)) {
+            throw new IllegalArgumentException("newEventQueue is not on stack");
+        }
+
+        synchronized (this) {
+            boolean interrupted = false;
+            // wait until the flush is completed
+            while (flushThread != null && flushThread != Thread.currentThread()) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+            }
+            EventQueue oldEventQueue = targetEventQueue;
+            targetEventQueue = newEventQueue;
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+            return oldEventQueue;
+        }
     }
 } // class PostEventQueue

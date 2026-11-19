@@ -24,11 +24,17 @@
  */
 package sun.awt.wl;
 
+import sun.awt.SunToolkit;
+
+import java.awt.GraphicsEnvironment;
 import java.awt.Point;
 import java.awt.Window;
 import java.awt.peer.MouseInfoPeer;
 
-public class WLMouseInfoPeer implements MouseInfoPeer  {
+public class WLMouseInfoPeer implements MouseInfoPeer, SunToolkit.RelativePointerMovementInfoProvider {
+    private final Object mouseDeltaLock = new Object();
+    private double mouseDeltaX = 0.0;
+    private double mouseDeltaY = 0.0;
 
     @Override
     public int fillPointWithCoords(Point point) {
@@ -40,30 +46,52 @@ public class WLMouseInfoPeer implements MouseInfoPeer  {
         //    device where the pointer is located."
         var peerUnderMouse = getPeerUnderMouse();
         if (peerUnderMouse != null) {
-            var gc = peerUnderMouse.getGraphicsConfiguration();
-            if (gc != null) {
-                var screenLocation = gc.getBounds().getLocation();
-                point.translate(screenLocation.x, screenLocation.y);
-            }
+            point.setLocation(peerUnderMouse.relativePointToAbsolute(point));
+            var device = peerUnderMouse.getGraphicsConfiguration().getDevice();
+            var ge = (WLGraphicsEnvironment) GraphicsEnvironment.getLocalGraphicsEnvironment();
+            return ge.deviceNumberOf(device);
         }
+
         return 0;
     }
 
     @Override
     public boolean isWindowUnderMouse(Window w) {
+        WLComponentPeer peerUnderMouse = getPeerUnderMouse();
+        return peerUnderMouse != null && peerUnderMouse.getTarget() == w;
+    }
+
+    public WLComponentPeer getPeerUnderMouse() {
         WLInputState inputState = WLToolkit.getInputState();
-        WLComponentPeer peerUnderMouse = inputState.getPeer();
-        return peerUnderMouse != null
-                && peerUnderMouse.getTarget() == w
-                && inputState.isPointerOverPeer();
+        WLComponentPeer peerUnderMouse = inputState.peerForPointerEvents();
+        return peerUnderMouse != null && inputState.isPointerOverPeer() ? peerUnderMouse : null;
     }
 
     private static class HOLDER {
         static WLMouseInfoPeer instance = new WLMouseInfoPeer();
     }
 
-    static WLMouseInfoPeer getInstance() {
+    public static WLMouseInfoPeer getInstance() {
         return HOLDER.instance;
     }
 
+    void accumulatePointerDelta(double dx, double dy) {
+        synchronized (mouseDeltaLock) {
+            mouseDeltaX += dx;
+            mouseDeltaY += dy;
+        }
+    }
+
+    @Override
+    public Point getAccumulatedMouseDeltaAndReset() {
+        var p = new Point();
+        synchronized (mouseDeltaLock) {
+            int idx = (int) mouseDeltaX;
+            int idy = (int) mouseDeltaY;
+            p.setLocation(idx, idy);
+            mouseDeltaX = mouseDeltaX - idx;
+            mouseDeltaY = mouseDeltaY - idy;
+        }
+        return p;
+    }
 }

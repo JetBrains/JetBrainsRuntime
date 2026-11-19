@@ -32,6 +32,7 @@ import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.SurfaceData;
 import sun.java2d.loops.SurfaceType;
 import sun.java2d.wl.WLSMSurfaceData;
+import sun.java2d.wl.WLSurfaceSizeListener;
 import sun.java2d.wl.WLVolatileSurfaceManager;
 import sun.util.logging.PlatformLogger;
 
@@ -57,24 +58,16 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
     private final ColorModel colorModel;
     private final SurfaceType surfaceType;
 
-    private WLSMGraphicsConfig(WLGraphicsDevice device,
-                               int width,
-                               int height,
-                               int scale,
-                               boolean translucencyCapable) {
-        super(device, width, height, scale);
+    private WLSMGraphicsConfig(WLGraphicsDevice device, boolean translucencyCapable) {
+        super(device);
         this.translucencyCapable = translucencyCapable;
         this.colorModel = colorModelFor(translucencyCapable ? Transparency.TRANSLUCENT : Transparency.OPAQUE);
         // Note: GNOME Shell definitely expects alpha values to be pre-multiplied
         this.surfaceType = translucencyCapable ? SurfaceType.IntArgbPre : SurfaceType.IntRgb;
     }
 
-    public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device,
-                                               int width,
-                                               int height,
-                                               int scale,
-                                               boolean translucencyCapable) {
-        var newConfig = new WLSMGraphicsConfig(device, width, height, scale, translucencyCapable);
+    public static WLSMGraphicsConfig getConfig(WLGraphicsDevice device, boolean translucencyCapable) {
+        var newConfig = new WLSMGraphicsConfig(device, translucencyCapable);
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("New shared memory config " + newConfig);
         }
@@ -111,8 +104,14 @@ public class WLSMGraphicsConfig extends WLGraphicsConfig
         }
     }
 
+    @Override
     public SurfaceData createSurfaceData(WLComponentPeer peer) {
         return WLSMSurfaceData.createData(peer, this);
+    }
+
+    @Override
+    public SurfaceData createSurfaceData(WLSurfaceSizeListener sl, int width, int height) {
+        return WLSMSurfaceData.createData(sl, width, height, this);
     }
 
     public int getWlShmFormat() {

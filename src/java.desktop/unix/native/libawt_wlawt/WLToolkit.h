@@ -23,11 +23,26 @@
  * questions.
  */
 
+#include <stdbool.h>
+
 #include <wayland-client.h>
 #include <wayland-cursor.h>
-#include "xdg-shell-client-protocol.h"
-#include "xdg-activation-v1-client-protocol.h"
-#include "primary-selection-client-protocol.h"
+
+#include "xdg-shell.h"
+#include "xdg-activation-v1.h"
+#include "xdg-output-unstable-v1.h"
+#include "primary-selection-unstable-v1.h"
+#include "viewporter.h"
+#include "relative-pointer-unstable-v1.h"
+#include "pointer-gestures-unstable-v1.h"
+#include "text-input-unstable-v3.h"
+#include "xdg-decoration-unstable-v1.h"
+#include "xdg-toplevel-icon-v1.h"
+#include "cursor-shape-v1.h"
+#include "ext-data-control-v1.h"
+
+#include "jvm_md.h"
+#include "jni_util.h"
 
 #define CHECK_NULL_THROW_OOME_RETURN(env, x, msg, z)\
     do {                                        \
@@ -45,28 +60,53 @@
         }                                       \
     } while(0)                                  \
 
-struct gtk_shell1;
 
 extern struct wl_seat *wl_seat;
 extern struct wl_display *wl_display;
-extern struct wl_pointer *wl_pointer;
+extern struct wl_pointer *wl_pointer; // optional, check for NULL before use
 extern struct wl_compositor *wl_compositor;
+extern struct wl_subcompositor *wl_subcompositor;
 extern struct xdg_wm_base *xdg_wm_base;
-extern struct xdg_activation_v1 *xdg_activation_v1;
-extern struct gtk_shell1* gtk_shell1; // optional, check for NULL before use
-
+extern struct wp_viewporter *wp_viewporter;
+extern struct xdg_activation_v1 *xdg_activation_v1; // optional, check for NULL before use
 extern struct wl_cursor_theme *wl_cursor_theme;
 extern struct wl_data_device_manager *wl_ddm;
-extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm;
+extern struct zwp_primary_selection_device_manager_v1 *zwp_selection_dm; // optional, check for NULL before use
+extern struct zxdg_output_manager_v1 *zxdg_output_manager_v1; // optional, check for NULL before use
+extern struct zwp_relative_pointer_manager_v1* relative_pointer_manager;
+extern struct zwp_text_input_manager_v3 *zwp_text_input_manager; // optional, check for NULL before use
+extern struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
+extern struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager; // optional, check for NULL before use
+extern struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, check for NULL before use
+extern struct ext_data_control_manager_v1 *ext_data_control_manager; // optional, check for NULL before use
 
-extern struct wl_surface *wl_surface_in_focus;
-
-extern uint32_t last_mouse_pressed_serial;
-extern uint32_t last_pointer_enter_serial;
-extern uint32_t last_input_or_focus_serial;
+extern int num_of_outstanding_sync;
 
 JNIEnv *getEnv();
 
-int wlFlushToServer(JNIEnv* env);
+// Utilities for managing exceptions in Wayland callbacks, where we can't throw
+bool wlListenerCheckException(JNIEnv *env);
+void wlListenerThrowInternalError(JNIEnv *env, const char *message);
 
-struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data);
+// Convert UTF-8 null-terminated string into java.lang.String.
+// For invalid UTF-8, replaces invalid byte sequences with replacement characters.
+// Returns a local ref.
+// Returns NULL and throws an exception on error (most likely OOM).
+// Also returns NULL when passed NULL.
+// Must only be called after WLToolkit.initIDs()
+// Must not be called with exception pending.
+jstring wlUtf8ToJavaString(JNIEnv *env, const char *cstring);
+
+// Convert java.lang.String into a UTF-8 null-terminated string.
+// The caller must free() the returned string.
+// NOTE: If Java string contains embedded null bytes, the resulting string will be silently truncated.
+// Returns NULL and throws an exception on error (most likely OOM).
+// Also returns NULL when passed NULL.
+// Must only be called after WLToolkit.initIDs()
+// Must not be called with exception pending.
+char *wlJavaStringToUtf8(JNIEnv *env, jstring string);
+
+int wlFlushToServer(JNIEnv* env);
+struct wl_cursor_theme *getCursorTheme(int scale);
+
+struct wl_shm_pool *CreateShmPool(size_t size, const char *name, void **data, int* poolFDPtr);

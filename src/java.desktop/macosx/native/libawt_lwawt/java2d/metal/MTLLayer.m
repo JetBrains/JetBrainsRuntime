@@ -23,6 +23,7 @@
  * questions.
  */
 
+#import <sys/sysctl.h>
 #import "PropertiesUtilities.h"
 #import "MTLGraphicsConfig.h"
 #import "MTLLayer.h"
@@ -30,6 +31,19 @@
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 #import "JNIUtilities.h"
+
+#define MAX_DRAWABLE    3
+#define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
+
+static jclass jc_JavaLayer = NULL;
+#define GET_MTL_LAYER_CLASS() \
+    GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
+
+#define TRACE_DISPLAY   TRACE_DISPLAY_ENABLED
+
+const NSTimeInterval DF_BLIT_FRAME_TIME=1.0/120.0;
+
+extern BOOL isColorMatchingEnabled();
 
 BOOL isDisplaySyncEnabled() {
     static int syncEnabled = -1;
@@ -44,22 +58,68 @@ BOOL isDisplaySyncEnabled() {
     return (BOOL)syncEnabled;
 }
 
-BOOL isColorMatchingEnabled() {
-    static int colorMatchingEnabled = -1;
-    if (colorMatchingEnabled == -1) {
-        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-        if (env == NULL) return NO;
-        NSString *colorMatchingEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.colorMatching"
-                                                                                   withEnv:env];
-        colorMatchingEnabled = [@"false" isCaseInsensitiveLike:colorMatchingEnabledProp] ? NO : YES;
-        J2dRlsTraceLn1(J2D_TRACE_INFO, "MTLLayer_isColorMatchingEnabled: %d", colorMatchingEnabled);
+BOOL MTLLayer_isM2CPU() {
+    static int m2CPU = -1;
+    if (m2CPU == -1) {
+        char cpuBrandDefaultStr[16];
+        char *cpuBrand = cpuBrandDefaultStr;
+        size_t len;
+        sysctlbyname("machdep.cpu.brand_string", NULL, &len, NULL, 0);
+        if (len >= sizeof(cpuBrandDefaultStr)) {
+            cpuBrand = malloc(len);
+        }
+        sysctlbyname("machdep.cpu.brand_string", cpuBrand, &len, NULL, 0);
+        m2CPU = strstr(cpuBrand, "M2") != NULL;
+
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isM2CPU: %d (%s)", m2CPU, cpuBrand);
+
+        if (cpuBrand != cpuBrandDefaultStr) {
+            free(cpuBrand);
+        }
     }
-    return (BOOL)colorMatchingEnabled;
+    return m2CPU;
 }
 
-@implementation MTLLayer
+BOOL MTLLayer_isSpansDisplays() {
+    static int spansDisplays = -1;
+    if (spansDisplays == -1) {
+        NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
+        NSDictionary<NSString*,id> *spaces = [defaults persistentDomainForName:@"com.apple.spaces"];
+        spansDisplays = [(NSNumber*)[spaces valueForKey:@"spans-displays"] intValue];
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isSpansDisplays: %d", spansDisplays);
+    }
+    return spansDisplays;
+}
 
-- (id) initWithJavaLayer:(jobject)layer
+BOOL MTLLayer_isExtraRedrawEnabled() {
+    static int redrawEnabled = -1;
+    if (redrawEnabled == -1) {
+        JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
+        if (env == NULL) return NO;
+        NSString *syncEnabledProp = [PropertiesUtilities javaSystemPropertyForKey:@"sun.java2d.metal.extraRedraw"
+                                                                          withEnv:env];
+        redrawEnabled = [@"false" isCaseInsensitiveLike:syncEnabledProp] ? NO : -1;
+        if (redrawEnabled == -1) {
+            redrawEnabled = [@"true" isCaseInsensitiveLike:syncEnabledProp] ?
+                    YES : MTLLayer_isSpansDisplays() && MTLLayer_isM2CPU();
+        }
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_isExtraRedrawEnabled: %d", redrawEnabled);
+    }
+    return (BOOL)redrawEnabled;
+}
+
+@implementation MTLLayer {
+    NSLock* _lock;
+}
+
++ (NSUInteger) getDrawableId:(id<MTLDrawable>)mtlDrawable {
+    if (@available(macOS 10.15.4, *)) {
+        return [mtlDrawable drawableID];
+    }
+    return -1;
+}
+
+- (id) initWithJavaLayer:(jobject)layer usePerfCounters:(jboolean)perfCountersEnabled
 {
     AWT_ASSERT_APPKIT_THREAD;
     // Initialize ourselves
@@ -67,7 +127,8 @@ BOOL isColorMatchingEnabled() {
     if (self == nil) return self;
 
     self.javaLayer = layer;
-
+    self.ctx = nil;
+    self.displayID = -1;
     self.contentsGravity = kCAGravityTopLeft;
 
     //Disable CALayer's default animation
@@ -75,6 +136,7 @@ BOOL isColorMatchingEnabled() {
                                     [NSNull null], @"anchorPoint",
                                     [NSNull null], @"bounds",
                                     [NSNull null], @"contents",
+                                    [NSNull null], @"cornerRadius",
                                     [NSNull null], @"contentsScale",
                                     [NSNull null], @"onOrderIn",
                                     [NSNull null], @"onOrderOut",
@@ -93,6 +155,20 @@ BOOL isColorMatchingEnabled() {
     self.nextDrawableCount = 0;
     self.opaque = YES;
     self.redrawCount = 0;
+    if (@available(macOS 10.13, *)) {
+        self.displaySyncEnabled = isDisplaySyncEnabled();
+    }
+    if (@available(macOS 10.13.2, *)) {
+        self.maximumDrawableCount = MAX_DRAWABLE;
+    }
+    self.presentsWithTransaction = NO;
+    self.avgBlitFrameTime = DF_BLIT_FRAME_TIME;
+#if TRACE_DISPLAY_ON
+    self.avgNextDrawableTime = 0.0;
+    self.lastPresentedTime = 0.0;
+#endif
+    self.perfCountersEnabled = perfCountersEnabled ? YES : NO;
+    _lock = [[NSLock alloc] init];
     return self;
 }
 
@@ -107,91 +183,236 @@ BOOL isColorMatchingEnabled() {
         return;
     }
 
-    if (self.nextDrawableCount != 0) {
-        return;
-    }
-    [self stopRedraw:NO];
-
     @autoreleasepool {
-        if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
+        // MTLDrawable pool barrier:
+        BOOL skipDrawable = YES;
+        [_lock lock];
+        @try {
+            if (self.nextDrawableCount < LAST_DRAWABLE) {
+                // increment used drawables to act as the CPU fence:
+                self.nextDrawableCount++;
+                skipDrawable = NO;
+            }
+        } @finally {
+            [_lock unlock];
+        }
+        if (skipDrawable) {
+            if (TRACE_DISPLAY) {
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_blitTexture: skip drawable [skip blit] nextDrawableCount = %d",
+                              CACurrentMediaTime(), self.nextDrawableCount);
+            }
+            [self startRedrawIfNeeded];
             return;
         }
 
-        NSUInteger src_x = self.leftInset * self.contentsScale;
-        NSUInteger src_y = self.topInset * self.contentsScale;
-        NSUInteger src_w = (*self.buffer).width - src_x;
-        NSUInteger src_h = (*self.buffer).height - src_y;
+        // Perform blit:
+        // Decrement redrawCount:
+        [self stopRedraw:NO];
 
-        if (src_h <= 0 || src_w <= 0) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
-            return;
+        // try-finally block to ensure releasing the CPU fence (abort blit):
+        BOOL releaseFence = YES;
+        @try {
+            if (((*self.buffer).width == 0) || ((*self.buffer).height == 0)) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
+                return;
+            }
+
+            NSUInteger src_x = self.leftInset * self.contentsScale;
+            NSUInteger src_y = self.topInset * self.contentsScale;
+            NSUInteger src_w = (*self.buffer).width - src_x;
+            NSUInteger src_h = (*self.buffer).height - src_y;
+
+            if (src_h <= 0 || src_w <= 0) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: Invalid src width or height.");
+                return;
+            }
+
+            id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
+            if (commandBuf == nil) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
+                return;
+            }
+
+            // Acquire CAMetalDrawable without blocking:
+            const CFTimeInterval beforeDrawableTime = CACurrentMediaTime();
+            const id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
+            if (mtlDrawable == nil) {
+                J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null");
+                return;
+            }
+            const CFTimeInterval nextDrawableTime = CACurrentMediaTime();
+            const CFTimeInterval nextDrawableLatency = (nextDrawableTime - beforeDrawableTime);
+
+            // rolling mean weight (lerp):
+            static const NSTimeInterval a = 0.25;
+
+            if (nextDrawableLatency > 0.0) {
+                if (self.perfCountersEnabled) {
+                    [self addStatCallback:1 value:1000.0 * nextDrawableLatency]; // See MTLLayer.STAT_NAMES[1]
+                }
+#if TRACE_DISPLAY_ON
+                self.avgNextDrawableTime = nextDrawableLatency * a + self.avgNextDrawableTime * (1.0 - a);
+
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                          "[%.6lf] MTLLayer_blitTexture: drawable(%d) presented"
+                          " - nextDrawableLatency = %.3lf ms - average = %.3lf ms",
+                          CACurrentMediaTime(), [MTLLayer getDrawableId:mtlDrawable],
+                          1000.0 * nextDrawableLatency, 1000.0 * self.avgNextDrawableTime
+            );
+#endif
+            }
+            // Keep Fence from now:
+            releaseFence = NO;
+
+            id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+
+            [blitEncoder
+                    copyFromTexture:(isDisplaySyncEnabled()) ? (*self.buffer) : (*self.outBuffer)
+                    sourceSlice:0 sourceLevel:0
+                    sourceOrigin:MTLOriginMake(src_x, src_y, 0)
+                    sourceSize:MTLSizeMake(src_w, src_h, 1)
+                    toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
+                    destinationOrigin:MTLOriginMake(0, 0, 0)];
+            [blitEncoder endEncoding];
+
+            if (@available(macOS 10.15.4, *)) {
+                [self retain];
+                [mtlDrawable addPresentedHandler:^(id <MTLDrawable> drawable) {
+                    // note: called anyway even if drawable.present() not called!
+                    const CFTimeInterval presentedTime = drawable.presentedTime;
+                    if (presentedTime != 0.0) {
+                        if (self.perfCountersEnabled) {
+                            [self countFramePresentedCallback];
+                        }
+#if TRACE_DISPLAY_ON
+                        const CFTimeInterval now = CACurrentMediaTime();
+                        const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
+                        const CFTimeInterval frameInterval = (self.lastPresentedTime != 0.0) ? (presentedTime - self.lastPresentedTime) : -1.0;
+                        J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                                      "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) presented"
+                                      " - presentedHandlerLatency = %.3lf ms frameInterval = %.3lf ms",
+                                      CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
+                                      1000.0 * presentedHandlerLatency, 1000.0 * frameInterval
+                        );
+                        self.lastPresentedTime = presentedTime;
+#endif
+                    } else {
+                        if (self.perfCountersEnabled) {
+                            [self countFrameDroppedCallback];
+                        }
+                        if (TRACE_DISPLAY) {
+                            const CFTimeInterval now = CACurrentMediaTime();
+                            const CFTimeInterval presentedHandlerLatency = (now - nextDrawableTime);
+                            J2dRlsTraceLn(J2D_TRACE_VERBOSE,
+                                          "[%.6lf] MTLLayer_blitTexture_PresentedHandler: drawable(%d) skipped"
+                                          " - presentedHandlerLatency = %.3lf ms",
+                                          CACurrentMediaTime(), [MTLLayer getDrawableId:drawable],
+                                          1000.0 * presentedHandlerLatency
+                            );
+                        }
+                    }
+                    [self release];
+                }];
+            }
+            // Present drawable:
+            NSUInteger drawableId = -1;
+            if (TRACE_DISPLAY) {
+                drawableId = [MTLLayer getDrawableId:mtlDrawable];
+                J2dRlsTraceLn(J2D_TRACE_INFO,
+                              "[%.6lf] MTLLayer.blitTexture: layer[%p] present drawable(%d)",
+                              CACurrentMediaTime(), self, drawableId);
+            }
+            if (isDisplaySyncEnabled()) {
+                [commandBuf presentDrawable:mtlDrawable];
+            } else {
+                if (@available(macOS 10.15.4, *)) {
+                    [commandBuf presentDrawable:mtlDrawable afterMinimumDuration:self.avgBlitFrameTime];
+                } else {
+                    [commandBuf presentDrawable:mtlDrawable];
+                }
+            }
+
+            [self retain];
+            [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+                // free drawable once processed:
+                [self freeDrawableCount];
+                if (@available(macOS 10.15.4, *)) {
+                    if (!isDisplaySyncEnabled()) {
+                        const NSTimeInterval gpuTime = commandBuf.GPUEndTime - commandBuf.GPUStartTime;
+                        self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
+                    }
+                }
+                [self release];
+            }];
+
+            [commandBuf commit];
+
+            if (TRACE_DISPLAY) {
+                J2dRlsTraceLn(J2D_TRACE_INFO,
+                              "[%.6lf] MTLLayer.blitTexture: layer[%p] commit with drawable(%d)",
+                              CACurrentMediaTime(), self, drawableId);
+            }
+        } @finally {
+            // try-finally block to ensure releasing the CPU fence:
+            if (releaseFence) {
+                // free drawable:
+                [self freeDrawableCount];
+
+                if (isDisplaySyncEnabled()) {
+                    // Increment redrawCount:
+                    [self startRedraw];
+                }
+            }
         }
+    }
+}
 
-        id<MTLCommandBuffer> commandBuf = [self.ctx createBlitCommandBuffer];
-        if (commandBuf == nil) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: commandBuf is null");
-            return;
-        }
-        id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
-        if (mtlDrawable == nil) {
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
-            return;
-        }
-        self.nextDrawableCount++;
-        id<MTLCommandBuffer> renderBuffer =  [self.ctx createCommandBuffer];
-        self.ctx.syncCount++;
-        if (@available(macOS 10.14, *)) {
-            [renderBuffer encodeWaitForEvent:self.ctx.syncEvent value:self.ctx.syncCount];
-        }
-
-        id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
-
-        [blitEncoder
-                copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
-                sourceOrigin:MTLOriginMake(src_x, src_y, 0)
-                sourceSize:MTLSizeMake(src_w, src_h, 1)
-                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0
-                destinationOrigin:MTLOriginMake(0, 0, 0)];
-        [blitEncoder endEncoding];
-
-        if (@available(macOS 10.14, *)) {
-            [commandBuf encodeSignalEvent:self.ctx.syncEvent value:self.ctx.syncCount];
-        }
-
-        [commandBuf presentDrawable:mtlDrawable];
-        [self retain];
-        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
-            self.nextDrawableCount--;
-            [self release];
-        }];
-
-        [commandBuf commit];
+- (void) freeDrawableCount {
+    [_lock lock];
+    --self.nextDrawableCount;
+    [_lock unlock];
+    if (TRACE_DISPLAY) {
+        J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_freeDrawableCount: layer[%p] nextDrawableCount = %d",
+                      CACurrentMediaTime(), self, self.nextDrawableCount);
     }
 }
 
 - (void) dealloc {
+    if (TRACE_DISPLAY) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer.dealloc: layer[%p]", self);
+    }
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     (*env)->DeleteWeakGlobalRef(env, self.javaLayer);
     self.javaLayer = nil;
     [self stopRedraw:YES];
     self.buffer = NULL;
+    self.outBuffer = NULL;
+    [_lock release];
     [super dealloc];
 }
 
 - (void) blitCallback {
-
+    AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnv];
-    DECLARE_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
+    GET_MTL_LAYER_CLASS();
     DECLARE_METHOD(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
 
     jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
-    if ((*env)->IsSameObject(env, javaLayerLocalRef, NULL)) {
+    if (javaLayerLocalRef == NULL) {
         return;
     }
 
+    const CFTimeInterval beforeMethod = CACurrentMediaTime();
+
     (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
     CHECK_EXCEPTION();
+
+    const CFTimeInterval drawInMTLContextLatency = (CACurrentMediaTime() - beforeMethod);
+    if (drawInMTLContextLatency > 0.0) {
+        if (self.perfCountersEnabled) {
+            [self addStatCallback:0 value:1000.0 * drawInMTLContextLatency]; // See MTLLayer.STAT_NAMES[0]
+        }
+    }
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
 
@@ -202,53 +423,146 @@ BOOL isColorMatchingEnabled() {
     [super display];
 }
 
+- (void)startRedrawIfNeeded {
+    AWT_ASSERT_APPKIT_THREAD;
+    if (isDisplaySyncEnabled() && (self.redrawCount == 0)) {
+        [self.ctx startRedraw:self];
+    }
+}
+
 - (void)startRedraw {
     if (isDisplaySyncEnabled()) {
         if (self.ctx != nil) {
-            [self.ctx performSelectorOnMainThread:@selector(startRedraw:) withObject:self waitUntilDone:NO];
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                                     block:^(){
+                [self.ctx startRedraw:self];
+            }];
         }
     } else {
-        [self performSelectorOnMainThread:@selector(setNeedsDisplay) withObject:nil waitUntilDone:NO];
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                                     block:^(){
+            [self setNeedsDisplay];
+        }];
     }
 }
 
 - (void)stopRedraw:(BOOL)force {
-    if (self.ctx != nil && isDisplaySyncEnabled()) {
-        if (force) {
-            self.redrawCount = 0;
-        }
-        [self.ctx performSelectorOnMainThread:@selector(stopRedraw:) withObject:self waitUntilDone:NO];
+    if (isDisplaySyncEnabled()) {
+        [self stopRedraw:self.ctx displayID:self.displayID force:force];
     }
 }
 
+- (void) stopRedraw:(MTLContext*)mtlc displayID:(jint)displayID force:(BOOL)force {
+    if (isDisplaySyncEnabled()) {
+        if (force) {
+            self.redrawCount = 0;
+        }
+        if (mtlc != nil) {
+            [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                                     block:^(){
+                [mtlc stopRedraw:displayID layer:self];
+            }];
+        }
+    }
+}
+- (void) flushBuffer {
+    if (self.ctx == nil || self.buffer == NULL) {
+        return;
+    }
+    // Copy the rendered texture to the output buffer (blit later) using the render command queue:
+    id <MTLCommandBuffer> commandbuf = [self.ctx createCommandBuffer];
+    id <MTLBlitCommandEncoder> blitEncoder = [commandbuf blitCommandEncoder];
+    [blitEncoder
+            copyFromTexture:(*self.buffer) sourceSlice:0 sourceLevel:0
+               sourceOrigin:MTLOriginMake(0, 0, 0)
+                 sourceSize:MTLSizeMake((*self.buffer).width, (*self.buffer).height, 1)
+                  toTexture:(*self.outBuffer) destinationSlice:0 destinationLevel:0
+          destinationOrigin:MTLOriginMake(0, 0, 0)];
+    [blitEncoder endEncoding];
+    [self retain];
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+        [self startRedraw];
+        [self release];
+    }];
+    [commandbuf commit];
+}
+
 - (void)commitCommandBuffer:(MTLContext*)mtlc wait:(BOOL)waitUntilCompleted display:(BOOL)updateDisplay {
-    MTLCommandBufferWrapper * cbwrapper =[mtlc pullCommandBufferWrapper];
+    MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
 
     if (cbwrapper != nil) {
-        id <MTLCommandBuffer> commandbuf =[cbwrapper getCommandBuffer];
-        if (isDisplaySyncEnabled() || !updateDisplay) {
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-            }];
-        } else {
-            __block MTLLayer* layer = self;
-            [layer retain];
-            [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
-                [cbwrapper release];
-                [layer startRedraw];
-                [layer release];
-            }];
-       }
-       [commandbuf commit];
-       if (isDisplaySyncEnabled()) {
-            [self startRedraw];
-       }
+        id <MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
 
-       if (waitUntilCompleted) {
+        [self retain];
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
+            [cbwrapper release];
+            if (updateDisplay && isDisplaySyncEnabled()) {
+                if (TRACE_DISPLAY) {
+                    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "[%.6lf] MTLLayer_commitCommandBuffer: CompletedHandler", CACurrentMediaTime());
+                }
+                // Ensure layer will be redrawn asap to display new content:
+                [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
+                                       waitUntilDone:NO useJavaModes:NO]; // critical
+            }
+            [self release];
+        }];
+
+        [commandbuf commit];
+
+        if (updateDisplay) {
+            if (isDisplaySyncEnabled()) {
+                [self startRedraw];
+            } else {
+                [self flushBuffer];
+            }
+        }
+        if (waitUntilCompleted && isDisplaySyncEnabled()) {
            [commandbuf waitUntilCompleted];
-       }
+        }
     } else if (updateDisplay) {
         [self startRedraw];
+    }
+}
+
+- (void) countFramePresentedCallback {
+    // attach the current thread to the JVM if necessary, and get an env
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    GET_MTL_LAYER_CLASS();
+    DECLARE_METHOD(jm_countNewFrame, jc_JavaLayer, "countNewFrame", "()V");
+
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+    if (javaLayerLocalRef != NULL) {
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countNewFrame);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    }
+}
+
+- (void) addStatCallback:(int)type value:(double)value {
+    // attach the current thread to the JVM if necessary, and get an env
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    GET_MTL_LAYER_CLASS();
+    DECLARE_METHOD(jm_addStatFrame, jc_JavaLayer, "addStat", "(ID)V");
+
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+    if (javaLayerLocalRef != NULL) {
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_addStatFrame, (jint)type, (jdouble)value);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+    }
+}
+
+- (void) countFrameDroppedCallback {
+    // attach the current thread to the JVM if necessary, and get an env
+    JNIEnv* env = [ThreadUtilities getJNIEnvUncached];
+    GET_MTL_LAYER_CLASS();
+    DECLARE_METHOD(jm_countDroppedFrame, jc_JavaLayer, "countDroppedFrame", "()V");
+
+    jobject javaLayerLocalRef = (*env)->NewLocalRef(env, self.javaLayer);
+    if (javaLayerLocalRef != NULL) {
+        (*env)->CallVoidMethod(env, javaLayerLocalRef, jm_countDroppedFrame);
+        CHECK_EXCEPTION();
+        (*env)->DeleteLocalRef(env, javaLayerLocalRef);
     }
 }
 @end
@@ -260,7 +574,7 @@ BOOL isColorMatchingEnabled() {
  */
 JNIEXPORT jlong JNICALL
 Java_sun_java2d_metal_MTLLayer_nativeCreateLayer
-(JNIEnv *env, jobject obj)
+(JNIEnv *env, jobject obj, jboolean perfCountersEnabled)
 {
     __block MTLLayer *layer = nil;
 
@@ -268,12 +582,15 @@ JNI_COCOA_ENTER(env);
 
     jobject javaLayer = (*env)->NewWeakGlobalRef(env, obj);
 
-    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    // Wait and ensure main thread creates the MTLLayer instance now:
+    [ThreadUtilities performOnMainThreadWaiting:YES useJavaModes:NO // critical
+                                          block:^(){
             AWT_ASSERT_APPKIT_THREAD;
-
-            layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer];
+            layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer usePerfCounters: perfCountersEnabled];
     }];
-
+    if (TRACE_DISPLAY) {
+        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_nativeCreateLayer: created layer[%p]", layer);
+    }
 JNI_COCOA_EXIT(env);
 
     return ptr_to_jlong(layer);
@@ -289,14 +606,35 @@ Java_sun_java2d_metal_MTLLayer_validate
     if (surfaceData != NULL) {
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.buffer = &bmtlsdo->pTexture;
-        layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
-        layer.device = layer.ctx.device;
+        layer.outBuffer = &bmtlsdo->pOutTexture;
+
+        // Backup layer's context (device) and displayId to unregister if needed:
+        MTLContext* oldMtlc    = layer.ctx;
+        NSInteger oldDisplayID = layer.displayID;
+
+        MTLContext* newMtlc    = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
+        NSInteger newDisplayID = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->displayID;
+
+        if (isDisplaySyncEnabled()) {
+            if (oldDisplayID != -1) {
+                if ((oldMtlc != newMtlc) || (oldDisplayID != newDisplayID)) {
+                    if (TRACE_DISPLAY_CHANGED) {
+                        J2dRlsTraceLn(J2D_TRACE_INFO, "MTLLayer_validate: layer[%p] mtlc/displayID changed: "
+                                                      "[%p - %d] => [%p - %d]",
+                                      layer, oldMtlc, oldDisplayID, newMtlc, newDisplayID);
+                    }
+                    // unregister with display link on old mtlc/display before updating layer's state:
+                    [layer stopRedraw:oldMtlc displayID:oldDisplayID force:YES];
+                }
+            }
+        }
+        // Update layer's context (device) and displayId:
+        layer.ctx       = newMtlc;
+        layer.device    = layer.ctx.device;
+        layer.displayID = newDisplayID;
         layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
         if (!isColorMatchingEnabled() && (layer.colorspace != nil)) {
-            J2dRlsTraceLn1(J2D_TRACE_VERBOSE,
-                          "Java_sun_java2d_metal_MTLLayer_validate: disable color matching (colorspace was '%s')",
-                           [(NSString *)CGColorSpaceCopyName(layer.colorspace) UTF8String]);
             // disable color matching:
             layer.colorspace = nil;
         }
@@ -304,7 +642,12 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.drawableSize =
             CGSizeMake((*layer.buffer).width,
                        (*layer.buffer).height);
-        [layer startRedraw];
+
+        if (isDisplaySyncEnabled()) {
+            [layer startRedraw];
+        } else {
+            [layer flushBuffer];
+        }
     } else {
         layer.ctx = NULL;
         [layer stopRedraw:YES];
@@ -321,7 +664,9 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
     // this method where we need to change native texture size and layer's scale
     // in one call on appkit, otherwise we'll get window's contents blinking,
     // during screen-2-screen moving.
-    [ThreadUtilities performOnMainThreadWaiting:[NSThread isMainThread] block:^(){
+    // Ensure main thread changes the MTLLayer instance later:
+    [ThreadUtilities performOnMainThreadNowOrLater:NO // critical
+                                             block:^(){
         layer.contentsScale = scale;
     }];
     JNI_COCOA_EXIT(env);
@@ -341,10 +686,11 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
 (JNIEnv *env, jclass cls, jlong layerPtr)
 {
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture");
+    JNI_COCOA_ENTER(env);
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     MTLContext * ctx = layer.ctx;
     if (layer == nil || ctx == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture : Layer or Context is null");
         if (layer != nil) {
             [layer stopRedraw:YES];
         }
@@ -352,6 +698,7 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     }
 
     [layer blitTexture];
+    JNI_COCOA_EXIT(env);
 }
 
 JNIEXPORT void JNICALL
@@ -360,9 +707,11 @@ Java_sun_java2d_metal_MTLLayer_nativeSetOpaque
 {
     JNI_COCOA_ENTER(env);
 
-    MTLLayer *mtlLayer = OBJC(layerPtr);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        [mtlLayer setOpaque:(opaque == JNI_TRUE)];
+    MTLLayer *layer = jlong_to_ptr(layerPtr);
+    // Ensure main thread changes the MTLLayer instance later:
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+                                          block:^(){
+        [layer setOpaque:(opaque == JNI_TRUE)];
     }];
 
     JNI_COCOA_EXIT(env);

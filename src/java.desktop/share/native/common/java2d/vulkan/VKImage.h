@@ -27,30 +27,48 @@
 #ifndef VKImage_h_Included
 #define VKImage_h_Included
 
-#include <vulkan/vulkan.h>
+#include "VKAllocator.h"
+#include "VKUtil.h"
 
 typedef struct {
-    VkImage                 image;
-    VkDeviceMemory          memory;
-    VkFramebuffer           framebuffer;
-    VkImageView             view;
-    VkFormat                format;
-    VkExtent2D              extent;
-    VkBool32                noImageDealloc;
-} VKImage;
+    VkFormat format;
+    VKPackedSwizzle swizzle;
+} VKImageViewKey;
 
-VKImage* VKImage_Create(uint32_t width, uint32_t height,
-                        VkFormat format, VkImageTiling tiling,
-                        VkImageUsageFlags usage,
-                        VkMemoryPropertyFlags properties);
+typedef struct {
+    VkImageView      view;
+    VkDescriptorSet  descriptorSet;
+    VkDescriptorPool descriptorPool; // Non-owning.
+} VKImageViewInfo;
 
-VKImage* VKImage_CreateImageArrayFromSwapChain(VkSwapchainKHR swapchainKhr,
-                                               VkRenderPass renderPass,
-                                               VkFormat format,
-                                               VkExtent2D extent);
+struct VKImage {
+    VkImage    handle;
+    VKMemory   memory;
+    VkFormat   format;
+    VkExtent2D extent;
+    MAP(VKImageViewKey, VKImageViewInfo) viewMap;
 
-VkBool32 VKImage_CreateFramebuffer(VKImage *image, VkRenderPass renderPass);
 
-void VKImage_free(VKImage* image);
-void VKImage_dealloc(VKImage* image);
+    VkImageLayout           layout;
+    VkPipelineStageFlagBits lastStage;
+    VkAccessFlagBits        lastAccess;
+};
+
+VKImage* VKImage_Create(VKDevice* device, uint32_t width, uint32_t height,
+                        VkImageCreateFlags flags, VkFormat format,
+                        VkImageTiling tiling, VkImageUsageFlags usage, VkSampleCountFlagBits samples,
+                        VKAllocator_FindMemoryTypeCallback findMemoryTypeCallback);
+
+void VKImage_LoadBuffer(VKDevice* device, VKImage* image, VKBuffer* buffer,
+                        uint32_t x0, uint32_t y0, uint32_t width, uint32_t height);
+
+void VKImage_Destroy(VKDevice* device, VKImage* image);
+
+VkImageView VKImage_GetView(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle);
+
+VkDescriptorSet VKImage_GetDescriptorSet(VKDevice* device, VKImage* image, VkFormat format, VKPackedSwizzle swizzle);
+
+void VKImage_AddBarrier(VkImageMemoryBarrier* barriers, VKBarrierBatch* batch,
+                        VKImage* image, VkPipelineStageFlags stage, VkAccessFlags access, VkImageLayout layout);
+
 #endif // VKImage_h_Included

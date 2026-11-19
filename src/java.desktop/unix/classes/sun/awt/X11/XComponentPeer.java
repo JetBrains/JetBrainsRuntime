@@ -62,6 +62,7 @@ import java.util.Set;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
+import sun.awt.AWTUtilities;
 import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.event.IgnorePaintEvent;
@@ -69,7 +70,6 @@ import sun.awt.image.SunVolatileImage;
 import sun.java2d.BackBufferCapsProvider;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
-
 
 public class XComponentPeer extends XWindow implements ComponentPeer, DropTargetPeer,
     BackBufferCapsProvider
@@ -586,6 +586,10 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
               // while waiting for native paint
               if (!isLayouting && !paintPending) {
                   paintArea.paint(target,false);
+                  if (((XToolkit) XToolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
+                      SunToolkit.executeOnEventHandlerThread(getTarget(),
+                              () -> AWTUtilities.updateWindowThisOrAncestor(target));
+                  }
               }
               return;
           case FocusEvent.FOCUS_LOST:
@@ -1381,7 +1385,10 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
 
                     int scale = getScale();
                     if (scale != 1) {
-                        shape = shape.getScaledRegion(scale, scale);
+                        Rectangle bounds = graphicsConfig.getBounds();
+                        shape = shape.getTranslatedRegion(-bounds.x, -bounds.y)
+                                .getScaledRegion(scale, scale)
+                                .getTranslatedRegion(bounds.x, bounds.y);
                     }
 
                     XlibWrapper.SetRectangularShape(
@@ -1430,7 +1437,7 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
         }
 
         initGraphicsConfiguration();
-        doValidateSurface();
+        syncBounds();
         return false;
     }
 }

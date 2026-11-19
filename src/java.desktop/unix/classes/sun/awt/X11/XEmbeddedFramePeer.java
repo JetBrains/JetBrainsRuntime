@@ -150,30 +150,37 @@ public final class XEmbeddedFramePeer extends XFramePeer {
             xembedLog.fine(xe.toString());
         }
 
+        WindowLocation eventLocation = getNewLocation(xe);
+        var insets = dimensions.getInsets();
+        var insetsWidth = scaleUp(insets.left + insets.right);
+        var insetsHeight = scaleUp(insets.top + insets.bottom);
+        Dimension eventDimension = new Dimension(xe.get_width() + insetsWidth, xe.get_height() + insetsHeight);
+        boolean xinerama = XToolkit.localEnv.runningXinerama();
         // fix for 5063031
         // if we use super.handleConfigureNotifyEvent() we would get wrong
         // size and position because embedded frame really is NOT a decorated one
-        checkIfOnNewScreen(toGlobal(new Rectangle(scaleDown(xe.get_x()),
-                                                  scaleDown(xe.get_y()),
-                                                  scaleDown(xe.get_width()),
-                                                  scaleDown(xe.get_height()))));
+        SunToolkit.executeOnEventHandlerThread(target, () -> {
+            Point newUserLocation = eventLocation.getUserLocation();
+            Rectangle oldBounds = getBounds();
+            Dimension newSize = xinerama
+                    ? checkIfOnNewScreen(new Rectangle(eventLocation.getDeviceLocation(), eventDimension))
+                    : new Dimension(scaleDown(eventDimension.width), scaleDown(eventDimension.height));
 
-        Rectangle oldBounds = getBounds();
+            synchronized (getStateLock()) {
+                x = newUserLocation.x;
+                y = newUserLocation.y;
+                width = newSize.width;
+                height = newSize.height;
 
-        synchronized (getStateLock()) {
-            x = scaleDown(xe.get_x());
-            y = scaleDown(xe.get_y());
-            width = scaleDown(xe.get_width());
-            height = scaleDown(xe.get_height());
+                dimensions.setSize(width, height);
+                dimensions.setLocation(x, y);
+            }
 
-            dimensions.setClientSize(width, height);
-            dimensions.setLocation(x, y);
-        }
-
-        if (!getLocation().equals(oldBounds.getLocation())) {
-            handleMoved(dimensions);
-        }
-        reconfigureContentWindow(dimensions);
+            if (!getLocation().equals(oldBounds.getLocation())) {
+                handleMoved(dimensions);
+            }
+            reconfigureContentWindow(dimensions);
+        });
     }
 
     protected void traverseOutForward() {
@@ -288,8 +295,8 @@ public final class XEmbeddedFramePeer extends XFramePeer {
     {
         Point absoluteLoc = XlibUtil.translateCoordinates(getWindow(),
                                                           XToolkit.getDefaultRootWindow(),
-                                                          new Point(0, 0), getScale());
-        return absoluteLoc != null ? absoluteLoc.x : 0;
+                                                          0, 0);
+        return absoluteLoc != null ? scaleDown(absoluteLoc.x, absoluteLoc.y).x : 0;
     }
 
     @Override
@@ -297,8 +304,8 @@ public final class XEmbeddedFramePeer extends XFramePeer {
     {
         Point absoluteLoc = XlibUtil.translateCoordinates(getWindow(),
                                                           XToolkit.getDefaultRootWindow(),
-                                                          new Point(0, 0), getScale());
-        return absoluteLoc != null ? absoluteLoc.y : 0;
+                                                          0, 0);
+        return absoluteLoc != null ? scaleDown(absoluteLoc.x, absoluteLoc.y).y : 0;
     }
 
     @Override

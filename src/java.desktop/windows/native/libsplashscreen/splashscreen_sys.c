@@ -218,7 +218,7 @@ SplashRedrawWindow(Splash * splash)
         return;
     }
 
-    SplashUpdateScreenData(splash);
+    SplashUpdateScreenData(splash, false);
     if (splash->isLayered) {
         BLENDFUNCTION bf;
         POINT ptSrc;
