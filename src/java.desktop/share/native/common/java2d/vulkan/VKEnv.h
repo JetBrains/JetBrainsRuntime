@@ -43,18 +43,15 @@ static const uint32_t REQUIRED_VULKAN_VERSION = VK_MAKE_API_VERSION(0, 1, 2, 0);
 typedef VkBool32 (*VKPlatform_InitFunctions)(VKEnv* vk, PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr);
 typedef VkBool32 (*VKPlatform_CheckPresentationSupport)(VKEnv* vk, VkPhysicalDevice device, uint32_t queueFamily);
 
-// Should create/destroy a hidden surface only used to call vkGetPhysicalDeviceSurfaceSupportKHR.
-typedef void* (*VKPlatform_CreateProbeSurface)(VKEnv* vk);
-typedef VkSurfaceKHR (*VKPlatform_GetProbeSurface)(void* probeSurface);
-typedef void (*VKPlatform_DestroyProbeSurface)(VKEnv* vk, void* probeSurface);
+// Should provide a hidden surface only used to call vkGetPhysicalDeviceSurfaceSupportKHR.
+typedef void (*VKPlatform_RunWithProbeSurfaceCallback)(VkSurfaceKHR surface, void* userData);
+typedef void (*VKPlatform_RunWithProbeSurface)(VKEnv* vk, VKPlatform_RunWithProbeSurfaceCallback callback, void* userData);
 
 typedef struct {
     const char*                         surfaceExtensionName;
     VKPlatform_InitFunctions            initFunctions;
     VKPlatform_CheckPresentationSupport checkPresentationSupport;
-    VKPlatform_CreateProbeSurface       createProbeSurface;
-    VKPlatform_GetProbeSurface          getProbeSurface;
-    VKPlatform_DestroyProbeSurface      destroyProbeSurface;
+    VKPlatform_RunWithProbeSurface      runWithProbeSurface;
 } VKPlatformData;
 
 struct VKEnv {

@@ -52,57 +52,36 @@ static VkBool32 WLVK_CheckPresentationSupport(VKEnv* vk, VkPhysicalDevice device
     return vkGetPhysicalDeviceWaylandPresentationSupportKHR(device, family, wl_display);
 }
 
-typedef struct {
-    VkSurfaceKHR vkSurface;
-    struct wl_surface* wlSurface;
-} WLVKProbeSurface;
+static void WLVK_RunWithProbeSurface(VKEnv* vk, VKPlatform_RunWithProbeSurfaceCallback callback, void* userData) {
+    struct wl_surface* wlSurface = NULL;
+    VkSurfaceKHR vkSurface = VK_NULL_HANDLE;
 
-static void WLVK_DestroyProbeSurface(VKEnv* vk, void* probeSurface) {
-    WLVKProbeSurface* wlProbeSurface = probeSurface;
-    if (probeSurface == NULL) return;
-
-    if (wlProbeSurface->vkSurface != VK_NULL_HANDLE) {
-        vk->vkDestroySurfaceKHR(vk->instance, wlProbeSurface->vkSurface, NULL);
-    }
-    if (wlProbeSurface->wlSurface != NULL) {
-        wl_surface_destroy(wlProbeSurface->wlSurface);
-    }
-    free(wlProbeSurface);
-}
-
-static VkSurfaceKHR WLVK_GetProbeSurface(void* probeSurface) {
-    WLVKProbeSurface* wlProbeSurface = probeSurface;
-    return wlProbeSurface == NULL ? VK_NULL_HANDLE : wlProbeSurface->vkSurface;
-}
-
-static void* WLVK_CreateProbeSurface(VKEnv* vk) {
-    if (wl_compositor == NULL) return NULL;
-    WLVKProbeSurface* probeSurface = calloc(1, sizeof(WLVKProbeSurface));
-    if (probeSurface == NULL) return NULL;
-
-    probeSurface->wlSurface = wl_compositor_create_surface(wl_compositor);
-    if (probeSurface->wlSurface == NULL) goto fail;
+    if (wl_compositor == NULL) goto run;
+    wlSurface = wl_compositor_create_surface(wl_compositor);
+    if (wlSurface == NULL) goto run;
     VkWaylandSurfaceCreateInfoKHR createInfo = {
         .sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR,
         .display = wl_display,
-        .surface = probeSurface->wlSurface,
+        .surface = wlSurface,
     };
-    VK_IF_ERROR(vkCreateWaylandSurfaceKHR(vk->instance, &createInfo, NULL, &probeSurface->vkSurface)) goto fail;
-    return probeSurface;
+    VK_IF_ERROR(vkCreateWaylandSurfaceKHR(vk->instance, &createInfo, NULL, &vkSurface)) vkSurface = VK_NULL_HANDLE;
 
-    fail:
-    WLVK_DestroyProbeSurface(vk, probeSurface);
-    return NULL;
+    run:
+    callback(vkSurface, userData);
+
+    if (vkSurface != VK_NULL_HANDLE) {
+        vk->vkDestroySurfaceKHR(vk->instance, vkSurface, NULL);
+    }
+    if (wlSurface != NULL) {
+        wl_surface_destroy(wlSurface);
+    }
 }
-
 
 static VKPlatformData platformData = {
     .surfaceExtensionName = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
     .initFunctions = WLVK_InitFunctions,
     .checkPresentationSupport = WLVK_CheckPresentationSupport,
-    .createProbeSurface = WLVK_CreateProbeSurface,
-    .getProbeSurface = WLVK_GetProbeSurface,
-    .destroyProbeSurface = WLVK_DestroyProbeSurface,
+    .runWithProbeSurface = WLVK_RunWithProbeSurface,
 };
 
 /*
