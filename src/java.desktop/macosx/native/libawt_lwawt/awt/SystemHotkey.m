@@ -672,7 +672,7 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
 + (void)subscribeToChanges {
     // Subscribe to changes
     NSUserDefaults *symbolicHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
-    [symbolicHotKeys addObserver:self forKeyPath:@"AppleSymbolicHotKeys" options:NSKeyValueObservingOptionNew
+    [symbolicHotKeys addObserver:(id)self forKeyPath:@"AppleSymbolicHotKeys" options:NSKeyValueObservingOptionNew
                          context:nil];
 
     NSUserDefaults *pbsHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"pbs"];
