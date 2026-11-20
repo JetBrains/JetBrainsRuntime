@@ -162,7 +162,7 @@ void VKRenderer_DrawScanlines(jint count, jint* scanlines);
 void VKRenderer_FillSpans(jint spanCount, jint *spans);
 
 void VKRenderer_MaskFill(jint x, jint y, jint w, jint h,
-                         jint maskoff, jint maskscan, jint masklen, uint8_t *mask);
+                         jint maskoff, jint maskscan, jint masklen, const uint8_t *mask);
 
 void VKRenderer_DrawImage(VKImage* image, VkFormat format,
                           VKPackedSwizzle swizzle, jint filter, VKSamplerWrap wrap,
