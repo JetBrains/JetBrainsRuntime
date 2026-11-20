@@ -186,7 +186,6 @@ struct VKRenderPass {
     uint64_t             clipModCount; // Just a tag to detect when clip was changed.
     VkBool32             pendingFlush    : 1;
     VkBool32             pendingCommands : 1;
-    VkBool32             pendingClear    : 1;
 };
 
 // Rendering context is only accessed from VKRenderQueue_flushBuffer,
@@ -716,13 +715,6 @@ void VKRenderer_Flush(VKRenderer* renderer) {
 }
 
 /**
- * Get Color RGBA components in a format suitable for the current render pass.
- */
-static RGBA VKRenderer_GetRGBA(VKSDOps* surface, Color color) {
-    return VKUtil_GetRGBA(color, surface->renderPass->pipelineInfo.outAlphaType);
-}
-
-/**
  * Record draw command, if there are any pending vertices in the vertex buffer
  */
 static void VKRenderer_FlushDraw(VKSDOps* surface) {
@@ -880,7 +872,6 @@ static VkBool32 VKRenderer_InitRenderPass(VKSDOps* surface) {
             .clipModCount = 0,
             .pendingFlush = VK_FALSE,
             .pendingCommands = VK_FALSE,
-            .pendingClear = VK_FALSE,
     };
 
     // Initialize pipelines. They are cached until surface format changes.
@@ -985,23 +976,6 @@ static void VKRenderer_BeginRenderPass(VKSDOps* surface) {
         VK_UNHANDLED_ERROR();
     }
 
-    if (surface->renderPass->pendingClear) {
-        Color bgColor = VKUtil_DecodeJavaColor(0xFFFFFF, ALPHA_TYPE_STRAIGHT);
-        VkClearAttachment clearAttachment = {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .colorAttachment = 0,
-                .clearValue = VKRenderer_GetRGBA(surface, bgColor).vkClearValue
-        };
-        if (VKSD_IsOpaque(surface)) clearAttachment.clearValue.color.float32[3] = 1.0f;
-        VkClearRect clearRect = {
-                .rect = {{0, 0}, surface->image->extent},
-                .baseArrayLayer = 0,
-                .layerCount = 1
-        };
-        device->vkCmdClearAttachments(commandBuffer, 1, &clearAttachment, 1, &clearRect);
-        surface->renderPass->pendingClear = VK_FALSE;
-    }
-
     // Set viewport.
     VkViewport viewport = {
             .x = 0.0f,
@@ -1025,20 +999,13 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
     assert(surface != NULL);
     // If pendingFlush is TRUE, pendingCommands must be FALSE
     assert(surface->renderPass == NULL || !surface->renderPass->pendingFlush || !surface->renderPass->pendingCommands);
-    // Note that we skip render pass initialization, if we have pending flush,
-    // which means that we missed the last flush, but didn't start a new render pass yet.
-    // So now we are going to catch up the last frame, and don't need reconfiguration.
-    // We also skip initialization if we have pending commands, because that means we are in the middle of frame.
     if (surface->renderPass == NULL || (!surface->renderPass->pendingCommands && !surface->renderPass->pendingFlush)) {
-        if (!VKRenderer_InitRenderPass(surface)) return VK_FALSE;
-        // Check for pendingClear after VKRenderer_InitRenderPass, it may be set after reconfiguration.
-        if (!surface->renderPass->pendingClear) return VK_FALSE;
+        return VK_FALSE;
     }
-    assert(surface->renderPass != NULL);
 
     VKRenderer_FlushDraw(surface);
-    VkBool32 hasCommands = surface->renderPass->pendingCommands, clear = surface->renderPass->pendingClear;
-    if(!hasCommands && !clear) return VK_FALSE;
+    VkBool32 hasCommands = surface->renderPass->pendingCommands;
+    if(!hasCommands) return VK_FALSE;
     VKDevice* device = surface->device;
     VKRenderer* renderer = device->renderer;
     VkCommandBuffer cb = VKRenderer_Record(renderer);
@@ -1064,8 +1031,6 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
     }
     VKRenderer_RecordBarriers(renderer, NULL, NULL, barriers, &barrierBatch);
 
-    // If there is a pending clear, record it into render pass.
-    if (clear) VKRenderer_BeginRenderPass(surface);
     // Begin render pass.
     VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -1088,7 +1053,7 @@ VkBool32 VKRenderer_FlushRenderPass(VKSDOps* surface) {
 
     device->vkCmdEndRenderPass(cb);
     VKRenderer_ResetDrawing(surface);
-    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushRenderPass(%p): hasCommands=%d, clear=%d", surface, hasCommands, clear);
+    J2dRlsTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_FlushRenderPass(%p): hasCommands=%d", surface, hasCommands);
     return VK_TRUE;
 }
 
