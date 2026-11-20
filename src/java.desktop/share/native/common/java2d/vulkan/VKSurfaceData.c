@@ -158,6 +158,7 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
     if (vksdo->requestedExtent.width > 0 && vksdo->requestedExtent.height > 0 && (vksdo->image == NULL ||
             vksdo->requestedExtent.width != vksdo->image->extent.width ||
             vksdo->requestedExtent.height != vksdo->image->extent.height)) {
+        VKSD_ResetImageSurface(vksdo);
         // Currently, we only support *_SRGB and *_UNORM formats,
         // as other types may not be trivial to alias for logicOp rendering.
         VkFormat format = (VkFormat) (vksdo->drawableFormat & ~VKSD_FORMAT_OPAQUE_BIT);
@@ -172,7 +173,6 @@ VkBool32 VKSD_ConfigureImageSurface(VKSDOps* vksdo) {
                 vksdo, vksdo->requestedExtent.width, vksdo->requestedExtent.height, format);
             return VK_FALSE;
         }
-        VKSD_ResetImageSurface(vksdo);
         vksdo->image = image;
         J2dRlsTraceLn(J2D_TRACE_INFO, "VKSD_ConfigureImageSurface(%p): image updated %dx%d", vksdo, image->extent.width, image->extent.height);
     }
