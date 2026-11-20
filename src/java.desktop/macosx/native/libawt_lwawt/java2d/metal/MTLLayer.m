@@ -35,7 +35,7 @@
 #define MAX_DRAWABLE    3
 #define LAST_DRAWABLE   (MAX_DRAWABLE - 1)
 
-static jclass jc_JavaLayer = NULL;
+DECLARE_CLASS_ONLY(jc_JavaLayer);
 #define GET_MTL_LAYER_CLASS() \
     GET_CLASS(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
 
