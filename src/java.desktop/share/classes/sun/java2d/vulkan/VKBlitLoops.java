@@ -46,6 +46,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
 import java.awt.image.BufferedImageOp;
+import java.awt.image.ColorModel;
 import java.awt.image.ComponentColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
@@ -136,7 +137,7 @@ final class VKBlitLoops {
                      int sx2, int sy2,
                      double dx1, double dy1,
                      double dx2, double dy2,
-                     int srctype, boolean texture)
+                     int srctype)
     {
         int ctxflags = 0;
         if (srcData.getTransparency() == Transparency.OPAQUE) {
@@ -152,16 +153,9 @@ final class VKBlitLoops {
             rq.addReference(srcData);
 
             VKSurfaceData vkDst = (VKSurfaceData)dstData;
-            if (texture) {
-                // make sure we have a current context before uploading
-                // the sysmem data to the texture object
-                VKGraphicsConfig gc = vkDst.getGraphicsConfig();
-                VKContext.setScratchSurface(gc);
-            } else {
-                VKContext.validateContext(vkDst, vkDst,
-                        clip, comp, xform, null, null,
-                        ctxflags);
-            }
+            VKContext.validateContext(vkDst, vkDst,
+                    clip, comp, xform, null, null,
+                    ctxflags);
 
             int packedParams = createPackedParams(false, xform != null, hint, srctype);
             enqueueBlit(rq, srcData, dstData,
@@ -361,7 +355,7 @@ final class VKSurfaceToSurfaceBlit extends VKMultiplexedBlit {
 
     private VKStageSurface getStage(VKSurfaceData src) {
         // If accelerated surface data is disabled, create the compatible buffered stage image instead.
-        return stageCache.computeIfAbsent(src.getGraphicsConfig().getOffscreenConfig(),
+        return stageCache.computeIfAbsent(((VKGraphicsConfig) src.getDeviceConfiguration()).getOffscreenConfig(),
                 gc -> new VKStageSurface(!VKEnv.isSurfaceDataAccelerated() ? gc::createCompatibleImage :
                         (w, h) -> gc.createCompatibleVolatileImage(
                                 w, h, gc.isTranslucencyCapable() ? TRANSLUCENT : OPAQUE, AccelSurface.RT_TEXTURE)));
@@ -481,20 +475,17 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     static final VKSwToSurfaceBlit INSTANCE = new VKSwToSurfaceBlit();
 
     // Don't use pre-multiplied alpha to preserve color values whenever possible.
+    // Filtered (bilinear/cubic) blits must use premultiplied images for correctness, so those are an exception.
     private final VKStageSurface stage4Byte = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB));
+    private final VKStageSurface stage4BytePre = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE));
 
     private VKSwToSurfaceBlit() {
         // Any src type: we either blit directly, if we can sample a given source format (see encodeSrcType),
-        // or via a stage Sw surface, taking the closest format to represent source colors (see getStage).
+        // or via a stage Sw surface, taking the closest format to represent source colors.
         // Any Vulkan dst type: we don't care about dst format as long as we can render into it.
         // Any alpha/xor composite is supported.
         registerBlits(SurfaceType.Any, CompositeType.AnyAlpha, VKSurfaceData.VKSurface);
         registerBlits(SurfaceType.Any, CompositeType.Xor,      VKSurfaceData.VKSurface);
-    }
-
-    private VKStageSurface getStage(SurfaceData src, VKSurfaceData dst) {
-        // We assume that 4 byte sampled format is always supported.
-        return stage4Byte;
     }
 
     @Native private static final int SRCTYPE_PRE_MULTIPLIED_ALPHA_BIT = 1 << 15;
@@ -535,13 +526,13 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     }
 
     private static boolean hasCap(VKSurfaceData dst, int cap) {
-        return dst.getGraphicsConfig().getGPU().hasCap(cap);
+        return ((VKGraphicsConfig) dst.getDeviceConfiguration()).getGPU().hasCap(cap);
     }
 
     /**
      * Encode src surface type for native blit.
      * Return -1 if the surface type is not supported.
-     * All stage surfaces from getStage() must always be supported.
+     * All stage surfaces must always be supported.
      * See decodeSrcType() in VKBlitLoops.c
      */
     private int encodeSrcType(SurfaceData src, VKSurfaceData dst) {
@@ -631,9 +622,17 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
             if (w <= 0 || h <= 0) return;
         }
 
+        // Filtering expects premultiplied data to work correctly.
+        // This also matches the VKSurfaceDataProxy cached path and other pipelines' behavior.
+        ColorModel colorModel = src.getColorModel();
+        boolean filtered = hint != AffineTransformOp.TYPE_NEAREST_NEIGHBOR;
+        boolean mustUseStageToForcePremultipliedAlpha = filtered && colorModel.hasAlpha() && !colorModel.isAlphaPremultiplied();
+
         int srcType = encodeSrcType(src, (VKSurfaceData) dst);
-        if (srcType == -1) {
-            try (VKStageSurface stageSurface = getStage(src, (VKSurfaceData) dst)) {
+        if (srcType == -1 || mustUseStageToForcePremultipliedAlpha) {
+            boolean shouldUsePremultipliedStage = filtered || (colorModel.hasAlpha() && colorModel.isAlphaPremultiplied());
+            // We assume that 4 byte sampled format is always supported.
+            try (VKStageSurface stageSurface = shouldUsePremultipliedStage ? stage4BytePre : stage4Byte) {
                 SurfaceData stage = stageSurface.acquire(w, h);
                 // Blit from src to intermediate SW image.
                 Blit op = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
@@ -647,6 +646,6 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
                          comp, clip, xform, hint,
                          sx1, sy1, sx2, sy2,
                          dx1, dy1, dx2, dy2,
-                         srcType, false);
+                         srcType);
     }
 }

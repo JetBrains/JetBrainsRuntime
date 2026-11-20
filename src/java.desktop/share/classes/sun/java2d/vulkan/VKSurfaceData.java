@@ -32,12 +32,12 @@ import sun.awt.image.PixelConverter;
 import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
+import sun.java2d.SurfaceDataProxy;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.loops.MaskFill;
 import sun.java2d.loops.SurfaceType;
-import static sun.java2d.pipe.BufferedOpCodes.CONFIGURE_SURFACE;
 import static sun.java2d.pipe.BufferedOpCodes.DISPOSE_SURFACE;
 import sun.java2d.pipe.BufferedContext;
 import sun.java2d.pipe.ParallelogramPipe;
@@ -85,7 +85,9 @@ public abstract class VKSurfaceData extends SurfaceData
     }
 
     private final VKFormat format;
-    protected VKGraphicsConfig gc;
+    // Kept private to avoid subclasses setting gc without updating the blit cache.
+    // Use revalidate(gc) to set.
+    private VKGraphicsConfig gc;
     protected double scale;
     protected int width;
     protected int height;
@@ -249,7 +251,7 @@ public abstract class VKSurfaceData extends SurfaceData
             }
         } else {
             if (sg2d.paintState <= SunGraphics2D.PAINT_ALPHACOLOR) {
-                if (getGraphicsConfig().isCapPresent(CAPS_PS30) &&
+                if (((VKGraphicsConfig) getDeviceConfiguration()).isCapPresent(CAPS_PS30) &&
                         (sg2d.imageComp == CompositeType.SrcOverNoEa ||
                                 sg2d.imageComp == CompositeType.SrcOver))
                 {
@@ -326,33 +328,33 @@ public abstract class VKSurfaceData extends SurfaceData
 
     }
 
-    // TODO this is only used for caps checks, refactor and remove this method
-    public VKGraphicsConfig getGraphicsConfig() {
-        return (VKGraphicsConfig) getDeviceConfiguration();
+    @Override
+    public SurfaceDataProxy makeProxyFor(SurfaceData srcData) {
+        return VKSurfaceDataProxy.createProxy(srcData, (VKGraphicsConfig) getDeviceConfiguration());
     }
 
     protected int revalidate(VKGraphicsConfig gc) {
         if (gc.getFormat() != format) return VolatileImage.IMAGE_INCOMPATIBLE;
         else if (this.gc == gc) return VolatileImage.IMAGE_OK;
         // TODO proxy cache needs to be cleared for this surface data?
-        setBlitProxyCache(gc.getGPU().getSurfaceDataProxyCache());
+        setBlitProxyCache(gc.getSurfaceDataProxyCache());
         this.gc = gc;
         return VolatileImage.IMAGE_RESTORED;
     }
 
-    protected void configure() {
+    private native boolean configureNow(long pData, long pDevice, int width, int height);
+
+    /**
+     * For any surface, this can return false in case of an allocation failure.
+     * For a window surface, this can also return false when reallocation is deferred until the end of the frame.
+     * @return whether image is immediately ready at the requested dimensions.
+     */
+    protected boolean configure() {
         VKRenderQueue rq = VKRenderQueue.getInstance();
         rq.lock();
         try {
-            RenderBuffer buf = rq.getBuffer();
-            rq.ensureCapacityAndAlignment(24, 4);
-            buf.putInt(CONFIGURE_SURFACE);
-            buf.putLong(getNativeOps());
-            buf.putLong(gc.getGPU().getNativeHandle());
-            buf.putInt(width);
-            buf.putInt(height);
-
             rq.flushNow();
+            return configureNow(getNativeOps(), gc.getGPU().getNativeHandle(), width, height);
         } finally {
             rq.unlock();
         }
