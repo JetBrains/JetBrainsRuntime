@@ -28,8 +28,8 @@
 #import "JNIUtilities.h"
 #import "sun_lwawt_macosx_CAccessibility.h"
 
-static jclass sjc_CAccessibility = NULL;
-static jmethodID sjm_getScrollBar = NULL;
+DECLARE_CLASS_ONLY(sjc_CAccessibility);
+DECLARE_METHOD_ONLY(sjm_getScrollBar);
 
 /*
  * Implementation of the accessibility peer for the ScrollArea role
