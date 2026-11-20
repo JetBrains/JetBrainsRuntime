@@ -66,6 +66,9 @@ public:
   static void assert_marked(void* interior_loc, oop obj, const char* file, int line);
   static void assert_marked_weak(void* interior_loc, oop obj, const char* file, int line);
   static void assert_marked_strong(void* interior_loc, oop obj, const char* file, int line);
+
+  // Assert that marking is complete for the generation where this obj resides
+  static void assert_mark_complete(HeapWord* obj, const char* file, int line);
   static void assert_bitmap_clear_above_top(ShenandoahHeapRegion* region);
   static void assert_in_cset(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_in_cset(void* interior_loc, oop obj, const char* file, int line);
@@ -78,7 +81,6 @@ public:
   static void assert_heaplocked_or_safepoint(const char* file, int line);
   static void assert_control_or_vm_thread_at_safepoint(bool at_safepoint, const char* file, int line);
   static void assert_generational(const char* file, int line);
-  static void assert_generations_reconciled(const char* file, int line);
 
 #ifdef ASSERT
 #define shenandoah_assert_in_heap_bounds(interior_loc, obj) \
@@ -129,6 +131,8 @@ public:
   if (!(exception)) ShenandoahAsserts::assert_marked_strong(interior_loc, obj, __FILE__, __LINE__)
 #define shenandoah_assert_marked_strong(interior_loc, obj) \
                     ShenandoahAsserts::assert_marked_strong(interior_loc, obj, __FILE__, __LINE__)
+#define shenandoah_assert_mark_complete(obj) \
+                    ShenandoahAsserts::assert_mark_complete(obj, __FILE__, __LINE__)
 
 #define shenandoah_assert_clear_above_top(region) \
                     ShenandoahAsserts::assert_bitmap_clear_above_top(region)
@@ -184,10 +188,6 @@ public:
 #define shenandoah_assert_generational() \
                     ShenandoahAsserts::assert_generational(__FILE__, __LINE__)
 
-// Some limited sanity checking of the _gc_generation and _active_generation fields of ShenandoahHeap
-#define shenandoah_assert_generations_reconciled()                                                             \
-                    ShenandoahAsserts::assert_generations_reconciled(__FILE__, __LINE__)
-
 #else
 #define shenandoah_assert_in_heap_bounds(interior_loc, obj)
 #define shenandoah_assert_in_heap_bounds_or_null(interior_loc, obj)
@@ -217,6 +217,8 @@ public:
 #define shenandoah_assert_marked_strong_except(interior_loc, obj, exception)
 #define shenandoah_assert_marked_strong(interior_loc, obj)
 
+#define shenandoah_assert_mark_complete(obj)
+
 #define shenandoah_assert_clear_above_top(region)
 #define shenandoah_assert_in_cset_if(interior_loc, obj, condition)
 #define shenandoah_assert_in_cset_except(interior_loc, obj, exception)
@@ -242,7 +244,6 @@ public:
 #define shenandoah_assert_control_or_vm_thread()
 #define shenandoah_assert_control_or_vm_thread_at_safepoint()
 #define shenandoah_assert_generational()
-#define shenandoah_assert_generations_reconciled()
 
 #endif
 
