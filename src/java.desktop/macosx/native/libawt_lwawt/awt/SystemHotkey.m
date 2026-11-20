@@ -676,7 +676,7 @@ static void readSystemHotkeysImpl(Visitor visitorBlock) {
                          context:nil];
 
     NSUserDefaults *pbsHotKeys = [[NSUserDefaults alloc] initWithSuiteName:@"pbs"];
-    [pbsHotKeys addObserver:self forKeyPath:@"NSServicesStatus" options:NSKeyValueObservingOptionNew context:nil];
+    [pbsHotKeys addObserver:(id)self forKeyPath:@"NSServicesStatus" options:NSKeyValueObservingOptionNew context:nil];
 }
 
 + (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context {
