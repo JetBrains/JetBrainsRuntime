@@ -605,8 +605,8 @@ Java_sun_java2d_metal_MTLLayer_validate
 
     if (surfaceData != NULL) {
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
-        layer.buffer = &bmtlsdo->pTexture;
-        layer.outBuffer = &bmtlsdo->pOutTexture;
+        layer.buffer = (id<MTLTexture>*)&bmtlsdo->pTexture;
+        layer.outBuffer = (id<MTLTexture>*)&bmtlsdo->pOutTexture;
 
         // Backup layer's context (device) and displayId to unregister if needed:
         MTLContext* oldMtlc    = layer.ctx;
