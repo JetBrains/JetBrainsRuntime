@@ -675,7 +675,7 @@ JNIEXPORT void lwc_plog(JNIEnv* env, const char *formatMsg, ...) {
         return;
     }
     static jobject loggerObject = NULL;
-    static jmethodID midWarn = NULL;
+    DECLARE_METHOD_ONLY(midWarn);
 
     if (loggerObject == NULL) {
         DECLARE_CLASS(lwctClass, "sun/lwawt/macosx/LWCToolkit");
