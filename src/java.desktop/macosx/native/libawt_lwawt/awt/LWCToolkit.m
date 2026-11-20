@@ -1092,7 +1092,7 @@ JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutListNative(JNIEnv *env
             int numSources = CFArrayGetCount(sources);
 
             for (int i = 0; i < numSources; ++i) {
-                TISInputSourceRef layout = CFArrayGetValueAtIndex(sources, i);
+                TISInputSourceRef layout = (TISInputSourceRef)CFArrayGetValueAtIndex(sources, i);
                 NSString* sourceId = TISGetInputSourceProperty(layout, kTISPropertyInputSourceID);
                 [layoutIds addObject:sourceId];
             }
