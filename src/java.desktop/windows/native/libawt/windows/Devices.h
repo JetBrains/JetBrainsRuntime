@@ -77,6 +77,4 @@ static CriticalSection          arrayLock;
 
 BOOL WINAPI MonitorBounds (HMONITOR, RECT*);
 
-int WINAPI CountMonitors (void);
-
 #endif // _DEVICES_H_
