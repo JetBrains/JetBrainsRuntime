@@ -97,7 +97,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -159,21 +158,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     // NOTE: xdg_toplevel_icon_v1 is pretty much only supported on KDE, and KWin always sends 96px as the icon size,
     // regardless of the display resolution, scale, or anything else.
     // TODO: this is currently unused
-    private static final List<Integer> preferredIconSizes = new ArrayList<>();
+    private static final java.util.List<Integer> preferredIconSizes = new ArrayList<>();
 
     private static native void initLibwaylandLogging();
     private static native void initIDs(long displayPtr);
-    private static native void waitForSyncDuringInit();
-
-    private static int numCallbacksBeforeEndOfInit = 0;
-
-    /**
-     * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
-     */
-    private static final Map<Long, WLWindowPeer> wlSurfaceToPeerMap = new HashMap<>();
-
-    private static WLInputState inputState = WLInputState.initialState();
-    private static boolean areExtraMouseButtonsEnabled = true;
 
     static {
         // This field must be initialized BEFORE initIDs is called because it'll be read there
@@ -187,10 +175,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             long display = WLDisplay.getInstance().getDisplayPtr();
             VKEnv.init(() -> VKEnv.initPlatformWayland(display));
             initIDs(display);
-            WLOutput.initialize();
-            while (numCallbacksBeforeEndOfInit > 0) {
-                waitForSyncDuringInit();
-            }
         }
         String desktop = System.getenv("XDG_CURRENT_DESKTOP");
         isKDE = desktop != null && desktop.toLowerCase().contains("kde");
@@ -226,7 +210,10 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
     private void registerShutdownHook() {
         Runnable r = () -> {
-            List<WLWindowPeer> livePeers = getLiveWindowPeers();
+            ArrayList<WLWindowPeer> livePeers;
+            synchronized (wlSurfaceToPeerMap) {
+                livePeers = new ArrayList<>(wlSurfaceToPeerMap.values());
+            }
             livePeers.forEach(p -> {
                 Component target = p.getTarget();
                 if (target.isDisplayable()) {
@@ -412,6 +399,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return AWT_MULTICLICK_MOUSE_MOVE_THRESHOLD_JAVA_UNITS;
     }
 
+    private static WLInputState inputState = WLInputState.initialState();
     private static WLKeyboard keyboard;
 
     private static void dispatchRelativePointerEvent(double dx, double dy) {
@@ -492,7 +480,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             // If by that time we get an enter event, assume a crossing, and restore modifiers from pendingCrossingModifiers
             // (this happens in WLInputState.updatedFromPointerEvent)
             // Otherwise, reset pendingCrossingModifiers
-            syncCallback(() -> {
+            syncCallbackOnEDT(() -> {
                 setInputState(inputState.resetPendingCrossingState());
             });
         }
@@ -658,6 +646,11 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         setInputState(newInputState);
     }
 
+    /**
+     * Maps 'struct wl_surface*' to WLComponentPeer that owns the Wayland surface.
+     */
+    private static final Map<Long, WLWindowPeer> wlSurfaceToPeerMap = new HashMap<>();
+
     static void registerWLSurface(long wlSurfacePtr, WLWindowPeer peer) {
         if (log.isLoggable(PlatformLogger.Level.FINE)) {
             log.fine("registerWLSurface: 0x" + Long.toHexString(wlSurfacePtr) + "->" + peer);
@@ -695,12 +688,6 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
             }
 
             return wlSurfaceToPeerMap.values().iterator().next();
-        }
-    }
-
-    static List<WLWindowPeer> getLiveWindowPeers() {
-        synchronized (wlSurfaceToPeerMap) {
-            return new ArrayList<>(wlSurfaceToPeerMap.values());
         }
     }
 
@@ -1209,6 +1196,7 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
         return null;
     }
 
+    private static boolean areExtraMouseButtonsEnabled = true;
     @Override
     public boolean areExtraMouseButtonsEnabled() throws HeadlessException {
         return areExtraMouseButtonsEnabled;
@@ -1275,24 +1263,23 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
     private native void dispatchNonDefaultQueuesImpl();
     private static native void syncCallbackImpl(Runnable callback);
 
-    public static void syncCallback(Runnable callback) {
-        if (isInitialized()) {
-            syncCallbackImpl(callback);
-        } else {
-            ++numCallbacksBeforeEndOfInit;
-            syncCallbackImpl(() -> {
-                try {
-                    callback.run();
-                } finally {
-                    --numCallbacksBeforeEndOfInit;
-                }
-            });
-        }
-
+    public static void syncCallbackOnEDT(Runnable callback) {
+        syncCallbackImpl(callback);
     }
 
     public static void targetDisposedPeer(Object target, Object peer) {
         SunToolkit.targetDisposedPeer(target, peer);
+        if (target instanceof Window window) {
+            // TODO: focusedWindow and activeWindow of class java.awt.KeyboardFocusManager
+            // may still retain references to 'window' because disposed peer may not
+            // get the keyboard_leave event and therefore will not send the WINDOW_LOST_FOCUS
+            // event that would've cleared those references.
+            var gc = window.getGraphicsConfiguration();
+            if (gc != null && peer instanceof WLWindowPeer windowPeer) {
+                WLGraphicsDevice gd = (WLGraphicsDevice) gc.getDevice();
+                gd.removeWindow(windowPeer);
+            }
+        }
     }
 
     public static void postEvent(AWTEvent event) {
