@@ -1776,7 +1776,7 @@ static const CGFloat DefaultHorizontalTitleBarButtonOffset = 20.0;
     AWTWindowDragView* windowDragView = nil;
     for (NSView* view in titlebar.subviews) {
         if ([view isMemberOfClass:[AWTWindowDragView class]]) {
-            windowDragView = view;
+            windowDragView = (AWTWindowDragView*)view;
         }
     }
 
