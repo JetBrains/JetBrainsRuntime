@@ -109,13 +109,10 @@ wl_output_on_geometry(
 {
     JNIEnv *env = getEnv();
     struct WLOutput *output = data;
-    jstring makeString = wlUtf8ToJavaString(env, make);
+    jstring makeString = make ? JNU_NewStringPlatform(env, make) : NULL;
     if (wlListenerCheckException(env)) return;
-    jstring modelString = wlUtf8ToJavaString(env, model);
-    if (wlListenerCheckException(env)) {
-        (*env)->DeleteLocalRef(env, makeString);
-        return;
-    }
+    jstring modelString = model ? JNU_NewStringPlatform(env, model) : NULL;
+    if (wlListenerCheckException(env)) return;
     (*env)->CallVoidMethod(env, output->javaObject, handleGeometryMID,
         (jint)x, (jint)y, (jint)physical_width, (jint)physical_height, (jint)subpixel, makeString, modelString, (jint)transform);
     wlListenerCheckException(env);
@@ -159,7 +156,7 @@ wl_output_on_name(void *data, struct wl_output *wl_output, const char *name)
 {
     JNIEnv *env = getEnv();
     struct WLOutput *output = data;
-    jstring nameString = wlUtf8ToJavaString(env, name);
+    jstring nameString = name ? JNU_NewStringPlatform(env, name) : NULL;
     if (wlListenerCheckException(env)) return;
     (*env)->CallVoidMethod(env, output->javaObject, handleNameMID, nameString);
     wlListenerCheckException(env);
@@ -173,7 +170,7 @@ wl_output_on_description(void *data, struct wl_output *wl_output, const char *de
 {
     JNIEnv *env = getEnv();
     struct WLOutput *output = data;
-    jstring descriptionString = wlUtf8ToJavaString(env, description);
+    jstring descriptionString = description ? JNU_NewStringPlatform(env, description) : NULL;
     if (wlListenerCheckException(env)) return;
     (*env)->CallVoidMethod(env, output->javaObject, handleDescriptionMID, descriptionString);
     wlListenerCheckException(env);
@@ -229,7 +226,7 @@ xdg_output_on_name(void *data, struct zxdg_output_v1 *zxdg_output_v1, const char
 {
     JNIEnv *env = getEnv();
     struct WLOutput *output = data;
-    jstring nameString = wlUtf8ToJavaString(env, name);
+    jstring nameString = name ? JNU_NewStringPlatform(env, name) : NULL;
     if (wlListenerCheckException(env)) return;
     (*env)->CallVoidMethod(env, output->javaObject, handleXdgNameMID, nameString);
     wlListenerCheckException(env);
@@ -241,7 +238,7 @@ xdg_output_on_description(void *data, struct zxdg_output_v1 *zxdg_output_v1, con
 {
     JNIEnv *env = getEnv();
     struct WLOutput *output = data;
-    jstring descriptionString = wlUtf8ToJavaString(env, description);
+    jstring descriptionString = description ? JNU_NewStringPlatform(env, description) : NULL;
     if (wlListenerCheckException(env)) return;
     (*env)->CallVoidMethod(env, output->javaObject, handleXdgDescriptionMID, descriptionString);
     wlListenerCheckException(env);
