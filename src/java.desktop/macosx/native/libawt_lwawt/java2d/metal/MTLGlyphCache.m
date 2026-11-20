@@ -115,6 +115,7 @@
 
     if (_cacheInfo->texture == nil) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGlyphCache.glyphCacheInitWidth: could not obtain a %dx%d texture", width, height);
+        [_cacheInfo->texHandle releaseTexture];
         [_cacheInfo->texHandle release];
         free(_cacheInfo);
         _cacheInfo = NULL;
@@ -234,22 +235,6 @@
 }
 
 /**
- * Encodes the pending glyph quads that reference this cache. Unlike free,
- * the cells and the texture stay valid, so a destination change does not
- * cost the cached glyphs.
- */
-- (void) flush
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLGlyphCache.flush");
-    if (_cacheInfo == NULL) {
-        return;
-    }
-    if (_cacheInfo->Flush != NULL) {
-        _cacheInfo->Flush(_cacheInfo->mtlc);
-    }
-}
-
-/**
  * Invalidates and frees all cells and the cache itself. The "cache" pointer
  * becomes invalid after this function returns.
  */
@@ -262,10 +247,9 @@
 
     // flush any pending vertices that may be depending on the current
     // glyph cache
-    if (_ctx != nil) {
-        [self flush];
+    if ((_ctx != nil) && (_cacheInfo->Flush != NULL)) {
+        _cacheInfo->Flush(_cacheInfo->mtlc);
     }
-
     if (_cacheInfo->texHandle != nil) {
         if (TRACE_TEXTURE) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLGlyphCache.free: release texHandle=%p",
                                          _cacheInfo->texHandle);

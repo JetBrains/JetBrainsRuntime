@@ -651,10 +651,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     jlong pDst = NEXT_LONG(b);
 
                     if (mtlc != NULL) {
-                        // the glyph caches belong to the context, not to the
-                        // destination: encode their pending quads, keep the cells
-                        [mtlc.glyphCacheAA flush];
-                        [mtlc.glyphCacheLCD flush];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                         } else {
@@ -673,8 +669,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                             (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
 
                     if (mtlc != NULL) {
-                        [mtlc.glyphCacheAA flush];
-                        [mtlc.glyphCacheLCD flush];
                         if (isDisplaySyncEnabled() && IS_OUTPUT_DEST(dstOps)) {
                             [mtlc commitCommandBuffer:YES display:YES];
                         } else {
@@ -696,8 +690,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA flush];
-                            [mtlc.glyphCacheLCD flush];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }
@@ -713,8 +705,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                     if (mtlsdo != NULL) {
                         if (mtlc != NULL) {
-                            [mtlc.glyphCacheAA flush];
-                            [mtlc.glyphCacheLCD flush];
                             [mtlc commitCommandBuffer:YES display:NO];
                             mtlc = NULL;
                         }

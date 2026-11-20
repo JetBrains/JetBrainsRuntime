@@ -94,7 +94,6 @@ MTLGlyphCache_RemoveCellInfo(struct GlyphInfo *glyph, MTLCacheCellInfo *cellInfo
                        func:(MTLFlushFunc*)func;
 - (MTLCacheCellInfo*) addGlyph:(GlyphInfo*)glyph;
 - (BOOL) isCacheFull:(GlyphInfo*)glyph;
-- (void) flush;
 - (void) free;
 
 @property (readwrite) MTLGlyphCacheInfo *cacheInfo;
