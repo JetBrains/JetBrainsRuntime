@@ -569,18 +569,6 @@ JNIEXPORT void JNICALL Java_sun_java2d_vulkan_VKRenderQueue_flushBuffer
             }
             break;
 
-        case sun_java2d_pipe_BufferedOpCodes_CONFIGURE_SURFACE:
-            {
-                VKSDOps* surface = NEXT_VK_SURFACE(b);
-                VKDevice* device = jlong_to_ptr(NEXT_LONG(b));
-                jint width = NEXT_INT(b);
-                jint height = NEXT_INT(b);
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE,
-                              "VKRenderQueue_flushBuffer: CONFIGURE_SURFACE (%p) %dx%d", surface, width, height);
-                VKRenderer_ConfigureSurface(surface, (VkExtent2D) {width, height}, device);
-            }
-            break;
-
         // multibuffering ops
         case sun_java2d_pipe_BufferedOpCodes_SWAP_BUFFERS:
             {
