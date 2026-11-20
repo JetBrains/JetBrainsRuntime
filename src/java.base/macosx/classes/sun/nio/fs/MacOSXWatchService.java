@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, JetBrains s.r.o.. All rights reserved.
+ * Copyright (c) 2021, 2026, JetBrains s.r.o.. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -345,10 +345,17 @@ class MacOSXWatchService extends AbstractWatchService {
                                  final EnumSet<WatchModifier> modifierSet) throws IOException {
             assert(!isValid());
 
+            // A key registered again keeps the snapshot it had, so that a change made before its new
+            // FSEventStream was created is found by comparing against that snapshot below.
+            final boolean watchedFileTree = this.watchFileTree;
             this.eventsToWatch = eventsToWatch;
             this.watchFileTree = modifierSet.contains(WatchModifier.FILE_TREE);
+            final boolean reRegistered = directoryTreeSnapshot.isBuilt() && watchedFileTree == watchFileTree;
 
-            directoryTreeSnapshot.build();
+            if (!reRegistered) {
+                directoryTreeSnapshot.reset();
+                directoryTreeSnapshot.build();
+            }
 
             synchronized (eventStreamRefLock) {
                 final int kFSEventStreamCreateFlagWatchRoot  = 0x00000004;
@@ -362,11 +369,15 @@ class MacOSXWatchService extends AbstractWatchService {
 
                 MacOSXWatchService.eventStreamSchedule(eventStreamRef, runLoopThread.getRunLoopRef());
             }
+
+            if (reRegistered) {
+                // The new stream reports changes from now on; report those made since the last scan.
+                directoryTreeSnapshot.update(relativeRootPath, watchFileTree);
+            }
         }
 
         synchronized void disable() {
             invalidate();
-            directoryTreeSnapshot.reset();
         }
 
         synchronized void handleEvents(final String[] paths, long eventFlagsPtr) {
@@ -486,6 +497,10 @@ class MacOSXWatchService extends AbstractWatchService {
                     snapshot.forEachDirectory(newDirectoriesFound::offer);
 
                 return snapshot;
+            }
+
+            boolean isBuilt() {
+                return !snapshots.isEmpty();
             }
 
             void reset() {
