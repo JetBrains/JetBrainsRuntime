@@ -563,6 +563,12 @@ public abstract class AWTEvent extends EventObject {
             boolean b = accessor.canAccessSystemClipboard((InputEvent) this);
             accessor.setCanAccessSystemClipboard((InputEvent) that, b);
         }
+        if (this instanceof MouseEvent && that instanceof MouseEvent) {
+            AWTAccessor.MouseEventAccessor meAccessor
+                    = AWTAccessor.getMouseEventAccessor();
+            meAccessor.setCausedByTouchEvent((MouseEvent) that,
+                    meAccessor.isCausedByTouchEvent((MouseEvent) this));
+        }
         that.isSystemGenerated = this.isSystemGenerated;
     }
 
