@@ -1833,11 +1833,12 @@ bool Arguments::check_gc_consistency() {
   if (UseZGC)                            i++;
   if (UseShenandoahGC)                   i++;
   if (AllowEnhancedClassRedefinition) {
-    // Must use serial GC. This limitation applies because the instance size changing GC modifications
-    // are only built into the mark and compact algorithm.
-    if (!UseSerialGC && !UseG1GC && i >= 1) {
+    // Must use Serial, G1 or ZGC. The instance size changing GC modifications are only built into
+    // the Serial and G1 mark and compact algorithm. ZGC supports only redefinitions that keep
+    // the instance layout unchanged
+    if (!UseSerialGC && !UseG1GC && !UseZGC && i >= 1) {
       jio_fprintf(defaultStream::error_stream(),
-                  "Must use the Serial or G1 GC with enhanced class redefinition.\n");
+                  "Must use the Serial, G1 or Z GC with enhanced class redefinition.\n");
       return false;
     }
   }

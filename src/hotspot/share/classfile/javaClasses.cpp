@@ -3978,7 +3978,9 @@ bool java_lang_ref_Reference::is_referent_field(oop obj, ptrdiff_t offset) {
 
   InstanceKlass* ik = InstanceKlass::cast(obj->klass());
   bool is_reference = ik->reference_type() != REF_NONE;
-  assert(!is_reference || ik->is_subclass_of(vmClasses::Reference_klass()), "sanity");
+  // (DCEVM) After redefinition of java.lang.ref.Reference, vmClasses::Reference_klass() could be the new version,
+  assert(!is_reference || ik->is_subclass_of(vmClasses::Reference_klass()) ||
+         (AllowEnhancedClassRedefinition && ik->newest_version()->is_subclass_of(vmClasses::Reference_klass())), "sanity");
   return is_reference;
 }
 

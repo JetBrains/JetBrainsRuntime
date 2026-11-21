@@ -93,6 +93,9 @@ private:
 
   SymbolSet*                  _removed_interfaces;
 
+  // (DCEVM) ZGC: true if the ZGC driver lock is held from doit_prologue() to doit_epilogue()
+  bool                        _zgc_driver_locked;
+
   // Performance measurement support. These timers do not cover all
   // the work done for JVM/TI RedefineClasses() but they do cover
   // the heavy lifting.
@@ -163,6 +166,11 @@ private:
   static void check_class(InstanceKlass* k_oop);
 
   void dump_methods();
+
+  // (DCEVM) ZGC support: only redefinitions with unchanged instance layout are supported.
+  jvmtiError check_zgc_supported_redefinition();
+  void lock_zgc_driver();
+  void unlock_zgc_driver();
 
   // Unevolving classes may point to methods of the_class directly
   // from their constant pool caches, itables, and/or vtables. We

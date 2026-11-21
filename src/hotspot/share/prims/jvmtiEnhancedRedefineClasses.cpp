@@ -70,6 +70,13 @@
 #include "gc/shared/oopStorageSet.hpp"
 #include "gc/shared/oopStorageSet.inline.hpp"
 #include "gc/shared/weakProcessor.hpp"
+#if INCLUDE_ZGC
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/barrierSetNMethod.hpp"
+#include "gc/z/zDriver.hpp"
+#include "gc/z/zNMethod.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
+#endif
 #if defined(COMPILER1) || defined(COMPILER2)
 #include "ci/ciObjectFactory.hpp"
 #endif
@@ -96,6 +103,7 @@ VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const j
   _new_classes = nullptr;
   _affected_klasses = nullptr;
   _removed_interfaces = nullptr;
+  _zgc_driver_locked = false;
   _class_count = class_count;
   _class_defs = class_defs;
   _class_load_kind = class_load_kind;
@@ -167,6 +175,16 @@ bool VM_EnhancedRedefineClasses::doit_prologue() {
   // call chain it is required that the current thread is a Java thread.
   _res = load_new_class_versions(JavaThread::current());
 
+  if (_res == JVMTI_ERROR_NONE) {
+    _res = check_zgc_supported_redefinition();
+  }
+
+  if (_res == JVMTI_ERROR_NONE) {
+    // ZGC: no young GC cycle may run while the heap is updated. Must be acquired before
+    // Heap_lock in VM_GC_Operation::doit_prologue() to keep the ZGC driver lock ordering.
+    lock_zgc_driver();
+  }
+
   // prepare GC, lock heap
   _full_gc_count_before = Universe::heap()->total_full_collections(); // force gc lock in next VM_GC_Operation::doit_prologue()
   if (_res == JVMTI_ERROR_NONE && !VM_GC_Operation::doit_prologue()) {
@@ -174,6 +192,7 @@ bool VM_EnhancedRedefineClasses::doit_prologue() {
   }
 
   if (_res != JVMTI_ERROR_NONE) {
+    unlock_zgc_driver();
     rollback();
     // TODO free any successfully created classes
     /*for (int i = 0; i < _class_count; i++) {
@@ -195,6 +214,93 @@ bool VM_EnhancedRedefineClasses::doit_prologue() {
 
   _timer_vm_op_prologue.stop();
   return true;
+}
+
+// Collects the instance field layout (including inherited and injected fields, sorted by offset).
+class InstanceLayoutCollector : public FieldClosure {
+public:
+  struct Entry {
+    int     offset;
+    Symbol* name;
+    Symbol* signature;
+  };
+private:
+  GrowableArray<Entry> _fields;
+public:
+  void do_field(fieldDescriptor* fd) {
+    Entry e = { fd->offset(), fd->name(), fd->signature() };
+    _fields.append(e);
+  }
+
+  bool equals(const InstanceLayoutCollector& other) const {
+    if (_fields.length() != other._fields.length()) {
+      return false;
+    }
+    for (int i = 0; i < _fields.length(); i++) {
+      const Entry& a = _fields.at(i);
+      const Entry& b = other._fields.at(i);
+      if (a.offset != b.offset || a.name != b.name || a.signature != b.signature) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+static bool has_same_instance_layout(InstanceKlass* old_ik, InstanceKlass* new_ik) {
+  if (old_ik->size_helper() != new_ik->size_helper()) {
+    return false;
+  }
+  ResourceMark rm;
+  InstanceLayoutCollector old_layout;
+  InstanceLayoutCollector new_layout;
+  old_ik->do_nonstatic_fields_dcevm(&old_layout);
+  new_ik->do_nonstatic_fields_dcevm(&new_layout);
+  return old_layout.equals(new_layout);
+}
+
+// (DCEVM) ZGC has no stop-the-world compacting collection, so instances can't be resized or
+// re-laid out. Only redefinitions that keep the instance layout (field offsets, names and
+// signatures, and so the oop maps) of all affected classes are supported. Static fields live
+// in the new mirror and may change freely.
+// Note: Klass::ModifyInstances is not used here, it is set also when only static fields change.
+jvmtiError VM_EnhancedRedefineClasses::check_zgc_supported_redefinition() {
+  if (UseZGC) {
+    for (int i = 0; i < _new_classes->length(); i++) {
+      InstanceKlass* new_ik = _new_classes->at(i);
+      InstanceKlass* old_ik = InstanceKlass::cast(new_ik->old_version());
+      if (!has_same_instance_layout(old_ik, new_ik)) {
+        log_info(redefine, class, load)("Enhanced redefinition with ZGC does not support changes of the instance layout: %s",
+                                        new_ik->external_name());
+        return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_SCHEMA_CHANGED;
+      }
+    }
+  }
+  return JVMTI_ERROR_NONE;
+}
+
+// (DCEVM) Block ZGC cycles from doit_prologue() until doit_epilogue(). The driver lock is held for the
+// whole young collection, so the heap walk in doit() never runs in the middle of a young cycle.
+// Note: the old generation runs most of its phases (mark, relocate) without this lock; the heap walk
+// therefore must use proper ZGC barriers.
+void VM_EnhancedRedefineClasses::lock_zgc_driver() {
+#if INCLUDE_ZGC
+  if (UseZGC && !_zgc_driver_locked) {
+    // Wait in blocked state, a running GC cycle may need a safepoint to finish.
+    ThreadBlockInVM tbivm(JavaThread::current());
+    ZDriver::lock();
+    _zgc_driver_locked = true;
+  }
+#endif
+}
+
+void VM_EnhancedRedefineClasses::unlock_zgc_driver() {
+#if INCLUDE_ZGC
+  if (_zgc_driver_locked) {
+    ZDriver::unlock();
+    _zgc_driver_locked = false;
+  }
+#endif
 }
 
 // Closer for static fields - copy value from old class to the new class.
@@ -258,9 +364,14 @@ public:
       if (compatible) {
         log_trace(redefine, class, obsolete, metadata)("Copying static field value for field %s old_offset=%d new_offset=%d",
                   fd->name()->as_C_string(), result.offset(), fd->offset());
-        memcpy(cur_oop->field_addr<HeapWord>(fd->offset()),
-               old_oop->field_addr<HeapWord>(result.offset()),
-               type2aelembytes(fd->field_type()));
+        if (is_reference_type(fd->field_type())) {
+          // Copy references with GC barriers
+          cur_oop->obj_field_put(fd->offset(), old_oop->obj_field(result.offset()));
+        } else {
+          memcpy(cur_oop->field_addr<HeapWord>(fd->offset()),
+                 old_oop->field_addr<HeapWord>(result.offset()),
+                 type2aelembytes(fd->field_type()));
+        }
 
         // Static fields may have references to java.lang.Class
         if (fd->field_type() == T_OBJECT) {
@@ -341,23 +452,59 @@ void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
   }
 }
 
-// TODO comment
+// Access policies for ChangePointersOopClosure. All have the same interface,
+// base is the holder object of the visited field (null for roots, which ignore it).
+
+// Heap fields: loads and stores with GC barriers, relative to the holder object (base).
+// oop_iterate() also visits Reference.referent, ON_UNKNOWN_OOP_REF resolves the reference strength,
+// so that a dead weak/phantom referent (ZGC old generation reference processing) is loaded as null
+// and stores into referents don't keep the value alive.
 struct StoreBarrier {
-  // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
-  template <class T> static void oop_store_not_null(T* p, oop v) { HeapAccess<IS_NOT_NULL>::oop_store(p, v); }
-  template <class T> static void oop_store(T* p) { HeapAccess<>::oop_store(p, oop(nullptr)); }
+  template <class T> static oop load(oop base, T* p) {
+    return HeapAccess<AS_NO_KEEPALIVE | ON_UNKNOWN_OOP_REF>::oop_load_at(base, (ptrdiff_t)base->field_offset(p));
+  }
+  template <class T> static void store_not_null(oop base, T* p, oop v) {
+    HeapAccess<IS_NOT_NULL | ON_UNKNOWN_OOP_REF>::oop_store_at(base, (ptrdiff_t)base->field_offset(p), v);
+  }
+  template <class T> static void store_null(oop base, T* p) {
+    HeapAccess<ON_UNKNOWN_OOP_REF>::oop_store_at(base, (ptrdiff_t)base->field_offset(p), oop(nullptr));
+  }
 };
 
-
-// TODO comment
+// Roots without GC barriers. Also used for ZGC uncolored roots (thread stacks, nmethods).
 struct StoreNoBarrier {
-  template <class T> static void oop_store_not_null(T* p, oop v) { RawAccess<IS_NOT_NULL>::oop_store(p, v); }
-  template <class T> static void oop_store(T* p) { RawAccess<>::oop_store(p, oop(nullptr)); }
+  template <class T> static oop load(oop, T* p)                   { return RawAccess<>::oop_load(p); }
+  template <class T> static void store_not_null(oop, T* p, oop v) { RawAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void store_null(oop, T* p)            { RawAccess<>::oop_store(p, oop(nullptr)); }
 };
 
-// Closure to scan all heap objects and update method handles
+#if INCLUDE_ZGC
+// ZGC colored strong roots (strong OopStorages).
+struct ZColoredRootAccess {
+  static oop load(oop, oop* p)                          { return NativeAccess<AS_NO_KEEPALIVE>::oop_load(p); }
+  static oop load(oop, narrowOop* p)                    { ShouldNotReachHere(); return nullptr; }
+  static void store_not_null(oop, oop* p, oop v)        { NativeAccess<IS_NOT_NULL>::oop_store(p, v); }
+  static void store_not_null(oop, narrowOop* p, oop)    { ShouldNotReachHere(); }
+  static void store_null(oop, oop* p)                   { NativeAccess<>::oop_store(p, oop(nullptr)); }
+  static void store_null(oop, narrowOop* p)             { ShouldNotReachHere(); }
+};
+
+// ZGC colored weak roots (weak OopStorages).
+struct ZColoredWeakRootAccess {
+  static oop load(oop, oop* p)                          { return NativeAccess<ON_PHANTOM_OOP_REF | AS_NO_KEEPALIVE>::oop_load(p); }
+  static oop load(oop, narrowOop* p)                    { ShouldNotReachHere(); return nullptr; }
+  static void store_not_null(oop, oop* p, oop v)        { NativeAccess<ON_PHANTOM_OOP_REF>::oop_store(p, v); }
+  static void store_not_null(oop, narrowOop* p, oop)    { ShouldNotReachHere(); }
+  static void store_null(oop, oop* p)                   { NativeAccess<ON_PHANTOM_OOP_REF>::oop_store(p, oop(nullptr)); }
+  static void store_null(oop, narrowOop* p)             { ShouldNotReachHere(); }
+};
+#endif
+
+// Closure to scan all heap objects and update method handles.
+// With StoreBarrier it is created per visited object (base), it must not be shared by workers.
 template <class S>
 class ChangePointersOopClosure : public BasicOopIterateClosure {
+  const oop _base;
   // import java_lang_invoke_MemberName.*
   enum {
     REFERENCE_KIND_SHIFT = java_lang_invoke_MemberName::MN_REFERENCE_KIND_SHIFT,
@@ -481,7 +628,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
   // Forward pointers to InstanceKlass and mirror class to new versions
   template <class T>
   inline void do_oop_work(T* p) {
-    oop obj = RawAccess<>::oop_load(p);
+    oop obj = S::load(_base, p);
     if (obj == nullptr) {
       return;
     }
@@ -492,7 +639,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
         assert(obj == InstanceKlass::cast(klass)->java_mirror(), "just checking");
         if (klass->new_version() != nullptr) {
           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
-          S::oop_store_not_null(p, obj);
+          S::store_not_null(_base, p, obj);
           oop_updated = true;
         }
       }
@@ -507,10 +654,13 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
       if (!update_direct_method_handle(obj)) {
         // DMH is no longer valid, replace it with null reference.
         // See note above. We probably want to replace this with something more meaningful.
-        S::oop_store(p);
+        S::store_null(_base, p);
       }
     }
   }
+
+public:
+  ChangePointersOopClosure(oop base = nullptr) : _base(base) {}
 
   virtual void do_oop(oop* o) {
     do_oop_work(o);
@@ -529,7 +679,6 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
 //         and reshuffle object positions durring mark&sweep
 class ChangePointersObjectClosure : public ObjectClosure {
 private:
-  OopIterateClosure *_closure;
   VM_EnhancedRedefineClasses::SymbolSet* _removed_interfaces;
   DcevmSharedGC* _dcevm_shared_gc;
   bool _needs_instance_update;
@@ -537,8 +686,8 @@ private:
   size_t _tmp_obj_size;
 
 public:
-  ChangePointersObjectClosure(OopIterateClosure *closure, VM_EnhancedRedefineClasses::SymbolSet* removed_interfaces)
-    : _closure(closure), _removed_interfaces(removed_interfaces), _needs_instance_update(false), _tmp_obj(nullptr), _tmp_obj_size(0) {
+  ChangePointersObjectClosure(VM_EnhancedRedefineClasses::SymbolSet* removed_interfaces)
+    : _removed_interfaces(removed_interfaces), _needs_instance_update(false), _tmp_obj(nullptr), _tmp_obj_size(0) {
     _dcevm_shared_gc = new DcevmSharedGC();
   }
 
@@ -596,7 +745,8 @@ public:
       // Causes SIGSEGV?
       //instanceMirrorKlass::oop_fields_iterate(obj, _closure);
     } else {
-      obj->oop_iterate(_closure);
+      ChangePointersOopClosure<StoreBarrier> oop_closure(obj);
+      obj->oop_iterate(&oop_closure);
       if (_removed_interfaces != nullptr && obj->klass()->is_instance_klass() && obj->klass()->new_version() == nullptr) {
         do_compat_check_field_offsets(obj);
       }
@@ -605,7 +755,13 @@ public:
     if (obj->klass()->new_version() != nullptr) {
       Klass* new_klass = obj->klass()->new_version();
 
-      if (new_klass->update_information() != nullptr) {
+      if (UseZGC && new_klass->update_information() != nullptr) {
+        // ZGC: the instance layout is unchanged (checked in doit_prologue()), the fields stay in place.
+        // Only check the compatibility of oop fields (removed interfaces), with GC barriers.
+        assert(obj->size() == obj->size_given_klass(new_klass) && !new_klass->is_copying_backwards(), "layout must be unchanged");
+        _dcevm_shared_gc->update_fields_in_old(obj, new_klass->update_information());
+        DcevmSharedGC::set_object_klass(obj, new_klass);
+      } else if (new_klass->update_information() != nullptr) {
         if (obj->size() - obj->size_given_klass(new_klass) != 0) {
           // We need an instance update => set back to old klass
           _needs_instance_update = true;
@@ -631,18 +787,17 @@ public:
 
 class ChangePointersObjectTask : public WorkerTask {
 private:
-  ChangePointersOopClosure<StoreBarrier>* _cl;
   ParallelObjectIterator* _poi;
   VM_EnhancedRedefineClasses::SymbolSet* _removed_interfaces;
   bool _needs_instance_update;
 public:
-  ChangePointersObjectTask(ChangePointersOopClosure<StoreBarrier>* cl, ParallelObjectIterator* poi, VM_EnhancedRedefineClasses::SymbolSet* removed_interfaces)
-    : WorkerTask("IterateObject Closure"), _cl(cl), _poi(poi), _removed_interfaces(removed_interfaces), _needs_instance_update(false) { }
+  ChangePointersObjectTask(ParallelObjectIterator* poi, VM_EnhancedRedefineClasses::SymbolSet* removed_interfaces)
+    : WorkerTask("IterateObject Closure"), _poi(poi), _removed_interfaces(removed_interfaces), _needs_instance_update(false) { }
 
   virtual void work(uint worker_id) {
     ResourceMark rm(Thread::current()); // copy_to_tmp uses resource_allocate_bytes
     HandleMark hm(Thread::current());   // make sure any handles created are deleted
-    ChangePointersObjectClosure objectClosure(_cl, _removed_interfaces);
+    ChangePointersObjectClosure objectClosure(_removed_interfaces);
     _poi->object_iterate(&objectClosure, worker_id);
     _needs_instance_update = _needs_instance_update || objectClosure.needs_instance_update();
   }
@@ -650,6 +805,47 @@ public:
     return _needs_instance_update;
   }
 };
+
+#if INCLUDE_ZGC
+// ZGC keeps oops in nmethods uncolored and heals them lazily in the nmethod entry barrier.
+// Heal and disarm the nmethod first, then the oops can be updated as plain (good) addresses.
+class ZChangePointersNMethodClosure : public NMethodClosure {
+private:
+  OopClosure* const        _cl;
+  BarrierSetNMethod* const _bs_nm;
+public:
+  ZChangePointersNMethodClosure(OopClosure* cl)
+    : _cl(cl), _bs_nm(BarrierSet::barrier_set()->barrier_set_nmethod()) {}
+
+  virtual void do_nmethod(nmethod* nm) {
+    _bs_nm->nmethod_entry_barrier(nm);
+    ZNMethod::nmethod_oops_do(nm, _cl);
+  }
+};
+
+// ZGC root update. Roots are split according to their representation:
+//  - OopStorages hold colored pointers (zpointer), accessed with NativeAccess barriers,
+//  - thread stacks and nmethods hold uncolored addresses (zaddress), accessed raw.
+//    Threads::oops_do() finishes the lazy stack processing (stack watermarks) before visiting frames.
+// CLD handles are skipped as in root_oops_do(), the old class versions must keep their mirrors.
+static void zgc_root_oops_do() {
+  ChangePointersOopClosure<ZColoredRootAccess> colored_cl;
+  OopStorageSet::strong_oops_do(static_cast<OopClosure*>(&colored_cl));
+
+  ChangePointersOopClosure<ZColoredWeakRootAccess> weak_cl;
+  WeakProcessor::oops_do(static_cast<OopClosure*>(&weak_cl));
+
+  ChangePointersOopClosure<StoreNoBarrier> uncolored_cl;
+  Threads::oops_do(&uncolored_cl, nullptr);
+
+  // Oops of unloading nmethods may be dead, skip them.
+  ZChangePointersNMethodClosure nm_cl(&uncolored_cl);
+  NMethodIterator iter(NMethodIterator::not_unloading);
+  while (iter.next()) {
+    nm_cl.do_nmethod(iter.method());
+  }
+}
+#endif // INCLUDE_ZGC
 
 class ClearCompatCheckFields : public KlassClosure {
 public:
@@ -759,7 +955,6 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 
   ChangePointersOopClosure<StoreNoBarrier> oopClosureNoBarrier;
-  ChangePointersOopClosure<StoreBarrier> oopClosure;
   bool needs_instance_update = false;
 
   log_trace(redefine, class, redefine, metadata)("Before updating instances");
@@ -777,7 +972,10 @@ void VM_EnhancedRedefineClasses::doit() {
         G1CollectedHeap::heap()->bulk_unregister_nmethods();
       } else {
 #endif
-        CodeCache::nmethods_do(mark_as_scavengable);
+        if (!UseZGC) {
+          // ZGC does not use ScavengableNMethods, its nmethods are handled in zgc_root_oops_do()
+          CodeCache::nmethods_do(mark_as_scavengable);
+        }
 #if INCLUDE_G1GC
       }
 #endif
@@ -790,16 +988,23 @@ void VM_EnhancedRedefineClasses::doit() {
     WorkerThreads* workers = Universe::heap()->safepoint_workers();
     if (workers != nullptr && workers->active_workers() > 1) {
       ParallelObjectIterator poi(workers->active_workers());
-      ChangePointersObjectTask objectTask(&oopClosure, &poi, _removed_interfaces);
+      ChangePointersObjectTask objectTask(&poi, _removed_interfaces);
       workers->run_task(&objectTask);
       needs_instance_update = objectTask.needs_instance_update();
     } else {
-      ChangePointersObjectClosure objectClosure(&oopClosure, _removed_interfaces);
+      ChangePointersObjectClosure objectClosure(_removed_interfaces);
       Universe::heap()->object_iterate(&objectClosure);
       needs_instance_update = objectClosure.needs_instance_update();
     }
 
-    root_oops_do(&oopClosureNoBarrier);
+#if INCLUDE_ZGC
+    if (UseZGC) {
+      zgc_root_oops_do();
+    } else
+#endif
+    {
+      root_oops_do(&oopClosureNoBarrier);
+    }
 
     _timer_heap_iterate.stop();
 
@@ -877,6 +1082,9 @@ void VM_EnhancedRedefineClasses::doit() {
     }
     Universe::objectArrayKlass()->append_to_sibling_list();
   }
+
+  // ZGC can't run the redefinition full GC, layout changes are rejected in doit_prologue()
+  guarantee(!(UseZGC && needs_instance_update), "instance update is not supported with ZGC");
 
   if (needs_instance_update) {
     // Do a full garbage collection to update the instance sizes accordingly
@@ -961,6 +1169,7 @@ void VM_EnhancedRedefineClasses::doit() {
 //  - end GC
 void VM_EnhancedRedefineClasses::doit_epilogue() {
   VM_GC_Operation::doit_epilogue();
+  unlock_zgc_driver();
 
   if (!_new_classes->is_empty() && _vm_class_redefined) {
     ResourceMark rm(JavaThread::current());

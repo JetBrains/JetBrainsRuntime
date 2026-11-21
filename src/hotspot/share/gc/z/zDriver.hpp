@@ -48,6 +48,7 @@ class ZLock;
 class ZDriver : public ZThread {
   friend class ZDriverLocker;
   friend class ZDriverUnlocker;
+  friend class VM_EnhancedRedefineClasses; // (DCEVM) blocks GC cycles during redefinition
 
 private:
   static ZLock*        _lock;
