@@ -311,11 +311,11 @@ void ciReceiverTypeData::translate_receiver_data_from(const ProfileData* data) {
   for (uint row = 0; row < row_limit(); row++) {
     Klass* k = data->as_ReceiverTypeData()->receiver(row);
     if (k != nullptr && k->class_loader_data() != nullptr && is_klass_loaded(k)) {
-      if (k->is_loader_alive()) {
+      if (k->is_loader_alive() && k->new_version() == nullptr) {
         ciKlass* klass = CURRENT_ENV->get_klass(k);
         set_receiver(row, klass);
       } else {
-        // With concurrent class unloading, the MDO could have stale metadata; override it
+        // Discard unloaded or redefined receiver types from the compiler snapshot.
         clear_row(row);
       }
     } else {
