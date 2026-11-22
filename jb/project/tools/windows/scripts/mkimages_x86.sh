@@ -39,6 +39,7 @@ function do_configure {
     $DISABLE_WARNINGS_AS_ERRORS \
     $STATIC_CONF_ARGS \
     $REPRODUCIBLE_BUILD_OPTS \
+    $WITH_EXTERNAL_SYMBOLS_IN_BUNDLES \
     || do_exit $?
 }
 
