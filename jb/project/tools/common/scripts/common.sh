@@ -106,7 +106,8 @@ case "$OS_NAME" in
         ;;
 esac
 
-WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS="--with-native-debug-symbols=zipped"
+WITH_EXTERNAL_SYMBOLS_IN_BUNDLES="--with-external-symbols-in-bundles=none"
+WITH_ZIPPED_NATIVE_DEBUG_SYMBOLS="--with-native-debug-symbols=zipped $WITH_EXTERNAL_SYMBOLS_IN_BUNDLES"
 
 if [ "$bundle_type" == "nomodft" ]; then
   WITH_BUNDLED_FREETYPE="--with-freetype=bundled"
