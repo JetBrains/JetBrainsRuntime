@@ -206,12 +206,16 @@ java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.java JBR-69 windows
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java 8169096,JBR-4880,JBR-5387 macosx-all,windows-all,linux-all
 java/awt/Focus/ActivateFocusTest.java JBR-7888 linux-all
 java/awt/Focus/FocusPolicyTest.java 7160904 linux-all
+java/awt/Graphics/SmallPrimitives.java 8047070 macosx-all,linux-all
 java/awt/EventQueue/6980209/bug6980209.java 8198615 macosx-all
 java/awt/Frame/SetMinimumSizeTest/SetMinimumSizeTest2.java JBR-5210 windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java JBR-10206 ubuntu-24.04-aarch64,ubuntu-24.04-x64
+java/awt/Frame/SlideNotResizableTest/SlideNotResizableTest.java JBR-10833 ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184 macosx-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java JBR-4880 windows-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
+java/awt/List/KeyEventsTest/KeyEventsTest.java 8201307 linux-all
+java/awt/List/NoEvents/ProgrammaticChange.java 8201307 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-9207 fedora-42-kde,fedora-42-plasma,fedora-43-kde,fedora-43-plasma
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java 8049405,8253184 generic-all
 java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java 8049405,8253184 generic-all
@@ -362,10 +366,13 @@ java/awt/Graphics2D/CopyAreaOOB.java JBR-5354,JBR-9206 macosx-all,windows-all,fe
 java/awt/Graphics2D/DrawString/DisposerTest.java JBR-5010 linux-aarch64
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8266283 generic-all
 sun/java2d/SunGraphics2D/DrawImageBilinear.java 8297175 linux-all
+sun/java2d/SunGraphics2D/PolyVertTest.java#default 8392800,8392802 macosx-all,windows-all
+sun/java2d/SunGraphics2D/PolyVertTest.java#opengl 8392800,8392801 linux-all,macosx-all
 sun/java2d/SunGraphics2D/EmptyClipRenderingTest.java 8144029 macosx-all,linux-all,windows-all
-sun/java2d/SunGraphics2D/PolyVertTest.java 6986565 generic-all
-sun/java2d/SunGraphics2D/SimplePrimQuality.java 6992007 generic-all
+sun/java2d/SunGraphics2D/SimplePrimQuality.java#default 6322554,8392436 windows-all,macosx-all
+sun/java2d/SunGraphics2D/SimplePrimQuality.java#nod3d 6322554 windows-all
 sun/java2d/SunGraphics2D/SourceClippingBlitTest/SourceClippingBlitTest.java 8196185 generic-all
+sun/awt/image/gif/GIFLoopAnimationTest.java#five-frames-loop5 8396534 generic-all
 
 sun/java2d/pipe/InterpolationQualityTest.java JBR-5328 windows-all
 
