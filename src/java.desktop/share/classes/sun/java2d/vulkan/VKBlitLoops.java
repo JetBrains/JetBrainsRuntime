@@ -475,6 +475,7 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
     static final VKSwToSurfaceBlit INSTANCE = new VKSwToSurfaceBlit();
 
     // Don't use pre-multiplied alpha to preserve color values whenever possible.
+    // Filtered (bilinear/cubic) blits must use premultiplied images for correctness, so those are an exception.
     private final VKStageSurface stage4Byte = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB));
     private final VKStageSurface stage4BytePre = new VKStageSurface((w, h) -> new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE));
 
