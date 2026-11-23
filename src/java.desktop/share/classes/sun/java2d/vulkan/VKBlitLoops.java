@@ -624,13 +624,14 @@ final class VKSwToSurfaceBlit extends VKMultiplexedBlit {
         // Filtering expects premultiplied data to work correctly.
         // This also matches the VKSurfaceDataProxy cached path and other pipelines' behavior.
         ColorModel colorModel = src.getColorModel();
-        boolean shouldPremultiplyBeforeUpload = hint != AffineTransformOp.TYPE_NEAREST_NEIGHBOR &&
-                colorModel.hasAlpha() && !colorModel.isAlphaPremultiplied();
+        boolean filtered = hint != AffineTransformOp.TYPE_NEAREST_NEIGHBOR;
+        boolean mustUseStageToForcePremultipliedAlpha = filtered && colorModel.hasAlpha() && !colorModel.isAlphaPremultiplied();
 
         int srcType = encodeSrcType(src, (VKSurfaceData) dst);
-        if (srcType == -1 || shouldPremultiplyBeforeUpload) {
+        if (srcType == -1 || mustUseStageToForcePremultipliedAlpha) {
+            boolean shouldUsePremultipliedStage = filtered || (colorModel.hasAlpha() && colorModel.isAlphaPremultiplied());
             // We assume that 4 byte sampled format is always supported.
-            try (VKStageSurface stageSurface = shouldPremultiplyBeforeUpload ? stage4BytePre : stage4Byte) {
+            try (VKStageSurface stageSurface = shouldUsePremultipliedStage ? stage4BytePre : stage4Byte) {
                 SurfaceData stage = stageSurface.acquire(w, h);
                 // Blit from src to intermediate SW image.
                 Blit op = Blit.getFromCache(src.getSurfaceType(), CompositeType.SrcNoEa, stage.getSurfaceType());
