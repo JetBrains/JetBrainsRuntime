@@ -84,6 +84,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntBinaryOperator;
@@ -182,6 +183,9 @@ public final class RenderPerfTest {
 
     private final static long MIN_MEASURE_TIME_NS = 1000L * 1000 * 1000 * TIME_SCALE; // 1s min
     private final static long MAX_MEASURE_TIME_NS = 6000L * 1000 * 1000 * TIME_SCALE; // 6s max
+    // gives up waiting for MIN_COUNT frames (or for a warmup frame to be painted) after this long, e.g. when the
+    // screen is covered and the marker color is never seen:
+    private final static long ABORT_TIME_NS = 10 * MAX_MEASURE_TIME_NS; // 60s
     private final static int MAX_FRAME_CYCLES = 1000 * TIME_SCALE / CYCLE_DELAY;
 
     private final static int COLOR_TOLERANCE = 10;
@@ -1021,6 +1025,9 @@ public final class RenderPerfTest {
 
         private static final AtomicInteger headerMark = new AtomicInteger(1);
 
+        // set when a test gave up before measuring MIN_COUNT frames (the JVM then exits with 1):
+        static final AtomicBoolean measureFailed = new AtomicBoolean(false);
+
         /* members */
         protected final FrameHandler fh;
         protected final boolean skipWait;
@@ -1041,6 +1048,15 @@ public final class RenderPerfTest {
 
         protected final double[] scores = new double[SCORE_OTHER + 1];
         protected final double[] results = new double[PCT_100 + 1];
+        // frame time statistics (ms) over the same frames as the percentiles:
+        protected double frameTimeMean = 0.0;
+        protected double frameTimeStdDev = 0.0;
+        protected double frameTimeP99 = 0.0;
+        // frame rates derived from the frame times:
+        protected double fpsOverall = 0.0;
+        protected double fpsMedian = 0.0;
+        protected double fpsOnePercentLow = 0.0;
+        protected boolean aborted = false;
 
         protected PerfMeterExecutor(final boolean skipWait, final FrameHandler fh) {
             this.skipWait = skipWait;
@@ -1098,12 +1114,18 @@ public final class RenderPerfTest {
 
             if (WARMUP_COUNT > 0) {
                 // Warmup to prepare frame synchronization:
-                for (int i = 0; i < WARMUP_COUNT; i++) {
+                final long warmupAbortTime = System.nanoTime() + ABORT_TIME_NS;
+                for (int i = 0; (i < WARMUP_COUNT) && !aborted; i++) {
                     updateMarkerIdx();
                     renderable.update();
                     fh.repaintFrame();
                     sleep(10);
                     while (markerStartTime.get() == 0) {
+                        if (System.nanoTime() >= warmupAbortTime) {
+                            System.err.println(name + " : no warmup frame painted in " + (ABORT_TIME_NS / 1000000000L) + " s");
+                            aborted = true;
+                            break;
+                        }
                         if (TRACE) System.out.print("-");
                         sleep(1);
                     }
@@ -1132,11 +1154,12 @@ public final class RenderPerfTest {
             final long startTime = System.nanoTime();
             final long minTime = startTime + MIN_MEASURE_TIME_NS;
             final long endTime = startTime + MAX_MEASURE_TIME_NS;
+            final long abortTime = startTime + ABORT_TIME_NS;
 
             // Start 1st measurement:
             fh.repaintFrame();
 
-            for (; ; ) {
+            while (!aborted) {
                 long t;
                 if ((t = markerStartTime.getAndSet(0L)) > 0L) {
                     paintStartTime = t;
@@ -1189,6 +1212,12 @@ public final class RenderPerfTest {
                 if ((frames >= COUNT) && (currentTime >= minTime)) {
                     break;
                 }
+                if (currentTime >= abortTime) {
+                    System.err.println(name + " : only " + frames + " frame(s) measured in " + (ABORT_TIME_NS / 1000000000L)
+                            + " s (" + skippedFrames + " skipped: the marker color was not seen), giving up");
+                    aborted = true;
+                    break;
+                }
                 if (wait) {
                     sleep(CYCLE_DELAY);
                 }
@@ -1227,8 +1256,13 @@ public final class RenderPerfTest {
                 System.err.println(getHeader());
             }
 
-            // Log report:
-            System.err.println(getResults());
+            // Log report (none for an aborted test, so no partial result is taken for a measurement):
+            if (aborted) {
+                measureFailed.set(true);
+                System.err.println(String.format("%-25s : FAILED (%d frames)", name, frames));
+            } else {
+                System.err.println(getResults());
+            }
 
             // signal test done:
             doneCount.countDown();
@@ -1295,9 +1329,39 @@ public final class RenderPerfTest {
 
                 final long median = pcts[PCT_50];
 
-                if (USE_FPS) {
-                    scores[SCORE_MAIN] = fps(median);
+                // Frame time mean and (sample) standard deviation, before the MAD below overwrites testTime:
+                final int n = last - first + 1;
+                double sum = 0.0;
+                for (int i = first; i <= last; i++) {
+                    sum += testTime[i];
+                }
+                final double mean = sum / n;
+                double sumSquares = 0.0;
+                for (int i = first; i <= last; i++) {
+                    final double d = testTime[i] - mean;
+                    sumSquares += d * d;
+                }
+                frameTimeMean = 1e-6 * mean;
+                frameTimeStdDev = (n > 1) ? 1e-6 * Math.sqrt(sumSquares / (n - 1)) : 0.0;
+                final long p99 = testTime[pctIndex(first, last, 0.99)];
+                frameTimeP99 = millis(p99);
 
+                // Every statistic is computed on frame times; frame rates are derived from them, never averaged or
+                // spread themselves (1 / time weighs fast frames up and slow ones down):
+                // overall = frames per second of measured frame time (1 / mean frame time, the harmonic mean of the
+                // per-frame rates), median = 1 / median frame time, 1% low = 1 / p99 frame time.
+                fpsOverall = 1e9 / mean;
+                fpsMedian = fps(median);
+                fpsOnePercentLow = fps(p99);
+
+                if (USE_FPS) {
+                    // No spread around the median frame rate: in rate units it would weigh the slow frames down, and
+                    // the MADN of the frame times would turn into an interval that ignores their skew. The p10 and p90
+                    // frame rates (printed next to the median) bound the middle 80% of the frames instead.
+                    scores[SCORE_MAIN] = fps(median);
+                    scores[SCORE_OTHER] = millis(median);
+
+                    // percentiles of the frame rate are those of the frame time, mirrored:
                     results[PCT_100] = fps(pcts[PCT_00]);
                     results[PCT_90] = fps(pcts[PCT_10]);
                     results[PCT_75] = fps(pcts[PCT_25]);
@@ -1305,12 +1369,9 @@ public final class RenderPerfTest {
                     results[PCT_25] = fps(pcts[PCT_75]);
                     results[PCT_10] = fps(pcts[PCT_90]);
                     results[PCT_00] = fps(pcts[PCT_100]);
-
-                    // STDDEV = IQR / 1.35 = (Q3 - Q1) * 20 / 27
-                    scores[SCORE_ERROR] = (results[PCT_75] - results[PCT_25]) * 20L / 27L;
-                    scores[SCORE_OTHER] = millis(median);
                 } else {
                     scores[SCORE_MAIN] = millis(median);
+                    scores[SCORE_OTHER] = fps(median);
 
                     results[PCT_00] = millis(pcts[PCT_00]);
                     results[PCT_10] = millis(pcts[PCT_10]);
@@ -1320,12 +1381,6 @@ public final class RenderPerfTest {
                     results[PCT_90] = millis(pcts[PCT_90]);
                     results[PCT_100] = millis(pcts[PCT_100]);
 
-                    // STDDEV = IQR / 1.35 = (Q3 - Q1) * 20 / 27 (normal distribution ?)
-                    scores[SCORE_ERROR] = (results[PCT_75] - results[PCT_25]) * 20L / 27L;
-                    scores[SCORE_OTHER] = fps(median);
-
-                    // System.out.println("stddev(IQR) = " + scores[SCORE_ERROR]);
-
                     // MAD = Median Absolute Deviation:
                     for (int i = first; i <= last; i++) {
                         testTime[i] = Math.abs(testTime[i] - median);
@@ -1333,41 +1388,46 @@ public final class RenderPerfTest {
                     // Sort values to get percentiles:
                     Arrays.sort(testTime, first, frames);
 
-                    // STDDEV = 1.4826 * MAD (normal distribution ?)
+                    // MADN (normalized MAD) = 1.4826 * MAD, the spread of the typical frames around the median: a
+                    // robust estimate of the standard deviation (exact for a normal distribution, smaller than it for
+                    // the long slow tail of frame times, which the frame time stddev shows):
                     scores[SCORE_ERROR] = 1.4826 * millis(testTime[pctIndex(first, last, 0.50)]); // 50% (median)
-
-                    // System.out.println("stddev(MAD) = " + scores[SCORE_ERROR]);
                 }
                 // free testTime to avoid any future usage:
                 testTime = null;
             }
         }
 
+        // the main score and its spread (see processTimes): the median ± MADN of the frame times, or the median frame
+        // rate with its p10 and p90
         protected static String getHeader() {
+            final String main = USE_FPS ? "Median(FPS) Unit (p10: ... p90: ...)" : "Median(TimeMs) ± MADN(TimeMs) Unit";
             if (VERBOSE) {
-                return String.format("%-25s : %s ± %s %s [%s] (p00: ... p10: ... p25: ... p50: ... p75: ... p90: ... p100: ... %s) (... frames)",
-                        "Test Name", (USE_FPS ? "Median(FPS)" : "Median(TimeMs)"), (USE_FPS ? "Stddev(FPS)" : "Stddev(TimeMs)"), "Unit",
-                        (!USE_FPS ? "Median(FPS)" : "Median(TimeMs)"), "Unit");
+                return String.format("%-25s : %s [%s] (p00: ... p10: ... p25: ... p50: ... p75: ... p90: ... p100: ... %s) (... frames)"
+                                + " (frame time mean: ... stddev: ... p99: ... ms) (FPS overall: ... median: ... 1%% low: ...)",
+                        "Test Name", main, (USE_FPS ? "Median(TimeMs)" : "Median(FPS)"), "Unit");
             }
-            return String.format("%-25s : %s ± %s %s",
-                    "Test Name", (USE_FPS ? "Median(FPS)" : "Median(TimeMs)"), (USE_FPS ? "Stddev(FPS)" : "Stddev(TimeMs)"), "Unit");
-
+            return String.format("%-25s : %s", "Test Name", main);
         }
 
         protected String getResults() {
             if (skippedFrames > 0) {
                 System.err.println(name + " : " + skippedFrames + " frame(s) skipped");
             }
+            final String main = USE_FPS ? String.format("%.3f FPS (p10: %.3f p90: %.3f)", scores[SCORE_MAIN], results[PCT_10], results[PCT_90])
+                                        : String.format("%.3f ± %.3f ms", scores[SCORE_MAIN], scores[SCORE_ERROR]);
             if (VERBOSE) {
-                return String.format("%-25s : %.3f ± %.3f %s [%.3f %s] (p00: %.3f p10: %.3f p25: %.3f p50: %.3f p75: %.3f p90: %.3f p100: %.3f %s) (%d frames)",
-                    name, scores[SCORE_MAIN], scores[SCORE_ERROR], (USE_FPS ? "FPS" : "ms"),
+                return String.format("%-25s : %s [%.3f %s] (p00: %.3f p10: %.3f p25: %.3f p50: %.3f p75: %.3f p90: %.3f p100: %.3f %s) (%d frames)"
+                                + " (frame time mean: %.3f stddev: %.3f p99: %.3f ms) (FPS overall: %.3f median: %.3f 1%% low: %.3f)",
+                    name, main,
                     scores[SCORE_OTHER], (USE_FPS ? "ms" : "FPS"),
                     results[PCT_00], results[PCT_10], results[PCT_25], results[PCT_50], results[PCT_75], results[PCT_90], results[PCT_100],
                     (USE_FPS ? "FPS" : "ms"),
-                    frames);
+                    frames,
+                    frameTimeMean, frameTimeStdDev, frameTimeP99,
+                    fpsOverall, fpsMedian, fpsOnePercentLow);
             }
-            return String.format("%-25s : %.3f ± %.3f %s",
-                     name, scores[SCORE_MAIN], scores[SCORE_ERROR], (USE_FPS ? "FPS" : "ms"));
+            return String.format("%-25s : %s", name, main);
         }
 
         protected double fps(long timeNs) {
@@ -1491,12 +1551,13 @@ public final class RenderPerfTest {
             if (fh.calibrate && (nRobotTimes != 0)) {
                 fh.calibrate = false; // only first time
 
-                Arrays.sort(robotTime);
+                // only the recorded times: the unused rest of the array would sort its zeros first
+                Arrays.sort(robotTime, 0, nRobotTimes);
 
                 final long[] pcts = getPercentiles(robotTime, 0, nRobotTimes - 1);
 
-                // free testTime to avoid any future usage:
-                testTime = null;
+                // free robotTime to avoid any future usage:
+                robotTime = null;
 
                 System.err.printf("%-25s : %.3f ms (p00: %.3f p10: %.3f p25: %.3f p50: %.3f p75: %.3f p90: %.3f p100: %.3f ms) (%d times)%n",
                         "Robot" + (isMultiThreads() ? ("-" + fh.threadId) : ""), millis(pcts[PCT_50]),
@@ -1504,9 +1565,9 @@ public final class RenderPerfTest {
                         millis(pcts[PCT_75]), millis(pcts[PCT_90]), millis(pcts[PCT_100]), nRobotTimes);
             }
             if (nDelayTimes != 0) {
-                Arrays.sort(delayTime);
+                Arrays.sort(delayTime, 0, nDelayTimes);
 
-                final long[] pcts = getPercentiles(robotTime, 0, nDelayTimes - 1);
+                final long[] pcts = getPercentiles(delayTime, 0, nDelayTimes - 1);
 
                 // free delayTime to avoid any future usage:
                 delayTime = null;
@@ -2298,6 +2359,10 @@ public final class RenderPerfTest {
                     th.printStackTrace(System.err);
                     retCode = 1;
                 }
+            }
+            if (PerfMeterExecutor.measureFailed.get()) {
+                System.err.println("Some tests measured no result (see FAILED above)");
+                retCode = 1;
             }
             // ensure jvm immediate shutdown:
             System.exit(retCode);
