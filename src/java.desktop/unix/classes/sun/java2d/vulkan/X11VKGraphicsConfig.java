@@ -28,6 +28,8 @@ package sun.java2d.vulkan;
 import sun.awt.X11ComponentPeer;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.X11GraphicsDevice;
+import sun.awt.image.SunVolatileImage;
+import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.NullSurfaceData;
 import sun.java2d.SurfaceData;
 
@@ -51,6 +53,11 @@ public class X11VKGraphicsConfig extends X11GraphicsConfig implements VKGraphics
     @Override
     public VKGraphicsConfig getOffscreenConfig() {
         return offscreenConfig;
+    }
+
+    @Override
+    public VolatileSurfaceManager createVolatileManager(SunVolatileImage image, Object context) {
+        return VKGraphicsConfig.super.createVolatileManager(image, context);
     }
 
     @Override
