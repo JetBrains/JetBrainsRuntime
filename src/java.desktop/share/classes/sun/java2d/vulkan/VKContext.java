@@ -85,8 +85,7 @@ final class VKContext extends BufferedContext {
             }
         };
 
-        public static final BufferCapabilities BUFFER_CAPS = new BufferCapabilities(IMAGE_CAPS, IMAGE_CAPS,
-                BufferCapabilities.FlipContents.COPIED) {
+        public static final BufferCapabilities BUFFER_CAPS = new BufferCapabilities(IMAGE_CAPS, IMAGE_CAPS, null) {
             @Override
             public boolean isMultiBufferAvailable() {
                 return true;

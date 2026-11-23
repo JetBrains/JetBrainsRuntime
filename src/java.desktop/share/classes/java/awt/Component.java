@@ -4494,6 +4494,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
                     g.dispose();
                 }
             }
+            if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit && sunToolkit.needUpdateWindowAfterPaint()) {
+                SunToolkit.executeOnEventHandlerThread(Component.this,
+                        () -> sunToolkit.flushOnscreenGraphics(Component.this));
+            }
         }
 
         /**

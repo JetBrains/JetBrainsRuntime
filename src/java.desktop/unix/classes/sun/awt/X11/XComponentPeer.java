@@ -62,7 +62,6 @@ import java.util.Set;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.awt.AWTUtilities;
 import sun.awt.SunToolkit;
 import sun.awt.X11GraphicsConfig;
 import sun.awt.event.IgnorePaintEvent;
@@ -586,9 +585,10 @@ public class XComponentPeer extends XWindow implements ComponentPeer, DropTarget
               // while waiting for native paint
               if (!isLayouting && !paintPending) {
                   paintArea.paint(target,false);
-                  if (((XToolkit) XToolkit.getDefaultToolkit()).needUpdateWindowAfterPaint()) {
+                  XToolkit xToolkit = (XToolkit) XToolkit.getDefaultToolkit();
+                  if (xToolkit.needUpdateWindowAfterPaint()) {
                       SunToolkit.executeOnEventHandlerThread(getTarget(),
-                              () -> AWTUtilities.updateWindowThisOrAncestor(target));
+                              () -> xToolkit.flushOnscreenGraphics(target));
                   }
               }
               return;
