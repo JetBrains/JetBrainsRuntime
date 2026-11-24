@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -615,7 +615,7 @@ public final class Unsafe {
      * {@link #staticFieldOffset}, {@link #objectFieldOffset},
      * or {@link #arrayBaseOffset}.
      */
-    public static final int INVALID_FIELD_OFFSET = jdk.internal.misc.Unsafe.INVALID_FIELD_OFFSET;
+    public static final int INVALID_FIELD_OFFSET = (int) jdk.internal.misc.Unsafe.INVALID_FIELD_OFFSET;
 
     /**
      * Reports the location of a given field in the storage allocation of its
@@ -775,35 +775,35 @@ public final class Unsafe {
      */
     @ForceInline
     public int arrayBaseOffset(Class<?> arrayClass) {
-        return theInternalUnsafe.arrayBaseOffset(arrayClass);
+        return (int) theInternalUnsafe.arrayBaseOffset(arrayClass);
     }
 
     /** The value of {@code arrayBaseOffset(boolean[].class)} */
-    public static final int ARRAY_BOOLEAN_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
+    public static final int ARRAY_BOOLEAN_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_BOOLEAN_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(byte[].class)} */
-    public static final int ARRAY_BYTE_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    public static final int ARRAY_BYTE_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_BYTE_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(short[].class)} */
-    public static final int ARRAY_SHORT_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_SHORT_BASE_OFFSET;
+    public static final int ARRAY_SHORT_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_SHORT_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(char[].class)} */
-    public static final int ARRAY_CHAR_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
+    public static final int ARRAY_CHAR_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_CHAR_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(int[].class)} */
-    public static final int ARRAY_INT_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_INT_BASE_OFFSET;
+    public static final int ARRAY_INT_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_INT_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(long[].class)} */
-    public static final int ARRAY_LONG_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_LONG_BASE_OFFSET;
+    public static final int ARRAY_LONG_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_LONG_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(float[].class)} */
-    public static final int ARRAY_FLOAT_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_FLOAT_BASE_OFFSET;
+    public static final int ARRAY_FLOAT_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_FLOAT_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(double[].class)} */
-    public static final int ARRAY_DOUBLE_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
+    public static final int ARRAY_DOUBLE_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_DOUBLE_BASE_OFFSET;
 
     /** The value of {@code arrayBaseOffset(Object[].class)} */
-    public static final int ARRAY_OBJECT_BASE_OFFSET = jdk.internal.misc.Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+    public static final int ARRAY_OBJECT_BASE_OFFSET = (int) jdk.internal.misc.Unsafe.ARRAY_OBJECT_BASE_OFFSET;
 
     /**
      * Reports the scale factor for addressing elements in the storage

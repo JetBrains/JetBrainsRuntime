@@ -295,8 +295,8 @@ public class ArraysSupport {
         if (length > 7) {
             if (a[aFromIndex] != b[bFromIndex])
                 return 0;
-            int aOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET + aFromIndex;
-            int bOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET + bFromIndex;
+            long aOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET + aFromIndex;
+            long bOffset = Unsafe.ARRAY_BOOLEAN_BASE_OFFSET + bFromIndex;
             i = vectorizedMismatch(
                     a, aOffset,
                     b, bOffset,
@@ -388,8 +388,8 @@ public class ArraysSupport {
         if (length > 7) {
             if (a[aFromIndex] != b[bFromIndex])
                 return 0;
-            int aOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET + aFromIndex;
-            int bOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET + bFromIndex;
+            long aOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET + aFromIndex;
+            long bOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET + bFromIndex;
             i = vectorizedMismatch(
                     a, aOffset,
                     b, bOffset,
