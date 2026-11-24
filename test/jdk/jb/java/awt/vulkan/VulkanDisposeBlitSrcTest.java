@@ -34,9 +34,9 @@
 public class VulkanDisposeBlitSrcTest extends VulkanDisposeTest {
     public static void main(String[] args) throws Exception {
         if (args.length == 0) {
-            runInChildJVM(VulkanDisposeBlitSrcTest.class.getName());
+            runInChildJVM(VulkanDisposeBlitDstTest.class.getName());
         } else {
-            new VulkanDisposeBlitSrcTest();
+            new VulkanDisposeBlitDstTest();
         }
     }
 
