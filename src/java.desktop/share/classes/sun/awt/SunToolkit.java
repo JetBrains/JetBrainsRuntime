@@ -2018,6 +2018,12 @@ public abstract class SunToolkit extends Toolkit
     }
 
     /**
+     * Presents the contents of `context` to the screen.
+     * Should be called after painting if needUpdateWindow/needUpdateWindowAfterPaint (depending on the window's opacity) is true.
+     */
+    public void flushOnscreenGraphics(Component context) {}
+
+    /**
      * Descendants of the SunToolkit should override and put their own logic here.
      */
     public int getNumberOfButtons(){

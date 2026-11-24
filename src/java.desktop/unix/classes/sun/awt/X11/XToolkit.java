@@ -563,6 +563,21 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return VKEnv.isPresentationEnabled();
     }
 
+    // Present the nearest heavyweight ancestor's surface (might be `c` itself).
+    // On XToolkit, every heavyweight is an XWindow with its own surface, including `Canvas`es.
+    // WLToolkit's heavyweights always draw on the window's surface, so this logic is not used there.
+    @Override
+    public void flushOnscreenGraphics(Component c) {
+        Component h = getHeavyweightComponent(c);
+        if (h == null) {
+            return;
+        }
+        synchronized (h.getTreeLock()) {
+            if (AWTAccessor.getComponentAccessor().getPeer(h) instanceof XWindow window) {
+                window.commitSurface();
+            }
+        }
+    }
 
     static void initUIDefaults() {
         try {

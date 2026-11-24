@@ -62,6 +62,7 @@ import sun.awt.X11GraphicsConfig;
 import sun.awt.X11GraphicsEnvironment;
 import sun.awt.event.KeyEventProcessing;
 import sun.awt.event.TouchEvent;
+import sun.java2d.BufferedSurfaceDataExt;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 import sun.util.logging.PlatformLogger;
@@ -1639,6 +1640,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     @Override
     public SurfaceData getSurfaceData() {
         return surfaceData;
+    }
+
+    void commitSurface() {
+        // In decorated frames, we use the surfaceData of the content window.
+        // For undecorated frames, getContentXWindow() is the same as `this`.
+        if (getContentXWindow() instanceof XWindow contentWindow && contentWindow.getSurfaceData() instanceof BufferedSurfaceDataExt csd) {
+            csd.commit();
+        }
     }
 
     public void dispose() {
