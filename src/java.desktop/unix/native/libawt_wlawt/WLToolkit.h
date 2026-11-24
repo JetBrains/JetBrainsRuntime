@@ -84,9 +84,11 @@ extern int num_of_outstanding_sync;
 
 JNIEnv *getEnv();
 
-// Utilities for managing exceptions in Wayland callbacks, where we can't throw
+// Utilities for managing exceptions in Wayland callbacks, where we can't throw directly.
+// Instead, we save the exception being thrown, and rethrow it when we return from libwayland code.
 bool wlListenerCheckException(JNIEnv *env);
 void wlListenerThrowInternalError(JNIEnv *env, const char *message);
+bool wlRethrowPendingListenerException(JNIEnv *env);
 
 // Convert UTF-8 null-terminated string into java.lang.String.
 // For invalid UTF-8, replaces invalid byte sequences with replacement characters.

@@ -88,6 +88,10 @@ struct wp_cursor_shape_manager_v1 *wp_cursor_shape_manager; // optional, check f
 int num_of_outstanding_sync = 0;
 static bool waiting_for_xdg_toplevel_icon_manager_done = false;
 
+static _Thread_local jthrowable pendingListenerException = NULL; // global ref
+static _Thread_local int pendingListenerExceptionCount = 0;
+#define MAX_PENDING_LISTENER_EXCEPTIONS 10
+
 // This group of definitions corresponds to declarations from awt.h
 jclass    tkClass = NULL;
 jmethodID awtLockMID = NULL;
@@ -124,7 +128,6 @@ static jfieldID yAxis_steps120ValueFID;
 
 static jmethodID handleWaylandLogMID;
 static jmethodID handleProtocolErrorMID;
-static jmethodID handleExceptionFromEventHandlerMID;
 static jmethodID dispatchKeyboardKeyEventMID;
 static jmethodID dispatchKeyboardModifiersEventMID;
 static jmethodID dispatchKeyboardEnterEventMID;
@@ -145,6 +148,9 @@ static jclass stringClass;
 static jmethodID stringBytesEncodingConstructorMID;
 static jmethodID stringGetBytesMID;
 static jobject standardCharsetsUTF8;
+
+static jclass throwableClass;
+static jmethodID throwableAddSuppressedMID;
 
 JNIEnv *getEnv() {
     JNIEnv *env;
@@ -869,8 +875,6 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                                                               "handleProtocolError",
                                                                               "(Ljava/lang/String;IJ)V"),
                       JNI_FALSE);
-    CHECK_NULL_RETURN(handleExceptionFromEventHandlerMID = (*env)->GetStaticMethodID(
-        env, tkClass,"handleExceptionFromEventHandler", "(Ljava/lang/Throwable;)V"), JNI_FALSE);
     CHECK_NULL_RETURN(dispatchKeyboardEnterEventMID = (*env)->GetStaticMethodID(env, tkClass,
                                                                                 "dispatchKeyboardEnterEvent",
                                                                                 "(JJ)V"),
@@ -922,6 +926,13 @@ initJavaRefs(JNIEnv *env, jclass clazz)
     CHECK_NULL_RETURN(standardCharsetsUTF8 = (*env)->GetStaticObjectField(env, standardCharsetsClass, standardCharsetsUTF8FID), JNI_FALSE);
     CHECK_NULL_THROW_OOME_RETURN(env, standardCharsetsUTF8 = (*env)->NewGlobalRef(env, standardCharsetsUTF8),
         "Allocation of global reference to java.nio.charset.StandardCharsets.UTF_8 failed", JNI_FALSE);
+
+    CHECK_NULL_RETURN(throwableClass = (*env)->FindClass(env, "java/lang/Throwable"), JNI_FALSE);
+    CHECK_NULL_THROW_OOME_RETURN(env,
+                                 throwableClass = (jclass)(*env)->NewGlobalRef(env, throwableClass),
+                                 "Allocation of a global reference to java.lang.Throwable failed",
+                                 JNI_FALSE);
+    CHECK_NULL_RETURN(throwableAddSuppressedMID = (*env)->GetMethodID(env, throwableClass, "addSuppressed", "(Ljava/lang/Throwable;)V"), JNI_FALSE);
 
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
     CHECK_NULL_RETURN(wlgeClass, JNI_FALSE);
@@ -1034,10 +1045,14 @@ libwaylandLoggingCallback(const char *fmt, va_list args)
 
     JNIEnv *env = getEnv();
     jstring message = wlUtf8ToJavaString(env, buf);
-    JNU_CHECK_EXCEPTION(env);
-
-    (*env)->CallStaticVoidMethod(env, tkClass, handleWaylandLogMID, message);
-    (*env)->ExceptionCheck(env);
+    if (!(*env)->ExceptionCheck(env)) {
+        (*env)->CallStaticVoidMethod(env, tkClass, handleWaylandLogMID, message);
+    }
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        fprintf(stderr, "libwayland-client: %s", buf);
+    }
     (*env)->DeleteLocalRef(env, message);
 }
 
@@ -1072,12 +1087,17 @@ Java_sun_awt_wl_WLToolkit_initDisplay(JNIEnv *env, jclass clazz, jlong displayPt
     // will have to be processed later in finalize_init().
     if (wl_display_roundtrip(wl_display) < 0) {
         JNU_ThrowByName(env, "java/awt/AWTError", "wl_display_roundtrip() failed");
+    }
+    if (wlRethrowPendingListenerException(env)) {
         return;
     }
 
     J2dTrace(J2D_TRACE_INFO, "WLToolkit: Connection to display(%p) established\n", wl_display);
 
     finalizeInit(env);
+    if (wlRethrowPendingListenerException(env)) {
+        return;
+    }
 
     checkInterfacesPresent(env);
 }
@@ -1088,9 +1108,11 @@ Java_sun_awt_wl_WLToolkit_waitForSyncDuringInit(JNIEnv *env, jclass clazz)
     if (wl_display_dispatch(wl_display) < 0) {
         JNU_ThrowByName(env, "java/awt/AWTError", "wl_display_dispatch() failed");
     }
+    wlRethrowPendingListenerException(env);
 }
 
-static bool wlCheckProtocolError(JNIEnv *env)
+static bool
+wlCheckProtocolError(JNIEnv *env)
 {
     assert(env != NULL);
     if (errno != EPROTO) {
@@ -1118,7 +1140,8 @@ static bool wlCheckProtocolError(JNIEnv *env)
     return result;
 }
 
-bool wlListenerCheckException(JNIEnv *env)
+bool
+wlListenerCheckException(JNIEnv *env)
 {
     jthrowable exception = (*env)->ExceptionOccurred(env);
     if (exception == NULL) {
@@ -1128,18 +1151,38 @@ bool wlListenerCheckException(JNIEnv *env)
     // 'exception' is a local ref at this point, it's okay to call ExceptionClear
     (*env)->ExceptionClear(env);
 
-    (*env)->CallStaticVoidMethod(env, tkClass, handleExceptionFromEventHandlerMID, exception);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+    ++pendingListenerExceptionCount;
+    if (pendingListenerExceptionCount > MAX_PENDING_LISTENER_EXCEPTIONS) {
+        (*env)->DeleteLocalRef(env, exception);
+        return true;
+    }
+
+    if (pendingListenerException == NULL) {
+        pendingListenerException = (*env)->NewGlobalRef(env, exception);
+    } else {
+        (*env)->CallVoidMethod(env, pendingListenerException, throwableAddSuppressedMID, exception);
+    }
+
+    // Check if our handling code has thrown.
+    // If it did, it's probably OOM or another serious error, nothing better to do other than log it.
+    // Also log the underlying exception.
+    bool hasException = (*env)->ExceptionCheck(env);
+    if (hasException || pendingListenerException == NULL) {
+        if (hasException) {
+            (*env)->ExceptionDescribe(env);
+            (*env)->ExceptionClear(env);
+        }
+        (*env)->Throw(env, exception);
         (*env)->ExceptionDescribe(env);
         (*env)->ExceptionClear(env);
     }
 
     (*env)->DeleteLocalRef(env, exception);
-
     return true;
 }
 
-void wlListenerThrowInternalError(JNIEnv *env, const char *message)
+void
+wlListenerThrowInternalError(JNIEnv *env, const char *message)
 {
     JNU_ThrowInternalError(env, message);
     wlListenerCheckException(env);
@@ -1228,6 +1271,37 @@ error:
     return NULL;
 }
 
+bool
+wlRethrowPendingListenerException(JNIEnv *env)
+{
+    pendingListenerExceptionCount = 0;
+
+    if (pendingListenerException == NULL) {
+        return (*env)->ExceptionCheck(env);
+    }
+
+    jthrowable pending = pendingListenerException;
+    pendingListenerException = NULL;
+
+    jthrowable current = (*env)->ExceptionOccurred(env);
+
+    if (current != NULL) {
+        (*env)->ExceptionClear(env);
+        (*env)->CallVoidMethod(env, current, throwableAddSuppressedMID, pending);
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionClear(env);
+        }
+        (*env)->Throw(env, current);
+        (*env)->DeleteLocalRef(env, current);
+    } else {
+        (*env)->Throw(env, pending);
+    }
+
+    (*env)->DeleteGlobalRef(env, pending);
+
+    return true;
+}
+
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_wl_WLToolkit_isSSDAvailableImpl
   (JNIEnv *env, jobject cls)
@@ -1245,6 +1319,8 @@ Java_sun_awt_wl_WLToolkit_dispatchEventsOnEDT
     if (wl_display_dispatch_pending(wl_display) == -1) {
         wlCheckProtocolError(env);
     }
+
+    wlRethrowPendingListenerException(env);
 }
 
 /**
