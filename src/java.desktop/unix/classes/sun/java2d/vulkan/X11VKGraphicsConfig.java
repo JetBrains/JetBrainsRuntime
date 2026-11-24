@@ -108,4 +108,9 @@ public class X11VKGraphicsConfig extends X11GraphicsConfig implements VKGraphics
         }
         return new X11VKWindowSurfaceData(peer);
     }
+
+    @Override
+    public double getFractionalScale() {
+        return getScale();
+    }
 }
