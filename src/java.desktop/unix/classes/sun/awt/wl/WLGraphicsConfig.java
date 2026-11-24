@@ -152,7 +152,7 @@ public abstract class WLGraphicsConfig extends GraphicsConfiguration implements 
 
     private static class WLDefaultBufferCapabilities extends BufferCapabilities {
         WLDefaultBufferCapabilities() {
-            super(new ImageCapabilities(false), new ImageCapabilities(false), FlipContents.UNDEFINED);
+            super(new ImageCapabilities(false), new ImageCapabilities(false), null);
         }
     }
 }

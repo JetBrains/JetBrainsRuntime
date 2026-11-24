@@ -1158,7 +1158,7 @@ public class WLComponentPeer implements ComponentPeer, WLSurfaceSizeListener {
 
     @Override
     public void createBuffers(int numBuffers, BufferCapabilities caps) throws AWTException {
-        throw new UnsupportedOperationException();
+        throw new AWTException("WLComponentPeer: Flipping is not supported");
     }
 
     @Override

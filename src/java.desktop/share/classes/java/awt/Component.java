@@ -95,6 +95,7 @@ import javax.swing.JRootPane;
 
 import com.jetbrains.exported.JBRApi;
 import sun.awt.AWTAccessor;
+import sun.awt.AWTUtilities;
 import sun.awt.AppContext;
 import sun.awt.ComponentFactory;
 import sun.awt.AppContext;
@@ -4515,6 +4516,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
                 if (g != null) {
                     g.dispose();
                 }
+            }
+            if (Toolkit.getDefaultToolkit() instanceof SunToolkit sunToolkit && sunToolkit.needUpdateWindowAfterPaint()) {
+                SunToolkit.executeOnEventHandlerThread(Component.this,
+                        () -> AWTUtilities.updateWindowThisOrAncestor(Component.this));
             }
         }
 
