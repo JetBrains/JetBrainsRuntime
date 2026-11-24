@@ -32,7 +32,7 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "WLOutput.h"
+#include "WLGraphicsEnvironment.h"
 
 #include "xdg-decoration-unstable-v1.h"
 #include <stdbool.h>
@@ -307,12 +307,11 @@ Java_sun_awt_wl_WLComponentPeer_nativeRequestUnmaximized
 
 JNIEXPORT void JNICALL
 Java_sun_awt_wl_WLComponentPeer_nativeRequestFullScreen
-        (JNIEnv *env, jobject obj, jlong ptr, jlong wlOutputPtr)
+        (JNIEnv *env, jobject obj, jlong ptr, jint wlID)
 {
     struct WLFrame *frame = jlong_to_ptr(ptr);
     if (frame->xdg_toplevel) {
-        struct WLOutput *output = jlong_to_ptr(wlOutputPtr);
-        struct wl_output *wl_output = output ? output->wl_output : NULL;
+        struct wl_output *wl_output = WLOutputByID((uint32_t)wlID);
         xdg_toplevel_set_fullscreen(frame->xdg_toplevel, wl_output);
         wlFlushToServer(env);
     }

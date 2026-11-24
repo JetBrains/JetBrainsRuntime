@@ -26,12 +26,14 @@
 
 package sun.awt.wl;
 
+import java.awt.AWTError;
 import java.awt.Dimension;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.Rectangle;
-import java.awt.Window;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import sun.awt.HiDPIInfoProvider;
 import sun.java2d.SunGraphicsEnvironment;
@@ -39,12 +41,21 @@ import sun.util.logging.PlatformLogger;
 import sun.util.logging.PlatformLogger.Level;
 
 public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiDPIInfoProvider {
+    public static final int WL_OUTPUT_TRANSFORM_NORMAL = 0;
+    public static final int WL_OUTPUT_TRANSFORM_90 = 1;
+    public static final int WL_OUTPUT_TRANSFORM_180 = 2;
+    public static final int WL_OUTPUT_TRANSFORM_270 = 3;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED = 4;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_90 = 5;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_180 = 6;
+    public static final int WL_OUTPUT_TRANSFORM_FLIPPED_270 = 7;
+
     private static final PlatformLogger log = PlatformLogger.getLogger("sun.awt.wl.WLGraphicsEnvironment");
 
     private static final boolean debugScaleEnabled;
     private final Dimension totalDisplayBounds = new Dimension();
 
-    private final List<WLGraphicsDevice> devices = new ArrayList<>();
+    private final List<WLGraphicsDevice> devices = new ArrayList<>(5);
     private WLGraphicsDevice lastDeviceStanding = null; // guarded by devices
 
     @SuppressWarnings("restricted")
@@ -72,110 +83,6 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return Holder.INSTANCE;
     }
 
-    private boolean updateGraphicsConfigurationForPeer(WLComponentPeer peer) {
-        WLGraphicsConfig oldGC = (WLGraphicsConfig) peer.getGraphicsConfiguration();
-        WLGraphicsConfig newGC = computeConfigFor(peer);
-        if (oldGC != newGC) {
-            peer.notifyGraphicsConfigurationChanged(newGC);
-            return true;
-        }
-        return false;
-    }
-
-    private void updateAllPeers() {
-        List<WLWindowPeer> allPeers = WLToolkit.getLiveWindowPeers();
-        List<WLWindowPeer> toplevels = allPeers.stream().filter(peer -> !peer.targetIsWlPopup()).toList();
-        List<WLWindowPeer> popups = allPeers.stream().filter(peer -> peer.targetIsWlPopup()).toList();
-
-        // First compute GC for toplevels, and only then for popups
-        for (WLWindowPeer peer : toplevels) {
-            updateGraphicsConfigurationForPeer(peer);
-        }
-        for (WLWindowPeer peer : popups) {
-            updateGraphicsConfigurationForPeer(peer);
-        }
-
-        // Recompute positions of popups
-        for (WLWindowPeer peer : popups) {
-            peer.updatePopupLocationFromParent();
-        }
-    }
-
-    private void updatePeer(WLWindowPeer peer) {
-        if (peer == null) {
-            return;
-        }
-
-        final boolean changed = updateGraphicsConfigurationForPeer(peer);
-        if (!changed) {
-            return;
-        }
-
-        if (peer.targetIsWlPopup()) {
-            peer.updatePopupLocationFromParent();
-        } else {
-            Window toplevel = peer.getTarget();
-            for (WLWindowPeer p : WLToolkit.getLiveWindowPeers()) {
-                if (!p.targetIsWlPopup()) {
-                    continue;
-                }
-                if (WLComponentPeer.getToplevelFor(p.getTarget().getParent()) == toplevel) {
-                    p.updatePopupLocationFromParent();
-                }
-            }
-        }
-    }
-
-    private void updateOutputs() {
-        updateAllPeers();
-        updateTotalDisplayBounds();
-        if (WLToolkit.isInitialized()) {
-            WLComponentPeer.performUnlocked(this::displayChanged);
-        }
-    }
-
-    private WLGraphicsDevice computePrimaryDevice(List<WLOutput> outputs) {
-        int scale = 0;
-        WLGraphicsDevice result = null;
-        for (WLOutput output : outputs) {
-            WLGraphicsDevice gd = deviceForOutput(output);
-            if (gd == null) {
-                continue;
-            }
-            if (gd.getDisplayScale() > scale) {
-                scale = gd.getDisplayScale();
-                result = gd;
-            }
-        }
-        return result;
-    }
-
-    WLGraphicsDevice computeDeviceFor(WLComponentPeer peer) {
-        WLMainSurface surface = peer.getSurface();
-        WLGraphicsDevice oldGD = (WLGraphicsDevice) peer.getGraphicsConfiguration().getDevice();
-
-        WLGraphicsDevice gd = null;
-        if (surface != null) {
-            gd = computePrimaryDevice(surface.getOutputs());
-        }
-        if (gd == null) {
-            synchronized (devices) {
-                if (devices.contains(oldGD)) {
-                    gd = oldGD;
-                }
-            }
-        }
-        if (gd == null) {
-            gd = (WLGraphicsDevice) getDefaultScreenDevice();
-        }
-        return gd;
-    }
-
-    WLGraphicsConfig computeConfigFor(WLComponentPeer peer) {
-        WLGraphicsDevice gd = computeDeviceFor(peer);
-        // TODO: get an equivalent GC, instead of using the default one
-        return (WLGraphicsConfig) gd.getDefaultConfiguration();
-    }
 
     @Override
     protected int getNumScreens() {
@@ -204,7 +111,7 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
     }
 
     @Override
-    public GraphicsDevice[] getScreenDevices() {
+    public synchronized GraphicsDevice[] getScreenDevices() {
         synchronized (devices) {
             if (devices.isEmpty()) {
                 return new GraphicsDevice[]{lastDeviceStanding};
@@ -240,77 +147,101 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return true;
     }
 
-    public void notifyOutputConfigured(WLOutput output, WLOutputState state, WLOutputState prevState) {
+    private void notifyOutputConfigured(String name, String make, String model, int wlID,
+                                        int x, int y,
+                                        int width, int height,
+                                        int widthLogical, int heightLogical,
+                                        int widthMm, int heightMm,
+                                        int subpixel, int transform, int scale) {
+        // Called from native code whenever a new output appears or an existing one changes its properties
+        // NB: initially called during WLToolkit.initIDs() on the main thread; later on EDT.
         if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("Output configured: %s with %s, previous state was %s", output, state, prevState));
+            log.fine(String.format("Output configured id=%d at (%d, %d) %dx%d (%dx%d logical) %dx scale",
+                    wlID, x, y, width, height, widthLogical, heightLogical, scale));
         }
-        WLGraphicsDevice gd = deviceForOutput(output);
+
+        Dimension transformed = applyTransform(transform, new Dimension(width, height));
+        width = transformed.width;
+        height = transformed.height;
+
+        // Logical size comes from an optional protocol, so take the data from the main one, if absent
+        if (widthLogical <= 0) widthLogical = width;
+        if (heightLogical <= 0) heightLogical = height;
+
+        if (widthLogical == width && heightLogical == height && scale > 1) {
+            // With fractional scale OFF, logical and physical sizes are reported as equal.
+            // "Convert" the logical size to logical units to maintain Java promise of
+            // always abstracting out the physical size.
+            // Note that the monitor's location (offset) is left unchanged and is in physical units (pixels).
+            widthLogical = (int) Math.ceil((double) width / scale);
+            heightLogical = (int) Math.ceil((double) height / scale);
+        }
+
+        // Physical size may be absent for virtual outputs.
+        if (widthMm <= 0 || heightMm <= 0) {
+            // Assume a 92 DPI display
+            widthMm = (int) Math.ceil(25.4 * width / 92.0);
+            heightMm = (int) Math.ceil(25.4 * height / 92.0);
+        }
+
+        String humanID = deviceNameFrom(name, make, model);
+
+        WLGraphicsDevice gd = deviceWithID(wlID);
         if (gd != null) {
-            gd.updateConfiguration(state);
-            if (LogDisplay.ENABLED) {
-                LogDisplay.CHANGED.log(output.getUniqueId(), gd.getBounds(), gd.getEffectiveScale());
-            }
+            // Some properties of an existing device have changed; update the existing device and
+            // let all the windows it hosts know about the change.
+            gd.updateConfiguration(humanID, x, y, width, height, widthLogical, heightLogical, widthMm, heightMm, scale);
         } else {
-            gd = WLGraphicsDevice.createWithOutputState(output, state);
-            if (LogDisplay.ENABLED) {
-                LogDisplay.ADDED.log(output.getUniqueId(), gd.getBounds(), gd.getEffectiveScale());
-            }
+            WLGraphicsDevice newGD = WLGraphicsDevice.createWithConfiguration(wlID, humanID,
+                    x, y, width, height, widthLogical, heightLogical,
+                    widthMm, heightMm, scale);
             synchronized (devices) {
-                devices.add(gd);
-                lastDeviceStanding = null;
+                devices.add(newGD);
+                lastDeviceStanding = null; // no longer needed/relevant
             }
         }
-        updateOutputs();
-    }
 
-    public void notifyOutputDisconnected(WLOutput output) {
-        if (log.isLoggable(Level.FINE)) {
-            log.fine(String.format("Output disconnected: %s, state was %s", output, output.getState()));
+        if (LogDisplay.ENABLED) {
+            double effectiveScale = effectiveScaleFrom(scale);
+            LogDisplay log = (gd == null) ? LogDisplay.ADDED : LogDisplay.CHANGED;
+            log.log(wlID, (int) (width / effectiveScale) + "x" + (int) (height / effectiveScale), effectiveScale);
         }
-        try {
-            WLGraphicsDevice gd = deviceForOutput(output);
-            if (gd != null) {
-                if (LogDisplay.ENABLED) {
-                    LogDisplay.REMOVED.log(output.getUniqueId(), gd.getBounds(), gd.getEffectiveScale());
-                }
-                synchronized (devices) {
-                    devices.remove(gd);
-                    if (devices.isEmpty()) {
-                        lastDeviceStanding = gd;
-                    }
-                }
-                final WLGraphicsDevice similarDevice = getSimilarDevice(gd);
-                if (similarDevice != null) {
-                    gd.invalidate(similarDevice);
-                }
-                updateOutputs();
-            }
-        } finally {
-            output.destroy();
+
+        updateTotalDisplayBounds();
+
+        // Skip notification during the initial configuration events
+        if (WLToolkit.isInitialized()) {
+            displayChanged();
         }
     }
 
-    public void notifySurfaceEntered(WLSurface surface, WLOutput output) {
-        if (surface instanceof WLMainSurface mainSurface) {
-            updatePeer(mainSurface.getPeer());
-        }
+    private static Dimension applyTransform(int transform, Dimension size) {
+        return switch (transform) {
+            case WL_OUTPUT_TRANSFORM_NORMAL,
+                 WL_OUTPUT_TRANSFORM_FLIPPED,
+                 WL_OUTPUT_TRANSFORM_180,
+                 WL_OUTPUT_TRANSFORM_FLIPPED_180 -> size;
+            case WL_OUTPUT_TRANSFORM_90,
+                 WL_OUTPUT_TRANSFORM_FLIPPED_90,
+                 WL_OUTPUT_TRANSFORM_270,
+                 WL_OUTPUT_TRANSFORM_FLIPPED_270 -> new Dimension(size.height, size.width);
+            default -> size;
+        };
     }
 
-    public void notifySurfaceLeft(WLSurface surface, WLOutput output) {
-        if (surface instanceof WLMainSurface mainSurface) {
-            updatePeer(mainSurface.getPeer());
-        }
+    private static String deviceNameFrom(String name, String make, String model) {
+        return (name != null ? name + " " : "")
+                + (make != null ? make + " " : "")
+                + (model != null ? model : "");
     }
 
     private WLGraphicsDevice getSimilarDevice(WLGraphicsDevice modelDevice) {
         WLGraphicsDevice similarDevice = devices.isEmpty() ? null : devices.getFirst();
-        String modelDeviceName = modelDevice.getOutputState().name();
-        if (modelDeviceName == null) {
-            return similarDevice;
-        }
-
         for (WLGraphicsDevice device : devices) {
-            if (modelDeviceName.equals(device.getOutputState().name())) {
+            if (device.hasSameNameAs(modelDevice)) {
+                similarDevice = device;
+                break;
+            } else if (device.hasSameSizeAs(modelDevice)) {
                 similarDevice = device;
                 break;
             }
@@ -319,10 +250,39 @@ public class WLGraphicsEnvironment extends SunGraphicsEnvironment implements HiD
         return similarDevice;
     }
 
-    WLGraphicsDevice deviceForOutput(WLOutput output) {
+    private void notifyOutputDestroyed(int wlID) {
+        // Called from native code whenever one of the outputs is no longer available.
+        // All surfaces that were partly visible on that output should have
+        // notifySurfaceLeftOutput().
+        if (log.isLoggable(Level.FINE)) {
+            log.fine(String.format("Output destroyed id=%d", wlID));
+        }
+        // NB: id may *not* be that of any output; if so, just ignore this event.
+        WLGraphicsDevice gd = deviceWithID(wlID);
+        if (gd != null) {
+            if (LogDisplay.ENABLED) {
+                WLGraphicsConfig config = (WLGraphicsConfig) gd.getDefaultConfiguration();
+                Rectangle bounds = config.getBounds();
+                LogDisplay.REMOVED.log(wlID, bounds.width + "x" + bounds.height, config.getEffectiveScale());
+            }
+            synchronized (devices) {
+                devices.remove(gd);
+                if (devices.isEmpty()) {
+                    lastDeviceStanding = gd;
+                }
+            }
+            final WLGraphicsDevice similarDevice = getSimilarDevice(gd);
+            if (similarDevice != null) gd.invalidate(similarDevice);
+        }
+
+        updateTotalDisplayBounds();
+        displayChanged();
+    }
+
+    WLGraphicsDevice deviceWithID(int wlOutputID) {
         synchronized (devices) {
             for (WLGraphicsDevice gd : devices) {
-                if (gd.getOutput() == output) {
+                if (gd.getID() == wlOutputID) {
                     return gd;
                 }
             }

@@ -198,10 +198,6 @@ class WLKWinHelper {
         return location != null ? new Point(location) : null;
     }
 
-    static boolean isWindowLocationCached(String appId) {
-        return locationCache.containsKey(appId);
-    }
-
     private static Point queryAndCacheWindowLocation(String appId) {
         Point location = queryWindowLocation(appId);
         locationCache.put(appId, Optional.ofNullable(location));

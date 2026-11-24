@@ -33,7 +33,7 @@
 
 #include "JNIUtilities.h"
 #include "WLToolkit.h"
-#include "WLOutput.h"
+#include "WLGraphicsEnvironment.h"
 
 #include "sun_awt_wl_WLSurface.h"
 
@@ -99,28 +99,27 @@ Java_sun_awt_wl_WLSurface_initIDs
         (JNIEnv *env, jclass clazz)
 {
     CHECK_NULL_THROW_IE(env,
-                        notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(Lsun/awt/wl/WLOutput;)V"),
+                        notifyEnteredOutputMID = (*env)->GetMethodID(env, clazz, "notifyEnteredOutput", "(I)V"),
                         "Failed to find method WLSurface.notifyEnteredOutput");
     CHECK_NULL_THROW_IE(env,
-                        notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(Lsun/awt/wl/WLOutput;)V"),
+                        notifyLeftOutputMID = (*env)->GetMethodID(env, clazz, "notifyLeftOutput", "(I)V"),
                         "Failed to find method WLSurface.notifyLeftOutput");
 }
 
 static void
 wl_surface_entered_output
-        (void *data, struct wl_surface *wl_surface, struct wl_output *wl_output)
+        (void *data, struct wl_surface *wl_surface, struct wl_output *output)
 {
     struct WLSurfaceDescr* sd = jlong_to_ptr(data);
     assert (sd);
 
-    if (wl_output == NULL) return;
-    struct WLOutput *output = wl_output_get_user_data(wl_output);
-    if (output == NULL) return;
+    uint32_t wlOutputID = WLOutputID(output);
+    if (wlOutputID == 0) return;
 
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, sd->javaSurface);
     if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyEnteredOutputMID, output->javaObject);
+        (*env)->CallVoidMethod(env, nativeFramePeer, notifyEnteredOutputMID, wlOutputID);
         wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
     }
@@ -128,19 +127,17 @@ wl_surface_entered_output
 
 static void
 wl_surface_left_output
-    (void *data, struct wl_surface *wl_surface, struct wl_output *wl_output)
+    (void *data, struct wl_surface *wl_surface, struct wl_output *output)
 {
     struct WLSurfaceDescr* sd = jlong_to_ptr(data);
     assert (sd);
-
-    if (wl_output == NULL) return;
-    struct WLOutput *output = wl_output_get_user_data(wl_output);
-    if (output == NULL) return;
+    uint32_t wlOutputID = WLOutputID(output);
+    if (wlOutputID == 0) return;
 
     JNIEnv *env = getEnv();
     const jobject nativeFramePeer = (*env)->NewLocalRef(env, sd->javaSurface);
     if (nativeFramePeer) {
-        (*env)->CallVoidMethod(env, nativeFramePeer, notifyLeftOutputMID, output->javaObject);
+        (*env)->CallVoidMethod(env, nativeFramePeer, notifyLeftOutputMID, wlOutputID);
         wlListenerCheckException(env);
         (*env)->DeleteLocalRef(env, nativeFramePeer);
     }
