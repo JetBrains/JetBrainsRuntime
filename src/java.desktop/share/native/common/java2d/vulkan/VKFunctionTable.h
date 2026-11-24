@@ -45,6 +45,8 @@ ENTRY(__VA_ARGS__, vkGetPhysicalDeviceFeatures2); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceProperties2); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceQueueFamilyProperties); \
 ENTRY(__VA_ARGS__, vkGetPhysicalDeviceFormatProperties); \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceFormatProperties2); \
+ENTRY(__VA_ARGS__, vkGetPhysicalDeviceImageFormatProperties2); \
 ENTRY(__VA_ARGS__, vkEnumerateDeviceLayerProperties); \
 ENTRY(__VA_ARGS__, vkEnumerateDeviceExtensionProperties); \
 ENTRY(__VA_ARGS__, vkCreateDevice); \

@@ -167,7 +167,7 @@ static VkBool32 debugCallback(
 }
 #endif
 
-static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPlatformData* platformData) {
+static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPlatformData* platformData, jint quirks) {
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
     // Init global function table.
@@ -281,6 +281,7 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, VKPl
         .platformData = platformData,
         .presentationSupported = presentationSupported,
         .surfaceMaintenance1Supported = hasSurfaceMaintenance1,
+        .quirks = quirks,
     };
 
     pchar_array_t enabledLayers = VKNamedEntry_CollectNames(layers);
@@ -417,10 +418,10 @@ JNIEXPORT VKEnv* VKEnv_GetInstance() {
 /*
  * Class:     sun_java2d_vulkan_VKEnv
  * Method:    initNative
- * Signature: (J)[Lsun/java2d/vulkan/VKDevice;
+ * Signature: (JI)[Lsun/java2d/vulkan/VKDevice;
  */
 JNIEXPORT jobjectArray JNICALL
-Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv* env, jclass vkenv, jlong platformData) {
+Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv* env, jclass vkenv, jlong platformData, jint quirks) {
 #ifdef DEBUG
     // Init random for debug-related validation tricks.
     srand(platformData);
@@ -429,7 +430,7 @@ Java_sun_java2d_vulkan_VKEnv_initNative(JNIEnv* env, jclass vkenv, jlong platfor
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = vulkanLibOpen();
     if (vkGetInstanceProcAddr == NULL) return NULL;
 
-    VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr, jlong_to_ptr(platformData));
+    VKEnv* vk = VKEnv_Create(vkGetInstanceProcAddr, jlong_to_ptr(platformData), quirks);
     if (vk == NULL) {
         vulkanLibClose();
         return NULL;

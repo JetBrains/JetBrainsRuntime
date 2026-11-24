@@ -29,6 +29,7 @@ package sun.java2d.vulkan;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Toolkit;
+import java.lang.annotation.Native;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
@@ -49,6 +50,9 @@ public final class VKEnv {
         private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(System.getProperty("sun.java2d.vulkan.accelsd", "true"));
 
         private static final int deviceNumber = !vulkan ? 0 : Integer.getInteger("sun.java2d.vulkan.deviceNumber", -1);
+
+        @Native private static final int QUIRK_DISABLE_MESA_BUG16984_DETECTION = 1;
+        private static final int quirks = Boolean.getBoolean("sun.java2d.vulkan.quirk.disableMesaBug16984Detection") ? QUIRK_DISABLE_MESA_BUG16984_DETECTION : 0;
     }
 
     private static final int UNINITIALIZED = 0;
@@ -65,7 +69,7 @@ public final class VKEnv {
     public static native long initPlatformWayland(long nativePtr);
     public static native long initPlatformX11(long nativePtr);
     public static native long initPlatformWin32();
-    private static native VKGPU[] initNative(long platformData);
+    private static native VKGPU[] initNative(long platformData, int quirks);
 
     static class VKInitializationException extends RuntimeException {
         private static final long serialVersionUID = 7476713504086007145L;
@@ -87,7 +91,7 @@ public final class VKEnv {
         int newState = DISABLED;
         if (Options.vulkan) {
             try {
-                devices = initNative(getPlatformData.get());
+                devices = initNative(getPlatformData.get(), Options.quirks);
                 if (devices != null) {
                     newState = ENABLED;
                     if (Options.accelsd) newState |= ACCELSD_BIT;

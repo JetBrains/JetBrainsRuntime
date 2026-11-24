@@ -76,6 +76,149 @@ static VkBool32 VKDevice_CheckAndAddFormat(VKEnv* vk, VkPhysicalDevice physicalD
     return VK_FALSE;
 }
 
+static VkBool32 VKDevice_IsAffectedByMesaBug16984BrokenDmabufLayout(VKEnv* vk, VkPhysicalDevice physicalDevice,
+                                                                    uint32_t formatCount, VkFormat* formats, uint32_t queueFamily) {
+    VkBool32 bugDetected = VK_FALSE;
+    VkDevice vkDevice = VK_NULL_HANDLE;
+
+#define MESA_BUG16984_FUNCTION_TABLE(ENTRY, ...) \
+    ENTRY(__VA_ARGS__, vkDestroyDevice); \
+    ENTRY(__VA_ARGS__, vkCreateImage); \
+    ENTRY(__VA_ARGS__, vkDestroyImage); \
+    ENTRY(__VA_ARGS__, vkGetImageDrmFormatModifierPropertiesEXT); \
+    ENTRY(__VA_ARGS__, vkGetImageSubresourceLayout);
+    MESA_BUG16984_FUNCTION_TABLE(DECL_PFN)
+
+    vkDestroyDevice = NULL;
+
+    typedef struct {
+        VkFormat format;
+        VkDrmFormatModifierPropertiesEXT modifierProperties;
+    } FormatWithModifierProperties;
+    ARRAY(FormatWithModifierProperties) supportedFormatsWithModifiers = {0};
+
+    for (uint32_t formatIndex = 0; formatIndex < formatCount; ++formatIndex) {
+        VkFormat format = formats[formatIndex];
+        VkDrmFormatModifierPropertiesListEXT drmFormatModifierPropertiesList = {
+            .sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT,
+        };
+        VkFormatProperties2 formatProperties2 = {
+            .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2,
+            .pNext = &drmFormatModifierPropertiesList
+        };
+        vk->vkGetPhysicalDeviceFormatProperties2(physicalDevice, format, &formatProperties2);
+        if (drmFormatModifierPropertiesList.drmFormatModifierCount == 0) continue;
+        DECL_ARRAY(VkDrmFormatModifierPropertiesEXT, allDrmFormatModifierProperties, drmFormatModifierPropertiesList.drmFormatModifierCount);
+        drmFormatModifierPropertiesList.pDrmFormatModifierProperties = allDrmFormatModifierProperties;
+        vk->vkGetPhysicalDeviceFormatProperties2(physicalDevice, format, &formatProperties2);
+
+        for (uint32_t modifierIndex = 0; modifierIndex < drmFormatModifierPropertiesList.drmFormatModifierCount; ++modifierIndex) {
+            VkDrmFormatModifierPropertiesEXT* modifierProperties = &allDrmFormatModifierProperties[modifierIndex];
+            if (modifierProperties->drmFormatModifierPlaneCount <= 1 ||
+                !(modifierProperties->drmFormatModifierTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)) continue;
+
+            VkPhysicalDeviceImageDrmFormatModifierInfoEXT drmFormatModifierInfo = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT,
+                .drmFormatModifier = modifierProperties->drmFormatModifier,
+                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            };
+            VkPhysicalDeviceImageFormatInfo2 imageFormatInfo2 = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+                .pNext = &drmFormatModifierInfo,
+                .format = format,
+                .type = VK_IMAGE_TYPE_2D,
+                .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+                .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            };
+            VkImageFormatProperties2 imageFormatProperties2 = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
+            };
+            if (vk->vkGetPhysicalDeviceImageFormatProperties2(physicalDevice, &imageFormatInfo2, &imageFormatProperties2) == VK_SUCCESS) {
+                ARRAY_PUSH_BACK(supportedFormatsWithModifiers) = (FormatWithModifierProperties) {
+                    .format = format,
+                    .modifierProperties = *modifierProperties,
+                };
+            }
+        }
+
+    }
+    if (supportedFormatsWithModifiers.size == 0) goto end;
+
+    float queuePriority = 1.0f;
+    VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = queueFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+    const char* extensionName = VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
+    VkDeviceCreateInfo deviceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount = 1,
+        .pQueueCreateInfos = &deviceQueueCreateInfo,
+        .enabledExtensionCount = 1,
+        .ppEnabledExtensionNames = &extensionName,
+    };
+    VK_IF_ERROR(vk->vkCreateDevice(physicalDevice, &deviceCreateInfo, NULL, &vkDevice)) goto end;
+
+    VkBool32 missingAPI = VK_FALSE;
+    MESA_BUG16984_FUNCTION_TABLE(CHECK_PROC_ADDR, missingAPI, vk->vkGetDeviceProcAddr, vkDevice,)
+    if (missingAPI) goto end;
+
+    const VkExtent3D IMAGE_EXTENT = { .width = 1, .height = 9, .depth = 1 };
+    for (uint32_t i = 0; i < supportedFormatsWithModifiers.size && !bugDetected; ++i) {
+        VkFormat format = supportedFormatsWithModifiers.data[i].format;
+        VkDrmFormatModifierPropertiesEXT* modifierProperties = &supportedFormatsWithModifiers.data[i].modifierProperties;
+
+        VkImageDrmFormatModifierListCreateInfoEXT drmFormatModifierListCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
+            .drmFormatModifierCount = 1,
+            .pDrmFormatModifiers = &modifierProperties->drmFormatModifier
+        };
+        VkImageCreateInfo imageCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext = &drmFormatModifierListCreateInfo,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format = format,
+            .extent = IMAGE_EXTENT,
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+            .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+        VkImage vkImage;
+        VK_IF_ERROR(vkCreateImage(vkDevice, &imageCreateInfo, NULL, &vkImage)) continue;
+
+        VkImageDrmFormatModifierPropertiesEXT imageModifierProperties = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT,
+        };
+        if (vkGetImageDrmFormatModifierPropertiesEXT(vkDevice, vkImage, &imageModifierProperties) == VK_SUCCESS &&
+            imageModifierProperties.drmFormatModifier == modifierProperties->drmFormatModifier) {
+            VkSubresourceLayout plane0Layout;
+            VkImageSubresource imageSubresource = { .aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT };
+            vkGetImageSubresourceLayout(vkDevice, vkImage, &imageSubresource, &plane0Layout);
+            imageSubresource.aspectMask = VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT;
+            VkSubresourceLayout plane1Layout;
+            vkGetImageSubresourceLayout(vkDevice, vkImage, &imageSubresource, &plane1Layout);
+
+            if (plane1Layout.offset > plane0Layout.offset &&
+                plane0Layout.offset + plane0Layout.rowPitch * IMAGE_EXTENT.height > plane1Layout.offset) {
+                bugDetected = VK_TRUE;
+            }
+        }
+
+        vkDestroyImage(vkDevice, vkImage, NULL);
+    }
+
+    end:
+    if (vkDestroyDevice) vkDestroyDevice(vkDevice, NULL);
+    ARRAY_FREE(supportedFormatsWithModifiers);
+    return bugDetected;
+}
+
 void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     // Query supported layers.
     uint32_t layerCount;
@@ -105,6 +248,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     DEF_NAMED_ENTRY(extensions, VK_KHR_SWAPCHAIN_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_EXT_LINE_RASTERIZATION_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION); // only used to check for Mesa bug #16984, not enabled in the final device.
     VKNamedEntry_Match(extensions, allExtensions[0].extensionName, extensionCount, sizeof(VkExtensionProperties));
 
     // Query device properties.
@@ -139,7 +283,14 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         .pNext = pNext
     };
     vk->vkGetPhysicalDeviceFeatures2(physicalDevice, &deviceFeatures2);
-    VkPhysicalDeviceProperties2 deviceProperties2 = {.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+
+    VkPhysicalDeviceDriverProperties driverProperties = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+    };
+    VkPhysicalDeviceProperties2 deviceProperties2 = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &driverProperties,
+    };
     vk->vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
 
     bool hasSwapchainMaintenance1 =
@@ -197,13 +348,6 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
     // Check features.
     VKNamedEntry_LogFound(layers);
     VKNamedEntry_LogFound(extensions);
-
-    J2dRlsTraceLn(J2D_TRACE_INFO, "    presentable = %s", (caps & CAP_PRESENTABLE_BIT) ? "true" : "false");
-    if (!(caps & CAP_PRESENTABLE_BIT)) {
-        VK_KHR_SWAPCHAIN_EXTENSION.found = NULL;
-        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found = NULL;
-        hasSwapchainMaintenance1 = false;
-    }
 
     J2dRlsTraceLn(J2D_TRACE_INFO, "    logicOp = %s", deviceFeatures2.features.logicOp ? "true" : "false");
     if (deviceFeatures2.features.logicOp) caps |= sun_java2d_vulkan_VKGPU_CAP_LOGIC_OP_BIT;
@@ -270,6 +414,36 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         if ((formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0) {
             J2dRlsTraceLn(J2D_TRACE_INFO, "        %s", "VK_FORMAT_S8_UINT (stencil)");
         } else ARRAY_PUSH_BACK(errors) = "VK_FORMAT_S8_UINT not supported";
+    }
+
+    // https://gitlab.freedesktop.org/mesa/mesa/-/work_items/16984
+    if (!(vk->quirks & sun_java2d_vulkan_VKEnv_Options_QUIRK_DISABLE_MESA_BUG16984_DETECTION) &&
+        errors.size == 0 &&
+        driverProperties.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA &&
+        deviceProperties2.properties.driverVersion >= VK_MAKE_VERSION(26, 3, 0) &&
+        (caps & CAP_PRESENTABLE_BIT) &&
+        supportedFormats.size > 0 &&
+        VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION.found != NULL) {
+
+        DECL_ARRAY(VkFormat, presentableFormats, supportedFormats.size);
+        uint32_t presentableFormatsCount = 0;
+        for (uint32_t formatIndex = 0; formatIndex < supportedFormats.size; ++formatIndex) {
+            if (!(supportedFormats.data[formatIndex] & CAP_PRESENTABLE_BIT)) continue;
+            presentableFormats[presentableFormatsCount++] = supportedFormats.data[formatIndex] & ~CAP_PRESENTABLE_BIT;
+        }
+
+        if (VKDevice_IsAffectedByMesaBug16984BrokenDmabufLayout(vk, physicalDevice, presentableFormatsCount, presentableFormats, queueFamily)) {
+            caps &= ~CAP_PRESENTABLE_BIT;
+            J2dRlsTraceLn(J2D_TRACE_WARNING, "    [affected by Mesa bug #16984, disabling presentation]");
+        }
+    }
+    VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION.found = NULL;
+
+    J2dRlsTraceLn(J2D_TRACE_INFO, "    presentable = %s", (caps & CAP_PRESENTABLE_BIT) ? "true" : "false");
+    if (!(caps & CAP_PRESENTABLE_BIT)) {
+        VK_KHR_SWAPCHAIN_EXTENSION.found = NULL;
+        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION.found = NULL;
+        hasSwapchainMaintenance1 = false;
     }
 
     // Check found errors.

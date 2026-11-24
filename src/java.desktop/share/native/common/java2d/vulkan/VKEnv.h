@@ -30,6 +30,7 @@
 #include "VKDevice.h"
 #include "VKUtil.h"
 #include "VKFunctionTable.h"
+#include "sun_java2d_vulkan_VKEnv_Options.h"
 
 // For old Vulkan headers - define version-related macros.
 #ifndef VK_MAKE_API_VERSION
@@ -61,6 +62,8 @@ struct VKEnv {
     VKPlatformData* platformData;
     VkBool32 presentationSupported;
     VkBool32 surfaceMaintenance1Supported;
+
+    jint quirks;
 
     INSTANCE_FUNCTION_TABLE(DECL_PFN)
     SURFACE_INSTANCE_FUNCTION_TABLE(DECL_PFN)
