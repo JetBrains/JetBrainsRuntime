@@ -141,11 +141,6 @@ static jmethodID isNativeInputMethodSupportEnabledMID;
 static jclass runnableClass;
 static jmethodID runnableRunMID;
 
-static jclass stringClass;
-static jmethodID stringBytesEncodingConstructorMID;
-static jmethodID stringGetBytesMID;
-static jobject standardCharsetsUTF8;
-
 JNIEnv *getEnv() {
     JNIEnv *env;
     // assuming we're always called from a Java thread
@@ -908,21 +903,6 @@ initJavaRefs(JNIEnv *env, jclass clazz)
                                  JNI_FALSE);
     CHECK_NULL_RETURN(runnableRunMID = (*env)->GetMethodID(env, runnableClass, "run", "()V"), JNI_FALSE);
 
-    CHECK_NULL_RETURN(stringClass = (*env)->FindClass(env, "java/lang/String"), JNI_FALSE);
-    CHECK_NULL_THROW_OOME_RETURN(env, stringClass = (jclass)(*env)->NewGlobalRef(env, stringClass),
-        "Allocation of a global reference to java.lang.String failed", JNI_FALSE);
-    CHECK_NULL_RETURN(stringBytesEncodingConstructorMID = (*env)->GetMethodID(env, stringClass, "<init>", "([BLjava/nio/charset/Charset;)V"), JNI_FALSE);
-    CHECK_NULL_RETURN(stringGetBytesMID = (*env)->GetMethodID(env, stringClass, "getBytes", "(Ljava/nio/charset/Charset;)[B"), JNI_FALSE);
-
-    jclass standardCharsetsClass = NULL;
-    jfieldID standardCharsetsUTF8FID = NULL;
-
-    CHECK_NULL_RETURN(standardCharsetsClass = (*env)->FindClass(env, "java/nio/charset/StandardCharsets"), JNI_FALSE);
-    CHECK_NULL_RETURN(standardCharsetsUTF8FID = (*env)->GetStaticFieldID(env, standardCharsetsClass, "UTF_8", "Ljava/nio/charset/Charset;"), JNI_FALSE);
-    CHECK_NULL_RETURN(standardCharsetsUTF8 = (*env)->GetStaticObjectField(env, standardCharsetsClass, standardCharsetsUTF8FID), JNI_FALSE);
-    CHECK_NULL_THROW_OOME_RETURN(env, standardCharsetsUTF8 = (*env)->NewGlobalRef(env, standardCharsetsUTF8),
-        "Allocation of global reference to java.nio.charset.StandardCharsets.UTF_8 failed", JNI_FALSE);
-
     jclass wlgeClass = (*env)->FindClass(env, "sun/awt/wl/WLGraphicsEnvironment");
     CHECK_NULL_RETURN(wlgeClass, JNI_FALSE);
 
@@ -1033,7 +1013,7 @@ libwaylandLoggingCallback(const char *fmt, va_list args)
     // NOTE: vsnprintf always null-terminates the buffer
 
     JNIEnv *env = getEnv();
-    jstring message = wlUtf8ToJavaString(env, buf);
+    jstring message = (*env)->NewStringUTF(env, buf);
     JNU_CHECK_EXCEPTION(env);
 
     (*env)->CallStaticVoidMethod(env, tkClass, handleWaylandLogMID, message);
@@ -1100,7 +1080,7 @@ static bool wlCheckProtocolError(JNIEnv *env)
 
     jstring interfaceJavaString = NULL;
     if (interface != NULL) {
-        interfaceJavaString = wlUtf8ToJavaString(env, interface->name);
+        interfaceJavaString = (*env)->NewStringUTF(env, interface->name);
         EXCEPTION_CLEAR(env);
     }
 
@@ -1140,89 +1120,6 @@ void wlListenerThrowInternalError(JNIEnv *env, const char *message)
 {
     JNU_ThrowInternalError(env, message);
     wlListenerCheckException(env);
-}
-
-jstring
-wlUtf8ToJavaString(JNIEnv *env, const char *cstring)
-{
-    assert(env != NULL);
-    if (cstring == NULL) {
-        return NULL;
-    }
-
-    jbyteArray bytes = NULL;
-    jstring result = NULL;
-
-    size_t n = strlen(cstring);
-
-    if (n > (size_t)INT32_MAX) {
-        JNU_ThrowIllegalArgumentException(env, "Passed string is larger than INT32_MAX bytes");
-        goto out;
-    }
-
-    bytes = (*env)->NewByteArray(env, (jint)n);
-    if ((*env)->ExceptionCheck(env) || bytes == NULL) {
-        goto out;
-    }
-
-    (*env)->SetByteArrayRegion(env, bytes, 0, (jint)n, (const jbyte*)cstring);
-    if ((*env)->ExceptionCheck(env)) {
-        // can't happen
-        goto out;
-    }
-
-    result = (*env)->NewObject(env, stringClass, stringBytesEncodingConstructorMID, bytes, standardCharsetsUTF8);
-
-out:
-    if (bytes != NULL) {
-        (*env)->DeleteLocalRef(env, bytes);
-    }
-    return result;
-}
-
-char *
-wlJavaStringToUtf8(JNIEnv *env, jstring string)
-{
-    assert(env != NULL);
-    if (string == NULL) {
-        return NULL;
-    }
-
-    char *result = NULL;
-    jbyteArray bytes = (*env)->CallObjectMethod(env, string, stringGetBytesMID, standardCharsetsUTF8);
-    jint byteLength = 0;
-    size_t n = 0;
-
-    if ((*env)->ExceptionCheck(env) || bytes == NULL) {
-        goto error;
-    }
-
-    byteLength = (*env)->GetArrayLength(env, bytes);
-    assert(byteLength >= 0);
-    n = (size_t)byteLength;
-
-    result = malloc(n + 1);
-    if (result == NULL) {
-        JNU_ThrowOutOfMemoryError(env, "malloc() failed");
-        goto error;
-    }
-
-    (*env)->GetByteArrayRegion(env, bytes, 0, byteLength, (jbyte*)result);
-    if ((*env)->ExceptionCheck(env)) {
-        // can't happen
-        goto error;
-    }
-
-    result[n] = '\0';
-    (*env)->DeleteLocalRef(env, bytes);
-    return result;
-
-error:
-    free(result);
-    if (bytes != NULL) {
-        (*env)->DeleteLocalRef(env, bytes);
-    }
-    return NULL;
 }
 
 JNIEXPORT jboolean JNICALL

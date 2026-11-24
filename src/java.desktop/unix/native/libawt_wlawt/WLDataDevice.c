@@ -409,7 +409,7 @@ DataSource_handleSend(struct DataSource *source, const char *mime, int fd)
     JNIEnv *env = getEnv();
     assert(env != NULL);
 
-    jstring mimeJavaString = wlUtf8ToJavaString(env, mime);
+    jstring mimeJavaString = (*env)->NewStringUTF(env, mime);
     if (wlListenerCheckException(env) || mimeJavaString == NULL) {
         return;
     }
@@ -537,7 +537,7 @@ DataOffer_callOfferHandler(struct DataOffer *offer, const char *mime)
     JNIEnv *env = getEnv();
     assert(env != NULL);
 
-    jstring mimeJavaString = wlUtf8ToJavaString(env, mime);
+    jstring mimeJavaString = (*env)->NewStringUTF(env, mime);
     if (wlListenerCheckException(env) || mimeJavaString == NULL) {
         return;
     }
@@ -647,7 +647,7 @@ wl_data_source_handle_target(void *user, struct wl_data_source *wl_data_source, 
     JNIEnv *env = getEnv();
     assert(env != NULL);
 
-    jstring mimeJavaString = wlUtf8ToJavaString(env, mime);
+    jstring mimeJavaString = (*env)->NewStringUTF(env, mime);
     if (wlListenerCheckException(env) || mimeJavaString == NULL) {
         return;
     }
@@ -1344,12 +1344,10 @@ Java_sun_awt_wl_WLDataSource_offerMimeImpl(JNIEnv *env,
                                            jstring mimeJavaString)
 {
     struct DataSource *source = jlong_to_ptr(nativePtr);
-    char *mime = wlJavaStringToUtf8(env, mimeJavaString);
-    if ((*env)->ExceptionCheck(env) || mime == NULL) {
-        return;
-    }
+    const char *mime = (*env)->GetStringUTFChars(env, mimeJavaString, NULL);
+    JNU_CHECK_EXCEPTION(env);
     DataSource_offer(source, mime);
-    free(mime);
+    (*env)->ReleaseStringUTFChars(env, mimeJavaString, mime);
 }
 
 JNIEXPORT void JNICALL
@@ -1467,13 +1465,18 @@ Java_sun_awt_wl_WLDataOffer_acceptImpl(
         JNIEnv *env, jclass clazz, jlong nativePtr, jlong serial, jstring mimeJavaString)
 {
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
-    char *mime = wlJavaStringToUtf8(env, mimeJavaString);
-    if ((*env)->ExceptionCheck(env)) {
-        return;
+    const char *mime = NULL;
+
+    if (mimeJavaString != NULL) {
+        mime = (*env)->GetStringUTFChars(env, mimeJavaString, NULL);
+        JNU_CHECK_EXCEPTION(env);
     }
 
     DataOffer_accept(offer, (uint32_t) serial, mime);
-    free(mime);
+
+    if (mime != NULL) {
+        (*env)->ReleaseStringUTFChars(env, mimeJavaString, mime);
+    }
 }
 
 JNIEXPORT jint JNICALL
@@ -1483,25 +1486,22 @@ Java_sun_awt_wl_WLDataOffer_openReceivePipe(JNIEnv *env,
                                             jstring mimeJavaString)
 {
     struct DataOffer *offer = jlong_to_ptr(nativePtr);
-    char *mime = wlJavaStringToUtf8(env, mimeJavaString);
-    if ((*env)->ExceptionCheck(env) || mime == NULL) {
-        return -1;
-    }
+    const char *mime = (*env)->GetStringUTFChars(env, mimeJavaString, NULL);
+    JNU_CHECK_EXCEPTION_RETURN(env, -1);
 
     int fds[2];
     if (pipe2(fds, O_CLOEXEC) != 0) {
         JNU_ThrowIOExceptionWithMessageAndLastError(env, "pipe2");
-        free(mime);
         return -1;
     }
 
     DataOffer_receive(offer, mime, fds[1]);
-    free(mime);
 
     // Flush the request to receive
     wlFlushToServer(env);
 
     close(fds[1]);
+    (*env)->ReleaseStringUTFChars(env, mimeJavaString, mime);
 
     return fds[0];
 }
