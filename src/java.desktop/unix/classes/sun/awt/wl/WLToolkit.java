@@ -208,8 +208,8 @@ public class WLToolkit extends UNIXToolkit implements Runnable, ToolkitAPI {
 
         if (!GraphicsEnvironment.isHeadless()) {
             quirkSyncBeforePopupMap = computeQuirkSyncBeforePopupMap();
-            if (quirkSyncBeforePopupMap && log.isLoggable(PlatformLogger.Level.INFO)) {
-                log.info("Vulkan: quirkSyncBeforePopupMap enabled as a workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173");
+            if (quirkSyncBeforePopupMap && log.isLoggable(PlatformLogger.Level.FINE)) {
+                log.fine("Vulkan: quirkSyncBeforePopupMap enabled as a workaround for https://bugs.launchpad.net/ubuntu/+source/mutter/+bug/2129173");
             }
 
             toolkitThread = InnocuousThread.newThread("AWT-Wayland", this);
