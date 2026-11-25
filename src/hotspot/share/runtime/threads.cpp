@@ -792,6 +792,8 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // loaded until phase 2 completes
   call_initPhase2(CHECK_JNI_ERR);
 
+  SystemDictionary::compute_java_builtin_loaders(CHECK_JNI_ERR);
+
   if (CDSConfig::is_using_aot_linked_classes()) {
     AOTLinkedClassBulkLoader::load_non_javabase_classes(THREAD);
   }
@@ -811,7 +813,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Final system initialization including security manager and system class loader
   call_initPhase3(CHECK_JNI_ERR);
 
-  // cache the system and platform class loaders
+  // Cache the public system class loader.
   SystemDictionary::compute_java_loaders(CHECK_JNI_ERR);
 
   // Initiate replay training processing once preloading is over.

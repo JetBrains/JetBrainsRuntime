@@ -141,6 +141,7 @@ class SystemDictionary : AllStatic {
                                                   TRAPS);
 
   static oop get_system_class_loader_impl(TRAPS);
+  static oop get_builtin_app_class_loader_impl(TRAPS);
   static oop get_platform_class_loader_impl(TRAPS);
 
  public:
@@ -217,10 +218,16 @@ public:
   // Returns java system loader
   static oop java_system_loader();
 
+  // Returns the builtin application loader, independent of java.system.class.loader.
+  static oop java_builtin_app_loader();
+
   // Returns java platform loader
   static oop java_platform_loader();
 
-  // Compute the java system and platform loaders
+  // Cache the builtin platform and application loaders after initPhase2.
+  static void compute_java_builtin_loaders(TRAPS);
+
+  // Cache the public system loader after initPhase3.
   static void compute_java_loaders(TRAPS);
 
   // Register a new class loader
@@ -297,6 +304,7 @@ public:
                                        ClassLoaderData* loader_data) NOT_CDS_RETURN;
 
   static OopHandle  _java_system_loader;
+  static OopHandle  _java_builtin_app_loader;
   static OopHandle  _java_platform_loader;
 
 private:
@@ -354,6 +362,7 @@ protected:
 
 public:
   static bool is_system_class_loader(oop class_loader);
+  static bool is_builtin_app_class_loader(oop class_loader);
   static bool is_platform_class_loader(oop class_loader);
   static bool is_boot_class_loader(oop class_loader) { return class_loader == nullptr; }
   static bool is_builtin_class_loader(oop class_loader) {

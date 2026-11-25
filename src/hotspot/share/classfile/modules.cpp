@@ -25,6 +25,7 @@
 #include "cds/aotLogging.hpp"
 #include "cds/archiveBuilder.hpp"
 #include "cds/cdsConfig.hpp"
+#include "cds/filemap.hpp"
 #include "cds/metaspaceShared.hpp"
 #include "classfile/classFileParser.hpp"
 #include "classfile/classLoader.hpp"
@@ -579,6 +580,7 @@ public:
 Modules::ArchivedProperty Modules::_archived_props[] = {
   // non-numbered
   {"jdk.module.main", false},
+  {"java.system.class.loader", false},
 
   // numbered
   {"jdk.module.addexports", true},             // --add-exports
@@ -604,6 +606,13 @@ void Modules::ArchivedProperty::runtime_check() const {
                 _archived_value != nullptr ? _archived_value : "(null)");
 
   bool disable = false;
+  // Metadata-only archives do not bind the custom system-loader identity.
+  // AOT-linked bases and preimage assembly must still validate this property.
+  if (strcmp(_prop, "java.system.class.loader") == 0 &&
+      !CDSConfig::is_dumping_final_static_archive() &&
+      !FileMapInfo::current_info()->header()->has_aot_linked_classes()) {
+    return;
+  }
   if (runtime_value == nullptr) {
     if (_archived_value != nullptr) {
       MetaspaceShared::report_loading_error("Mismatched values for property %s: %s specified during dump time but not during runtime", _prop, _archived_value);
@@ -620,6 +629,11 @@ void Modules::ArchivedProperty::runtime_check() const {
   }
 
   if (disable) {
+    if (CDSConfig::is_dumping_final_static_archive() &&
+        strcmp(_prop, "java.system.class.loader") == 0) {
+      MetaspaceShared::unrecoverable_loading_error(
+          "java.system.class.loader must match between AOT training and assembly");
+    }
     MetaspaceShared::report_loading_error("Disabling optimized module handling");
     CDSConfig::stop_using_optimized_module_handling();
   }
@@ -726,11 +740,13 @@ void Modules::define_archived_modules(Handle h_platform_loader, Handle h_system_
 
   ClassLoaderData* system_loader_data = SystemDictionary::register_loader(h_system_loader);
   SystemDictionary::set_system_loader(system_loader_data);
-  // system_loader_data here is always an instance of jdk.internal.loader.ClassLoader$AppClassLoader.
-  // However, if -Djava.system.class.loader=xxx is specified, java_platform_loader() would
-  // be an instance of a user-defined class, so make sure this never happens.
-  assert(Arguments::get_property("java.system.class.loader") == nullptr,
-           "archived full module should have been disabled if -Djava.system.class.loader is specified");
+  // Archived modules belong to the builtin AppClassLoader.
+  // A configured custom system loader is installed later, during initPhase3.
+  assert(SystemDictionary::is_builtin_app_class_loader(h_system_loader()),
+         "archived modules must belong to the builtin AppClassLoader");
+  assert(AOTAllowCustomSystemClassLoader ||
+         Arguments::get_property("java.system.class.loader") == nullptr,
+         "custom system loaders require explicit AOT opt-in");
   ClassLoaderDataShared::restore_java_system_loader_from_archive(system_loader_data);
 }
 

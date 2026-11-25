@@ -131,6 +131,10 @@
           "Load/link all archived classes for the boot/platform/app "       \
           "loaders before application main")                                \
                                                                             \
+  product(bool, AOTAllowCustomSystemClassLoader, false, EXPERIMENTAL,       \
+          "Allow AOT with custom system class loaders and skip AOT indy "   \
+          "linking for bootstrap classes in unnamed modules")               \
+                                                                            \
   product(bool, AOTCacheParallelRelocation, true, DIAGNOSTIC,               \
           "Use parallel relocation code to speed up startup.")              \
                                                                             \

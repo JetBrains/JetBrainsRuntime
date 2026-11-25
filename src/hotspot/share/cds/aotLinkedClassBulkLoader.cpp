@@ -70,11 +70,11 @@ void AOTLinkedClassBulkLoader::load_non_javabase_classes(JavaThread* current) {
   assert(CDSConfig::is_using_aot_linked_classes(), "sanity");
 
   // is_using_aot_linked_classes() requires is_using_full_module_graph(). As a result,
-  // the platform/system class loader should already have been initialized as part
-  // of the FMG support.
+  // the platform and builtin application class loaders should already have been
+  // initialized as part of the FMG support.
   assert(CDSConfig::is_using_full_module_graph(), "must be");
   assert(SystemDictionary::java_platform_loader() != nullptr, "must be");
-  assert(SystemDictionary::java_system_loader() != nullptr,   "must be");
+  assert(SystemDictionary::java_builtin_app_loader() != nullptr,   "must be");
 
   load_classes_in_loader(current, AOTLinkedClassCategory::BOOT2, nullptr); // all boot classes outside of java.base
   _boot2_completed = true;
@@ -82,7 +82,7 @@ void AOTLinkedClassBulkLoader::load_non_javabase_classes(JavaThread* current) {
   load_classes_in_loader(current, AOTLinkedClassCategory::PLATFORM, SystemDictionary::java_platform_loader());
   _platform_completed = true;
 
-  load_classes_in_loader(current, AOTLinkedClassCategory::APP, SystemDictionary::java_system_loader());
+  load_classes_in_loader(current, AOTLinkedClassCategory::APP, SystemDictionary::java_builtin_app_loader());
 
   if (AOTPrintTrainingInfo) {
     tty->print_cr("==================== archived_training_data ** after all classes preloaded ====================");
@@ -244,7 +244,7 @@ void AOTLinkedClassBulkLoader::initiate_loading(JavaThread* current, const char*
   }
 
   assert(initiating_loader() == SystemDictionary::java_platform_loader() ||
-         initiating_loader() == SystemDictionary::java_system_loader(), "must be");
+         initiating_loader() == SystemDictionary::java_builtin_app_loader(), "must be");
   ClassLoaderData* loader_data = ClassLoaderData::class_loader_data(initiating_loader());
   MonitorLocker mu1(SystemDictionary_lock);
 

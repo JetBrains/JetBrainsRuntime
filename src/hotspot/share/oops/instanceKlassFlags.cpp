@@ -24,6 +24,7 @@
 
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderData.inline.hpp"
+#include "classfile/systemDictionary.hpp"
 #include "oops/instanceKlassFlags.hpp"
 #include "runtime/safepoint.hpp"
 #include "utilities/macros.hpp"
@@ -46,7 +47,7 @@ void InstanceKlassFlags::set_class_loader_type(const ClassLoaderData* cld) {
   else if (cld->is_platform_class_loader_data()) {
     _flags |= _misc_defined_by_platform_loader;
   }
-  else if (cld->is_system_class_loader_data()) {
+  else if (SystemDictionary::is_builtin_app_class_loader(cld->class_loader())) {
     _flags |= _misc_defined_by_app_loader;
   }
 }

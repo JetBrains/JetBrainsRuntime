@@ -377,7 +377,7 @@ void AOTClassInitializer::init_test_class(TRAPS) {
   if (AOTInitTestClass != nullptr && CDSConfig::is_initing_classes_at_dump_time()) {
     log_info(aot)("Debug build only: force initialization of AOTInitTestClass %s", AOTInitTestClass);
     TempNewSymbol class_name = SymbolTable::new_symbol(AOTInitTestClass);
-    Handle app_loader(THREAD, SystemDictionary::java_system_loader());
+    Handle app_loader(THREAD, SystemDictionary::java_builtin_app_loader());
     Klass* k = SystemDictionary::resolve_or_null(class_name, app_loader, CHECK);
     if (k == nullptr) {
       vm_exit_during_initialization("AOTInitTestClass not found", AOTInitTestClass);

@@ -491,7 +491,7 @@ size_t ArchiveHeapWriter::copy_one_source_obj_to_buffer(oop src_obj) {
 #ifdef ASSERT
     // We only archive these loaders
     if (src_obj != SystemDictionary::java_platform_loader() &&
-        src_obj != SystemDictionary::java_system_loader()) {
+        src_obj != SystemDictionary::java_builtin_app_loader()) {
       assert(src_obj->klass()->name()->equals("jdk/internal/loader/ClassLoaders$BootClassLoader"), "must be");
     }
 #endif

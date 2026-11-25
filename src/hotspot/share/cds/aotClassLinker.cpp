@@ -195,7 +195,7 @@ void AOTClassLinker::write_to_archive() {
     table->set_boot(write_classes(nullptr, true));
     table->set_boot2(write_classes(nullptr, false));
     table->set_platform(write_classes(SystemDictionary::java_platform_loader(), false));
-    table->set_app(write_classes(SystemDictionary::java_system_loader(), false));
+    table->set_app(write_classes(SystemDictionary::java_builtin_app_loader(), false));
   }
 }
 
@@ -284,7 +284,7 @@ const char* AOTClassLinker::class_category_name(Klass* k) {
     } else {
       if (loader == SystemDictionary::java_platform_loader()) {
         return "plat";
-      } else if (loader == SystemDictionary::java_system_loader()) {
+      } else if (loader == SystemDictionary::java_builtin_app_loader()) {
         return "app";
       } else {
         return "unreg";

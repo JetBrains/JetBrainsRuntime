@@ -191,8 +191,8 @@ void HeapShared::reset_archived_object_states(TRAPS) {
   assert(CDSConfig::is_dumping_heap(), "dump-time only");
   log_debug(aot)("Resetting platform loader");
   reset_states(SystemDictionary::java_platform_loader(), CHECK);
-  log_debug(aot)("Resetting system loader");
-  reset_states(SystemDictionary::java_system_loader(), CHECK);
+  log_debug(aot)("Resetting builtin application loader");
+  reset_states(SystemDictionary::java_builtin_app_loader(), CHECK);
 
   // Clean up jdk.internal.loader.ClassLoaders::bootLoader(), which is not
   // directly used for class loading, but rather is used by the core library
@@ -849,7 +849,7 @@ void KlassSubGraphInfo::check_allowed_klass(InstanceKlass* ik) {
     if (HeapShared::is_lambda_proxy_klass(ik) &&
         (ik->class_loader() == nullptr ||
          ik->class_loader() == SystemDictionary::java_platform_loader() ||
-         ik->class_loader() == SystemDictionary::java_system_loader())) {
+         ik->class_loader() == SystemDictionary::java_builtin_app_loader())) {
       return;
     }
   }

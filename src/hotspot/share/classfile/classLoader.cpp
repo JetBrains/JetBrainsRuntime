@@ -1245,7 +1245,7 @@ void ClassLoader::record_result(JavaThread* current, InstanceKlass* ik,
         if ((pkg_entry == nullptr) || (pkg_entry->in_unnamed_module())) {
           // Ensure the index is within the -cp range before assigning
           // to the classpath_index.
-          if (SystemDictionary::is_system_class_loader(loader) && cl->from_app_classpath()) {
+          if (SystemDictionary::is_builtin_app_class_loader(loader) && cl->from_app_classpath()) {
             classpath_index = i;
           } else {
             if (cl->from_boot_classpath()) {

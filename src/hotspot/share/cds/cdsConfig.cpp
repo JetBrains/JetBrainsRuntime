@@ -68,7 +68,8 @@ int CDSConfig::get_status() {
          (is_dumping_method_handles()       ? IS_DUMPING_METHOD_HANDLES : 0) |
          (is_dumping_static_archive()       ? IS_DUMPING_STATIC_ARCHIVE : 0) |
          (is_logging_lambda_form_invokers() ? IS_LOGGING_LAMBDA_FORM_INVOKERS : 0) |
-         (is_using_archive()                ? IS_USING_ARCHIVE : 0);
+         (is_using_archive()                ? IS_USING_ARCHIVE : 0) |
+         (is_dumping_final_static_archive() && AOTAllowCustomSystemClassLoader ? IS_CUSTOM_SYSTEM_LOADER_SUPPRESSED : 0);
 }
 
 DEBUG_ONLY(static bool _cds_ergo_initialize_started = false);
@@ -289,7 +290,6 @@ void CDSConfig::check_internal_module_property(const char* key, const char* valu
 
 void CDSConfig::check_incompatible_property(const char* key, const char* value) {
   static const char* incompatible_properties[] = {
-    "java.system.class.loader",
     "jdk.module.showModuleResolution",
     "jdk.module.validation"
   };
@@ -612,6 +612,17 @@ bool CDSConfig::check_vm_args_consistency(bool patch_mod_javabase, bool mode_fla
   assert(!_cds_ergo_initialize_started, "This is called earlier than CDSConfig::ergo_initialize()");
 
   check_aot_flags();
+
+  // Check after all VM arguments have been parsed, so the experimental
+  // option can be specified before or after the system loader property.
+  const char* custom_system_loader =
+      Arguments::get_property("java.system.class.loader");
+  if (custom_system_loader != nullptr && !AOTAllowCustomSystemClassLoader) {
+    stop_dumping_full_module_graph();
+    stop_using_full_module_graph();
+    aot_log_info(aot)("full module graph: disabled due to incompatible property: %s=%s",
+                     "java.system.class.loader", custom_system_loader);
+  }
 
   if (!FLAG_IS_DEFAULT(AOTMode)) {
     // Using any form of the new AOTMode switch enables enhanced optimizations.
@@ -948,7 +959,14 @@ bool CDSConfig::is_dumping_aot_linked_classes() {
   if (is_dumping_preimage_static_archive()) {
     return false;
   } else if (is_dumping_dynamic_archive()) {
-    return is_using_full_module_graph() && AOTClassLinking;
+    // Only the static archive records the system-loader property. Keep a
+    // custom-loader dynamic layer metadata-only unless its AOT-linked base
+    // supplies that compatibility check.
+    FileMapInfo* base = FileMapInfo::current_info();
+    return is_using_full_module_graph() && AOTClassLinking &&
+           (Arguments::get_property("java.system.class.loader") == nullptr ||
+            (base != nullptr && base->header() != nullptr &&
+             base->header()->has_aot_linked_classes()));
   } else if (is_dumping_static_archive()) {
     return is_dumping_full_module_graph() && AOTClassLinking;
   } else {

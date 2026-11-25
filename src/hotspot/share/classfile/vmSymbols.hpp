@@ -437,6 +437,7 @@ class SerializeClosure;
   template(bootLoader_name,                           "bootLoader")                               \
   template(getPlatformClassLoader_name,               "getPlatformClassLoader")                   \
   template(getSystemClassLoader_name,                 "getSystemClassLoader")                     \
+  template(getBuiltinAppClassLoader_name,             "getBuiltinAppClassLoader")                 \
   template(fillInStackTrace_name,                     "fillInStackTrace")                         \
   template(getCause_name,                             "getCause")                                 \
   template(initCause_name,                            "initCause")                                \

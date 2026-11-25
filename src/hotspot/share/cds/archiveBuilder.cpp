@@ -876,7 +876,7 @@ void ArchiveBuilder::make_klasses_shareable() {
         } else if (loader == SystemDictionary::java_platform_loader()) {
           type = "plat";
           ADD_COUNT(num_platform_klasses);
-        } else if (loader == SystemDictionary::java_system_loader()) {
+        } else if (loader == SystemDictionary::java_builtin_app_loader()) {
           type = "app";
           ADD_COUNT(num_app_klasses);
         } else {

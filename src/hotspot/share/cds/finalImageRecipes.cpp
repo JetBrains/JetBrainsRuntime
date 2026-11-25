@@ -168,7 +168,7 @@ void FinalImageRecipes::apply_recipes_for_constantpool(JavaThread* current) {
 
 void FinalImageRecipes::load_all_classes(TRAPS) {
   assert(CDSConfig::is_dumping_final_static_archive(), "sanity");
-  Handle class_loader(THREAD, SystemDictionary::java_system_loader());
+  Handle class_loader(THREAD, SystemDictionary::java_builtin_app_loader());
   for (int i = 0; i < _all_klasses->length(); i++) {
     Klass* k = _all_klasses->at(i);
     if (k->is_instance_klass()) {

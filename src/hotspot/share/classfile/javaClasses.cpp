@@ -1177,7 +1177,7 @@ void java_lang_Class::create_mirror(Klass* k, Handle class_loader,
 void java_lang_Class::create_scratch_mirror(Klass* k, TRAPS) {
   if (k->class_loader() != nullptr &&
       k->class_loader() != SystemDictionary::java_platform_loader() &&
-      k->class_loader() != SystemDictionary::java_system_loader()) {
+      k->class_loader() != SystemDictionary::java_builtin_app_loader()) {
     // We only archive the mirrors of classes loaded by the built-in loaders
     return;
   }

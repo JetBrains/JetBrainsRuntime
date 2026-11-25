@@ -79,14 +79,17 @@ void DumpTimeClassInfo::add_verification_constraint(InstanceKlass* k, Symbol* na
   }
 }
 
-static char get_loader_type_by(oop  loader) {
-  assert(SystemDictionary::is_builtin_class_loader(loader), "Must be built-in loader");
+static char get_loader_type_by(oop loader) {
+  assert(SystemDictionary::is_boot_class_loader(loader) ||
+         SystemDictionary::is_platform_class_loader(loader) ||
+         SystemDictionary::is_builtin_app_class_loader(loader),
+         "Must be built-in loader");
   if (SystemDictionary::is_boot_class_loader(loader)) {
     return (char)ClassLoader::BOOT_LOADER;
   } else if (SystemDictionary::is_platform_class_loader(loader)) {
     return (char)ClassLoader::PLATFORM_LOADER;
   } else {
-    assert(SystemDictionary::is_system_class_loader(loader), "Class loader mismatch");
+    assert(SystemDictionary::is_builtin_app_class_loader(loader), "Class loader mismatch");
     return (char)ClassLoader::APP_LOADER;
   }
 }

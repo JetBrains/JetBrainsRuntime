@@ -1866,6 +1866,16 @@ bool FileMapInfo::validate_aot_class_linking() {
   // is available.
   if (header()->has_aot_linked_classes()) {
     const char* archive_type = CDSConfig::type_of_archive_being_loaded();
+
+    // A dynamic archive does not serialize the system-loader property.
+    // A custom loader therefore requires a base that validates this property.
+    if (!is_static() &&
+        Arguments::get_property("java.system.class.loader") != nullptr &&
+        !FileMapInfo::current_info()->header()->has_aot_linked_classes()) {
+      aot_log_error(aot)("AOT-linked dynamic archive requires an AOT-linked base archive when a custom system class loader is specified");
+      return false;
+    }
+
     CDSConfig::set_has_aot_linked_classes(true);
     if (JvmtiExport::should_post_class_file_load_hook()) {
       aot_log_error(aot)("%s has aot-linked classes. It cannot be used when JVMTI ClassFileLoadHook is in use.",
@@ -2008,7 +2018,7 @@ bool FileMapHeader::validate() {
   // This must be done after header validation because it might change the
   // header data
   const char* prop = Arguments::get_property("java.system.class.loader");
-  if (prop != nullptr) {
+  if (prop != nullptr && !AOTAllowCustomSystemClassLoader) {
     if (has_aot_linked_classes()) {
       aot_log_error(aot)("%s has aot-linked classes. It cannot be used when the "
                      "java.system.class.loader property is specified.", CDSConfig::type_of_archive_being_loaded());

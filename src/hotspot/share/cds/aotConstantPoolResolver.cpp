@@ -26,6 +26,8 @@
 #include "cds/aotConstantPoolResolver.hpp"
 #include "cds/archiveBuilder.hpp"
 #include "cds/cdsConfig.hpp"
+#include "cds/cds_globals.hpp"
+#include "classfile/moduleEntry.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/systemDictionaryShared.hpp"
 #include "classfile/vmClasses.hpp"
@@ -155,14 +157,14 @@ Klass* AOTConstantPoolResolver::find_loaded_class(Thread* current, oop class_loa
   if (k != nullptr) {
     return k;
   }
-  if (h_loader() == SystemDictionary::java_system_loader()) {
+  if (h_loader() == SystemDictionary::java_builtin_app_loader()) {
     return find_loaded_class(current, SystemDictionary::java_platform_loader(), name);
   } else if (h_loader() == SystemDictionary::java_platform_loader()) {
     return find_loaded_class(current, nullptr, name);
   } else {
     assert(h_loader() == nullptr, "This function only works for boot/platform/app loaders %p %p %p",
            cast_from_oop<address>(h_loader()),
-           cast_from_oop<address>(SystemDictionary::java_system_loader()),
+           cast_from_oop<address>(SystemDictionary::java_builtin_app_loader()),
            cast_from_oop<address>(SystemDictionary::java_platform_loader()));
   }
 
@@ -479,6 +481,12 @@ bool AOTConstantPoolResolver::is_indy_resolution_deterministic(ConstantPool* cp,
 
   InstanceKlass* pool_holder = cp->pool_holder();
   if (!SystemDictionaryShared::is_builtin(pool_holder)) {
+    return false;
+  }
+
+  if (AOTAllowCustomSystemClassLoader &&
+      pool_holder->class_loader() == nullptr &&
+      !pool_holder->module()->is_named()) {
     return false;
   }
 

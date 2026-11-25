@@ -60,6 +60,7 @@ import jdk.internal.loader.NativeLibraries;
 import jdk.internal.perf.PerfCounter;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.misc.VM;
+import jdk.internal.misc.CDS;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.CallerSensitiveAdapter;
 import jdk.internal.reflect.Reflection;
@@ -1881,7 +1882,7 @@ public abstract class ClassLoader {
 
         ClassLoader builtinLoader = getBuiltinAppClassLoader();
         String cn = System.getProperty("java.system.class.loader");
-        if (cn != null) {
+        if (cn != null && !CDS.isCustomSystemClassLoaderSuppressed()) {
             try {
                 // custom class loader is only supported to be loaded from unnamed module
                 Constructor<?> ctor = Class.forName(cn, false, builtinLoader)

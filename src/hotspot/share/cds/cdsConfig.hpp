@@ -83,6 +83,7 @@ public:
   static const int IS_DUMPING_STATIC_ARCHIVE       = 1 << 2;
   static const int IS_LOGGING_LAMBDA_FORM_INVOKERS = 1 << 3;
   static const int IS_USING_ARCHIVE                = 1 << 4;
+  static const int IS_CUSTOM_SYSTEM_LOADER_SUPPRESSED = 1 << 5;
 
   static int get_status() NOT_CDS_RETURN_(0);
 

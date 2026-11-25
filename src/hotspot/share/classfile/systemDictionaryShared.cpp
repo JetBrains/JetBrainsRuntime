@@ -103,7 +103,7 @@ InstanceKlass* SystemDictionaryShared::load_shared_class_for_builtin_loader(
   InstanceKlass* ik = find_builtin_class(class_name);
 
   if (ik != nullptr && !ik->shared_loading_failed()) {
-    if ((SystemDictionary::is_system_class_loader(class_loader()) && ik->defined_by_app_loader())  ||
+    if ((SystemDictionary::is_builtin_app_class_loader(class_loader()) && ik->defined_by_app_loader())  ||
         (SystemDictionary::is_platform_class_loader(class_loader()) && ik->defined_by_platform_loader())) {
       SharedClassLoadingMark slm(THREAD, ik);
       PackageEntry* pkg_entry = CDSProtectionDomain::get_package_entry_from_class(ik, class_loader);
@@ -128,7 +128,7 @@ InstanceKlass* SystemDictionaryShared::lookup_from_stream(Symbol* class_name,
     return nullptr;
   }
   if (class_loader.is_null() ||
-      SystemDictionary::is_system_class_loader(class_loader()) ||
+      SystemDictionary::is_builtin_app_class_loader(class_loader()) ||
       SystemDictionary::is_platform_class_loader(class_loader())) {
     // Do nothing for the BUILTIN loaders.
     return nullptr;
@@ -175,7 +175,6 @@ InstanceKlass* SystemDictionaryShared::acquire_class_for_current_thread(
 
   // No longer holding SharedDictionary_lock
   // No need to lock, as <ik> can be held only by a single thread.
-  loader_data->add_class(ik);
 
   // Get the package entry.
   PackageEntry* pkg_entry = CDSProtectionDomain::get_package_entry_from_class(ik, class_loader);
@@ -354,7 +353,7 @@ bool SystemDictionaryShared::check_for_exclusion_impl(InstanceKlass* k) {
 bool SystemDictionaryShared::is_builtin_loader(ClassLoaderData* loader_data) {
   oop class_loader = loader_data->class_loader();
   return (class_loader == nullptr ||
-          SystemDictionary::is_system_class_loader(class_loader) ||
+          SystemDictionary::is_builtin_app_class_loader(class_loader) ||
           SystemDictionary::is_platform_class_loader(class_loader));
 }
 
@@ -410,7 +409,7 @@ InstanceKlass* SystemDictionaryShared::find_or_load_shared_class(
       return nullptr;
     }
 
-    if (SystemDictionary::is_system_class_loader(class_loader()) ||
+    if (SystemDictionary::is_builtin_app_class_loader(class_loader()) ||
         SystemDictionary::is_platform_class_loader(class_loader())) {
       ClassLoaderData *loader_data = register_loader(class_loader);
       Dictionary* dictionary = loader_data->dictionary();
@@ -555,7 +554,7 @@ void SystemDictionaryShared::init_dumptime_info_from_preimage(InstanceKlass* k) 
 
   if (SystemDictionary::is_platform_class_loader(k->class_loader())) {
     AOTClassLocationConfig::dumptime_set_has_platform_classes();
-  } else if (SystemDictionary::is_system_class_loader(k->class_loader())) {
+  } else if (SystemDictionary::is_builtin_app_class_loader(k->class_loader())) {
     AOTClassLocationConfig::dumptime_set_has_app_classes();
   }
 }
@@ -879,7 +878,7 @@ static oop get_class_loader_by(char type) {
     return SystemDictionary::java_platform_loader();
   } else {
     assert (type == (char)ClassLoader::APP_LOADER, "Sanity");
-    return SystemDictionary::java_system_loader();
+    return SystemDictionary::java_builtin_app_loader();
   }
 }
 
@@ -909,9 +908,9 @@ void SystemDictionaryShared::record_linking_constraint(Symbol* name, InstanceKla
   // try to resolve T.
   oop klass_loader = klass->class_loader();
 
-  if (!is_system_class_loader(klass_loader) &&
+  if (!is_builtin_app_class_loader(klass_loader) &&
       !is_platform_class_loader(klass_loader)) {
-    // If klass is loaded by system/platform loaders, we can
+    // If klass is loaded by the builtin app/platform loaders, we can
     // guarantee that klass and S must be loaded by the same
     // respective loader between dump time and run time, and
     // the exact same check on (name, loader1, loader2) will

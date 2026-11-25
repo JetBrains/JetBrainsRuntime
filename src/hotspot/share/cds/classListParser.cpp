@@ -670,7 +670,7 @@ void ClassListParser::resolve_indy_impl(Symbol* class_name_symbol, TRAPS) {
   // This eliminate dynamic class generation of the proxy class, but we still need to
   // resolve the CP entry for the invokedynamic instruction, which may result in
   // generation of LambdaForm classes.
-  Handle class_loader(THREAD, SystemDictionary::java_system_loader());
+  Handle class_loader(THREAD, SystemDictionary::java_builtin_app_loader());
   Klass* klass = SystemDictionary::resolve_or_fail(class_name_symbol, class_loader, true, CHECK);
   if (klass->is_instance_klass()) {
     InstanceKlass* ik = InstanceKlass::cast(klass);
@@ -735,16 +735,16 @@ Klass* ClassListParser::load_current_class(Symbol* class_name_symbol, TRAPS) {
     }
 
     JavaValue result(T_OBJECT);
-    // Call java_system_loader().loadClass() directly, which will
+    // Call java_builtin_app_loader().loadClass() directly, which will
     // delegate to the correct loader (boot, platform or app) depending on
     // the package name.
 
     // ClassLoader.loadClass() wants external class name format, i.e., convert '/' chars to '.'
     Handle ext_class_name = java_lang_String::externalize_classname(class_name_symbol, CHECK_NULL);
-    Handle loader = Handle(THREAD, SystemDictionary::java_system_loader());
+    Handle loader = Handle(THREAD, SystemDictionary::java_builtin_app_loader());
 
     JavaCalls::call_virtual(&result,
-                            loader, //SystemDictionary::java_system_loader(),
+                            loader,
                             vmClasses::ClassLoader_klass(),
                             vmSymbols::loadClass_name(),
                             vmSymbols::string_class_signature(),
@@ -805,7 +805,7 @@ InstanceKlass* ClassListParser::find_builtin_class(JavaThread* current, const ch
 
   if ( (ik = find_builtin_class_helper(current, class_name_symbol, nullptr)) != nullptr
     || (ik = find_builtin_class_helper(current, class_name_symbol, SystemDictionary::java_platform_loader())) != nullptr
-    || (ik = find_builtin_class_helper(current, class_name_symbol, SystemDictionary::java_system_loader())) != nullptr) {
+    || (ik = find_builtin_class_helper(current, class_name_symbol, SystemDictionary::java_builtin_app_loader())) != nullptr) {
     return ik;
   } else {
     return nullptr;

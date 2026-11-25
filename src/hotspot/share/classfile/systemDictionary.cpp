@@ -122,6 +122,7 @@ using InvokeMethodTypeTable = ResourceHashtable<SymbolHandle, OopHandle, 139, An
 static InvokeMethodTypeTable* _invoke_method_type_table;
 
 OopHandle   SystemDictionary::_java_system_loader;
+OopHandle   SystemDictionary::_java_builtin_app_loader;
 OopHandle   SystemDictionary::_java_platform_loader;
 
 // ----------------------------------------------------------------------------
@@ -130,11 +131,15 @@ oop SystemDictionary::java_system_loader() {
   return _java_system_loader.resolve();
 }
 
+oop SystemDictionary::java_builtin_app_loader() {
+  return _java_builtin_app_loader.resolve();
+}
+
 oop SystemDictionary::java_platform_loader() {
   return _java_platform_loader.resolve();
 }
 
-void SystemDictionary::compute_java_loaders(TRAPS) {
+void SystemDictionary::compute_java_builtin_loaders(TRAPS) {
   if (_java_platform_loader.is_empty()) {
     oop platform_loader = get_platform_class_loader_impl(CHECK);
     _java_platform_loader = OopHandle(Universe::vm_global(), platform_loader);
@@ -146,19 +151,45 @@ void SystemDictionary::compute_java_loaders(TRAPS) {
       oop platform_loader = get_platform_class_loader_impl(CHECK);
       assert(_java_platform_loader.resolve() == platform_loader, "must be");
     )
- }
+  }
 
-  if (_java_system_loader.is_empty()) {
-    oop system_loader = get_system_class_loader_impl(CHECK);
-    _java_system_loader = OopHandle(Universe::vm_global(), system_loader);
+  if (_java_builtin_app_loader.is_empty()) {
+    oop app_loader = get_builtin_app_class_loader_impl(CHECK);
+    _java_builtin_app_loader = OopHandle(Universe::vm_global(), app_loader);
   } else {
-    // It must have been restored from the archived module graph
+    // The builtin application loader was restored from the archived module graph.
     assert(CDSConfig::is_using_archive(), "must be");
     assert(CDSConfig::is_using_full_module_graph(), "must be");
     DEBUG_ONLY(
-      oop system_loader = get_system_class_loader_impl(CHECK);
-      assert(_java_system_loader.resolve() == system_loader, "must be");
+      oop app_loader = get_builtin_app_class_loader_impl(CHECK);
+      assert(_java_builtin_app_loader.resolve() == app_loader, "must be");
     )
+  }
+}
+
+void SystemDictionary::compute_java_loaders(TRAPS) {
+  assert(java_platform_loader() != nullptr,
+         "builtin platform loader must be initialized");
+  assert(java_builtin_app_loader() != nullptr,
+         "builtin application loader must be initialized");
+
+  oop system_loader_oop = get_system_class_loader_impl(CHECK);
+  Handle system_loader(THREAD, system_loader_oop);
+  assert(system_loader() != nullptr, "system loader must be initialized");
+
+  if (_java_system_loader.is_empty()) {
+    _java_system_loader = OopHandle(Universe::vm_global(), system_loader());
+  } else {
+    // The archived module graph supplied the builtin application loader.
+    // A custom system loader must leave this handle empty until initPhase3.
+    assert(Arguments::get_property("java.system.class.loader") == nullptr,
+           "custom system loader must not be published before initPhase3");
+    assert(CDSConfig::is_using_archive(), "must be");
+    assert(CDSConfig::is_using_full_module_graph(), "must be");
+    assert(_java_system_loader.resolve() == java_builtin_app_loader(),
+           "must be the restored builtin application loader");
+
+    _java_system_loader.replace(system_loader());
   }
 }
 
@@ -168,6 +199,17 @@ oop SystemDictionary::get_system_class_loader_impl(TRAPS) {
   JavaCalls::call_static(&result,
                          class_loader_klass,
                          vmSymbols::getSystemClassLoader_name(),
+                         vmSymbols::void_classloader_signature(),
+                         CHECK_NULL);
+  return result.get_oop();
+}
+
+oop SystemDictionary::get_builtin_app_class_loader_impl(TRAPS) {
+  JavaValue result(T_OBJECT);
+  InstanceKlass* class_loader_klass = vmClasses::ClassLoader_klass();
+  JavaCalls::call_static(&result,
+                         class_loader_klass,
+                         vmSymbols::getBuiltinAppClassLoader_name(),
                          vmSymbols::void_classloader_signature(),
                          CHECK_NULL);
   return result.get_oop();
@@ -199,10 +241,20 @@ ClassLoaderData* SystemDictionary::register_loader(Handle class_loader, bool cre
   }
 }
 
-void SystemDictionary::set_system_loader(ClassLoaderData *cld) {
+void SystemDictionary::set_system_loader(ClassLoaderData* cld) {
   assert(_java_system_loader.is_empty(), "already set!");
-  _java_system_loader = cld->class_loader_handle();
+  assert(_java_builtin_app_loader.is_empty(), "already set!");
+  assert(is_builtin_app_class_loader(cld->class_loader()),
+         "must be the builtin application loader");
 
+  _java_builtin_app_loader = cld->class_loader_handle();
+
+  // Keep the public system loader unset until initPhase3 when
+  // a custom system loader is configured.
+  if (Arguments::get_property("java.system.class.loader") == nullptr) {
+    _java_system_loader =
+        OopHandle(Universe::vm_global(), cld->class_loader());
+  }
 }
 
 void SystemDictionary::set_platform_loader(ClassLoaderData *cld) {
@@ -225,6 +277,12 @@ static bool is_parallelDefine(Handle class_loader) {
      return true;
    }
    return false;
+}
+
+// Returns true only for the builtin application class loader.
+bool SystemDictionary::is_builtin_app_class_loader(oop class_loader) {
+  return class_loader != nullptr &&
+         class_loader->klass() == vmClasses::jdk_internal_loader_ClassLoaders_AppClassLoader_klass();
 }
 
 // Returns true if the passed class loader is the builtin application class loader
@@ -954,12 +1012,12 @@ bool SystemDictionary::is_shared_class_visible(Symbol* class_name,
       return false;
     }
   } else if (ik->defined_by_app_loader()) {
-    if (class_loader() != java_system_loader()) {
+    if (class_loader() != java_builtin_app_loader()) {
       return false;
     }
   } else {
     // ik was loaded by a custom loader during dump time
-    if (class_loader_data(class_loader)->is_builtin_class_loader_data()) {
+    if (SystemDictionaryShared::is_builtin_loader(class_loader_data(class_loader))) {
       return false;
     } else {
       return true;

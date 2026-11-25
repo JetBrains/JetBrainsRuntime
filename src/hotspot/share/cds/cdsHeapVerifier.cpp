@@ -212,10 +212,9 @@ public:
           }
         }
 
-        if (field_ik->is_hidden() && ArchiveUtils::has_aot_initialized_mirror(field_ik)) {
-          // We have a static field in a core-library class that points to a method reference, which
-          // are safe to archive.
-          guarantee(_ik->module()->name() == vmSymbols::java_base(), "sanity");
+        if (field_ik->is_hidden() && ArchiveUtils::has_aot_initialized_mirror(field_ik) &&
+            _ik->module()->name() == vmSymbols::java_base()) {
+          // Static fields in java.base may point to archived method references.
           return;
         }
 

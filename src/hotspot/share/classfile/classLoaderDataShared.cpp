@@ -143,7 +143,7 @@ static ClassLoaderData* java_platform_loader_data_or_null() {
 }
 
 static ClassLoaderData* java_system_loader_data_or_null() {
-  return ClassLoaderData::class_loader_data_or_null(SystemDictionary::java_system_loader());
+  return ClassLoaderData::class_loader_data_or_null(SystemDictionary::java_builtin_app_loader());
 }
 
 // ModuleEntryTables (even if empty) are required for iterate_symbols() to scan the
@@ -152,7 +152,7 @@ static ClassLoaderData* java_system_loader_data_or_null() {
 void ClassLoaderDataShared::ensure_module_entry_tables_exist() {
   assert(!SafepointSynchronize::is_at_safepoint(), "sanity");
   ensure_module_entry_table_exists(SystemDictionary::java_platform_loader());
-  ensure_module_entry_table_exists(SystemDictionary::java_system_loader());
+  ensure_module_entry_table_exists(SystemDictionary::java_builtin_app_loader());
 }
 
 void ClassLoaderDataShared::ensure_module_entry_table_exists(oop class_loader) {
