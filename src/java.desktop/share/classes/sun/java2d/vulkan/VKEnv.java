@@ -60,13 +60,12 @@ public final class VKEnv {
     }
 
     private static final int UNINITIALIZED = 0;
-    private static final int INITIALIZING  = 1;
-    private static final int DISABLED      = 2;
-    private static final int ENABLED       = 3;
+    private static final int DISABLED      = 1;
+    private static final int ENABLED       = 2;
     private static final int ACCELSD_BIT   = 4;
     private static final int PRESENT_BIT   = 8;
 
-    private static int state = UNINITIALIZED;
+    private static volatile int state = UNINITIALIZED;
     private static VKGPU[] devices;
     private static VKGPU defaultDevice;
 
@@ -91,7 +90,7 @@ public final class VKEnv {
     }
 
     public static synchronized void init(Supplier<Long> getPlatformData) {
-        if (state > INITIALIZING) return;
+        if (state != UNINITIALIZED) return;
         int newState = DISABLED;
         if (Options.vulkan) {
             try {
@@ -168,16 +167,17 @@ public final class VKEnv {
     }
 
     private static void checkInit() {
-        if (state > INITIALIZING) return;
-        synchronized (VKEnv.class) {
-            if (state == UNINITIALIZED) {
-                // Try initializing the Toolkit first to give it a chance to init Vulkan with proper platform data.
-                state = INITIALIZING;
-                Toolkit.getDefaultToolkit();
-            }
-            // Still not initialized? Init without platform data.
-            if (state == INITIALIZING) init(() -> 0L);
+        if (state != UNINITIALIZED) return;
+        // No platform data is needed when Options.vulkan is false.
+        // We should not take the VKEnv monitor here because it would lead to a lock order inversion
+        // between Toolkit.class and VKEnv.class,
+        // which leads to a potential deadlock on a **concurrent** toolkit initialization triggered outside of checkInit.
+        if (Options.vulkan) {
+            // Try initializing the Toolkit first to give it a chance to init Vulkan with proper platform data.
+            Toolkit.getDefaultToolkit();
         }
+        // Still not initialized? Init without platform data.
+        if (state == UNINITIALIZED) init(() -> 0L);
     }
 
     public static boolean isVulkanEnabled() {
