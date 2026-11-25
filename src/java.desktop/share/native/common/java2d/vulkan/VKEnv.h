@@ -44,6 +44,7 @@ typedef VkBool32 (*VKPlatform_InitFunctions)(VKEnv* vk, PFN_vkGetInstanceProcAdd
 typedef VkBool32 (*VKPlatform_CheckPresentationSupport)(VKEnv* vk, VkPhysicalDevice device, uint32_t queueFamily);
 typedef struct {
     const char*                         surfaceExtensionName;
+    const char*                         surfaceOptionalExtensionName;
     VKPlatform_InitFunctions            initFunctions;
     VKPlatform_CheckPresentationSupport checkPresentationSupport;
 } VKPlatformData;

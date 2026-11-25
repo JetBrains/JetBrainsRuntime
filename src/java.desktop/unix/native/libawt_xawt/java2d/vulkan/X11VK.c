@@ -59,6 +59,11 @@ static VkBool32 X11VK_CheckPresentationSupport(VKEnv* vk, VkPhysicalDevice devic
 
 static VKPlatformData platformData = {
     .surfaceExtensionName = VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
+    // VK_LAYER_MESA_device_select reorders the compositor's GPU to be the first in the device list,
+    // but only when VK_KHR_xcb_surface is enabled.
+    // We're not using the xcb API in any other way.
+    // The string is provided directly to avoid including the whole <xcb/xcb.h>.
+    .surfaceOptionalExtensionName = "VK_KHR_xcb_surface",
     .initFunctions = X11VK_InitFunctions,
     .checkPresentationSupport = X11VK_CheckPresentationSupport,
 };
