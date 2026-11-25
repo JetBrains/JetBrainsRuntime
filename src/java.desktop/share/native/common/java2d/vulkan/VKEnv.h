@@ -49,6 +49,7 @@ typedef void (*VKPlatform_RunWithProbeSurface)(VKEnv* vk, VKPlatform_RunWithProb
 
 typedef struct {
     const char*                         surfaceExtensionName;
+    const char*                         surfaceOptionalExtensionName;
     VKPlatform_InitFunctions            initFunctions;
     VKPlatform_CheckPresentationSupport checkPresentationSupport;
     VKPlatform_RunWithProbeSurface      runWithProbeSurface;

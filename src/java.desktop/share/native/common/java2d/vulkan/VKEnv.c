@@ -221,8 +221,10 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, cons
 
     // Check extensions.
     pchar PLATFORM_SURFACE_EXTENSION_NAME = platformData != NULL ? platformData->surfaceExtensionName : NULL;
+    pchar PLATFORM_SURFACE_OPTIONAL_EXTENSION_NAME = platformData != NULL ? platformData->surfaceOptionalExtensionName : NULL;
     VKNamedEntry* extensions = NULL;
     DEF_NAMED_ENTRY(extensions, PLATFORM_SURFACE_EXTENSION);
+    DEF_NAMED_ENTRY(extensions, PLATFORM_SURFACE_OPTIONAL_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_KHR_SURFACE_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION);
     DEF_NAMED_ENTRY(extensions, VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION);
@@ -244,6 +246,7 @@ static VKEnv* VKEnv_Create(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, cons
     VkBool32 presentationSupported = PLATFORM_SURFACE_EXTENSION.found && VK_KHR_SURFACE_EXTENSION.found;
     if (!presentationSupported) {
         PLATFORM_SURFACE_EXTENSION.found = NULL;
+        PLATFORM_SURFACE_OPTIONAL_EXTENSION.found = NULL;
         VK_KHR_SURFACE_EXTENSION.found = NULL;
         VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION.found = NULL;
         VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION.found = NULL;
