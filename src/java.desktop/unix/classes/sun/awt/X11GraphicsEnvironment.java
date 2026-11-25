@@ -42,6 +42,7 @@ import java.util.Map;
 
 import sun.awt.X11.XToolkit;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.vulkan.VKEnv;
 import sun.java2d.xr.XRSurfaceData;
 
 /**
@@ -206,6 +207,10 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment impleme
 
         /* Populate the device table */
         rebuildDevices();
+        VKEnv.init(() -> {
+            VKEnv.requireForceVulkan("XToolkit");
+            return VKEnv.initPlatformX11(((X11GraphicsDevice) getDefaultScreenDevice()).getDisplay());
+        });
     }
 
     /**
