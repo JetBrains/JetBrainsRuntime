@@ -566,6 +566,23 @@ SurfaceBufferResize(WLSurfaceBufferManager * manager, WLSurfaceBuffer* buffer)
 }
 
 static void
+SurfaceBufferRecycle(WLSurfaceBuffer *buffer, WLSurfaceBufferManager *manager)
+{
+    if (buffer == NULL) {
+        return;
+    }
+
+    if (manager->wlSurface != NULL) {
+        // add to free list
+        buffer->next = manager->buffersFree;
+        manager->buffersFree = buffer;
+    } else {
+        // surface is NULL, dispose now
+        SurfaceBufferDestroy(buffer);
+    }
+}
+
+static void
 SurfaceBufferNotifyReleased(WLSurfaceBufferManager * manager, struct wl_buffer * wl_buffer)
 {
     assert(manager);
@@ -599,9 +616,7 @@ SurfaceBufferNotifyReleased(WLSurfaceBufferManager * manager, struct wl_buffer *
                 manager->buffersInUse = cur->next;
             }
 
-            // Add to the "free" list
-            cur->next = manager->buffersFree;
-            manager->buffersFree = cur;
+            SurfaceBufferRecycle(cur, manager);
             break;
         }
 
@@ -1017,11 +1032,15 @@ static void ResetBuffers(WLSurfaceBufferManager * manager) {
     manager->bufferForDraw.resizePending = true;
     MUTEX_UNLOCK(manager->drawLock);
 
-    // All the damage refers to a surface that doesn't exist anymore; clean the lists
-    // in case these buffers will be re-used for a new surface
-    for (WLSurfaceBuffer* buffer = manager->buffersFree; buffer != NULL; buffer = buffer->next) {
-        DamageList_FreeAll(buffer->damageList);
-        buffer->damageList = NULL;
+    if (manager->bufferForShow.wlSurfaceBuffer) {
+        SurfaceBufferDestroy(manager->bufferForShow.wlSurfaceBuffer);
+        manager->bufferForShow.wlSurfaceBuffer = NULL;
+    }
+
+    while (manager->buffersFree) {
+        WLSurfaceBuffer * next = manager->buffersFree->next;
+        SurfaceBufferDestroy(manager->buffersFree);
+        manager->buffersFree = next;
     }
 
     for (WLSurfaceBuffer* buffer = manager->buffersInUse; buffer != NULL; buffer = buffer->next) {
