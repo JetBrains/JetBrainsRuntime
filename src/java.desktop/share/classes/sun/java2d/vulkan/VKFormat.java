@@ -36,8 +36,6 @@ import java.awt.image.Raster;
 import java.awt.image.SampleModel;
 import java.awt.image.WritableRaster;
 import java.nio.ByteOrder;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 import sun.awt.image.BufImgSurfaceData;
 import sun.awt.image.ByteComponentRaster;
@@ -113,10 +111,8 @@ public enum VKFormat {
      * Some Vulkan formats can be more efficiently aliased as built-in Java formats on little-endian systems.
      */
     private interface LEOptimizations {
-        @SuppressWarnings("removal")
         boolean ENABLED = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN &&
-                "true".equalsIgnoreCase(AccessController.doPrivileged((PrivilegedAction<String>) () ->
-                        System.getProperty("sun.java2d.vulkan.leOptimizations", "true")));
+                "true".equalsIgnoreCase(System.getProperty("sun.java2d.vulkan.leOptimizations", "true"));
     }
 
     private static class VKBufImgSurfaceManager extends SurfaceManager {

@@ -29,8 +29,6 @@ package sun.java2d.vulkan;
 import sun.util.logging.PlatformLogger;
 
 import java.awt.Toolkit;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
@@ -42,21 +40,15 @@ public final class VKEnv {
 
     private static final class Options {
 
-        @SuppressWarnings("removal")
-        private static final String vulkanProperty = AccessController.doPrivileged(
-                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan", ""));
+        private static final String vulkanProperty = System.getProperty("sun.java2d.vulkan", "");
 
         private static final boolean forceVulkan = "force".equalsIgnoreCase(vulkanProperty);
         private static final boolean vulkan = forceVulkan || "true".equalsIgnoreCase(vulkanProperty);
         private static final boolean verbose = "True".equals(vulkanProperty) || "Force".equals(vulkanProperty);
 
-        @SuppressWarnings("removal")
-        private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(AccessController.doPrivileged(
-                (PrivilegedAction<String>) () -> System.getProperty("sun.java2d.vulkan.accelsd", "true")));
+        private static final boolean accelsd = vulkan && "true".equalsIgnoreCase(System.getProperty("sun.java2d.vulkan.accelsd", "true"));
 
-        @SuppressWarnings("removal")
-        private static final int deviceNumber = !vulkan ? 0 : AccessController.doPrivileged(
-                (PrivilegedAction<Integer>) () -> Integer.getInteger("sun.java2d.vulkan.deviceNumber", -1));
+        private static final int deviceNumber = !vulkan ? 0 : Integer.getInteger("sun.java2d.vulkan.deviceNumber", -1);
     }
 
     private static final int UNINITIALIZED = 0;
