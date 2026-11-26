@@ -1311,6 +1311,22 @@ static BufferWritingState VKRenderer_AllocateMaskFillBytes(uint32_t size) {
     return state;
 }
 
+static void VKRenderer_PushUserTransform(VKSDOps* surface, const VKTransform* userTransform) {
+    // Calculate device -> NDC transform.
+    VKTransform transform = {
+        2.0f / (float) surface->image->extent.width, 0.0f, -1.0f,
+        0.0f, 2.0f / (float) surface->image->extent.height, -1.0f
+    };
+    // Combine it with user transform.
+    VKUtil_ConcatenateTransform(&transform, userTransform);
+    // Push the transform into shader.
+    surface->device->vkCmdPushConstants(
+            surface->renderPass->commandBuffer,
+            surface->device->renderer->pipelineContext->commonPipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VKTransform), &transform
+    );
+}
+
 static void VKRenderer_ValidateTransform() {
     VKRenderingContext* context = VKRenderer_GetContext();
     assert(context->surface != NULL);
@@ -1319,20 +1335,8 @@ static void VKRenderer_ValidateTransform() {
     if (renderPass->transformModCount != context->transformModCount) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "VKRenderer_ValidateTransform: updating transform");
         VKRenderer_FlushDraw(surface);
+        VKRenderer_PushUserTransform(surface, &context->constants.transform);
         renderPass->transformModCount = context->transformModCount;
-        // Calculate user to device transform.
-        VKTransform transform = {
-                2.0f / (float) surface->image->extent.width, 0.0f, -1.0f,
-                0.0f, 2.0f / (float) surface->image->extent.height, -1.0f
-        };
-        // Combine it with user transform.
-        VKUtil_ConcatenateTransform(&transform, &context->constants.transform);
-        // Push the transform into shader.
-        surface->device->vkCmdPushConstants(
-                renderPass->commandBuffer,
-                surface->device->renderer->pipelineContext->commonPipelineLayout,
-                VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(VKTransform), &transform
-        );
     }
 }
 
@@ -1368,7 +1372,16 @@ static void VKRenderer_SetupStencil() {
     VKRenderPass* renderPass = surface->renderPass;
     VkCommandBuffer cb = renderPass->commandBuffer;
     VKRenderer_FlushDraw(surface);
-    VKRenderer_ValidateTransform();
+
+    if (VK_IS_NEQ_TRANSFORM(&context->constants.transform, &J2D_VK_ID_TRANSFORM)) {
+        // Temporarily reset the transform to ID,
+        // because clip vertices should not be affected by the transform.
+        VKRenderer_PushUserTransform(surface, &J2D_VK_ID_TRANSFORM);
+        renderPass->transformModCount = 0; // mark invalid for the next VKRenderer_Validate() call
+    } else {
+        // context transform is already ID, validate as usual
+        VKRenderer_ValidateTransform();
+    }
 
     // Clear stencil attachment.
     VkClearAttachment clearAttachment = {
