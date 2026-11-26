@@ -451,6 +451,7 @@ void VKDevice_CheckAndAdd(VKEnv* vk, VkPhysicalDevice physicalDevice) {
         J2dRlsTraceLn(J2D_TRACE_WARNING, "    Device is not supported:");
         VKCapabilityUtil_LogErrors(J2D_TRACE_WARNING, errors);
         ARRAY_FREE(errors);
+        ARRAY_FREE(supportedFormats);
         return;
     }
 
