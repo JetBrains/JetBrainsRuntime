@@ -737,6 +737,7 @@ java/awt/Frame/NormalToIconified/NormalToIconifiedTest.java JBR-10158 ubuntu-24.
 
 java/awt/GraphicsDevice/DisplayModes/CycleDMImage.java 7099223,8274106 macosx-all,linux-all,windows-all
 java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-6384,JBR-10840 macosx-all,ubuntu-22.04-aarch64,ubuntu-22.04-x64
+java/awt/GraphicsDevice/CloneConfigsTest.java JBR-10063 macosx-x64
 java/awt/keyboard/AllKeyCode/AllKeyCode.java 8242930 macosx-all
 java/awt/keyboard/8218917/AltKeyBug.java JBR-5312 windows-all
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java JBR-5210 windows-all

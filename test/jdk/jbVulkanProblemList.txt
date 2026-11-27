@@ -18,7 +18,7 @@ javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome
 javax/swing/JOptionPane/8081019/bug8081019.java JBR-9561 linux-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277,JBR-9737 arch-gnome,linux-all
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 arch-gnome
 javax/swing/PopupFactory/8048506/bug8048506.java JBR-10832 linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all

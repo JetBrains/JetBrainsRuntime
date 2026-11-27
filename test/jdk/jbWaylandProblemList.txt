@@ -15,5 +15,5 @@ javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928,JBR-9341 u
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530,JBR-9321 linux-all,arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277,JBR-9737 arch-gnome,linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all
