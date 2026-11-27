@@ -146,6 +146,7 @@ java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java JBR-5178 windows-all
 java/awt/Focus/VetoableChangeListenerLoopTest.java JBR-5785 linux-all
 java/awt/Frame/7024749/bug7024749.java JBR-5210 windows-all
 java/awt/Frame/8158918/SetExtendedState.java JBR-6408 linux-all
+java/awt/Frame/AwtFramePackTest.java JBR-10253 ubuntu-24.04-aarch64,ubuntu-24.04-x64
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java JBR-7300 linux-all
 java/awt/Frame/DisposeTest.java JBR-7937,JBR-7938 macosx-aarch64,windows-x64
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
@@ -214,7 +215,7 @@ java/awt/Frame/SlideNotResizableTest/SlideNotResizableTest.java JBR-10833 ubuntu
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java 7080150,JBR-4880,8253184 macosx-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java JBR-4880 windows-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
-java/awt/List/KeyEventsTest/KeyEventsTest.java 8201307 linux-all
+java/awt/List/KeyEventsTest/KeyEventsTest.java 8201307,JBR-5210,JBR-6273,JBR-5706,JBR-6534 linux-all,windows-all,linux-aarch64,linux-all
 java/awt/List/NoEvents/ProgrammaticChange.java 8201307 linux-all
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-9207 fedora-42-kde,fedora-42-plasma,fedora-43-kde,fedora-43-plasma
 java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java 8049405,8253184 generic-all
@@ -676,7 +677,6 @@ java/awt/List/ActionEventWhenHitEnterTest.java JBR-8024 windows-all
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java JBR-5387 linux-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.java JBR-86 windows-x64
 java/awt/List/ItemEventTest/ItemEventTest.java JBR-5711 linux-all
-java/awt/List/KeyEventsTest/KeyEventsTest.java JBR-5210,JBR-6273,JBR-5706,JBR-6534 windows-all,linux-aarch64,linux-all
 java/awt/List/ListEnterExitTest.java JBR-5895,JBR-6761 windows-x64,macosx-x64
 java/awt/List/ListMultipleSelectTest/ListMultipleSelectTest.java JBR-5555 windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java 8253184 windows-all
@@ -1368,6 +1368,7 @@ com/sun/java/swing/plaf/windows/Test8173145.java                                
 com/sun/java/swing/plaf/windows/AltFocusIssueTest.java                              JBR-4197 windows-all
 
 jb/hotspot/AsyncProfilerRunnerTest.java JBR-7175 macosx-all
+jb/hotspot/JNIRefsInJstack.java JBR-10862 windows-x64
 
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-8794 windows-aarch64
 jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1
