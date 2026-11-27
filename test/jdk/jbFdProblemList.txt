@@ -111,9 +111,13 @@
 
 ############################################################################
 
-java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java JBR-8960 windows-x64
+java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.java JBR-10749 macosx-all
+java/awt/datatransfer/UnicodeTransferTest/UnicodeTransferTest.java JBR-10749 macosx-all
+java/awt/dnd/DragOverDropTargetPerformanceTest.java 8398009 macosx-aarch64
+java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java JBR-8960,JBR-10749 windows-x64,macosx-all
+java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java JBR-10749 macosx-all
 java/awt/Focus/ModalDialogInFocusEventTest.java JBR-7818 linux-6.14.0-1010-aws,linux-6.14.0-1012-aws,linux-6.14.0-1014-aws,linux-6.14.0-1015-aws,linux-6.14.0-1017-aws,linux-6.14.0-1018-aws
-java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-8542 windows-all timeout
+java/awt/Frame/GetGraphicsStressTest/GetGraphicsStressTest.java JBR-6509,JBR-8542 windows-all,generic-all
 java/awt/Graphics2D/TextPerf.java JBR-8541 linux-all,windows-all
 java/awt/GridBagLayout/ComponentShortage.java 8355280,JBR-9347 windows-all,linux-all,macosx-x64
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java JBR-7077 linux-all,windows-all
@@ -126,6 +130,7 @@ javax/print/PrintServiceLookup/FlushCustomClassLoader.java JBR-9272 macosx-aarch
 javax/swing/border/TestTitledBorderLeak.java JBR-9272,JBR-10136 macosx-14.8,macosx-x64
 javax/swing/JButton/TestMnemonicAction.java JBR-6508 windows-all,linux-all,macosx-all
 javax/swing/JComboBox/8072767/bug8072767.java JBR-5540 windows-all,macosx-all
+javax/swing/JOptionPane/8081019/bug8081019.java JBR-10749 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java JBR-7404 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java JBR-9446 macosx-all
 javax/swing/plaf/synth/7158712/bug7158712.java 8322653,JBR-9061 macosx-all,ubuntu-22.04-x64,ubuntu-22.04-aarch64

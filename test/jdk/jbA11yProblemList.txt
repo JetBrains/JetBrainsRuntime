@@ -181,6 +181,7 @@ java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.java J
 java/awt/dnd/Button2DragTest/Button2DragTest.java 8310490,JBR-5505 windows-all,linux-all
 java/awt/dnd/DragExitBeforeDropTest.java 8242805,JBR-10045 macosx-all,windows-10.0
 java/awt/dnd/DropActionChangedTest.java JBR-6757 windows-x64
+java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java JBR-10020 windows-x64
 java/awt/dnd/RecognizedActionTest/RecognizedActionTest.java JBR-8037 windows-x64
 java/awt/event/ComponentEvent/TextComponentTextEventTest.java JBR-7141 windows-all
 java/awt/event/KeyEvent/KeyEventLocationTest.java JBR-5916,JBR-5397,JBR-7141 linux-all,macosx-all,windows-all
