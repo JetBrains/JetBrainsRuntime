@@ -2392,10 +2392,12 @@ static void print_process_memory_usage_platform(outputStream *st)
   os::Linux::meminfo_t info;
   if (os::Linux::query_process_memory_info(&info)) {
     ssize_t phys_total_kb = os::physical_memory() / K;
-    ssize_t phys_avail_kb = os::available_memory() / K;
+    physical_memory_size_type avail_mem = 0;
+    (void)os::available_memory(avail_mem);
+    physical_memory_size_type phys_avail_kb = avail_mem / K;
     int rss_percentile = (int)(info.vmrss * 100.0 / phys_total_kb);
     st->print_cr("Resident Set Size: " SSIZE_FORMAT "K (%d%% of "
-                 SSIZE_FORMAT "K total physical memory with " SSIZE_FORMAT "K free physical memory)",
+                 SSIZE_FORMAT "K total physical memory with " PHYS_MEM_TYPE_FORMAT "K free physical memory)",
                  info.vmrss, rss_percentile, phys_total_kb, phys_avail_kb);
   } else {
     st->print_cr("Could not open /proc/self/status to get process memory related information");
@@ -2415,10 +2417,12 @@ static void print_process_memory_usage_platform(outputStream *st)
   if (ret != 0) {
     ssize_t rss_kb = pmex.WorkingSetSize / K;
     ssize_t phys_total_kb = os::physical_memory() / K;
-    ssize_t phys_avail_kb = os::available_memory() / K;
+    physical_memory_size_type avail_mem = 0;
+    (void)os::available_memory(avail_mem);
+    physical_memory_size_type phys_avail_kb = avail_mem / K;
     int rss_percentile = (int)(rss_kb * 100.0 / phys_total_kb);
-    st->print_cr("Resident Set Size: " SSIZE_FORMAT "K (%d%% of "
-                 SSIZE_FORMAT "K total physical memory with " SSIZE_FORMAT "K free physical memory)",
+    st->print_cr("Resident Set Size: %zdK (%d%% of "
+                 "%zdK total physical memory with " PHYS_MEM_TYPE_FORMAT "K free physical memory)",
                  rss_kb, rss_percentile, phys_total_kb, phys_avail_kb);
   } else {
     st->print_cr("GetProcessMemoryInfo() call did not succeed");
@@ -2437,7 +2441,9 @@ static void print_process_memory_usage_platform(outputStream *st)
   if (ret == KERN_SUCCESS) {
     ssize_t rss_kb = info.resident_size / K;
     ssize_t phys_total_kb = os::physical_memory() / K;
-    ssize_t phys_avail_kb = os::available_memory() / K;
+    physical_memory_size_type avail_mem = 0;
+    (void)os::available_memory(avail_mem);
+    ssize_t phys_avail_kb = avail_mem / K;
     int rss_percentile = (int)(rss_kb * 100.0 / phys_total_kb);
     st->print_cr("Resident Set Size: " SSIZE_FORMAT "K (%d%% of "
                  SSIZE_FORMAT "K total physical memory with " SSIZE_FORMAT "K free physical memory)",
