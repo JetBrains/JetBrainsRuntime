@@ -36,6 +36,7 @@
 #include "awt_Clipboard.h"
 #include "awt_Component.h"
 #include "awt_Cursor.h"
+#include "awt_DirectManipulation.h"
 #include "awt_Dimension.h"
 #include "awt_Frame.h"
 #include "awt_InputEvent.h"
@@ -252,6 +253,7 @@ AwtComponent::AwtComponent()
     m_MessagesProcessing = 0;
     m_wheelRotationAmountX = 0;
     m_wheelRotationAmountY = 0;
+    m_directManipulation = NULL;
     if (!sm_PrimaryDynamicTableBuilt) {
         // do it once.
         AwtComponent::BuildPrimaryDynamicTable();
@@ -590,6 +592,9 @@ AwtComponent::CreateHWnd(JNIEnv *env, LPCWSTR title,
     if (tk.IsWin8OrLater() && tk.IsTouchKeyboardAutoShowEnabled()) {
         tk.TIRegisterTouchWindow(GetHWnd(), TWF_WANTPALM);
     }
+    if (AwtDirectManipulation::IsEnabled()) {
+        m_directManipulation = AwtDirectManipulation::Create(this);
+    }
 
     /*
       * Fix for 4046446.
@@ -620,6 +625,10 @@ AwtComponent::CreateHWnd(JNIEnv *env, LPCWSTR title,
  * Destroy this window's HWND
  */
 void AwtComponent::DestroyHWnd() {
+    if (m_directManipulation != NULL) {
+        AwtDirectManipulation::Destroy(m_directManipulation);
+        m_directManipulation = NULL;
+    }
     if (m_hwnd != NULL) {
         AwtToolkit::DestroyComponentHWND(m_hwnd);
         //AwtToolkit::DestroyComponent(this);
@@ -1772,6 +1781,17 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
               break;
           }
           break;
+      case DM_POINTERHITTEST:
+      case WM_POINTERDOWN:
+          if (m_directManipulation != NULL) {
+              m_directManipulation->OnPointerHitTest(wParam);
+          }
+          break;
+      case WM_INPUT:
+          if (m_directManipulation != NULL) {
+              m_directManipulation->OnRawInput(lParam);
+          }
+          break;
       case WM_TOUCH:
           if (PROCESS_TOUCH_EVENTS) {
               WmTouch(wParam, lParam);
@@ -1893,6 +1913,12 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           mr = WmPaste();
           break;
       case WM_TIMER:
+          if (m_directManipulation != NULL && wParam == AwtDirectManipulation::TIMER_ID) {
+              m_directManipulation->OnTimer();
+              mr = mrConsume;
+              retValue = 0;
+              break;
+          }
           mr = WmTimer(wParam);
           break;
 
