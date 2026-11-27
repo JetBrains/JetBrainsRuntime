@@ -29,6 +29,9 @@
 
 #import <Metal/Metal.h>
 
+#define MTL_USAGE_TYPE_SHADER_READ                      0
+#define MTL_USAGE_TYPE_RENDER_SHADER_READ               1
+
 @interface MTLPooledTextureHandle : NSObject
     @property (readonly, assign) id<MTLTexture> texture;
     @property (readonly) NSUInteger reqWidth;
@@ -50,7 +53,9 @@
 
     - (id) initWithDevice:(id<MTLDevice>)device;
 
+    // default uses MTL_USAGE_TYPE_RENDER_SHADER_READ
     - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format;
+    - (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format usageType:(int)mtlUsageType;
 @end
 
 #endif /* MTLTexturePool_h_Included */

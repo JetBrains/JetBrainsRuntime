@@ -105,11 +105,8 @@
     // there once the command buffer that may still sample it has completed,
     // and the next cache takes it back instead of allocating.
 
-    // TODO: add special usage flags in MTLTexturePool.getTexture(..., USAGE)
-    // usage = MTLTextureUsageShaderRead
-    // storage = MTLStorageModeManaged
-
-    _cacheInfo->texHandle = [_ctx.texturePool getTexture:width height:height format:pixelFormat];
+    _cacheInfo->texHandle = [_ctx.texturePool getTexture:width height:height format:pixelFormat
+                                                            usageType:MTL_USAGE_TYPE_SHADER_READ];
     [_cacheInfo->texHandle retain]; // keep reference alive
     _cacheInfo->texture = [_cacheInfo->texHandle texture];
 

@@ -69,24 +69,38 @@ void MTLTexturePoolLock_unlockImpl(ATexturePoolLockPrivPtr *lock) {
 static id<MTLTexture> MTLTexturePool_createTexture(id<MTLDevice> device,
                                                    int width,
                                                    int height,
-                                                   long format)
+                                                   long format,
+                                                   int usageType)
 {
     MTLTextureDescriptor *textureDescriptor =
             [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:(MTLPixelFormat)format
                                                                width:(NSUInteger) width
                                                               height:(NSUInteger) height
                                                            mipmapped:NO];
+
     // By default:
     // usage = MTLTextureUsageShaderRead
     // storage = MTLStorageModeManaged
-    textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+
+    switch (usageType) {
+        case MTL_USAGE_TYPE_RENDER_SHADER_READ:
+            textureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+            textureDescriptor.storageMode = MTLStorageModeManaged;
+            break;
+        case MTL_USAGE_TYPE_SHADER_READ:
+            textureDescriptor.usage = MTLTextureUsageShaderRead;
+            textureDescriptor.storageMode = MTLStorageModeManaged;
+            break;
+        default:
+            J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_createTexture: invalid usage type=%d", usageType);
+    }
 
     // Use auto-release => MTLTexturePoolItem.dealloc to free texture !
     id <MTLTexture> texture = (id <MTLTexture>) [[device newTextureWithDescriptor:textureDescriptor] autorelease];
     [texture retain];
 
-    if (TRACE_TEX) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_createTexture: created texture: tex=%p, w=%d h=%d, pf=%d",
-                                  texture, [texture width], [texture height], [texture pixelFormat]);
+    if (TRACE_TEX) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_createTexture: created texture: tex=%p, w=%d h=%d, pf=%d, usage=%d",
+                                  texture, [texture width], [texture height], [texture pixelFormat], usageType);
     return texture;
 }
 
@@ -158,6 +172,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     @property (readwrite) int width;
     @property (readwrite) int height;
     @property (readwrite) MTLPixelFormat format;
+    @property (readwrite) int usageType;
     @property (readwrite) int reuseCount;
     @property (readwrite) bool isBusy;
 @end
@@ -170,13 +185,14 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 
 @implementation MTLTexturePoolItem
 
-@synthesize texture, lastUsed, next, cell, width, height, format, reuseCount, isBusy;
+@synthesize texture, lastUsed, next, cell, width, height, format, usageType, reuseCount, isBusy;
 
 - (id) initWithTexture:(id<MTLTexture>)tex
                   cell:(MTLPoolCell*)c
                  width:(int)w
                 height:(int)h
                 format:(MTLPixelFormat)f
+                usageType:(int)u
 {
     self = [super init];
     if (self == nil) return self;
@@ -188,6 +204,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     self.width = w;
     self.height = h;
     self.format = f;
+    self.usageType = u;
     self.reuseCount = 0;
     self.isBusy = NO;
 
@@ -461,13 +478,16 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
     }
 }
 
-- (MTLTexturePoolItem *) occupyCellItem:(int)width height:(int)height format:(MTLPixelFormat)format {
+- (MTLTexturePoolItem *) occupyCellItem:(int)width height:(int)height format:(MTLPixelFormat)format usageType:(int)usageType {
     int minDeltaArea = -1;
     const int requestedPixels = width*height;
     MTLTexturePoolItem *minDeltaTpi = nil;
     [_lock lock];
     @try {
         for (MTLTexturePoolItem *cur = available; cur != nil; cur = cur.next) {
+            if (cur.usageType != usageType) {
+                continue;
+            }
             // TODO: use swizzle when formats are not equal:
             if (cur.format != format) {
                 continue;
@@ -664,7 +684,11 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
 }
 
 // NOTE: called from RQ-thread (on blit operations)
-- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format  {
+    return [self getTexture:width height:height format:format usageType:MTL_USAGE_TYPE_RENDER_SHADER_READ];
+}
+
+- (MTLPooledTextureHandle *) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format usageType:(int)usageType {
 #if (USE_ACCEL_TEXTURE_POOL == 1)
         ATexturePoolHandle* texHandle = ATexturePool_getTexture(_accelTexturePool, width, height, format);
         CHECK_NULL_RETURN(texHandle, NULL);
@@ -766,7 +790,7 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
             for (int cx = cellX0; cx < cellX1; ++cx) {
                 MTLPoolCell * cell = _cells[cy * _poolCellWidth + cx];
                 if (cell != NULL) {
-                    MTLTexturePoolItem* tpi = [cell occupyCellItem:width height:height format:format];
+                    MTLTexturePoolItem* tpi = [cell occupyCellItem:width height:height format:format usageType:usageType];
                     if (!tpi) {
                         continue;
                     }
@@ -793,25 +817,25 @@ static void MTLTexturePool_freeTexture(id<MTLDevice> device, id<MTLTexture> text
                 _cells[cellY0 * _poolCellWidth + cellX0] = cell;
             }
             // use device to allocate NEW texture:
-            id <MTLTexture> tex = MTLTexturePool_createTexture(device, width, height, format);
+            id <MTLTexture> tex = MTLTexturePool_createTexture(device, width, height, format, usageType);
 
             minDeltaTpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex cell:cell
-                            width:width height:height format:format] autorelease];
+                            width:width height:height format:format usageType:usageType] autorelease];
             [cell addOccupiedItem: minDeltaTpi];
 
             _memoryAllocated += requestedBytes;
             _memoryTotalAllocated += requestedBytes;
 
-            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d | allocated memory = %lld Kb (allocs: %d)",
-                       minDeltaTpi.texture, width, height, format, _memoryAllocated / UNIT_KB, allocatedCount);
+            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d, usage=%d | allocated memory = %lld Kb (allocs: %d)",
+                       minDeltaTpi.texture, width, height, format, usageType, _memoryAllocated / UNIT_KB, allocatedCount);
             if (TRACE_MEM_API) J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: created pool item: tex=%p, w=%d h=%d, pf=%d | allocated memory = %lld Kb (allocs: %d)",
                                              minDeltaTpi.texture, width, height, format, _memoryAllocated / UNIT_KB, allocatedCount);
         } else {
             self.cacheHits++;
             minDeltaTpi.reuseCount++;
             if (TRACE_REUSE) {
-                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: reused  pool item: tex=%p, w=%d h=%d, pf=%d - reuse=%d",
-                              minDeltaTpi.texture, width, height, format, minDeltaTpi.reuseCount);
+                J2dRlsTraceLn(J2D_TRACE_VERBOSE, "MTLTexturePool_getTexture: reused  pool item: tex=%p, w=%d h=%d, pf=%d, usage=%d - reuse=%d",
+                              minDeltaTpi.texture, width, height, format, usageType, minDeltaTpi.reuseCount);
             }
         }
         self.totalHits++;
