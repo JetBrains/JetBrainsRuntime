@@ -172,6 +172,14 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     return self;
 }
 
++ (void) releaseLayer:(MTLLayer*)layer {
+    // Ensure main thread releases the MTLLayer instance later:
+    [ThreadUtilities performOnMainThreadWaiting:NO useJavaModes:NO // critical
+                                          block:^(){
+        [layer release];
+    }];
+}
+
 - (void) blitTexture {
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == NULL || *self.buffer == nil ||
         self.ctx.device == nil)
@@ -311,7 +319,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                             );
                         }
                     }
-                    [self release];
+                    [MTLLayer releaseLayer:self];
                 }];
             }
             // Present drawable:
@@ -342,7 +350,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                         self.avgBlitFrameTime = gpuTime * a + self.avgBlitFrameTime * (1.0 - a);
                     }
                 }
-                [self release];
+                [MTLLayer releaseLayer:self];
             }];
 
             [commandBuf commit];
@@ -482,7 +490,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
     [self retain];
     [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandBuf) {
         [self startRedraw];
-        [self release];
+        [MTLLayer releaseLayer:self];
     }];
     [commandbuf commit];
 }
@@ -504,7 +512,7 @@ BOOL MTLLayer_isExtraRedrawEnabled() {
                 [ThreadUtilities performOnMainThread:@selector(startRedrawIfNeeded) on:self withObject:nil
                                        waitUntilDone:NO useJavaModes:NO]; // critical
             }
-            [self release];
+            [MTLLayer releaseLayer:self];
         }];
 
         [commandbuf commit];
