@@ -1,10 +1,12 @@
 java/awt/event/HierarchyEvent/SpecTest.java JBR-10130 fedora-kde,fedora-gnome
+java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 fedora-kde
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
+java/awt/FullScreen/SetFullScreenTest.java JBR-10093 ubuntu-24.04-x64
 java/awt/GraphicsDevice/DisplayModes/ExtraAllocationTest.java JBR-10840 ubuntu-22.04-aarch64,ubuntu-22.04-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 
-javax/swing/JComponent/6989617/bug6989617.java JBR-8796 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64
+javax/swing/JComponent/6989617/bug6989617.java JBR-8796 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-kde
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-7520,JBR-9320 fedora-gnome,arch-gnome

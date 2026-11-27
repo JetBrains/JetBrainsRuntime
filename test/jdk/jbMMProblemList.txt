@@ -102,6 +102,8 @@ java/awt/Paint/PaintNativeOnUpdate.java 8253184 windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184 windows-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java 8253184 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java 8253184 windows-all
+
+javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
 javax/swing/JButton/bug4323121.java JBR-8924 windows-x64
 javax/swing/JButton/bug4490179.java JBR-8925 windows-x64
 javax/swing/JButton/8151303/PressedIconTest.java JBR-5210 windows-all

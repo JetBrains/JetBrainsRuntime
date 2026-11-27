@@ -1,16 +1,32 @@
+java/awt/event/HierarchyEvent/SpecTest.java JBR-10130 fedora-kde,fedora-gnome
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
+java/awt/FullScreen/SetFullScreenTest.java JBR-10093 ubuntu-24.04-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java.UpdateGCTest
 
 java/awt/image/DrawImage/BlitRotateClippedArea.java JBR-9026 linux-all
 java/awt/image/DrawImage/EABlitTest.java JBR-9027 linux-all
+java/awt/Paint/RepaintOnAWTShutdown.java JBR-9554 fedora-kde
+
 javax/swing/GraphicsConfigNotifier/StalePreferredSize.java JBR-9031 linux-all
 javax/swing/GraphicsConfigNotifier/TestMultiScreenGConfigNotify.java JBR-8266 linux-x64
+javax/swing/JComponent/6989617/bug6989617.java JBR-8796 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-kde
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id0 JBR-7928,JBR-9341 ubuntu-22.04-x64,ubuntu-22.04-aarch64,arch-gnome
 javax/swing/JButton/SwingButtonResizeTestWithOpenGL.java#id2 JBR-7928 ubuntu-22.04-x64,ubuntu-22.04-aarch64
 javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome
+javax/swing/JOptionPane/8081019/bug8081019.java JBR-9561 linux-all
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 arch-gnome
+javax/swing/PopupFactory/8048506/bug8048506.java JBR-10832 linux-all
+javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all
+javax/swing/UI/UnninstallUIMemoryLeaks/UnninstallUIMemoryLeaks.java JBR-10736 fedora-kde,ubuntu-24.04-aarch64,ubuntu-24.04-x64
+java/awt/image/XBMDecoder/XBMDecoderTest.java JBR-10736 fedora-kde,ubuntu-24.04-aarch64,ubuntu-24.04-x64
+
+jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-10160 ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-42-gnome,fedora-kde
+jb/java/awt/wayland/vulkan/ImageTransformTest.java JBR-10160 ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-42-gnome,fedora-kde
+jb/java/awt/wayland/vulkan/RobotGetPixelTest.java JBR-10160 ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-42-gnome,fedora-kde
+jb/java/awt/wayland/vulkan/RobotGetPixelsTest.java JBR-10160 ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-42-gnome,fedora-kde
+jb/java/awt/wayland/vulkan/VulkanMaskFillTest.java JBR-10160 ubuntu-24.04-aarch64,ubuntu-24.04-x64,fedora-42-gnome,fedora-kde

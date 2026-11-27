@@ -64,6 +64,7 @@ java/awt/dnd/DropActionChangeTest.java JBR-6489,JBR-5799 generic-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java JBR-5071 linux-all
 
 javax/swing/event/FocusEventCauseTest.java JBR-8811 windows-all
+javax/swing/GroupLayout/8079640/bug8079640.java JBR-10052 fedora-kde,fedora-42-gnome
 javax/swing/InputVerifier/bug4774166.java JBR-8735 windows-all
 javax/swing/JButton/bug4323121.java JBR-8924 windows-all
 javax/swing/JButton/bug4490179.java JBR-8925 windows-all
@@ -93,6 +94,12 @@ sanity/client/SwingSet/src/GridBagLayoutDemoTest.java JBR-6285 generic-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java JBR-6685 linux-all
 sanity/client/SwingSet/src/ToolTipDemoTest.java 8293001,JBR-6293 linux-all,windows-all
 sun/java2d/GdiRendering/ClipShapeRendering.java JBR-5204 linux-all,macosx-all,windows-all
+sun/java2d/OpenGL/DrawImageBg.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/DrawImageBg.java#id1 JBR-9847 macosx-all
+sun/java2d/OpenGL/SrcMaskOps.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/SrcMaskOps.java#id1 JBR-9847 macosx-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id0 JBR-9723 linux-all
+sun/java2d/OpenGL/VolatileSubRegion.java#id1 JBR-9847 macosx-all
 
 #
 # the below tests are not intended to be executed in S2 configurations because
