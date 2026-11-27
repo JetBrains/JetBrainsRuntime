@@ -69,7 +69,9 @@ struct wl_seat     *wl_seat = NULL;
 struct wl_keyboard *wl_keyboard; // optional, check for NULL before use
 struct wl_pointer  *wl_pointer; // optional, check for NULL before use
 struct zwp_relative_pointer_manager_v1* relative_pointer_manager; // optional, check for NULL before use
+static struct zwp_relative_pointer_v1 *relative_pointer; // optional, check for NULL before use; always NULL when wl_pointer is NULL
 static struct zwp_pointer_gestures_v1 *pointer_gestures; // optional, check for NULL before use
+static struct zwp_pointer_gesture_pinch_v1 *pointer_gesture_pinch; // optional, check for NULL before use; always NULL when wl_pointer is NULL
 struct zxdg_decoration_manager_v1* xdg_decoration_manager; // optional, check for NULL before use
 
 #define MAX_CURSOR_SCALE 100
@@ -567,22 +569,30 @@ wl_seat_capabilities(void *data, struct wl_seat *wl_seat, uint32_t capabilities)
         if (wl_pointer != NULL) {
             wl_pointer_add_listener(wl_pointer, &wl_pointer_listener, NULL);
             if (relative_pointer_manager != NULL) {
-                struct zwp_relative_pointer_v1* rptr
+                relative_pointer
                     = zwp_relative_pointer_manager_v1_get_relative_pointer(relative_pointer_manager,
                                                                            wl_pointer);
-                if (rptr != NULL) {
-                    zwp_relative_pointer_v1_add_listener(rptr, &relative_pointer_listener, NULL);
+                if (relative_pointer != NULL) {
+                    zwp_relative_pointer_v1_add_listener(relative_pointer, &relative_pointer_listener, NULL);
                 }
             }
             if (pointer_gestures != NULL) {
-                struct zwp_pointer_gesture_pinch_v1* pinch
+                pointer_gesture_pinch
                     = zwp_pointer_gestures_v1_get_pinch_gesture(pointer_gestures, wl_pointer);
-                if (pinch != NULL) {
-                    zwp_pointer_gesture_pinch_v1_add_listener(pinch, &pinch_gesture_listener, NULL);
+                if (pointer_gesture_pinch != NULL) {
+                    zwp_pointer_gesture_pinch_v1_add_listener(pointer_gesture_pinch, &pinch_gesture_listener, NULL);
                 }
             }
         }
     } else if (!has_pointer && wl_pointer != NULL) {
+        if (pointer_gesture_pinch != NULL) {
+            zwp_pointer_gesture_pinch_v1_destroy(pointer_gesture_pinch);
+            pointer_gesture_pinch = NULL;
+        }
+        if (relative_pointer != NULL) {
+            zwp_relative_pointer_v1_destroy(relative_pointer);
+            relative_pointer = NULL;
+        }
         wl_pointer_release(wl_pointer);
         wl_pointer = NULL;
     }
