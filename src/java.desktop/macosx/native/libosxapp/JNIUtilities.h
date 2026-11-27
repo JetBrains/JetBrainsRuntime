@@ -33,11 +33,7 @@
 
 /********        PROPERTY LOGGING SUPPORT    *********/
 
-#ifdef DEBUG
-    #define __JNIUTIL_LOG_PROP 1
-#else
-    #define __JNIUTIL_LOG_PROP 0
-#endif
+#define __JNIUTIL_LOG_PROP 0
 
 /********        LOGGING SUPPORT    *********/
 
