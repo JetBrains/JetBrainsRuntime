@@ -416,6 +416,7 @@ java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java JBR-495 macosx-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java 8169469,8273617,JBR-10012 windows-all,macosx-aarch64,fedora-42-gnome
 java/awt/print/PrinterJob/GetUserNameTest.java JBR-5225 windows-all
 java/awt/print/PrinterJob/PageDialogCancelTest.java JBR-7538 windows-all
+java/awt/print/PrinterJob/PageRangesAuto.java JBR-8909 generic-all
 java/awt/print/PrinterJob/PrintNullString.java JBR-8909 generic-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
@@ -1183,8 +1184,8 @@ javax/swing/JSlider/bug4382876.java JBR-8666 linux-all
 javax/swing/JScrollBar/4708809/bug4708809.java 8169957 windows-x64
 javax/swing/JTabbedPane/4361477/bug4361477.java JBR-5932 linux-all
 javax/swing/JTabbedPane/4624207/bug4624207.java 8064922,JBR-6235,JBR-9518 macosx-all,linux-all,windows-all
-javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,JBR-8498 windows-all,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1
-javax/swing/JTabbedPane/TestJTabbedPaneBackgroundColor.java JBR-8493 macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1
+javax/swing/JTabbedPane/TestBackgroundScrollPolicy.java 8253184,JBR-8498 windows-all,macosx-all
+javax/swing/JTabbedPane/TestJTabbedPaneBackgroundColor.java JBR-8493 macosx-all
 javax/swing/JToggleButton/TestSelectedKey.java JBR-5846 windows-all
 javax/swing/JToolBar/4529206/bug4529206.java JBR-5387 linux-all
 javax/swing/JToolTip/6219960/bug6219960.java 8253184 windows-all
@@ -1442,6 +1443,7 @@ java/awt/print/PrinterJob/PaintText.java                                        
 java/awt/print/PrinterJob/PrintCrashTest.java                                       nobug generic-all
 java/awt/print/PrinterJob/PrtException.java                                         nobug generic-all
 java/awt/PrintJob/PrinterException.java                                             nobug generic-all
+java/awt/PrintJob/TestPrintNoException.java                                         JBR-10527 generic-all
 java/awt/PrintJob/Security/SecurityDialogTest.java JBR-5225 windows-all
 javax/print/attribute/ChromaticityValues.java                                       nobug generic-all
 javax/print/CheckDupFlavor.java                                                     nobug generic-all
@@ -1465,7 +1467,7 @@ jb/hotspot/AsyncProfilerRunnerTest.java JBR-7175 macosx-all
 
 jb/java/awt/CustomTitleBar/CheckFullScreen.java JBR-10063 macosx-x64
 jb/java/awt/CustomTitleBar/DialogNativeControlsTest.java JBR-8794 windows-aarch64
-jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-15.3,macosx-15.3.1,macosx-15.3.2,macosx-15.4,macosx-15.4.1,macosx-15.5,macosx-15.6,macosx-15.7,macosx-15.7.1
+jb/java/awt/Graphics2D/TextRender/OGLMetalTextRender.java JBR-4091,JBR-5392 windows-aarch64,macosx-all
 jb/java/awt/event/MouseEvent/MouseMoveEventFallThroughTest.java JBR-8789 windows-all
 jb/java/awt/event/TouchScreenEvent/TouchScreenEventsTestLinux.sh                    JBR-4078 linux-all
 jb/java/awt/Font/Font467.java                                                       JBR-3960 generic-all
@@ -1501,7 +1503,7 @@ javax/swing/JSpinner/8223788/JSpinnerButtonFocusTest.java JBR-5210 windows-all
 javax/swing/JSpinner/JSpinnerFocusTest.java JBR-5288 windows-all
 javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JSpinner/TestJSpinnerFocusLost.java JBR-5210 windows-all
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9748 linux-all
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9737,JBR-9748 linux-all
 javax/swing/JTable/7068740/bug7068740.java JBR-9516 windows-10.0
 javax/swing/JTable/7124218/SelectEditTableCell.java JBR-6679 windows-all
 javax/swing/JTable/8236907/LastVisibleRow.java JBR-6066 macosx-aarch64

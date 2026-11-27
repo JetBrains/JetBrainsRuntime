@@ -3,6 +3,7 @@ java/awt/event/MouseEvent/AcceptExtraButton/AcceptExtraButton.java JBR-6353 fedo
 java/awt/event/MouseEvent/MenuDragMouseEventAbsoluteCoordsTest/MenuDragMouseEventAbsoluteCoordsTest.java JBR-9561 linux-all
 java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.java JBR-9561 linux-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
+java/awt/FullScreen/DisplayModeNoRefreshTest.java JBR-10528 linux-all
 java/awt/FullScreen/SetFullScreenTest.java JBR-8400 ubuntu-24.04-x64
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
 java/awt/GraphicsDevice/CloneConfigsTest.java JBR-9024 linux-all
@@ -24,7 +25,7 @@ javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome,fedora-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome,fedora-42-gnome,fedora-43-gnome
 javax/swing/JRadioButton/bug4823809.java JBR-9333 fedora-gnome,fedora-gnome,arch-gnome
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277,JBR-9737 arch-gnome,linux-all
 javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all
 
 jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-9659,JBR-10160 fedora-gnome,arch-gnome,ubuntu-24.04-aarch64,ubuntu-24.04-x64

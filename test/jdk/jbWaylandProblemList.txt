@@ -4,6 +4,7 @@ java/awt/event/MouseEvent/MenuDragMouseEventAbsoluteCoordsTest/MenuDragMouseEven
 java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.java JBR-9561 linux-all
 java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java JBR-10296 fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
+java/awt/FullScreen/DisplayModeNoRefreshTest.java JBR-10528 linux-all
 java/awt/FullScreen/NonExistentDisplayModeTest/NonExistentDisplayModeTest.java JBR-10296 fedora-42-plasma,fedora-42-kde,fedora-43-plasma,fedora-43-kde
 java/awt/FullScreen/SetFullScreenTest.java JBR-8400 ubuntu-24.04-x64
 java/awt/Graphics2D/TextPerf.java JBR-9190 linux-all
@@ -24,7 +25,7 @@ javax/swing/JFileChooser/6520101/bug6520101.java JBR-10159 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530,JBR-9321 linux-all,arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome,fedora-42-gnome,fedora-43-gnome
 javax/swing/JRadioButton/bug4823809.java JBR-9333 fedora-42-gnome,fedora-43-gnome,arch-gnome
-javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
+javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277,JBR-9737 arch-gnome,linux-all
 javax/swing/PopupFactory/8048506/bug8048506.java JBR-9925 fedora-42-x64-plasma,fedora-42-x64-kde,fedora-43-x64-plasma,fedora-43-x64-kde
 javax/swing/system/6799345/TestShutdown.java JBR-9554 linux-all
 
