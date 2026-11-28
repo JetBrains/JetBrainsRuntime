@@ -17,16 +17,17 @@ and bugfixes not yet present in OpenJDK.
  * [jbr21](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr21) (JDK 21)
  * [jbr17](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr17) (JDK 17)
  * [jbr11](https://github.com/JetBrains/JetBrainsRuntime/tree/jbr11) (JDK 11)
- 
+
 Download the latest releases of JetBrains Runtime to use with JetBrains IDEs. The full list
 can be found on the [releases page](https://github.com/JetBrains/JetBrainsRuntime/releases).
 
 ## Releases based on JDK 25
 
-| IDE Version | Latest JBR                                                                                              | Date Released |
-|-------------|---------------------------------------------------------------------------------------------------------|---------------|
-| 2026.2      | [25.0.3-b496.62](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b496.62)  | 25-May-2026   |
-| 2026.1      | [25.0.3-b329.124](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b329.124)| 15-May-2026   |
+| IDE Version | Latest JBR                                                                                                  | Date Released |
+|-------------|-------------------------------------------------------------------------------------------------------------|---------------|
+| 2026.3      | [25.0.5.1-b635.102](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.5.1b635.102)| 22-Nov-2026   |
+| 2026.2      | [25.0.5.1-b508.47](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.5.1b508.47) | 27-Nov-2026   |
+| 2026.1      | [25.0.3-b329.124](https://github.com/JetBrains/JetBrainsRuntime/releases/tag/jbr-release-25.0.3b329.124)    | 15-May-2026   |
 
 ## Releases based on JDK 21
 
@@ -103,7 +104,7 @@ There are many kinds of JBR bundles available on the [Releases page](https://git
   **HiDPI** and **accessibility** support.
 * **Robust desktop experience**: GUI-related fixes often reach JetBrains Runtime much earlier than the corresponding version of OpenJDK.
 * Additional capabilities that are made available to applications through
-  [JBR API](https://github.com/JetBrains/JetBrainsRuntimeApi) services such as, for example, 
+  [JBR API](https://github.com/JetBrains/JetBrainsRuntimeApi) services such as, for example,
   the ability to wrap a native graphics texture into `java.awt.Image`.
 
 ## Products Built on JetBrains Runtime
