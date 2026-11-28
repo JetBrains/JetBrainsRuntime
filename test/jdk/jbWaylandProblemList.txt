@@ -2,6 +2,7 @@ java/awt/font/GlyphVector/LayoutCompatTest.java JBR-8262 linux-all
 java/awt/FullScreen/SetFullScreenTest.java 8332155 linux-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
+java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java ubuntu-24.04-x64
 
 javax/swing/JComponent/6989617/bug6989617.java JBR-8796 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 javax/swing/JDesktopPane/TestDesktopManagerNPE.java JBR-8449 linux-x64
@@ -13,3 +14,4 @@ javax/swing/JEditorPane/JEditorPaneFontFallback.java JBR-8305 linux-all
 javax/swing/JFormattedTextField/bug4741926.java JBR-7530,JBR-9321 linux-all,arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
+javax/swing/text/html/8031109/bug8031109.java JBR-10847 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64

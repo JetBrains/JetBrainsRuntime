@@ -3,6 +3,7 @@ java/awt/FullScreen/SetFullScreenTest.java 8332155 linux-x64
 java/awt/MenuShortcut/FunctionKeyShortcut.java JBR-7932 linux-all
 java/awt/Multiscreen/MultiScreenCheckScreenIDTest.java JBR-8263 linux-x64
 java/awt/Multiscreen/UpdateGCTest/UpdateGCTest.java.UpdateGCTest
+java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.java ubuntu-24.04-x64
 
 java/awt/image/DrawImage/BlitRotateClippedArea.java JBR-9026 linux-all
 java/awt/image/DrawImage/EABlitTest.java JBR-9027 linux-all
@@ -16,5 +17,6 @@ javax/swing/JFormattedTextField/bug4741926.java JBR-9321 arch-gnome
 javax/swing/JPasswordField/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/JSpinner/TestSelectedTextBackgroundColor.java JBR-9277 arch-gnome
 javax/swing/InputVerifier/VerifyTarget/VerifyTargetTest.java JBR-9320 arch-gnome
+javax/swing/text/html/8031109/bug8031109.java JBR-10847 ubuntu-22.04-aarch64,ubuntu-22.04-x64,ubuntu-24.04-aarch64,ubuntu-24.04-x64
 
 jb/java/awt/wayland/vulkan/ClipRenderTest.java JBR-10160 linux-all
